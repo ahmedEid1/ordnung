@@ -631,6 +631,33 @@ def test_309_old_caps_and_bases() -> None:
     assert no_term.cancel_by is None and no_term.confidence == "low"
 
 
+def test_a_current_account_can_be_closed_any_time() -> None:
+    """Walkthrough of phase 2: "Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei
+    kündigen" (read as notice any time, no period) got "We couldn't compute a cancellation date". A consumer's
+    current account can be closed any time without notice unless one was agreed, and an agreed one counts
+    for at most a month (§ 675h Abs. 1 BGB)."""
+    account = compute_contract(terms(category="bank", notice_basis="any_time"), ctx())
+    assert account.regime == "bgb675h"
+    assert account.earliest_exit == "2026-10-01"  # the day a letter posted today arrives
+    assert account.cancel_by is None and account.next_renewal is None
+    assert account.confidence == "high" and account.warnings == []
+    assert "bgb_675h" in account.rule_ids
+    assert account.summary.startswith("You can cancel any time, without notice (§ 675h Abs. 1 BGB)")
+    assert any("§ 675h" in note for note in account.notes)
+    agreed = compute_contract(
+        terms(category="bank", notice_value=2, notice_unit="weeks", notice_basis="any_time"), ctx()
+    )
+    assert agreed.regime == "bgb675h" and agreed.earliest_exit == "2026-10-15"
+    capped = compute_contract(
+        terms(category="bank", notice_value=3, notice_unit="months", notice_basis="any_time"), ctx()
+    )
+    assert capped.earliest_exit == "2026-11-01"  # three months agreed, one month is the most (void beyond)
+    assert any("at most one month" in w for w in capped.warnings)
+    # other bank contracts (a savings plan, a loan) follow their own terms
+    fixed = compute_contract(terms(category="bank", notice_basis="end_of_term"), ctx())
+    assert fixed.regime == "as_written"
+
+
 def test_as_written_contracts() -> None:
     written = terms(
         category="bank",
@@ -649,10 +676,14 @@ def test_as_written_contracts() -> None:
         terms(category="bank", start_date="2025-01-01", initial_term_months=12), ctx()
     )
     assert no_notice.cancel_by is None
-    open_missing = compute_contract(terms(category="bank", notice_basis="any_time"), ctx())
+    # a business's bank contract that can be ended any time follows its terms (a consumer's is § 675h BGB)
+    open_missing = compute_contract(terms(category="bank", notice_basis="any_time", is_consumer=False), ctx())
     assert open_missing.earliest_exit is None
     any_time = compute_contract(
-        terms(category="bank", notice_value=1, notice_unit="months", notice_basis="any_time"), ctx()
+        terms(
+            category="bank", notice_value=1, notice_unit="months", notice_basis="any_time", is_consumer=False
+        ),
+        ctx(),
     )
     assert any_time.earliest_exit == "2026-11-01"
     unknown_renewal = compute_contract(
@@ -749,6 +780,9 @@ def test_energy_price_increase() -> None:
     assert receipt.confidence == "high"
     assert receipt.warnings == []
     assert "enwg_41_5" in receipt.rule_ids
+    # a special contract: the basic-supply regulation (StromGVV) is not cited (walkthrough of phase 2)
+    assert "stromgvv_5_3" not in receipt.rule_ids
+    assert all("StromGVV" not in step.citation for step in receipt.steps if step.citation)
 
 
 def test_energy_price_increase_holidays_and_late_notice() -> None:
@@ -765,6 +799,7 @@ def test_basic_supply_price_change() -> None:
     ok = price_increase_window(D("2027-01-01"), "energy", D("2026-11-19"), ctx(), is_basic_supply=True)
     assert ok.due_date == "2026-12-31"
     assert ok.warnings == []
+    assert {"enwg_41_5", "stromgvv_5_3"} <= set(ok.rule_ids)
     borderline = price_increase_window(
         D("2027-01-01"), "energy", D("2026-11-20"), ctx(), is_basic_supply=True
     )

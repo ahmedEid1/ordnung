@@ -88,17 +88,20 @@ only call Ordnung's **read-only** MCP tools; the UI never renders model output a
 
 ### 3.1 Repository layout
 ```
-src/ordnung/
+src/ordnung/            (the main modules; the package itself is the complete list)
   cli.py  config.py  clock.py  ids.py  models.py  events.py  app_context.py  views.py  tick.py
+  payments.py  numbers.py  girocode.py  recurrence.py  doctor.py  locking.py  server.py
   db/ (schema.sql, migrations/NNNN_*.sql, store.py)
   llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
-  rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py)
-  ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py)
-  secretary/ (triggers.py, review.py, brief.py)
-  assistant/ (mcp_server.py, ask.py, citations.py)
-  drafts/ (compose.py, checks.py, pdf.py, fonts/)
-  calendar/ (ics.py, caldav.py, secrets.py)
-  notify/desktop.py  autostart.py  backup/ (container.py, archive.py, restore.py)
+  rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
+          routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
+  ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py,
+           held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py)
+  secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py)
+  assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
+  drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
+  calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
+  notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py)
   demo/ (loader.py, tour.py, samples/, fixtures/, demo_db/)   # samples + fixtures ship in the wheel
   api/ (app.py, security.py, deps.py, routes/*.py)
   web/dist/                                                     # built SPA (generated)
@@ -106,7 +109,7 @@ web/            React + TS + Vite + Tailwind v4 source
 scripts/        make_sample_life.py (+ scan simulation), capture.sh (README assets; web/scripts/capture.mjs), gen_mock_*.py
 evals/          dataset manifest, runner, results/*.json
 docs/           SPEC, architecture, deadline-rules, privacy, evals, evals-ask, decisions/ (ADRs), assets/ (README pictures)
-tests/          pytest (+ tests/bin/claude fake CLI)
+tests/          pytest (+ tests/fake_claude.py, the fake claude CLI)
 ```
 
 ### 3.2 Stack
@@ -128,7 +131,9 @@ Key additions in v2 (to implement in models.py):
 - `Item.slot_key: str` (stable identity within a document), `user_modified: bool`,
   `due_date_source: Literal["computed","fixed","manual","none"]`.
 - `SuggestionStatus` gains `"expired"`.
-- `DraftKind` = `"cancellation" | "objection" | "general_reply"`; `Draft.body_translation: str`,
+- `DraftKind` = `"cancellation" | "objection" | "general_reply"` plus eight template kinds (phase 2:
+  `withdrawal`, `extension_request`, `payment_plan`, `defect_notice`, `data_access`, `receipts_inspection`,
+  `deposit_return`, `address_change` — `models.TemplateDraftKind`); `Draft.body_translation: str`,
   `Draft.send_guidance: SendGuidance | None`.
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
@@ -178,14 +183,17 @@ The Store API contract is Appendix A (unchanged names; additions: `tx()`, `recon
 
 ## 6. Rules engine — `rules/` (pure, 100 % branch-covered, Hypothesis property tests)
 
+A sketch; `src/ordnung/rules/` and `src/ordnung/models.py` are the source of truth (`RuleContext` has more
+fields, e.g. the sender's delivery scope and the letter's kind).
+
 ```python
 @dataclass(frozen=True, kw_only=True)
 class RuleContext:
-    today: date; country: str = "DE"; region: str = "NW"
+    today: date; country: str = "DE"; region: str | None = None   # None: nationwide holidays only (§ 21)
     document_date: date | None = None; received_date: date | None = None
 
-compute_due(spec: DateSpec, ctx) -> ComputationReceipt
-compute_contract(terms: ContractTerms, ctx, postal_buffer_days=3) -> ContractComputation
+compute_due(spec: DateSpec, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) -> ComputationReceipt   # 4 (§ 21)
+compute_contract(terms: ContractTerms, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) -> ContractComputation
 is_business_day(d, region) · next_business_day(d, region) · add_business_days(d, n, region)
 add_period(event_day, amount, unit, region) -> (date, steps)       # §§ 187(1), 188(2)(3) BGB
 deemed_delivery(posted, rule, region) -> (date, steps)
@@ -200,9 +208,11 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   `shift_rule == "auto"`). Notice periods (`nature == "notice"`) never shift.
 - **deemed delivery** (`de_admin_post`): letters posted from 2025-01-01 count as delivered on the
   4th day after posting (3rd day before 2025) — § 122 Abs. 2 Nr. 1 AO / § 41 Abs. 2 VwVfG /
-  § 37 Abs. 2 SGB X (PostModG). If that day is a Saturday, Sunday or holiday it moves to the next
-  business day (BFH IX R 68/98). If the person entered a later actual arrival date, the receipt keeps
-  the conservative (earlier) deadline and adds a note that late receipt may extend it.
+  § 37 Abs. 2 SGB X (PostModG). For tax letters (AO) that day moves to the next working day when it is a
+  Saturday, Sunday or holiday (BFH IX R 68/98; AEAO zu § 108 Nr. 2). Under § 41 VwVfG and § 37 SGB X it
+  does not move (OVG NRW 19 A 4216/99; BSG B 14 AS 12/09 R) — see `docs/deadline-rules.md` § 5. If the
+  person entered a later actual arrival date, the receipt keeps the conservative (earlier) deadline and
+  adds a note that late receipt may extend it.
 - **contracts** (cancel_by = last day the cancellation must be *received*; send_by = cancel_by minus
   `postal_buffer_days` business days; `earliest_exit` is computed on read, not stored):
   consumer contracts concluded on/after 2022-03-01 → after the initial term indefinite, cancellable
@@ -566,7 +576,9 @@ whose adding was stopped before its attachments adds them.
 
 MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `search`,
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
-`explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. Ask runs `claude -p` with `--tools ""`,
+`explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. `list_items` with a date range
+(and no kind, or kind `deadline`) also lists the contracts' cancellation deadlines in that range
+(`contract_deadlines`), unless the cancellation was sent or confirmed. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -896,7 +908,11 @@ organisation and/or a thread; typed by the person, no model call; a promise with
 
 ## 12. Calendar — `calendar/ics.py`
 One-click `.ics` export of open dated items + contract send_by dates, VALARMs from
-`profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import;
+`profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import. Left out:
+to-dos set aside (`Ledger.is_set_aside`), open one-offs whose date had long passed when their letter was
+read (a backfilled archive's 2025 deposit), and the send-by dates of contracts whose cancellation was sent
+or confirmed. The Timeline marks money coming in "Money in" (never overdue) and a to-do set aside by why
+("Replaced by the reminder"); the Settings preview calls a past event "Date passed";
 `meta.last_calendar_export_at` drives the "3 new dates since your last calendar update" card.
 Browser notifications (Notification API) while the app is open. Local feed URL documented as
 "desktop calendar on this computer" only.
@@ -1058,8 +1074,8 @@ from any party chip. Global drop zone; upload toast with live stepper.
 
 UI copy table (enforced by a test that rendered text never shows raw enum values):
 items → "To-dos & dates" · cases → "Threads" · parties → "People & organisations" ·
-suggestions → "Ideas" · verified → "Found in the letter ✓" · model_read → "Read by AI from the
-image" · unverified → "Couldn't find this in the letter — please check" · needs_review → "Please
+suggestions → "Ideas" · verified → "Found in the letter" · model_read → "Read by AI from the
+photo" · unverified → "Couldn't find this — please check" · needs_review → "Please
 check" · computation receipt → "Why this date?" (plain sentence first; "Show the rules" reveals
 steps + citations) · German terms shown as "Einspruch (objection)" with a glossary tooltip.
 
@@ -1161,7 +1177,7 @@ Pages:
    encrypted backup (passphrase twice or a suggested one to copy, then the download; how to
    restore; also offered by "Delete everything"), disclaimer — the static demo explains that it can
    neither notify, sync a calendar nor back up —,
-   **Watched folder** (the path with the server's validation message, "Use Ordnung's inbox folder"
+   **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
    restarts the guided tour.
@@ -1242,7 +1258,7 @@ Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind),
 **reading** (wrong DateSpec/anchor/amount) vs **computing** (wrong arithmetic/law), classification,
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
-`evals/results/<date>-<model>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
+`evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
 change to them waits for a new benchmark run: known limitation (UI audit R1-backend-6), a reading's
 action, consequence and key-fact labels can stay in the letter's German and number formats, and its
@@ -1399,8 +1415,24 @@ it indefinite, notice ≤ 1 month at any time), `bgb309_old` (as written, renewa
 renewal, notice as written 1–3 months before end of insurance year), `sgbv175` (statutory health
 insurance: 12-month lock-in, effective end of the second following month), `stromgvv20`
 (Grundversorgung: 2 weeks any time), `rent573c` (tenant: notice by 3rd Werktag of month → end of the
-month after next), `employment622` (as written / statutory), `as_written` (unknown → written
-terms, `low` confidence). Notice = min(written notice, statutory cap) where a cap exists.
+month after next), `employment622` (as written / statutory), `bgb675h` (a consumer's current account
+its terms say can be ended any time: without notice unless one was agreed, at most one month — § 675h
+Abs. 1 BGB), `as_written` (unknown → written terms, `low` confidence). Notice = min(written notice,
+statutory cap) where a cap exists. A contract whose notice period the letter doesn't give gets the
+longest the law allows, with a warning; the card then asks "Please check" and offers "Add notice period".
+A contract carries the person's cancellation of it once it is marked as sent (`cancellation_sent`,
+worked out on read): it is then no decision any more — no "Decide by", no cancellation Idea, no send-by
+date in the calendar — and the card says it waits for the provider's confirmation.
+
+**A cancellation for an end date.** A `notice` whose own words name its date as the day the contract
+should end ("rechtzeitig zum 31.03.2027 kündigen", "mit Wirkung zum …", "effective …"; not "bis zum …",
+"eingehen", "reach us") is no receive-by date: the engine counts back one month (§ 309 Nr. 9 BGB), keeps
+that day, gives it a safe date and send-by date, and marks it `low` with a warning that the contract may
+ask less, or up to three months (a flat, an insurance, an older contract).
+
+**Payments nobody transfers.** A direct debit the sender collects and money coming in get no send-by day
+(the bank transfer's § 675s BGB day means nothing there): the due day is the day, on Today, in the brief,
+Ask and "Why this date?"; money coming in is never overdue.
 `ContractTerms.concluded_date` (fallback start_date with a warning). For notice deadlines falling on
 a weekend/holiday, also show a *safe date* (previous business day). Every dated obligation gets
 `must_arrive_by` and `send_by` (postal buffer default **4** business days; channel-aware:

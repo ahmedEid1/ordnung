@@ -241,6 +241,13 @@ def test_correctness_needs_every_gold_value() -> None:
         ("No problem: I found your deadline in your records, it is 21 Oct.", False),
         # final review: a recorded abstention the pattern missed
         ("No BAföG loan (repayment) contract or document is in your Ordnung records.", True),
+        # final review of phase 2: two recorded abstentions the pattern missed
+        ("No BAföG loan is recorded in your Ordnung ledger.", True),
+        (
+            "No driving licence expiry or renewal record is stored in Ordnung — a search turned up nothing.",
+            True,
+        ),
+        ("No problem: your deadline is recorded in your ledger, 21 Oct 2026.", False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"

@@ -60,7 +60,7 @@ from ordnung.models import (
     PaymentDetails,
     Remedy,
 )
-from ordnung.payments import pays_on_site
+from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
     at_occurrence,
@@ -585,9 +585,13 @@ def for_item(ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | N
     """The context a to-do's date is computed in: a rent increase's current rent (:meth:`PaymentNote.
     is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB,
     review round 2 of phase 2) — it is computed like a payment on any other letter. A payment made in person
-    (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day (UI audit R1-backend-8)."""
+    (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day (UI audit R1-backend-8), nor
+    does one nobody transfers: a direct debit the sender collects, or money coming in
+    (:func:`~ordnung.payments.is_collected_or_incoming`; walkthrough of phase 2)."""
     if pays_on_site(item):
         ctx = replace(ctx, in_person=True)
+    if is_collected_or_incoming(item):
+        ctx = replace(ctx, collected=True)
     if note is not None and note.rule_id == "bgb_558b" and item.kind == "payment" and note.is_current(item):
         return replace(ctx, letter_kind=None)
     return ctx

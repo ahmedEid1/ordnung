@@ -1167,7 +1167,7 @@ def test_without_keyring_the_command_for_this_installation_is_named(monkeypatch:
         (
             "/home/sam/.local/share/uv/tools/ordnung",
             "/home/sam/.local/share/uv/tools/ordnung/bin/python",
-            "uv tool install --reinstall --with 'keyring>=25' git+https://github.com/ahmedEid1/ordnung",
+            "uv tool install --reinstall --with 'keyring>=25' git+https://github.com/ahmedEid1/new-project",
         ),
         (
             "/home/sam/ordnung/.venv",

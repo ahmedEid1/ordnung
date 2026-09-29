@@ -41,6 +41,8 @@ const entry = (e: Partial<TimelineEntry> & Pick<TimelineEntry, "date">): Timelin
   amount: null,
   currency: null,
   past: e.date < TODAY,
+  direction: null,
+  aside: null,
   ...e,
 });
 
@@ -297,6 +299,32 @@ describe("copy", () => {
     expect(entryStatus({ type: "payment", status: "overdue", date: "2026-09-01", past: true }, TODAY)?.label).toBe("Overdue");
     expect(entryStatus({ type: "payment", status: "open", date: "2026-10-01", past: false }, TODAY)).toBeNull();
     expect(entryStatus({ type: "contract", status: "active", date: "2026-10-01", past: false }, TODAY)).toBeNull();
+  });
+
+  it("never calls money coming in or a to-do that is not one to act on overdue (walkthrough of phase 2)", () => {
+    const salary = { type: "payment" as const, status: "open", date: "2026-09-10", past: true, direction: "in" as const };
+    expect(entryStatus(salary, TODAY)?.label).toBe("Received?");
+    expect(entryStatus({ ...salary, date: "2026-10-10", past: false }, TODAY)).toBeNull();
+    expect(entryRole(salary)).toBe("Money in");
+    const invoice = { type: "payment" as const, status: "open", date: "2026-09-03", past: true, direction: "out" as const };
+    expect(entryStatus(invoice, TODAY)?.label).toBe("Overdue");
+    expect(entryStatus({ ...invoice, aside: "replaced" as const }, TODAY)?.label).toBe("Replaced by the reminder");
+    expect(entryStatus({ ...invoice, aside: "attached" as const }, TODAY)?.label).toBe("On the attached bill");
+    expect(entryStatus({ ...invoice, aside: "history" as const }, TODAY)?.label).toBe("Not marked done");
+    // done stays done
+    expect(entryStatus({ ...invoice, status: "done", aside: "replaced" as const }, TODAY)?.label).not.toBe("Replaced by the reminder");
+  });
+
+  it("leaves money in and replaced payments out of a month's 'to pay'", () => {
+    const month = groupByMonth(
+      [
+        entry({ date: "2026-10-05", type: "payment", amount: 100, status: "open" }),
+        entry({ date: "2026-10-06", type: "payment", amount: 1285.2, status: "open", direction: "in" }),
+        entry({ date: "2026-10-07", type: "payment", amount: 89.99, status: "open", aside: "replaced" }),
+      ],
+      TODAY,
+    );
+    expect(month.find((m) => m.key === "2026-10")?.toPay).toEqual({ EUR: 100 });
   });
 
   it("maps send channels and drops repeated party names in the second line", () => {

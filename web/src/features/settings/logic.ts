@@ -128,7 +128,7 @@ export function cacheRate(usage: Pick<UsageStats, "calls" | "cache_hits"> | null
   return usage.cache_hits / usage.calls;
 }
 
-/** "Sonnet", "Haiku", "Opus" from a model id like `claude-sonnet-4-6`. */
+/** "Sonnet", "Haiku", "Opus" from a model alias or id (`sonnet`, or a dated id the CLI reports). */
 export function modelFamily(model: string): string {
   const m = /(haiku|sonnet|opus)/i.exec(model);
   return m ? m[1]!.charAt(0).toUpperCase() + m[1]!.slice(1).toLowerCase() : model;

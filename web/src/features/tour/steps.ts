@@ -41,7 +41,21 @@ export interface TourStep {
   target: TourTarget;
   /** Label of the "take me there" button. */
   showLabel: string;
+  /**
+   * The step's point is made (a letter from the tray was read): "Next" leads, "take me there" steps back
+   * (walkthrough of phase 2: after reading a letter the card said "go on" but its button went back to the Inbox).
+   */
+  onward?: boolean;
 }
+
+/** What the tour's last step points to besides its own (walkthrough of phase 2: the tour never visited them). */
+export const MORE_TO_TRY: readonly { label: string; hint: string; to: string }[] = [
+  { label: "Pay by GiroCode", hint: "open a bill and press Pay — scan the code with your banking app", to: "/inbox" },
+  { label: "My numbers", hint: "your tax ID, insurance and customer numbers, checked", to: "/numbers" },
+  { label: "Weekly review", hint: "ten minutes a week, step by step", to: "/week" },
+  { label: "Letters", hint: "write one, send it with proof, see what you're waiting for", to: "/letters" },
+  { label: "How it was read", hint: "every letter's page shows each step and model call", to: "/inbox" },
+];
 
 export const TOUR_STEPS: readonly TourStep[] = [
   {
@@ -109,6 +123,7 @@ export function stepCopy(step: TourStep, facts: TourFacts = {}): TourStep {
         ...step,
         title: "All new mail read",
         body: "Every new letter has been read and filed. Next, see what your secretary suggests about them.",
+        onward: true,
       };
     }
     if (unread < total) {
@@ -116,6 +131,7 @@ export function stepCopy(step: TourStep, facts: TourFacts = {}): TourStep {
       return {
         ...step,
         body: `${waiting} still waiting for Sam. Open ${unread === 1 ? "it" : "another"} to watch Ordnung read it — or go on and see what your secretary suggests.`,
+        onward: true,
       };
     }
     const arrived = unread === 1 ? "One letter just arrived" : `${inWords(unread)} letters just arrived`;

@@ -20,9 +20,10 @@ def read_brief(store: StoreDep, today: TodayDep) -> Brief:
 
 
 @router.post("/brief", response_model=Brief)
-async def regenerate_brief(ctx: CtxDep, today: TodayDep) -> Brief:
-    """Write today's note again (Claude when "AI note" is on and available, else code)."""
-    use_llm = ctx.store.get_settings().llm_brief and not replay_miss_prone(ctx.llm)
+async def regenerate_brief(ctx: CtxDep, today: TodayDep, llm: bool = True) -> Brief:
+    """Write today's note again (Claude when "AI note" is on and available, else code; ``llm=false``: code
+    only, from the records — ``ordnung brief --no-llm``)."""
+    use_llm = llm and ctx.store.get_settings().llm_brief and not replay_miss_prone(ctx.llm)
     brief = await generate_brief(ctx.store, ctx.llm if use_llm else None, today)
     ctx.bus.publish("brief.updated", date=brief.date, source=brief.source)
     return brief

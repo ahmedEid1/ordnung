@@ -130,6 +130,23 @@ describe("Document viewer — suspected scam", () => {
     expect(screen.getByText(/don't pay to this account/)).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
+
+  it("lists the signs its Idea counts, and never asks to correct the date of the demand (walkthrough of phase 2)", async () => {
+    const base = await detailFromMock("doc_scam");
+    const signs = ["The letter contains hidden text that you can't see on the page.", "The IBAN is abroad.", "It threatens enforcement within 48 hours.", "The e-mail domain is not the office's."];
+    const demand = base.items.find((i) => i.kind === "payment") ?? base.items[0]!;
+    const unsure = { ...demand, grounding: "unverified" as const, status: "open" as const };
+    const detail = { ...base, scam_signs: signs, items: base.items.map((i) => (i.id === demand.id ? unsure : i)) };
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    const banner = screen.getByRole("alert", { name: "" });
+    expect(banner).toHaveTextContent(`The 3 strongest of ${signs.length} warning signs`);
+    // the demand: only "not a real to-do" or "it's a real to-do" — no "Correct", no "Change date"
+    expect(screen.getByRole("button", { name: "Not a real to-do" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "It's a real to-do" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Correct" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change date" })).toBeNull();
+    expect(screen.getByText(/shows signs of a scam: don't pay/)).toBeInTheDocument();
+  });
 });
 
 describe("warnings & Please check", () => {

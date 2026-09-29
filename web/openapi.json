@@ -2564,8 +2564,20 @@
           "brief"
         ],
         "summary": "Regenerate Brief",
-        "description": "Write today's note again (Claude when \"AI note\" is on and available, else code).",
+        "description": "Write today's note again (Claude when \"AI note\" is on and available, else code; ``llm=false``: code\nonly, from the records — ``ordnung brief --no-llm``).",
         "operationId": "regenerate_brief_api_brief_post",
+        "parameters": [
+          {
+            "name": "llm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Llm"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2573,6 +2585,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Brief"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5611,6 +5633,44 @@
         "title": "CallSheet",
         "description": "Everything to have at hand when you call or write to one organisation."
       },
+      "CancellationSent": {
+        "properties": {
+          "draft_id": {
+            "type": "string",
+            "title": "Draft Id"
+          },
+          "sent_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent On"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draft_id",
+          "sent_on",
+          "channel"
+        ],
+        "title": "CancellationSent",
+        "description": "The person's cancellation of a contract, marked as sent (a ``cancellation`` letter with the\ncontract's id): the decision is taken, what is left is waiting for the provider's confirmation."
+      },
       "Case": {
         "properties": {
           "id": {
@@ -6341,6 +6401,16 @@
               }
             ],
             "title": "Cancel Hint"
+          },
+          "cancellation_sent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CancellationSent"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6372,7 +6442,8 @@
           "created_at",
           "updated_at",
           "cancellable",
-          "cancel_hint"
+          "cancel_hint",
+          "cancellation_sent"
         ],
         "title": "Contract"
       },
@@ -6389,6 +6460,7 @@
               "stromgvv20",
               "rent573c",
               "employment622",
+              "bgb675h",
               "as_written"
             ],
             "title": "Regime",
@@ -7959,6 +8031,13 @@
             },
             "type": "array",
             "title": "Proof Of"
+          },
+          "scam_signs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scam Signs"
           }
         },
         "type": "object",
@@ -7979,7 +8058,8 @@
           "attachments_more",
           "email",
           "can_wait_again",
-          "proof_of"
+          "proof_of",
+          "scam_signs"
         ],
         "title": "DocumentDetail"
       },
@@ -13104,7 +13184,7 @@
           "cost_usd"
         ],
         "title": "PurposeUsage",
-        "description": "Model use for one purpose (``extract``, ``ask`` …)."
+        "description": "Model use for one purpose (``extract``, ``ask`` …). ``input_tokens`` counts every prompt token, those\nread from or written to the prompt cache too."
       },
       "Recurrence-Input": {
         "properties": {
@@ -14278,6 +14358,37 @@
             "type": "boolean",
             "title": "Past",
             "default": false
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "out",
+                  "in"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction"
+          },
+          "aside": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "replaced",
+                  "attached",
+                  "history"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aside"
           }
         },
         "type": "object",
@@ -14295,7 +14406,9 @@
           "party_name",
           "amount",
           "currency",
-          "past"
+          "past",
+          "direction",
+          "aside"
         ],
         "title": "TimelineEntry"
       },
@@ -14879,7 +14992,7 @@
           "label"
         ],
         "title": "TraceSpan",
-        "description": "A step of a reading as the \"How this was read\" view shows it (display order, depth-first)."
+        "description": "A step of a reading as the \"How it was read\" view shows it (display order, depth-first)."
       },
       "TraceSpanRecord": {
         "properties": {
@@ -15246,7 +15359,8 @@
           "by_purpose",
           "recent"
         ],
-        "title": "UsageStats"
+        "title": "UsageStats",
+        "description": "Model use in total and per purpose; ``input_tokens`` counts every prompt token, cached ones too."
       },
       "ValidationError": {
         "properties": {

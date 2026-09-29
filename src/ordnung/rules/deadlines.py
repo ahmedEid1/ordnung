@@ -35,6 +35,7 @@ from ordnung.rules.explain import (
     end_clause,
     fmt_date,
     fmt_period,
+    notice_phrase,
     reason_phrase,
 )
 from ordnung.rules.periods import add_period, latest_receipt_for, shift_to_business_day
@@ -108,6 +109,25 @@ TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
 TOLD_ARRIVAL: Final = "You told us it arrived on"
 ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
 
+#: A notice whose written date is the day the contract should END, not the day the notice must arrive
+#: (walkthrough of phase 2: "rechtzeitig zum 31.03.2027 zu kündigen" was filed as "must arrive by 31 Mar"):
+#: its words say "zum <date>" ("rechtzeitig zum …", "zum Ablauf des …"), "mit Wirkung zum", "effective" or
+#: "with effect from" — and nothing in them says the notice must arrive by then (:data:`_ARRIVAL_WORDS`).
+_END_WORDS = re.compile(
+    r"\bzum\s+(?:Ablauf\s+(?:des|vom)\s+|Ende\s+(?:des|vom)\s+)?\d|\bmit\s+Wirkung\s+(?:zum|ab)\b"
+    r"|\beffective\b|\bwith\s+effect\s+from\b",
+    re.I,
+)
+_ARRIVAL_WORDS = re.compile(
+    r"\bbis\s+(?:spätestens\s+)?zum\b|\beingeh|\beingang|\bzugeh|\bzugang|\bvorlieg|\berreich|\beintreff"
+    r"|\bbei\s+(?:uns|ihnen|Ihnen|dem|der)\s+(?:sein|ein)|\breach|\breceiv|\barriv",
+    re.I,
+)
+#: The notice assumed for a contract's end the letter names, when that is all it names: one month, the most
+#: a consumer contract concluded since 1 March 2022 may ask (§ 309 Nr. 9 BGB).
+END_NOTICE: Final[tuple[int, PeriodUnit]] = (1, "months")
+#: How such a receipt's warning starts (the rest names the end and the longer periods).
+NOTICE_FOR_END: Final = "The letter gives the day the contract should end"
 _SHIFTING_NATURES = ("objection", "payment", "declaration")
 _SEND_BY_NATURES = ("objection", "payment", "declaration", "notice")
 #: Court orders under the ZPO (and at a labour court, § 46a ArbGG): delivered by the court (§ 180 ZPO),
@@ -222,7 +242,10 @@ class RuleContext:
     gives is that of a notice given in the alternative, which § 38 Abs. 1 SGB III doesn't count from.
     ``in_person``: the payment is made in person — by card or in cash at the appointment, the desk or a
     machine (:func:`ordnung.payments.pays_on_site`) —, so it gets no send-by date: a bank transfer's day
-    (§ 675s BGB) means nothing there, the due day is the day (UI audit R1-backend-8).
+    (§ 675s BGB) means nothing there, the due day is the day (UI audit R1-backend-8). ``collected``: nobody
+    transfers it — the sender collects it by direct debit, or the money comes in
+    (:func:`ordnung.payments.is_collected_or_incoming`) —, so it gets no send-by date either: the due day is
+    the day it is collected or paid in (walkthrough of phase 2: a direct debit got a transfer's "send by").
     """
 
     today: date
@@ -244,6 +267,7 @@ class RuleContext:
     end_date_grounding: Literal["quote", "letter", "none"] = "quote"
     ends_on_arrival: bool = False
     in_person: bool = False
+    collected: bool = False
 
 
 @dataclass
@@ -591,7 +615,7 @@ def _send_by(
     trace: Trace, ctx: RuleContext, due: date, nature: str, region: str | None, postal_buffer_days: int
 ) -> date | None:
     if nature == "payment":
-        if ctx.in_person:  # paid on the day, at the desk or the appointment: nothing to transfer ahead
+        if ctx.in_person or ctx.collected:  # paid on the day, collected or paid in: nothing to transfer ahead
             return None
         return plan_send_by(
             trace,
@@ -656,6 +680,8 @@ def _compute_fixed(
     written = parse_date(spec.date)
     if written is None:
         return _no_date(trace, ctx, "The date in the letter could not be read.")
+    if spec.nature == "notice" and names_end(spec.text, ctx.quote):
+        return _compute_notice_for_end(ctx, trace, written, region, postal_buffer_days)
     trace.step(f"The date given is {fmt_date(written)}", written, "date_as_written")
     due, safe, moves = written, None, False
     if spec.nature == "notice":
@@ -689,6 +715,52 @@ def _compute_fixed(
     else:
         summary = f"The date given is {_end_clause(written, due, region)}."
     return _receipt(trace, ctx, due=due, summary=summary, send_by=send_by, safe_date=safe, region=region)
+
+
+def names_end(*texts: str | None) -> bool:
+    """Whether a notice's words name its date as the day the contract should end ("rechtzeitig zum
+    31.03.2027 kündigen", "mit Wirkung zum …", "effective …"), not the day the notice must arrive: some
+    end wording (:data:`_END_WORDS`) and no arrival wording ("bis zum", "eingehen", "vorliegen", "reach",
+    "receive" …: :data:`_ARRIVAL_WORDS`) in the date's text or its sentence."""
+    words = " ".join(text for text in texts if text)
+    return bool(_END_WORDS.search(words)) and not _ARRIVAL_WORDS.search(words)
+
+
+def _compute_notice_for_end(
+    ctx: RuleContext, trace: Trace, end: date, region: str | None, postal_buffer_days: int
+) -> ComputationReceipt:
+    """A notice for the end of a contract the letter names (:func:`names_end`): the letter doesn't say how
+    long before that day the notice must arrive, so Ordnung counts back :data:`END_NOTICE` (one month, the
+    most a consumer contract concluded since March 2022 may ask, § 309 Nr. 9 BGB) and marks the date ``low``
+    (Please check) with a warning naming the longer periods — a flat, an insurance or an older contract may
+    ask up to three months. The contract's own notice period, if shorter, gives a later day (policy)."""
+    amount, unit = END_NOTICE
+    trace.step(f"The letter names {fmt_date(end)} as the day the contract should end", end, "date_as_written")
+    arrive_by = latest_receipt_for(end, amount, unit)
+    trace.step(
+        f"With {notice_phrase(fmt_period(amount, unit))}, the most a consumer contract may ask, the "
+        f"cancellation must arrive by {fmt_date(arrive_by)}",
+        arrive_by,
+        "bgb_309_9_new",
+    )
+    trace.hard(
+        f"{NOTICE_FOR_END} ({fmt_date(end)}), not the day your cancellation must arrive. We assumed "
+        f"{notice_phrase(fmt_period(amount, unit))}, the most a consumer contract may ask (§ 309 Nr. 9 BGB) — "
+        "check the contract's notice period: it may be shorter, and a flat, an insurance or a contract from "
+        "before March 2022 may ask up to three months."
+    )
+    safe = _safe_date(trace, arrive_by, region)
+    if region is None:
+        check_regional_holidays(trace, [arrive_by], later=False)
+    send_by = _send_by(trace, ctx, safe, "notice", region, postal_buffer_days)
+    check_partial_holidays(trace, region, arrive_by, send_by=send_by, safe=safe, moves=False)
+    summary = (
+        f"To end the contract on {fmt_date(end)}, the cancellation must arrive by "
+        f"{_end_clause(arrive_by, arrive_by, region, safe=safe)}."
+    )
+    return _receipt(
+        trace, ctx, due=arrive_by, summary=summary, send_by=send_by, safe_date=safe, region=region
+    )
 
 
 def _resolve_anchor(

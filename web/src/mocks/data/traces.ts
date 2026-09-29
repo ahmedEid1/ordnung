@@ -1,5 +1,5 @@
 /**
- * "How this was read" in the mock backend: every letter's readings, built from the mock ledger the
+ * "How it was read" in the mock backend: every letter's readings, built from the mock ledger the
  * way the pipeline records them (`src/ordnung/trace`, what each step keeps: `facts.py`) — the text
  * layer, a photo's pages transcribed at the same time, the extraction call (and a repair call when
  * its first answer did not validate), one check per quote, the dates the rules engine computed, how

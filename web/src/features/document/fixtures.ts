@@ -146,6 +146,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     email: null,
     can_wait_again: false,
     proof_of: [],
+    scam_signs: [],
     ...d,
   };
 }

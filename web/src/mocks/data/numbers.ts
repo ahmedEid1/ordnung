@@ -2235,7 +2235,7 @@ export const MOCK_WEEK: WeeklySession = {
           "party_name": "FunkNetz Mobil GmbH",
           "doc_id": "doc_phone",
           "status": null,
-          "note": "Renews unless you send a cancellation by then.",
+          "note": "Continues after its term unless you send a cancellation by then — then cancellable monthly.",
           "tone": "neutral",
           "overdue": false,
           "item": null

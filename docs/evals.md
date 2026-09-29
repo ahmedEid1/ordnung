@@ -56,7 +56,7 @@ Paired differences (bootstrap over the same letters; an interval that excludes 0
 The held-out run exposed a gap in Ordnung itself rather than in the model's reading: its sender categories had no place for social-benefit agencies, so a job centre, the pension insurance or the Familienkasse was filed as a plain *authority*, and the engine applied general administrative law (§ 41 VwVfG, with a Land's older 3-day rule) instead of social law (§ 37 SGB X). All five of Ordnung's reading errors above are this case. The engine now also reads the sender's name and the remedy notice (a Sozialgericht or the SGB means social law; an *Einspruch* to the Familienkasse is tax law): `scope_for_party_kind` in `src/ordnung/rules/delivery.py`, with tests. The one error left is deliberate: that letter prints a posting day two days after its own date, and Ordnung counts from the letter's date (the earliest plausible start), telling the person why.
 
 The fix changed code only (no prompt, schema or model change), so the **same recorded model outputs**
-were scored again (commit `5c3e35b`). Because the test split informed the fix,
+were scored again (commit `5c3e35b`, a commit from before the history was squashed; a replay on any later commit gives the same numbers). Because the test split informed the fix,
 these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines'
 numbers cannot change: they do not use the rules engine, or (LLM + rules tool) they answered from
 the tool results recorded when they ran.
@@ -334,7 +334,7 @@ python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   
 
 Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay fixtures), the full
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
-rules engine of the checked-out commit; this run's numbers come from commit `17f2292`.
+rules engine of the checked-out commit; this run's numbers come from commit `17f2292`, a commit from before the history was squashed; a replay on any later commit gives the same numbers.
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model sonnet --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).

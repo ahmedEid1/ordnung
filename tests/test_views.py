@@ -51,6 +51,18 @@ def test_dashboard_attention_and_upcoming(store: Store, ids: dict[str, str]) -> 
     ]
 
 
+def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, ids: dict[str, str]) -> None:
+    """Walkthrough of phase 2: Today still said "Decide on FunkNetz Smart M" after its cancellation was sent."""
+    board = dashboard(store, TODAY)
+    assert [c.id for c in board.decisions] == [ids["phone"]]
+    store.add_draft(
+        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
+    )
+    board = dashboard(store, TODAY)
+    assert board.decisions == []
+    assert not any("Decide on" in area.headline for area in board.areas)
+
+
 def test_dashboard_decisions_money_and_stats(store: Store, ids: dict[str, str]) -> None:
     board = dashboard(store, TODAY)
     assert [c.id for c in board.decisions] == [ids["phone"]]  # the gym's cancellation is confirmed
@@ -113,7 +125,8 @@ def test_dashboard_areas(store: Store, ids: dict[str, str]) -> None:
 
 def test_area_dates_follow_the_one_urgency_scale(store: Store) -> None:
     """UI audit R1-backend-3: a direct debit is listed by the day the money moves (not a "send by" a
-    day earlier) and, like an appointment, never turns urgent; a deadline tomorrow does."""
+    day earlier) and never turns urgent; a deadline tomorrow does. An appointment tomorrow needs attention,
+    a direct debit none (walkthrough of phase 2: "Getting around · Needs attention" for the Deutschlandticket)."""
     ticket = add_doc(store, "ticket", area="mobility", kind="contract")
     add_item(
         store,
@@ -134,7 +147,7 @@ def test_area_dates_follow_the_one_urgency_scale(store: Store) -> None:
     areas = {area.area: area for area in dashboard(store, TODAY).areas}
     ticket_area = areas["mobility"]
     assert ticket_area.headline == "Monatliche Abbuchung Deutschlandticket — Tue 29 Sep"
-    assert (ticket_area.next_date, ticket_area.status) == ("2026-09-29", "attention")
+    assert (ticket_area.next_date, ticket_area.status) == ("2026-09-29", "ok")
     assert areas["health"].status == "attention"  # an appointment today: nothing to send
     assert areas["tax"].status == "urgent"
 
@@ -289,6 +302,40 @@ def test_timeline_merges_letters_items_contracts_and_sent_letters(store: Store, 
     assert appointment.time == "10:00"
 
 
+def test_timeline_says_money_in_and_set_aside_payments_are_never_overdue(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """Walkthrough of phase 2: "Salary payment received … Overdue" (money that came in) and an invoice its
+    payment reminder replaced showed as overdue on the timeline. Money in is never overdue and says so
+    (``direction``); a to-do that is not one to act on says why (``aside``)."""
+    salary = add_item(
+        store,
+        kind="payment",
+        title="Salary payment received (August 2026)",
+        due_date="2026-09-20",
+        amount=1285.2,
+        currency="EUR",
+        direction="in",
+    )
+    old = add_item(
+        store,
+        kind="payment",
+        title="Security deposit (Kaution)",
+        due_date="2025-10-01",
+        amount=1280.0,
+        currency="EUR",
+        direction="out",
+        filed_on="2026-09-20",
+    )
+    entries = {e.id: e for e in timeline(store, date(2025, 9, 1), date(2026, 10, 31))}
+    assert (entries[salary].status, entries[salary].direction, entries[salary].aside) == ("open", "in", None)
+    assert (entries[old].status, entries[old].aside) == ("open", "history")
+    assert (
+        entries[ids["parking_payment"]].direction == "out" and entries[ids["parking_payment"]].aside is None
+    )
+    assert entries[ids["library_task"]].direction is None
+
+
 def test_timeline_past_flag_follows_today(store: Store, ids: dict[str, str]) -> None:
     entries = timeline(store, date(2026, 12, 1), date(2026, 12, 31), today=date(2027, 1, 1))
     permit = next(e for e in entries if e.id == ids["permit_expiry"])
@@ -346,6 +393,19 @@ def test_contracts_lane_has_notice_windows(store: Store, ids: dict[str, str]) ->
         ("cancel_by", "2026-10-14"),
     ]
     assert bars[ids["power"]].end == "2027-08-31"  # any-time contract: runs to the end of the range
+
+
+def test_a_sent_cancellation_has_no_notice_window_left(store: Store, ids: dict[str, str]) -> None:
+    """Final review: the Timeline still drew the phone's "Send by" window after its cancellation was sent."""
+    store.add_draft(
+        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
+    )
+    contracts = next(
+        lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31)) if lane.id == "contracts"
+    )
+    bars = {bar.id: bar for bar in contracts.bars}
+    assert f"{ids['phone']}:notice" not in bars
+    assert (bars[ids["phone"]].end, bars[ids["phone"]].status) == ("2026-11-14", "ok")
 
 
 def test_tax_work_and_money_lanes(store: Store, ids: dict[str, str]) -> None:

@@ -214,6 +214,26 @@ def test_a_payment_made_in_person_is_stored_without_a_send_by_day() -> None:
     assert (kept.due_date, kept.send_by) == ("2026-10-15", "2026-10-14")
 
 
+def test_a_collected_or_incoming_payment_is_stored_without_a_send_by_day() -> None:
+    """Walkthrough of phase 2: the Deutschlandticket's direct debit (due Thu 1 Oct) was stored with a bank
+    transfer's send-by day, Wed 30 Sep, which the daily note then called its date. Nobody transfers money the
+    sender collects or money that comes in (``is_collected_or_incoming``): the due day is the day."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    debit = PAYMENT.model_copy(
+        update={"title": "Monatliche Abbuchung Deutschlandticket", "action": "Keep €63 in your account."}
+    )
+    computed = compute_item(verified_item(debit), for_item(ctx, debit, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
+    assert computed.receipt is not None and "bgb_675s" not in computed.receipt.rule_ids
+    incoming = PAYMENT.model_copy(update={"direction": "in", "title": "Salary"})
+    paid_in = compute_item(verified_item(incoming), for_item(ctx, incoming, None), postal_buffer_days=4)
+    assert (paid_in.due_date, paid_in.send_by) == ("2026-10-15", None)
+    # a direct debit that failed is paid by transfer again: it keeps its day
+    failed = debit.model_copy(update={"action": "Die Lastschrift wurde zurückgegeben: bitte überweisen."})
+    kept = compute_item(verified_item(failed), for_item(ctx, failed, None), postal_buffer_days=4)
+    assert kept.send_by == "2026-10-14"
+
+
 def test_rule_context_from_party_and_document(store: Store) -> None:
     party = store.add_party(name="Finanzamt", kind="tax_office", region="BY")
     document = store.add_document(

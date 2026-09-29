@@ -1,5 +1,5 @@
 /**
- * "How this was read" in words: what each step of a reading did, from the facts it kept
+ * "How it was read" in words: what each step of a reading did, from the facts it kept
  * (`src/ordnung/trace/facts.py` is the vocabulary — counts, codes, scores, dates and ids, never the
  * letter's text). Pure functions; the names of records come from the API's `label`, looked up when
  * the trace is shown.

@@ -818,6 +818,15 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
         None,
     ),
+    (
+        "bgb_675h",
+        "Current accounts: cancel any time",
+        "§ 675h Abs. 1 BGB",
+        "A payment account (Girokonto) can be cancelled by the customer at any time without notice, unless a "
+        "notice period was agreed; an agreed period of more than one month is void.",
+        f"{_GII}/bgb/__675h.html",
+        None,
+    ),
     # ------------------------------------------------------------------ sending & form
     (
         "bgb_130",
@@ -875,10 +884,20 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     (
         "enwg_41_5",
         "Energy price increase: cancel when it takes effect",
-        "§ 41 Abs. 5 EnWG; § 5 Abs. 3 StromGVV",
+        "§ 41 Abs. 5 EnWG",
         "Households must be told about a price change at least one month in advance and may then cancel "
         "without notice, effective when the change takes effect.",
         f"{_GII}/enwg_2005/__41.html",
+        None,
+    ),
+    (
+        "stromgvv_5_3",
+        "Basic supply price increase: cancel when it takes effect",
+        "§ 5 Abs. 2, 3 StromGVV; § 5 Abs. 2, 3 GasGVV",
+        "In basic supply (Grundversorgung) a price change must be announced six weeks ahead and takes effect "
+        "on the 1st of a month; you may cancel without notice, effective when it takes effect. Special "
+        "contracts follow § 41 Abs. 5 EnWG alone.",
+        f"{_GII}/stromgvv/__5.html",
         None,
     ),
     (

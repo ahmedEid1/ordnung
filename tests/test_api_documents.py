@@ -436,3 +436,25 @@ def test_the_letter_detail_sets_aside_what_is_not_to_act_on(store: Store) -> Non
     archived = document_detail(store, lease, TODAY_DATE)
     assert [(a.item_id, a.reason) for a in archived.set_aside] == [(deposit, "history")]
     assert rent in {item.id for item in archived.items}  # a schedule shows its next date instead
+
+
+def test_a_letters_page_lists_the_scam_signs_its_idea_counts(store: Store) -> None:
+    """Walkthrough of phase 2: the letter said "the 3 strongest of 7 warning signs", its Idea "5 warning
+    signs". The page gets the Idea's list (``scam_signs``); an ordinary letter's is empty."""
+    fake = store.add_party(name="Beitrags Zahlungszentrale", kind="public_broadcaster").id
+    scam = add_doc(
+        store,
+        "scam",
+        kind="other",
+        party_id=fake,
+        hidden_text=True,
+        warnings=["Foreign IBAN — possible scam.", "It threatens enforcement within 48 hours."],
+    )
+    signs = document_detail(store, scam, TODAY_DATE).scam_signs
+    assert signs == [
+        "The letter contains hidden text that you can't see on the page.",
+        "Foreign IBAN — possible scam.",
+        "It threatens enforcement within 48 hours.",
+    ]
+    plain = add_doc(store, "plain", kind="invoice", warnings=["It threatens enforcement within 48 hours."])
+    assert document_detail(store, plain, TODAY_DATE).scam_signs == []

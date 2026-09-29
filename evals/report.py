@@ -82,6 +82,13 @@ EXTRACTION_LABELS: dict[str, str] = {
 # --------------------------------------------------------------------------------------------------
 
 
+def _commit_note(meta: dict[str, Any]) -> str:
+    """What the results file says about its commit, after it (``meta.commit_note``): a commit that is no longer
+    in the published history, say (final review of phase 2: `17f2292` and `5c3e35b` were squashed)."""
+    note = meta.get("commit_note")
+    return f", {note}" if note else ""
+
+
 def results_filename(run_date: str, model: str, split: str, *, partial: bool = False) -> str:
     """``<YYYY-MM-DD>-<model>-<split>.json`` (``-partial`` when entries were filtered)."""
     safe_model = re.sub(r"[^A-Za-z0-9._-]+", "_", model)
@@ -762,7 +769,7 @@ def _rescored_section(held_out: Mapping[str, Any], rescored: Mapping[str, Any]) 
 {meta.get("note") or "A post-hoc code fix was scored on the same recorded outputs."}
 
 The fix changed code only (no prompt, schema or model change), so the **same recorded model outputs**
-were scored again (commit `{meta.get("commit") or "?"}`). Because the test split informed the fix,
+were scored again (commit `{meta.get("commit") or "?"}`{_commit_note(meta)}). Because the test split informed the fix,
 these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines'
 numbers cannot change: they do not use the rules engine, or (LLM + rules tool) they answered from
 the tool results recorded when they ran.
@@ -1301,7 +1308,7 @@ python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   
 
 Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay fixtures), the full
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
-rules engine of the checked-out commit; this run's numbers come from commit `{meta.get("commit") or "?"}`.
+rules engine of the checked-out commit; this run's numbers come from commit `{meta.get("commit") or "?"}`{_commit_note(meta)}.
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.{later}"""
 

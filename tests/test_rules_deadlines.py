@@ -755,6 +755,77 @@ def test_a_payment_made_in_person_gets_no_send_by() -> None:
     assert compute_due(letter, replace(ctx(region="NW"), in_person=True)).send_by is not None
 
 
+def test_a_collected_payment_gets_no_send_by() -> None:
+    """Walkthrough of phase 2: a direct debit (or money coming in) got a bank transfer's send-by day. The
+    sender collects it — nothing to transfer ahead, so no send-by day and no § 675s BGB step."""
+    spec = DateSpec(type="fixed", date="2026-10-01", nature="payment")
+    receipt = compute_due(spec, replace(ctx(region="NW"), collected=True))
+    assert (receipt.due_date, receipt.send_by) == ("2026-10-01", None)
+    assert "bgb_675s" not in receipt.rule_ids
+    assert compute_due(spec, ctx(region="NW")).send_by == "2026-09-30"
+
+
+# the Deutschlandticket's sentence on the university's re-registration letter (walkthrough of phase 2)
+_UNI = "Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen."
+
+
+def test_a_notice_for_a_named_end_is_not_a_receive_by_date() -> None:
+    """Walkthrough of phase 2: "rechtzeitig zum 31.03.2027 zu kündigen" names the day the subscription
+    should END; it was filed as "must arrive by Wed 31 Mar 2027" with high confidence, three weeks after the
+    contract's real deadline (the 10th). The engine counts back one month — the most a consumer contract may
+    ask (§ 309 Nr. 9 BGB) —, never moves that day later and says to check the contract (low)."""
+    spec = DateSpec(
+        type="fixed", date="2027-03-31", nature="notice", text="rechtzeitig zum 31.03.2027", shift_rule="none"
+    )
+    receipt = compute_due(spec, replace(ctx(today=D("2026-09-28")), quote=_UNI))
+    assert receipt.due_date == "2027-02-28"  # one month before 31 Mar (§ 188 BGB counted back)
+    assert receipt.safe_date == "2027-02-26"  # a Sunday: notice deadlines never move later
+    assert receipt.send_by == "2027-02-22"
+    assert receipt.confidence == "low"
+    assert receipt.warnings[0].startswith(
+        "The letter gives the day the contract should end (Wed 31 Mar 2027), not the day your cancellation"
+    )
+    assert "up to three months" in receipt.warnings[0]
+    assert {"date_as_written", "bgb_309_9_new", "notice_no_shift", "safe_date"} <= set(receipt.rule_ids)
+    assert receipt.summary.startswith(
+        "To end the contract on Wed 31 Mar 2027, the cancellation must arrive by"
+    )
+    # the day before the end: the end is always later than the day it must arrive
+    assert D(receipt.due_date) < D(spec.date or "")
+    # region unknown: a regional holiday could make the day before it earlier; with the region, it's known
+    nw = compute_due(spec, replace(ctx(today=D("2026-09-28"), region="NW"), quote=_UNI))
+    assert nw.due_date == "2027-02-28" and nw.holiday_calendar == "Nordrhein-Westfalen"
+
+
+@pytest.mark.parametrize(
+    ("text", "quote", "end"),
+    [
+        ("rechtzeitig zum 31.03.2027", _UNI, True),
+        ("zum 31.12.2026", "Eine Kündigung ist zum 31.12.2026 möglich.", True),
+        ("zum Ablauf des 31.12.2026", "Sie können zum Ablauf des 31.12.2026 kündigen.", True),
+        ("mit Wirkung zum 31.12.2026", None, True),
+        ("effective 31 March 2027", "Please cancel effective 31 March 2027.", True),
+        # the day the notice must arrive, whatever else the sentence says
+        ("bis zum 31.03.2027", "Die Kündigung muss bis zum 31.03.2027 bei uns eingehen.", False),
+        ("zum 30.09.2026", "Ihre Kündigung muss uns spätestens zum 30.09.2026 vorliegen.", False),
+        ("zum 30.09.2026", "Die Kündigung muss zum 30.09.2026 bei uns sein.", False),
+        ("31 March 2027", "Your cancellation must reach us by 31 March 2027.", False),
+        ("31.08.2026", "Kündigen Sie bis spätestens 31.08.2026.", False),
+    ],
+)
+def test_which_notice_words_name_an_end(text: str, quote: str | None, end: bool) -> None:
+    spec = DateSpec(type="fixed", date="2027-03-31", nature="notice", text=text, shift_rule="none")
+    receipt = compute_due(spec, replace(ctx(today=D("2026-09-28")), quote=quote))
+    assert (receipt.due_date != "2027-03-31") is end
+    assert (receipt.confidence == "low") is end
+
+
+def test_only_a_notice_names_an_end() -> None:
+    """A payment "zum 01.10." is due that day: only a cancellation is counted back from an end."""
+    spec = DateSpec(type="fixed", date="2026-10-01", nature="payment", text="zum 01.10.2026")
+    assert compute_due(spec, ctx(region="NW")).due_date == "2026-10-01"
+
+
 def test_fixed_authority_deadline_shift_only_when_asked() -> None:
     """authority: 'Belege bis zum 10.10.2026' → Mon 12 Oct 2026 (§ 108 Abs. 3 AO)."""
     spec = DateSpec(type="fixed", date="2026-10-10", nature="declaration", shift_rule="next_business_day")

@@ -14,8 +14,13 @@ from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import run_triggers
 from ordnung.llm.replay import ReplayBackend
-from ordnung.models import Contract, Item, ItemAside, Party, Profile
-from ordnung.secretary.triggers import Ledger, contract_computation, was_history_when_filed
+from ordnung.models import CancellationSent, Contract, Item, ItemAside, Party, Profile
+from ordnung.secretary.triggers import (
+    Ledger,
+    cancellations_sent,
+    contract_computation,
+    was_history_when_filed,
+)
 
 T = TypeVar("T")
 
@@ -72,30 +77,40 @@ def cancellability(contract: Contract, party: Party | None) -> tuple[bool, str |
     return True, None
 
 
-def with_computation(contract: Contract, party: Party | None, today: date, profile: Profile) -> Contract:
-    """The contract with its cancellation dates recomputed by the rules engine for ``today`` and
-    whether it can be cancelled (:func:`cancellability`)."""
+def with_computation(
+    contract: Contract,
+    party: Party | None,
+    today: date,
+    profile: Profile,
+    *,
+    sent: CancellationSent | None = None,
+) -> Contract:
+    """The contract with its cancellation dates recomputed by the rules engine for ``today``, whether it
+    can be cancelled (:func:`cancellability`) and the person's cancellation of it marked as sent."""
     cancellable, hint = cancellability(contract, party)
     return contract.model_copy(
         update={
             "computed": contract_computation(contract, party, today, profile),
             "cancellable": cancellable,
             "cancel_hint": hint,
+            "cancellation_sent": sent if contract.status == "active" else None,
         }
     )
 
 
 def contracts_with_computations(store: Store, contracts: list[Contract], today: date) -> list[Contract]:
-    """Contracts with fresh computations (parties looked up once each)."""
+    """Contracts with fresh computations (parties looked up once each) and the cancellations marked as
+    sent (:func:`ordnung.secretary.triggers.cancellations_sent`)."""
     profile = store.get_profile()
     parties: dict[str, Party | None] = {}
+    sent = cancellations_sent(store.list_drafts(status="sent"))
     result = []
     for contract in contracts:
         party_id = contract.party_id
         if party_id is not None and party_id not in parties:
             parties[party_id] = store.get_party(party_id)
         party = parties.get(party_id) if party_id else None
-        result.append(with_computation(contract, party, today, profile))
+        result.append(with_computation(contract, party, today, profile, sent=sent.get(contract.id)))
     return result
 
 

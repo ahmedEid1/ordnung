@@ -89,16 +89,19 @@ interface ContractTerms {
   notice_basis: string | null;
 }
 
-test("at 320 px: the notice period entered on the card of a contract we couldn't work out", async ({ page }) => {
+// The current account is worked out now (§ 675h BGB: any time, without notice), so the contract whose letter
+// gave no notice period — the Deutschlandticket, where the rules assumed the longest the law allows — is the one to fill in.
+test("at 320 px: the notice period entered on the card of a contract whose letter gave none", async ({ page }) => {
   const contracts = await apiGet<ContractTerms[]>(page, "/api/contracts");
-  const bank = contracts.find((c) => c.name.startsWith("Girokonto"))!;
-  const before = { notice_value: bank.notice_value, notice_unit: bank.notice_unit, notice_basis: bank.notice_basis };
+  const ticket = contracts.find((c) => c.name.startsWith("Deutschlandticket"))!;
+  const before = { notice_value: ticket.notice_value, notice_unit: ticket.notice_unit, notice_basis: ticket.notice_basis };
   try {
     await page.setViewportSize({ width: 320, height: 640 });
     await open(page, "/contracts", "Contracts");
-    const card = page.locator("article", { has: page.getByRole("heading", { level: 3, name: /^Girokonto/ }) });
+    const card = page.locator("article", { has: page.getByRole("heading", { level: 3, name: /^Deutschlandticket/ }) });
+    await expect(card.getByText("Please check")).toBeVisible();
     await card.getByRole("button", { name: /^Add notice period/ }).click();
-    const form = card.getByRole("form", { name: /^Notice period for Girokonto/ });
+    const form = card.getByRole("form", { name: /^Notice period for Deutschlandticket/ });
     const value = form.getByRole("textbox", { name: "Notice period" });
     await expect(value).toBeFocused();
 
@@ -122,11 +125,12 @@ test("at 320 px: the notice period entered on the card of a contract we couldn't
     await form.getByRole("button", { name: "Save notice period" }).click();
     await expect(page.getByText("Notice period saved", { exact: true })).toBeVisible();
     // the rules engine worked the dates out (the toast says them) and the card shows them
-    await expect(page.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeVisible();
+    await expect(
+      page.getByText("You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026."),
+    ).toBeVisible();
     // the period is the person's now (R2-inbox-timeline-contracts-1): no "Please check" for what they just
     // checked, and a way left to correct it, which keeps the focus — after a reload too
-    await expect(card).toContainText("As you entered it: 1 month's notice to the end of a month");
-    await expect(card).toContainText("Notice must arrive by");
+    await expect(card).toContainText("Cancellable any time with 1 month's notice");
     await expect(card.getByText("Please check")).toHaveCount(0);
     const change = card.getByRole("button", { name: /^Change notice period/ });
     await expect(change).toBeFocused();
@@ -136,11 +140,11 @@ test("at 320 px: the notice period entered on the card of a contract we couldn't
     await expect(card.getByRole("button", { name: /^Add notice period/ })).toBeVisible();
     await expect(card.getByText("Please check")).toBeVisible();
 
-    await apiPatch(page, `/api/contracts/${bank.id}`, { notice_value: 3, notice_unit: "months", notice_basis: "end_of_month" });
+    await apiPatch(page, `/api/contracts/${ticket.id}`, { notice_value: 3, notice_unit: "months", notice_basis: "end_of_month" });
     await page.reload();
     await expect(card.getByRole("button", { name: /^Change notice period/ })).toBeVisible();
     await expect(card.getByText("Please check")).toHaveCount(0);
   } finally {
-    await apiPatch(page, `/api/contracts/${bank.id}`, before);
+    await apiPatch(page, `/api/contracts/${ticket.id}`, before);
   }
 });

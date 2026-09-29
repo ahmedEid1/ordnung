@@ -746,7 +746,11 @@ async def _brief_in_process(ctx: AppContext, use_llm: bool) -> dict[str, Any]:
 def brief(
     ctx: typer.Context,
     no_llm: Annotated[
-        bool, typer.Option("--no-llm", help="Write the note from your records only (no Claude).")
+        bool,
+        typer.Option(
+            "--no-llm",
+            help="Write today's note from your records only, without Claude (it replaces today's note).",
+        ),
     ] = False,
     data_dir: DataDirOption = None,
 ) -> None:
@@ -756,7 +760,7 @@ def brief(
         info = reachable_server(paths.data_dir)
         if info is not None:
             with _api(info, timeout=180.0) as client:
-                response = client.get("/api/brief") if no_llm else client.post("/api/brief")
+                response = client.post("/api/brief", params={"llm": "false"} if no_llm else None)
                 note = _json_object(_checked(response))
         else:
             note = _in_process(paths, "ordnung brief", lambda context: _brief_in_process(context, not no_llm))
@@ -944,10 +948,11 @@ def trace(
 ) -> None:
     """How a letter was read: every step, its model calls and what code checked — as JSON.
 
-    The plain JSON is what the letter's "How this was read" tab shows (with the names of the to-dos
-    and organisations it points to); ``--otel`` holds no letter text and no names, and its ids are
-    replaced for this file (docs/privacy.md says what it still shows). A letter with no kept reading
-    is an error.
+    The plain JSON is what the letter's "How it was read" tab shows, with the names of the to-dos and organisations it points to.
+
+    With --otel it holds no letter text and no names, and its ids are replaced for this file (docs/privacy.md says what it still shows).
+
+    A letter with no kept reading is an error.
     """
     from ordnung.trace.otel import to_otlp
 

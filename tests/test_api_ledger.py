@@ -204,6 +204,10 @@ async def test_brief_get_is_side_effect_free_and_post_regenerates(data_dir: Path
         assert regenerated.json()["source"] == "llm"
         assert regenerated.json()["text"] == "Good morning. Nothing urgent today."
         assert (await api.client.get("/api/brief")).json() == regenerated.json()
+        # llm=false (``ordnung brief --no-llm``): written from the records, never by Claude
+        records = await api.client.post("/api/brief", params={"llm": "false"})
+        assert records.status_code == 200 and records.json()["source"] == "template"
+        assert (await api.client.get("/api/brief")).json()["source"] == "template"
 
 
 # --------------------------------------------------------------------------------------------------

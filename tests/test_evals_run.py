@@ -542,11 +542,11 @@ def test_cli_rejects_bad_arguments() -> None:
 
 def test_backends(tmp_path: Path) -> None:
     config = make_config(tmp_path)
-    wrapped = eval_run.make_backend(config, "claude-sonnet-4-5", {"a"})
+    wrapped = eval_run.make_backend(config, "claude-family-x-1", {"a"})
     assert isinstance(wrapped, eval_run.RecordedFailures) and not wrapped.record
     replay = wrapped.inner
     assert isinstance(replay, ReplayBackend) and replay.fallback is None
-    assert replay.root == tmp_path / "recorded" / "claude-sonnet-4-5"
+    assert replay.root == tmp_path / "recorded" / "claude-family-x-1"
     wrapped = eval_run.make_backend(make_config(tmp_path, live=True), "sonnet", {"a"})
     assert isinstance(wrapped, eval_run.RecordedFailures) and wrapped.record and wrapped.replay
     live = wrapped.inner
@@ -1041,6 +1041,13 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "Social-law senders were read as authorities." in section and "`abc1234`" in section
     assert "no longer held-out" in section and "Held-out run (headline)" in section
     assert "## After the held-out run" not in report.render_markdown([held_out])
+    # a commit that is no longer in the published history says so (final review of phase 2)
+    squashed = {
+        **rescored,
+        "meta": {**rescored["meta"], "commit_note": "a commit from before the history was squashed"},
+    }
+    noted = report.render_markdown([held_out], rescored=squashed).split("## After the held-out run", 1)[1]
+    assert "(commit `abc1234`, a commit from before the history was squashed)" in noted
 
 
 # --------------------------------------------------------------------------------------------------

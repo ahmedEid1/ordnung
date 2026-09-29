@@ -9,6 +9,10 @@ describe("step copy follows the demo", () => {
     expect(stepCopy(newMail, { tray: { unread: 3, total: 3 } }).body).toMatch(/^Three letters just arrived for Sam\. Open one and watch/);
     expect(stepCopy(newMail, { tray: { unread: 2, total: 3 } }).body).toMatch(/^Two letters are still waiting for Sam\. Open another .* or go on and see what your secretary suggests\.$/);
     expect(stepCopy(newMail, { tray: { unread: 1, total: 3 } }).body).toMatch(/^One letter is still waiting for Sam\. Open it /);
+    // once a letter was read the step's point is made: "Next" leads (walkthrough of phase 2)
+    expect(stepCopy(newMail, { tray: { unread: 3, total: 3 } }).onward).toBeUndefined();
+    expect(stepCopy(newMail, { tray: { unread: 2, total: 3 } }).onward).toBe(true);
+    expect(stepCopy(newMail, { tray: { unread: 0, total: 3 } }).onward).toBe(true);
     const done = stepCopy(newMail, { tray: { unread: 0, total: 3 } });
     expect(done.title).toBe("All new mail read");
     expect(done.body).toMatch(/Next, see what your secretary suggests/);

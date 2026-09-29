@@ -9,7 +9,7 @@ import { Toaster, TOAST_LIFT_VAR, __clearToasts, toast } from "@/components/ui/T
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { DemoTour, TOUR_BAR_VAR, TOUR_CLEARANCE_VAR } from "./DemoTour";
-import { TOUR_DOCK_ID, TOUR_STEPS, TOUR_TARGETS } from "./steps";
+import { MORE_TO_TRY, TOUR_DOCK_ID, TOUR_STEPS, TOUR_TARGETS } from "./steps";
 import { SUGGESTED_QUESTIONS } from "@/features/ask/suggestions";
 
 class RO {
@@ -247,6 +247,23 @@ describe("the card never covers the page", () => {
     expect(card.tagName).toBe("SECTION");
     expect(lift()).toBe("");
     expect(cssVar(TOUR_CLEARANCE_VAR)).toBe("");
+  });
+
+  it("the docked last step lists what else to try in one sentence of links, each hint as its title (it still fits the sidebar)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.tour = { active: true, step: 3, completed: false };
+    viewport(1280, 800);
+    const dock = addDock(400);
+    tourRect({ height: 300 });
+    renderWithProviders(<DemoTour />, { route: "/timeline" });
+    const card = await tourRegion();
+    expect(dock.contains(card)).toBe(true);
+    const more = within(card).getByText(/^More to try:/);
+    expect(more.tagName).toBe("P");
+    const links = within(more).getAllByRole("link");
+    expect(links.map((a) => a.textContent)).toEqual(MORE_TO_TRY.map((m) => m.label));
+    expect(links.map((a) => a.getAttribute("title"))).toEqual(MORE_TO_TRY.map((m) => m.hint));
+    expect(more).toHaveTextContent(/^More to try: Pay by GiroCode, My numbers, Weekly review, Letters, How it was read\.$/);
   });
 
   it("a short laptop (1280×720): a card taller than the dock's room is never docked (cut off at the top) — the bar instead", async () => {

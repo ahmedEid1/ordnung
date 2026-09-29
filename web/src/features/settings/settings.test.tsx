@@ -63,8 +63,8 @@ describe("settings logic", () => {
     expect(rows[0]).toMatchObject({ calls: 2, tokens: 150, cost: 0.5 });
     expect(cacheRate({ calls: 4, cache_hits: 1 })).toBe(0.25);
     expect(cacheRate({ calls: 0, cache_hits: 0 })).toBeNull();
-    expect(modelFamily("claude-sonnet-4-6")).toBe("Sonnet");
-    expect(modelFamily("claude-haiku-4-5")).toBe("Haiku");
+    expect(modelFamily("claude-sonnet-x-1")).toBe("Sonnet");
+    expect(modelFamily("claude-haiku-x-1")).toBe("Haiku");
   });
 
   it("says what a call sent without ever showing content", () => {

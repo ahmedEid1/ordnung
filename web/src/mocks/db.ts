@@ -81,7 +81,18 @@ const daysFrom = (a: string, b: string) => differenceInCalendarDays(parseISO(a),
 /** The day a recent letter is listed under: when it arrived, else its date, else when it was added. */
 const recentDay = (d: Document) => d.received_date ?? d.doc_date ?? d.created_at.slice(0, 10);
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
-const nowTs = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
+/**
+ * The mock's clock day: records are stamped on the demo's today with the real time of day, as the demo
+ * server stamps them (`ordnung.clock.stamp_simulated_day`) — never the real date, which drifts further into
+ * the demo's future every day (walkthrough of phase 2: "Read by Claude on 29 Sep 2026" in a demo of 28 Sep).
+ * The newest mock world sets it.
+ */
+let clockDay: () => string | null = () => null;
+const nowTs = () => {
+  const real = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const day = clockDay();
+  return day ? `${day}${real.slice(10)}` : real;
+};
 
 export interface MockState {
   health: Health;
@@ -127,6 +138,7 @@ export class MockDb {
   state: MockState;
 
   constructor() {
+    clockDay = () => this.today;
     this.state = {
       health: clone(HEALTH),
       profile: clone(PROFILE),
@@ -277,7 +289,10 @@ export class MockDb {
     const upcoming = open
       .filter((i) => !attentionIds.has(i.id) && daysFrom(i.due_date ?? this.eff(i)!, today) <= 30)
       .sort((a, b) => (this.eff(a)! < this.eff(b)! ? -1 : 1));
-    const decisions = this.state.contracts.filter((c) => c.status === "active" && c.computed?.send_by && daysFrom(c.computed.send_by, today) >= 0 && daysFrom(c.computed.send_by, today) <= 60);
+    // like the API: a contract whose cancellation was marked as sent is no decision any more
+    const decisions = this.state.contracts.filter(
+      (c) => c.status === "active" && c.computed?.send_by && daysFrom(c.computed.send_by, today) >= 0 && daysFrom(c.computed.send_by, today) <= 60 && !this.cancellationSent(c.id),
+    );
     const in30 = iso(addDays(parseISO(today), 30));
     const payments = open.filter((i) => i.kind === "payment" && i.direction !== "in" && i.due_date && i.due_date <= in30).sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1));
     const byCat: Record<string, number> = {};
@@ -376,6 +391,19 @@ export class MockDb {
     return out;
   }
 
+  /** The person's latest cancellation of a contract marked as sent, as the API's `cancellation_sent`. */
+  cancellationSent(contractId: string): Contract["cancellation_sent"] {
+    const draft = this.state.drafts
+      .filter((d) => d.kind === "cancellation" && d.status === "sent" && d.contract_id === contractId)
+      .sort((a, b) => (b.sent_at ?? "").localeCompare(a.sent_at ?? ""))[0];
+    return draft ? { draft_id: draft.id, sent_on: draft.sent_at?.slice(0, 10) ?? null, channel: draft.sent_channel } : null;
+  }
+
+  /** A contract as the API sends it: with its sent cancellation worked out on read. */
+  contractView(c: Contract): Contract {
+    return { ...c, cancellation_sent: c.status === "active" ? this.cancellationSent(c.id) : null };
+  }
+
   timeline(from?: string | null, to?: string | null): TimelineEntry[] {
     const today = this.today;
     const out: TimelineEntry[] = [];
@@ -397,6 +425,8 @@ export class MockDb {
         amount: i.amount,
         currency: i.currency,
         past: i.due_date < today,
+        direction: i.kind === "payment" ? i.direction : null,
+        aside: null, // the route adds why a to-do is not one to act on (`setAside` in server.ts)
       });
     }
     for (const d of this.liveDocuments()) {
@@ -418,6 +448,8 @@ export class MockDb {
         amount: null,
         currency: null,
         past: date < today,
+        direction: null,
+        aside: null,
       });
     }
     for (const c of this.state.contracts) {
@@ -438,6 +470,8 @@ export class MockDb {
           amount: c.cost_amount,
           currency: c.cost_currency,
           past: c.computed.current_term_end < today,
+          direction: null,
+          aside: null,
         });
       }
     }
@@ -460,6 +494,8 @@ export class MockDb {
         amount: null,
         currency: null,
         past: date < today,
+        direction: null,
+        aside: null,
       });
     }
     return out

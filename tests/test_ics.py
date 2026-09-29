@@ -231,6 +231,26 @@ def test_mark_exported(store: Store) -> None:
     assert datetime.fromisoformat(stamp).tzinfo is not None
 
 
+def test_an_open_one_off_that_was_history_when_filed_is_left_out(store: Store) -> None:
+    """Walkthrough of phase 2: the export carried a 2025 security deposit and a 2025 meter reading as open
+    dates — both long past when their letters were read (a backfilled archive), so no dates to keep."""
+    deposit = _item(
+        store,
+        kind="payment",
+        title="Security deposit",
+        due_date="2025-10-01",
+        direction="out",
+        filed_on="2026-09-20",
+    )
+    current = _item(
+        store, kind="payment", title="Rent", due_date="2026-10-01", direction="out", filed_on="2026-09-20"
+    )
+    uids = set(_events(build_ics(store)))
+    assert f"{deposit}@ordnung.local" not in uids and f"{current}@ordnung.local" in uids
+    store.update_item(deposit, status="done")  # a done one stays in an export that includes done dates
+    assert f"{deposit}@ordnung.local" in set(_events(build_ics(store, include_done=True)))
+
+
 def test_an_invoice_payment_a_payment_reminder_took_over_is_left_out(store: Store) -> None:
     """As on the agenda: pay the reminder, not both — so the calendar (and calendar sync) gets one."""
     party = store.add_party(name="TechMarkt Online", kind="retailer").id

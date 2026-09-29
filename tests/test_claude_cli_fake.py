@@ -166,7 +166,7 @@ async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: 
 
     assert response.data == ANSWER
     assert response.text == "Done."
-    assert response.model == "claude-sonnet-4-5-20250929"  # the model that answered, from modelUsage
+    assert response.model == "claude-family-x-1"  # the model that answered, from modelUsage
     assert response.backend == "claude"
     usage = response.usage
     assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (6, 70, 2311)

@@ -297,6 +297,8 @@ class LedgerTools:
             "items": [_item_row(ledger, item, letters) for item in found[:wanted]],
             "truncated": len(found) > wanted or None,
         }
+        if kind in (None, "deadline") and status in ("open", "all") and (start or end):
+            record["contract_deadlines"] = _contract_deadlines(ledger, start, end, letters) or None
         return ToolAnswer(record, letters.by_id)
 
     def explain_date(self, item_or_contract_id: str) -> ToolAnswer:
@@ -982,6 +984,38 @@ def _amount_note(grounding: str | None) -> str | None:
     return AMOUNT_READ_BY_AI if grounding == "model_read" else AMOUNT_NOT_FOUND
 
 
+def _contract_deadlines(
+    ledger: Ledger, start: date | None, end: date | None, letters: LetterText
+) -> list[dict[str, Any]]:
+    """The cancellation deadlines of active contracts in a range — a contract's is no to-do, so a question
+    about the deadlines in October listed the to-dos alone (walkthrough of phase 2: the phone contract's,
+    which Today and the weekly review flag, was missing). A deadline counts when its send-by or must-arrive
+    day is in the range; a contract whose cancellation was sent or confirmed has none left
+    (:meth:`~ordnung.secretary.triggers.Ledger.decided_contracts`)."""
+    from ordnung.secretary.triggers import is_decision, parse_day
+
+    decided = ledger.decided_contracts()
+    rows: list[dict[str, Any]] = []
+    for contract in ledger.active_contracts():
+        comp = ledger.computation(contract)
+        days = [day for day in (parse_day(comp.send_by), parse_day(comp.cancel_by)) if day is not None]
+        if contract.id in decided or not is_decision(comp) or not days:
+            continue
+        if any((start is None or day >= start) and (end is None or day <= end) for day in days):
+            _add_party_name(letters, ledger, contract.party_id)
+            rows.append(
+                {
+                    **_contract_ref(contract, letters),
+                    "party_id": contract.party_id,
+                    "cancel_by": comp.cancel_by,
+                    "send_by": comp.send_by,
+                    "current_term_end": comp.current_term_end,
+                    "confidence": comp.confidence,
+                }
+            )
+    return sorted(rows, key=lambda row: (row["send_by"] or row["cancel_by"] or "", row["id"]))
+
+
 def _contract_ref(contract: Contract, letters: LetterText) -> dict[str, Any]:
     letters.add(contract.id, name=contract.name)
     return {"id": contract.id, "category": contract.category, "status": contract.status}
@@ -1374,7 +1408,8 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         limit: int = 50,
     ) -> str:
         """To-dos & dates (deadlines, payments, appointments, expiries …) with due dates, send-by
-        dates, verified amounts and ids, soonest first. Overdue is flagged."""
+        dates, verified amounts and ids, soonest first. Overdue is flagged. With a date range (and no kind,
+        or kind deadline), contracts' cancellation deadlines in that range come too (contract_deadlines)."""
         return answer(lambda: tools.list_items(status, kind, from_date, to_date, limit))
 
     @tool

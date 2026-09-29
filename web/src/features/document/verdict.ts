@@ -100,6 +100,15 @@ export function isOptionalObjection(i: Pick<Item, "date_spec">): boolean {
   return i.date_spec?.nature === "objection";
 }
 
+/**
+ * A price increase that asks for the person's consent (a bank's new account fee, § 675g BGB): agreeing is a
+ * choice, not a to-do to get done by a date (walkthrough of phase 2: "Give consent to the fee increase — by
+ * Mon 30 Nov" nudged the person to accept, where the Stadtwerke's increase was put as a decision).
+ */
+export function isConsentRequest(i: Pick<Item, "kind" | "title" | "action">, doc: Pick<Document, "kind">): boolean {
+  return doc.kind === "price_increase" && i.kind !== "payment" && /\bconsent\b|zustimm/i.test(`${i.title} ${i.action ?? ""}`);
+}
+
 /** Ideas that are a decision about the letter's contract: keep it, or cancel it in time. */
 const DECISION_RULES = new Set(["price_increase_right", "contract_cancel_window"]);
 

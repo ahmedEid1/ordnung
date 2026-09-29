@@ -24,7 +24,7 @@ import type {
 } from "@/api/types";
 import { addToTotals, formatDate, formatMoney, type Totals } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
-import { noticeFromYou } from "@/features/contracts/model";
+import { cancellationSent, noticeFromYou } from "@/features/contracts/model";
 import { isDirectDebit } from "@/lib/payments";
 
 // ------------------------------------------------------------------------------------------------
@@ -251,6 +251,7 @@ export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction |
 export function actionFromContract(contract: Contract, ctx: CandidateContext): TodayAction | null {
   const c = contract.computed;
   if (!offersEndingLetter(contract) || !c) return null; // e.g. the broadcasting fee: nothing to decide
+  if (cancellationSent(contract)) return null; // its cancellation was sent: decided (walkthrough of phase 2)
   const actionDate = c.send_by ?? c.cancel_by;
   if (!actionDate) return null;
   const daysLeft = daysBetween(actionDate, ctx.today);

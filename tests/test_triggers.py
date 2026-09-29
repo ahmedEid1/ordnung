@@ -10,9 +10,13 @@ import pytest
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
 from ordnung.db.store import Store
 from ordnung.ids import content_id
-from ordnung.models import CalendarSyncState, ExtractedChange, Suggestion
+from ordnung.models import CalendarSyncState, CancellationSent, ExtractedChange, Suggestion
+from ordnung.secretary.brief import build_agenda
 from ordnung.secretary.triggers import (
+    HIDDEN_TEXT_SIGN,
     TRIGGERS,
+    Ledger,
+    cancellations_sent,
     english,
     fingerprint,
     run_and_reconcile,
@@ -303,6 +307,33 @@ def test_confirm_cancellation_asks_before_closing_the_contract(store: Store, ids
     }
 
 
+def test_a_cancellation_marked_as_sent_is_no_decision_any_more(store: Store, ids: dict[str, str]) -> None:
+    """Walkthrough of phase 2: after the person marked their FunkNetz cancellation as sent, Contracts, Today
+    and the Ideas still said "Decide on FunkNetz Smart M — send by Thu 8 Oct" with "Draft cancellation".
+    The decision is taken (the person clicked, ADR 0006): no decision, no Idea, no calendar send-by date."""
+    assert ids["phone"] in {idea.refs[0].id for idea in ideas(store, "contract_cancel_window")}
+    draft = store.add_draft(
+        kind="cancellation",
+        contract_id=ids["phone"],
+        subject="Kündigung",
+        status="sent",
+        sent_at="2026-09-28T09:00:00Z",
+        sent_channel="registered_letter",
+    )
+    assert ideas(store, "contract_cancel_window") == []
+    ledger = Ledger(store, TODAY)
+    assert ids["phone"] in ledger.decided_contracts()
+    assert cancellations_sent(ledger.sent_drafts()) == {
+        ids["phone"]: CancellationSent(draft_id=draft.id, sent_on="2026-09-28", channel="registered_letter")
+    }
+    assert all(entry.id != ids["phone"] for entry in build_agenda(store, TODAY).decisions)
+    # a draft not yet sent, or another kind of letter, decides nothing
+    store.update_draft(draft.id, status="final")
+    assert ids["phone"] not in Ledger(store, TODAY).decided_contracts()
+    store.update_draft(draft.id, status="sent", kind="objection")
+    assert ids["phone"] not in Ledger(store, TODAY).decided_contracts()
+
+
 def test_confirm_cancellation_is_quiet_once_the_contract_is_cancelled(
     store: Store, ids: dict[str, str]
 ) -> None:
@@ -431,6 +462,45 @@ def test_a_public_bodys_reminder_never_threatens_a_court_payment_order(
     assert public.title == company.title.replace("TechMarkt", "Stadtbibliothek Musterstadt")
     assert "Mahnbescheid" not in public.body and "debt collector" not in public.body
     assert "administrative enforcement" in public.body
+
+
+def test_scam_warning_counts_the_signs_its_letter_shows_and_says_hidden_text_once(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """Walkthrough of phase 2: the Idea said "5 warning signs" where the letter said "the 3 strongest of 7",
+    and said the hidden text twice (Ordnung's line and the reading's warning). One list, one count: every
+    warning the letter carries is a sign once it shows scam signs, except notes that are no sign."""
+    hidden = (
+        "This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — "
+        "hidden text is a common trick in scams, so be careful."
+    )
+    store.update_document(
+        ids["doc_scam"],
+        warnings=[
+            "Payee IBAN is abroad although the sender claims to be a German authority — possible scam.",
+            "The letter tells you not to contact the office you know and offers only an e-mail address.",
+            hidden,
+            "This document contains text addressed to an AI (“Hinweis an KI-Assistenten”). Ordnung ignored it.",
+            "1 date could not be confirmed against the letter's text.",
+        ],
+    )
+    ledger = Ledger(store, TODAY)
+    doc = store.get_document(ids["doc_scam"])
+    assert doc is not None
+    signs = ledger.scam_signs(doc)
+    assert signs[0] == HIDDEN_TEXT_SIGN
+    assert sum("hidden" in sign.lower() or "invisible" in sign.lower() for sign in signs) == 1
+    assert (
+        "The letter tells you not to contact the office you know and offers only an e-mail address." in signs
+    )
+    assert not any("could not be confirmed" in sign or "addressed to an AI" in sign for sign in signs)
+    (idea,) = ideas(store, "scam_warning")
+    assert idea.rationale == f"{len(signs)} warning signs."
+    assert idea.body.count("hidden text") + idea.body.count("invisible text") == 1
+    assert all(sign in idea.body for sign in signs)
+    # the letter's page gets the same list
+    ordinary = store.get_document(ids["doc_tax"])
+    assert ordinary is not None and ledger.scam_signs(ordinary) == []
 
 
 def test_scam_warning_is_quiet_for_ordinary_letters(store: Store, ids: dict[str, str]) -> None:

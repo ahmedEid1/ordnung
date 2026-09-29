@@ -248,6 +248,29 @@ def test_list_items_filters(tools: LedgerTools, ids: dict[str, str]) -> None:
     assert limited.record["truncated"] is True
 
 
+def test_list_items_with_a_range_brings_contracts_cancellation_deadlines(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Walkthrough of phase 2: "Which deadlines are coming up in October?" listed the to-dos and left out
+    the phone contract's cancellation deadline (must arrive by 14 Oct, send by 8 Oct) — a contract's
+    deadline is no to-do. With a range, deadlines (or every kind) bring the contracts' too, in the record."""
+    october = tools.list_items(kind="deadline", from_date="2026-10-01", to_date="2026-10-31")
+    (phone,) = october.record["contract_deadlines"]
+    assert (phone["id"], phone["cancel_by"], phone["send_by"]) == (ids["phone"], "2026-10-14", "2026-10-08")
+    assert october.letters[ids["phone"]]["name"] == "FunkNetz mobile"
+    assert "contract_deadlines" in tools.list_items(from_date="2026-10-01", to_date="2026-10-31").record
+    # not for another kind, without a range, outside it, or once the cancellation was sent
+    assert "contract_deadlines" not in tools.list_items(kind="payment", from_date="2026-10-01").record
+    assert "contract_deadlines" not in tools.list_items(kind="deadline").record
+    november = tools.list_items(kind="deadline", from_date="2026-11-01", to_date="2026-11-30").record
+    assert november.get("contract_deadlines") is None
+    store.add_draft(
+        kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
+    )
+    sent = tools.list_items(kind="deadline", from_date="2026-10-01", to_date="2026-10-31").record
+    assert sent.get("contract_deadlines") is None
+
+
 @pytest.mark.parametrize(
     ("kwargs", "message"),
     [

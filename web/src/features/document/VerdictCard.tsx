@@ -48,6 +48,7 @@ import {
   hasLongWord,
   incomingMoney,
   isOpenItem,
+  isConsentRequest,
   isOptionalObjection,
   isServed,
   isLetterSettled,
@@ -255,6 +256,8 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
   const debit = open ? isDirectDebit(open) : false;
   // a court order's or a dismissal's deadline isn't optional: doing nothing has consequences
   const optional = open ? isOptionalObjection(open) && !mustAct(doc) : false;
+  // a price increase that asks for consent: a choice, not a to-do (the buttons stay quiet, as for an objection)
+  const consent = open ? isConsentRequest(open, doc) : false;
   // never a to-do the server set aside: it is listed under "Probably dealt with" below, not also as overdue
   const alsoByLaw = !scam && !decision ? otherLawDeadlines(detail.items, open, detail.set_aside) : [];
   const demoNote = doc.warnings.find((w) => w.startsWith(DEMO_NOTE));
@@ -371,6 +374,14 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80 wrap-break-word">
               {/* the whole action here, however long: it is the small print under "Nothing to do" */}
               <span className="font-medium">Only if you disagree:</span> <GlossaryText text={keepCitations(words.body ?? words.lead)} inline markGerman />
+            </p>
+            {words.quote ? <LetterSays text={words.quote} /> : null}
+          </>
+        ) : open && words && consent ? (
+          <>
+            <p className="text-[16px] font-medium leading-snug text-ink">Your choice: agree to the new price — or don't.</p>
+            <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80 wrap-break-word">
+              <span className="font-medium">If you agree:</span> <GlossaryText text={keepCitations(words.body ?? words.lead)} inline markGerman />
             </p>
             {words.quote ? <LetterSays text={words.quote} /> : null}
           </>
@@ -500,6 +511,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         <DateBox
           item={open}
           optional={optional}
+          decide={consent}
           debit={debit}
           checkDate={checkDate}
           askArrival={askArrival}
@@ -524,7 +536,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
           </p>
         </Section>
       ) : open?.consequence ? (
-        <Consequence text={open.consequence} label={optional ? "If you do nothing" : "If you ignore it"} />
+        <Consequence text={open.consequence} label={consent ? "If you don't agree" : optional ? "If you do nothing" : "If you ignore it"} />
       ) : null}
 
       {/* 5 — to-dos that are not one to act on: quiet, after the verdict, never between it and its date */}
@@ -538,7 +550,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
         </Section>
       ) : null}
 
-      <Actions detail={detail} main={main} primary={open} optional={optional} footer={footer} />
+      <Actions detail={detail} main={main} primary={open} optional={optional || consent} footer={footer} />
     </article>
   );
 }
@@ -556,6 +568,7 @@ const LINE_ICON = "mt-[3px] size-3.5 shrink-0 text-muted";
 function DateBox({
   item,
   optional,
+  decide = false,
   debit,
   checkDate,
   askArrival,
@@ -564,6 +577,8 @@ function DateBox({
 }: {
   item: Item;
   optional: boolean;
+  /** a choice to make by the date (a price increase that asks for consent) */
+  decide?: boolean;
   debit: boolean;
   checkDate: boolean;
   askArrival: boolean;
@@ -581,7 +596,7 @@ function DateBox({
       : null;
   const shown = transferBy ?? due;
   const urgency = urgencyOf(shown, today, mode);
-  const label = isAppointment ? "When" : optional ? "Only if you disagree" : debit ? "Collected on" : transferBy ? "Transfer by" : "By when";
+  const label = isAppointment ? "When" : optional ? "Only if you disagree" : decide ? "Decide by" : debit ? "Collected on" : transferBy ? "Transfer by" : "By when";
   return (
     <Section label={label} icon={debit ? Landmark : Clock}>
       <div className={cn("rounded-xl border px-4 py-3.5", optional || debit ? dateTone.later : dateTone[urgency])}>

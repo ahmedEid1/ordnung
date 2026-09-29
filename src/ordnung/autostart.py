@@ -161,7 +161,7 @@ def _unit(argv: tuple[str, ...], path_env: str | None) -> str:
         f"# {HEADER}",
         "[Unit]",
         "Description=Ordnung, your paperwork secretary (the local web app, on this computer only)",
-        "Documentation=https://github.com/ahmedEid1/ordnung",
+        "Documentation=https://github.com/ahmedEid1/new-project",
         "",
         "[Service]",
         "Type=simple",

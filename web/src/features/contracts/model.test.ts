@@ -116,8 +116,20 @@ describe("rules in plain words", () => {
     expect(ruleInWords({ ...byId("ctr_job"), notice_value: null, notice_unit: null }, TODAY).text).toBe(
       "Fixed term until 31 Mar 2027 — it ends by itself, no notice needed",
     );
+    // a current account (walkthrough of phase 2: "we couldn't compute a cancellation date")
+    const giro = byId("ctr_bank");
+    const account: Contract = { ...giro, computed: { ...giro.computed!, regime: "bgb675h" } };
+    expect(ruleInWords(account, TODAY)).toEqual({ text: "Current account: cancellable any time, without notice", citation: "§ 675h BGB" });
+    expect(ruleInWords({ ...account, notice_value: 2, notice_unit: "weeks" }, TODAY).text).toBe(
+      "Current account: cancellable any time with 2 weeks' notice (at most one month counts)",
+    );
     // "as written" without notice terms falls back to the engine's own first sentence
-    expect(ruleInWords(byId("ctr_dticket"), TODAY)).toEqual({
+    const ticket = byId("ctr_dticket");
+    const written: Contract = {
+      ...ticket,
+      computed: { ...ticket.computed!, regime: "as_written", summary: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct." },
+    };
+    expect(ruleInWords(written, TODAY)).toEqual({
       text: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct",
       citation: null,
     });
@@ -159,6 +171,14 @@ describe("contracts-only lanes", () => {
       { date: "2026-10-14", label: "Must arrive by", kind: "cancel_by" },
     ]);
     expect(bars.every((b) => b.ref?.id === "ctr_phone")).toBe(true);
+  });
+
+  it("draws no window to cancel once the cancellation was sent, only when it ends (final review)", () => {
+    const phone: Contract = { ...byId("ctr_phone"), cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } };
+    const [l] = contractLanes([phone], range, TODAY);
+    expect(l!.bars.map((b) => b.kind)).toEqual(["contract", "contract"]);
+    expect(l!.markers).toEqual([{ date: phone.computed!.earliest_exit, label: "Ends (cancellation sent)", kind: "other" }]);
+    expect(contractLaneNote(phone, TODAY)).toEqual({ text: "Cancellation sent", tone: "muted" });
   });
 
   it("shows only the current insurance year, then the renewal", () => {

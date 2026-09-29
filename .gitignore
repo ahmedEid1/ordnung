@@ -35,4 +35,3 @@ web/.vite/
 # Scratch scripts from local debugging
 *.tmp.mjs
 *.tmp.py
-web/e2e/.auth/

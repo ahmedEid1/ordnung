@@ -1,7 +1,7 @@
 /** One contract: what it is, what it costs, how it ends (in plain words), the dates to act by. */
 import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { FilePen, FileSearch, FileText, Info, Pencil, TriangleAlert } from "lucide-react";
+import { FilePen, FileSearch, FileText, Info, MailCheck, Pencil, TriangleAlert } from "lucide-react";
 import type { Contract, Party } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -11,12 +11,13 @@ import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { CONTRACT_CATEGORY_COPY, copyFor } from "@/lib/copy";
+import { CONTRACT_CATEGORY_COPY, SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
 import { formatMoney, protectRefs } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ContractWhy } from "./ContractWhy";
 import {
   CONTINUES_MONTHLY,
+  cancellationSent,
   contractMonthlyCost,
   isFixedTerm,
   isLockInDecision,
@@ -64,10 +65,12 @@ export function ContractCard({
   const rolling = isRollingContract(c);
   const fixedTerm = active && isFixedTerm(c);
   const unclear = termsUnclear(c);
+  // the person marked their cancellation as sent: the decision is taken, what is left is the confirmation
+  const sent = cancellationSent(c);
   // a rolling contract can be cancelled any month: no countdown, just when it would end
-  const upcomingSend = !rolling && comp?.send_by && comp.send_by >= today ? comp.send_by : null;
+  const upcomingSend = !rolling && !sent && comp?.send_by && comp.send_by >= today ? comp.send_by : null;
   const decideSoon = Boolean(upcomingSend && isLockInDecision(c) && dayNumber(upcomingSend) - dayNumber(today) <= 60);
-  const upcomingCancel = !rolling && comp?.cancel_by && comp.cancel_by >= today ? comp.cancel_by : null;
+  const upcomingCancel = !rolling && !sent && comp?.cancel_by && comp.cancel_by >= today ? comp.cancel_by : null;
   const termEnd = comp?.current_term_end ?? null;
   // the earliest end, unless a row already says it (the end of the term, a fixed end date)
   const earliest =
@@ -79,7 +82,7 @@ export function ContractCard({
   const checkHint = pleaseCheckHint(c);
   const titleId = `contract-${c.id}-title`;
   const isJob = c.category === "employment";
-  const offerLetter = offersEndingLetter(c);
+  const offerLetter = offersEndingLetter(c) && !sent;
   // e.g. the broadcasting fee: say why there is nothing to cancel instead of offering a letter
   const whyNot = active && !offerLetter ? c.cancel_hint : null;
   const hasCost = c.cost_amount !== null && Boolean(c.cost_interval) && c.cost_interval !== "once";
@@ -184,6 +187,28 @@ export function ContractCard({
       </p>
       <ContractWhy contract={c} className="mt-1.5 self-start" />
 
+      {sent ? (
+        <p className="mt-3 flex items-start gap-2 rounded-lg bg-ok-soft px-3 py-2 text-[13px] leading-5 text-ink" data-testid="cancellation-sent">
+          <MailCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
+          <span>
+            Cancellation sent{sent.sent_on ? (
+              <>
+                {" "}
+                <DateText date={sent.sent_on} style="short" />
+              </>
+            ) : null}
+            {sent.channel ? ` by ${copyFor(SEND_CHANNEL_COPY, sent.channel).label}` : null} — waiting for their confirmation
+            {comp?.earliest_exit && comp.earliest_exit >= today ? (
+              <>
+                {" "}
+                of the end on <DateText date={comp.earliest_exit} style="short" />
+              </>
+            ) : null}
+            .
+          </span>
+        </p>
+      ) : null}
+
       <dl className="mt-3 divide-y divide-line/80 border-y border-line/80 empty:hidden">
         {upcomingSend ? (
           <Row label="Send by" strong>
@@ -262,6 +287,13 @@ export function ContractCard({
           >
             <FilePen aria-hidden />
             {endingLetterLabel(c)}
+            <span className="sr-only"> for {c.name}</span>
+          </Link>
+        ) : null}
+        {sent ? (
+          <Link to={`/letters/${encodeURIComponent(sent.draft_id)}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            <MailCheck aria-hidden />
+            Open the sent letter
             <span className="sr-only"> for {c.name}</span>
           </Link>
         ) : null}

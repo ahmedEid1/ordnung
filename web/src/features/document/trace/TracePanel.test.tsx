@@ -27,7 +27,7 @@ async function detailOf(srv: ReturnType<typeof useMockApi>["srv"], id: string): 
 
 const steps = () => screen.getByRole("list", { name: "Steps of this reading" });
 
-describe("How this was read", () => {
+describe("How it was read", () => {
   it("is a tab of the letter's page, kept in the address, with the letter's title as its heading", async () => {
     const { srv } = useMockApi();
     const detail = await detailOf(srv, "doc_nebenkosten");
@@ -224,7 +224,7 @@ describe("How this was read", () => {
   });
 });
 
-describe("How this was read — what it links to and offers", () => {
+describe("How it was read — what it links to and offers", () => {
   it("offers a date step's receipt only while the to-do still has that date; else says it changed", async () => {
     const { srv } = useMockApi();
     const detail = await detailOf(srv, "doc_parking");

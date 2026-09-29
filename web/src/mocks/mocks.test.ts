@@ -443,3 +443,16 @@ describe("mock dataset", () => {
     expect(body.detail).toMatch(/Install Ordnung/);
   });
 });
+
+describe("the mock's clock (walkthrough of phase 2)", () => {
+  it("stamps what it records on the demo's today, never the real date", async () => {
+    const s = srv();
+    s.openAllMail();
+    const today = s.db.today;
+    const docs = s.db.state.documents.filter((d) => d.ai_processed_at && d.updated_at >= `${today}T00:00:00Z`);
+    for (const d of docs) expect(d.ai_processed_at!.slice(0, 10) <= today).toBe(true);
+    const created = await s.handle("POST", "/items", new URLSearchParams(), { kind: "task", title: "Call the office" });
+    const item = (await created.json()) as Item;
+    expect(item.created_at.slice(0, 10)).toBe(today);
+  });
+});

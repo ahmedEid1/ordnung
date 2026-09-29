@@ -257,6 +257,28 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(within(bank).queryByRole("link", { name: /Open letter/ })).toBeNull();
   });
 
+  it("a notice period the rules assumed: 'Please check' and 'Add notice period' (walkthrough of phase 2)", async () => {
+    const client = await seededClient();
+    renderWithProviders(<ContractsView />, { client, route: "/contracts" });
+    const ticket = card("Deutschlandticket");
+    expect(within(ticket).getByText("Please check")).toBeInTheDocument();
+    expect(ticket).toHaveTextContent(/assumed the longest the law allows/);
+    expect(within(ticket).getByRole("button", { name: /^Add notice period/ })).toBeInTheDocument();
+  });
+
+  it("a cancellation marked as sent: no decision left, waiting for the confirmation, the sent letter one click away", async () => {
+    const client = await seededClient((list) =>
+      list.map((c) => (c.id === "ctr_phone" ? { ...c, cancellation_sent: { draft_id: "drf_sent", sent_on: "2026-09-28", channel: "registered_letter" } } : c)),
+    );
+    renderWithProviders(<ContractsView />, { client, route: "/contracts" });
+    const phone = card(/FunkNetz/);
+    expect(within(phone).getByTestId("cancellation-sent")).toHaveTextContent(/^Cancellation sent .*28 Sep.* by Einschreiben.* — waiting for their confirmation/);
+    expect(within(phone).queryByRole("link", { name: /Draft cancellation/ })).toBeNull();
+    expect(within(phone).getByRole("link", { name: /Open the sent letter/ })).toHaveAttribute("href", "/letters/drf_sent");
+    expect(within(phone).queryByText("Send by")).toBeNull();
+    expect(document.getElementById("decide-by-title")).toBeNull();
+  });
+
   it("Decide by: the stripe, the leaf and the countdown follow the one urgency scale", async () => {
     const soon = (days: string) => async () =>
       seededClient((list) => list.map((c) => (c.id === "ctr_phone" ? { ...c, computed: { ...c.computed!, send_by: days } } : c)));

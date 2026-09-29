@@ -9,6 +9,7 @@ import { MobileTabBar } from "@/components/shell/MobileTabBar";
 import { DropZone } from "@/components/shell/DropZone";
 import { UploadCenter } from "@/components/shell/UploadCenter";
 import { PausedBanner } from "@/components/shell/PausedBanner";
+import { MockBanner } from "@/components/shell/MockBanner";
 import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta";
@@ -113,6 +114,7 @@ export function AppLayout() {
           <DemoTour />
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
+            <MockBanner />
             <PausedBanner />
             <main id="main" tabIndex={-1} className="room-for-overlays flex flex-1 flex-col outline-none">
               <Outlet />

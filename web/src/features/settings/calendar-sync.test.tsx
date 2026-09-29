@@ -241,11 +241,11 @@ describe("calendar sync card", () => {
     const past = srv.db.openItems().filter((i) => i.due_date && i.due_date < today).length;
     expect(past).toBeGreaterThanOrEqual(2);
     // the first four are dates still to come: their alarms will ring
-    for (const item of within(list).getAllByRole("listitem")) expect(item).not.toHaveTextContent("Overdue");
-    const toggle = within(card).getByRole("button", { name: new RegExp(`^Show all \\d+ events \\(${past} overdue\\)$`) });
+    for (const item of within(list).getAllByRole("listitem")) expect(item).not.toHaveTextContent("Date passed");
+    const toggle = within(card).getByRole("button", { name: new RegExp(`^Show all \\d+ events \\(${past} passed\\)$`) });
     await user.click(toggle);
     const all = within(list).getAllByRole("listitem");
-    expect(all.slice(-past).every((li) => /Overdue/.test(li.textContent ?? "") && !/Alarms:/.test(li.textContent ?? ""))).toBe(true);
+    expect(all.slice(-past).every((li) => /Date passed/.test(li.textContent ?? "") && !/Alarms:/.test(li.textContent ?? ""))).toBe(true);
     await user.click(within(card).getByRole("button", { name: "Show fewer" }));
     await waitFor(() => expect(scrolled).toHaveBeenCalledWith({ block: "nearest" }));
     expect(within(card).getByRole("button", { name: /^Show all/ })).toHaveFocus();

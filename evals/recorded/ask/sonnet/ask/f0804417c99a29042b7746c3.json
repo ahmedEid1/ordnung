@@ -1,0 +1,171 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"345f89fbc75aca25fd10925b6a35b90c3131e3e40bad6f93d294bee542a0c2c6\",\"question\":\"When's the dentist?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen's the dentist?\n"
+  },
+  "response": {
+    "text": "Your dentist appointment (check-up + professional teeth cleaning) is on **Thu 8 Oct 2026 at 09:15** at Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt [item:itm_sncxha9wbsxc].\n\n- Arrive 10 minutes early and bring your Gesundheitskarte; cancel at least 24 hours in advance if you can't make it.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 280,
+      "cache_read_tokens": 12012,
+      "cache_creation_tokens": 2724,
+      "cost_usd": 0.0161064,
+      "duration_ms": 5518,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dentist"
+      },
+      "tool_use_id": "toolu_01Ci9C9nntViSNmVfSuT2sF8"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment"
+      },
+      "tool_use_id": "toolu_01DLm839mamU7xugrgzn8g4s"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental appointment: check-up + professional teeth cleaning (PZR)\",\"action\":\"Arrive 10 minutes early, bring your health insurance card (Gesundheitskarte), and cancel at least 24 hours in advance if you cannot attend.\",\"location\":\"Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Appointment at Ausländerbehörde for residence permit extension\",\"action\":\"Bring the required original documents (passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, rental contract) and pay the €100 fee by girocard on site.\",\"location\":\"Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14, 12345 Musterstadt\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_espa58t15ncg\":{\"title\":\"Autumn Meeting in Berlin\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01DLm839mamU7xugrgzn8g4s"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_xa0f5gvpe0w2\",\"kind\":\"appointment\",\"party_id\":\"pty_m3rttkfq94qn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_xa0f5gvpe0w2\":{\"title\":\"Dental appointment reminder\",\"snippet\":\"This is a reminder card from your dentist for an upcoming check-up and professional cleaning…\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Ci9C9nntViSNmVfSuT2sF8"
+    },
+    {
+      "type": "text",
+      "text": "Your dentist appointment"
+    },
+    {
+      "type": "text",
+      "text": " (check-up + professional te"
+    },
+    {
+      "type": "text",
+      "text": "eth cleaning) is"
+    },
+    {
+      "type": "text",
+      "text": " on"
+    },
+    {
+      "type": "text",
+      "text": " **Thu 8"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026 "
+    },
+    {
+      "type": "text",
+      "text": "at 09:15** at"
+    },
+    {
+      "type": "text",
+      "text": " Zahnarztprax"
+    },
+    {
+      "type": "text",
+      "text": "is Dr. Anna"
+    },
+    {
+      "type": "text",
+      "text": " Beispiel"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " Lindenallee 8"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " 12345 Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_sncxha"
+    },
+    {
+      "type": "text",
+      "text": "9wbsxc]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- Arrive 10 "
+    },
+    {
+      "type": "text",
+      "text": "minutes early and bring your"
+    },
+    {
+      "type": "text",
+      "text": " Gesundheitskarte"
+    },
+    {
+      "type": "text",
+      "text": "; cancel at least 24"
+    },
+    {
+      "type": "text",
+      "text": " hours in advance if you"
+    },
+    {
+      "type": "text",
+      "text": " can't make"
+    },
+    {
+      "type": "text",
+      "text": " it."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your dentist appointment (check-up + professional teeth cleaning) is on **Thu 8 Oct 2026 at 09:15** at Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt [item:itm_sncxha9wbsxc].\n\n- Arrive 10 minutes early and bring your Gesundheitskarte; cancel at least 24 hours in advance if you can't make it.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 280,
+          "cache_read_tokens": 12012,
+          "cache_creation_tokens": 2724,
+          "cost_usd": 0.0161064,
+          "duration_ms": 5518,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

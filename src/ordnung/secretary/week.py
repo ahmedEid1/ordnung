@@ -368,12 +368,25 @@ def _draft_entry(ledger: Ledger, draft: Draft, **fields: object) -> WeekEntry:
     return WeekEntry.model_validate(data)
 
 
+#: Contracts that after their term only continue month to month, cancellable any time with at most a month's
+#: notice (§ 309 Nr. 9 BGB, § 56 Abs. 3 TKG): they don't renew for another term (walkthrough of phase 2).
+_CONTINUES_MONTHLY = ("bgb309_new", "tkg56")
+
+
+def _keeps_going(regime: str | None) -> str:
+    """What happens when no cancellation is sent by the contract's day: a new term, or month to month."""
+    if regime in _CONTINUES_MONTHLY:
+        return "Continues after its term unless you send a cancellation by then — then cancellable monthly."
+    return "Renews unless you send a cancellation by then."
+
+
 def _contract_entry(ledger: Ledger, entry: AgendaEntry, **fields: object) -> WeekEntry:
     """A contract decision of the agenda: send the cancellation by its day, or it renews."""
     today = ledger.today
     send = parse_day(entry.date)
     contract = next((c for c in ledger.contracts if c.id == entry.id), None)
-    cancel_by = parse_day(ledger.computation(contract).cancel_by) if contract is not None else None
+    computation = ledger.computation(contract) if contract is not None else None
+    cancel_by = parse_day(computation.cancel_by) if computation is not None else None
     missed = send is not None and send < today
     data: dict[str, object] = {
         "key": f"contract:{entry.id}",
@@ -387,7 +400,7 @@ def _contract_entry(ledger: Ledger, entry: AgendaEntry, **fields: object) -> Wee
         "doc_id": entry.doc_id,
         "note": missed_post_note(_cancellation_guidance(ledger, contract))
         if missed
-        else "Renews unless you send a cancellation by then.",
+        else _keeps_going(computation.regime if computation is not None else None),
         "tone": "warn" if missed else "neutral",
     }
     data.update(fields)

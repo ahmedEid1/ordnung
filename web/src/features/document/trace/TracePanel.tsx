@@ -1,5 +1,5 @@
 /**
- * "How this was read" (a tab of the letter's page): one reading of the letter — when, how long, what
+ * "How it was read" (a tab of the letter's page): one reading of the letter — when, how long, what
  * Claude was asked and what it cost, then every step as a waterfall (text layer, transcription,
  * extraction and its repair, each quote checked on the page, each date the rules engine computed, how
  * the sender, thread and contract were linked, what happened to each to-do). A letter read more than

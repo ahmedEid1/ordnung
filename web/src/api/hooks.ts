@@ -281,7 +281,7 @@ export function useDocument(id: string | undefined) {
   });
 }
 
-/** "How this was read": the reading `run` of letter `id` (default: the newest kept) with its steps. */
+/** "How it was read": the reading `run` of letter `id` (default: the newest kept) with its steps. */
 export function useDocumentTrace(id: string | undefined, run: string | null = null, opts: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: qk.documents.trace(id ?? "", run),

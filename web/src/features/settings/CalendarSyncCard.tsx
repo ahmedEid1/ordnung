@@ -108,21 +108,23 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
         <>
           <ul id={listId} aria-label={`Events, ${modeLabel(mode).toLowerCase()}`} className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
             {shown.map((e) => {
-              const overdue = isPastEvent(e, today);
+              // a date that has passed — "Overdue" said too much of money that came in or a date already
+              // dealt with (walkthrough of phase 2)
+              const passed = isPastEvent(e, today);
               return (
                 <li key={e.uid} className="min-w-0 px-3.5 py-3">
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] font-medium leading-5 text-muted tabular-nums">
                     {eventWhen(e, today)}
-                    {overdue ? (
-                      <Badge tone="warn" size="sm">
-                        Overdue
+                    {passed ? (
+                      <Badge tone="neutral" size="sm">
+                        Date passed
                       </Badge>
                     ) : null}
                   </p>
                   <p className="text-[14px] font-semibold leading-5 text-ink [overflow-wrap:anywhere]">{e.summary}</p>
                   <p className="mt-0.5 whitespace-pre-line text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">{e.description}</p>
                   {e.location ? <p className="mt-0.5 text-[13px] leading-5 text-ink/80 [overflow-wrap:anywhere]">Where: {e.location}</p> : null}
-                  {overdue ? (
+                  {passed ? (
                     <p className="mt-1 text-[12.5px] leading-5 text-muted">The date has passed: it shows in the calendar without an alarm to come.</p>
                   ) : e.alarms.length ? (
                     <p className="mt-1 text-[12.5px] leading-5 text-muted">{alarmsLine(e)}</p>
@@ -133,7 +135,7 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
           </ul>
           {events.length > PREVIEW_COUNT ? (
             <Button ref={toggleRef} size="sm" variant="ghost" icon={all ? ChevronUp : ChevronDown} className="mt-1.5" aria-expanded={all} aria-controls={listId} onClick={toggle}>
-              {all ? "Show fewer" : past ? `Show all ${events.length} events (${past} overdue)` : `Show all ${events.length} events`}
+              {all ? "Show fewer" : past ? `Show all ${events.length} events (${past} passed)` : `Show all ${events.length} events`}
             </Button>
           ) : null}
         </>

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref, type RefObject } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Compass, Minus, X } from "lucide-react";
 import { useMailTray } from "@/api/hooks";
@@ -10,7 +10,7 @@ import { getOverlayRoot } from "@/components/ui/internal";
 import { TOAST_LIFT_VAR, toast } from "@/components/ui/Toast";
 import { useIsTabletUp, useLocalStorage, useMediaQuery } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-import { TOUR_DOCK_ID, TOUR_STEPS, onStepRoute, stepCopy, type TourFacts, type TourStep } from "./steps";
+import { MORE_TO_TRY, TOUR_DOCK_ID, TOUR_STEPS, onStepRoute, stepCopy, type TourFacts, type TourStep } from "./steps";
 import type { TourEvent } from "./tourMachine";
 import { onTourRestart, useTourController } from "./useTourController";
 import { spotlitElement, useSpotlight, type SpotRect } from "./useSpotlight";
@@ -276,7 +276,8 @@ interface CardProps {
 /** The step's title, text, dots and buttons (floating card and sidebar dock). */
 function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, onShow, onMinimise, onEnd }: CardProps) {
   const last = stepIndex === TOTAL - 1;
-  const primary = here ? (
+  // on its page, or its point made elsewhere (a letter was read): "Next" leads
+  const primary = here || step.onward ? (
     <Button size="sm" variant="primary" iconRight={last ? Check : ArrowRight} onClick={() => go({ type: "next" })} className={cn(compact && "min-w-0 flex-1")}>
       {last ? "Finish" : "Next"}
     </Button>
@@ -288,13 +289,13 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
   const skip = !here ? (
     <button
       type="button"
-      onClick={() => go({ type: "next" })}
+      onClick={() => (step.onward ? onShow() : go({ type: "next" }))}
       className={cn(
         "-mr-1.5 inline-flex shrink-0 items-center rounded-md px-1.5 text-xs font-medium text-muted transition-colors hover:bg-surface-3/70 hover:text-ink first:-ml-1.5",
         compact ? "h-6" : "h-7",
       )}
     >
-      {last ? "Finish the tour" : "Skip this step"}
+      {step.onward ? step.showLabel : last ? "Finish the tour" : "Skip this step"}
     </button>
   ) : null;
   // the narrow docked card has no room for Back beside "Show me the Ideas": there the dots go back
@@ -354,6 +355,35 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
             {step.title}
           </h2>
           <p className={cn("mt-1 text-muted", compact ? "text-sm leading-normal" : "text-base leading-relaxed")}>{step.body}</p>
+          {last && compact ? (
+            // the narrow docked card: one sentence of inline links (each hint is the link's title), so it still fits the sidebar at 1280×800
+            <p className="mt-2 text-xs leading-4 text-muted">
+              More to try:{" "}
+              {MORE_TO_TRY.map((m, i) => (
+                <Fragment key={m.label}>
+                  {i > 0 ? ", " : null}
+                  <Link to={m.to} title={m.hint} className="font-semibold text-accent underline-offset-2 hover:underline">
+                    {m.label}
+                  </Link>
+                </Fragment>
+              ))}
+              .
+            </p>
+          ) : last ? (
+            <div className="mt-2.5">
+              <p className="eyebrow text-muted">More to try</p>
+              <ul aria-label="More to try" className="mt-1 space-y-0.5 text-sm">
+                {MORE_TO_TRY.map((m) => (
+                  <li key={m.label} className="leading-snug">
+                    <Link to={m.to} className="inline-flex min-h-6 items-center font-semibold text-accent underline-offset-2 hover:underline">
+                      {m.label}
+                    </Link>
+                    <span className="text-muted"> — {m.hint}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </motion.div>
       </AnimatePresence>
 

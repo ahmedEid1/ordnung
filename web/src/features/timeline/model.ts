@@ -16,7 +16,7 @@ import {
   type EnumCopy,
 } from "@/lib/copy";
 import { addToTotals, formatDate, type Totals } from "@/lib/format";
-import { CircleDashed, TriangleAlert } from "lucide-react";
+import { CircleDashed, CircleHelp, Replace, TriangleAlert } from "lucide-react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
 // ------------------------------------------------------------------------------------------------
@@ -232,7 +232,8 @@ export function groupByMonth(entries: TimelineEntry[], today: string, range?: { 
       todayIndex = i < 0 ? list.length : i;
     }
     const toPay = list
-      .filter((e) => e.type === "payment" && e.amount && !CLOSED.has(e.status ?? "") && e.date >= today)
+      // money coming in is no payment to make, nor is one a reminder or an attached bill replaced
+      .filter((e) => e.type === "payment" && e.amount && !CLOSED.has(e.status ?? "") && e.date >= today && e.direction !== "in" && !e.aside)
       .reduce<Totals>((totals, e) => addToTotals(totals, e.amount ?? 0, e.currency), {});
     return {
       key,
@@ -392,15 +393,31 @@ export function openDateCount(entries: TimelineEntry[]): number {
 const OVERDUE: EnumCopy = { label: "Overdue", icon: TriangleAlert, tone: "danger" };
 /** An open to-do from long ago: probably done, just never marked. Quiet, not red. */
 const STILL_OPEN: EnumCopy = { label: "Not marked done", icon: CircleDashed, tone: "neutral" };
+/** Money that was to come in on a day that has passed: nobody owes it to the person's side — did it arrive? */
+const RECEIVED: EnumCopy = { label: "Received?", icon: CircleHelp, tone: "neutral" };
+/** An invoice's payment its payment reminder took over: pay the reminder, once (as on the letter's page). */
+const REPLACED: EnumCopy = { label: "Replaced by the reminder", icon: Replace, tone: "neutral" };
+/** An e-mail's payment its attached bill repeats: the bill is the one to pay. */
+const ON_THE_BILL: EnumCopy = { label: "On the attached bill", icon: Replace, tone: "neutral" };
 const HISTORY_DAYS = 30;
 
 /**
  * Human status for an entry, or null when there is nothing worth saying ("open", "filed",
  * "active"). Maps each entry type through its own copy table (never shows raw values).
  */
-export function entryStatus(e: Pick<TimelineEntry, "type" | "status" | "date" | "past">, today: string): EnumCopy | null {
+export function entryStatus(
+  e: Pick<TimelineEntry, "type" | "status" | "date" | "past"> & Partial<Pick<TimelineEntry, "direction" | "aside">>,
+  today: string,
+): EnumCopy | null {
   const s = e.status;
   if (!s) return null;
+  // not one to act on (walkthrough of phase 2: a replaced invoice and a salary that came in showed "Overdue")
+  if (s === "open" || s === "overdue" || s === "missed") {
+    if (e.aside === "replaced") return REPLACED;
+    if (e.aside === "attached") return ON_THE_BILL;
+    if (e.aside === "history") return STILL_OPEN;
+    if (e.type === "payment" && e.direction === "in") return isPastEntry(e, today) ? RECEIVED : null;
+  }
   switch (e.type) {
     case "document":
       return s === "processed" ? null : copyFor(DOCUMENT_STATUS_COPY, s);
@@ -420,14 +437,15 @@ export function entryStatus(e: Pick<TimelineEntry, "type" | "status" | "date" | 
   }
 }
 
-/** What the entry's date is, in a word or two: "Payment due", "Deadline", "Letter". */
-export function entryRole(e: Pick<TimelineEntry, "type" | "status">): string {
+/** What the entry's date is, in a word or two: "Payment due", "Money in", "Deadline", "Letter". */
+export function entryRole(e: Pick<TimelineEntry, "type" | "status"> & Partial<Pick<TimelineEntry, "direction">>): string {
   switch (e.type) {
     case "document":
       return "Letter";
     case "draft":
       return "You sent";
     case "payment":
+      if (e.direction === "in") return "Money in";
       return CLOSED.has(e.status ?? "") ? "Payment" : "Payment due";
     default:
       return copyFor(TIMELINE_TYPE_COPY, e.type).label;

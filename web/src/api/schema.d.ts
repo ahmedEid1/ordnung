@@ -905,7 +905,8 @@ export interface paths {
         put?: never;
         /**
          * Regenerate Brief
-         * @description Write today's note again (Claude when "AI note" is on and available, else code).
+         * @description Write today's note again (Claude when "AI note" is on and available, else code; ``llm=false``: code
+         *     only, from the records — ``ordnung brief --no-llm``).
          */
         post: operations["regenerate_brief_api_brief_post"];
         delete?: never;
@@ -2187,6 +2188,19 @@ export interface components {
              */
             open_items: number;
         };
+        /**
+         * CancellationSent
+         * @description The person's cancellation of a contract, marked as sent (a ``cancellation`` letter with the
+         *     contract's id): the decision is taken, what is left is waiting for the provider's confirmation.
+         */
+        CancellationSent: {
+            /** Draft Id */
+            draft_id: string;
+            /** Sent On */
+            sent_on: string | null;
+            /** Channel */
+            channel: string | null;
+        };
         /** Case */
         Case: {
             /** Id */
@@ -2415,6 +2429,7 @@ export interface components {
             cancellable: boolean;
             /** Cancel Hint */
             cancel_hint: string | null;
+            cancellation_sent: components["schemas"]["CancellationSent"] | null;
         };
         /** ContractComputation */
         ContractComputation: {
@@ -2423,7 +2438,7 @@ export interface components {
              * @default as_written
              * @enum {string}
              */
-            regime: "bgb309_new" | "bgb309_old" | "tkg56" | "vvg11" | "sgbv175" | "stromgvv20" | "rent573c" | "employment622" | "as_written";
+            regime: "bgb309_new" | "bgb309_old" | "tkg56" | "vvg11" | "sgbv175" | "stromgvv20" | "rent573c" | "employment622" | "bgb675h" | "as_written";
             /** Current Term End */
             current_term_end: string | null;
             /** Cancel By */
@@ -2887,6 +2902,8 @@ export interface components {
             can_wait_again: boolean;
             /** Proof Of */
             proof_of: components["schemas"]["ProofLink"][];
+            /** Scam Signs */
+            scam_signs: string[];
         };
         /**
          * DocumentPatch
@@ -4603,7 +4620,8 @@ export interface components {
         };
         /**
          * PurposeUsage
-         * @description Model use for one purpose (``extract``, ``ask`` …).
+         * @description Model use for one purpose (``extract``, ``ask`` …). ``input_tokens`` counts every prompt token, those
+         *     read from or written to the prompt cache too.
          */
         PurposeUsage: {
             /**
@@ -5032,6 +5050,10 @@ export interface components {
              * @default false
              */
             past: boolean;
+            /** Direction */
+            direction: ("out" | "in") | null;
+            /** Aside */
+            aside: ("replaced" | "attached" | "history") | null;
         };
         /** TimelineMarker */
         TimelineMarker: {
@@ -5225,7 +5247,7 @@ export interface components {
         };
         /**
          * TraceSpan
-         * @description A step of a reading as the "How this was read" view shows it (display order, depth-first).
+         * @description A step of a reading as the "How it was read" view shows it (display order, depth-first).
          */
         TraceSpan: {
             /** Id */
@@ -5396,7 +5418,10 @@ export interface components {
             /** Errors */
             errors: components["schemas"]["UploadError"][];
         };
-        /** UsageStats */
+        /**
+         * UsageStats
+         * @description Model use in total and per purpose; ``input_tokens`` counts every prompt token, cached ones too.
+         */
         UsageStats: {
             /**
              * Calls
@@ -7442,7 +7467,9 @@ export interface operations {
     };
     regenerate_brief_api_brief_post: {
         parameters: {
-            query?: never;
+            query?: {
+                llm?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7456,6 +7483,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Brief"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

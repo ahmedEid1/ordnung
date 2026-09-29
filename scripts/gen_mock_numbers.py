@@ -108,7 +108,11 @@ def file_world(store: Store, world: dict[str, Any]) -> date:
         with store.tx() as conn:  # the day each letter entered Ordnung ("new since your last session")
             conn.execute("UPDATE documents SET created_at = ? WHERE id = ?", (doc.created_at, doc.id))
     for raw in world["contracts"]:
-        store.add_contract(**Contract.model_validate(raw).model_dump(exclude={"cancellable", "cancel_hint"}))
+        store.add_contract(
+            **Contract.model_validate(raw).model_dump(
+                exclude={"cancellable", "cancel_hint", "cancellation_sent"}
+            )
+        )
     known = {
         "party_id": {p["id"] for p in world["parties"]},
         "case_id": {c["id"] for c in world["cases"]},

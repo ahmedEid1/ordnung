@@ -191,9 +191,9 @@ describe("trace copy", () => {
   });
 
   it("names a newer model of the same family by its full id", () => {
-    const same = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-4-5", after: "claude-sonnet-4-6" }));
-    expect(same.detail).toBe("Model: claude-sonnet-4-5 → claude-sonnet-4-6");
-    const other = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-4-5", after: "claude-opus-4-1" }));
+    const same = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-x-1", after: "claude-sonnet-x-2" }));
+    expect(same.detail).toBe("Model: claude-sonnet-x-1 → claude-sonnet-x-2");
+    const other = changeText(change({ kind: "model", name: "Extract", field: "served_model", before: "claude-sonnet-x-1", after: "claude-opus-x-1" }));
     expect(other.detail).toBe("Model: Sonnet → Opus");
   });
 });

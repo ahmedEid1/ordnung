@@ -89,6 +89,7 @@ function contract(p: Partial<Contract> & Pick<Contract, "id" | "name">): Contrac
     area: "home",
     cancellable: true,
     cancel_hint: null,
+    cancellation_sent: null,
     created_at: "2026-01-01T10:00:00Z",
     updated_at: "2026-01-01T10:00:00Z",
     ...p,
@@ -229,6 +230,8 @@ describe("contract decisions", () => {
   it("ignores inactive contracts and passed decision dates", () => {
     expect(actionFromContract({ ...phone, status: "cancelled" }, ctx)).toBeNull();
     expect(actionFromContract({ ...phone, cancellable: false, cancel_hint: "Required by law." }, ctx)).toBeNull();
+    // its cancellation was marked as sent: nothing left to decide (walkthrough of phase 2)
+    expect(actionFromContract({ ...phone, cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } }, ctx)).toBeNull();
     expect(actionFromContract(phone, { today: "2026-10-20" })).toBeNull();
   });
 

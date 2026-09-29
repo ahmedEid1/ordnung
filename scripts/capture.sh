@@ -25,11 +25,22 @@ done
 
 if [ -f "$OUT/video/demo.webm" ]; then
   # the whole tour as H.264 MP4, and its first part (up to the court order) as the README's GIF, both from
-  # when Today is on screen (the tour writes both seconds to video/cut)
-  read -r START GIF_END < "$OUT/video/cut" || { START=0; GIF_END=41; }
-  GIF_SECONDS=${CAPTURE_GIF_SECONDS:-$(awk -v a="$START" -v b="$GIF_END" 'BEGIN { printf "%.2f", b - a }')}
-  ffmpeg -v error -y -ss "$START" -i "$OUT/video/demo.webm" -c:v libx264 -pix_fmt yuv420p -crf 30 -preset slow \
-    -movflags +faststart "$OUT/demo.mp4"
+  # when Today is on screen, without the full page loads (e.g. between the demo and mock mode). The tour writes
+  # the seconds to video/cut: start, GIF end, then pairs of from–to to leave out
+  read -r START GIF_END GAPS < "$OUT/video/cut" || { START=0; GIF_END=41; GAPS=""; }
+  # the gaps as a frame filter over the seconds after START, and how much of them lies before the GIF's end
+  read -r KEEP BEFORE_GIF < <(awk -v s="$START" -v g="$GIF_END" -v gaps="$GAPS" 'BEGIN {
+    n = split(gaps, t, " "); expr = ""; cut = 0
+    for (i = 1; i < n; i += 2) {
+      a = t[i] - s; b = t[i + 1] - s
+      expr = expr (expr == "" ? "" : "+") sprintf("between(t,%.2f,%.2f)", a, b)
+      if (t[i + 1] <= g) cut += t[i + 1] - t[i]
+    }
+    printf "%s %.2f\n", (expr == "" ? "1" : "not(" expr ")"), cut
+  }')
+  GIF_SECONDS=${CAPTURE_GIF_SECONDS:-$(awk -v a="$START" -v b="$GIF_END" -v c="$BEFORE_GIF" 'BEGIN { printf "%.2f", b - a - c }')}
+  ffmpeg -v error -y -ss "$START" -i "$OUT/video/demo.webm" -vf "fps=25,select='$KEEP',setpts=N/(25*TB)" \
+    -c:v libx264 -pix_fmt yuv420p -crf 30 -preset slow -movflags +faststart "$OUT/demo.mp4"
   # the GIF from the MP4: the recording's VP8 noise would make it half as large again, for no visible gain
   ffmpeg -v error -y -t "$GIF_SECONDS" -i "$OUT/demo.mp4" -vf \
     "fps=$GIF_FPS,scale=$GIF_WIDTH:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \

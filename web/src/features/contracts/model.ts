@@ -116,11 +116,36 @@ export function noticeFromYou(c: Pick<Contract, "evidence">): boolean {
 }
 
 /**
+ * How the rules engine starts its warning when the letter gave no notice period and it assumed the longest
+ * the law allows (`_MISSING_NOTICE` in `src/ordnung/rules/contracts.py`).
+ */
+export const NOTICE_ASSUMED = "The contract's notice period wasn't found";
+
+/**
+ * The dates rest on a notice period the rules assumed — the letter gave none (walkthrough of phase 2: the
+ * Deutschlandticket's card said "1 month's notice … Earliest end Mon 2 Nov" with no "Please check", while its
+ * letter says "by the 10th of a month, to that month's end"). Not once the person entered the period.
+ */
+export function noticeAssumed(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
+  return c.status === "active" && !noticeFromYou(c) && (c.computed?.warnings ?? []).some((w) => w.startsWith(NOTICE_ASSUMED));
+}
+
+/**
  * The notice period can be entered or changed on the card: terms we couldn't work out, terms the
- * rules follow as written (no statutory rule), or terms the person entered (a typo stays correctable).
+ * rules follow as written (no statutory rule), a period the rules assumed, or terms the person entered
+ * (a typo stays correctable).
  */
 export function noticeEditable(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
-  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeFromYou(c));
+  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c));
+}
+
+/**
+ * The person's cancellation of this contract, marked as sent (the API's `cancellation_sent`), while the
+ * contract is still active: the decision is taken — no "Decide by", no "Draft cancellation"
+ * (walkthrough of phase 2).
+ */
+export function cancellationSent(c: Pick<Contract, "status" | "cancellation_sent">): Contract["cancellation_sent"] {
+  return c.status === "active" ? (c.cancellation_sent ?? null) : null;
 }
 
 /**
@@ -128,7 +153,10 @@ export function noticeEditable(c: Pick<Contract, "computed" | "status" | "eviden
  * and a screen reader — or null when it doesn't: the person entered the notice period themselves.
  */
 export function pleaseCheckHint(c: Pick<Contract, "computed" | "status" | "evidence">): string | null {
-  if (c.computed?.confidence !== "low" || noticeFromYou(c)) return null;
+  if (noticeFromYou(c)) return null;
+  if (c.computed?.confidence !== "low") {
+    return noticeAssumed(c) ? "The letter gives no notice period, so Ordnung assumed the longest the law allows — check the contract and add it" : null;
+  }
   if (termsUnclear(c)) return "Ordnung couldn't work out how this contract ends — check the letter for the notice period";
   if (c.computed.regime === "as_written") return "Ordnung follows the notice period as written — check it against the contract";
   return "Ordnung isn't sure of these dates — check them against the contract";
@@ -142,7 +170,8 @@ export function decideBy(contracts: Contract[], today: string, days = 60): Contr
   const t = dayNumber(today);
   return contracts
     .filter((c) => {
-      const s = offersEndingLetter(c) && isLockInDecision(c) ? c.computed?.send_by : null;
+      // a cancellation marked as sent: decided
+      const s = offersEndingLetter(c) && isLockInDecision(c) && !cancellationSent(c) ? c.computed?.send_by : null;
       if (!s) return false;
       const d = dayNumber(s) - t;
       return d >= 0 && d <= days;
@@ -153,6 +182,7 @@ export function decideBy(contracts: Contract[], today: string, days = 60): Contr
 /** The next date to act on for a contract (send-by, else must-arrive-by), if still ahead. */
 export function nextActionDate(c: Contract, today: string): string | null {
   if (isRollingContract(c)) return null; // cancellable any month: nothing to act on by a date
+  if (cancellationSent(c)) return null; // sent: nothing left to act on by a date
   const d = c.computed?.send_by ?? c.computed?.cancel_by ?? null;
   return d && d >= today ? d : null;
 }
@@ -253,6 +283,10 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
         ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${notice ? `. To leave earlier: ${notice}` : ", no notice needed"}`
         : `Employment: ${notice ?? "the statutory notice"}, at least the legal minimum`;
       break;
+    case "bgb675h":
+      // a current account (§ 675h Abs. 1 BGB): no notice unless one was agreed, and at most a month of it counts
+      text = notice ? `Current account: cancellable any time with ${notice} (at most one month counts)` : "Current account: cancellable any time, without notice";
+      break;
     default: {
       const basis = c.notice_basis ? copyFor(NOTICE_BASIS_COPY, c.notice_basis).label : null;
       // the person's own entry says so (the card then asks nothing more of it)
@@ -299,6 +333,7 @@ export interface LaneNote {
 export function contractLaneNote(c: Contract, today: string): LaneNote | null {
   // short enough for a phone's lane label; the same words as the card's button
   if (termsUnclear(c)) return { text: "Check the letter", tone: "warn" };
+  if (cancellationSent(c)) return { text: "Cancellation sent", tone: "muted" };
   const exit = c.computed?.earliest_exit;
   if (c.status !== "active" || !exit || exit < today || isLockInDecision(c) || isFixedTerm(c)) return null;
   return { text: `Earliest end · ${formatDate(exit, { style: "day", today })}`, tone: "muted" };
@@ -364,9 +399,11 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
       bars.push(bar("open", anyTime ? "Cancellable any time" : "Open-ended", start, beyond, { open_end: true }));
     }
 
-    // a contract you can cancel any month has no window that closes — just when it would end
+    // a contract you can cancel any month has no window that closes — just when it would end; nor has one
+    // whose cancellation was sent (final review: the chart still said "Send by 8 Oct" after it was)
     const rolling = isRollingContract(c);
-    if (c.status === "active" && comp?.cancel_by && !rolling) {
+    const sent = Boolean(cancellationSent(c));
+    if (c.status === "active" && comp?.cancel_by && !rolling && !sent) {
       const sendBy = comp.send_by;
       const windowMarkers = [marker(comp.cancel_by, "Must arrive by", "cancel_by")];
       if (sendBy) windowMarkers.unshift(marker(sendBy, "Send by", "send_by"));
@@ -382,7 +419,9 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
       });
     }
     const exit = comp?.earliest_exit;
-    if (c.status === "active" && exit && exit >= today && exit !== termEnd && (!comp?.cancel_by || rolling)) {
+    if (c.status === "active" && exit && exit >= today && sent) {
+      markers.push(marker(exit, "Ends (cancellation sent)", "other"));
+    } else if (c.status === "active" && exit && exit >= today && exit !== termEnd && (!comp?.cancel_by || rolling)) {
       markers.push(marker(exit, "Earliest end (if you cancel now)", "other"));
     }
     return { id: c.id, label: c.name, area: c.area, bars, markers };

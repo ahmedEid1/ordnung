@@ -17,7 +17,7 @@ import hashlib
 import json
 import logging
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -39,6 +39,7 @@ from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
     Area,
     CallNote,
+    CancellationSent,
     Contract,
     ContractComputation,
     Document,
@@ -86,7 +87,7 @@ STUDENT_PERMIT_RULE = "student_permit_info"
 _DEFAULT_WINDOWS = {"deadline": 14, "payment": 7, "appointment": 2, "task": 3, "reminder": 0, "milestone": 7}
 _DEFAULT_EXPIRY_WINDOW = 90
 _PRIORITY_RANK: dict[str, int] = {"critical": 0, "high": 1, "normal": 2, "low": 3}
-_PRICE_RULES = ("enwg_41_5", "tkg_57", "vvg_40", "sgbv_175_4_zb")
+_PRICE_RULES = ("enwg_41_5", "stromgvv_5_3", "tkg_57", "vvg_40", "sgbv_175_4_zb")
 _INTERVAL_PER_YEAR = {"monthly": 12, "quarterly": 4, "yearly": 1}
 
 _PERMIT_WORDS = (
@@ -341,11 +342,13 @@ def was_history_when_filed(item: Item) -> bool:
 
 def is_overdue(item: Item, today: date) -> bool:
     """Computed on read: an active deadline/payment/task whose due date has passed — unless it was
-    already history when the letter was filed, or it repeats (a schedule shows its next occurrence and
-    is never overdue, see :mod:`ordnung.recurrence`)."""
+    already history when the letter was filed, it repeats (a schedule shows its next occurrence and
+    is never overdue, see :mod:`ordnung.recurrence`), or it is money coming in: the person doesn't owe it
+    (walkthrough of phase 2: a salary transfer showed as "Overdue")."""
     due = parse_day(item.due_date)
     return (
         item.kind in OVERDUE_KINDS
+        and not (item.kind == "payment" and item.direction == "in")
         and item.recurrence is None
         and due is not None
         and due < today
@@ -575,6 +578,13 @@ class Ledger:
             self._sent_drafts = self.store.list_drafts(status="sent")
         return self._sent_drafts
 
+    def decided_contracts(self) -> set[str]:
+        """Active contracts whose end is decided: a letter confirms their cancellation
+        (:meth:`pending_confirmations`), or the person marked their own cancellation as sent
+        (:func:`cancellations_sent`). Neither is a decision to make any more — no "decide by", no
+        cancellation Idea, no send-by date in the calendar (walkthrough of phase 2)."""
+        return set(self.pending_confirmations()) | set(cancellations_sent(self.sent_drafts()))
+
     def proofs_of(self, draft_id: str) -> list[Proof]:
         """The proofs recorded for a sent letter (cached; proofs whose file is in the trash are left out)."""
         if self._proofs is None:
@@ -673,6 +683,12 @@ class Ledger:
             found = _scam_reasons(self.store, doc, party) if doc.direction == "incoming" else []
             self._scam_reasons[doc.id] = found
         return self._scam_reasons[doc.id]
+
+    def scam_signs(self, doc: Document) -> list[str]:
+        """The warning signs a letter with scam signs shows — on its page and in its Idea, one list and one
+        count (:func:`scam_signs`); empty for a letter without scam signs."""
+        reasons = self.scam_reasons(doc)
+        return scam_signs(doc, reasons) if reasons else []
 
     def is_suspicious_item(self, item: Item) -> bool:
         """Items of a letter with scam signs are never suggested as something to pay or do."""
@@ -903,13 +919,13 @@ def contract_cancel_window(ledger: Ledger) -> list[Suggestion]:
     """Active contracts whose cancellation must be sent within 60 days to avoid a renewal."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    confirmed = ledger.pending_confirmations()
+    decided = ledger.decided_contracts()
     for contract in ledger.active_contracts():
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
         if not is_decision(comp) or send is None or (send - today).days > CANCEL_WINDOW_DAYS:
             continue
-        if contract.id in confirmed:
+        if contract.id in decided:
             continue
         days = (send - today).days
         term_end = parse_day(comp.current_term_end)
@@ -1536,6 +1552,30 @@ def iban_fails_checksum(doc: Document) -> bool:
     return _scam is not None and not _scam.iban_valid(_scam.normalize_iban(payment.iban))
 
 
+#: Warnings that are no scam sign of their own: the reading's count of dates it couldn't confirm, a "Please
+#: check" note, and text meant for software — said once, as hidden text (as ``otherWarnings`` and
+#: ``isHiddenTextWarning`` in ``web/src/features/document/Warnings.tsx``).
+_NOT_A_SIGN = re.compile(
+    r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
+    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection",
+    re.I,
+)
+HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."
+
+
+def scam_signs(doc: Document, reasons: Sequence[str]) -> list[str]:
+    """Every warning sign of a letter with scam signs (``reasons``, :func:`_scam_reasons`, not empty), as
+    its page and its Idea list them — one list, one count (walkthrough of phase 2: the Idea said "5
+    warning signs", the page "the 3 strongest of 7", and hidden text was said twice). Once a letter shows
+    scam signs, each warning its reading carries is one more — except notes that are no sign
+    (:data:`_NOT_A_SIGN`) —, hidden text is said once, in Ordnung's words, and the code's findings come
+    too (a payee that doesn't match, a failing IBAN)."""
+    signs = [HIDDEN_TEXT_SIGN] if doc.hidden_text else []
+    signs.extend(w for w in doc.warnings if w.strip() and not _NOT_A_SIGN.search(w))
+    signs.extend(r for r in reasons if not _NOT_A_SIGN.search(r))
+    return list(dict.fromkeys(signs))
+
+
 def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]:
     """Hidden text, scam-like warnings and — via :mod:`ordnung.secretary.scam` — an IBAN or payee that
     doesn't match what the sender (or a look-alike organisation) used before.
@@ -1546,11 +1586,13 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     """
     reasons: list[str] = []
     if doc.hidden_text:
-        reasons.append("The letter contains hidden text that you can't see on the page.")
+        reasons.append(HIDDEN_TEXT_SIGN)
     reasons.extend(
         w
         for w in doc.warnings
-        if any(word in w.casefold() for word in _SCAM_WORDS) and not is_checksum_note(w)
+        if any(word in w.casefold() for word in _SCAM_WORDS)
+        and not is_checksum_note(w)
+        and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
     )
     finding = None
     if _scam is not None and party is not None and doc.payment is not None:
@@ -1571,7 +1613,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
     today = ledger.today
     active = ledger.active_items()
     for doc in ledger.documents.values():
-        reasons = ledger.scam_reasons(doc)
+        reasons = ledger.scam_signs(doc)
         if not reasons:
             continue
         pay_days = [action_day(i) for i in active if i.doc_id == doc.id and i.kind == "payment"]
@@ -1748,6 +1790,24 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
             due_date=dates[0][0],
         )
     ]
+
+
+def cancellations_sent(sent: Iterable[Draft]) -> dict[str, CancellationSent]:
+    """Contract id → the person's latest cancellation of it among ``sent`` (letters marked as sent,
+    newest first): a ``cancellation`` letter that names the contract."""
+    found: dict[str, CancellationSent] = {}
+    for draft in sent:
+        if draft.kind == "cancellation" and draft.status == "sent" and draft.contract_id:
+            sent_on = parse_day(draft.sent_at)
+            found.setdefault(
+                draft.contract_id,
+                CancellationSent(
+                    draft_id=draft.id,
+                    sent_on=sent_on.isoformat() if sent_on else None,
+                    channel=draft.sent_channel,
+                ),
+            )
+    return found
 
 
 def _sent_cancellation(ledger: Ledger, contract_id: str) -> Draft | None:

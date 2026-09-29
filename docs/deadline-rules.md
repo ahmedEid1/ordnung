@@ -206,6 +206,17 @@ Which DateSpecs shift (`DateSpec.nature` and `shift_rule`):
 AO; example: "Belege bis zum 10.10.2026" → Mon 12 Oct 2026); when the DateSpec doesn't say so, the
 receipt keeps the written (earlier) date and warns that it may legally be later.
 
+**A cancellation for an end date** ("denken Sie daran, dieses rechtzeitig zum 31.03.2027 zu kündigen",
+"Kündigung zum 31.12.2026 möglich", "mit Wirkung zum …", "effective …") names the day the contract should
+*end*, not the day the notice must arrive — unless its words say it must arrive then ("bis zum", "eingehen",
+"vorliegen", "reach us"…). The letter doesn't say how long before that day the notice must arrive, so a
+`notice` with such words counts back **one month**, the most a consumer contract concluded since March 2022
+may ask (§ 309 Nr. 9 BGB, `bgb_309_9_new`), keeps that day (never moved later, safe date before a weekend) and
+is `low` with a warning: the contract may ask less, and a flat, an insurance or an older contract up to three
+months. Example: "rechtzeitig zum 31.03.2027" → must arrive by Sun 28 Feb 2027, safe date Fri 26 Feb, post by
+Mon 22 Feb (walkthrough of phase 2: it was filed as "must arrive by Wed 31 Mar", three weeks after the
+Deutschlandticket's own deadline, the 10th of March).
+
 ---
 
 ## 5. Deemed delivery (*Bekanntgabefiktion*)
@@ -809,7 +820,8 @@ step says so.
 | `stromgvv20` | basic energy supply (*Grundversorgung*) | two weeks' notice any day, text form (§ 20 StromGVV/GasGVV) |
 | `rent573c` | tenant of a flat | notice by the 3rd *Werktag* of a month → end of the month after next (§ 573c BGB); hand-signed letter (§ 568 BGB); a fixed-term lease ends by itself only with a written reason (§ 575 BGB), and one lived in past its end may continue (§ 545 BGB) |
 | `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
-| `as_written` | bank, business contracts, anything unknown | the contract's own terms, `low` confidence |
+| `bgb675h` | a consumer's current account its terms say can be ended any time (*jederzeit kündigen*) | any time, without notice unless one was agreed; an agreed notice counts for at most one month (§ 675h Abs. 1 BGB) |
+| `as_written` | other bank contracts, business contracts, anything unknown | the contract's own terms, `low` confidence |
 
 **Tenancy: which days are *Werktage*?** The BGH held that Saturday **counts** as a Werktag in the
 three-day grace period of § 573c BGB (BGH, 27.4.2005, VIII ZR 206/04 — we read the decision). It
@@ -835,6 +847,7 @@ Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by
 | Flat, notice arrives Tue 6 Oct 2026 | `rent573c` | next month: by Wed 4 Nov → ends Sun 31 Jan 2027 |
 | Flat, April 2026 | `rent573c` | 3rd Werktag = **Sat 4 Apr** (Good Friday skipped) → ends Tue 30 Jun 2026; safe date Thu 2 Apr |
 | Werkstudent job ending 31 Mar 2027 | `employment622` | ends by itself — no cancellation needed |
+| Current account, "jederzeit kündigen", no notice period | `bgb675h` | a letter posted today arrives Thu 1 Oct → the account ends then |
 | Magazine from 1 Jan 2021, yearly renewal, 3 months | `bgb309_old` | cancel by Wed 30 Sep 2026 for 31 Dec 2026, else Fri 31 Dec 2027 |
 | Gym from 1 Jun 2021, 24 months then yearly, 3 months | `bgb309_old` | term ends Mon 31 May 2027; cancel by **Sun 28 Feb 2027** (no shift); safe Fri 26 Feb; post by Mon 22 Feb |
 | Streaming, first term ends Tue 1 Dec 2026, 1 month | `bgb309_new` | cancel by Sun 1 Nov 2026 — button until Sunday midnight, letter by Mon 26 Oct |
@@ -961,8 +974,9 @@ action, contracts, sending and form, price increases).
 | `tkg_56` / `tkg_57` | Telecom term / price changes | §§ 56, 57 TKG | 2021-12-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/tkg_2021/__56.html) |
 | `vvg_11` / `vvg_40` | Insurance term / premium increases | §§ 11, 40 VVG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/vvg_2008/__11.html) |
 | `sgbv_175` / `sgbv_175_4_zb` | Statutory health insurance / contribution increase | § 175 Abs. 4 SGB V | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/sgb_5/__175.html) |
-| `stromgvv_20`, `enwg_41_5` | Basic supply; energy price changes | § 20 StromGVV; § 41 Abs. 5 EnWG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/enwg_2005/__41.html) |
+| `stromgvv_20`, `enwg_41_5`, `stromgvv_5_3` | Basic supply; energy price changes (basic supply also § 5 StromGVV/GasGVV) | § 20 StromGVV; § 41 Abs. 5 EnWG; § 5 Abs. 2, 3 StromGVV | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/enwg_2005/__41.html) |
 | `bgb_573c`, `bgb_573c_landlord`, `bgb_568` | Tenancy notice (a tenant's; a landlord's earliest end) and its form | §§ 573c, 568 BGB; BGH VIII ZR 206/04 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__573c.html) |
+| `bgb_675h` | Current accounts: cancel any time | § 675h Abs. 1 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__675h.html) |
 | `bgb_622`, `bgb_623`, `fixed_term` | Employment notice, form, fixed terms | §§ 622, 623, 620 BGB; § 15 TzBfG | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__622.html) |
 | `bgb_130`, `bgb_312k`, `bgb_309_13`, `ao_357` | Arrival, cancellation button, text form, tax objection form | § 130, § 312k, § 309 Nr. 13 BGB; § 357 AO | `bgb_312k` 2022-07-01 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__312k.html) |
 | `bgb_675s` | Bank transfer time | § 675s Abs. 1 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__675s.html) |

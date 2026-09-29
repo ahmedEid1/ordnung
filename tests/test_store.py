@@ -1444,6 +1444,18 @@ def test_usage_stats_aggregates(store: Store) -> None:
 
     stats = store.usage_stats(recent=2)
     assert (stats.calls, stats.cache_hits, stats.input_tokens, stats.output_tokens) == (3, 1, 1010, 200)
+    # prompt tokens read from or written to the cache count as "in" too, as a letter's trace counts them
+    # (walkthrough of phase 2: Settings said "2 in" where "How it was read" said "20k in")
+    store.log_llm_call(
+        "review",
+        "sonnet",
+        "claude-cli",
+        Usage(input_tokens=2, cache_read_tokens=15_000, cache_creation_tokens=5_000, output_tokens=8),
+    )
+    cached = store.usage_stats(recent=0)
+    assert cached.input_tokens == 1010 + 20_002
+    assert cached.by_purpose["review"].input_tokens == 20_002
+    stats = store.usage_stats(recent=3)
     assert stats.cost_usd == pytest.approx(0.013)
     assert stats.by_purpose["extract"].model_dump() == {
         "calls": 2,
@@ -1454,9 +1466,9 @@ def test_usage_stats_aggregates(store: Store) -> None:
         "cost_usd": pytest.approx(0.012),
     }
     assert stats.by_purpose["ask"].errors == 1
-    assert [r.purpose for r in stats.recent] == ["ask", "extract"]
-    assert stats.recent[0].ok is False and stats.recent[0].error == "429"
-    assert stats.recent[1].cache_hit is True and stats.recent[1].doc_ids == ["doc_1"]
+    assert [r.purpose for r in stats.recent] == ["review", "ask", "extract"]
+    assert stats.recent[1].ok is False and stats.recent[1].error == "429"
+    assert stats.recent[2].cache_hit is True and stats.recent[2].doc_ids == ["doc_1"]
     first = store.usage_stats(recent=5).recent[-1]
     assert (first.pages_sent, first.bytes_sent, first.duration_ms) == (2, 4096, 900)
 

@@ -85,7 +85,8 @@ describe("composer's contract picker (R2-letters-2, R2-letters-5)", () => {
     const { srv } = useMockApi();
     // the demo's health insurance and rent: cancellable any month, with a "send by" that only says when it would end
     const ticket = srv.db.state.contracts.find((c) => c.id === "ctr_dticket")!;
-    ticket.computed = { ...ticket.computed!, send_by: "2026-09-28" };
+    // a rolling contract: a must-arrive-by day each month, no term (as the rent's)
+    ticket.computed = { ...ticket.computed!, cancel_by: "2026-10-10", send_by: "2026-09-28" };
     renderWithProviders(<LettersPage />, { route: "/letters?kind=cancellation&contract=ctr_dticket" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     const rolling = (await within(dialog).findByRole("radio", { name: /Deutschlandticket/ })).closest("label")!;
@@ -105,7 +106,7 @@ describe("composer's contract picker (R2-letters-2, R2-letters-5)", () => {
   it("lists the contracts whose send-by runs out first, those you can cancel any month after them", () => {
     const phone = CONTRACTS.find((c) => c.id === "ctr_phone")!;
     const ticket = CONTRACTS.find((c) => c.id === "ctr_dticket")!;
-    const anyMonth = { ...ticket, computed: { ...ticket.computed!, send_by: "2026-09-28" } };
+    const anyMonth = { ...ticket, computed: { ...ticket.computed!, cancel_by: "2026-10-10", send_by: "2026-09-28" } };
     expect(isRollingContract(anyMonth)).toBe(true);
     expect(isRollingContract(phone)).toBe(false);
     expect(cancellableContracts([anyMonth, phone]).map((c) => c.id)).toEqual(["ctr_phone", "ctr_dticket"]);

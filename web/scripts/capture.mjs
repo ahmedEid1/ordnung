@@ -140,11 +140,23 @@ async function scrollBy(page, dy, { steps = 12, pause = 45 } = {}) {
   }
 }
 
-async function nav(page, label) {
+/** The page's heading is on screen (its data may still be loading). */
+async function shown(page) {
+  await page.getByRole("main").getByRole("heading", { level: 1 }).first().waitFor();
+}
+
+/**
+ * Go to a page from the sidebar. The caption (when given) changes as soon as the new page's heading is on
+ * screen: not before it (over the page before), and not after its data settled (over the new page).
+ */
+async function nav(page, label, text) {
+  const before = page.url();
   const links = page.getByRole("navigation").getByRole("link", { name: new RegExp(`^(\\d+)?${label}`) });
   await click(page, links.filter({ visible: true }).first());
+  await page.waitForURL((url) => url.href !== before);
+  await shown(page);
+  if (text !== undefined) await caption(page, text);
   await page.waitForLoadState("networkidle");
-  await page.getByRole("main").getByRole("heading", { level: 1 }).first().waitFor();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -236,6 +248,21 @@ function receiptPdf() {
  * posting receipt as proof (what "Mark as sent" and "Add proof" save). Once per demo; its draft id.
  * After Ask's recorded answers: it changes the ledger they are checked against.
  */
+/**
+ * Take back the video's sent FunkNetz cancellation (delete the letter): a sent cancellation is a decision
+ * taken, and the screenshots of Today, the timeline and Contracts show the decision still to make.
+ */
+async function withdrawCancellation(context) {
+  const contracts = await apiGet(context, "/api/contracts");
+  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""));
+  if (!contract) throw new Error("no FunkNetz contract in the demo");
+  for (const d of await apiGet(context, "/api/drafts")) {
+    if (d.contract_id !== contract.id || d.kind !== "cancellation") continue;
+    const res = await context.request.delete(`${BASE}/api/drafts/${d.id}`, { headers: CLIENT });
+    if (res.status() !== 204) throw new Error(`delete the cancellation → ${res.status()}`);
+  }
+}
+
 async function sendCancellation(context) {
   const contracts = await apiGet(context, "/api/contracts");
   const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""));
@@ -295,16 +322,40 @@ async function recordVideo(browser) {
   renameSync(recorded, join(dir, "demo.webm"));
   for (const name of readdirSync(dir)) if (name !== "demo.webm") rmSync(join(dir, name));
   // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
-  // page), and ends the README's GIF after the court order, before the tour moves on
-  writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)}\n`);
-  console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s)`);
+  // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
+  // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
+  const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
+  writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
+  console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
 }
 
-/** The tour; returns when Today is first on screen and when the GIF ends, in seconds of the video. */
+/**
+ * The tour; returns when Today is first on screen, when the GIF ends and the page loads to cut (`gaps`: from,
+ * to), in seconds of the video. A caption changes once its page is on screen, never over the page before it
+ * (walkthrough of phase 2: "The year ahead…" showed over the weekly review).
+ */
 async function tour(page) {
   const started = Date.now();
   const seconds = () => (Date.now() - started) / 1000;
   const mark = (what) => console.log(`  ${seconds().toFixed(1).padStart(5)} s  ${what}`);
+  const gaps = [];
+  /** A full page load (switching between the demo and mock mode): cut from the video until `ready` is on screen. */
+  const reload = async (url, ready) => {
+    const from = seconds();
+    await page.goto(url);
+    await ready().waitFor({ timeout: 60_000 });
+    await settle(page, 300);
+    gaps.push([from, seconds()]);
+  };
+  /** A full page load within the demo: cut from the video too (the app's boot screen), the caption changes with the heading. */
+  const load = async (url, text) => {
+    const from = seconds();
+    await caption(page, "");
+    await page.goto(url);
+    await shown(page);
+    gaps.push([from, seconds()]);
+    await caption(page, text);
+  };
   await page.goto(`${BASE}/`);
   await settle(page, 400);
   const start = seconds();
@@ -318,8 +369,7 @@ async function tour(page) {
   await scrollBy(page, -420);
 
   mark("a letter arrives");
-  await caption(page, "A photographed tax assessment just arrived.");
-  await nav(page, "Inbox");
+  await nav(page, "Inbox", "A photographed tax assessment just arrived.");
   const letter = page
     .getByRole("region", { name: /^New mail/ })
     .getByRole("listitem")
@@ -354,8 +404,7 @@ async function tour(page) {
   await page.waitForTimeout(400);
 
   mark("a court order (mock mode)");
-  await page.goto(`${BASE}${COURT_ORDER}`);
-  await settle(page, 300);
+  await reload(`${BASE}${COURT_ORDER}`, () => page.getByText("Act now — and get advice", { exact: false }).first());
   await caption(page, "A court payment order: the law's two weeks, and where to get free advice.");
   await page.mouse.move(1000, 400, { steps: 20 });
   await page.waitForTimeout(2200);
@@ -367,8 +416,7 @@ async function tour(page) {
   const gifEnd = seconds();
   mark("pay by scan");
   const statement = await documentIdFor(page.context(), STATEMENT_TITLE);
-  await page.goto(`${BASE}/documents/${statement}?mock=0`);
-  await settle(page, 600);
+  await reload(`${BASE}/documents/${statement}?mock=0`, () => page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }));
   await caption(page, "A bill to pay by transfer: scan the GiroCode with your banking app. Nothing is paid for you.");
   await click(page, page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }));
   await page.getByRole("region", { name: "GiroCode (EPC-QR)" }).waitFor();
@@ -377,21 +425,18 @@ async function tour(page) {
   await page.waitForTimeout(400);
 
   mark("my numbers");
-  await caption(page, "My numbers: tax ID, insurance and customer numbers, check digits tested, hidden until you choose.");
-  await nav(page, "My numbers");
+  await nav(page, "My numbers", "My numbers: tax ID, insurance and customer numbers, check digits tested, hidden until you choose.");
   await page.mouse.move(760, 380, { steps: 24 });
   await page.waitForTimeout(3200);
 
   mark("ask");
-  await caption(page, "Ask about your letters. Every date and amount is checked against your records.");
-  await nav(page, "Ask");
+  await nav(page, "Ask", "Ask about your letters. Every date and amount is checked against your records.");
   await click(page, page.getByRole("list", { name: "Suggested questions" }).getByRole("button", { name: PHONE_QUESTION }));
   await page.getByRole("main").getByRole("status").filter({ hasText: "Answer ready." }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(3800);
 
   mark("weekly review");
-  await caption(page, "The weekly review: ten minutes, one step at a time. Nothing is paid or sent for you.");
-  await page.goto(`${BASE}/week`);
+  await load(`${BASE}/week`, "The weekly review: ten minutes, one step at a time. Nothing is paid or sent for you.");
   await settle(page, 600);
   await page.mouse.move(420, 380, { steps: 24 });
   await page.waitForTimeout(1400);
@@ -399,32 +444,32 @@ async function tour(page) {
   await page.waitForTimeout(3000);
 
   mark("timeline");
-  await caption(page, "The year ahead: deadlines, payments, contracts and permits in one view.");
-  await nav(page, "Timeline");
+  await nav(page, "Timeline", "The year ahead: deadlines, payments, contracts and permits in one view.");
   await page.mouse.move(760, 380, { steps: 24 });
   await page.waitForTimeout(3200);
 
   mark("contracts");
-  await caption(page, "Contracts: what each one costs and the last day to post a cancellation.");
-  await nav(page, "Contracts");
+  await nav(page, "Contracts", "Contracts: what each one costs and the last day to post a cancellation.");
   await page.waitForTimeout(1000);
   await scrollBy(page, 300);
   await page.waitForTimeout(2200);
 
   mark("proof of sending");
+  // the Letters list is only the way there: no caption over it; the cancellation is sent once Contracts is
+  // off screen (sent, it is no decision to make any more, and the page would change under the viewer)
+  await nav(page, "Letters", "");
   const draftId = await sendCancellation(page.context());
-  await caption(page, "Sent by registered post: the tracking number is checked and the receipt kept as proof.");
-  await nav(page, "Letters");
   await click(page, page.getByRole("main").getByRole("link", { name: /FunkNetz/ }).first());
   await page.waitForURL(new RegExp(`/letters/${draftId}$`), { timeout: 60_000 });
+  await shown(page);
+  await caption(page, "Sent by registered post: the tracking number is checked and the receipt kept as proof.");
   await settle(page, 600);
   await pointAt(page, page.getByRole("region", { name: "Proof of sending" }));
   await page.waitForTimeout(3400);
 
   mark("how it was read");
   const tax = await documentIdFor(page.context(), TAX_TITLE);
-  await caption(page, "How it was read: what Claude was asked, and what code checked and decided.");
-  await page.goto(`${BASE}/documents/${tax}?view=trace`);
+  await load(`${BASE}/documents/${tax}?view=trace`, "How it was read: what Claude was asked, and what code checked and decided.");
   await settle(page, 600);
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   await click(page, steps.getByRole("button", { name: /^Claude reads the letter/ }).first());
@@ -433,11 +478,10 @@ async function tour(page) {
   await page.waitForTimeout(2600);
 
   mark("the end");
-  await caption(page, "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
-  await nav(page, "Today");
+  await nav(page, "Today", "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
   await page.waitForTimeout(3400);
   mark("done");
-  return { start, gifEnd };
+  return { start, gifEnd, gaps };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -473,6 +517,7 @@ async function screenshots(browser) {
   const context = await newContext(browser, { deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
+  await withdrawCancellation(context);
 
   await page.goto(`${BASE}/`);
   await settle(page);

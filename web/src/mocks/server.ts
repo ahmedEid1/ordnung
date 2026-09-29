@@ -37,6 +37,7 @@ import type {
   ReviewStarted,
   StreamEvent,
   Suggestion,
+  TimelineEntry,
   SuggestionRef,
   TemplateDraftKind,
   TransferValues,
@@ -317,6 +318,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     attachments_more: 0,
     email: d.source.startsWith("email:") ? db.document(d.source.slice("email:".length)) : null,
     can_wait_again: wasKeptFromWaiting(db, d),
+    // the Idea's list, as the API gives it; the page falls back to the letter's warnings (none are given here)
+    scam_signs: [],
     proof_of: db.state.proofs
       .filter((p) => p.doc_id === id)
       .flatMap((p) => {
@@ -411,6 +414,16 @@ function setAside(db: MockDb, items: Item[]): ItemAside[] {
       return [{ item_id: i.id, reason: "history", replaced_by: null }];
     }
     return [];
+  });
+}
+
+/** The timeline's to-dos with why they are not one to act on, as the API gives it (never "Overdue" for those). */
+function withAside(db: MockDb, entries: TimelineEntry[]): TimelineEntry[] {
+  const items = db.state.items.filter((i) => entries.some((e) => e.ref.type === "item" && e.ref.id === i.id));
+  const aside = new Map(setAside(db, items).map((a) => [a.item_id, a.reason]));
+  return entries.map((e) => {
+    const reason = e.ref.type === "item" ? aside.get(e.ref.id) : undefined;
+    return reason && reason !== "suspicious" ? { ...e, aside: reason } : e;
   });
 }
 
@@ -1284,7 +1297,7 @@ const routes: [string, string, Handler][] = [
       return new Reply(202, job);
     },
   ],
-  // "How this was read" (data/traces.ts)
+  // "How it was read" (data/traces.ts)
   [
     "GET",
     "/documents/:id/trace",
@@ -1395,7 +1408,9 @@ const routes: [string, string, Handler][] = [
     "GET",
     "/contracts",
     ({ db, query }) =>
-      db.state.contracts.filter((c) => (!query.get("status") || c.status === query.get("status")) && (!query.get("party_id") || c.party_id === query.get("party_id"))),
+      db.state.contracts
+        .filter((c) => (!query.get("status") || c.status === query.get("status")) && (!query.get("party_id") || c.party_id === query.get("party_id")))
+        .map((c) => db.contractView(c)),
   ],
   [
     "PATCH",
@@ -1418,7 +1433,7 @@ const routes: [string, string, Handler][] = [
   ["GET", "/cases/:id", ({ db, params }) => caseDetail(db, params.id!)],
 
   // views
-  ["GET", "/timeline", ({ db, query }) => db.timeline(query.get("from"), query.get("to"))],
+  ["GET", "/timeline", ({ db, query }) => withAside(db, db.timeline(query.get("from"), query.get("to")))],
   ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
   ["GET", "/dashboard", ({ db }) => db.dashboard()],
   ["GET", "/numbers", ({ db }) => mockNumbers(db)],

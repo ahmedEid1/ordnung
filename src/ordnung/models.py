@@ -157,6 +157,7 @@ ContractRegime = Literal[
     "stromgvv20",
     "rent573c",
     "employment622",
+    "bgb675h",
     "as_written",
 ]
 RemedyType = Literal["einspruch", "widerspruch", "klage", "none", "unclear"]
@@ -390,6 +391,15 @@ class ContractTerms(_Model):
     status: Literal["active", "cancelled", "ended"] = "active"
 
 
+class CancellationSent(_Model):
+    """The person's cancellation of a contract, marked as sent (a ``cancellation`` letter with the
+    contract's id): the decision is taken, what is left is waiting for the provider's confirmation."""
+
+    draft_id: str
+    sent_on: str | None = None
+    channel: str | None = None
+
+
 class Contract(_Model):
     id: str
     party_id: str | None = None
@@ -421,6 +431,9 @@ class Contract(_Model):
     # (not to the broadcasting fee, statutory obligations or a job) and, if not, why.
     cancellable: bool = True
     cancel_hint: str | None = None
+    # Worked out on read by the API: the person's cancellation of it, marked as sent (the decision is
+    # taken — no "decide by", no "Draft cancellation"; walkthrough of phase 2).
+    cancellation_sent: CancellationSent | None = None
 
     def terms(self, party_kind: str | None = None) -> ContractTerms:
         return ContractTerms(
@@ -1095,6 +1108,11 @@ class TimelineEntry(_Model):
     amount: float | None = None
     currency: str | None = None  # of the amount (None: euros)
     past: bool = False
+    #: A payment's direction: money coming in ("in") is never due from the person, never overdue.
+    direction: Literal["in", "out"] | None = None
+    #: Why an open to-do is not one to act on (``ItemAside.reason``): a payment reminder replaced it, the bill
+    #: attached to the e-mail repeats it, or its date had long passed when the letter was read.
+    aside: Literal["replaced", "attached", "history"] | None = None
 
 
 class AreaStatus(_Model):
@@ -1343,6 +1361,9 @@ class DocumentDetail(_Model):
     can_wait_again: bool = False
     #: the sent letters this file is proof of (a proof file, or a letter also linked as proof)
     proof_of: list[ProofLink] = Field(default_factory=list)
+    #: The letter's scam warning signs, as its Idea lists them (empty: none;
+    #: :func:`ordnung.secretary.triggers.scam_signs`).
+    scam_signs: list[str] = Field(default_factory=list)
 
 
 class TrackingInfo(_Model):
@@ -1455,7 +1476,8 @@ class CaseDetail(_Model):
 
 
 class PurposeUsage(_Model):
-    """Model use for one purpose (``extract``, ``ask`` …)."""
+    """Model use for one purpose (``extract``, ``ask`` …). ``input_tokens`` counts every prompt token, those
+    read from or written to the prompt cache too."""
 
     calls: int = 0
     cache_hits: int = 0
@@ -1466,6 +1488,8 @@ class PurposeUsage(_Model):
 
 
 class UsageStats(_Model):
+    """Model use in total and per purpose; ``input_tokens`` counts every prompt token, cached ones too."""
+
     calls: int = 0
     cache_hits: int = 0
     input_tokens: int = 0
@@ -1541,7 +1565,7 @@ class TraceRun(_Model):
 
 
 class TraceSpan(_Model):
-    """A step of a reading as the "How this was read" view shows it (display order, depth-first)."""
+    """A step of a reading as the "How it was read" view shows it (display order, depth-first)."""
 
     id: str
     parent_id: str | None = None

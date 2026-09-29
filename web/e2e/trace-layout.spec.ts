@@ -1,5 +1,5 @@
 /**
- * "How this was read" on the real demo (its prebuilt database has a recorded trace for every letter):
+ * "How it was read" on the real demo (its prebuilt database has a recorded trace for every letter):
  * the tab keeps its steps inside the panel at every width — no row, bar or detail past its card,
  * nothing wider than the screen — its steps open with the keyboard, the page images make room for
  * the steps on phones, and axe finds nothing serious in the opened steps. Every step opened, a value
@@ -40,7 +40,7 @@ async function openTrace(page: Page, title: RegExp): Promise<void> {
 }
 
 for (const width of [320, 390, 768, 1280, 1920]) {
-  test(`How this was read at ${width}px: every step inside its panel, opened ones too`, async ({ page }) => {
+  test(`How it was read at ${width}px: every step inside its panel, opened ones too`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openTrace(page, /Payment Reminder|Mahnung/);
     const steps = page.getByRole("list", { name: "Steps of this reading" });
@@ -80,7 +80,7 @@ async function openEverything(page: Page): Promise<void> {
 }
 
 for (const width of [320, 390, 1280, 1920]) {
-  test(`How this was read at ${width}px: opened steps read well and the figures line up`, async ({ page }) => {
+  test(`How it was read at ${width}px: opened steps read well and the figures line up`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await openTrace(page, /Payment Reminder|Mahnung/);
     await openEverything(page);

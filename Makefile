@@ -27,7 +27,7 @@ typecheck:
 	$(PY) -m mypy
 	cd web && npm run typecheck
 
-check: lint typecheck test   ## everything CI runs (except e2e)
+check: lint typecheck test   ## lint, types and tests (CI also runs the rules coverage gate, both benchmarks, demo --check, the build check and e2e)
 
 build-web:          ## build the SPA into src/ordnung/web/dist
 	cd web && npm run build

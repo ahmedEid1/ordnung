@@ -18,6 +18,8 @@
   end of the month after next. Saturday counts as a Werktag (BGH VIII ZR 206/04); if the 3rd Werktag
   is a Saturday the Saturday is kept (the BGH left a § 193 BGB extension open — safety policy).
 * ``employment622`` — employee (§ 622 BGB): four weeks to the 15th or the end of a month.
+* ``bgb675h`` — a consumer's current account its terms say can be ended any time (§ 675h Abs. 1 BGB): without
+  notice unless one was agreed, at most one month.
 * ``as_written`` — anything else: the written terms, with low confidence.
 
 Notice deadlines never move off weekends or holidays (BGH III ZR 172/04); ``safe_date`` is the last
@@ -88,6 +90,7 @@ _REGIME_RULE: dict[ContractRegime, str] = {
     "stromgvv20": "stromgvv_20",
     "rent573c": "bgb_573c",
     "employment622": "bgb_622",
+    "bgb675h": "bgb_675h",
     "as_written": "contract_as_written",
 }
 
@@ -106,6 +109,9 @@ _REGIME_NOTE: dict[ContractRegime, str] = {
     "(§ 20 StromGVV/GasGVV).",
     "rent573c": "Notice on a flat needs a hand-signed letter; email or fax is not valid (§ 568 BGB).",
     "employment622": "Notice of employment needs a hand-signed letter; email is not valid (§ 623 BGB).",
+    "bgb675h": "A current account can be closed any time; a notice period of more than a month is void "
+    "(§ 675h Abs. 1 BGB). Move your standing orders and direct debits first — the bank must help you switch "
+    "(§ 20 ZKG).",
     "as_written": "These dates follow the contract's own terms — please check them against the contract.",
 }
 
@@ -131,6 +137,8 @@ class Notice:
         return add_period(arrival, self.amount, self.unit)[0]
 
 
+#: No notice at all: a current account (§ 675h Abs. 1 BGB, :func:`_payment_account`).
+NO_NOTICE: Final = Notice(0, "days")
 ONE_MONTH: Final = Notice(1, "months")
 THREE_MONTHS: Final = Notice(3, "months")
 TWO_WEEKS: Final = Notice(2, "weeks")
@@ -180,6 +188,10 @@ def regime_for(terms: ContractTerms) -> ContractRegime:
         return "stromgvv20"
     if terms.category == "insurance":
         return "sgbv175" if terms.party_kind == "health_insurer" else "vvg11"
+    if terms.category == "bank" and terms.is_consumer and terms.notice_basis == "any_time":
+        # a current account ("jederzeit kündigen"): a payment services framework contract (§ 675h BGB) —
+        # other bank contracts (savings, loans, deposits) follow their terms (walkthrough of phase 2)
+        return "bgb675h"
     if not terms.is_consumer or terms.category == "bank":
         return "as_written"
     if terms.category in ("mobile", "internet"):
@@ -235,6 +247,8 @@ def _limit(
     return notice
 
 
+#: The web's contract card reads this warning's start (``NOTICE_ASSUMED`` in ``web/src/features/contracts/model.ts``)
+#: to ask "Please check" and offer "Add notice period".
 _MISSING_NOTICE = (
     "The contract's notice period wasn't found; we assumed the longest the law allows, which gives the "
     "earliest date."
@@ -467,6 +481,23 @@ def _insurance_first_end(trace: Trace, inp: _Inputs) -> tuple[date | None, bool]
     return first_end, False
 
 
+def _plan_payment_account(trace: Trace, inp: _Inputs) -> _Plan:
+    """``bgb675h``: a current account can be ended any time — without notice unless one was agreed, and an
+    agreed one counts for at most a month (§ 675h Abs. 1 BGB)."""
+    written = _written_notice(inp.terms)
+    if written is not None and written.amount > 0:
+        return _plan_open(
+            trace, inp, _limit(trace, written, ONE_MONTH, inp.today, "bgb_675h", term_end_day=False)
+        )
+    trace.step(
+        f"A current account can be closed any time, without notice unless one was agreed: a cancellation that "
+        f"arrives by {fmt_date(inp.arrival)} ends it then",
+        inp.arrival,
+        "bgb_675h",
+    )
+    return _Plan("open", earliest_exit=inp.arrival, arrival=inp.arrival, notice=NO_NOTICE)
+
+
 def _plan_renewing(trace: Trace, inp: _Inputs, regime: ContractRegime) -> _Plan:
     """``bgb309_old``, ``vvg11`` and ``as_written``: fixed terms that renew."""
     terms = inp.terms
@@ -622,6 +653,8 @@ def _plan_regime(trace: Trace, inp: _Inputs, regime: ContractRegime) -> _Plan:
         return _plan_rent(trace, inp)
     if regime == "employment622":
         return _plan_employment(trace, inp)
+    if regime == "bgb675h":
+        return _plan_payment_account(trace, inp)
     return _plan_renewing(trace, inp, regime)
 
 
@@ -678,6 +711,11 @@ def _summary(plan: _Plan, send_by: date | None) -> str:
             renews=plan.renews,
             missed=plan.missed,
             renewal=plan.next_renewal,
+        )
+    if plan.kind == "open" and plan.notice == NO_NOTICE and plan.earliest_exit and plan.arrival:
+        return (
+            f"You can cancel any time, without notice (§ 675h Abs. 1 BGB): if your cancellation arrives by "
+            f"{fmt_date(plan.arrival)}, the account ends then."
         )
     if plan.kind == "open" and plan.notice and plan.earliest_exit and plan.arrival:
         return contract_open_sentence(
@@ -923,7 +961,8 @@ def price_increase_window(
             day_before,
             "enwg_41_5",
         )
-        if is_basic_supply:
+        if is_basic_supply:  # the StromGVV/GasGVV apply to basic supply only (walkthrough of phase 2)
+            trace.use("stromgvv_5_3")
             if effective_date.day != 1:
                 trace.soft(
                     "In basic supply, price changes only take effect on the 1st of a month (§ 5 Abs. 2 StromGVV)."

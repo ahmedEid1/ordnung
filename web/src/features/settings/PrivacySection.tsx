@@ -212,7 +212,13 @@ function CallCost({ c }: { c: LLMCallRecord }) {
   );
 }
 
-const tokensOf = (c: LLMCallRecord) => formatCompact(c.input_tokens + c.output_tokens);
+/**
+ * Every prompt token counts as "in", those read from or written to the prompt cache too — as the letter's
+ * "How it was read" and the totals above count them (walkthrough of phase 2: "2 in" beside the trace's "20k in").
+ */
+const tokensIn = (c: Pick<LLMCallRecord, "input_tokens" | "cache_read_tokens" | "cache_creation_tokens">) =>
+  c.input_tokens + (c.cache_read_tokens ?? 0) + (c.cache_creation_tokens ?? 0);
+const tokensOf = (c: LLMCallRecord) => formatCompact(tokensIn(c) + c.output_tokens);
 
 /** Wide panes: one table row per call (the day above the time, so "What was sent" gets the room). */
 function CallRow({ c, docTitle }: { c: LLMCallRecord; docTitle: (id: string) => string }) {
@@ -244,7 +250,7 @@ function CallRow({ c, docTitle }: { c: LLMCallRecord; docTitle: (id: string) => 
       <td className="whitespace-nowrap py-3 pr-5 text-right sm:pr-6">
         <CallCost c={c} />
         <span className="block text-xs tabular-nums text-muted">
-          {tokensOf(c)} tokens<span className="sr-only">: {formatCompact(c.input_tokens)} in, {formatCompact(c.output_tokens)} out</span>
+          {tokensOf(c)} tokens<span className="sr-only">: {formatCompact(tokensIn(c))} in, {formatCompact(c.output_tokens)} out</span>
         </span>
       </td>
     </tr>

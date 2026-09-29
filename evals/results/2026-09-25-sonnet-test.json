@@ -53,6 +53,7 @@
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
   "commit": "17f2292",
+  "commit_note": "a commit from before the history was squashed; a replay on any later commit gives the same numbers",
   "metrics_commit": "b3f0688",
   "added_conditions": {
    "llm_rules_tool": {

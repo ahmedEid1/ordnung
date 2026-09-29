@@ -100,8 +100,8 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   Failing closed has a cost too: a correct date written with another language's month name is left
   out like a wrong one, and the note and placeholders are English or German.
 - **The value reader is a list of forms, against ADR 0007 — recorded as a follow-up.** Each review round
-  found forms it did not read, and each fix added forms (`support.py` grew from about 500 to 2,560
-  lines). The core of the policy is closed (rule 3: a value is Ordnung's only when a cited record holds
+  found forms it did not read, and each fix added forms (`support.py` grew from about 500 to about
+  3,700 lines — 2,560 at final review 3). The core of the policy is closed (rule 3: a value is Ordnung's only when a cited record holds
   it); the reader is not, because "what counts as a value" has no closed definition in free text. Final
   review 3 turned the reader toward failing closed — an unknown form that looks like a date or time is
   unreadable, not unread — but the list of forms remains. Review round 1 of phase 2 found more unread

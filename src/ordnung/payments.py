@@ -131,7 +131,7 @@ def is_direct_debit(item: Item | ExtractedItem) -> bool:
     )
 
 
-def is_collected_or_incoming(item: Item) -> bool:
+def is_collected_or_incoming(item: Item | ExtractedItem) -> bool:
     """A payment the person doesn't make: a direct debit the sender collects, or money coming in."""
     return item.kind == "payment" and (item.direction == "in" or is_direct_debit(item))
 

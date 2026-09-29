@@ -231,3 +231,24 @@ describe("the action band", () => {
     expect(spy).toHaveBeenCalledWith("Calendar file downloaded", expect.objectContaining({ description: expect.stringMatching(/calendar/) }));
   });
 });
+
+describe("a price increase that asks for consent (walkthrough of phase 2)", () => {
+  it("is a choice by a date, not a to-do: 'Decide by', and what happens if you don't agree", () => {
+    const consent = makeItem({
+      id: "itm_consent",
+      kind: "deadline",
+      title: "Give consent to the fee increase (Zustimmung erteilen)",
+      action: "Consent to the new price online under “Postfach › Zustimmungen” or return the signed form.",
+      consequence: "Without your consent, the bank may end the account with two months' notice.",
+      due_date: "2026-11-30",
+      date_spec: { type: "fixed", date: "2026-11-30", time: null, anchor: "explicit_date", anchor_date: "2026-11-30", amount: null, unit: null, delivery_rule: "none", shift_rule: "auto", nature: "declaration", legal_basis: null, text: "bis zum 30.11.2026" },
+    });
+    renderVerdict(makeDetail({ document: makeDoc({ kind: "price_increase", title: "Musterbank – new account fee" }), items: [consent] }));
+    const verdict = screen.getByRole("article", { name: "Musterbank – new account fee" });
+    expect(verdict).toHaveTextContent("Your choice: agree to the new price — or don't.");
+    expect(verdict).toHaveTextContent(/If you agree:/);
+    expect(within(verdict).getByText("Decide by")).toBeInTheDocument();
+    expect(within(verdict).queryByText("By when")).toBeNull();
+    expect(verdict).toHaveTextContent(/If you don't agree/);
+  });
+});

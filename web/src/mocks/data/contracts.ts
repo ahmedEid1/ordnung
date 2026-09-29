@@ -212,14 +212,18 @@ export const CONTRACTS: Contract[] = [
     area: "mobility",
     source_doc_id: "doc_dticket",
     evidence: [ev("doc_dticket", Q.dticket.price), ev("doc_dticket", Q.dticket.cancel)],
+    // as the rules engine computes it (walkthrough of phase 2: the static demo said "31 Oct", the live demo
+    // "2 Nov"): the letter's "by the 10th of a month, to its end" is no notice period the reading gives, so
+    // the engine assumes the longest the law allows — and the card asks to check it
+    concluded_date: "2026-01-20",
     computed: comp({
-      regime: "as_written",
-      cancel_by: "2026-10-10",
-      earliest_exit: "2026-10-31",
-      summary: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct.",
-      steps: [step("Cancellation must arrive by the 10th", "2026-10-10"), step("Subscription ends at the end of the month", "2026-10-31")],
+      regime: "bgb309_new",
+      earliest_exit: "2026-11-02",
+      summary: "You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.",
+      steps: [step("If it arrives by Fri 2 Oct 2026, the contract ends one month later, on Mon 2 Nov 2026", "2026-11-02", "bgb_188", "§ 188 Abs. 1, 2 BGB")],
+      rule_ids: ["bgb_309_9_new", "bgb_188"],
       confidence: "medium",
-      warnings: ["Based on the contract text; no special legal rule applies."],
+      warnings: ["The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date."],
     }),
   }),
   contract({

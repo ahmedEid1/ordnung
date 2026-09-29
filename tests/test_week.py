@@ -234,6 +234,11 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
     decide = _step(week, "decide")
     assert _refs(decide) == [ids["phone"], ids["tax_objection"]]
     assert [entry.date_role for entry in decide.entries] == ["decide_by", "send_by"]
+    # a phone contract only continues month to month after its term (§ 56 Abs. 3 TKG): it doesn't renew
+    # (walkthrough of phase 2: "Renews unless you send a cancellation by then")
+    assert decide.entries[0].note == (
+        "Continues after its term unless you send a cancellation by then — then cancellable monthly."
+    )
     # the day to post it, with the deadline itself beside it
     assert (decide.entries[1].date, decide.entries[1].due_date) == ("2026-10-15", "2026-10-21")
     assert _step(week, "post").entries == [] and _step(week, "file").entries == []

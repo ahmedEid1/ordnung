@@ -152,9 +152,9 @@ def _sorted(entries: list[AgendaEntry]) -> list[AgendaEntry]:
 
 def _decisions(ledger: Ledger) -> list[AgendaEntry]:
     entries: list[AgendaEntry] = []
-    confirmed = ledger.pending_confirmations()
+    decided = ledger.decided_contracts()  # confirmed, or the person's cancellation was sent
     for contract in ledger.active_contracts():
-        if contract.id in confirmed:
+        if contract.id in decided:
             continue
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)

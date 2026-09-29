@@ -124,14 +124,15 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const urgent = Boolean(detail.advice?.urgent);
 
   const blocks = [
-    scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={warnings} /> : null,
+    // the Idea's own list and count (the API's `scam_signs`); the letter's warnings where there is none
+    scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={detail.scam_signs?.length ? detail.scam_signs : warnings} /> : null,
     doc.hidden_text ? <HiddenTextBanner key="hidden" /> : null,
     urgent ? advice : null,
     !detail.advice && (remedy === "klage" || remedy === "unclear") ? <AdviceCard key="advice" type={remedy} addressee={doc.remedy?.addressee ?? null} /> : null,
     arrival.length ? (
       <ArrivalQuestion key="arrival" doc={doc} items={arrival} mayBePublic={Boolean(detail.party && MAY_BE_PUBLIC_KINDS.includes(detail.party.kind))} />
     ) : null,
-    ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} />),
+    ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} scam={Boolean(scam)} />),
     !scam && general.length ? <GeneralWarnings key="general" warnings={general} /> : null,
     urgent ? null : advice,
   ].filter(Boolean);
@@ -438,7 +439,12 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   );
 }
 
-function PleaseCheckItem({ item }: { item: Item }) {
+/**
+ * A to-do whose date or amount Ordnung couldn't confirm against the letter. On a letter with scam signs it
+ * is the demand not to pay: no date to correct — only "not a real to-do" or "it's a real to-do" (walkthrough of
+ * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment).
+ */
+function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean }) {
   const { dismiss, changeDate, confirmItem, pending } = useItemActions();
   const { select } = useEvidence();
   const [editing, setEditing] = useState(false);
@@ -450,7 +456,7 @@ function PleaseCheckItem({ item }: { item: Item }) {
     <CheckCard>
       <p className="mt-1 text-[15px] font-medium leading-snug text-ink wrap-break-word">
         {item.title}
-        {item.due_date ? (
+        {item.due_date && !scam ? (
           <span className="font-normal text-ink/80">
             {" "}
             — by <DateText date={item.due_date} />
@@ -458,7 +464,11 @@ function PleaseCheckItem({ item }: { item: Item }) {
         ) : null}
       </p>
       <p className="mt-1 text-[13px] leading-5 text-ink/75">
-        {notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from."}
+        {scam
+          ? "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know."
+          : notFound
+            ? GROUNDING_COPY.unverified.label + "."
+            : "The date or amount doesn't match the sentence it came from."}
       </p>
       {ev?.quote ? (
         <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
@@ -467,7 +477,16 @@ function PleaseCheckItem({ item }: { item: Item }) {
           </button>
         </blockquote>
       ) : null}
-      {editing ? (
+      {scam ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+            Not a real to-do
+          </Button>
+          <Button size="sm" variant="ghost" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+            It's a real to-do
+          </Button>
+        </div>
+      ) : editing ? (
         <form
           className="mt-3 flex flex-wrap items-center gap-2"
           onSubmit={(e) => {

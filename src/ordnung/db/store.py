@@ -222,7 +222,7 @@ _DOCUMENTS = _Table(
     extras={"file_path": None, "text": None, "extraction": DocumentExtraction},
 )
 _PAGES = _Table("pages", Page)
-_CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint"))
+_CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint", "cancellation_sent"))
 _ITEMS = _Table("items", Item, "itm")
 _SUGGESTIONS = _Table("suggestions", Suggestion, "sug")
 _DRAFTS = _Table("drafts", Draft, "drf", extras={"sent_profile": SentSigner})
@@ -2111,7 +2111,10 @@ ORDER BY rank LIMIT ?
 
 _USAGE_AGGREGATES = (
     "COUNT(*) AS calls, COALESCE(SUM(cache_hit), 0) AS cache_hits, "
-    "COALESCE(SUM(1 - ok), 0) AS errors, COALESCE(SUM(input_tokens), 0) AS input_tokens, "
+    "COALESCE(SUM(1 - ok), 0) AS errors, "
+    # every prompt token counts as "in", those read from or written to the prompt cache too — as a letter's
+    # "How it was read" counts them (walkthrough of phase 2: "2 in" beside the trace's "20k in")
+    "COALESCE(SUM(input_tokens + cache_read_tokens + cache_creation_tokens), 0) AS input_tokens, "
     "COALESCE(SUM(output_tokens), 0) AS output_tokens, COALESCE(SUM(cost_usd), 0.0) AS cost_usd"
 )
 

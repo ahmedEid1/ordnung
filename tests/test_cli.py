@@ -354,6 +354,8 @@ class FakeApi(BaseHTTPRequestHandler):
             self._reply(200, body, "text/event-stream")
         elif self.path == "/api/brief":
             self._json({"date": TODAY, "text": "Written anew.", "source": "llm"})
+        elif self.path == "/api/brief?llm=false":
+            self._json({"date": TODAY, "text": "Two things this week.", "source": "template"})
         elif self.path == "/api/documents":
             self._json({"documents": [_document(status="queued").model_dump(mode="json")], "jobs": []})
         else:
@@ -421,11 +423,14 @@ def test_brief_goes_through_the_running_server(api: FakeServer) -> None:
     result = invoke("brief", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Written anew." in result.output
     assert "written by Claude" in result.output
+    # --no-llm writes the note from the records, never shows the stored one Claude wrote (walkthrough of
+    # phase 2: it printed "written by Claude, checked against your records")
     result = invoke("brief", "--no-llm", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Two things this week." in result.output
-    assert [(m, p) for m, p, _, _ in api.requests if p == "/api/brief"] == [
+    assert "written by Claude" not in result.output
+    assert [(m, p) for m, p, _, _ in api.requests if p.startswith("/api/brief")] == [
         ("POST", "/api/brief"),
-        ("GET", "/api/brief"),
+        ("POST", "/api/brief?llm=false"),
     ]
 
 

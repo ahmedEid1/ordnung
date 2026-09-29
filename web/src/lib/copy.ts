@@ -457,6 +457,7 @@ export const CONTRACT_REGIME_COPY: Record<ContractRegime, RegimeCopy> = {
   stromgvv20: { label: "Basic energy supply", icon: Zap, tone: "contract", citation: "§ 20 StromGVV", hint: "You can cancel any time with two weeks' notice." },
   rent573c: { label: "Tenancy (you as tenant)", icon: House, tone: "contract", citation: "§ 573c BGB", hint: "Notice by the 3rd working day of a month ends the tenancy at the end of the month after next." },
   employment622: { label: "Employment contract", icon: Briefcase, tone: "contract", citation: "§ 622 BGB", hint: "Notice as written in the contract, at least the statutory minimum." },
+  bgb675h: { label: "Current account", icon: Banknote, tone: "contract", citation: "§ 675h BGB", hint: "You can close it any time; a notice period of more than a month is void." },
   as_written: { label: "As written in the contract", icon: ScrollText, tone: "neutral", citation: "Contract terms", hint: "No special rule known — we follow the contract text. Please double-check." },
 };
 

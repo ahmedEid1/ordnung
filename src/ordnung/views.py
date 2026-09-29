@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from typing import Literal
 
 from ordnung import clock
 from ordnung.db.store import Store
@@ -216,9 +217,9 @@ def _upcoming(ledger: Ledger, shown: Iterable[Item]) -> list[Item]:
 def _decisions(ledger: Ledger) -> list[Contract]:
     today = ledger.today
     chosen: list[Contract] = []
-    confirmed = ledger.pending_confirmations()
+    decided = ledger.decided_contracts()  # confirmed, or the person's cancellation was sent
     for contract in ledger.active_contracts():
-        if contract.id in confirmed:
+        if contract.id in decided:
             continue
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
@@ -291,6 +292,9 @@ class _AreaDate:
     day: date  # the day to act (a direct debit's or money coming in: the day it moves)
     what: str
     capped: bool = False  # nothing to send (an appointment, a payment nobody sends by bank): never urgent
+    #: nothing to do at all — a direct debit the sender collects, money coming in: never raises the area
+    #: (walkthrough of phase 2: "Getting around · Needs attention" for the Deutschlandticket's direct debit)
+    quiet: bool = False
 
 
 @dataclass
@@ -333,13 +337,16 @@ def _collect_areas(ledger: Ledger) -> dict[str, _AreaFacts]:
         if is_overdue(item, today):
             area.overdue.append(item)
         elif day is not None and (parse_day(item.due_date) or day) >= today:
-            area.dates.append(_AreaDate(max(day, today), item.title, _nothing_to_send(item)))
+            area.dates.append(
+                _AreaDate(max(day, today), item.title, _nothing_to_send(item), is_collected_or_incoming(item))
+            )
+    decided = ledger.decided_contracts()
     for contract in ledger.active_contracts():
         area = facts.setdefault(contract_area(contract), _AreaFacts())
         area.contracts += 1
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
-        if is_decision(comp) and send is not None:
+        if is_decision(comp) and send is not None and contract.id not in decided:
             area.dates.append(_AreaDate(send, f"Decide on {contract.name}"))
     return facts
 
@@ -348,6 +355,8 @@ _STATUS_RANK = {"ok": 0, "attention": 1, "urgent": 2}
 
 
 def _date_status(entry: _AreaDate, today: date) -> str:
+    if entry.quiet:
+        return "ok"
     days = (entry.day - today).days
     if days <= URGENT_DAYS and not entry.capped:
         return "urgent"
@@ -357,7 +366,8 @@ def _date_status(entry: _AreaDate, today: date) -> str:
 def _area_status(area: Area, facts: _AreaFacts, today: date) -> AreaStatus:
     upcoming = sorted(facts.dates)
     first = upcoming[0] if upcoming else None
-    # overdue is urgent; else the loudest of its dates (a direct debit tomorrow only needs attention)
+    # overdue is urgent; else the loudest of its dates (an appointment tomorrow only needs attention, a
+    # direct debit none)
     levels = ["urgent"] if facts.overdue else [_date_status(entry, today) for entry in upcoming]
     status = max(levels, key=_STATUS_RANK.__getitem__, default="ok")
     if facts.overdue:
@@ -496,6 +506,7 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
         if item.due_date is None or item.status == "dismissed":
             continue
         status = "overdue" if is_overdue(item, ledger.today) else item.status
+        aside = _aside(ledger, item)
         subtitle = _item_subtitle(item, ledger.today)
         # a scam letter's demand is no bill: no amount (it isn't "to pay") and no "send by"
         suspicious = ledger.is_suspicious_item(item)
@@ -517,10 +528,27 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
                     "party_name": ledger.party_name(item.party_id),
                     "amount": None if suspicious else item.amount,
                     "currency": None if suspicious else item.currency,
+                    "direction": item.direction if item.kind == "payment" else None,
+                    "aside": aside,
                 }
             )
         )
     return entries
+
+
+def _aside(ledger: Ledger, item: Item) -> Literal["replaced", "attached", "history"] | None:
+    """Why an open to-do is not one to act on, for the timeline (as ``ItemAside`` for a letter's page): a
+    payment reminder replaced it, the e-mail's attached bill repeats it, or it was history when filed — never
+    "Overdue" there (walkthrough of phase 2: an invoice its reminder replaced showed as overdue)."""
+    if item.status in ("done", "dismissed"):
+        return None
+    if ledger.is_superseded_by_reminder(item):
+        return "replaced"
+    if ledger.is_covered_by_attachment(item):
+        return "attached"
+    if item.recurrence is None and was_history_when_filed(item):
+        return "history"
+    return None
 
 
 def _contract_entry(contract: Contract, key: str, day: str, title: str, ledger: Ledger) -> TimelineEntry:
@@ -919,7 +947,9 @@ def _continuation_label(contract: Contract, comp: ContractComputation) -> str:
     return f"Renews for {months} months" if months != 12 else "Renews for a year"
 
 
-def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes) -> None:
+def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes, decided: set[str]) -> None:
+    """The contract's term bar and, while a cancellation is still to decide, its notice window. A contract in
+    ``decided`` (its cancellation was sent or confirmed) has no window left to act in."""
     comp = ledger.computation(contract)
     today = ledger.today
     begin = parse_day(contract.start_date) or parse_day(contract.concluded_date) or lanes.start
@@ -934,7 +964,7 @@ def _contract_bars(ledger: Ledger, contract: Contract, lanes: _Lanes) -> None:
         label = _continuation_label(contract, comp)
         markers.append(_marker(comp.next_renewal, label, "renewal", area=area, ref=ref))
     send, cancel = parse_day(comp.send_by), parse_day(comp.cancel_by)
-    decision = is_decision(comp) and send is not None and cancel is not None
+    decision = is_decision(comp) and send is not None and cancel is not None and contract.id not in decided
     lanes.bar(
         lane,
         LaneBar.model_validate(
@@ -988,8 +1018,9 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
     for item in ledger.items:
         if item.due_date is not None and item.status != "dismissed" and not ledger.is_suspicious_item(item):
             _route_item(ledger, item, collected)
+    decided = ledger.decided_contracts()  # confirmed, or the person's cancellation was sent
     for contract in ledger.active_contracts():
-        _contract_bars(ledger, contract, collected)
+        _contract_bars(ledger, contract, collected, decided)
     return collected.build()
 
 

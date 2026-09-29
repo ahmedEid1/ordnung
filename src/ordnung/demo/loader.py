@@ -455,8 +455,20 @@ def _note(run: _BuildRun, label: str, exc: BaseException) -> None:
         run.failures.append(f"{label}: {describe_error(exc)}")
 
 
+def _added_on_arrival(store: Store, doc_id: str, received: str | None, index: int) -> None:
+    """Date a library letter as added on the day it arrived (its received date), as a person adds a letter
+    when it comes — not on the day the demo was built: the weekly review's *New in the last 7 days* then
+    lists the week's letters, not the whole sample life (walkthrough of phase 2: "23 letters since Mon 21
+    Sep", each "Added Mon 28 Sep"). The manifest's order stays the order they were added (``index``
+    minutes after 8:00). ``created_at`` is no input of any recorded model call, nor of the demo check."""
+    if received:
+        with store.tx() as conn:
+            stamp = f"{received}T{8 + index // 60:02d}:{index % 60:02d}:00Z"
+            conn.execute("UPDATE documents SET created_at = ? WHERE id = ?", (stamp, doc_id))
+
+
 async def _read_library(ctx: AppContext, plan: _Plan, run: _BuildRun) -> None:
-    for sample in plan.manifest.library:
+    for index, sample in enumerate(plan.manifest.library):
         try:
             document, job = await add_sample(ctx, sample, plan.samples)
             document = await read_sample(ctx, document, job)
@@ -465,6 +477,7 @@ async def _read_library(ctx: AppContext, plan: _Plan, run: _BuildRun) -> None:
             continue
         if document.status == "failed":
             run.failures.append(f"{sample.slug}: {document.error}")
+        _added_on_arrival(ctx.store, document.id, sample.received_date, index)
         run.documents += 1
 
 

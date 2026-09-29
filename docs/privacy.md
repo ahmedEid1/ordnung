@@ -12,7 +12,7 @@ goes where.
 | Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
 | Your watched folder (optional) | wherever you chose | Ordnung only lists and reads it; a file there is copied in and **waits for you** before anything of it goes to Claude, unless you let new arrivals be read at once ([below](#the-watched-folder)) |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
-| Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Ideas review* or *Letters* |
+| Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
@@ -39,7 +39,7 @@ Check your Claude privacy settings before processing sensitive documents.
 |---|---|---|
 | **Read a letter** — text PDFs | the page text of that document, today's date, your country and region, your name, and the names and kinds of organisations you already have (no numbers from other letters) | Sonnet |
 | **Read a letter** — photos/scans | each page image (JPEG, ≤ 1600 px) for transcription, then the transcribed text as above | Sonnet |
-| **Ideas review** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa | Sonnet |
+| **Weekly Ideas** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa | Sonnet |
 | **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name | Haiku |
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) | Sonnet |
 | **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it | Sonnet |
@@ -67,7 +67,7 @@ letters are matched to it. That copy stays after the letter is deleted, *Ask* ca
 
 The numbers reach Claude only when you use *Ask* and it looks them up (the `get_my_numbers` tool, like
 every other ledger tool — it can hand over just one organisation's numbers or one part of the page, and
-a letter you marked *Keep private (no AI)* gives it nothing), when you draft a letter answering one of
+a letter you marked *Keep private — no AI* gives it nothing), when you draft a letter answering one of
 your letters (its reference numbers — on a tax office's letter your Steuernummer or Steuer-ID — go with
 it, see *Letters* above), or when you give another Claude client your ledger with
 `ordnung mcp install --with-ledger` (see below).
@@ -80,7 +80,7 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
 
 ## Your controls
 
-- **Keep private (no AI)** — every upload asks first: switch it on and the document is never sent to
+- **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
   Claude. It is stored, searchable by its text layer, and you can add dates by hand. A letter you
   delete while it still waits to be read is never sent either.
 - **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
@@ -104,7 +104,7 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
   when you made them, deleted letters included, until you delete them.
 - **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
-  add to a sent letter is stored like any upload with *Keep private (no AI)* on: it is never sent to
+  add to a sent letter is stored like any upload with *Keep private — no AI* on: it is never sent to
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
   exception is said when it happens: a file that was already in Ordnung (the same bytes, e.g. you
   first added it to your Inbox) is linked as it is — made private then if it was never given to Claude,
@@ -162,7 +162,7 @@ into — best a folder just for letters. It is off until you choose one.
   upload and read on this computer only (its text layer, for search and the page images; an e-mail is
   named by its subject and sender) — then it waits. *Read these* sends it to Claude like any letter you
   add; *Keep private* keeps it as if you had added it with "Keep private — no AI". Waiting letters are
-  private in every other way too: *Ask*, the weekly review, the daily note and drafting never see them.
+  private in every other way too: *Ask*, *Weekly Ideas*, the daily note and drafting never see them.
   Today tells you they wait (it can't know their dates), and so does the Inbox's count.
 - **"Read new files with Claude straight away"** skips the waiting for files that **arrive** in the
   folder from then on: each one is sent to Claude as soon as it appears. The files that were already in
@@ -326,7 +326,7 @@ then see depends on which server you add:
 | You add | The client can see | Leaves your computer? |
 |---|---|---|
 | **The rules tools** (the default) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
-| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, *My numbers* (your Steuer-ID, social insurance number and the like, as your letters show them), and your profile's name, language and Land. For letters you marked *Keep private (no AI)* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, *My numbers* (your Steuer-ID, social insurance number and the like, as your letters show them), and your profile's name, language and Land. For letters you marked *Keep private — no AI* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
 
 With the full server, **every other tool of that client can see what Claude read from your
 ledger** through the model: another MCP server loaded there (web search, e-mail, files) and, in
