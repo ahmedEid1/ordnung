@@ -4,7 +4,7 @@
  * viewport width are stubbed; the Playwright suite checks the real layout (e2e/layout.spec.ts).
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
@@ -495,6 +495,55 @@ describe("Dialog", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(opener).toHaveFocus();
+  });
+
+  it("never takes focus back from where it moved before its first frame (a quick keyboard user, a list keeping its place)", async () => {
+    // hold the dialog's first frame, like a busy machine does
+    const frames: FrameRequestCallback[] = [];
+    const realRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = (cb) => {
+      frames.push(cb);
+      return frames.length;
+    };
+    try {
+      function Confirm() {
+        const primary = useRef<HTMLButtonElement>(null);
+        return (
+          <Dialog open onClose={() => {}} title="Add 2 letters?" initialFocus={primary} footer={<Button ref={primary}>Add letters</Button>}>
+            <Button>Remove c.pdf</Button>
+          </Dialog>
+        );
+      }
+      renderInRoot(<Confirm />);
+      const dialog = await screen.findByRole("dialog", { name: "Add 2 letters?" });
+      const moved = within(dialog).getByRole("button", { name: "Remove c.pdf" });
+      act(() => moved.focus());
+      act(() => frames.splice(0).forEach((cb) => cb(performance.now())));
+      expect(moved).toHaveFocus();
+    } finally {
+      window.requestAnimationFrame = realRaf;
+    }
+  });
+
+  it("still moves focus to its initial element when nothing moved it first", async () => {
+    const frames: FrameRequestCallback[] = [];
+    const realRaf = window.requestAnimationFrame;
+    window.requestAnimationFrame = (cb) => {
+      frames.push(cb);
+      return frames.length;
+    };
+    try {
+      function Confirm() {
+        const primary = useRef<HTMLButtonElement>(null);
+        return <Dialog open onClose={() => {}} title="Add 2 letters?" initialFocus={primary} footer={<Button ref={primary}>Add letters</Button>} />;
+      }
+      renderInRoot(<Confirm />);
+      const dialog = await screen.findByRole("dialog", { name: "Add 2 letters?" });
+      act(() => frames.splice(0).forEach((cb) => cb(performance.now())));
+      expect(within(dialog).getByRole("button", { name: "Add letters" })).toHaveFocus();
+    } finally {
+      window.requestAnimationFrame = realRaf;
+    }
   });
 
   it("falls back to the page's main when the opener is gone", async () => {

@@ -442,9 +442,15 @@ export function useModal(open: boolean, containerRef: RefObject<HTMLElement | nu
     root?.setAttribute("inert", "");
     modalListeners.forEach((l) => l());
 
+    // Focus moves a frame later (the panel is laid out by then). If it already moved inside the
+    // dialog in that frame (a quick keyboard user, a list keeping its place after a row is removed),
+    // that choice stands: the initial focus must never take it back.
+    const focusAtOpen = document.activeElement;
     const focusFirst = () => {
       const c = containerRef.current;
       if (!c) return;
+      const active = document.activeElement;
+      if (active && active !== focusAtOpen && active !== c && c.contains(active)) return;
       const { initialFocus } = optsRef.current;
       const wanted = typeof initialFocus === "function" ? initialFocus() : initialFocus?.current;
       if (!wanted && c.contains(document.activeElement)) return; // e.g. an autoFocus input
