@@ -40,6 +40,7 @@ from ordnung.models import (
     Area,
     CallNote,
     CancellationSent,
+    ComputationReceipt,
     Contract,
     ContractComputation,
     Document,
@@ -421,6 +422,21 @@ def expiry_class(item: Item, doc: Document | None) -> str:
     return "other"
 
 
+@dataclass(frozen=True)
+class PriceIncreaseWindow:
+    """A statutory special cancellation window a price increase opened
+    (:meth:`Ledger.price_increase_windows`): the letter, the contract it belongs to, the letter's reading,
+    the day the new price applies, and the rules engine's receipt, whose ``due_date`` (``due``) is the last
+    day a cancellation may arrive."""
+
+    letter: Document
+    contract: Contract
+    change: ExtractedChange
+    effective: date
+    due: date
+    receipt: ComputationReceipt
+
+
 class Ledger:
     """A read-only snapshot of the store as of ``today`` (loaded once per trigger run or view)."""
 
@@ -445,6 +461,7 @@ class Ledger:
         self._proofs: dict[str, list[Proof]] | None = None
         self._replies: dict[str, Document | None] = {}
         self._call_notes: list[CallNote] | None = None
+        self._price_windows: list[PriceIncreaseWindow] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -711,6 +728,55 @@ class Ledger:
                 )
                 found[contract.id] = (doc, effective)
         return found
+
+    def price_increase_windows(self) -> list[PriceIncreaseWindow]:
+        """The statutory special cancellation windows still open after a price increase (§ 41 Abs. 5 EnWG,
+        § 57 TKG, § 40 VVG, § 175 Abs. 4 SGB V), one per letter, in the ledger's letter order (cached).
+
+        A letter opens one when its reading is a price increase with an effective date and it belongs to
+        an active contract (:meth:`linked_contract`); the rules engine computes the window
+        (:func:`~ordnung.rules.price_increase_window`, with the letter's own date as the earliest possible
+        arrival), and it counts while its last day has not passed. A health insurer's opens only with a
+        higher Zusatzbeitrag stated as numbers (:func:`zusatzbeitrag_raised`). The ``price_increase_right``
+        Idea and Ask's record read these same windows, so Ask never states a right the Idea withholds.
+        """
+        if self._price_windows is None:
+            self._price_windows = []
+            for doc in self.documents.values():
+                extraction = self.extraction(doc.id)
+                change = extraction.change if extraction else None
+                effective = parse_day(change.effective_date) if change else None
+                if change is None or change.type != "price_increase" or effective is None:
+                    continue
+                contract = self.linked_contract(doc)
+                if contract is None or contract.status != "active":
+                    continue
+                party = self.parties.get(contract.party_id or "")
+                ctx = RuleContext(
+                    today=self.today,
+                    country=self.profile.country,
+                    region=party.region if party else None,
+                    document_date=parse_day(doc.doc_date),
+                )
+                # notified_on=None: the letter's own date is the earliest possible arrival (safety policy)
+                receipt = price_increase_window(
+                    effective,
+                    contract.category,
+                    None,
+                    ctx,
+                    is_basic_supply=contract.is_basic_supply,
+                    party_kind=party.kind if party else None,
+                    postal_buffer_days=postal_buffer(self.profile),
+                )
+                due = parse_day(receipt.due_date)
+                if due is None or due < self.today:
+                    continue
+                if "sgbv_175_4_zb" in receipt.rule_ids and not zusatzbeitrag_raised(change):
+                    continue  # no higher Zusatzbeitrag stated as numbers: no special right claimed
+                self._price_windows.append(
+                    PriceIncreaseWindow(doc, contract, change, effective, due, receipt)
+                )
+        return self._price_windows
 
     def reminder_window(self, kind: str) -> int:
         """How many days ahead an item of ``kind`` becomes an Idea (the longest reminder)."""
@@ -993,38 +1059,12 @@ def zusatzbeitrag_raised(change: ExtractedChange) -> bool:
 
 def price_increase_right(ledger: Ledger) -> list[Suggestion]:
     """Price-increase letters linked to an active contract with a statutory special cancellation
-    window still open (§ 41 Abs. 5 EnWG, § 57 TKG, § 40 VVG, § 175 Abs. 4 SGB V)."""
+    window still open (:meth:`Ledger.price_increase_windows`)."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    for doc in ledger.documents.values():
-        extraction = ledger.extraction(doc.id)
-        change = extraction.change if extraction else None
-        effective = parse_day(change.effective_date) if change else None
-        if change is None or change.type != "price_increase" or effective is None:
-            continue
-        contract = ledger.linked_contract(doc)
-        if contract is None or contract.status != "active":
-            continue
-        party = ledger.parties.get(contract.party_id or "")
-        ctx = RuleContext(
-            today=today,
-            country=ledger.profile.country,
-            region=party.region if party else None,
-            document_date=parse_day(doc.doc_date),
-        )
-        # notified_on=None: the letter's own date is the earliest possible arrival (safety policy)
-        receipt = price_increase_window(
-            effective,
-            contract.category,
-            None,
-            ctx,
-            is_basic_supply=contract.is_basic_supply,
-            party_kind=party.kind if party else None,
-            postal_buffer_days=postal_buffer(ledger.profile),
-        )
-        due = parse_day(receipt.due_date)
-        if due is None or due < today:
-            continue
+    for window in ledger.price_increase_windows():
+        doc, contract, change, receipt = window.letter, window.contract, window.change, window.receipt
+        due = window.due
         old = change.old_amount if change.old_amount is not None else contract.cost_amount
         extra = yearly_extra_cost(old, change.new_amount, change.cost_interval or contract.cost_interval)
         who = ledger.party_name(contract.party_id) or contract.name
@@ -1036,8 +1076,6 @@ def price_increase_right(ledger: Ledger) -> list[Suggestion]:
             f"Special right to cancel after a price increase ({_citations(receipt.rule_ids, _PRICE_RULES)})."
         )
         switch = "sgbv_175_4_zb" in receipt.rule_ids
-        if switch and not zusatzbeitrag_raised(change):
-            continue  # no higher Zusatzbeitrag stated as numbers: no special right claimed
         action = (
             _open("document", doc.id, "Compare insurers")
             if switch

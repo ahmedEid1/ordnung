@@ -264,6 +264,39 @@ def test_price_increase_right_expires_with_the_window_or_the_contract(
     assert ideas(store, "price_increase_right") == []
 
 
+def test_price_increase_windows_are_the_ideas_windows(store: Store, ids: dict[str, str]) -> None:
+    """The Idea and Ask's record read the same windows (``Ledger.price_increase_windows``)."""
+    (window,) = Ledger(store, TODAY).price_increase_windows()
+    assert (window.letter.id, window.contract.id) == (ids["doc_power"], ids["power"])
+    assert (window.effective, window.due) == (date(2026, 11, 1), date(2026, 10, 31))
+    assert (window.receipt.send_by, window.receipt.safe_date) == ("2026-10-26", "2026-10-30")
+    (idea,) = ideas(store, "price_increase_right")
+    assert idea.due_date == window.receipt.send_by
+    # none once the window has passed, the contract ended, or for a contract with no statutory right
+    assert Ledger(store, date(2026, 11, 1)).price_increase_windows() == []
+    store.update_contract(ids["power"], category="other")
+    assert Ledger(store, TODAY).price_increase_windows() == []
+    store.update_contract(ids["power"], category="energy", status="ended")
+    assert Ledger(store, TODAY).price_increase_windows() == []
+
+
+def test_a_health_insurers_window_needs_a_higher_zusatzbeitrag_stated_as_numbers(
+    store: Store, ids: dict[str, str]
+) -> None:
+    store.update_party(ids["stadtwerke"], kind="health_insurer")
+    store.update_contract(ids["power"], category="insurance")
+    assert Ledger(store, TODAY).price_increase_windows() == []  # old and new amounts only: the income rose
+    extraction = store.get_extraction(ids["doc_power"])
+    assert extraction is not None and extraction.change is not None
+    raised = extraction.change.model_copy(update={"unit_price_old": "2,69 %", "unit_price_new": "2,99 %"})
+    store.update_document(ids["doc_power"], extraction=extraction.model_copy(update={"change": raised}))
+    (window,) = Ledger(store, TODAY).price_increase_windows()
+    assert window.due == date(2026, 11, 30) and "sgbv_175_4_zb" in window.receipt.rule_ids
+    assert [idea.action.label for idea in ideas(store, "price_increase_right") if idea.action] == [
+        "Compare insurers"
+    ]
+
+
 def test_ideas_leave_out_german_sentences_copied_from_the_letter() -> None:
     assert english("Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.") is None
     assert english("Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung übergeben.") is None
