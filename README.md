@@ -209,9 +209,10 @@ is no longer held-out.
 the third recording of this condition on the test split (the first scored 98.2 %, the second 100 %;
 after each, a review revised the tool interface, and the last version was checked on the dev split,
 where it scored 96 %, before the test split was recorded again).
-⁴ Extraction prompt version 9 (labels and actions in the person's language, the letter's high-stakes
-kind), recorded once on the test split after a check on the dev split (96 %). Its one new miss is a
-phone photo whose date came out two days early: on the safe side.
+⁴ Extraction prompt version 11: labels and actions in the person's language, the letter's high-stakes
+kind, and three contract and rent terms the ledger could not hold. Each version from 9 to 11 was
+checked on the dev split first, but the test split was recorded for each of them (54, 53 and 54 of
+56), which is iteration on it. Both misses are early, on the safe side.
 
 What the numbers say:
 

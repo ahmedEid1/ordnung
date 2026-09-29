@@ -2,14 +2,14 @@
  "schema": 1,
  "meta": {
   "date": "2026-09-29",
-  "generated_at": "2026-09-29T17:31:07+00:00",
+  "generated_at": "2026-09-29T11:16:08+00:00",
   "model": "sonnet",
   "split": "dev",
   "conditions": [
    "ordnung"
   ],
   "backend": "live",
-  "run_id": "v11-dev",
+  "run_id": "v9-dev",
   "entries": 28,
   "photos": 4,
   "adversarial": 0,
@@ -38,15 +38,15 @@
   "resamples": 2000,
   "evals_version": "1",
   "fingerprints": {
-   "ordnung": "9d4b49ac523efc56"
+   "ordnung": "5f2d8e1efd7d09b4"
   },
   "dataset": {
    "name": "ordnung-deadline-benchmark",
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "ab96bb3",
-  "prompt_note": "Extraction prompt version 11 (2026-09-29) is the one the app uses now. Versions 9 to 11 fix what the UI audit and the Ask benchmark found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats (\"Semesterbeitrag überweisen\", \"94.99 EUR\", \"03.09.2026\"); a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel); and three terms the ledger could not hold: the working day a rent is due on (§ 556b BGB), a cancellation that must arrive by a day of the month (the Deutschlandticket's \"by the 10th\") and a fixed-term job that may be ended by notice after probation. The model also names a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. Each version was checked on the dev split before the test split, but the test split was recorded three times for them, which is iteration on it: read the row with that in mind. Version 9 scored 54 of 56 (dev 24 of 25). Version 10 added the three terms and scored 53 of 56 (dev 23 of 25): it left the delivery date out of fines served by Zustellung (\"zugestellt am\") on both splits, so their objection deadlines were counted from an earlier day (versions 8 and 9 filled it in 6 of 7 such items, version 10 in 3 of 6). Version 11 says so explicitly, was checked on the dev split (24 of 25) and scored 54 of 56. In its 91 readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). Its two misses are early, on the safe side: a questionnaire's \"10 Arbeitstagen (Montag bis Freitag)\" read as working days that include Saturdays, so its return date came out two days early (version 9 made the same slip on the letter's photo); and the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date. No benchmark letter states one of the three new terms; they are measured on the demo and in the Ask benchmark. Recording cost $10.66 (API-equivalent): version 9 $3.56, version 10 $3.51, version 11 $3.59. Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts."
+  "commit": "9fb025b",
+  "prompt_note": "Extraction prompt version 9 (2026-09-29) fixes what the UI audit found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats (\"Semesterbeitrag überweisen\", \"94.99 EUR\", \"03.09.2026\"), and a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel). It also lets the model name a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. It was checked on the dev split first (24 of 25 due dates, 96.0 %, as with the old prompt) and then run once on the test split, with no change after seeing it. In the 91 new readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). On the test split Ordnung gets 54 of 56 due dates right, one fewer than the old prompt after the fix. The new error is a phone photo whose \"10 Arbeitstagen (Montag bis Freitag)\" was read as working days that include Saturdays (`werktage`), so its return date came out two days early: a reading error, on the safe side; the PDF of the same letter is right. The other is the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date, two days early. Recording cost $3.56 (API-equivalent: dev $1.11, test $2.46). Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts."
  },
  "metrics": {
   "ordnung": {
@@ -102,16 +102,6 @@
     "docs": 23
    },
    "reading_error_rate": {
-    "value": 0.04,
-    "ci": [
-     0.0,
-     0.125
-    ],
-    "k": 1.0,
-    "n": 25.0,
-    "docs": 23
-   },
-   "computing_error_rate": {
     "value": 0.0,
     "ci": [
      0.0,
@@ -121,12 +111,22 @@
     "n": 25.0,
     "docs": 23
    },
+   "computing_error_rate": {
+    "value": 0.04,
+    "ci": [
+     0.0,
+     0.125
+    ],
+    "k": 1.0,
+    "n": 25.0,
+    "docs": 23
+   },
    "taxonomy": {
     "n": 25,
     "correct": 24,
     "wrong": 1,
-    "reading": 1,
-    "computing": 0,
+    "reading": 0,
+    "computing": 1,
     "declined": 0,
     "missed": 0,
     "late": 0,
@@ -136,9 +136,7 @@
     "flagged_wrong": 0,
     "region_ignored": 0,
     "lucky_reading": 0,
-    "reading_fields": {
-     "posting_date": 1
-    }
+    "reading_fields": {}
    },
    "by_family": {
     "appointment": {
@@ -352,23 +350,23 @@
      "docs": 28
     },
     "references_recall": {
+     "value": 0.9772727272727273,
+     "ci": [
+      0.925,
+      1.0
+     ],
+     "k": 43.0,
+     "n": 44.0,
+     "docs": 28
+    },
+    "references_precision": {
      "value": 1.0,
      "ci": [
       0.8620237953250198,
       1.0
      ],
-     "k": 44.0,
-     "n": 44.0,
-     "docs": 28
-    },
-    "references_precision": {
-     "value": 0.8979591836734694,
-     "ci": [
-      0.7735849056603774,
-      1.0
-     ],
-     "k": 44.0,
-     "n": 49.0,
+     "k": 43.0,
+     "n": 43.0,
      "docs": 28
     },
     "amounts_recall": {
@@ -382,13 +380,13 @@
      "docs": 20
     },
     "amounts_precision": {
-     "value": 0.4528301886792453,
+     "value": 0.4444444444444444,
      "ci": [
-      0.34424948770491803,
-      0.6217060810810814
+      0.3437383395522388,
+      0.5918845663265307
      ],
      "k": 24.0,
-     "n": 53.0,
+     "n": 54.0,
      "docs": 22
     },
     "item_recall": {
@@ -402,14 +400,14 @@
      "docs": 24
     },
     "item_precision": {
-     "value": 0.9285714285714286,
+     "value": 1.0,
      "ci": [
-      0.8234768907563026,
+      0.8388748419471808,
       1.0
      ],
      "k": 26.0,
-     "n": 28.0,
-     "docs": 25
+     "n": 26.0,
+     "docs": 24
     },
     "contract_dates": {
      "value": 1.0,
@@ -425,13 +423,13 @@
    "grounding": {
     "items": 32,
     "shares": {
-     "verified": 0.84375,
-     "model_read": 0.15625,
+     "verified": 0.875,
+     "model_read": 0.125,
      "unverified": 0.0
     },
     "counts": {
-     "verified": 27,
-     "model_read": 5,
+     "verified": 28,
+     "model_read": 4,
      "unverified": 0
     },
     "false_grounded": {
@@ -491,24 +489,24 @@
     }
    },
    "latency_ms": {
-    "mean": 13222.607142857143,
-    "p50": 11226.5,
-    "p95": 23085.799999999996,
-    "total": 370233.0
+    "mean": 13183.357142857143,
+    "p50": 10461.0,
+    "p95": 23492.89999999999,
+    "total": 369134.0
    },
    "cost_usd": {
-    "mean": 0.03842766428571428,
-    "p50": 0.0329664,
-    "p95": 0.06844393999999998,
-    "total": 1.0759746
+    "mean": 0.039472349999999996,
+    "p50": 0.033893599999999996,
+    "p95": 0.07350799,
+    "total": 1.1052258
    },
    "tokens": {
-    "input": 82,
-    "output": 60481,
-    "cache_read": 313743,
-    "cache_creation": 102063,
-    "total": 476369,
-    "mean_per_document": 17013.178571428572
+    "input": 78,
+    "output": 61274,
+    "cache_read": 255349,
+    "cache_creation": 110315,
+    "total": 427016,
+    "mean_per_document": 15250.57142857143
    },
    "calls": 32,
    "failed": 0,
@@ -531,15 +529,15 @@
    "outcome": "wrong",
    "direction": "early",
    "days_off": -7,
-   "cause": "reading",
-   "reading_diffs": [
-    "posting_date"
-   ],
+   "cause": "computing",
+   "reading_diffs": [],
    "rule": "Einspruch against a tax administrative act: one month after Bekanntgabe (§ 355 Abs. 1 AO).",
    "truth_spec": "1 month after deemed_delivery, ao, posted on 2026-03-30",
-   "predicted_spec": "1 month after deemed_delivery, de_admin_post, nature objection",
+   "predicted_spec": "1 month after deemed_delivery, de_admin_post, anchor date 2026-03-30, nature objection",
    "explanation": "Letter dated Thu 26 Mar 2026 counts as delivered on Mon 30 Mar; one month later is Thu 30 Apr 2026.",
-   "notes": [],
+   "notes": [
+    "The letter mentions Mon 30 Mar 2026 as the posting day, later than its date (Thu 26 Mar 2026). If that is when it was really posted, the deadline may be a few days later — we count from the letter's…"
+   ],
    "quote": "Frist: ein Monat nach Bekanntgabe dieses Bescheids.",
    "failed": null
   }
@@ -613,7 +611,9 @@
        }
       ],
       "contract": null,
-      "warnings": [],
+      "warnings": [
+       "The document text says today is 2026-04-29 in the context but the system note says 2026-09-29; the appointment date of 12 May 2026 may already have passed, so check whether it still applies."
+      ],
       "signals": [],
       "hidden_text": false,
       "tools": null,
@@ -623,18 +623,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2257,
-        "cache_read_tokens": 14100,
-        "cache_creation_tokens": 7459,
-        "cost_usd": 0.055234000000000005,
-        "duration_ms": 14319,
-        "wall_ms": 15532
+        "input_tokens": 2,
+        "output_tokens": 1170,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 9268,
+        "cost_usd": 0.048776,
+        "duration_ms": 7424,
+        "wall_ms": 9333
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-appointment-A1",
@@ -716,13 +716,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.055234000000000005,
-      "latency_ms": 14319,
+      "cost_usd": 0.048776,
+      "latency_ms": 7424,
       "tokens": {
-       "input": 4,
-       "output": 2257,
-       "cache_read": 14100,
-       "cache_creation": 7459
+       "input": 2,
+       "output": 1170,
+       "cache_read": 0,
+       "cache_creation": 9268
       },
       "calls": 1,
       "failed": null,
@@ -801,40 +801,6 @@
         "notes": [
          "This was read by AI from a photo or scan — compare the date with the paper letter."
         ]
-       },
-       {
-        "kind": "payment",
-        "title": "Passport fee",
-        "due_date": "2026-05-12",
-        "time": null,
-        "amount": 70.0,
-        "quote": "Bitte bringen Sie Ihren bisherigen Ausweis, ein aktuelles biometrisches Passfoto und die Gebühr von 70,00 € (Kartenzahlung möglich) mit.",
-        "confidence": "medium",
-        "spec": {
-         "type": "fixed",
-         "date": "2026-05-12",
-         "time": null,
-         "anchor": null,
-         "anchor_date": null,
-         "amount": null,
-         "unit": null,
-         "delivery_rule": "none",
-         "shift_rule": "none",
-         "nature": "payment",
-         "legal_basis": null,
-         "text": "am Dienstag, 12.05.2026"
-        },
-        "grounding": "model_read",
-        "value_consistent": true,
-        "needs_check": false,
-        "rule_ids": [
-         "date_as_written",
-         "bgb_675s"
-        ],
-        "explanation": "The date given is Tue 12 May 2026.",
-        "notes": [
-         "This was read by AI from a photo or scan — compare the date with the paper letter."
-        ]
        }
       ],
       "contract": null,
@@ -862,17 +828,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1471,
-        "cache_read_tokens": 3984,
-        "cache_creation_tokens": 6129,
-        "cost_usd": 0.0400268,
-        "duration_ms": 8456,
-        "wall_ms": 9548
+        "output_tokens": 1308,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 9271,
+        "cost_usd": 0.050168,
+        "duration_ms": 7634,
+        "wall_ms": 9409
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-appointment-A1-photo",
@@ -909,7 +875,7 @@
       "required": 1,
       "matched_required": 1,
       "true_positives": 1,
-      "false_positives": 1,
+      "false_positives": 0,
       "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
@@ -935,7 +901,7 @@
        0
       ],
       "grounding": {
-       "model_read": 2
+       "model_read": 1
       },
       "false_grounded": [
        0,
@@ -954,13 +920,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.06446879999999999,
-      "latency_ms": 17996,
+      "cost_usd": 0.07461,
+      "latency_ms": 17174,
       "tokens": {
        "input": 4,
-       "output": 2070,
-       "cache_read": 3984,
-       "cache_creation": 10741
+       "output": 1907,
+       "cache_read": 0,
+       "cache_creation": 13883
       },
       "calls": 2,
       "failed": null,
@@ -1006,7 +972,7 @@
       "items": [
        {
         "kind": "appointment",
-        "title": "MRI knee appointment",
+        "title": "MRI right knee",
         "due_date": "2026-02-03",
         "time": "14:15",
         "amount": null,
@@ -1030,7 +996,8 @@
         "value_consistent": true,
         "needs_check": false,
         "rule_ids": [
-         "date_as_written"
+         "date_as_written",
+         "authority_deadline"
         ],
         "explanation": "The date given is Tue 3 Feb 2026.",
         "notes": []
@@ -1048,17 +1015,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1164,
-        "cache_read_tokens": 3984,
-        "cache_creation_tokens": 6136,
-        "cost_usd": 0.0369848,
-        "duration_ms": 7216,
-        "wall_ms": 8533
+        "output_tokens": 1153,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 9278,
+        "cost_usd": 0.048645999999999995,
+        "duration_ms": 7340,
+        "wall_ms": 9123
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-appointment-B1",
@@ -1140,13 +1107,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0369848,
-      "latency_ms": 7216,
+      "cost_usd": 0.048645999999999995,
+      "latency_ms": 7340,
       "tokens": {
        "input": 2,
-       "output": 1164,
-       "cache_read": 3984,
-       "cache_creation": 6136
+       "output": 1153,
+       "cache_read": 0,
+       "cache_creation": 9278
       },
       "calls": 1,
       "failed": null,
@@ -1185,7 +1152,37 @@
        34.9
       ],
       "remedy_type": "none",
-      "items": [],
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Monthly membership fee",
+        "due_date": null,
+        "time": null,
+        "amount": 34.9,
+        "quote": "Die Beiträge buchen wir monatlich im Voraus per Lastschrift ab.",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "other",
+         "legal_basis": null,
+         "text": "Die Beiträge buchen wir monatlich im Voraus per Lastschrift ab."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       }
+      ],
       "contract": {
        "current_term_end": "2027-02-28",
        "cancel_by": "2027-01-31"
@@ -1201,17 +1198,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1554,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1828,
-        "cost_usd": 0.0245304,
-        "duration_ms": 9971,
-        "wall_ms": 11051
+        "output_tokens": 1814,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1826,
+        "cost_usd": 0.0269536,
+        "duration_ms": 10136,
+        "wall_ms": 11339
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-A1",
@@ -1249,7 +1246,9 @@
        2,
        2
       ],
-      "grounding": {},
+      "grounding": {
+       "verified": 1
+      },
       "false_grounded": [
        0,
        0
@@ -1267,13 +1266,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0245304,
-      "latency_ms": 9971,
+      "cost_usd": 0.0269536,
+      "latency_ms": 10136,
       "tokens": {
        "input": 2,
-       "output": 1554,
-       "cache_read": 8372,
-       "cache_creation": 1828
+       "output": 1814,
+       "cache_read": 7528,
+       "cache_creation": 1826
       },
       "calls": 1,
       "failed": null,
@@ -1327,18 +1326,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2910,
-        "cache_read_tokens": 18606,
-        "cache_creation_tokens": 3684,
-        "cost_usd": 0.0475652,
-        "duration_ms": 15621,
-        "wall_ms": 16697
+        "input_tokens": 2,
+        "output_tokens": 1275,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1864,
+        "cost_usd": 0.0217156,
+        "duration_ms": 7452,
+        "wall_ms": 8605
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-contract_confirmation-B1",
@@ -1394,13 +1393,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0475652,
-      "latency_ms": 15621,
+      "cost_usd": 0.0217156,
+      "latency_ms": 7452,
       "tokens": {
-       "input": 4,
-       "output": 2910,
-       "cache_read": 18606,
-       "cache_creation": 3684
+       "input": 2,
+       "output": 1275,
+       "cache_read": 7528,
+       "cache_creation": 1864
       },
       "calls": 1,
       "failed": null,
@@ -1440,8 +1439,7 @@
       "document_date": "2026-05-04",
       "references": [
        "KD 1188204",
-       "BV-7790114",
-       "AG Musterfeld HRB 9921"
+       "BV-7790114"
       ],
       "amounts": [
        64.98
@@ -1450,7 +1448,7 @@
       "items": [
        {
         "kind": "payment",
-        "title": "Pay outstanding invoice",
+        "title": "Pay open invoice",
         "due_date": "2026-05-15",
         "time": null,
         "amount": 64.98,
@@ -1483,8 +1481,7 @@
       ],
       "contract": null,
       "warnings": [
-       "The payment date of 15 May 2026 has already passed; pay soon or check whether you already paid.",
-       "The invoice number is used as the payment reference because the letter prints no explicit reference; double-check it."
+       "The payment deadline of 15 May 2026 has already passed as of today; pay promptly if you haven't, or check that payment was made."
       ],
       "signals": [],
       "hidden_text": false,
@@ -1496,17 +1493,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1285,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1777,
-        "cost_usd": 0.0216364,
-        "duration_ms": 7967,
-        "wall_ms": 8993
+        "output_tokens": 1388,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1781,
+        "cost_usd": 0.0225136,
+        "duration_ms": 8121,
+        "wall_ms": 9247
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-A1",
@@ -1558,7 +1555,7 @@
       ],
       "references_precision": [
        2,
-       3
+       2
       ],
       "amounts_precision": [
        1,
@@ -1588,13 +1585,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0216364,
-      "latency_ms": 7967,
+      "cost_usd": 0.0225136,
+      "latency_ms": 8121,
       "tokens": {
        "input": 2,
-       "output": 1285,
-       "cache_read": 8372,
-       "cache_creation": 1777
+       "output": 1388,
+       "cache_read": 7528,
+       "cache_creation": 1781
       },
       "calls": 1,
       "failed": null,
@@ -1644,7 +1641,7 @@
       "items": [
        {
         "kind": "payment",
-        "title": "Pay subscription fee and reminder fee",
+        "title": "Pay subscription fee with reminder fee",
         "due_date": "2025-06-30",
         "time": null,
         "amount": 61.9,
@@ -1676,9 +1673,7 @@
        }
       ],
       "contract": null,
-      "warnings": [
-       "The payment deadline of 30 June 2025 may already have passed, so check whether the amount was paid and contact the publisher if unsure."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": false,
       "tools": null,
@@ -1688,18 +1683,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2955,
-        "cache_read_tokens": 18533,
-        "cache_creation_tokens": 3527,
-        "cost_usd": 0.0473726,
-        "duration_ms": 16319,
-        "wall_ms": 17368
+        "input_tokens": 2,
+        "output_tokens": 1286,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1787,
+        "cost_usd": 0.021517599999999998,
+        "duration_ms": 7819,
+        "wall_ms": 9013
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1",
@@ -1781,13 +1776,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0473726,
-      "latency_ms": 16319,
+      "cost_usd": 0.021517599999999998,
+      "latency_ms": 7819,
       "tokens": {
-       "input": 4,
-       "output": 2955,
-       "cache_read": 18533,
-       "cache_creation": 3527
+       "input": 2,
+       "output": 1286,
+       "cache_read": 7528,
+       "cache_creation": 1787
       },
       "calls": 1,
       "failed": null,
@@ -1841,7 +1836,7 @@
         "due_date": "2025-06-30",
         "time": null,
         "amount": 61.9,
-        "quote": "Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte Konto.",
+        "quote": "Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte",
         "confidence": "medium",
         "spec": {
          "type": "fixed",
@@ -1872,8 +1867,8 @@
       ],
       "contract": null,
       "warnings": [
-       "The letter gives no payment reference (Verwendungszweck); use your subscription number AB-5541078.",
-       "Check that you have not already paid and that the sender matches your subscription before transferring money."
+       "The letter does not state the payment reference; the subscription number is suggested as reference, so check the invoice if unsure.",
+       "Check that you actually subscribed to this magazine and have not already paid before transferring money."
       ],
       "signals": [],
       "hidden_text": false,
@@ -1898,17 +1893,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1323,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1792,
-        "cost_usd": 0.0220764,
-        "duration_ms": 8120,
-        "wall_ms": 9306
+        "output_tokens": 1468,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1790,
+        "cost_usd": 0.023349599999999998,
+        "duration_ms": 8605,
+        "wall_ms": 9682
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-dunning_fixed-B1-photo",
@@ -1990,13 +1985,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0483264,
-      "latency_ms": 18465,
+      "cost_usd": 0.049599599999999994,
+      "latency_ms": 18950,
       "tokens": {
        "input": 4,
-       "output": 2102,
-       "cache_read": 8372,
-       "cache_creation": 6406
+       "output": 2247,
+       "cache_read": 7528,
+       "cache_creation": 6404
       },
       "calls": 2,
       "failed": null,
@@ -2065,7 +2060,7 @@
          "shift_rule": "auto",
          "nature": "payment",
          "legal_basis": null,
-         "text": "within 30 days of the date of this letter"
+         "text": "Please pay within 30 days of the date of this letter"
         },
         "grounding": "verified",
         "value_consistent": true,
@@ -2091,18 +2086,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 2852,
-        "cache_read_tokens": 18457,
-        "cache_creation_tokens": 3334,
-        "cost_usd": 0.0455554,
-        "duration_ms": 15586,
-        "wall_ms": 16567
+        "input_tokens": 2,
+        "output_tokens": 1244,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1714,
+        "cost_usd": 0.020805600000000004,
+        "duration_ms": 7249,
+        "wall_ms": 8256
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-english_letter-A1",
@@ -2184,13 +2179,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0455554,
-      "latency_ms": 15586,
+      "cost_usd": 0.020805600000000004,
+      "latency_ms": 7249,
       "tokens": {
-       "input": 4,
-       "output": 2852,
-       "cache_read": 18457,
-       "cache_creation": 3334
+       "input": 2,
+       "output": 1244,
+       "cache_read": 7528,
+       "cache_creation": 1714
       },
       "calls": 1,
       "failed": null,
@@ -2254,7 +2249,7 @@
          "shift_rule": "auto",
          "nature": "declaration",
          "legal_basis": null,
-         "text": "07/08/2026"
+         "text": "by 07/08/2026"
         },
         "grounding": "verified",
         "value_consistent": false,
@@ -2271,7 +2266,7 @@
       ],
       "contract": null,
       "warnings": [
-       "The deadline 07/08/2026 is ambiguous (7 August or 8 July); it was read as 7 August, so confirm with the institute.",
+       "The date 07/08/2026 could be read as 7 August or 8 July; it was taken as 7 August, so confirm with the institute.",
        "1 date could not be confirmed against the letter's text."
       ],
       "signals": [],
@@ -2284,17 +2279,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1322,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1599,
-        "cost_usd": 0.0212944,
-        "duration_ms": 8958,
-        "wall_ms": 10003
+        "output_tokens": 1487,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1600,
+        "cost_usd": 0.0227796,
+        "duration_ms": 9379,
+        "wall_ms": 10490
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-english_letter-B1",
@@ -2379,13 +2374,13 @@
        "scam_false_alarm": false,
        "ambiguous_handled": true
       },
-      "cost_usd": 0.0212944,
-      "latency_ms": 8958,
+      "cost_usd": 0.0227796,
+      "latency_ms": 9379,
       "tokens": {
        "input": 2,
-       "output": 1322,
-       "cache_read": 8372,
-       "cache_creation": 1599
+       "output": 1487,
+       "cache_read": 7528,
+       "cache_creation": 1600
       },
       "calls": 1,
       "failed": null,
@@ -2443,7 +2438,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File objection (Einspruch) against fine notice",
+        "title": "File objection against fine notice",
         "due_date": "2026-10-01",
         "time": null,
         "amount": null,
@@ -2481,7 +2476,7 @@
         "due_date": null,
         "time": null,
         "amount": 98.5,
-        "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf",
+        "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
         "confidence": null,
         "spec": {
          "type": "none",
@@ -2516,18 +2511,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 4561,
-        "cache_read_tokens": 19332,
-        "cache_creation_tokens": 5275,
-        "cost_usd": 0.07058439999999999,
-        "duration_ms": 24462,
-        "wall_ms": 25466
+        "input_tokens": 2,
+        "output_tokens": 2619,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 2588,
+        "cost_usd": 0.0380516,
+        "duration_ms": 14935,
+        "wall_ms": 16075
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-A1",
@@ -2634,13 +2629,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.07058439999999999,
-      "latency_ms": 24462,
+      "cost_usd": 0.0380516,
+      "latency_ms": 14935,
       "tokens": {
-       "input": 4,
-       "output": 4561,
-       "cache_read": 19332,
-       "cache_creation": 5275
+       "input": 2,
+       "output": 2619,
+       "cache_read": 7528,
+       "cache_creation": 2588
       },
       "calls": 1,
       "failed": null,
@@ -2690,13 +2685,15 @@
       ],
       "amounts": [
        98.5,
-       70.0
+       70.0,
+       25.0,
+       3.5
       ],
       "remedy_type": "einspruch",
       "items": [
        {
         "kind": "deadline",
-        "title": "Object to the fine (Einspruch)",
+        "title": "File objection to fine notice",
         "due_date": "2026-10-05",
         "time": null,
         "amount": null,
@@ -2730,7 +2727,7 @@
        },
        {
         "kind": "payment",
-        "title": "Pay the fine",
+        "title": "Pay fine of €98.50",
         "due_date": null,
         "time": null,
         "amount": 98.5,
@@ -2760,7 +2757,7 @@
       ],
       "contract": null,
       "warnings": [
-       "Check the payee IBAN against the authority's official details before paying."
+       "The delivery stamp shows 19 September 2026, which starts the short objection period, so act promptly."
       ],
       "signals": [],
       "hidden_text": false,
@@ -2772,17 +2769,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 2177,
-        "cache_read_tokens": 8372,
+        "output_tokens": 2715,
+        "cache_read_tokens": 7528,
         "cache_creation_tokens": 2581,
-        "cost_usd": 0.0337724,
-        "duration_ms": 12382,
-        "wall_ms": 13508
+        "cost_usd": 0.0389836,
+        "duration_ms": 15503,
+        "wall_ms": 16710
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-fine_bussgeld-B1",
@@ -2863,7 +2860,7 @@
       ],
       "amounts_precision": [
        2,
-       2
+       4
       ],
       "contract_dates": [
        0,
@@ -2889,12 +2886,12 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0337724,
-      "latency_ms": 12382,
+      "cost_usd": 0.0389836,
+      "latency_ms": 15503,
       "tokens": {
        "input": 2,
-       "output": 2177,
-       "cache_read": 8372,
+       "output": 2715,
+       "cache_read": 7528,
        "cache_creation": 2581
       },
       "calls": 1,
@@ -2935,15 +2932,13 @@
       "document_date": "2026-03-20",
       "references": [
        "2026-0318",
-       "K-20417",
-       "DE 311 208 774",
-       "Amtsgericht Musterstadt HRB 22817"
+       "K-20417"
       ],
       "amounts": [
        1214.99,
        1021.0,
        193.99,
-       374.0
+       68.0
       ],
       "remedy_type": "none",
       "items": [
@@ -2994,17 +2989,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 2625,
-        "cache_read_tokens": 18603,
-        "cache_creation_tokens": 3078,
-        "cost_usd": 0.0422906,
-        "duration_ms": 16410,
-        "wall_ms": 17541
+        "output_tokens": 3454,
+        "cache_read_tokens": 16915,
+        "cache_creation_tokens": 3785,
+        "cost_usd": 0.053071,
+        "duration_ms": 18924,
+        "wall_ms": 19982
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1",
@@ -3056,7 +3051,7 @@
       ],
       "references_precision": [
        2,
-       4
+       2
       ],
       "amounts_precision": [
        1,
@@ -3086,13 +3081,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0422906,
-      "latency_ms": 16410,
+      "cost_usd": 0.053071,
+      "latency_ms": 18924,
       "tokens": {
        "input": 4,
-       "output": 2625,
-       "cache_read": 18603,
-       "cache_creation": 3078
+       "output": 3454,
+       "cache_read": 16915,
+       "cache_creation": 3785
       },
       "calls": 1,
       "failed": null,
@@ -3132,14 +3127,13 @@
       "document_date": "2026-03-20",
       "references": [
        "2026-0318",
-       "K-20417",
-       "DE 311 208 774",
-       "Amtsgericht Musterstadt HRB 22817"
+       "K-20417"
       ],
       "amounts": [
        1214.99,
        1021.0,
        193.99,
+       68.0,
        374.0
       ],
       "remedy_type": "none",
@@ -3205,18 +3199,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 4,
-        "output_tokens": 3350,
-        "cache_read_tokens": 18615,
-        "cache_creation_tokens": 3827,
-        "cost_usd": 0.052539,
-        "duration_ms": 18132,
-        "wall_ms": 19179
+        "input_tokens": 2,
+        "output_tokens": 1716,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1865,
+        "cost_usd": 0.026129600000000003,
+        "duration_ms": 9910,
+        "wall_ms": 10994
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-invoice_relative-A1-photo",
@@ -3268,11 +3262,11 @@
       ],
       "references_precision": [
        2,
-       4
+       2
       ],
       "amounts_precision": [
        1,
-       4
+       5
       ],
       "contract_dates": [
        0,
@@ -3298,13 +3292,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.079229,
-      "latency_ms": 28058,
+      "cost_usd": 0.0528196,
+      "latency_ms": 19836,
       "tokens": {
-       "input": 6,
-       "output": 4173,
-       "cache_read": 18615,
-       "cache_creation": 8441
+       "input": 4,
+       "output": 2539,
+       "cache_read": 7528,
+       "cache_creation": 6479
       },
       "calls": 2,
       "failed": null,
@@ -3398,17 +3392,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1339,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1878,
-        "cost_usd": 0.0225804,
-        "duration_ms": 7890,
-        "wall_ms": 9142
+        "output_tokens": 1317,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1876,
+        "cost_usd": 0.0221836,
+        "duration_ms": 7966,
+        "wall_ms": 9022
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-invoice_relative-B1",
@@ -3490,13 +3484,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0225804,
-      "latency_ms": 7890,
+      "cost_usd": 0.0221836,
+      "latency_ms": 7966,
       "tokens": {
        "input": 2,
-       "output": 1339,
-       "cache_read": 8372,
-       "cache_creation": 1878
+       "output": 1317,
+       "cache_read": 7528,
+       "cache_creation": 1876
       },
       "calls": 1,
       "failed": null,
@@ -3544,7 +3538,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File court action against the leash order (optional)",
+        "title": "File court action against leash order (optional)",
         "due_date": "2025-06-20",
         "time": null,
         "amount": null,
@@ -3580,7 +3574,7 @@
        },
        {
         "kind": "task",
-        "title": "Keep your dog on a leash of max. two metres",
+        "title": "Keep dog on a leash of max. 2 metres",
         "due_date": null,
         "time": null,
         "amount": null,
@@ -3622,17 +3616,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1937,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 2137,
-        "cost_usd": 0.0295964,
-        "duration_ms": 10503,
-        "wall_ms": 11637
+        "output_tokens": 1908,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 2139,
+        "cost_usd": 0.0291456,
+        "duration_ms": 10786,
+        "wall_ms": 11961
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-municipal_decision-A1",
@@ -3714,13 +3708,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0295964,
-      "latency_ms": 10503,
+      "cost_usd": 0.0291456,
+      "latency_ms": 10786,
       "tokens": {
        "input": 2,
-       "output": 1937,
-       "cache_read": 8372,
-       "cache_creation": 2137
+       "output": 1908,
+       "cache_read": 7528,
+       "cache_creation": 2139
       },
       "calls": 1,
       "failed": null,
@@ -3766,7 +3760,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "File objection (Widerspruch) against refusal",
+        "title": "Objection against rejection",
         "due_date": "2026-01-07",
         "time": null,
         "amount": null,
@@ -3813,17 +3807,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1471,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 2162,
-        "cost_usd": 0.0250364,
-        "duration_ms": 8623,
-        "wall_ms": 9738
+        "output_tokens": 1341,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 2160,
+        "cost_usd": 0.0235596,
+        "duration_ms": 7633,
+        "wall_ms": 8817
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-municipal_decision-B1",
@@ -3905,13 +3899,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0250364,
-      "latency_ms": 8623,
+      "cost_usd": 0.0235596,
+      "latency_ms": 7633,
       "tokens": {
        "input": 2,
-       "output": 1471,
-       "cache_read": 8372,
-       "cache_creation": 2162
+       "output": 1341,
+       "cache_read": 7528,
+       "cache_creation": 2160
       },
       "calls": 1,
       "failed": null,
@@ -3961,42 +3955,7 @@
        13.9
       ],
       "remedy_type": "none",
-      "items": [
-       {
-        "kind": "payment",
-        "title": "New monthly advance payment",
-        "due_date": "2026-01-01",
-        "time": null,
-        "amount": 81.0,
-        "quote": "Ihr monatlicher Abschlag   72,00 € → 81,00 €",
-        "confidence": "high",
-        "spec": {
-         "type": "fixed",
-         "date": "2026-01-01",
-         "time": null,
-         "anchor": null,
-         "anchor_date": null,
-         "amount": null,
-         "unit": null,
-         "delivery_rule": "none",
-         "shift_rule": "auto",
-         "nature": "payment",
-         "legal_basis": null,
-         "text": "zum 01.01.2026"
-        },
-        "grounding": "verified",
-        "value_consistent": true,
-        "needs_check": false,
-        "rule_ids": [
-         "date_as_written",
-         "bgb_675s"
-        ],
-        "explanation": "The date given is Thu 1 Jan 2026.",
-        "notes": [
-         "Thu 1 Jan 2026 is not a working day. If this deadline was set by an authority or is a payment or declaration deadline, it may legally move to Fri 2 Jan 2026; we keep the date as written to be safe."
-        ]
-       }
-      ],
+      "items": [],
       "contract": {
        "current_term_end": null,
        "cancel_by": null
@@ -4012,17 +3971,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1645,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1828,
-        "cost_usd": 0.0254404,
-        "duration_ms": 9177,
-        "wall_ms": 10512
+        "output_tokens": 1517,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1826,
+        "cost_usd": 0.0239836,
+        "duration_ms": 8432,
+        "wall_ms": 9634
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-price_increase-A1",
@@ -4059,7 +4018,7 @@
       "required": 0,
       "matched_required": 0,
       "true_positives": 0,
-      "false_positives": 1,
+      "false_positives": 0,
       "kind_ok": true,
       "sender_ok": true,
       "document_date_ok": true,
@@ -4084,9 +4043,7 @@
        0,
        0
       ],
-      "grounding": {
-       "verified": 1
-      },
+      "grounding": {},
       "false_grounded": [
        0,
        0
@@ -4104,13 +4061,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0254404,
-      "latency_ms": 9177,
+      "cost_usd": 0.0239836,
+      "latency_ms": 8432,
       "tokens": {
        "input": 2,
-       "output": 1645,
-       "cache_read": 8372,
-       "cache_creation": 1828
+       "output": 1517,
+       "cache_read": 7528,
+       "cache_creation": 1826
       },
       "calls": 1,
       "failed": null,
@@ -4172,17 +4129,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1402,
-        "cache_read_tokens": 8372,
+        "output_tokens": 1503,
+        "cache_read_tokens": 7528,
         "cache_creation_tokens": 1790,
-        "cost_usd": 0.0228584,
-        "duration_ms": 7914,
-        "wall_ms": 9185
+        "cost_usd": 0.0236996,
+        "duration_ms": 8493,
+        "wall_ms": 9698
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-price_increase-B1",
@@ -4262,12 +4219,12 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0228584,
-      "latency_ms": 7914,
+      "cost_usd": 0.0236996,
+      "latency_ms": 8493,
       "tokens": {
        "input": 2,
-       "output": 1402,
-       "cache_read": 8372,
+       "output": 1503,
+       "cache_read": 7528,
        "cache_creation": 1790
       },
       "calls": 1,
@@ -4315,7 +4272,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "Submit item list, receipts and photos",
+        "title": "Send claim documents",
         "due_date": "2026-04-10",
         "time": null,
         "amount": null,
@@ -4351,9 +4308,7 @@
        }
       ],
       "contract": null,
-      "warnings": [
-       "Today's date is later than the letter date, so the deadline may already have passed; contact the insurer promptly."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": false,
       "tools": null,
@@ -4364,17 +4319,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1375,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1795,
-        "cost_usd": 0.022608399999999997,
-        "duration_ms": 9480,
-        "wall_ms": 10591
+        "output_tokens": 1385,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 1797,
+        "cost_usd": 0.0225476,
+        "duration_ms": 8731,
+        "wall_ms": 9996
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-relative_business_days-A1",
@@ -4456,13 +4411,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.022608399999999997,
-      "latency_ms": 9480,
+      "cost_usd": 0.0225476,
+      "latency_ms": 8731,
       "tokens": {
        "input": 2,
-       "output": 1375,
-       "cache_read": 8372,
-       "cache_creation": 1795
+       "output": 1385,
+       "cache_read": 7528,
+       "cache_creation": 1797
       },
       "calls": 1,
       "failed": null,
@@ -4501,8 +4456,7 @@
       "delivery_scope": null,
       "document_date": "2025-12-22",
       "references": [
-       "0877-03",
-       "Lindenweg 12, WE 3"
+       "0877-03"
       ],
       "amounts": [
        12.01,
@@ -4516,7 +4470,7 @@
         "due_date": "2026-01-05",
         "time": null,
         "amount": null,
-        "quote": "Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach Briefdatum mit, an welchem der vorgeschlagenen Termine der Zugang zu Ihrer Wohnung möglich ist.",
+        "quote": "Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach",
         "confidence": "high",
         "spec": {
          "type": "relative",
@@ -4543,6 +4497,35 @@
         ],
         "explanation": "7 business days after the letter's date (Mon 22 Dec 2025) is Mon 5 Jan 2026.",
         "notes": []
+       },
+       {
+        "kind": "appointment",
+        "title": "Meter reading and smoke alarm servicing (proposed dates)",
+        "due_date": null,
+        "time": null,
+        "amount": null,
+        "quote": "Vorgeschlagene Termine: 12.01., 14.01. oder 16.01.2026, jeweils",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "appointment",
+         "legal_basis": null,
+         "text": "12.01., 14.01. oder 16.01.2026, jeweils zwischen 8 und 12 Uhr"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
        }
       ],
       "contract": null,
@@ -4557,17 +4540,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 2808,
-        "cache_read_tokens": 18560,
-        "cache_creation_tokens": 3438,
-        "cost_usd": 0.045552,
-        "duration_ms": 15338,
-        "wall_ms": 16374
+        "output_tokens": 3217,
+        "cache_read_tokens": 16872,
+        "cache_creation_tokens": 3645,
+        "cost_usd": 0.0501324,
+        "duration_ms": 18153,
+        "wall_ms": 19531
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-relative_business_days-B1",
@@ -4610,7 +4593,7 @@
       "document_date_ok": true,
       "remedy_ok": true,
       "references": [
-       2,
+       1,
        2
       ],
       "amounts": [
@@ -4618,8 +4601,8 @@
        0
       ],
       "references_precision": [
-       2,
-       2
+       1,
+       1
       ],
       "amounts_precision": [
        0,
@@ -4630,7 +4613,7 @@
        0
       ],
       "grounding": {
-       "verified": 1
+       "verified": 2
       },
       "false_grounded": [
        0,
@@ -4649,13 +4632,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.045552,
-      "latency_ms": 15338,
+      "cost_usd": 0.0501324,
+      "latency_ms": 18153,
       "tokens": {
        "input": 4,
-       "output": 2808,
-       "cache_read": 18560,
-       "cache_creation": 3438
+       "output": 3217,
+       "cache_read": 16872,
+       "cache_creation": 3645
       },
       "calls": 1,
       "failed": null,
@@ -4702,7 +4685,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "Object to the rejection",
+        "title": "Object to the refusal (Widerspruch)",
         "due_date": "2025-05-19",
         "time": null,
         "amount": null,
@@ -4748,18 +4731,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 2,
-        "output_tokens": 1607,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1974,
-        "cost_usd": 0.0256444,
-        "duration_ms": 9507,
-        "wall_ms": 10613
+        "input_tokens": 4,
+        "output_tokens": 3336,
+        "cache_read_tokens": 17032,
+        "cache_creation_tokens": 3868,
+        "cost_usd": 0.052246400000000005,
+        "duration_ms": 18263,
+        "wall_ms": 20125
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-social_decision-A1",
@@ -4841,13 +4824,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0256444,
-      "latency_ms": 9507,
+      "cost_usd": 0.052246400000000005,
+      "latency_ms": 18263,
       "tokens": {
-       "input": 2,
-       "output": 1607,
-       "cache_read": 8372,
-       "cache_creation": 1974
+       "input": 4,
+       "output": 3336,
+       "cache_read": 17032,
+       "cache_creation": 3868
       },
       "calls": 1,
       "failed": null,
@@ -4894,7 +4877,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "Object to the refusal",
+        "title": "Object to the rejection (Widerspruch)",
         "due_date": "2025-05-19",
         "time": null,
         "amount": null,
@@ -4932,9 +4915,7 @@
        }
       ],
       "contract": null,
-      "warnings": [
-       "The letter is dated 14 April 2025, so the objection period may already have expired or be close to it; check the deadline shown."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": false,
       "tools": null,
@@ -4950,25 +4931,25 @@
         "cache_creation_tokens": 4616,
         "cost_usd": 0.027668,
         "duration_ms": 10409,
-        "wall_ms": 1
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 2,
-        "output_tokens": 1674,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 1972,
-        "cost_usd": 0.026306399999999997,
-        "duration_ms": 10121,
-        "wall_ms": 11284
+        "input_tokens": 4,
+        "output_tokens": 3490,
+        "cache_read_tokens": 17026,
+        "cache_creation_tokens": 3961,
+        "cost_usd": 0.0541572,
+        "duration_ms": 19014,
+        "wall_ms": 21249
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-social_decision-A1-photo",
@@ -5050,13 +5031,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0539744,
-      "latency_ms": 20530,
+      "cost_usd": 0.0818252,
+      "latency_ms": 29423,
       "tokens": {
-       "input": 4,
-       "output": 2594,
-       "cache_read": 8372,
-       "cache_creation": 6588
+       "input": 6,
+       "output": 4410,
+       "cache_read": 17026,
+       "cache_creation": 8577
       },
       "calls": 2,
       "failed": null,
@@ -5128,7 +5109,7 @@
          "delivery_rule": "none",
          "shift_rule": "auto",
          "nature": "declaration",
-         "legal_basis": null,
+         "legal_basis": "§§ 60, 66 SGB I",
          "text": "bis zum 05.11.2025"
         },
         "grounding": "verified",
@@ -5143,7 +5124,7 @@
        },
        {
         "kind": "deadline",
-        "title": "Objection against the notice",
+        "title": "Objection deadline (Widerspruch)",
         "due_date": "2025-11-20",
         "time": null,
         "amount": null,
@@ -5190,17 +5171,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1693,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 2056,
-        "cost_usd": 0.0268324,
-        "duration_ms": 9410,
-        "wall_ms": 10751
+        "output_tokens": 2001,
+        "cache_read_tokens": 7528,
+        "cache_creation_tokens": 2054,
+        "cost_usd": 0.0297356,
+        "duration_ms": 10993,
+        "wall_ms": 12341
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-social_decision-B1",
@@ -5305,13 +5286,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0268324,
-      "latency_ms": 9410,
+      "cost_usd": 0.0297356,
+      "latency_ms": 10993,
       "tokens": {
        "input": 2,
-       "output": 1693,
-       "cache_read": 8372,
-       "cache_creation": 2056
+       "output": 2001,
+       "cache_read": 7528,
+       "cache_creation": 2054
       },
       "calls": 1,
       "failed": null,
@@ -5356,15 +5337,13 @@
       "amounts": [
        888.0,
        8214.0,
-       9102.0,
-       6.0,
-       1260.0
+       9102.0
       ],
       "remedy_type": "einspruch",
       "items": [
        {
         "kind": "deadline",
-        "title": "Objection deadline (optional)",
+        "title": "Objection deadline (Einspruch)",
         "due_date": "2026-06-05",
         "time": null,
         "amount": null,
@@ -5381,7 +5360,7 @@
          "delivery_rule": "de_admin_post",
          "shift_rule": "auto",
          "nature": "objection",
-         "legal_basis": "§ 122 AO",
+         "legal_basis": null,
          "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat."
         },
         "grounding": "verified",
@@ -5417,7 +5396,7 @@
          "unit": null,
          "delivery_rule": "none",
          "shift_rule": "auto",
-         "nature": "other",
+         "nature": "payment",
          "legal_basis": null,
          "text": "Der Betrag wird auf Ihr Konto DE21 4405 0199 0123 4567 89 überwiesen."
         },
@@ -5430,9 +5409,7 @@
        }
       ],
       "contract": null,
-      "warnings": [
-       "The refund IBAN in the letter differs from the tax office's own bank IBAN, which is normal, but check the refund account is yours."
-      ],
+      "warnings": [],
       "signals": [],
       "hidden_text": false,
       "tools": null,
@@ -5442,18 +5419,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 2,
-        "output_tokens": 1911,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 2843,
-        "cost_usd": 0.0321604,
-        "duration_ms": 10871,
-        "wall_ms": 12083
+        "input_tokens": 4,
+        "output_tokens": 3726,
+        "cache_read_tokens": 17895,
+        "cache_creation_tokens": 5088,
+        "cost_usd": 0.061199,
+        "duration_ms": 19552,
+        "wall_ms": 20692
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-tax_assessment-A1",
@@ -5509,7 +5486,7 @@
       ],
       "amounts_precision": [
        1,
-       5
+       3
       ],
       "contract_dates": [
        0,
@@ -5535,13 +5512,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0321604,
-      "latency_ms": 10871,
+      "cost_usd": 0.061199,
+      "latency_ms": 19552,
       "tokens": {
-       "input": 2,
-       "output": 1911,
-       "cache_read": 8372,
-       "cache_creation": 2843
+       "input": 4,
+       "output": 3726,
+       "cache_read": 17895,
+       "cache_creation": 5088
       },
       "calls": 1,
       "failed": null,
@@ -5597,7 +5574,7 @@
       "items": [
        {
         "kind": "payment",
-        "title": "Pay income tax balance",
+        "title": "Pay additional income tax 2025",
         "due_date": "2026-04-30",
         "time": null,
         "amount": 634.0,
@@ -5629,7 +5606,7 @@
        },
        {
         "kind": "deadline",
-        "title": "Objection deadline (Einspruch)",
+        "title": "Objection deadline for tax assessment",
         "due_date": "2026-04-30",
         "time": null,
         "amount": null,
@@ -5640,14 +5617,14 @@
          "date": null,
          "time": null,
          "anchor": "deemed_delivery",
-         "anchor_date": null,
+         "anchor_date": "2026-03-30",
          "amount": 1,
          "unit": "months",
          "delivery_rule": "de_admin_post",
          "shift_rule": "auto",
          "nature": "objection",
          "legal_basis": null,
-         "text": "Frist: ein Monat nach Bekanntgabe dieses Bescheids."
+         "text": "ein Monat nach Bekanntgabe dieses Bescheids"
         },
         "grounding": "verified",
         "value_consistent": true,
@@ -5661,12 +5638,14 @@
          "postal_buffer"
         ],
         "explanation": "Letter dated Thu 26 Mar 2026 counts as delivered on Mon 30 Mar; one month later is Thu 30 Apr 2026.",
-        "notes": []
+        "notes": [
+         "The letter mentions Mon 30 Mar 2026 as the posting day, later than its date (Thu 26 Mar 2026). If that is when it was really posted, the deadline may be a few days later — we count from the letter's date to be safe."
+        ]
        }
       ],
       "contract": null,
       "warnings": [
-       "The payment deadline of 30 April 2026 has already passed as of today's date; check whether the €634.00 was paid, and if not, pay promptly and contact the tax office about possible late fees."
+       "The assessment date (26 March 2026) differs from the stated posting date (30 March 2026); keep the envelope as proof of receipt."
       ],
       "signals": [],
       "hidden_text": false,
@@ -5677,18 +5656,18 @@
         "backend": "claude",
         "ok": true,
         "error": null,
-        "input_tokens": 2,
-        "output_tokens": 2053,
-        "cache_read_tokens": 8372,
-        "cache_creation_tokens": 2093,
-        "cost_usd": 0.0305804,
-        "duration_ms": 11582,
-        "wall_ms": 12820
+        "input_tokens": 4,
+        "output_tokens": 4796,
+        "cache_read_tokens": 17147,
+        "cache_creation_tokens": 5016,
+        "cost_usd": 0.07146140000000001,
+        "duration_ms": 25462,
+        "wall_ms": 26801
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-tax_assessment-B1",
@@ -5710,10 +5689,8 @@
         "outcome": "wrong",
         "direction": "early",
         "days_off": -7,
-        "cause": "reading",
-        "reading_diffs": [
-         "posting_date"
-        ],
+        "cause": "computing",
+        "reading_diffs": [],
         "flagged": false,
         "confidence": "high",
         "grounding": "verified",
@@ -5795,13 +5772,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0305804,
-      "latency_ms": 11582,
+      "cost_usd": 0.07146140000000001,
+      "latency_ms": 25462,
       "tokens": {
-       "input": 2,
-       "output": 2053,
-       "cache_read": 8372,
-       "cache_creation": 2093
+       "input": 4,
+       "output": 4796,
+       "cache_read": 17147,
+       "cache_creation": 5016
       },
       "calls": 1,
       "failed": null,
@@ -5849,7 +5826,7 @@
       "items": [
        {
         "kind": "deadline",
-        "title": "Objection period for amended 2022 assessment",
+        "title": "Objection deadline (optional)",
         "due_date": "2025-01-20",
         "time": null,
         "amount": null,
@@ -5896,17 +5873,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 2,
-        "output_tokens": 1613,
-        "cache_read_tokens": 8372,
+        "output_tokens": 1526,
+        "cache_read_tokens": 7528,
         "cache_creation_tokens": 1946,
-        "cost_usd": 0.0255924,
-        "duration_ms": 9008,
-        "wall_ms": 10210
+        "cost_usd": 0.0245536,
+        "duration_ms": 8795,
+        "wall_ms": 9817
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-year_boundary-A1",
@@ -5988,12 +5965,12 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.0255924,
-      "latency_ms": 9008,
+      "cost_usd": 0.0245536,
+      "latency_ms": 8795,
       "tokens": {
        "input": 2,
-       "output": 1613,
-       "cache_read": 8372,
+       "output": 1526,
+       "cache_read": 7528,
        "cache_creation": 1946
       },
       "calls": 1,
@@ -6090,17 +6067,17 @@
         "ok": true,
         "error": null,
         "input_tokens": 4,
-        "output_tokens": 3026,
-        "cache_read_tokens": 18645,
-        "cache_creation_tokens": 3669,
-        "cost_usd": 0.048673,
-        "duration_ms": 16670,
-        "wall_ms": 17729
+        "output_tokens": 2993,
+        "cache_read_tokens": 16958,
+        "cache_creation_tokens": 3695,
+        "cost_usd": 0.0481096,
+        "duration_ms": 16210,
+        "wall_ms": 17302
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "9d4b49ac523efc56"
+      "fingerprint": "5f2d8e1efd7d09b4"
      },
      "score": {
       "entry_id": "dev-year_boundary-B1",
@@ -6182,13 +6159,13 @@
       "adversarial": {
        "scam_false_alarm": false
       },
-      "cost_usd": 0.048673,
-      "latency_ms": 16670,
+      "cost_usd": 0.0481096,
+      "latency_ms": 16210,
       "tokens": {
        "input": 4,
-       "output": 3026,
-       "cache_read": 18645,
-       "cache_creation": 3669
+       "output": 2993,
+       "cache_read": 16958,
+       "cache_creation": 3695
       },
       "calls": 1,
       "failed": null,
