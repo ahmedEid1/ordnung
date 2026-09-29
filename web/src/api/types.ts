@@ -85,10 +85,29 @@ export const DOCUMENT_KINDS = [
   "certificate",
   "personal",
   "other",
+  // high-stakes letters: Ordnung's rules assign these from the reading (the person may too)
+  "court_payment_order",
+  "enforcement_order",
+  "dismissal",
+  "landlord_notice",
+  "rent_increase",
+  "operating_costs",
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
-export const DOCUMENT_STATUSES = ["queued", "processing", "processed", "needs_review", "failed"] as const;
+/** Letters whose deadlines the rules engine handles specially (they carry a "get advice" card). */
+export const HIGH_STAKES_KINDS = [
+  "court_payment_order",
+  "enforcement_order",
+  "dismissal",
+  "landlord_notice",
+  "rent_increase",
+  "operating_costs",
+] as const satisfies readonly DocumentKind[];
+export type HighStakesKind = (typeof HIGH_STAKES_KINDS)[number];
+
+/** `held`: from the watched folder (or attached to an e-mail from it), waiting for "Read these". */
+export const DOCUMENT_STATUSES = ["queued", "processing", "processed", "needs_review", "failed", "held"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const DIRECTIONS = ["incoming", "outgoing", "note"] as const;
@@ -158,8 +177,22 @@ export type SuggestionKind = (typeof SUGGESTION_KINDS)[number];
 export const SUGGESTION_STATUSES = ["new", "accepted", "dismissed", "snoozed", "done", "expired"] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
 
-export const DRAFT_KINDS = ["cancellation", "objection", "general_reply"] as const;
+export const DRAFT_KINDS = [
+  "cancellation",
+  "objection",
+  "general_reply",
+  "withdrawal",
+  "extension_request",
+  "payment_plan",
+  "defect_notice",
+  "data_access",
+  "receipts_inspection",
+  "deposit_return",
+  "address_change",
+] as const;
 export type DraftKind = (typeof DRAFT_KINDS)[number];
+/** Letters written entirely from fixed templates, filled with {@link LetterDetails}. */
+export type TemplateDraftKind = Exclude<DraftKind, "cancellation" | "objection" | "general_reply">;
 
 export const CONTRACT_CATEGORIES = [
   "mobile",
@@ -206,6 +239,7 @@ export const CONTRACT_REGIMES = [
   "stromgvv20",
   "rent573c",
   "employment622",
+  "bgb675h",
   "as_written",
 ] as const;
 export type ContractRegime = (typeof CONTRACT_REGIMES)[number];
@@ -232,6 +266,24 @@ export const SEND_CHANNELS = [
   "portal",
 ] as const;
 export type SendChannelKind = (typeof SEND_CHANNELS)[number];
+
+/** What a proof of a sent letter is (`drafts.proof.PROOF_KINDS` says what each one shows). */
+export const PROOF_KINDS = [
+  "posting_receipt",
+  "delivery_record",
+  "return_receipt",
+  "fax_report",
+  "sent_email",
+  "cancel_confirmation",
+  "other",
+] as const;
+export type ProofKind = (typeof PROOF_KINDS)[number];
+
+/** Where a "Waiting for" entry comes from, and how it stands (`secretary.waiting`). */
+export const WAITING_SOURCES = ["letter", "money", "call"] as const;
+export type WaitingSource = (typeof WAITING_SOURCES)[number];
+export const WAITING_STATUSES = ["waiting", "overdue", "answered", "closed"] as const;
+export type WaitingStatus = (typeof WAITING_STATUSES)[number];
 
 export const SEND_FORMS = ["text_form", "written_form", "any"] as const;
 export type SendForm = (typeof SEND_FORMS)[number];
@@ -315,6 +367,7 @@ export type EnumContract = [
   Same<SuggestionKind, Schemas["Suggestion"]["kind"]>,
   Same<SuggestionStatus, Schemas["Suggestion"]["status"]>,
   Same<DraftKind, Schemas["Draft"]["kind"]>,
+  Same<HighStakesKind, Schemas["LetterAdvice"]["kind"]>,
   Same<ContractCategory, Schemas["Contract"]["category"]>,
   Same<CostInterval, NonNullable<Schemas["Contract"]["cost_interval"]>>,
   Same<NoticeUnit, NonNullable<Schemas["Contract"]["notice_unit"]>>,
@@ -329,6 +382,9 @@ export type EnumContract = [
   Same<DraftStatus, Schemas["Draft"]["status"]>,
   Same<SendChannelKind, Schemas["SendChannel"]["channel"]>,
   Same<SendForm, Schemas["SendGuidance"]["form"]>,
+  Same<ProofKind, Schemas["Proof"]["kind"]>,
+  Same<WaitingSource, Schemas["WaitingEntry"]["source"]>,
+  Same<WaitingStatus, Schemas["WaitingEntry"]["status"]>,
   Same<TimelineType, Schemas["TimelineEntry"]["type"]>,
   Same<AreaStatusLevel, Schemas["AreaStatus"]["status"]>,
   Same<LaneBarKind, Schemas["LaneBar"]["kind"]>,
@@ -375,6 +431,8 @@ export type ContractComputation = Schemas["ContractComputation"];
 export type Contract = Schemas["Contract"];
 /** A to-do or date ("To-dos & dates" in the UI). */
 export type Item = Schemas["Item"];
+/** A to-do as `GET /api/items` lists it: with `aside`, why it is not one to act on (null: it is). */
+export type ListedItem = Schemas["ListedItem"];
 export type SuggestionRef = Schemas["SuggestionRef"];
 export type SuggestionAction = Schemas["SuggestionAction"];
 /** An "Idea" from the secretary. */
@@ -382,12 +440,18 @@ export type Suggestion = Schemas["Suggestion"];
 export type SendChannel = Schemas["SendChannel"];
 export type SendGuidance = Schemas["SendGuidance"];
 export type DraftCheck = Schemas["DraftCheck"];
+/** The facts a template letter needs (`POST /api/drafts` `details`); every field is optional here. */
+export type LetterDetails = Schemas["LetterDetails"];
 /** A letter Ordnung drafted for the user ("Letters"). */
 export type Draft = Schemas["Draft"];
+/** One piece of proof of a sent letter; its file is a private outgoing document (never read by Claude). */
+export type Proof = Schemas["Proof"];
+/** A phone call the person noted (Gesprächsnotiz); a promise with a day is waited for. */
+export type CallNote = Schemas["CallNote"];
 export type Activity = Schemas["Activity"];
 export type LLMCallRecord = Schemas["LLMCallRecord"];
 export type Job = Schemas["Job"];
-export type ChatMessage = Schemas["ChatMessage"];
+export type ChatMessage = Schemas["ThreadMessage"];
 
 // ------------------------------------------------------------------------------------------------
 // Profile & settings
@@ -409,13 +473,36 @@ export type DashboardStats = Schemas["DashboardStats"];
 export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 export type DocumentDetail = Schemas["DocumentDetail"];
+/** A GiroCode (EPC QR) for one payment — or why there is none — worked out on read by the server. */
+export type GiroCode = DocumentDetail["girocodes"][number];
+export type GiroCodeReady = Schemas["GiroCodeReady"];
+export type GiroCodeBlocked = Schemas["GiroCodeBlocked"];
+/** The transfer details a GiroCode carries, as the person compares them with the letter. */
+export type TransferValues = Schemas["TransferValues"];
+/** The "get advice" card of a high-stakes letter (court order, dismissal, tenancy …), worked out on read. */
+export type LetterAdvice = Schemas["LetterAdvice"];
+export type AdviceFact = Schemas["AdviceFact"];
+export type HelpLink = Schemas["HelpLink"];
 export type PartyDetail = Schemas["PartyDetail"];
+/** An open to-do of a party that is not one to act on (replaced by a reminder, history, scam signs). */
+export type ItemAside = Schemas["ItemAside"];
 export type CaseDetail = Schemas["CaseDetail"];
 /** Model use for one purpose (calls, cache hits, errors, tokens, cost). */
 export type PurposeUsage = Schemas["PurposeUsage"];
 /** @deprecated use {@link PurposeUsage} */
 export type UsagePurposeStats = PurposeUsage;
 export type UsageStats = Schemas["UsageStats"];
+/** "How it was read": a letter's reading shown (`run`), its steps (`spans`) and every kept reading (`runs`). */
+export type DocumentTrace = Schemas["DocumentTrace"];
+/** One reading of a letter, summed up (when, how long, model calls, tokens, cost, how it ended). */
+export type TraceRun = Schemas["TraceRun"];
+/** One step of a reading, depth-first in display order; `attributes` follow `ordnung/trace/facts.py`. */
+export type TraceSpan = Schemas["TraceSpan"];
+export type SpanKind = Schemas["TraceSpan"]["kind"];
+/** One thing two readings decided differently (a date, a quote's grounding, a model call's outcome …). */
+export type TraceChange = Schemas["TraceChange"];
+export type TraceComparison = Schemas["TraceComparison"];
+export type TraceExport = Schemas["TraceExport"];
 export type ClaudeStatus = Schemas["ClaudeStatus"];
 /** One `ordnung doctor` check (listed by `GET /api/health?probe=1`). */
 export type DoctorCheck = Schemas["DoctorCheck"];
@@ -428,14 +515,60 @@ export type Health = Schemas["Health"];
 export type PublicHealth = Schemas["PublicHealth"];
 /** An entry of the legal rules catalog ("How dates are computed"). */
 export type RuleInfo = Schemas["RuleInfo"];
-export type TimelineMarker = Schemas["TimelineMarker"];
-export type LaneBar = Schemas["LaneBar"];
-/** A "life lane" (Residence, Contracts, Tax, Study, …) on the year-ahead timeline. */
-export type Lane = Schemas["Lane"];
+/**
+ * A date on the life lanes. The API sends each one's life `area` and the to-do or contract it
+ * stands for (`ref`); both are optional here because the web app also builds lanes itself
+ * (`contractLanes`).
+ */
+export type TimelineMarker = Omit<Schemas["TimelineMarker"], "area" | "ref"> & { area?: Area | null; ref?: RefLink | null };
+/**
+ * A bar on the life lanes. `open_end` marks a bar with no end date (an open-ended contract, or
+ * "cancellable any time" after a minimum term): its `end` is only where the chart stops drawing
+ * it, so it is never shown as a date. `area` is the life area of what the bar stands for (the
+ * Contracts lane holds contracts of every area). The API sends both; they are optional here
+ * because the web app also builds lanes itself (`contractLanes`).
+ */
+export type LaneBar = Omit<Schemas["LaneBar"], "area" | "open_end" | "markers"> & {
+  area?: Area | null;
+  open_end?: boolean;
+  markers: TimelineMarker[];
+};
+/** A "life lane" (Residence permit, Contracts, Tax, Study, …) on the year-ahead timeline. */
+export type Lane = Omit<Schemas["Lane"], "bars" | "markers"> & { bars: LaneBar[]; markers: TimelineMarker[] };
 export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
-/** A letter waiting in the demo's "New mail" tray. */
+/** A letter waiting in the demo's "New mail" tray; `received_date` is the day it arrived (the postmark). */
 export type MailTrayItem = Schemas["MailTrayItem"];
+/** `GET /api/numbers`: About you, identity documents, a call sheet per organisation, open cases. */
+export type MyNumbers = Schemas["MyNumbers"];
+/** One number, sorted by whose it is, with its check-digit test and the letter that shows it. */
+export type MyNumber = Schemas["MyNumber"];
+export type IdentityDocument = Schemas["IdentityDocument"];
+export type CallSheet = Schemas["CallSheet"];
+export type OpenCase = Schemas["OpenCase"];
+export type LetterRef = Schemas["LetterRef"];
+/** `GET /api/week`: the weekly session's seven steps and "All clear until …". */
+export type WeeklySession = Schemas["WeeklySession"];
+export type WeekStep = Schemas["WeekStep"];
+export type WeekEntry = Schemas["WeekEntry"];
+/** An e-mail's attachment and what became of it (`DocumentDetail.attachments`). */
+export type EmailAttachment = Schemas["EmailAttachment"];
+export type AttachmentOutcome = EmailAttachment["outcome"];
+/** `GET /api/folder`: the watched folder, its state, the letters waiting and the last files it brought in. */
+export type FolderStatus = Schemas["FolderStatus"];
+export type FolderState = FolderStatus["state"];
+export type FolderPickup = Schemas["FolderPickup"];
+/** A letter's tracking number as the server read it (S10 check digit, or twelve digits unchecked). */
+export type TrackingInfo = Schemas["TrackingInfo"];
+/** A proof with its file and, in code-written words, what it shows and what it does not. */
+export type ProofEntry = Schemas["ProofEntry"];
+export type ProofEvent = Schemas["ProofEvent"];
+/** `GET /api/drafts/{id}/proof`: tracking number, proofs, timeline, what's missing, what it waits for. */
+export type ProofOverview = Schemas["ProofOverview"];
+/** A sent letter a document is proof of (`DocumentDetail.proof_of`). */
+export type ProofLink = Schemas["ProofLink"];
+/** Something the person is owed — a reply, money or a callback ("Waiting for"). */
+export type WaitingEntry = Schemas["WaitingEntry"];
 
 // ------------------------------------------------------------------------------------------------
 // Responses that are not models.py view models (defined next to their routes)
@@ -456,6 +589,33 @@ export type CalendarExportResult = Schemas["CalendarExportResult"];
 export type ReviewStarted = Schemas["ReviewStarted"];
 /** `DELETE /api/data` ("Delete everything"): what was removed, and entries Ordnung left alone. */
 export type DataDeleted = Schemas["DataDeleted"];
+/** `POST /api/documents/held/read` · `…/keep-private`: the letters answered for, jobs queued, ids no longer waiting. */
+export type HeldResult = Schemas["HeldResult"];
+/** `GET /api/reminders/desktop`: the notification tool, today's text in each mode, start at login. */
+export type DesktopReminders = Schemas["DesktopReminders"];
+export type NotificationText = Schemas["NotificationText"];
+/** Whether `ordnung autostart` starts Ordnung at login, and for which data folder. */
+export type AutostartInfo = Schemas["AutostartInfo"];
+/** `POST /api/reminders/desktop/test`. */
+export type DesktopTestResult = Schemas["DesktopTestResult"];
+/** The two modes a desktop notification can be shown in (the setting also has `off`). */
+export type DesktopMode = NonNullable<Schemas["DesktopTestRequest"]["mode"]>;
+/** `GET /api/backup`: what an encrypted backup made now would hold. */
+export type BackupInfo = Schemas["BackupInfo"];
+/** `GET /api/calendar/sync`: calendar sync (CalDAV) — available here, the connected calendar, the last sync. */
+export type CalendarSyncStatus = Schemas["CalendarSyncStatus"];
+export type CalendarSyncReport = Schemas["CalendarSyncReport"];
+/** One event exactly as calendar sync would send it. */
+export type CalendarEventPreview = Schemas["CalendarEventPreview"];
+export type CalendarSyncPreview = Schemas["CalendarSyncPreview"];
+/** What the calendar gets: dates and alarms only (`discreet`), or the calendar file's events (`full`). */
+export type CalendarSyncMode = CalendarSyncStatus["mode"];
+/** `PUT /api/calendar/sync` (`password: null` keeps the saved app password). */
+export type CalendarSyncConnect = Schemas["CalendarSyncConnect"];
+/** `POST /api/calendar/sync/discover`: where to look for calendars, with which account. */
+export type CalendarSyncFind = Schemas["CalendarSyncFind"];
+/** A calendar that takes events, as discovery found it. */
+export type CalendarChoice = Schemas["CalendarChoice"];
 
 // ------------------------------------------------------------------------------------------------
 // Requests
@@ -472,13 +632,19 @@ export type SuggestionPatch = Schemas["SuggestionPatch"];
 export type DraftCreate = Schemas["DraftCreate"];
 export type DraftPatch = Schemas["DraftPatch"];
 export type MarkSentRequest = Schemas["MarkSentRequest"];
+export type TrackingUpdate = Schemas["TrackingUpdate"];
+export type ProofPatch = Schemas["ProofPatch"];
+export type CallNoteCreate = Schemas["CallNoteCreate"];
+export type CallNotePatch = Schemas["CallNotePatch"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
+export type HeldRequest = Schemas["HeldRequest"];
 
 export type DocumentListParams = ApiQuery<"/api/documents", "get">;
 export type ItemListParams = ApiQuery<"/api/items", "get">;
 export type ContractListParams = ApiQuery<"/api/contracts", "get">;
 export type SuggestionListParams = ApiQuery<"/api/suggestions", "get">;
+export type CallListParams = ApiQuery<"/api/calls", "get">;
 
 // ------------------------------------------------------------------------------------------------
 // Streams: POST /api/ask and GET /api/events (their payloads are OpenAPI components too)

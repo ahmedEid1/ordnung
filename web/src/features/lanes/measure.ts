@@ -41,5 +41,7 @@ export function textMeasurer(font: string): TextMeasure {
 
 /** Bar labels: 12px medium Inter. */
 export const measureBarLabel = textMeasurer(`500 12px "Inter Variable", ui-sans-serif, system-ui, sans-serif`);
-/** Marker captions: 11px semibold Inter. */
-export const measureCaption = textMeasurer(`600 11px "Inter Variable", ui-sans-serif, system-ui, sans-serif`);
+/** The lane label's second line ("Send by 8 Oct"): 12px regular Inter. */
+export const measureLine = textMeasurer(`400 12px "Inter Variable", ui-sans-serif, system-ui, sans-serif`);
+/** Marker captions and the axis's year labels: 12px semibold Inter. */
+export const measureCaption = textMeasurer(`600 12px "Inter Variable", ui-sans-serif, system-ui, sans-serif`);

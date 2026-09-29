@@ -58,19 +58,22 @@ export interface CardHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>, "t
   level?: 2 | 3 | 4;
 }
 
-/** Title row of a card: optional icon, title, description and actions. */
+/**
+ * Title row of a card: optional icon, title, description and actions. A lone title is centred on
+ * the icon; with a description the icon lines up with the title's first line.
+ */
 export function CardHeader({ title, description, icon: Icon, action, level = 3, className, ...rest }: CardHeaderProps) {
   const H = `h${level}` as "h2" | "h3" | "h4";
   return (
-    <div className={cn("mb-3 flex items-start gap-3", className)} {...rest}>
+    <div className={cn("mb-3 flex gap-3", description ? "items-start" : "items-center", className)} {...rest}>
       {Icon ? (
-        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted">
+        <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-muted", description && "mt-0.5")}>
           <Icon className="size-4" aria-hidden />
         </span>
       ) : null}
       <div className="min-w-0 flex-1">
         <H className="text-[15px] font-semibold leading-6 text-ink">{title}</H>
-        {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}
+        {description ? <p className="mt-0.5 text-base text-muted">{description}</p> : null}
       </div>
       {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
     </div>

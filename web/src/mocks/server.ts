@@ -3,8 +3,10 @@
  * Mutations change the in-memory copy so the UI is fully interactive; long-running work
  * (uploads, New-mail letters) is simulated with realistic stage timings and SSE events.
  */
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, addMonths, endOfMonth, format, parseISO } from "date-fns";
 import type {
+  CalendarSyncConnect,
+  CalendarSyncFind,
   AppSettings,
   Brief,
   CaseDetail,
@@ -13,31 +15,87 @@ import type {
   Contract,
   DataDeleted,
   DeleteResult,
+  DesktopMode,
+  DesktopTestResult,
   Document,
   DocumentDetail,
   Draft,
+  Evidence,
   DraftCreate,
+  FolderStatus,
+  HeldResult,
   Health,
   Item,
+  ItemAside,
   Job,
+  LetterAdvice,
+  ListedItem,
   MailOpenResult,
   PageInfo,
+  Profile,
   PartyDetail,
   ReviewStarted,
   StreamEvent,
   Suggestion,
+  TimelineEntry,
   SuggestionRef,
+  TemplateDraftKind,
+  TransferValues,
   UploadResult,
 } from "@/api/types";
+import { HIGH_STAKES_KINDS, type HighStakesKind } from "@/api/types";
+import { ibanLooksValid, normalizeIban } from "@/lib/format";
 import { MockDb, letterFor, nowTs } from "./db";
 import { emit } from "./events";
 import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { CHECKS_OK, phoneGuidance } from "./data/drafts";
+import { draftChecks, phoneGuidance } from "./data/drafts";
+import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
+import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
+import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
+import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
+
+/** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
+const COURT_OBJECTION_RECIPIENT =
+  "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht).";
 import { SAM, sha } from "./data/constants";
+import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
+import { TRAY_DOCUMENTS } from "./data/documents";
+import { EMAIL_ATTACHMENTS, SUGGESTED_INBOX } from "./data/folder";
+import {
+  BACKUP_STATIC_MESSAGE,
+  DESKTOP_STATIC_MESSAGE,
+  SAMPLE_NOTIFICATION,
+  mockBackupFile,
+  mockBackupInfo,
+  mockDesktopReminders,
+  mockNotification,
+} from "./data/reminders";
+import { TRAY_ITEMS } from "./data/items";
+import {
+  CalendarSyncRefusal,
+  mockCalendarPreview,
+  mockCalendarSyncStatus,
+  mockForgetCalendar,
+  mockConnectCalendar,
+  mockDisconnectCalendar,
+  mockDiscoverCalendars,
+  mockRunCalendarSync,
+} from "./data/calendarSync";
+import { PARTIES } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
+import { isOpenItem } from "@/features/document/verdict";
+import { compareBase } from "@/features/document/trace/copy";
+import { NOTICE_BASIS_COPY, documentKindLabel } from "@/lib/copy";
+import { DEMO_NOTE } from "./mode";
+import { confirmMockGiroCode, mockGiroCode } from "./girocode";
+import { checkTracking } from "@/lib/tracking";
+import { deliveredBefore, proofRoutes, resolveProofAsset, sentFollowup } from "./proof";
+import { addReading, compareReadings, defaultReadings, documentTrace, exportTraces, type TraceLedger } from "./data/traces";
+
+const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
 export interface MockOptions {
   /** Zero-install hosted demo: actions that need Claude are refused with a friendly message. */
@@ -86,9 +144,19 @@ class HttpError extends Error {
   }
 }
 
+/** A calendar-sync refusal as the API answers it (`code` names the field). */
+function calendarRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof CalendarSyncRefusal) throw new HttpError(err.status, err.message, err.code);
+    throw err;
+  }
+}
+
 const DEMO_TRANSLATE_MESSAGE =
-  "The demo replays recorded answers, so it can't translate your changes. Run `ordnung serve` (with Claude Code signed in) to re-translate letters you edited.";
-const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run `ordnung demo --reset`.";
+  "The demo replays recorded answers, so it can't translate your changes. Run “ordnung serve” (with Claude Code signed in) to re-translate letters you edited.";
+const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run “ordnung demo --reset”.";
 const STATIC_MESSAGE = "Install Ordnung to try this with your own letters — the online demo only replays recorded examples.";
 
 function needsClaude(ctx: Ctx) {
@@ -166,6 +234,60 @@ function pageInfos(db: MockDb, d: Document): PageInfo[] {
   }));
 }
 
+/**
+ * Whether the person has dealt with a high-stakes letter, as the server decides it (`advice.settles`): every
+ * to-do that carries its legal deadline — one the law added, or one whose receipt cites a rule of the card —
+ * is closed, and there is one. Another to-do of the letter (the arrears, a handover appointment) never counts,
+ * nor a recurring one (it moves on when done) or a rent increase's new rent (the consent decision carries it).
+ */
+function settles(card: LetterAdvice, items: Item[]): boolean {
+  const carries = (i: Item) =>
+    !i.recurrence &&
+    !(card.kind === "rent_increase" && i.kind === "payment") &&
+    (i.origin === "rule" || Boolean(i.computation?.rule_ids.some((r) => card.rule_ids.includes(r))));
+  const carrying = items.filter(carries);
+  return carrying.length > 0 && !carrying.some(isOpenItem);
+}
+
+/** The tag a letter carries once the person said they dealt with a card no to-do can close (`DEALT_WITH_TAG`). */
+const DEALT_WITH_TAG = "dealt-with";
+
+/** The steps that ask for the delivery (or receipt) day, which a handled card leaves out (`advice._unless`). */
+const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day the dismissal reached you|The period counts from the delivery date|The three weeks count from the day you received)/;
+
+/**
+ * The letter's "get advice" card as the real app works it out on read: a card from the letter itself
+ * only while it is filed as it was read, else its kind's — without asking again for an arrival day
+ * the person entered.
+ */
+function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
+  const own = ADVICE_BY_DOC[d.id];
+  // a card recognised on read (an operating-cost statement filed as a utility bill) goes once the person chose
+  // another kind for the letter — also the kind it is stored as (review round 2: "Utility bill" kept the card)
+  const chosen = db.state.activity.some((a) => a.kind === "document.kind" && a.ref_id === d.id);
+  const ownStands = own && d.kind === db.seedKind(d.id) && !(chosen && own.kind !== d.kind);
+  const card = ownStands ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
+  // as on the server: once the person dealt with the letter, its card is no longer urgent and says so (the
+  // demo's landlord cards are ordinary notices with an objection to-do, which can settle); a card no to-do
+  // can close once the person marked it dealt with
+  const dealt = card?.closable ? d.tags.includes(DEALT_WITH_TAG) : card ? settles(card, db.state.items.filter((i) => i.doc_id === d.id)) : false;
+  if (!card || !dealt) return card;
+  const steps = card.kind === "operating_costs" ? card.steps : card.steps.filter((s) => !ASKS_FOR_DELIVERY.test(s));
+  // as `advice.HANDLED_TITLE`: the title names the letter, not the deadline it no longer urges
+  return { ...card, urgent: false, handled: true, steps, title: `${card.title.split(" — ")[0]} — you've dealt with it` };
+}
+
+const traceLedger = (db: MockDb): TraceLedger => ({
+  documents: db.state.documents,
+  items: db.state.items,
+  parties: db.state.parties,
+  cases: db.state.cases,
+  contracts: db.state.contracts,
+});
+const readingsOf = (db: MockDb, d: Document) => db.state.readings[d.id] ?? defaultReadings(d);
+const READING_GONE = "That reading of the letter isn't kept any more — Ordnung keeps the last five.";
+const NOTHING_TO_COMPARE = "There is nothing to compare yet: this letter has been read only once.";
+
 function documentDetail(db: MockDb, id: string): DocumentDetail {
   const d = db.document(id) ?? notFound("This letter doesn't exist (anymore).");
   const items = db.state.items.filter((i) => i.doc_id === id);
@@ -177,6 +299,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
   );
   return {
     document: d,
+    advice: adviceFor(db, d),
     pages: pageInfos(db, d),
     items,
     contracts,
@@ -185,17 +308,135 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     related: related.sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
     suggestions,
     drafts: db.state.drafts.filter((x) => x.doc_id === id),
+    set_aside: setAside(db, items),
+    girocodes: items.filter((i) => i.kind === "payment").map((i) => mockGiroCode(db, i)),
+    // like the API: an attachment's letter is linked (with its status now) while it exists; an attachment names its e-mail
+    attachments: (EMAIL_ATTACHMENTS[id] ?? []).map((a) => {
+      const linked = a.doc_id ? db.document(a.doc_id) : null;
+      return { ...a, doc_id: linked ? linked.id : null, status: linked ? linked.status : null };
+    }),
+    attachments_more: 0,
+    email: d.source.startsWith("email:") ? db.document(d.source.slice("email:".length)) : null,
+    can_wait_again: wasKeptFromWaiting(db, d),
+    // the Idea's list, as the API gives it; the page falls back to the letter's warnings (none are given here)
+    scam_signs: [],
+    proof_of: db.state.proofs
+      .filter((p) => p.doc_id === id)
+      .flatMap((p) => {
+        const letter = db.state.drafts.find((x) => x.id === p.draft_id);
+        return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
+      }),
   };
+}
+
+// ------------------------------------------------------------------------------------------------
+// The watched folder
+// ------------------------------------------------------------------------------------------------
+
+/** Like `inbox_dir_problem`: a full path, not a drive's root, not the home folder. */
+function inboxDirProblem(value: string): string | null {
+  const v = value.trim();
+  if (!(v.startsWith("/") || v.startsWith("~") || /^[A-Za-z]:[\\/]/.test(v))) return "Please choose a full folder path (for example /home/you/Scans).";
+  if (/^(\/|[A-Za-z]:[\\/]?)$/.test(v)) return "The inbox can't be the root of a drive.";
+  if (/^(~|\/home\/[^/]+|\/Users\/[^/]+)\/?$/.test(v)) return "The inbox can't be your whole home folder — choose a dedicated folder.";
+  return null;
+}
+
+function folderStatus(db: MockDb, canRead: boolean): FolderStatus {
+  const s = db.state.settings;
+  return {
+    folder: s.inbox_dir,
+    state: s.inbox_dir ? "watching" : "off",
+    problem: null,
+    auto_read: s.inbox_auto_read,
+    // the static demo reads nothing with Claude: files always wait (like the replay-only demo)
+    can_read: canRead,
+    waiting: db.liveDocuments().filter((d) => d.status === "held").length,
+    suggested: SUGGESTED_INBOX,
+    recent: db.state.folderRecent.map((p) => {
+      const d = p.doc_id ? db.document(p.doc_id) : null;
+      return { ...p, doc_id: d ? d.id : null, status: d ? d.status : null };
+    }),
+  };
+}
+
+/** The held letters among `ids`, a held e-mail's held attachments after it; the rest are skipped. */
+function answeredTogether(db: MockDb, ids: string[]): { docs: Document[]; skipped: string[] } {
+  const docs = new Map<string, Document>();
+  const skipped: string[] = [];
+  for (const id of new Set(ids)) {
+    const d = db.document(id);
+    if (!d || d.status !== "held") {
+      skipped.push(id);
+      continue;
+    }
+    docs.set(d.id, d);
+    for (const a of db.liveDocuments()) if (a.status === "held" && a.source === `email:${d.id}`) docs.set(a.id, a);
+  }
+  return { docs: [...docs.values()], skipped };
+}
+
+/** Like `held.was_kept_from_waiting`: kept private by answering its wait, and not read since. */
+function wasKeptFromWaiting(db: MockDb, d: Document): boolean {
+  if (d.deleted_at || !d.ai_private || d.ai_processed_at || d.status !== "processed") return false;
+  const answer = db.state.activity.find((e) => e.ref_id === d.id && ["document.kept_private", "document.released", "document.waiting"].includes(e.kind));
+  return answer?.kind === "document.kept_private";
+}
+
+function heldIds(body: unknown): string[] {
+  const ids = (body as { doc_ids?: unknown } | null)?.doc_ids;
+  if (!Array.isArray(ids) || !ids.length || ids.some((x) => typeof x !== "string")) throw new HttpError(422, "Choose which letters you mean.");
+  return ids as string[];
+}
+
+/**
+ * Open items that are not one to act on (the server's `ledger` rules, simplified): an invoice
+ * payment a later payment reminder of the same thread took over, or a date that was already more
+ * than 14 days past when the letter was filed.
+ */
+function setAside(db: MockDb, items: Item[]): ItemAside[] {
+  const docs = db.liveDocuments();
+  const byId = new Map(docs.map((d) => [d.id, d]));
+  const reminders = docs.filter((d) => d.kind === "dunning" && d.direction === "incoming" && d.case_id);
+  const dayMs = 86_400_000;
+  return items.flatMap((i): ItemAside[] => {
+    if (i.status !== "open") return [];
+    const doc = i.doc_id ? byId.get(i.doc_id) : undefined;
+    // like the server's scam signs (the demo's scam letter is the one hiding text)
+    if (doc?.hidden_text) return [{ item_id: i.id, reason: "suspicious", replaced_by: null }];
+    if (i.kind === "payment" && !i.recurrence && doc) {
+      const covering = reminders.find(
+        (r) => r.id !== doc.id && r.case_id === doc.case_id && (doc.kind === "dunning" ? (doc.doc_date ?? "") < (r.doc_date ?? "") : !(doc.doc_date && r.doc_date && doc.doc_date > r.doc_date)),
+      );
+      if (covering) return [{ item_id: i.id, reason: "replaced", replaced_by: covering.id }];
+    }
+    if (!i.recurrence && i.due_date && i.filed_on && (parseISO(i.filed_on).getTime() - parseISO(i.due_date).getTime()) / dayMs > 14) {
+      return [{ item_id: i.id, reason: "history", replaced_by: null }];
+    }
+    return [];
+  });
+}
+
+/** The timeline's to-dos with why they are not one to act on, as the API gives it (never "Overdue" for those). */
+function withAside(db: MockDb, entries: TimelineEntry[]): TimelineEntry[] {
+  const items = db.state.items.filter((i) => entries.some((e) => e.ref.type === "item" && e.ref.id === i.id));
+  const aside = new Map(setAside(db, items).map((a) => [a.item_id, a.reason]));
+  return entries.map((e) => {
+    const reason = e.ref.type === "item" ? aside.get(e.ref.id) : undefined;
+    return reason && reason !== "suspicious" ? { ...e, aside: reason } : e;
+  });
 }
 
 function partyDetail(db: MockDb, id: string): PartyDetail {
   const party = db.party(id) ?? notFound("Unknown person or organisation.");
+  const items = db.state.items.filter((i) => i.party_id === id && i.status !== "dismissed").sort((a, b) => ((a.due_date ?? "9") < (b.due_date ?? "9") ? -1 : 1));
   return {
     party,
     documents: db.liveDocuments().filter((d) => d.party_id === id).sort((a, b) => ((a.doc_date ?? "") < (b.doc_date ?? "") ? 1 : -1)),
-    items: db.state.items.filter((i) => i.party_id === id && i.status !== "dismissed").sort((a, b) => ((a.due_date ?? "9") < (b.due_date ?? "9") ? -1 : 1)),
+    items,
     contracts: db.state.contracts.filter((c) => c.party_id === id),
     cases: db.state.cases.filter((c) => c.party_id === id),
+    set_aside: setAside(db, items),
   };
 }
 
@@ -214,10 +455,101 @@ function caseDetail(db: MockDb, id: string): CaseDetail {
 // Drafts
 // ------------------------------------------------------------------------------------------------
 
-function composeDraft(db: MockDb, body: DraftCreate): Draft {
+const TEMPLATE_KINDS = new Set<string>(["withdrawal", "extension_request", "payment_plan", "defect_notice", "data_access", "receipts_inspection", "deposit_return", "address_change"]);
+const isTemplateKind = (kind: string): kind is TemplateDraftKind => TEMPLATE_KINDS.has(kind);
+
+/** A template letter (fixed text only, as the real app writes it without Claude). */
+function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDraftKind }): Draft {
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
-  const partyId = body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
+  const details = body.details ?? {};
+  // instalments on a court order offered to its claimant, typed in: linked to the order, never to the court
+  const orderName = doc?.kind === "court_payment_order" ? "Mahnbescheid" : doc?.kind === "enforcement_order" ? "Vollstreckungsbescheid" : null;
+  // a typed court is no claimant (compose.to_claimant, review round 3 of phase 2)
+  const toClaimant =
+    body.kind === "payment_plan" && orderName !== null && Boolean(details.recipient?.trim()) && !mayBeCourt(details.recipient);
+  const partyId = toClaimant ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
+  const party = db.party(partyId);
+  const refusal = templateRefusal(body.kind, doc?.kind, toClaimant);
+  if (refusal) throw new HttpError(422, refusal);
+  if (!party && !details.recipient) throw new HttpError(422, "Choose who the letter is for, or type their name and address.");
+  const firstRef = doc?.references[0];
+  const reference = contract?.customer_number ? `Kundennummer ${contract.customer_number}` : firstRef ? `${firstRef.label} ${firstRef.value}` : null;
+  // the deadline to extend is one someone set — never one the law sets (a rule to-do, an objection period)
+  const openDeadline = db.state.items
+    .filter((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open" && i.due_date && i.origin !== "rule" && i.date_spec?.nature !== "objection")
+    .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))[0];
+  const payment = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "payment" && i.status === "open");
+  const letterText = doc ? JSON.stringify(letterFor(doc.id) ?? "") : "";
+  const period = /(\d{2}\.\d{2}\.\d{4})\s*(?:-|–|bis)\s*(\d{2}\.\d{2}\.\d{4})/.exec(letterText);
+  let letter;
+  try {
+    letter = templateLetter(body.kind, {
+      details: { ...details, deadline: details.deadline ?? openDeadline?.due_date ?? null, amount: details.amount ?? payment?.amount ?? null, period: details.period ?? (period ? `${period[1]} – ${period[2]}` : null) },
+      reference,
+      docDate: doc?.doc_date ?? null,
+      topic: contract?.name ?? null,
+      address: db.state.profile.address,
+      iban: db.state.profile.iban,
+      taxOffice: party?.kind === "tax_office",
+      schufa: /schufa/i.test(party?.name ?? details.recipient ?? ""),
+      today: db.today,
+      courtOrder: body.kind === "payment_plan" ? orderName : null,
+    });
+  } catch (err) {
+    throw new HttpError(422, err instanceof Error ? err.message : String(err));
+  }
+  if (isCourtName(party?.name ?? details.recipient?.split("\n")[0])) letter.guidance.channels = courtChannels();
+  const now = nowTs();
+  const salutationDe = "Sehr geehrte Damen und Herren,";
+  const body_de = [salutationDe, ...letter.paragraphs].join("\n\n");
+  const draft: Draft = {
+    id: newId("drf"),
+    kind: body.kind,
+    language: body.language ?? "de",
+    tracking_number: null,
+    answered_on: null,
+    answer_doc_id: null,
+    party_id: party?.id ?? null,
+    case_id: contract?.case_id ?? doc?.case_id ?? null,
+    doc_id: body.doc_id ?? null,
+    contract_id: body.contract_id ?? null,
+    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}`,
+    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (details.recipient ?? "").trim(),
+    place_date: `Musterstadt, ${format(parseISO(db.today), "dd.MM.yyyy")}`,
+    subject: letter.subject,
+    body: body_de,
+    body_translation: [`Subject: ${letter.subjectEn}`, ["Dear Sir or Madam,", ...letter.paragraphsEn].join("\n\n"), `Yours faithfully\n${SAM.name}`].join("\n\n"),
+    enclosures: [],
+    notes_for_user: [
+      "The demo uses Ordnung's fixed sentences only. With Claude connected, it also writes a short polite paragraph in your words.",
+      ...letter.notes,
+      "Based on the law as of 25 September 2026. Not legal advice. Not reviewed by a lawyer.",
+    ],
+    checks: [],
+    send_guidance: letter.guidance,
+    sent_channel: null,
+    status: "draft",
+    sent_at: null,
+    created_at: now,
+    updated_at: now,
+  };
+  return { ...draft, checks: checksFor(db, draft) };
+}
+
+/** The remedy the law gives a court order or a landlord's notice, whatever the reading says. */
+const STATUTORY_REMEDY: Record<string, string> = { court_payment_order: "Widerspruch", enforcement_order: "Einspruch", landlord_notice: "Widerspruch" };
+
+function composeDraft(db: MockDb, body: DraftCreate): Draft {
+  if (isTemplateKind(body.kind)) return composeTemplateDraft(db, { ...body, kind: body.kind });
+  const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
+  const doc = body.doc_id ? db.document(body.doc_id) : null;
+  // a notice without notice period has no hardship objection: its card offers none (compose.objection_remedy)
+  const card = doc && body.kind === "objection" && doc.kind === "landlord_notice" ? adviceFor(db, doc) : null;
+  if (card && card.draft === null) throw new HttpError(422, card.facts[0]?.text ?? "There is no hardship objection against this notice.");
+  // an objection to a court order whose sender isn't a court goes to the court the person typed
+  const typedCourt = body.kind === "objection" && doc !== null && needsTypedCourt(doc, db.party(doc.party_id));
+  const partyId = typedCourt ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
   const party = db.party(partyId);
   const ref = contract?.customer_number ?? doc?.references[0]?.value ?? party?.identifiers[0]?.value ?? "";
   const refLabel = party?.identifiers[0]?.label ?? "Referenz";
@@ -233,21 +565,44 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     subject = `Kündigung ${contract ? `– ${contract.name}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`.trim();
     bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
     bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${SAM.name}`;
+  } else if (body.kind === "objection" && doc?.kind && STATUTORY_REMEDY[doc.kind]) {
+    const dDate = doc.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "";
+    // the application to suspend enforcement only when ticked, and only against an enforcement order (templates.objection)
+    const suspend = body.suspend_enforcement && doc.kind === "enforcement_order";
+    const suspendDe = suspend ? "\n\nIch beantrage, die Zwangsvollstreckung aus dem Vollstreckungsbescheid einstweilen einzustellen." : "";
+    const suspendEn = suspend ? "\n\nI apply for enforcement of the order to be suspended for the time being (einstweilige Einstellung)." : "";
+    const remedy = STATUTORY_REMEDY[doc.kind]!;
+    const noun = doc.kind === "court_payment_order" ? "Mahnbescheid" : doc.kind === "enforcement_order" ? "Vollstreckungsbescheid" : "Kündigung";
+    subject = `${remedy} gegen ${doc.kind === "landlord_notice" ? "Ihre" : "den"} ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
+    bodyDe =
+      doc.kind === "landlord_notice"
+        ? `Sehr geehrte Damen und Herren,\n\nhiermit widerspreche ich Ihrer Kündigung${dDate ? ` vom ${dDate}` : ""} des Mietverhältnisses und verlange die Fortsetzung des Mietverhältnisses (§ 574 BGB).\n\nDie Gründe teile ich Ihnen auf Wunsch gesondert mit.\n\nMit freundlichen Grüßen\n\n${SAM.name}`
+        : `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? `, ${refLabel} ${ref},` : ""} ${remedy} ein.\n\n${doc.kind === "court_payment_order" ? "Ich widerspreche dem geltend gemachten Anspruch insgesamt." : "Eine Begründung reiche ich nach."}${suspendDe}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
+    bodyEn =
+      doc.kind === "landlord_notice"
+        ? `Dear Sir or Madam,\n\nI hereby object to your notice terminating the tenancy and request that the tenancy be continued (§ 574 BGB).\n\nI will give you my reasons separately on request.\n\nYours faithfully\n\n${SAM.name}`
+        : `Dear Sir or Madam,\n\nI hereby lodge an objection (${remedy}) against the ${noun}${ref ? `, ${refLabel} ${ref}` : ""}.\n\n${doc.kind === "court_payment_order" ? "I object to the entire claim." : "I will submit the reasons separately."}${suspendEn}\n\nYours faithfully\n\n${SAM.name}`;
   } else if (body.kind === "objection") {
     const dDate = doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "…";
     subject = `Einspruch gegen den Bescheid vom ${dDate}${ref ? ` – ${refLabel} ${ref}` : ""}`;
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.instructions ? "I use my laptop (1,049.00 EUR) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.suspend_enforcement ? "Ich beantrage die Aussetzung der Vollziehung.\n\n" : ""}${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.suspend_enforcement ? "I apply for suspension of enforcement (Aussetzung der Vollziehung).\n\n" : ""}${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
   } else {
     subject = `Ihr Schreiben${doc?.doc_date ? ` vom ${format(parseISO(doc.doc_date), "dd.MM.yyyy")}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
     bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
     bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${SAM.name}`;
   }
+  const statutory = body.kind === "objection" && doc?.kind ? STATUTORY_OBJECTIONS[doc.kind] : undefined;
+  const letterDeadline = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open");
   const guidance =
     contract?.id === "ctr_phone"
       ? phoneGuidance()
-      : {
+      : statutory
+        ? // a court order's or a landlord's notice's objection: the real rules' form and channels (never e-mail at a court)
+          { ...structuredClone(statutory.guidance), send_by: letterDeadline?.send_by ?? null, must_arrive_by: letterDeadline?.due_date ?? null }
+        : {
           send_by: contract?.computed?.send_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.send_by)?.send_by ?? null,
+          post_too_late: false,
           must_arrive_by: contract?.computed?.cancel_by ?? db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline")?.due_date ?? null,
           form: contract?.category === "rent" || contract?.category === "employment" ? ("written_form" as const) : ("text_form" as const),
           form_note:
@@ -260,24 +615,28 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
           ],
           tips: ["Keep a copy of what you sent."],
         };
-  const hasPlaceholder = bodyDe.includes("…");
-  return {
+  if (!statutory && isCourtName(party?.name)) guidance.channels = courtChannels();
+  if (typedCourt) guidance.channels = courtChannels();
+  const draft: Draft = {
     id: newId("drf"),
     kind: body.kind,
     language: body.language ?? "de",
+    tracking_number: null,
+    answered_on: null,
+    answer_doc_id: null,
     party_id: partyId,
     case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
     sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
-    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : "",
+    recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (body.details?.recipient ?? "").trim(),
     place_date: placeDate,
     subject,
     body: bodyDe,
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
-    notes_for_user: body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
-    checks: CHECKS_OK.map((c) => (c.id === "no_placeholders" ? { ...c, ok: !hasPlaceholder, detail: hasPlaceholder ? "Replace the … before sending." : null } : c)),
+    notes_for_user: statutory ? [...statutory.notes] : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
+    checks: [],
     send_guidance: guidance,
     sent_channel: null,
     status: "draft",
@@ -285,6 +644,22 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     created_at: now,
     updated_at: now,
   };
+  return { ...draft, checks: checksFor(db, draft) };
+}
+
+/** The API's checks for a draft as it stands now (they run again whenever it is saved). */
+function checksFor(db: MockDb, d: Draft): Draft["checks"] {
+  const contract = d.contract_id ? db.state.contracts.find((c) => c.id === d.contract_id) : undefined;
+  const doc = d.doc_id ? db.document(d.doc_id) : null;
+  const party = db.party(d.party_id);
+  const channel = d.send_guidance?.channels.find((c) => c.channel === d.sent_channel);
+  return draftChecks({
+    ...d,
+    references: [contract?.customer_number, ...(doc?.references ?? []).map((r) => r.value), ...(party?.identifiers ?? []).map((r) => r.value)],
+    letterDate: doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : null,
+    formNote: d.send_guidance?.form_note,
+    sentVia: d.status === "sent" ? (channel?.label ?? null) : null,
+  });
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -292,6 +667,17 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
 // ------------------------------------------------------------------------------------------------
 
 const CITABLE = new Set<string>(["document", "item", "contract", "party"]);
+
+/** Titles of the New-mail letters' records before they are opened (recordings may cite them). */
+function trayLabel(r: SuggestionRef): string | null {
+  if (r.type === "document") {
+    const d = TRAY_DOCUMENTS[r.id];
+    return d ? (d.title ?? d.filename) : null;
+  }
+  if (r.type === "item") return Object.values(TRAY_ITEMS).flat().find((i) => i.id === r.id)?.title ?? null;
+  if (r.type === "party") return PARTIES.find((p) => p.id === r.id)?.name ?? null;
+  return null;
+}
 
 /** Citations as the API's `done` event carries them: with the cited record's label. */
 function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
@@ -304,9 +690,16 @@ function citationRefs(db: MockDb, refs: SuggestionRef[]): CitationRef[] {
     if (r.type === "contract") return db.state.contracts.find((c) => c.id === r.id)?.name ?? null;
     return db.party(r.id)?.name ?? null;
   };
-  // recordings may cite letters of the New-mail tray that aren't opened yet: keep them (id as label)
-  return refs.filter((r) => CITABLE.has(r.type)).map((r) => ({ type: r.type as CitationRef["type"], id: r.id, label: labelOf(r) ?? r.id }));
+  // recordings may cite letters of the New-mail tray that aren't opened yet: label them from the tray;
+  // like the API, a citation of a record that exists nowhere is dropped
+  return refs.flatMap((r) => {
+    const label = CITABLE.has(r.type) ? (labelOf(r) ?? trayLabel(r)) : null;
+    return label ? [{ type: r.type as CitationRef["type"], id: r.id, label }] : [];
+  });
 }
+
+/** The check's label, as the API sends it with every checked answer (the recordings are English). */
+const CHECK_LABEL = "Checked by Ordnung:";
 
 function askStream(ctx: Ctx): Response {
   const { db } = ctx;
@@ -316,7 +709,10 @@ function askStream(ctx: Ctx): Response {
   const q = question.toLowerCase();
   const rec = RECORDED.find((r) => r.question.toLowerCase() === q) ?? RECORDED.find((r) => r.match.some((group) => group.every((w) => q.includes(w))));
   const now = nowTs();
-  db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now });
+  // like the API, only an answer is stored with its question: the demo's "no recording" reply is not
+  // (it never went through the check, so it carries no message id and no "checked" line)
+  if (rec)
+    db.state.chat.push({ id: newId("msg"), thread_id: threadId, role: "user", content: question, citations: [], tool_calls: [], created_at: now, note: null, note_label: null, checked: false });
   const enc = new TextEncoder();
   const signal = ctx.signal;
   const speed = ctx.opts.latency ?? 1;
@@ -331,30 +727,39 @@ function askStream(ctx: Ctx): Response {
       try {
         controller.enqueue(enc.encode(": connected\n\n"));
         await sleep(250 * speed, signal);
-        const text = rec?.text ?? FALLBACK_ANSWER;
-        for (const t of rec?.tools ?? []) {
+        // like the real API: the tool trace, one `text` event without text while the answer is
+        // written (its words — `raw` — are never sent before the check), then `done` with the checked
+        // answer, which may leave a value or a sentence out, and Ordnung's note in its own field.
+        // A question without a recording gets the demo's `demo_miss` error, as from the local demo: the
+        // Ask page shows it as a note, not as a failure to retry.
+        if (!rec) {
+          send({ type: "error", error: FALLBACK_ANSWER, text: FALLBACK_ANSWER, error_code: "demo_miss" });
+          return;
+        }
+        const text = rec.text;
+        const written = rec.raw ?? text;
+        for (const t of rec.tools) {
           send({ type: "tool_use", name: t.name, input: t.input });
           await sleep(550 * speed, signal);
           send({ type: "tool_result", name: t.name, text: t.result });
           await sleep(200 * speed, signal);
         }
-        const chunks = text.match(/\S+\s*/g) ?? [text];
-        for (let i = 0; i < chunks.length; i += 3) {
-          if (signal?.aborted) break;
-          send({ type: "text", text: chunks.slice(i, i + 3).join("") });
-          await sleep(38 * speed, signal);
-        }
+        send({ type: "text" });
+        await sleep(Math.min(2500, 4 * written.length) * speed, signal);
         const messageId = newId("msg");
         db.state.chat.push({
           id: messageId,
           thread_id: threadId,
           role: "assistant",
           content: text,
-          citations: rec?.citations ?? [],
-          tool_calls: (rec?.tools ?? []).map((t) => ({ name: t.name, input: t.input, result: t.result })),
+          citations: rec.citations ?? [],
+          tool_calls: rec.tools.map((t) => ({ name: t.name, input: t.input, result: t.result })),
           created_at: nowTs(),
+          note: rec.note ?? null,
+          note_label: CHECK_LABEL,
+          checked: true,
         } satisfies ChatMessage);
-        send({ type: "done", text, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec?.citations ?? []) });
+        send({ type: "done", text, note: rec.note ?? null, note_label: CHECK_LABEL, message_id: messageId, thread_id: threadId, citations: citationRefs(db, rec.citations ?? []) });
       } catch (err) {
         send({ type: "error", error: err instanceof Error ? err.message : "The answer was interrupted." });
       } finally {
@@ -374,6 +779,14 @@ function askStream(ctx: Ctx): Response {
 // ------------------------------------------------------------------------------------------------
 
 const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
+/** A letter filed as another kind than it was read as: the online demo has no rules engine to follow it. */
+export function refiledNote(read: Document["kind"], chosen: Document["kind"]): string {
+  return (
+    `${DEMO_NOTE} the dates and to-dos on this page are still those of the kind it was read as, “${documentKindLabel(read ?? "other")}”. ` +
+    `This demo has no rules engine to work them out again for “${documentKindLabel(chosen ?? "other")}” — the installed app does.`
+  );
+}
+
 const DOC_PATCHABLE = ["title", "kind", "area", "doc_date", "received_date", "party_id", "case_id", "ai_private", "tags", "direction"] as const;
 
 function withoutNulls(src: unknown): Record<string, unknown> {
@@ -384,6 +797,157 @@ function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<
   const out: Record<string, unknown> = {};
   if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
   return out as Partial<T>;
+}
+
+/** NW's public holidays the gym's four weeks can end on (the mock has no holiday calendar). */
+const NW_HOLIDAYS: Record<string, string> = {
+  "2026-10-03": "Tag der Deutschen Einheit",
+  "2026-11-01": "Allerheiligen",
+  "2026-12-25": "Erster Weihnachtstag",
+  "2026-12-26": "Zweiter Weihnachtstag",
+  "2027-01-01": "Neujahr",
+};
+
+/** Why `d` is no working day in NW, in the engine's words ("a Saturday", "a public holiday, …"), or null. */
+function notWorkingDay(d: Date): string | null {
+  const holiday = NW_HOLIDAYS[format(d, "yyyy-MM-dd")];
+  if (holiday) return `a public holiday, ${holiday}`;
+  if (d.getDay() === 6) return "a Saturday";
+  return d.getDay() === 0 ? "a Sunday" : null;
+}
+
+/**
+ * Like the API: FitWell's four weeks run from the arrival day the person confirmed (§ 130 BGB); an end
+ * on a weekend or holiday moves to the next working day (§ 193 BGB), and the send-by date leaves four
+ * working days for the post.
+ */
+function recomputeGymPrice(db: MockDb, receivedDate: string) {
+  const it = db.state.items.find((i) => i.id === "itm_gym_price");
+  if (!it?.computation) return;
+  const day = (d: Date | string) => format(typeof d === "string" ? parseISO(d) : d, "EEE d MMM yyyy");
+  const iso = (d: Date) => format(d, "yyyy-MM-dd");
+  const end = addDays(parseISO(receivedDate), 28);
+  const why = notWorkingDay(end);
+  let due = end;
+  while (notWorkingDay(due)) due = addDays(due, 1);
+  let sendBy = due;
+  for (let left = 4; left > 0; ) {
+    sendBy = addDays(sendBy, -1);
+    if (!notWorkingDay(sendBy)) left -= 1;
+  }
+  const moved = why ? `${day(end)} is ${why}, so the deadline moves to ${day(due)}` : `${day(due)} is a working day, so it stays`;
+  it.due_date = iso(due);
+  it.send_by = iso(sendBy);
+  it.grounding = "user";
+  it.updated_at = nowTs();
+  it.computation = {
+    ...it.computation,
+    due_date: iso(due),
+    send_by: iso(sendBy),
+    summary: `Four weeks after the day you received it (${day(receivedDate)}) is ${why ? `${day(end)}, ${why}, so the deadline moves to ${day(due)}` : day(due)}.`,
+    steps: [
+      { label: `Not an authority's letter, so no delivery days: the period runs from the day you received it (${day(receivedDate)})`, date: receivedDate, rule_id: "private_sender_arrival", citation: "§ 130 Abs. 1 BGB" },
+      { label: `Counting starts the day after ${day(receivedDate)}`, date: receivedDate, rule_id: "bgb_187_1", citation: "§ 187 Abs. 1 BGB" },
+      { label: `Four weeks later: ${day(end)}`, date: iso(end), rule_id: "bgb_188", citation: "§ 188 Abs. 2 BGB" },
+      { label: moved, date: iso(due), rule_id: "bgb_193", citation: "§ 193 BGB" },
+      { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
+    ],
+    rule_ids: ["private_sender_arrival", "bgb_187_1", "bgb_188", "bgb_193", "postal_buffer"],
+    // like the engine: the rule it applied stays said; the arrival day is no longer assumed
+    warnings: it.computation.warnings.filter((w) => w.startsWith("No delivery days were added")),
+    confidence: "high",
+  };
+}
+
+/** `d` moved by `n` NW working days (negative: back); `d` itself is not counted. */
+function workingDays(d: Date, n: number): Date {
+  let x = d;
+  for (let left = Math.abs(n); left > 0; ) {
+    x = addDays(x, Math.sign(n));
+    if (!notWorkingDay(x)) left -= 1;
+  }
+  return x;
+}
+
+/**
+ * Like the rules engine for a contract that follows its own terms (`as_written`) once its notice
+ * period is known: "at any time" counts the notice from when a letter posted today arrives (four
+ * working days), "to the end of a month" finds the first month end whose deadline hasn't passed,
+ * and "to the end of the term" needs a start date and term the mock's contracts don't have.
+ * Contracts under a statutory rule keep their dates (the mock has no rules engine for those).
+ */
+/**
+ * The API's `notice_evidence`: the contract's quotes with the notice terms the person entered as one
+ * of their own (grounding `user`) when all three are set — replaced by the next correction, gone again
+ * with an Undo back to none. The letter's quotes stay.
+ */
+function noticeEvidence(c: Contract): Evidence[] {
+  const kept = c.evidence.filter((e) => e.grounding !== "user");
+  const { notice_value: n, notice_unit: unit, notice_basis: basis } = c;
+  if (n == null || !unit || !basis) return kept;
+  const one = unit.replace(/s$/, "");
+  const quote = `${n === 1 ? `one ${one}'s` : `${n} ${unit}'`} notice ${NOTICE_BASIS_COPY[basis].label}`;
+  return [...kept, { doc_id: c.source_doc_id ?? "", page: null, quote, grounding: "user", value_consistent: true, score: 0, boxes: [] }];
+}
+
+function recomputeNotice(db: MockDb, c: Contract) {
+  if (!c.computed || c.computed.regime !== "as_written") return;
+  const day = (d: Date, year = true) => format(d, year ? "EEE d MMM yyyy" : "EEE d MMM");
+  const iso = (d: Date) => format(d, "yyyy-MM-dd");
+  const today = parseISO(db.today);
+  const general = "No special consumer rule applies that we know of, so we used the contract's own terms.";
+  const blank = { ...c.computed, current_term_end: null, cancel_by: null, send_by: null, safe_date: null, next_renewal: null, earliest_exit: null, confidence: "low" as const, steps: [] };
+  const unknown = (reason: string) => {
+    c.computed = { ...blank, summary: `We couldn't compute a cancellation date: ${reason[0]!.toLowerCase()}${reason.slice(1)}`, warnings: [general, reason] };
+  };
+  const n = c.notice_value;
+  const unit = c.notice_unit;
+  if (!n || !unit) return unknown("The contract's notice period is missing.");
+  const one = unit.replace(/s$/, "");
+  const period = n === 1 ? `one ${one}` : `${n} ${unit}`;
+  const phrase = n === 1 ? `one ${one}'s notice` : `${n} ${unit}' notice`;
+  const add = (d: Date, k: number) => (unit === "months" ? addMonths(d, k) : addDays(d, (unit === "weeks" ? 7 : 1) * k));
+  if (c.notice_basis === "any_time") {
+    const arrival = workingDays(today, 4);
+    const exit = add(arrival, n);
+    c.computed = {
+      ...blank,
+      earliest_exit: iso(exit),
+      summary: `You can cancel any time with ${phrase}: if your cancellation arrives by ${day(arrival)}, the contract ends on ${day(exit)}.`,
+      steps: [{ label: `If it arrives by ${day(arrival)}, the contract ends ${period} later, on ${day(exit)}`, date: iso(exit), rule_id: "bgb_188", citation: "§ 188 BGB" }],
+      rule_ids: ["bgb_188"],
+      warnings: [general],
+    };
+    return;
+  }
+  if (c.notice_basis !== "end_of_month") return unknown("We need the contract's start date and term to compute the deadline.");
+  // the latest day notice can arrive so that the period fits before the month's end
+  const latestReceipt = (end: Date) => {
+    let r = add(end, -n);
+    while (add(addDays(r, 1), n) <= end) r = addDays(r, 1);
+    return r;
+  };
+  let end = endOfMonth(today);
+  while (latestReceipt(end) < today) end = endOfMonth(addDays(end, 1));
+  const cancelBy = latestReceipt(end);
+  let safe = cancelBy;
+  while (notWorkingDay(safe)) safe = addDays(safe, -1);
+  const late = workingDays(safe, -4) < today;
+  const sendBy = late ? today : workingDays(safe, -4);
+  c.computed = {
+    ...blank,
+    cancel_by: iso(cancelBy),
+    safe_date: iso(safe),
+    send_by: iso(sendBy),
+    earliest_exit: iso(end),
+    summary: `To leave on ${day(end)}, your notice must arrive by ${day(cancelBy)}${iso(sendBy) !== iso(cancelBy) ? `; send it by ${day(sendBy, false)}` : ""}.`,
+    steps: [
+      { label: `To end the contract on ${day(end)} with ${phrase}, it must arrive by ${day(cancelBy)}`, date: iso(cancelBy), rule_id: "bgb_188", citation: "§ 188 BGB" },
+      { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
+    ],
+    rule_ids: ["bgb_188", "postal_buffer"],
+    warnings: late ? [general, "The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today."] : [general],
+  };
 }
 
 function recomputeParking(db: MockDb, receivedDate: string) {
@@ -399,13 +963,21 @@ function recomputeParking(db: MockDb, receivedDate: string) {
     summary: `The letter reached you on ${format(parseISO(receivedDate), "EEE d MMM")}; one week later is ${format(parseISO(due), "EEE d MMM")}.`,
     steps: [
       { label: "Letter arrived (confirmed by you)", date: receivedDate, rule_id: "receipt_user", citation: null },
-      { label: "One week later", date: due, rule_id: "bgb188_weeks", citation: "§ 188 Abs. 2 BGB" },
+      { label: "One week later", date: due, rule_id: "bgb_188", citation: "§ 188 Abs. 2 BGB" },
     ],
     warnings: [],
     confidence: "high",
   };
   const s = db.state.suggestions.find((x) => x.id === "sug_parking");
   if (s) s.status = "done";
+}
+
+/** The Mahnbescheid's objection deadline once Sam enters the envelope date (receipts computed by the real rules). */
+function recomputeCourtOrder(db: MockDb, receivedDate: string) {
+  const it = db.state.items.find((i) => i.id === "itm_court_objection");
+  const receipt = ORDER_RECEIPTS[receivedDate];
+  if (!it || !receipt) return;
+  Object.assign(it, { due_date: receipt.due_date, send_by: receipt.send_by, computation: receipt, updated_at: nowTs() });
 }
 
 const routes: [string, string, Handler][] = [
@@ -417,7 +989,18 @@ const routes: [string, string, Handler][] = [
   ],
   ["GET", "/profile", ({ db }) => db.state.profile],
   // like the API: PUT merges the fields sent (nulls change nothing; `models` merges by purpose)
-  ["PUT", "/profile", ({ db, body }) => (db.state.profile = { ...db.state.profile, ...withoutNulls(body) })],
+  [
+    "PUT",
+    "/profile",
+    ({ db, body }) => {
+      const patch = withoutNulls(body) as Partial<Profile>;
+      if (typeof patch.iban === "string" && patch.iban.trim()) {
+        if (!ibanLooksValid(patch.iban)) throw new HttpError(422, "That IBAN isn't valid — check it against your bank card or banking app.");
+        patch.iban = normalizeIban(patch.iban);
+      }
+      return (db.state.profile = { ...db.state.profile, ...patch });
+    },
+  ],
   ["GET", "/settings", ({ db }) => db.state.settings],
   [
     "PUT",
@@ -428,8 +1011,18 @@ const routes: [string, string, Handler][] = [
         if (key in patch && patch[key] !== db.state.settings[key]) throw new HttpError(422, `“${key}” is set by how Ordnung was started.`);
       }
       const models = { ...db.state.settings.models, ...(patch.models ?? {}) };
-      const cleared = body && typeof body === "object" && (body as { inbox_dir?: unknown }).inbox_dir === null ? { inbox_dir: null } : {};
-      return (db.state.settings = { ...db.state.settings, ...patch, models, ...cleared });
+      const sent = body && typeof body === "object" ? (body as { inbox_dir?: unknown }).inbox_dir : undefined;
+      // like the API: an empty folder stops watching; anything else must be a folder it may watch
+      const cleared = sent === null || (typeof sent === "string" && !sent.trim()) ? { inbox_dir: null } : {};
+      if (typeof patch.inbox_dir === "string" && patch.inbox_dir.trim()) {
+        const problem = inboxDirProblem(patch.inbox_dir);
+        if (problem) throw new HttpError(422, problem);
+        patch.inbox_dir = patch.inbox_dir.trim();
+      }
+      const before = db.state.settings.inbox_dir;
+      db.state.settings = { ...db.state.settings, ...patch, models, ...cleared };
+      if (db.state.settings.inbox_dir !== before) emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return db.state.settings;
     },
   ],
   [
@@ -449,9 +1042,11 @@ const routes: [string, string, Handler][] = [
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
-      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {} });
+      // a connected calendar loses Ordnung's events (and the app password) first, as the API does
+      const calendarEventsRemoved = mockForgetCalendar(db);
+      Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [], readings: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [] } satisfies DataDeleted;
+      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
     },
   ],
 
@@ -498,7 +1093,7 @@ const routes: [string, string, Handler][] = [
           id,
           filename: combine && group.length > 1 ? `${first.name.replace(/\.[^.]+$/, "")} (+${group.length - 1} pages)` : first.name,
           title: null,
-          mime: combine ? "application/pdf" : first.type || "application/octet-stream",
+          mime: combine ? "application/pdf" : first.type || (/\.eml$/i.test(first.name) ? "message/rfc822" : /\.txt$/i.test(first.name) ? "text/plain" : "application/octet-stream"),
           pages: group.length,
           status: isPrivate ? "processed" : "processing",
           kind: null,
@@ -538,7 +1133,7 @@ const routes: [string, string, Handler][] = [
               processed_at: nowTs(),
               updated_at: nowTs(),
             });
-            db.log("document.processed", `Filed “${first.name}” (demo — not read by AI)`, "document", id);
+            db.log("document.processed", `Filed “${first.name}” (demo — not read by Claude)`, "document", id);
           },
           ctx.opts.latency ?? 1,
         );
@@ -547,13 +1142,106 @@ const routes: [string, string, Handler][] = [
     },
   ],
   ["GET", "/documents/:id", ({ db, params }) => documentDetail(db, params.id!)],
+  // the watched folder: its state, and the person's answer for the letters waiting
+  ["GET", "/folder", ({ db, opts }) => folderStatus(db, !opts.staticDemo)],
+  [
+    "POST",
+    "/documents/held/read",
+    (ctx) => {
+      needsClaude(ctx);
+      const { db } = ctx;
+      const { docs, skipped } = answeredTogether(db, heldIds(ctx.body));
+      const jobs: Job[] = [];
+      for (const d of docs) {
+        Object.assign(d, { ai_private: false, status: "processing", updated_at: nowTs() });
+        db.log("document.released", `You let Claude read “${d.title ?? d.filename}”`, "document", d.id);
+        const job = makeJob(d.id);
+        jobs.push(job);
+        void runJob(
+          db,
+          job,
+          false,
+          () =>
+            Object.assign(d, {
+              status: "processed",
+              kind: "other",
+              area: "other",
+              summary: "Demo mode: in the installed app, Claude reads it now and files every date, amount and deadline.",
+              ai_processed_at: nowTs(),
+              processed_at: nowTs(),
+              updated_at: nowTs(),
+            }),
+          ctx.opts.latency ?? 1,
+        );
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents: docs, jobs, skipped } satisfies HeldResult;
+    },
+  ],
+  [
+    "POST",
+    "/documents/held/keep-private",
+    ({ db, body }) => {
+      const { docs, skipped } = answeredTogether(db, heldIds(body));
+      for (const d of docs) {
+        Object.assign(d, { status: "processed", updated_at: nowTs() });
+        db.log("document.kept_private", `You kept “${d.title ?? d.filename}” private · not sent to Claude`, "document", d.id);
+        emit("document.updated", { doc_id: d.id });
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents: docs, jobs: [], skipped } satisfies HeldResult;
+    },
+  ],
+  [
+    "POST",
+    "/documents/held/wait",
+    ({ db, body }) => {
+      // undo "Keep private": like the API, only a letter kept private from waiting, not read since —
+      // an e-mail with its attachments kept private with it
+      const chosen = new Map<string, Document>();
+      const skipped: string[] = [];
+      for (const id of new Set(heldIds(body))) {
+        const d = db.document(id);
+        if (!d || !wasKeptFromWaiting(db, d)) {
+          skipped.push(id);
+          continue;
+        }
+        chosen.set(d.id, d);
+        for (const a of db.liveDocuments()) if (a.source === `email:${d.id}` && wasKeptFromWaiting(db, a) && !chosen.has(a.id)) chosen.set(a.id, a);
+      }
+      const documents = [...chosen.values()];
+      for (const d of documents) {
+        Object.assign(d, { status: "held", updated_at: nowTs() });
+        db.log("document.waiting", `“${d.title ?? d.filename}” is back with the letters not read yet`, "document", d.id);
+        emit("document.updated", { doc_id: d.id });
+      }
+      emit("folder.updated", { state: db.state.settings.inbox_dir ? "watching" : "off" });
+      return { documents, jobs: [], skipped } satisfies HeldResult;
+    },
+  ],
   [
     "PATCH",
     "/documents/:id",
     ({ db, params, body }) => {
       const d = db.document(params.id!) ?? notFound();
       const patch = pick<Document>(body, DOC_PATCHABLE);
+      const kindChanged = patch.kind !== undefined && patch.kind !== d.kind;
       Object.assign(d, patch, { updated_at: nowTs() });
+      if (patch.received_date && d.id === "doc_gym_price") {
+        recomputeGymPrice(db, patch.received_date);
+        d.warnings = []; // the arrival day is known now: no "we don't know when it arrived"
+        db.log("document.confirmed", "You confirmed when FitWell's letter arrived", "document", d.id);
+        emit("item.updated", {});
+      }
+      if (kindChanged) {
+        db.refileRuleItems(d);
+        // the page keeps the dates and to-dos of the kind the letter was read as: say so where they are, not
+        // only in the toast (review round 1: the verdict of a re-filed court order still said "Widerspruch")
+        const seed = db.seedKind(d.id);
+        d.warnings = d.warnings.filter((w) => !w.startsWith(DEMO_NOTE));
+        if (seed && d.kind !== seed) d.warnings.push(refiledNote(seed, d.kind));
+        emit("item.updated", {});
+      }
       if (patch.received_date && d.id === "doc_parking") {
         recomputeParking(db, patch.received_date);
         d.status = "processed";
@@ -562,6 +1250,13 @@ const routes: [string, string, Handler][] = [
         emit("item.updated", {});
         emit("suggestions.updated", {});
       }
+      if (patch.received_date && d.id === "doc_mahnbescheid") {
+        recomputeCourtOrder(db, patch.received_date);
+        d.warnings = [];
+        db.log("document.received_date", `You confirmed that “${d.title}” was delivered on ${patch.received_date}`, "document", d.id);
+        emit("item.updated", {});
+      }
+      if (patch.kind) db.log("document.kind", `You filed “${d.title ?? d.filename}” as “${patch.kind.replace(/_/g, " ")}”`, "document", d.id);
       return d;
     },
   ],
@@ -586,10 +1281,45 @@ const routes: [string, string, Handler][] = [
       const prev = { ...d };
       d.status = "processing";
       const job = makeJob(d.id, "reprocess");
-      void runJob(ctx.db, job, d.text_mode === "vision", () => ctx.db.upsertDocument({ ...prev, updated_at: nowTs(), ai_processed_at: nowTs() }), (ctx.opts.latency ?? 1) * 0.6);
+      // the readings kept so far stay shown while the letter is read again
+      const kept = readingsOf(ctx.db, prev);
+      ctx.db.state.readings[d.id] = kept;
+      void runJob(
+        ctx.db,
+        job,
+        d.text_mode === "vision",
+        () => {
+          ctx.db.upsertDocument({ ...prev, updated_at: nowTs(), ai_processed_at: nowTs() });
+          ctx.db.state.readings[d.id] = addReading(kept, { trigger: "read_again", started_at: job.created_at, job_id: job.id });
+        },
+        (ctx.opts.latency ?? 1) * 0.6,
+      );
       return new Reply(202, job);
     },
   ],
+  // "How it was read" (data/traces.ts)
+  [
+    "GET",
+    "/documents/:id/trace",
+    ({ db, params, query }) => {
+      const d = db.document(params.id!) ?? notFound("This letter doesn't exist (any more).");
+      return documentTrace(traceLedger(db), d, readingsOf(db, d), query.get("run")) ?? notFound(READING_GONE);
+    },
+  ],
+  [
+    "GET",
+    "/documents/:id/trace/compare",
+    ({ db, params, query }) => {
+      const d = db.document(params.id!) ?? notFound("This letter doesn't exist (any more).");
+      const ledger = traceLedger(db);
+      const seeds = readingsOf(db, d);
+      const head = documentTrace(ledger, d, seeds, query.get("head")) ?? notFound(READING_GONE);
+      const headRun = head.run ?? notFound(NOTHING_TO_COMPARE);
+      const baseId = query.get("base") ?? compareBase(head.runs, headRun)?.trace_id ?? notFound(NOTHING_TO_COMPARE);
+      return compareReadings(documentTrace(ledger, d, seeds, baseId) ?? notFound(READING_GONE), head);
+    },
+  ],
+  ["GET", "/traces", ({ db }) => exportTraces(traceLedger(db), Object.fromEntries(db.liveDocuments().map((d) => [d.id, readingsOf(db, d)])))],
 
   // items
   [
@@ -606,7 +1336,10 @@ const routes: [string, string, Handler][] = [
       if (f("to")) items = items.filter((i) => !i.due_date || i.due_date <= f("to")!);
       if (f("include_undated") !== "true" && (f("from") || f("to"))) items = items.filter((i) => i.due_date);
       items.sort((a, b) => ((a.send_by ?? a.due_date ?? "9999") < (b.send_by ?? b.due_date ?? "9999") ? -1 : 1));
-      return items.slice(0, Number(f("limit") ?? 1000));
+      // like the API: each says whether it is set aside (not one to act on)
+      const listed = items.slice(0, Number(f("limit") ?? 1000));
+      const aside = new Map(setAside(db, listed).map((a) => [a.item_id, a]));
+      return listed.map((i): ListedItem => ({ ...i, aside: aside.get(i.id) ?? null }));
     },
   ],
   [
@@ -659,19 +1392,39 @@ const routes: [string, string, Handler][] = [
     },
   ],
 
+  [
+    "POST",
+    "/items/:id/girocode/confirm",
+    ({ db, params, body }) => {
+      const result = confirmMockGiroCode(db, params.id!, (body ?? {}) as TransferValues);
+      if ("status" in result) throw new HttpError(result.status, result.message);
+      emit("document.updated", { doc_id: result.docId });
+      return result.code;
+    },
+  ],
+
   // contracts, parties, threads
   [
     "GET",
     "/contracts",
     ({ db, query }) =>
-      db.state.contracts.filter((c) => (!query.get("status") || c.status === query.get("status")) && (!query.get("party_id") || c.party_id === query.get("party_id"))),
+      db.state.contracts
+        .filter((c) => (!query.get("status") || c.status === query.get("status")) && (!query.get("party_id") || c.party_id === query.get("party_id")))
+        .map((c) => db.contractView(c)),
   ],
   [
     "PATCH",
     "/contracts/:id",
     ({ db, params, body }) => {
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
-      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "notice_value", "notice_unit", "end_date", "customer_number"]), { updated_at: nowTs() });
+      const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
+      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, { updated_at: nowTs() });
+      // like the API: the rules engine works the dates out again from the new terms, and the terms
+      // the person entered are theirs ("confirmed by the person": the card stops asking to check them)
+      if (Object.keys(notice).length) {
+        recomputeNotice(db, c);
+        c.evidence = noticeEvidence(c);
+      }
       return c;
     },
   ],
@@ -680,9 +1433,13 @@ const routes: [string, string, Handler][] = [
   ["GET", "/cases/:id", ({ db, params }) => caseDetail(db, params.id!)],
 
   // views
-  ["GET", "/timeline", ({ db, query }) => db.timeline(query.get("from"), query.get("to"))],
+  ["GET", "/timeline", ({ db, query }) => withAside(db, db.timeline(query.get("from"), query.get("to")))],
   ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
   ["GET", "/dashboard", ({ db }) => db.dashboard()],
+  ["GET", "/numbers", ({ db }) => mockNumbers(db)],
+  ["GET", "/week", ({ db }) => mockWeek(db)],
+  ["POST", "/week/done", ({ db }) => mockWeekDone(db)],
+  ["POST", "/week/dismiss", ({ db }) => mockWeekDismiss(db)],
 
   // ideas & brief
   [
@@ -709,7 +1466,7 @@ const routes: [string, string, Handler][] = [
     "/suggestions/review",
     (ctx) => {
       needsClaude(ctx);
-      ctx.db.log("review", "Weekly review: no new Ideas (demo)");
+      ctx.db.log("review", "Weekly Ideas: nothing new (demo)");
       // like the API: the review runs in the background; its Ideas arrive with `suggestions.updated`
       setTimeout(() => emit("suggestions.updated", { reason: "review", created: 0 }), 400 * (ctx.opts.latency ?? 1));
       return new Reply(202, { started: true, running: true } satisfies ReviewStarted);
@@ -739,8 +1496,12 @@ const routes: [string, string, Handler][] = [
       if (!b.kind) throw new HttpError(422, "Choose what kind of letter to write.");
       if (b.kind === "objection") {
         const d = b.doc_id ? db.document(b.doc_id) : null;
-        if (!d?.remedy || !["einspruch", "widerspruch"].includes(d.remedy.type))
+        const statutory = Boolean(d?.kind && STATUTORY_REMEDY[d.kind]);
+        if (!statutory && (!d?.remedy || !["einspruch", "widerspruch"].includes(d.remedy.type)))
           throw new HttpError(422, "An objection letter needs a decision with instructions on how to object (Rechtsbehelfsbelehrung).");
+        // an objection to a court order goes to the court, typed in when its sender isn't one
+        // (compose.objection_to_typed_court, review round 3 of phase 2)
+        if (d && needsTypedCourt(d, db.party(d.party_id)) && !mayBeCourt(b.details?.recipient)) throw new HttpError(422, COURT_OBJECTION_RECIPIENT);
       }
       const draft = composeDraft(db, b);
       db.state.drafts.unshift(draft);
@@ -753,7 +1514,10 @@ const routes: [string, string, Handler][] = [
     "/drafts/:id",
     ({ db, params, body }) => {
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
+      // like the API: a sent letter stays as it went out
+      if (d.status === "sent") throw new HttpError(409, "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you sent. To write again, start a new letter.");
       Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
+      d.checks = checksFor(db, d);
       return d;
     },
   ],
@@ -773,7 +1537,16 @@ const routes: [string, string, Handler][] = [
   [
     "DELETE",
     "/drafts/:id",
-    ({ db, params }) => {
+    ({ db, params, query }) => {
+      // like the API: the letter's proofs go with it, and their files too unless the person keeps them
+      const files = new Set(db.state.proofs.filter((p) => p.draft_id === params.id && p.doc_id).map((p) => p.doc_id!));
+      db.state.proofs = db.state.proofs.filter((p) => p.draft_id !== params.id);
+      const inUse = new Set(db.state.proofs.map((p) => p.doc_id));
+      if (query.get("keep_proof_files") === "true") {
+        for (const d of db.state.documents) if (files.has(d.id) && d.source === "proof" && !inUse.has(d.id)) d.source = "upload";
+      } else {
+        db.state.documents = db.state.documents.filter((d) => !(files.has(d.id) && d.source === "proof" && !inUse.has(d.id)));
+      }
       db.state.drafts = db.state.drafts.filter((d) => d.id !== params.id);
       return new Reply(204);
     },
@@ -783,25 +1556,43 @@ const routes: [string, string, Handler][] = [
     "/drafts/:id/sent",
     ({ db, params, body }) => {
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
-      const b = (body ?? {}) as { channel?: string; date?: string };
+      const b = (body ?? {}) as { channel?: string; date?: string; tracking_number?: string | null };
       const date = b.date ?? db.today;
+      const tracking = checkTracking(b.tracking_number ?? "");
+      if (tracking.state === "invalid") throw new HttpError(422, tracking.message);
+      const channel = b.channel ?? "letter";
+      // like the API: only a registered letter has a tracking number; another channel drops a stored one
+      if (tracking.state === "valid" && channel !== "registered_letter") throw new HttpError(422, "Only a registered letter (Einschreiben) has a tracking number.");
+      // like the API: a sending day after a recorded delivery is refused
+      const delivered = deliveredBefore(db, d, date);
+      if (delivered) throw new HttpError(422, delivered);
       d.status = "sent";
-      d.sent_channel = b.channel ?? "letter";
+      d.sent_channel = channel;
       d.sent_at = `${date}T12:00:00Z`;
+      // an emptied field ("") removes the number; none sent keeps it
+      if (tracking.state === "valid") d.tracking_number = tracking.number;
+      else if (channel !== "registered_letter" || typeof b.tracking_number === "string") d.tracking_number = null;
       d.updated_at = nowTs();
+      d.checks = checksFor(db, d);
       const party = db.party(d.party_id);
+      const followup = sentFollowup(d, date);
+      const before = db.state.items.find((i) => i.id === followup.id);
+      db.state.items = db.state.items.filter((i) => i.id !== followup.id); // marking it sent again replaces it
       db.state.items.push(
         makeItem({
-          id: newId("itm"),
+          id: followup.id,
           kind: "task",
-          title: `Follow up: has ${party?.name ?? "the recipient"} confirmed your letter?`,
+          title: `Check for a reply from ${party?.name ?? "the recipient"}`,
           description: d.subject,
-          due_date: format(addDays(parseISO(date), 21), "yyyy-MM-dd"),
+          due_date: followup.due,
           party_id: d.party_id,
           case_id: d.case_id,
           contract_id: d.contract_id,
+          doc_id: d.doc_id,
           origin: "draft",
           grounding: "user",
+          // correcting how or when it went reopens nothing
+          status: before && (before.status === "done" || before.status === "dismissed") ? before.status : "open",
           created_at: nowTs(),
           updated_at: nowTs(),
         }),
@@ -811,6 +1602,15 @@ const routes: [string, string, Handler][] = [
       return d;
     },
   ],
+
+  // proof of sending, waiting for, call notes (src/mocks/proof.ts)
+  ...proofRoutes({
+    fail: (status, message) => {
+      throw new HttpError(status, message);
+    },
+    created: (body) => new Reply(201, body),
+    empty: () => new Reply(204),
+  }),
 
   // calendar, privacy, jobs
   [
@@ -822,6 +1622,48 @@ const routes: [string, string, Handler][] = [
       if (s) s.status = "done";
       db.log("calendar.exported", "Exported your dates to your calendar");
       return { last_calendar_export_at: db.state.lastCalendarExport };
+    },
+  ],
+  // calendar sync (CalDAV): `?mock=1` pretends a calendar answers; the static demo can't reach one
+  ["GET", "/calendar/sync", ({ db, opts }) => mockCalendarSyncStatus(db, opts.staticDemo)],
+  [
+    "GET",
+    "/calendar/sync/preview",
+    ({ db, query }) => {
+      const mode = query.get("mode") ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { mode, events: mockCalendarPreview(db, mode) };
+    },
+  ],
+  ["POST", "/calendar/sync/discover", ({ body, opts }) => calendarRefusals(() => mockDiscoverCalendars(body as CalendarSyncFind, opts.staticDemo))],
+  ["PUT", "/calendar/sync", ({ db, body, opts }) => calendarRefusals(() => mockConnectCalendar(db, body as CalendarSyncConnect, opts.staticDemo))],
+  ["POST", "/calendar/sync/run", ({ db, opts }) => calendarRefusals(() => mockRunCalendarSync(db, opts.staticDemo))],
+  [
+    "POST",
+    "/calendar/sync/disconnect",
+    ({ db, body }) => mockDisconnectCalendar(db, (body as { remove_events?: boolean } | null)?.remove_events ?? true),
+  ],
+  // reminders outside the browser & the encrypted backup (a browser tab can do neither for real)
+  ["GET", "/reminders/desktop", ({ db }) => mockDesktopReminders(db)],
+  [
+    "POST",
+    "/reminders/desktop/test",
+    ({ db, body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, DESKTOP_STATIC_MESSAGE, "static_demo");
+      const mode = (body as { mode?: DesktopMode } | null)?.mode ?? "discreet";
+      if (mode !== "discreet" && mode !== "full") throw new HttpError(422, "Choose discreet or full.");
+      return { shown: true, tool: "notify-send", notification: mockNotification(db, mode) ?? SAMPLE_NOTIFICATION, detail: null } satisfies DesktopTestResult;
+    },
+  ],
+  ["GET", "/backup", ({ db }) => mockBackupInfo(db)],
+  [
+    "POST",
+    "/backup",
+    ({ body, opts }) => {
+      if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
+      const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
+      if (typeof passphrase !== "string" || passphrase.length < 12) throw new HttpError(422, "Use a passphrase of at least 12 characters — a short sentence works well.");
+      return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],
   ["GET", "/activity", ({ db, query }) => db.state.activity.slice(0, Number(query.get("limit") ?? 100))],
@@ -933,6 +1775,8 @@ export function createMockServer(opts: MockOptions): MockServer {
   }
 
   function resolveAsset(path: string): string | null {
+    const proof = resolveProofAsset(db, path);
+    if (proof) return proof;
     let m = /^\/documents\/([^/]+)\/pages\/(\d+)\.jpg$/.exec(path);
     const pageOf = (id: string, n: number) => {
       const letter = letterFor(decodeURIComponent(id));
@@ -950,7 +1794,8 @@ export function createMockServer(opts: MockOptions): MockServer {
     if (m) return pageOf(m[1]!, Number(m[2]));
     m = /^\/documents\/([^/]+)\/(thumbnail\.jpg|file)$/.exec(path);
     if (m) return pageOf(m[1]!, 1);
-    m = /^\/drafts\/([^/]+)\/pdf$/.exec(path);
+    // the PDF and its print preview: the letter drawn as an image
+    m = /^\/drafts\/([^/]+)\/(?:pdf|preview\.png)$/.exec(path);
     if (m) {
       const d = db.state.drafts.find((x) => x.id === decodeURIComponent(m![1]!));
       if (!d) return null;

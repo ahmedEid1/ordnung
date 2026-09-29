@@ -1,0 +1,1 @@
+var e=`rounded-xl bg-surface-2 p-1`,t=`gap-1`,n=`rounded-lg focus-visible:-outline-offset-2`,r=`rounded-lg bg-surface shadow-[var(--shadow-card)] ring-1 ring-line`;export{e as i,n,r,t};

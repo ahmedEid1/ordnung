@@ -7,8 +7,19 @@
  */
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowDownLeft,
   AlarmClock,
   Award,
+  CalendarPlus,
+  DatabaseSearch,
+  FileSearch,
+  Gavel,
+  KeyRound,
+  MapPinHouse,
+  ReceiptEuro,
+  Undo2,
+  UserX,
+  Wrench,
   BadgeAlert,
   Banknote,
   Bell,
@@ -32,6 +43,7 @@ import {
   FileX,
   Flag,
   Folder,
+  FolderInput,
   GraduationCap,
   HandCoins,
   Handshake,
@@ -45,6 +57,7 @@ import {
   ListTodo,
   LoaderCircle,
   Mail,
+  MailQuestionMark,
   Milestone,
   TreePalm,
   PiggyBank,
@@ -58,6 +71,7 @@ import {
   ShieldAlert,
   ShieldPlus,
   Signature,
+  Signpost,
   Smartphone,
   Sparkles,
   Stamp,
@@ -80,6 +94,8 @@ import {
   ScrollText,
   Recycle,
   Repeat,
+  MailCheck,
+  Phone,
 } from "lucide-react";
 import {
   AREAS,
@@ -107,6 +123,9 @@ import {
   REMEDY_TYPES,
   SEND_CHANNELS,
   SEND_FORMS,
+  PROOF_KINDS,
+  WAITING_SOURCES,
+  WAITING_STATUSES,
   SUGGESTION_KINDS,
   SUGGESTION_STATUSES,
   TIMELINE_TYPES,
@@ -135,6 +154,9 @@ import {
   type RemedyType,
   type SendChannelKind,
   type SendForm,
+  type ProofKind,
+  type WaitingSource,
+  type WaitingStatus,
   type SuggestionKind,
   type SuggestionStatus,
   type TimelineType,
@@ -142,6 +164,10 @@ import {
 
 // ------------------------------------------------------------------------------------------------
 // Tones → Tailwind classes (full literal class names so Tailwind can see them)
+//
+// Categories (letter kinds, life areas, organisations, contract categories) are not alarms: they
+// never take a status tone (danger / warn) or the deadline tone. How urgent something is shows in
+// its date (Countdown) and status, so a "Fine" chip or the Health area never looks like an error.
 // ------------------------------------------------------------------------------------------------
 
 export type Tone =
@@ -198,6 +224,24 @@ export interface EnumCopy {
 
 type CopyMap<K extends string> = Record<K, EnumCopy>;
 
+/**
+ * One icon per meaning, wherever it shows (copy maps, section headers, cards, buttons): an icon
+ * that stands for two things makes both unreadable. The hourglass is the Deadline kind and nothing
+ * else — not what you wait for from others, not letters nobody has read, not a contract's
+ * "Decide by". Never use `Clock` for these either: it is "Waiting to be read", past, expired and
+ * ended.
+ */
+export const MEANING_ICONS = {
+  /** the Deadline kind: a date the law or a letter sets (pink tiles, "deadlines on your timeline") */
+  deadline: Hourglass,
+  /** "Waiting for": a reply, money or a promise you expect from someone else */
+  waitingFor: MailQuestionMark,
+  /** a letter the watched folder or an e-mail brought in that nobody has read yet (as in the Inbox) */
+  notReadYet: FolderInput,
+  /** a contract's "Decide by": the last day to choose whether to cancel or keep it */
+  decideBy: Signpost,
+} as const satisfies Record<string, LucideIcon>;
+
 // ------------------------------------------------------------------------------------------------
 // Documents
 // ------------------------------------------------------------------------------------------------
@@ -210,7 +254,7 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   social_insurance: { label: "Social insurance", icon: ShieldPlus, tone: "milestone" },
   health_insurance: { label: "Health insurance", icon: HeartPulse, tone: "appointment" },
   invoice: { label: "Invoice", icon: Receipt, tone: "payment" },
-  dunning: { label: "Payment reminder", icon: BadgeAlert, tone: "deadline" },
+  dunning: { label: "Payment reminder", icon: BadgeAlert, tone: "payment" },
   contract: { label: "Contract", icon: Signature, tone: "contract" },
   contract_change: { label: "Contract change", icon: FilePenLine, tone: "contract" },
   price_increase: { label: "Price increase", icon: TrendingUp, tone: "payment" },
@@ -223,13 +267,19 @@ export const DOCUMENT_KIND_COPY: CopyMap<DocumentKind> = {
   university: { label: "University", icon: GraduationCap, tone: "milestone" },
   employment: { label: "Work", icon: Briefcase, tone: "task" },
   appointment: { label: "Appointment", icon: CalendarClock, tone: "appointment" },
-  fine: { label: "Fine", icon: Scale, tone: "deadline" },
+  fine: { label: "Fine", icon: Scale, tone: "payment" },
   receipt: { label: "Receipt", icon: ReceiptText, tone: "document" },
   identity_document: { label: "ID document", icon: IdCard, tone: "expiry" },
   broadcasting_fee: { label: "Broadcasting fee", icon: Radio, tone: "payment" },
   certificate: { label: "Certificate", icon: Award, tone: "milestone" },
   personal: { label: "Personal", icon: User, tone: "document" },
   other: { label: "Other letter", icon: FileText, tone: "document" },
+  court_payment_order: { label: "Court payment order", icon: Gavel, tone: "payment", hint: "Mahnbescheid: two weeks to pay or object (one week at a labour court)." },
+  enforcement_order: { label: "Enforcement order", icon: Gavel, tone: "payment", hint: "Vollstreckungsbescheid: two weeks to object (one week at a labour court)." },
+  dismissal: { label: "Dismissal", icon: UserX, tone: "task", hint: "Kündigung by your employer: three weeks to go to court." },
+  landlord_notice: { label: "Notice from your landlord", icon: KeyRound, tone: "contract", hint: "Kündigung of your flat: a hardship objection must reach your landlord at least two months before the tenancy ends." },
+  rent_increase: { label: "Rent increase request", icon: TrendingUp, tone: "payment", hint: "Mieterhöhungsverlangen: until the end of the second month after it arrives to decide whether to agree." },
+  operating_costs: { label: "Operating-cost statement", icon: ReceiptEuro, tone: "payment", hint: "Betriebskostenabrechnung: twelve months from its arrival to object; a back-payment billed over a year after the billing period usually isn't owed." },
 };
 
 export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
@@ -238,6 +288,7 @@ export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
   processed: { label: "Filed", icon: CircleCheck, tone: "ok" },
   needs_review: { label: "Please check", icon: TriangleAlert, tone: "warn", hint: "Something in this letter needs a quick look from you." },
   failed: { label: "Couldn't read", icon: CircleX, tone: "danger" },
+  held: { label: "Not read yet", icon: MEANING_ICONS.notReadYet, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
 };
 
 export const DIRECTION_COPY: CopyMap<Direction> = {
@@ -259,7 +310,7 @@ export const GROUNDING_COPY: CopyMap<Grounding> = {
 // ------------------------------------------------------------------------------------------------
 
 export const ITEM_KIND_COPY: CopyMap<ItemKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   payment: { label: "Payment", icon: Euro, tone: "payment" },
   appointment: { label: "Appointment", icon: CalendarClock, tone: "appointment" },
   task: { label: "To-do", icon: ListTodo, tone: "task" },
@@ -267,6 +318,9 @@ export const ITEM_KIND_COPY: CopyMap<ItemKind> = {
   reminder: { label: "Reminder", icon: Bell, tone: "task" },
   milestone: { label: "Milestone", icon: Milestone, tone: "milestone" },
 };
+
+/** A payment that comes to you (salary, stipend, a tax refund): money in, not a bill to pay. */
+export const MONEY_IN_COPY: EnumCopy = { label: "Money in", icon: ArrowDownLeft, tone: "ok" };
 
 export const ITEM_STATUS_COPY: CopyMap<ItemStatus> = {
   open: { label: "Open", icon: CircleDashed, tone: "neutral" },
@@ -287,9 +341,9 @@ export const AREA_COPY: CopyMap<Area> = {
   home: { label: "Home", icon: House, tone: "contract" },
   work: { label: "Work", icon: Briefcase, tone: "task" },
   study: { label: "Study", icon: GraduationCap, tone: "milestone" },
-  health: { label: "Health", icon: HeartPulse, tone: "deadline" },
+  health: { label: "Health", icon: HeartPulse, tone: "appointment" },
   money: { label: "Money", icon: Wallet, tone: "payment" },
-  residence: { label: "Residence", icon: Stamp, tone: "expiry" },
+  residence: { label: "Residence permit", icon: Stamp, tone: "expiry" },
   tax: { label: "Tax", icon: Landmark, tone: "expiry" },
   mobility: { label: "Getting around", icon: TramFront, tone: "appointment" },
   insurance: { label: "Insurance", icon: Shield, tone: "contract" },
@@ -318,7 +372,7 @@ export const TIMELINE_TYPE_COPY: CopyMap<TimelineType> = {
 };
 
 export const MARKER_KIND_COPY: CopyMap<MarkerKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   send_by: { label: "Send by", icon: Send, tone: "deadline" },
   cancel_by: { label: "Cancel by", icon: FileX, tone: "warn" },
   renewal: { label: "Renews", icon: Recycle, tone: "contract" },
@@ -348,7 +402,7 @@ export const LANE_BAR_STATUS_COPY: CopyMap<LaneBarStatus> = {
 // ------------------------------------------------------------------------------------------------
 
 export const SUGGESTION_KIND_COPY: CopyMap<SuggestionKind> = {
-  deadline: { label: "Deadline", icon: Hourglass, tone: "deadline" },
+  deadline: { label: "Deadline", icon: MEANING_ICONS.deadline, tone: "deadline" },
   saving: { label: "Save money", icon: PiggyBank, tone: "ok" },
   risk: { label: "Heads-up", icon: TriangleAlert, tone: "warn" },
   followup: { label: "Follow up", icon: Send, tone: "appointment" },
@@ -403,6 +457,7 @@ export const CONTRACT_REGIME_COPY: Record<ContractRegime, RegimeCopy> = {
   stromgvv20: { label: "Basic energy supply", icon: Zap, tone: "contract", citation: "§ 20 StromGVV", hint: "You can cancel any time with two weeks' notice." },
   rent573c: { label: "Tenancy (you as tenant)", icon: House, tone: "contract", citation: "§ 573c BGB", hint: "Notice by the 3rd working day of a month ends the tenancy at the end of the month after next." },
   employment622: { label: "Employment contract", icon: Briefcase, tone: "contract", citation: "§ 622 BGB", hint: "Notice as written in the contract, at least the statutory minimum." },
+  bgb675h: { label: "Current account", icon: Banknote, tone: "contract", citation: "§ 675h BGB", hint: "You can close it any time; a notice period of more than a month is void." },
   as_written: { label: "As written in the contract", icon: ScrollText, tone: "neutral", citation: "Contract terms", hint: "No special rule known — we follow the contract text. Please double-check." },
 };
 
@@ -433,6 +488,14 @@ export const DRAFT_KIND_COPY: CopyMap<DraftKind> = {
   cancellation: { label: "Cancellation", icon: FileX, tone: "contract", hint: "End a contract (Kündigung)." },
   objection: { label: "Objection", icon: Scale, tone: "expiry", hint: "Object to an official decision (Einspruch / Widerspruch)." },
   general_reply: { label: "Reply", icon: Mail, tone: "appointment", hint: "Answer a letter, ask a question or send a document." },
+  withdrawal: { label: "Withdrawal", icon: Undo2, tone: "contract", hint: "Withdraw from an online, phone or doorstep contract (Widerruf)." },
+  extension_request: { label: "More time", icon: CalendarPlus, tone: "appointment", hint: "Ask for a deadline to be extended (Fristverlängerung)." },
+  payment_plan: { label: "Instalments", icon: HandCoins, tone: "payment", hint: "Offer to pay in instalments, or ask the tax office to defer (Stundung)." },
+  defect_notice: { label: "Defect notice", icon: Wrench, tone: "task", hint: "Report something broken in your flat (Mängelanzeige)." },
+  data_access: { label: "Data request", icon: DatabaseSearch, tone: "milestone", hint: "Ask what data they hold about you (Art. 15 GDPR)." },
+  receipts_inspection: { label: "Receipts request", icon: FileSearch, tone: "document", hint: "See the receipts behind an operating-cost statement (Belegeinsicht)." },
+  deposit_return: { label: "Deposit back", icon: KeyRound, tone: "contract", hint: "Ask your landlord to settle and return the deposit (Kaution)." },
+  address_change: { label: "New address", icon: MapPinHouse, tone: "appointment", hint: "Tell them your new address." },
 };
 
 export const DRAFT_STATUS_COPY: CopyMap<DraftStatus> = {
@@ -451,9 +514,35 @@ export const SEND_CHANNEL_COPY: CopyMap<SendChannelKind> = {
   portal: { label: "Online portal", icon: Globe, tone: "accent" },
 };
 
+/** Proof of a sent letter: the German term the receipt carries is in the label, what it shows is the server's. */
+export const PROOF_KIND_COPY: CopyMap<ProofKind> = {
+  posting_receipt: { label: "Posting receipt (Einlieferungsbeleg)", icon: ReceiptText, tone: "contract", hint: "The slip from the post office, with the tracking number" },
+  delivery_record: { label: "Delivery record (Auslieferungsbeleg)", icon: MailCheck, tone: "ok", hint: "Deutsche Post's record of the day it was delivered — into their letterbox or handed over" },
+  return_receipt: { label: "Return receipt (Rückschein)", icon: Signature, tone: "ok", hint: "The card signed by whoever took the letter" },
+  fax_report: { label: "Fax report (Sendebericht)", icon: Printer, tone: "neutral", hint: "The transmission report your fax printed" },
+  sent_email: { label: "Sent e-mail", icon: Mail, tone: "appointment", hint: "The e-mail as it left your mailbox" },
+  cancel_confirmation: { label: "Cancel-button confirmation", icon: MousePointerClick, tone: "accent", hint: "The page the cancel button showed, or their confirmation e-mail" },
+  other: { label: "Other proof", icon: FileText, tone: "neutral" },
+};
+
+/** "Waiting for": where an entry comes from … */
+export const WAITING_SOURCE_COPY: CopyMap<WaitingSource> = {
+  letter: { label: "Reply to your letter", icon: Send, tone: "contract" },
+  money: { label: "Money owed to you", icon: HandCoins, tone: "ok" },
+  call: { label: "Promised on the phone", icon: Phone, tone: "appointment" },
+};
+
+/** … and how it stands (nothing is closed for the person: "answered" asks them to check). */
+export const WAITING_STATUS_COPY: CopyMap<WaitingStatus> = {
+  waiting: { label: "Waiting", icon: MEANING_ICONS.waitingFor, tone: "neutral" },
+  overdue: { label: "Overdue", icon: AlarmClock, tone: "danger" },
+  answered: { label: "Answered — check it", icon: CircleCheck, tone: "ok" },
+  closed: { label: "Closed", icon: CircleCheckBig, tone: "neutral" },
+};
+
 export const SEND_FORM_COPY: CopyMap<SendForm> = {
   text_form: { label: "Text form — email or letter is fine", icon: Mail, tone: "ok" },
-  written_form: { label: "Written form — print, sign by hand and post", icon: Signature, tone: "warn" },
+  written_form: { label: "Written form — signed by hand", icon: Signature, tone: "warn" },
   any: { label: "Any form", icon: Mail, tone: "neutral" },
 };
 
@@ -473,7 +562,7 @@ export const PARTY_KIND_COPY: CopyMap<PartyKind> = {
   authority: { label: "Authority", icon: Building, tone: "milestone" },
   tax_office: { label: "Tax office", icon: Landmark, tone: "expiry" },
   immigration_office: { label: "Immigration office", icon: Stamp, tone: "expiry" },
-  health_insurer: { label: "Health insurer", icon: HeartPulse, tone: "deadline" },
+  health_insurer: { label: "Health insurer", icon: HeartPulse, tone: "appointment" },
   insurer: { label: "Insurer", icon: Shield, tone: "contract" },
   bank: { label: "Bank", icon: Banknote, tone: "document" },
   landlord: { label: "Landlord", icon: House, tone: "contract" },
@@ -506,7 +595,7 @@ export const PIPELINE_STEPS = [
   { id: "reading", label: "Reading" },
   { id: "understanding", label: "Understanding" },
   { id: "checking", label: "Checking" },
-  { id: "computing", label: "Computing dates" },
+  { id: "computing", label: "Computing dates", short: "Dates" },
   { id: "filing", label: "Filing" },
 ] as const;
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
@@ -514,7 +603,7 @@ export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
 export const JOB_STAGE_COPY: Record<JobStage, EnumCopy & { step: number }> = {
   intake: { label: "Opening the file", icon: CloudUpload, tone: "accent", step: 0 },
   text: { label: "Reading the text", icon: FileText, tone: "accent", step: 0 },
-  transcribe: { label: "Reading the photo", icon: ScanText, tone: "accent", step: 0 },
+  transcribe: { label: "Reading the photo or scan", icon: ScanText, tone: "accent", step: 0 },
   extract: { label: "Understanding the letter", icon: BookOpen, tone: "accent", step: 1 },
   verify: { label: "Checking every fact against the page", icon: CircleCheck, tone: "accent", step: 2 },
   compute: { label: "Computing dates with the rules", icon: Scale, tone: "accent", step: 3 },
@@ -532,7 +621,7 @@ export function stageToStep(stage: string | null | undefined): number {
 export const LLM_PURPOSE_LABELS: Record<string, string> = {
   transcribe: "Reading photos",
   extract: "Understanding letters",
-  review: "Weekly review (Ideas)",
+  review: "Weekly Ideas",
   ask: "Answering questions",
   draft: "Drafting letters",
   brief: "Daily note",
@@ -599,6 +688,9 @@ export const ENUM_COVERAGE: { name: string; values: readonly string[]; map: Reco
   { name: "PartyKind", values: PARTY_KINDS, map: PARTY_KIND_COPY },
   { name: "Confidence", values: CONFIDENCES, map: CONFIDENCE_COPY },
   { name: "JobStage", values: JOB_STAGES, map: JOB_STAGE_COPY },
+  { name: "ProofKind", values: PROOF_KINDS, map: PROOF_KIND_COPY },
+  { name: "WaitingSource", values: WAITING_SOURCES, map: WAITING_SOURCE_COPY },
+  { name: "WaitingStatus", values: WAITING_STATUSES, map: WAITING_STATUS_COPY },
 ];
 
 // ------------------------------------------------------------------------------------------------
@@ -618,7 +710,7 @@ const DISTINCTIVE_RAW = new Set<string>(
 const WORD_RAW = new Set<string>(ENUM_COVERAGE.flatMap((c) => c.values).filter((v) => !/[_\d]/.test(v)));
 
 /** A ledger record id (`doc_0b2t88kqsf2n`, `itm_…`) — never shown as text (see `RefText`). */
-export const RECORD_ID_RE = /\b(doc|itm|ctr|pty|cas|drf|sug|thr)_[a-z0-9]{8,}\b/;
+export const RECORD_ID_RE = /\b(doc|itm|ctr|pty|cas|drf|sug|thr|prf|cal)_[a-z0-9]{8,}\b/;
 
 /** Record id prefix → the kind of record it names (those a person can open). */
 export const RECORD_TYPES: Partial<Record<string, "document" | "item" | "contract" | "party">> = {

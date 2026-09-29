@@ -10,14 +10,18 @@ bekanntgabe_regime_selection.
 
 from __future__ import annotations
 
+import re
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from ordnung.rules.delivery import (
+    MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
     deemed_delivery,
     fiction_days,
+    is_private_sender,
     resolve_delivery,
     scope_for_party_kind,
 )
@@ -213,3 +217,160 @@ def test_schleswig_holstein_confirmed_from_june_2025() -> None:
     """vwvfg verdict: § 110 LVwG SH shows the 4th day in the text as of 10 Jun 2025."""
     assert deemed_delivery(D("2025-03-03"), scope="vwvfg", region="SH")[0] == D("2025-03-06")
     assert deemed_delivery(D("2026-09-29"), scope="vwvfg", region="SH")[0] == D("2026-10-03")
+
+
+#: A statutory health insurer's remedy notice (§ 37 SGB X, § 84 SGG): an administrative act.
+_BESCHEID = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
+
+
+@pytest.mark.parametrize(
+    ("kind", "name", "remedy_type", "notice", "expected"),
+    [
+        ("company", None, None, None, True),
+        ("landlord", "Muster Wohnen GmbH", "none", None, True),
+        ("insurer", "Muster Haftpflicht AG", None, None, True),
+        # "other" is the app's "don't know", not "no authority"; nor is a missing kind
+        ("other", "Stadt Musterstadt", None, None, False),
+        (None, None, None, None, False),
+        # an authority's decision whatever it was filed as: its remedy notice says so ...
+        ("insurer", "AOK Nordost", "widerspruch", _BESCHEID, False),
+        ("company", None, "einspruch", "Gegen diesen Bescheid ist der Einspruch gegeben.", False),
+        ("company", None, "einspruch", "Einspruch beim Finanzamt, § 347 AO", False),
+        ("company", "Familienkasse Muster-Mitte", "einspruch", None, False),  # tax law by its name
+        ("employer", "Land Berlin", "klage", "Klage beim Verwaltungsgericht Berlin (§ 74 VwGO)", False),
+        ("company", None, "klage", "Klage vor dem Finanzgericht", False),
+        ("company", None, "widerspruch", "nach Zustellung des Widerspruchsbescheids", False),
+        # ... but Widerspruch and Klage are private-law remedies too: a dismissal, a tenancy, an insurance
+        ("employer", "Land Berlin", "klage", None, True),
+        ("employer", "Muster GmbH", "klage", "Kündigungsschutzklage beim Arbeitsgericht (§ 4 KSchG)", True),
+        ("landlord", None, "widerspruch", "Widerspruch nach § 574 BGB bis zwei Monate vor Ende", True),
+        (
+            "insurer",
+            "Muster Leben AG",
+            "widerspruch",
+            "innerhalb eines Monats nach Zugang widersprechen (§ 5 VVG)",
+            True,
+        ),
+        # a court's Mahnbescheid is served formally: from its delivery, not a deemed one
+        (
+            "company",
+            "Inkasso GmbH",
+            "widerspruch",
+            "Widerspruch gegen den Mahnbescheid binnen zwei Wochen",
+            True,
+        ),
+        ("company", None, "widerspruch", "Widerspruch gegen den Vollstreckungsbescheid", True),
+        ("company", None, "einspruch", "Einspruch gegen den Vollstreckungsbescheid (§ 700 ZPO)", True),
+        # ... and firms call their own complaint window an "Einspruch": a sender filed as private that
+        # names one without an administrative route is in doubt, and arrival is the earlier start
+        ("company", None, "einspruch", None, True),
+        (
+            "company",
+            "Park & Control GmbH",
+            "einspruch",
+            "Gegen diese Vertragsstrafe können Sie innerhalb von 14 Tagen Einspruch einlegen.",
+            True,
+        ),
+        # ... in everyday German: "Bescheid geben / sagen" is "let us know", "bekanntgegeben" "announced"
+        (
+            "company",
+            "Park & Control GmbH",
+            "einspruch",
+            "Wenn Sie Einspruch einlegen möchten, geben Sie uns innerhalb von 14 Tagen nach Zugang Bescheid.",
+            True,
+        ),
+        (
+            "company",
+            None,
+            "einspruch",
+            "Wie bereits bekanntgegeben, ist ein Einspruch binnen 14 Tagen möglich.",
+            True,
+        ),
+        ("landlord", None, "widerspruch", "Sagen Sie ihr Bescheid, wenn Sie widersprechen wollen.", True),
+        ("company", None, "einspruch", "Einspruch gegen die bescheidene Bearbeitungsgebühr", True),
+        # ... while a Bescheid as the decision it is shows an administrative act
+        ("utility", "Stadtentwässerung", "widerspruch", "Widerspruch gegen den Gebührenbescheid", False),
+        ("company", None, "widerspruch", "Widerspruch gegen den Bescheid vom 1. September", False),
+        ("company", None, "klage", "Klage gegen Ihren Bescheid", False),
+        # ... or its name makes it a social agency
+        ("insurer", "Deutsche Rentenversicherung Bund", None, None, False),
+        ("authority", None, None, None, False),
+        ("tax_office", None, None, None, False),
+    ],
+)
+def test_private_senders_have_no_deemed_delivery(
+    kind: str | None, name: str | None, remedy_type: str | None, notice: str | None, expected: bool
+) -> None:
+    scope = scope_for_party_kind(kind, name=name, remedy_type=remedy_type, remedy_text=notice)
+    assert is_private_sender(kind, scope=scope, remedy_type=remedy_type, remedy_text=notice) is expected
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "AOK Nordwest – Die Gesundheitskasse",
+        "BARMER",
+        "DAK-Gesundheit",
+        "IKK classic",
+        "BKK firmus",
+        "Audi BKK",
+        "Knappschaft",
+        "KKH",
+        "hkk",
+        "Verband der Ersatzkassen",
+        "SVLFG",
+        "Die Techniker",
+        "TK",
+        "Techniker Krankenkasse (TK)",
+        "VIACTIV Krankenkasse",
+        "Viactiv",
+        "BIG direkt gesund",
+        "HEK",
+        "Hanseatische Krankenkasse (HEK)",
+        "SBK",
+        "mhplus",
+    ],
+)
+def test_statutory_health_insurers_by_their_brand_are_social_law(name: str) -> None:
+    """Reviewer repro: statutory health insurers go by names without "Krankenkasse"; filed as an
+    ``insurer`` they were private, and a late arrival moved their Bescheid's deadline later."""
+    scope = scope_for_party_kind("insurer", name=name)
+    assert scope == "sgbx" and is_private_sender("insurer", scope=scope) is False
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Allianz Versicherungs-AG",
+        "HUK-COBURG",
+        "Barmenia Krankenversicherung AG",
+        # short brands other firms share count only as the whole name or in brackets
+        "TK Maxx",
+        "TK Elevator GmbH",
+        "SBK Immobilien GmbH",
+        "Stark TK Bau",
+        "Big Direktvertrieb GmbH",
+    ],
+)
+def test_private_insurers_stay_private(name: str) -> None:
+    for kind in ("insurer", "company"):
+        scope = scope_for_party_kind(kind, name=name)
+        assert scope is None and is_private_sender(kind, scope=scope) is True
+
+
+def test_the_administrative_route_needs_the_codes_written_as_codes() -> None:
+    """ "AO" is the Abgabenordnung only in capitals: the word "ao" in other text is no route."""
+    route = is_private_sender("company", scope=None, remedy_type="klage", remedy_text="Klage nach § 40 AO")
+    assert route is False
+    assert is_private_sender("company", scope=None, remedy_type="klage", remedy_text="ciao ao") is True
+
+
+def test_the_document_page_knows_which_kinds_may_be_public() -> None:
+    """The arrival question (``web/src/features/document/verdict.ts``) says a late arrival may not move
+    the date for the kinds a public body may be filed as: the same kinds as the engine's."""
+    verdict = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "document" / "verdict.ts"
+    found = re.search(
+        r"MAY_BE_PUBLIC_KINDS: readonly PartyKind\[\] = \[([^\]]*)\]", verdict.read_text("utf-8")
+    )
+    assert found is not None
+    assert set(re.findall(r'"([a-z_]+)"', found.group(1))) == MAY_BE_PUBLIC_KINDS

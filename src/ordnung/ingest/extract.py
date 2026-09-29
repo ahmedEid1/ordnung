@@ -20,11 +20,12 @@ from pydantic import ValidationError
 
 from ordnung.ingest.text import page_delimited
 from ordnung.llm import prompts
-from ordnung.llm.base import LLMRequest
+from ordnung.llm.base import LLMRequest, LLMResponse
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import extraction_schema
 from ordnung.models import DocumentExtraction, Page, Party
+from ordnung.trace.spans import NO_SPAN, Span
 
 LANGUAGE_NAMES: dict[str, str] = {
     "ar": "Arabic",
@@ -170,6 +171,7 @@ def extraction_request(data: ExtractionInput, *, model: str) -> LLMRequest:
         model=model,
         cache_key=extraction_cache_key(data),
         prompt_version=f"{system_version}.{user_version}.{text_version}",
+        prompt_name="extract",
     )
 
 
@@ -181,6 +183,7 @@ def repair_request(request: LLMRequest, data: ExtractionInput, errors: str) -> L
             "prompt": f"{request.prompt}\n\n{note}",
             "cache_key": extraction_cache_key(data, repair=True),
             "prompt_version": f"{request.prompt_version}.r{version}",
+            "prompt_name": "extract_repair",
         }
     )
 
@@ -205,22 +208,40 @@ def parse_extraction(data: dict[str, Any] | None, text: str) -> DocumentExtracti
     return DocumentExtraction.model_validate(payload if payload is not None else {})
 
 
+def _parse_answer(response: LLMResponse) -> DocumentExtraction:
+    return parse_extraction(response.data, response.text)
+
+
 async def extract_document(
-    llm: LLMService, data: ExtractionInput, *, model: str, use_cache: bool = True
+    llm: LLMService, data: ExtractionInput, *, model: str, use_cache: bool = True, trace: Span = NO_SPAN
 ) -> DocumentExtraction:
-    """Run the extraction call, with one repair attempt if the answer does not validate."""
+    """Run the extraction call, with one repair attempt if the answer does not validate.
+
+    ``trace`` gets a model step per call; the repair's usage-log row names the call it retries
+    (``repair_of``) and the outcomes say which answer was usable (``invalid`` → ``repaired``/``failed``).
+    """
     request = extraction_request(data, model=model)
-    response = await llm.complete(request, use_cache=use_cache)
-    try:
-        return parse_extraction(response.data, response.text)
-    except ValidationError as first:
-        problems = validation_problems(first)
-    repaired = await llm.complete(repair_request(request, data, problems), use_cache=use_cache)
-    try:
-        return parse_extraction(repaired.data, repaired.text)
-    except ValidationError as second:
-        raise ExtractionError(
-            "Claude's answer for this document could not be understood, even after a second try "
-            f"({len(second.errors())} problem(s), e.g. {validation_problems(second).splitlines()[0][2:]}). "
-            "Try “Reprocess” later."
-        ) from second
+    with trace.span("model", "Extract", key="extract", stage="extract") as step:
+        response = await llm.complete(request, use_cache=use_cache, trace=step, validate=_parse_answer)
+        try:
+            return parse_extraction(response.data, response.text)
+        except ValidationError as first:
+            problems = validation_problems(first)
+            step.set(problems=len(first.errors()))
+    with trace.span("model", "Extract · repair", key="extract_repair", stage="extract") as step:
+        repaired = await llm.complete(
+            repair_request(request, data, problems),
+            use_cache=use_cache,
+            trace=step,
+            validate=_parse_answer,
+            repair_of=response.call_id,
+        )
+        try:
+            return parse_extraction(repaired.data, repaired.text)
+        except ValidationError as second:
+            step.set(problems=len(second.errors()))
+            raise ExtractionError(
+                "Claude's answer for this document could not be understood, even after a second try "
+                f"({len(second.errors())} problem(s), e.g. {validation_problems(second).splitlines()[0][2:]}). "
+                "Try “Reprocess” later."
+            ) from second

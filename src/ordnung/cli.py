@@ -41,6 +41,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ordnung import __version__
+from ordnung.assistant.mcp_install import McpClient
 from ordnung.config import REPO_DIR, Paths, default_data_dir, resolve_paths
 from ordnung.server import DEFAULT_HOST, DEFAULT_PORT, ServerInfo, advertise, generate_token, running_server
 
@@ -53,7 +54,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
-FINAL_STATUSES = frozenset({"processed", "needs_review", "failed"})
+FINAL_STATUSES = frozenset({"processed", "needs_review", "failed", "held"})
 POLL_S = 0.5
 HEALTH_TIMEOUT_S = 2.0
 BROWSER_WAIT_S = 15.0
@@ -142,10 +143,11 @@ def main(
 # --------------------------------------------------------------------------------------------------
 
 
-def _fail(message: str, hint: str | None = None, code: int = 1) -> typer.Exit:
-    err_console.print(f"[red]✗[/] {escape(message)}")
+def _fail(message: str, hint: str | None = None, code: int = 1, *, soft_wrap: bool = False) -> typer.Exit:
+    """Print an error (and a hint); ``soft_wrap`` for a message with a path, so no line break splits it."""
+    err_console.print(f"[red]✗[/] {escape(message)}", soft_wrap=soft_wrap)
     if hint:
-        err_console.print(f"  [dim]{escape(hint)}[/]")
+        err_console.print(f"  [dim]{escape(hint)}[/]", soft_wrap=soft_wrap)
     return typer.Exit(code)
 
 
@@ -155,6 +157,7 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
 
     import httpx
 
+    from ordnung.backup import BackupError
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
@@ -165,7 +168,7 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
         return str(exc), "Run `ordnung doctor` to check Claude."
-    if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError):
+    if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
         return str(exc), None
     if isinstance(exc, httpx.HTTPError):
         return f"Couldn't talk to the running Ordnung server: {exc}", "Restart it with `ordnung serve`."
@@ -189,8 +192,11 @@ def _friendly() -> Iterator[None]:
     except Exception as exc:
         if os.environ.get("ORDNUNG_DEBUG"):
             raise
+        from ordnung.backup import BackupError
+
         message, hint = _explain(exc)
-        raise _fail(message, hint) from None
+        # a backup's messages name files and folders: no line break may split a path
+        raise _fail(message, hint, soft_wrap=isinstance(exc, BackupError)) from None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -320,8 +326,10 @@ def next_date(items: Sequence[Item], today: date) -> str:
 def _status_text(document: Document) -> str:
     if document.status == "failed":
         return f"[red]Failed[/] — {escape(document.error or '')}"
+    if document.status == "held":
+        return "Not read yet — not sent to Claude"
     if document.ai_private:
-        return "Private — not sent to AI"
+        return "Private — not sent to Claude"
     if document.status == "needs_review":
         return "[yellow]Please check[/]"
     if document.status == "processed":
@@ -597,7 +605,15 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
             (name, data), *rest = group
             combine_with = [body for _, body in rest] or None
             added.append(
-                await add_file(ctx, data, name, combine_with=combine_with, private=private, source="cli")
+                await add_file(
+                    ctx,
+                    data,
+                    name,
+                    combine_with=combine_with,
+                    private=private,
+                    answer_held=True,
+                    source="cli",
+                )
             )
         await _read_with_progress(ctx, added)
         return [_row(ctx, document.id) for document in added], local_today(ctx.store)
@@ -675,7 +691,7 @@ def add(
         typer.Argument(help="Letters to add (PDF, photos, .txt/.eml).", exists=True, dir_okay=False),
     ],
     combine: Annotated[bool, typer.Option("--combine", help="The photos are pages of one letter.")] = False,
-    private: Annotated[bool, typer.Option("--private", help="Keep private — never sent to AI.")] = False,
+    private: Annotated[bool, typer.Option("--private", help="Keep private — never sent to Claude.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
     """Add letters: Ordnung reads them and files every date, amount and contract."""
@@ -730,7 +746,11 @@ async def _brief_in_process(ctx: AppContext, use_llm: bool) -> dict[str, Any]:
 def brief(
     ctx: typer.Context,
     no_llm: Annotated[
-        bool, typer.Option("--no-llm", help="Write the note from your records only (no Claude).")
+        bool,
+        typer.Option(
+            "--no-llm",
+            help="Write today's note from your records only, without Claude (it replaces today's note).",
+        ),
     ] = False,
     data_dir: DataDirOption = None,
 ) -> None:
@@ -740,7 +760,7 @@ def brief(
         info = reachable_server(paths.data_dir)
         if info is not None:
             with _api(info, timeout=180.0) as client:
-                response = client.get("/api/brief") if no_llm else client.post("/api/brief")
+                response = client.post("/api/brief", params={"llm": "false"} if no_llm else None)
                 note = _json_object(_checked(response))
         else:
             note = _in_process(paths, "ordnung brief", lambda context: _brief_in_process(context, not no_llm))
@@ -752,42 +772,63 @@ def brief(
 # --------------------------------------------------------------------------------------------------
 
 
+WRITING_LINE = "Writing the answer — it appears once Ordnung has checked it against your records…"
+CHECKED_LINE = "Dates and amounts checked against your records."
+CHECKED_LINE_DE = "Daten und Beträge mit Ihren Unterlagen abgeglichen."
+"""Under an answer the check did not change (in its language): it says what was checked — dates,
+times, amounts and laws, not every claim."""
+
+
 class _AnswerPrinter:
-    """Prints an Ask stream: tool trace lines, text as it arrives, then the checked answer and sources."""
+    """Prints an Ask stream: tool trace lines; one line while the answer is written (its words are not
+    streamed: nobody sees them before Ordnung's check, ADR 0008); then the checked answer, the check's
+    note under its label in the answer's language (or "Dates and amounts checked against your records."
+    when the check changed nothing), and the sources. A stream that ends without a checked answer prints only why."""
 
     def __init__(self) -> None:
-        self.streamed: list[str] = []
+        self.writing = False
         self.failed = False
-
-    def _end_line(self) -> None:
-        if self.streamed and not "".join(self.streamed).endswith("\n"):
-            console.print()
 
     def handle(self, event: Mapping[str, Any]) -> None:
         """Print one event (``type``: text, tool_use, tool_result, done or error)."""
         kind, text = event.get("type"), str(event.get("text") or "")
         if kind == "tool_use":
-            self._end_line()
             console.print(f"  [dim]↳ {escape(text or str(event.get('name') or 'tool'))}[/]")
         elif kind == "tool_result":
             console.print(f"    [dim]{escape(text)}[/]")
         elif kind == "text":
-            self.streamed.append(text)
-            console.print(escape(text), end="", soft_wrap=True)
+            if not self.writing:
+                console.print(f"[dim]{escape(WRITING_LINE)}[/]")
+            self.writing = True
         elif kind == "done":
-            self._done(text, event.get("citations") or [])
+            self._done(
+                text,
+                str(event.get("note") or ""),
+                event.get("citations") or [],
+                label=str(event.get("note_label") or ""),
+                checked=bool(event.get("message_id")),
+            )
         elif kind == "error":
-            self._end_line()
             self.failed = True
             err_console.print(f"[red]✗[/] {escape(str(event.get('error') or text or 'The answer stopped.'))}")
 
-    def _done(self, text: str, citations: Sequence[Mapping[str, Any]]) -> None:
-        streamed = "".join(self.streamed).strip()
-        self._end_line()
-        if text.strip() != streamed:
-            if streamed:
-                console.rule("[dim]Checked answer[/]", style="dim")
-            console.print(escape(text.strip()))
+    def _done(
+        self,
+        text: str,
+        note: str,
+        citations: Sequence[Mapping[str, Any]],
+        *,
+        label: str = "",
+        checked: bool = True,
+    ) -> None:
+        from ordnung.assistant.support import NOTE_PREFIX_DE, labelled_note
+
+        console.print(escape(text.strip()))
+        if note:
+            german = (label == NOTE_PREFIX_DE) if label else None
+            console.print(f"[dim]{escape(labelled_note(note, german=german))}[/]")
+        elif checked and text.strip():  # the demo's "no recording" answer went through no check
+            console.print(f"[dim]{escape(CHECKED_LINE_DE if label == NOTE_PREFIX_DE else CHECKED_LINE)}[/]")
         if citations:
             console.print("[bold]Sources[/]")
             for citation in citations:
@@ -848,6 +889,107 @@ def ask(
             _in_process(paths, "ordnung ask", lambda context: _ask_in_process(context, question, printer))
         if printer.failed:
             raise typer.Exit(1)
+
+
+# --------------------------------------------------------------------------------------------------
+# trace
+# --------------------------------------------------------------------------------------------------
+
+
+def _trace_getter(paths: Paths, doc_id: str, stack: contextlib.ExitStack) -> Callable[[str | None], Any]:
+    """Fetch a reading of ``doc_id`` (``None``: the newest) from the running server, else from the
+    database under the data folder's lock (held until ``stack`` closes)."""
+    from urllib.parse import quote
+
+    from ordnung.models import DocumentTrace
+
+    info = reachable_server(paths.data_dir)
+    if info is not None:
+        client = stack.enter_context(_api(info))
+        route = f"/api/documents/{quote(doc_id, safe='')}/trace"
+        return lambda run: DocumentTrace.model_validate(
+            _json_object(_checked(client.get(route, params={"run": run} if run else None)))
+        )
+    from ordnung.db.store import Store
+    from ordnung.locking import DataDirLock
+    from ordnung.trace.view import document_trace
+
+    if not paths.db.is_file():
+        raise _fail(f"There is no Ordnung data in {paths.data_dir}.", "Pass the folder with --data-dir.")
+    stack.enter_context(DataDirLock(paths.data_dir, purpose="ordnung trace"))
+    store = stack.enter_context(Store.open(paths))
+    if store.get_document(doc_id) is None:
+        raise _fail(
+            f"There is no letter {doc_id}.", "A letter's id is in its page's address: /documents/doc_…"
+        )
+    return lambda run: document_trace(store, doc_id, run)
+
+
+@app.command()
+def trace(
+    ctx: typer.Context,
+    document_id: Annotated[str, typer.Argument(help="The letter's id (doc_…, in its page's address).")],
+    otel: Annotated[
+        bool,
+        typer.Option(
+            "--otel",
+            help="OpenTelemetry JSON (OTLP) with the GenAI conventions, for any OpenTelemetry viewer.",
+        ),
+    ] = False,
+    reading: Annotated[
+        int | None,
+        typer.Option("--reading", min=1, help="Which reading: 1 is the first (default: the newest kept)."),
+    ] = None,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Write to this file instead of the screen.")
+    ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Replace the --output file if it exists.")] = False,
+    data_dir: DataDirOption = None,
+) -> None:
+    """How a letter was read: every step, its model calls and what code checked — as JSON.
+
+    The plain JSON is what the letter's "How it was read" tab shows, with the names of the to-dos and organisations it points to.
+
+    With --otel it holds no letter text and no names, and its ids are replaced for this file (docs/privacy.md says what it still shows).
+
+    A letter with no kept reading is an error.
+    """
+    from ordnung.trace.otel import to_otlp
+
+    with _friendly(), contextlib.ExitStack() as stack:
+        get = _trace_getter(resolve_paths(_chosen(ctx, data_dir)), document_id, stack)
+        found = get(None)
+        if found.run is None:
+            raise _fail(
+                "This letter has no kept reading yet.",
+                "“Read again” on its page records one (it asks Claude again).",
+            )
+        if reading is not None and found.run.reading != reading:
+            kept = [run for run in found.runs if run.reading == reading]
+            if not kept:
+                numbers = ", ".join(str(run.reading) for run in found.runs) or "none"
+                raise _fail(f"Reading {reading} of this letter isn't kept (kept: {numbers}).")
+            found = get(kept[0].trace_id)
+        payload = to_otlp(found) if otel else found.model_dump(mode="json")
+        # ASCII only: names in the plain JSON were written by a model from a letter and must not
+        # reach the terminal as control or bidirectional characters
+        text = json.dumps(payload, indent=2, ensure_ascii=True) + "\n"
+    if output is None:
+        typer.echo(text, nl=False)
+        return
+    # the plain JSON names to-dos and organisations: private to this account (0600), never through a
+    # link, and never over an existing file unless asked (as the sign-in page is written)
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if force else os.O_EXCL) | getattr(os, "O_NOFOLLOW", 0)
+    with _friendly():
+        try:
+            fd = os.open(output, flags, 0o600)
+        except FileExistsError:
+            raise _fail(f"{output} already exists.", "Add --force to replace it.") from None
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        if os.name == "posix":
+            output.chmod(0o600)
+    err_console.print(f"Wrote {escape(str(output))}", soft_wrap=True)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1052,25 +1194,564 @@ def eval_(ctx: typer.Context) -> None:
     raise typer.Exit(int(code or 0))
 
 
-@app.command()
+mcp_app = typer.Typer(
+    name="mcp",
+    help="Ordnung's read-only MCP tools: serve them over stdio, or install them into Claude "
+    "(the options below are for serving; `install` takes its own).",
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(mcp_app)
+
+RulesOnlyOption = Annotated[
+    bool,
+    typer.Option(
+        "--rules-only",
+        help="Serve only the deadline, holiday, working-day and IBAN tools: no data folder, nothing personal.",
+    ),
+]
+
+
+@mcp_app.callback(invoke_without_command=True)
 def mcp(
     ctx: typer.Context,
     data_dir: DataDirOption = None,
     print_config: Annotated[
         bool, typer.Option("--print-config", help="Print the MCP config JSON and exit.")
     ] = False,
+    rules_only: RulesOnlyOption = False,
+    ledger_only: Annotated[
+        bool,
+        typer.Option(
+            "--ledger-only",
+            hidden=True,
+            help="Only the ledger tools, without the rules tools (Ask's server: Ask never computes dates).",
+        ),
+    ] = False,
 ) -> None:
     """Serve Ordnung's read-only tools over stdio (Ask starts this; nothing else is printed)."""
+    if ctx.invoked_subcommand is not None:
+        given = [
+            name
+            for name, value in (
+                ("--data-dir", data_dir),
+                ("--print-config", print_config),
+                ("--rules-only", rules_only),
+                ("--ledger-only", ledger_only),
+            )
+            if value
+        ]
+        if given:
+            raise _fail(
+                f"{', '.join(given)} before “{ctx.invoked_subcommand}” would not be used.",
+                hint=f"Put the options after it, e.g. ordnung mcp {ctx.invoked_subcommand} --client "
+                "claude-desktop (the rules tools alone), or add --with-ledger --data-dir … for your ledger.",
+            )
+        return
+    if rules_only and ledger_only:
+        raise _fail("--rules-only and --ledger-only exclude each other.")
+    if rules_only:
+        from ordnung.assistant import rules_tools
+
+        if _chosen(ctx, data_dir) is not None:
+            raise _fail(
+                "The rules tools read no data folder, so --data-dir would not be used.",
+                hint="Leave out --data-dir, or leave out --rules-only to serve your ledger too.",
+            )
+
+        if print_config:
+            typer.echo(json.dumps(rules_tools.rules_server_config(), indent=2))
+            return
+        rules_tools.run_rules_only()
+        return
     from ordnung.assistant import mcp_server
 
     folder = _folder(ctx, data_dir)
     if print_config:
-        typer.echo(json.dumps(mcp_server.server_config(folder), indent=2))
+        typer.echo(json.dumps(mcp_server.server_config(folder, rules_tools=not ledger_only), indent=2))
         return
     try:
-        mcp_server.run(folder)
+        mcp_server.run(folder, rules_tools=not ledger_only)
     except FileNotFoundError as exc:
-        raise _fail(str(exc), hint="Pass the data folder with --data-dir.") from None
+        raise _fail(
+            str(exc), hint="Pass the data folder with --data-dir, or use --rules-only.", soft_wrap=True
+        ) from None
+
+
+@mcp_app.command("install")
+def mcp_install(
+    ctx: typer.Context,
+    client: Annotated[
+        McpClient,
+        typer.Option("--client", metavar="CLIENT", help="claude-desktop or claude-code.", show_default=False),
+    ],
+    rules_only: Annotated[
+        bool,
+        typer.Option(
+            "--rules-only/--with-ledger",
+            help="The rules tools alone (the default: no data folder, nothing personal), or also your "
+            "read-only ledger (--with-ledger), which the client and its other tools can then read.",
+        ),
+    ] = True,
+    write: Annotated[
+        bool,
+        typer.Option("--write", help="Merge the entry into the config file (the file is backed up first)."),
+    ] = False,
+    config: Annotated[
+        Path | None,
+        typer.Option(
+            "--config", help="Use this config file instead of the client's usual one.", show_default=False
+        ),
+    ] = None,
+    data_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--data-dir",
+            help="With --with-ledger: your data folder (default: ORDNUNG_HOME or your user data folder).",
+            show_default=False,
+        ),
+    ] = None,
+    remove_ledger: Annotated[
+        bool,
+        typer.Option(
+            "--remove-ledger",
+            help="With the rules tools: also take Ordnung with your data (“ordnung”) out of the config.",
+        ),
+    ] = False,
+) -> None:
+    """Add Ordnung's rules tools (or, with --with-ledger, your ledger too) to Claude Desktop or Claude Code.
+
+    Prints the entry and where it goes; --write merges it in.
+    """
+    from ordnung.assistant import mcp_install as install
+
+    folder = None
+    if rules_only:
+        if _chosen(ctx, data_dir) is not None:  # given after `install` or before `mcp`
+            raise _fail(
+                "The rules tools read no data folder, so --data-dir would not be used.",
+                hint="Add --with-ledger to give the client your ledger, or leave out --data-dir.",
+            )
+    else:
+        if remove_ledger:
+            raise _fail(
+                "--remove-ledger takes your ledger out, --with-ledger puts it in: they exclude each other.",
+                hint="Leave out --with-ledger to install the rules tools alone and remove the ledger.",
+            )
+        folder = _folder(ctx, data_dir)
+        if not Paths(folder).db.is_file():
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Name your data folder with --data-dir, or leave out --with-ledger for the rules tools alone.",
+                soft_wrap=True,
+            )
+    plan = install.plan_install(client, rules_only=rules_only, data_dir=folder, config=config)
+    # What the client will see, before anything is printed to copy or written.
+    other = install.other_entry_in(plan)
+    note = install.privacy_note(plan, other=other, remove_ledger=remove_ledger)
+    if rules_only and (other is None or remove_ledger):
+        console.print(f"[dim]{escape(note)}[/]", soft_wrap=True)
+    else:
+        console.print(f"[yellow]![/] {escape(note)}", soft_wrap=True)
+    if not write:
+        typer.echo(
+            install.instructions(
+                plan, data_dir=folder, config=config, remove_ledger=remove_ledger and bool(other)
+            )
+        )
+        return
+    try:
+        result = install.write_config(plan, remove_ledger=remove_ledger)
+    except install.InstallError as exc:
+        raise _fail(str(exc), soft_wrap=True) from None
+    except OSError as exc:
+        raise _fail(f"Couldn't write {plan.path}: {exc.strerror or exc}", soft_wrap=True) from None
+    console.print(f"[green]✓[/] {escape(install.written_message(plan, result))}", soft_wrap=True)
+    if result.backup is not None:
+        console.print(f"  The previous version is saved as {escape(str(result.backup))}", soft_wrap=True)
+    if remove_ledger and result.removed is None:
+        where = f"There was no “{install.FULL_SERVER_NAME}” entry in {result.path} to take out."
+        if plan.client == "claude-code":
+            full = install.Plan(
+                client=plan.client, name=install.FULL_SERVER_NAME, entry={}, path=plan.path, rules_only=False
+            )
+            where += f" One added with claude mcp add goes with: {install.claude_code_remove_command(full)}"
+        console.print(f"  {escape(where)}", soft_wrap=True)
+    if result.status != "unchanged" or result.removed is not None:
+        console.print(f"  {install.NEXT_STEP[plan.client]}")
+
+
+# --------------------------------------------------------------------------------------------------
+# autostart
+# --------------------------------------------------------------------------------------------------
+
+autostart_app = typer.Typer(
+    name="autostart",
+    help="Start Ordnung when you log in, so reminders reach you while the browser is closed.",
+    no_args_is_help=True,
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(autostart_app)
+
+
+@autostart_app.command("enable")
+def autostart_enable(
+    ctx: typer.Context,
+    data_dir: DataDirOption = None,
+    port: Annotated[int, typer.Option(help="Port Ordnung listens on.")] = DEFAULT_PORT,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Only print what would be written, and where.")
+    ] = False,
+) -> None:
+    """Start Ordnung (without opening the browser) every time you log in."""
+    from ordnung import autostart
+    from ordnung.demo.loader import is_demo_dir
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        if is_demo_dir(folder):
+            raise _fail(
+                "The demo doesn't start at login.", hint="Start it with `ordnung demo` when you want it."
+            )
+        try:
+            entry = autostart.plan(folder, port=port)
+        except autostart.AutostartError as exc:
+            raise _fail(str(exc), soft_wrap=True) from None
+        console.print(
+            f"Ordnung for [bold]{escape(str(folder))}[/] starts at login as a {entry.kind}, from this file:",
+            soft_wrap=True,
+        )
+        console.print(f"  [bold]{escape(str(entry.path))}[/]", soft_wrap=True)
+        console.print(escape(entry.content.replace("\r\n", "\n")).rstrip("\n"), style="dim", soft_wrap=True)
+        if entry.link is not None:
+            console.print(
+                f"  and the link {escape(str(entry.link))} (what `systemctl --user enable` makes)",
+                soft_wrap=True,
+            )
+        if dry_run:
+            console.print("Nothing was written (--dry-run).")
+            return
+        status = autostart.enable(entry)
+    done = {
+        "added": "Written.",
+        "updated": "Updated the earlier entry.",
+        "unchanged": "Already set up like this.",
+    }
+    console.print(f"[green]✓[/] {done[status]} Ordnung starts at your next login.")
+    console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
+    console.print("  Open the app any time with: ordnung serve (it finds the running Ordnung)")
+    console.print("  Undo with: ordnung autostart disable")
+    if _desktop_notifications(folder) == "off":
+        console.print(
+            "[yellow]![/] The morning desktop notification is off: switch it on in Settings → Reminders "
+            "(ordnung serve opens it), or Ordnung runs at login without telling you anything.",
+            soft_wrap=True,
+        )
+
+
+def _desktop_notifications(folder: Path) -> str:
+    """The folder's saved ``desktop_notifications`` setting, read without creating or changing
+    anything (``"off"``, the default, when there is no database yet or it can't be read)."""
+    import sqlite3
+
+    from ordnung.models import AppSettings
+
+    db = folder / Paths(folder).db.name
+    if not db.is_file():
+        return "off"
+    try:
+        conn = sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key = 'settings'").fetchone()
+        finally:
+            conn.close()
+        return AppSettings.model_validate_json(row[0]).desktop_notifications if row else "off"
+    except (sqlite3.Error, ValueError):
+        return "off"
+
+
+@autostart_app.command("disable")
+def autostart_disable() -> None:
+    """Stop starting Ordnung at login (removes only the entry `enable` wrote)."""
+    from ordnung import autostart
+
+    with _friendly():
+        entry = autostart.location()
+        removed = autostart.disable(entry)
+    if not removed:
+        console.print(
+            f"Ordnung doesn't start at login: there is no {escape(str(entry.path))}.", soft_wrap=True
+        )
+        return
+    for path in removed:
+        console.print(f"[green]✓[/] Removed {escape(str(path))}", soft_wrap=True)
+    console.print("  Ordnung won't start at your next login.")
+    console.print(f"  If it is running now, stop it with: {escape(entry.stop_now)}", soft_wrap=True)
+
+
+@autostart_app.command("status")
+def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Whether Ordnung starts at login, for which data folder, and whether it is running now."""
+    from ordnung import autostart
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        state = autostart.state(folder)
+        running = reachable_server(folder) is not None
+    if not state.enabled:
+        console.print("Starts at login: [bold]no[/] — turn it on with: ordnung autostart enable")
+    else:
+        console.print(f"Starts at login: [bold]yes[/] ({state.kind})")
+        console.print(f"  {escape(str(state.path))}", soft_wrap=True)
+        if state.data_dir is not None:
+            console.print(f"  Data folder: {escape(str(state.data_dir))}", soft_wrap=True)
+        if not state.current:
+            console.print(
+                "[yellow]![/] The entry doesn't start this Ordnung for this folder (Ordnung or the folder "
+                "moved). Run `ordnung autostart enable` again to update it.",
+                soft_wrap=True,
+            )
+    console.print(f"Running now: [bold]{'yes' if running else 'no'}[/]")
+
+
+# --------------------------------------------------------------------------------------------------
+# backup and restore
+# --------------------------------------------------------------------------------------------------
+
+PASSPHRASE_ENV = "ORDNUNG_BACKUP_PASSPHRASE"
+PASSPHRASE_WARNING = (
+    "Choose a passphrase and keep it somewhere safe (a password manager): Ordnung never stores it, and "
+    "without it nobody can open this backup — not even you."
+)
+
+
+def human_size(size: int) -> str:
+    """``812 bytes`` / ``48.3 KB`` / ``10.6 MB`` / ``1.2 GB`` (powers of 1000, like file managers)."""
+    if size < 1000:
+        return f"{size} bytes"
+    value = float(size)
+    for unit in ("KB", "MB", "GB", "TB"):
+        value /= 1000
+        if value < 1000 or unit == "TB":
+            break
+    return f"{value:.1f} {unit}"
+
+
+PASSPHRASE_TRIES = 3
+
+
+def _passphrase(*, new: bool) -> str:
+    """The backup passphrase: ``ORDNUNG_BACKUP_PASSPHRASE`` (scripts) or a hidden prompt — twice for
+    a new backup, which must meet :func:`ordnung.backup.passphrase_problem`'s policy."""
+    from ordnung.backup import passphrase_problem
+
+    def problem(value: str) -> str | None:
+        if not value:
+            return "The passphrase is empty."
+        return passphrase_problem(value) if new else None
+
+    given = os.environ.get(PASSPHRASE_ENV)
+    if given is not None:
+        wrong = problem(given)
+        if wrong:
+            raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
+        return given
+    for _ in range(PASSPHRASE_TRIES):
+        value = str(typer.prompt("Passphrase for the backup" if new else "Passphrase", hide_input=True))
+        wrong = problem(value)
+        if wrong:
+            err_console.print(f"[red]✗[/] {escape(wrong)}")
+            continue
+        if new and str(typer.prompt("Repeat it", hide_input=True)) != value:
+            err_console.print("[red]✗[/] The two passphrases differ. Try again.")
+            continue
+        return value
+    raise _fail("No passphrase was given.")
+
+
+@contextlib.contextmanager
+def _read_lock(folder: Path) -> Iterator[bool]:
+    """Hold the data folder's lock while backing it up if nothing else does (then the copy is exact);
+    when Ordnung is running, read alongside it (the database snapshot is still consistent)."""
+    from ordnung.locking import DataDirLock, DataDirLocked
+
+    lock = DataDirLock(folder, purpose="ordnung backup")
+    try:
+        lock.acquire()
+    except DataDirLocked:
+        yield False
+        return
+    try:
+        yield True
+    finally:
+        lock.release()
+
+
+def _contents_line(contents: Any) -> str:
+    letters = contents.letters
+    return (
+        f"{letters} letter{'s' if letters != 1 else ''}, {contents.files} file{'s' if contents.files != 1 else ''} "
+        f"and the database · {human_size(contents.total_bytes)}"
+    )
+
+
+@app.command()
+def backup(
+    ctx: typer.Context,
+    to: Annotated[
+        str | None,
+        typer.Option(
+            "--to",
+            help="Folder to save the backup in, or a new file name ending in .ordnung-backup "
+            "(default: the current folder).",
+            show_default=False,
+        ),
+    ] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Save everything — database, letters, page images, letter PDFs — as one encrypted file."""
+    from ordnung import backup as backups
+    from ordnung import clock
+
+    with _friendly():
+        folder = _folder(ctx, data_dir)
+        if not Paths(folder).db.is_file():
+            raise _fail(
+                f"There is no Ordnung database in {folder}.",
+                hint="Name your data folder with --data-dir.",
+                soft_wrap=True,
+            )
+        target = backups.destination(folder, to, clock.today())
+        console.print(
+            f"Backing up [bold]{escape(str(folder))}[/] to [bold]{escape(str(target))}[/]", soft_wrap=True
+        )
+        left_out = backups.links_left_out(folder)
+        if left_out:
+            shown = ", ".join(left_out[:5]) + (f" and {len(left_out) - 5} more" if len(left_out) > 5 else "")
+            one = len(left_out) == 1
+            console.print(
+                f"[yellow]![/] Not in the backup: {escape(shown)} — {'a link' if one else 'links'} to somewhere "
+                f"else, and a backup never follows links. Back {'that' if one else 'those'} up separately, or "
+                f"move {'it' if one else 'them'} into the data folder.",
+                soft_wrap=True,
+            )
+        console.print(PASSPHRASE_WARNING)
+        passphrase = _passphrase(new=True)
+        with _read_lock(folder) as exact:
+            if not exact:
+                console.print("[dim]Ordnung is running: the backup is taken alongside it.[/]")
+            contents = backups.write_backup_file(folder, target, passphrase)
+    console.print(
+        f"[green]✓[/] Saved an encrypted backup: {escape(_contents_line(contents))}", soft_wrap=True
+    )
+    console.print(f"  {escape(str(target))}", soft_wrap=True)
+    console.print("  Keep the passphrase somewhere safe (a password manager): you need it to restore.")
+    console.print(f"  Restore it with: ordnung restore {escape(shell_quoted(str(target)))}", soft_wrap=True)
+
+
+def shell_quoted(value: str) -> str:
+    """``value`` quoted for this platform's shell, for a command the person copies."""
+    from ordnung.assistant.mcp_install import shell_join
+
+    return shell_join([value])
+
+
+@app.command()
+def restore(
+    ctx: typer.Context,
+    backup_file: Annotated[
+        Path, typer.Argument(metavar="BACKUP", help="The backup file (.ordnung-backup).", show_default=False)
+    ],
+    data_dir: DataDirOption = None,
+    force: Annotated[
+        bool,
+        typer.Option(
+            "--force",
+            help="If the data folder holds data, move it aside (nothing is deleted) and restore in its place.",
+        ),
+    ] = False,
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check", help="Only check the backup: decrypt and verify everything, restore nothing."
+        ),
+    ] = False,
+) -> None:
+    """Restore an encrypted backup (never over existing data without --force)."""
+    from ordnung import backup as backups
+    from ordnung.assistant.mcp_install import shell_join
+    from ordnung.backup.restore import TargetInUse, check_target
+
+    with _friendly():
+        source = backup_file.expanduser()
+        if not source.is_file():
+            raise _fail(f"There is no file {source}.", soft_wrap=True)
+        with source.open("rb") as handle:
+            backups.read_header(handle)  # not a backup, or a newer format: say so before asking anything
+        folder = _folder(ctx, data_dir)
+        if check:
+            passphrase = _passphrase(new=False)
+            contents = backups.check_backup(source, passphrase)
+            console.print(
+                f"[green]✓[/] The backup is complete and opens with this passphrase: {escape(_contents_line(contents))}"
+            )
+            console.print(
+                f"  Made on {escape(contents.manifest.created_at)} with Ordnung {escape(contents.manifest.app_version)}."
+            )
+            return
+        try:
+            found = check_target(folder, force=force)  # refuse early, before the passphrase
+            console.print(f"Restoring into [bold]{escape(str(folder))}[/]", soft_wrap=True)
+            if found:
+                console.print(
+                    "[yellow]![/] It holds data: it will be moved aside first (nothing is deleted)."
+                )
+            passphrase = _passphrase(new=False)
+            result = backups.restore_backup(source, passphrase, folder, force=force)
+        except TargetInUse as exc:
+            raise _fail(str(exc), _stop_hint(folder), soft_wrap=True) from None
+    console.print(f"[green]✓[/] Restored {escape(_contents_line(result.contents))}", soft_wrap=True)
+    console.print(f"  into {escape(str(result.target))}", soft_wrap=True)
+    if result.moved_aside is not None:
+        console.print(
+            f"  The data that was there is now in {escape(str(result.moved_aside))} — delete it once you are sure.",
+            soft_wrap=True,
+        )
+    if result.calendar is not None:
+        console.print(
+            f"[yellow]![/] Calendar sync with “{escape(result.calendar)}” waits in this copy: enter the app "
+            "password in Settings → Calendar to sync it again. If the Ordnung this backup came from still "
+            "syncs to that calendar, disconnect it there first and leave its events in the calendar — two "
+            "Ordnungs would change each other's events.",
+            soft_wrap=True,
+        )
+    if result.folder is not None:
+        console.print(
+            f"[yellow]![/] The watched folder {escape(result.folder)} starts afresh in this copy: the files in "
+            "it wait for you, and “Read new files with Claude straight away” is off until you turn it on "
+            "again in Settings → Watched folder.",
+            soft_wrap=True,
+        )
+    serve_command = "ordnung serve"
+    if result.target.resolve() != default_data_dir():
+        serve_command = shell_join(["ordnung", "serve", "--data-dir", str(result.target)])
+    console.print(f"  Start Ordnung with: {escape(serve_command)}", soft_wrap=True)
+
+
+def _stop_hint(folder: Path) -> str | None:
+    """How to stop the Ordnung that holds ``folder`` when it is the one started at login for it."""
+    from ordnung import autostart
+
+    try:
+        entry = autostart.state(folder)
+        started = (
+            entry.enabled and entry.data_dir is not None and entry.data_dir.resolve() == folder.resolve()
+        )
+        stop = autostart.location().stop_now if started else None
+    except (autostart.AutostartError, OSError):
+        stop = None
+    return f"Ordnung starts at login for this folder. To stop it: {stop}" if stop else None
 
 
 @app.command()

@@ -166,7 +166,7 @@ async def test_the_letter_goes_on_stdin_never_on_argv(fake: FakeClaude, letter: 
 
     assert response.data == ANSWER
     assert response.text == "Done."
-    assert response.model == "claude-sonnet-4-5-20250929"  # the model that answered, from modelUsage
+    assert response.model == "claude-family-x-1"  # the model that answered, from modelUsage
     assert response.backend == "claude"
     usage = response.usage
     assert (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens) == (6, 70, 2311)
@@ -416,3 +416,91 @@ async def test_stopping_a_stream_early_kills_the_process_group(fake: FakeClaude)
     await stream.aclose()
     (call,) = fake.calls
     assert await _gone(call["pid"], call["child_pid"])
+
+
+# --------------------------------------------------------------------------------------------------
+# tool calls of a complete() call (the benchmark's agent with a calculator)
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_complete_returns_the_tool_calls_paired_by_id(fake: FakeClaude) -> None:
+    """Parallel calls answer out of order, and the CLI's own StructuredOutput call is not a tool call."""
+    fake.play({"transcript": "tool_calls_parallel.jsonl"})
+    request = LLMRequest(
+        purpose="eval_baseline",
+        prompt="When is the objection due?",
+        system="Answer.",
+        schema={"type": "object", "properties": {"due_date": {"type": "string"}}},
+        allowed_tools=["mcp__ordnung_rules__*"],
+        mcp_config={"mcpServers": {"ordnung_rules": {"command": "python", "args": ["-m", "ordnung", "mcp"]}}},
+        timeout_s=20,
+    )
+    response = await ClaudeCLIBackend(max_retries=0).complete(request)
+    assert response.data == {"due_date": "2026-10-21"}
+    deadline, iban = response.tool_calls
+    assert deadline.name == "mcp__ordnung_rules__compute_deadline"
+    assert deadline.input["document_date"] == "2026-09-15"
+    assert json.loads(deadline.result or "")["due_date"] == "2026-10-21"  # not the IBAN answer
+    assert iban.name == "mcp__ordnung_rules__check_iban" and json.loads(iban.result or "")["valid"] is True
+
+
+async def test_complete_without_tools_has_no_tool_calls(fake: FakeClaude, letter: LLMRequest) -> None:
+    fake.play({"transcript": "extract_structured.jsonl"})
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).tool_calls == []
+
+
+def test_translate_keeps_the_tool_use_ids() -> None:
+    events = claude_cli.translate(
+        {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "toolu_1",
+                        "name": "mcp__ordnung__search",
+                        "input": {"query": "x"},
+                    },
+                    {"type": "tool_use", "id": "toolu_2", "name": "StructuredOutput", "input": {}},
+                ]
+            },
+        }
+    )
+    assert [(e.type, e.name, e.tool_use_id) for e in events] == [
+        ("tool_use", "mcp__ordnung__search", "toolu_1")
+    ]
+    (result,) = claude_cli.translate(
+        {
+            "type": "user",
+            "message": {"content": [{"type": "tool_result", "tool_use_id": "toolu_1", "content": "ok"}]},
+        }
+    )
+    assert (result.type, result.text, result.tool_use_id) == ("tool_result", "ok", "toolu_1")
+
+
+def test_tool_trace_pairs_by_id_and_falls_back_to_order() -> None:
+    trace = claude_cli.ToolTrace()
+    for event in (
+        StreamEvent(type="tool_use", name="a", input={"n": 1}, tool_use_id="1"),
+        StreamEvent(type="tool_use", name="b", input={}, tool_use_id="2"),
+        StreamEvent(type="tool_result", text="for b", tool_use_id="2"),
+        StreamEvent(type="tool_result", text="for nobody", tool_use_id="unknown"),
+        StreamEvent(type="tool_result", text="for a", tool_use_id="1"),
+        StreamEvent(type="text", text="thinking"),
+    ):
+        trace.add(event)
+    assert [(c.name, c.input, c.result) for c in trace.calls] == [
+        ("a", {"n": 1}, "for a"),
+        ("b", {}, "for b"),
+    ]
+
+    legacy = claude_cli.ToolTrace()  # events recorded before ids were kept
+    for event in (
+        StreamEvent(type="tool_use", name="a"),
+        StreamEvent(type="tool_use", name="b"),
+        StreamEvent(type="tool_result", text="first"),
+        StreamEvent(type="tool_result", text="second"),
+        StreamEvent(type="tool_result", text="extra"),
+    ):
+        legacy.add(event)
+    assert [(c.name, c.result) for c in legacy.calls] == [("a", "first"), ("b", "second")]

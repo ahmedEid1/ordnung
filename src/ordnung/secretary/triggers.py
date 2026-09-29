@@ -17,17 +17,29 @@ import hashlib
 import json
 import logging
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.drafts.proof import (
+    PROOF_SOURCE,
+    RecordedAnswer,
+    channel_label,
+    delivery_record_obtainable,
+    followup_item_id,
+)
+from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
-from ordnung.ingest.link import reminder_covers
+from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
+from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
+    PAYMENT_DEMAND_KINDS,
     Area,
+    CallNote,
+    CancellationSent,
     Contract,
     ContractComputation,
     Document,
@@ -38,6 +50,7 @@ from ordnung.models import (
     Party,
     Priority,
     Profile,
+    Proof,
     Suggestion,
     SuggestionAction,
     SuggestionKind,
@@ -45,7 +58,7 @@ from ordnung.models import (
 )
 from ordnung.payments import is_collected_or_incoming, is_direct_debit
 from ordnung.rules import RuleContext, compute_contract, get_rule, price_increase_window
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS
+from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
 from ordnung.rules.explain import fmt_date
 
 try:  # the scam checks are optional: the triggers work without them
@@ -67,12 +80,14 @@ PASSPORT_CHECK_HORIZON_DAYS = 365
 TAX_SEASON_LAST_MONTH = 7
 FOLLOWUP_LATE_DAYS = 14
 CALENDAR_META_KEY = "last_calendar_export_at"
+#: calendar sync's connection record (:data:`ordnung.calendar.caldav.STATE_KEY`)
+CALENDAR_SYNC_META_KEY = "calendar_sync"
 STUDENT_PERMIT_RULE = "student_permit_info"
 
 _DEFAULT_WINDOWS = {"deadline": 14, "payment": 7, "appointment": 2, "task": 3, "reminder": 0, "milestone": 7}
 _DEFAULT_EXPIRY_WINDOW = 90
 _PRIORITY_RANK: dict[str, int] = {"critical": 0, "high": 1, "normal": 2, "low": 3}
-_PRICE_RULES = ("enwg_41_5", "tkg_57", "vvg_40", "sgbv_175_4_zb")
+_PRICE_RULES = ("enwg_41_5", "stromgvv_5_3", "tkg_57", "vvg_40", "sgbv_175_4_zb")
 _INTERVAL_PER_YEAR = {"monthly": 12, "quarterly": 4, "yearly": 1}
 
 _PERMIT_WORDS = (
@@ -193,6 +208,17 @@ def _sentences(*parts: str | None) -> str:
     return " ".join(part.strip() for part in parts if part and part.strip())
 
 
+#: A reading's own verdict at the end of a title: "… (Likely Scam)", "… [possible scam]".
+_SCAM_VERDICT = re.compile(r"\s*[(\[][^()\[\]]*\b(?:scam|fraud|betrug|phishing)\b[^()\[\]]*[)\]]\s*$", re.I)
+_STRAIGHT_QUOTED = re.compile(r'"([^"\n]*)"')
+
+
+def _letter_title(title: str) -> str:
+    """A letter's title inside an Idea's: without the reading's own scam verdict (the Idea says it) and
+    with the app's typographic quotes."""
+    return _STRAIGHT_QUOTED.sub("“\\1”", _SCAM_VERDICT.sub("", title)).strip() or title
+
+
 def _ref(type_: str, id_: str) -> SuggestionRef:
     return SuggestionRef.model_validate({"type": type_, "id": id_})
 
@@ -276,6 +302,33 @@ def action_day(item: Item) -> date | None:
     return due
 
 
+def paid_at_appointment(item: Item, items: Iterable[Item]) -> bool:
+    """Whether a payment is made in person at an appointment: it has a clock time, and its letter sets an
+    appointment on the same day (``items``: the ledger's). Its send-by date is a bank transfer's
+    (§ 675s BGB), which means nothing there: it is paid on the day, not transferred ahead."""
+    if item.kind != "payment" or not item.due_time or item.doc_id is None:
+        return False
+    return any(
+        other.kind == "appointment" and other.doc_id == item.doc_id and other.due_date == item.due_date
+        for other in items
+    )
+
+
+UNCONFIRMED_REASONS = ("mismatch", "unverified", "model_read")
+"""Why a value is not confirmed against its letter (:func:`unconfirmed_reason`)."""
+
+
+def unconfirmed_reason(item: Item) -> str | None:
+    """Why an item's date or amount is not confirmed against its letter: ``mismatch`` (its quote does
+    not state the value), ``unverified`` (not found in the letter) or ``model_read`` (read by AI from a
+    photo) — ``None`` once the person confirmed it (grounding ``user``) or when the letter confirms it."""
+    if item.grounding == "user":
+        return None
+    if any(not evidence.value_consistent for evidence in item.evidence):
+        return "mismatch"
+    return item.grounding if item.grounding in UNCONFIRMED_REASONS else None
+
+
 #: An item whose date was already this many days in the past when its letter was read is history
 #: (e.g. the first meter reading in an old contract confirmation), not an overdue obligation.
 HISTORICAL_GRACE_DAYS = 14
@@ -289,11 +342,13 @@ def was_history_when_filed(item: Item) -> bool:
 
 def is_overdue(item: Item, today: date) -> bool:
     """Computed on read: an active deadline/payment/task whose due date has passed — unless it was
-    already history when the letter was filed, or it repeats (a schedule shows its next occurrence and
-    is never overdue, see :mod:`ordnung.recurrence`)."""
+    already history when the letter was filed, it repeats (a schedule shows its next occurrence and
+    is never overdue, see :mod:`ordnung.recurrence`), or it is money coming in: the person doesn't owe it
+    (walkthrough of phase 2: a salary transfer showed as "Overdue")."""
     due = parse_day(item.due_date)
     return (
         item.kind in OVERDUE_KINDS
+        and not (item.kind == "payment" and item.direction == "in")
         and item.recurrence is None
         and due is not None
         and due < today
@@ -324,8 +379,15 @@ def is_decision(computation: ContractComputation) -> bool:
     return bool(computation.cancel_by and computation.send_by and computation.next_renewal)
 
 
+#: Contracts for the flat: its lease, energy, phone and internet. Never the residence-permit area.
+_HOME_CATEGORIES = frozenset({"rent", "energy", "gas", "internet", "mobile"})
+
+
 def contract_area(contract: Contract) -> Area:
-    """The life area of a contract (its own, or derived from its category)."""
+    """The life area of a contract (its own, or derived from its category). "residence" is the
+    residence-permit area: a lease or an energy, phone or internet contract read under it is "home"."""
+    if contract.area == "residence" and contract.category in _HOME_CATEGORIES:
+        return "home"
     if contract.area != "other":
         return contract.area
     by_category: dict[str, Area] = {
@@ -366,7 +428,10 @@ class Ledger:
         self.store = store
         self.today = today
         self.profile = store.get_profile()
-        self.documents: dict[str, Document] = {doc.id: doc for doc in store.list_documents()}
+        # proof files belong to their letter (``drafts.proof``): they are no letters of the ledger
+        self.documents: dict[str, Document] = {
+            doc.id: doc for doc in store.list_documents(exclude_source=PROOF_SOURCE)
+        }
         self.items: list[Item] = store.list_items()
         self.contracts: list[Contract] = store.list_contracts()
         self.parties: dict[str, Party] = {party.id: party for party in store.list_parties()}
@@ -375,6 +440,11 @@ class Ledger:
         self._sent_drafts: list[Draft] | None = None
         self._scam_reasons: dict[str, list[str]] = {}
         self._covered: dict[str, Document] | None = None
+        self._attached: dict[str, Document] | None = None
+        self._attachments: dict[str, list[Document]] | None = None
+        self._proofs: dict[str, list[Proof]] | None = None
+        self._replies: dict[str, Document | None] = {}
+        self._call_notes: list[CallNote] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -390,13 +460,20 @@ class Ledger:
         return [item for item in self.items if is_active(item, self.today)]
 
     def actionable_items(self) -> list[Item]:
-        """Active items that are safe to present as something to do: no letters with scam signs, and
-        no invoice payments a later payment reminder took over (the reminder is the one to act on)."""
-        return [
-            item
-            for item in self.active_items()
-            if not self.is_suspicious_item(item) and not self.is_superseded_by_reminder(item)
-        ]
+        """Active items that are safe to present as something to do (none :meth:`is_set_aside`)."""
+        return [item for item in self.active_items() if not self.is_set_aside(item)]
+
+    def is_set_aside(self, item: Item) -> bool:
+        """An item that is never presented as something to do, whatever its status — on Today, in the
+        weekly session, the calendar and its sync, the money figures: one of a letter with scam signs,
+        an invoice payment a later payment reminder took over (the reminder is the one to act on), or an
+        e-mail's payment its attached bill repeats (the bill is the one to act on; it stays set aside
+        after the bill is paid, so nothing asks for the money twice)."""
+        return (
+            self.is_suspicious_item(item)
+            or self.is_superseded_by_reminder(item)
+            or self.is_covered_by_attachment(item)
+        )
 
     def covering_reminders(self) -> dict[str, Document]:
         """Letter id → the live payment reminder (Mahnung) that took over its payments (cached).
@@ -406,7 +483,9 @@ class Ledger:
         """
         if self._covered is None:
             reminders = [
-                doc for doc in self.documents.values() if doc.kind == "dunning" and not self.scam_reasons(doc)
+                doc
+                for doc in self.documents.values()
+                if doc.kind in PAYMENT_DEMAND_KINDS and not self.scam_reasons(doc)
             ]
             self._covered = {
                 doc.id: reminder
@@ -425,6 +504,56 @@ class Ledger:
             and item.doc_id is not None
             and item.doc_id in self.covering_reminders()
         )
+
+    def attachments_of(self, email: Document) -> list[Document]:
+        """The live letters without scam signs that came attached to ``email``: those it added
+        (``source="email:<id>"``) and those Ordnung already had when it came (recorded ``known``).
+        Worked out once per snapshot, for every e-mail."""
+        if self._attachments is None:
+            self._attachments = {}
+            for doc in sorted(self.documents.values(), key=lambda d: (d.created_at, d.id)):
+                parent = attached_to(doc)
+                if parent is not None:
+                    self._attachments.setdefault(parent, []).append(doc)
+            for email_id, doc_ids in attachment_ids(self.store).items():
+                listed = self._attachments.setdefault(email_id, [])
+                seen = {doc.id for doc in listed}
+                for doc_id in doc_ids:
+                    known = self.documents.get(doc_id)
+                    if known is not None and known.id not in seen and known.id != email_id:
+                        listed.append(known)
+                        seen.add(known.id)
+        return [doc for doc in self._attachments.get(email.id, []) if not self.scam_reasons(doc)]
+
+    def covering_attachments(self) -> dict[str, Document]:
+        """Payment to-do id of an e-mail → the attachment of that e-mail that asks for the same payment
+        (cached; :func:`~ordnung.ingest.link.attachment_repeats`).
+
+        Worked out on read: only attachments that are not in the trash and show no scam signs count
+        (:meth:`attachments_of`), whichever of the letters was read first. Only an attachment's payments
+        no payment reminder took over count: the one to act on must stay. So a reminder e-mail with its
+        invoice attached keeps its own to-do (it takes the invoice's over, :meth:`covering_reminders`),
+        and the two never set each other aside.
+        """
+        if self._attached is None:
+            items_of: dict[str, list[Item]] = {}
+            for item in self.items:
+                if item.doc_id and item.kind == "payment" and not self.is_superseded_by_reminder(item):
+                    items_of.setdefault(item.doc_id, []).append(item)
+            self._attached = {}
+            for item in self.items:
+                email = self.documents.get(item.doc_id or "")
+                if email is None or item.kind != "payment" or not is_email(email):
+                    continue
+                for attachment in self.attachments_of(email):
+                    if attachment_repeats(email, item, attachment, items_of.get(attachment.id, [])):
+                        self._attached[item.id] = attachment
+                        break
+        return self._attached
+
+    def is_covered_by_attachment(self, item: Item) -> bool:
+        """An e-mail's payment its attached bill asks for too: act on the bill instead."""
+        return item.kind == "payment" and item.id in self.covering_attachments()
 
     def active_contracts(self) -> list[Contract]:
         """Contracts still running."""
@@ -449,6 +578,99 @@ class Ledger:
             self._sent_drafts = self.store.list_drafts(status="sent")
         return self._sent_drafts
 
+    def decided_contracts(self) -> set[str]:
+        """Active contracts whose end is decided: a letter confirms their cancellation
+        (:meth:`pending_confirmations`), or the person marked their own cancellation as sent
+        (:func:`cancellations_sent`). Neither is a decision to make any more — no "decide by", no
+        cancellation Idea, no send-by date in the calendar (walkthrough of phase 2)."""
+        return set(self.pending_confirmations()) | set(cancellations_sent(self.sent_drafts()))
+
+    def proofs_of(self, draft_id: str) -> list[Proof]:
+        """The proofs recorded for a sent letter (cached; proofs whose file is in the trash are left out)."""
+        if self._proofs is None:
+            self._proofs = {}
+            for proof in self.store.list_proofs():
+                self._proofs.setdefault(proof.draft_id, []).append(proof)
+        return self._proofs.get(draft_id, [])
+
+    def call_notes(self) -> list[CallNote]:
+        """Every call note, newest call first (cached)."""
+        if self._call_notes is None:
+            self._call_notes = self.store.list_call_notes()
+        return self._call_notes
+
+    def followup_item(self, draft: Draft) -> Item | None:
+        """The follow-up to-do created when the letter was marked as sent (``None`` once deleted)."""
+        wanted = followup_item_id(draft.id)
+        return next((item for item in self.items if item.id == wanted), None)
+
+    def letter_after(
+        self, case_id: str | None, since: date, *, exclude: str | None = None, contract_id: str | None = None
+    ) -> Document | None:
+        """The earliest live incoming letter without scam signs, other than ``exclude``, dated (else
+        received, else added) on or after ``since``, that is in thread ``case_id`` — or, when
+        ``contract_id`` is given, confirms the cancellation of that contract."""
+        found: list[tuple[str, str, Document]] = []
+        for doc in self.documents.values():
+            day = doc.doc_date or doc.received_date or doc.created_at[:10]
+            if doc.id == exclude or doc.direction != "incoming" or (parse_day(day) or date.min) < since:
+                continue
+            threaded = case_id is not None and doc.case_id == case_id
+            if not (threaded or (contract_id is not None and self._confirms(doc, contract_id))):
+                continue
+            if not self.scam_reasons(doc):
+                found.append((day, doc.created_at, doc))
+        return min(found, key=lambda entry: (entry[0], entry[1], entry[2].id))[2] if found else None
+
+    def _confirms(self, doc: Document, contract_id: str) -> bool:
+        extraction = self.extraction(doc.id)
+        change = extraction.change if extraction else None
+        confirms = doc.kind == "cancellation_confirmation" or (
+            change is not None and change.type == "cancellation_confirmation"
+        )
+        contract = self.linked_contract(doc) if confirms else None
+        return contract is not None and contract.id == contract_id
+
+    def reply_to(self, draft: Draft) -> Document | None:
+        """The letter that *may* have answered a sent letter (cached), or ``None``.
+
+        Written policy: the earliest live incoming letter without scam signs, other than the letter it
+        answered, dated (else received, else added) on or after the day it was sent, that is in the same
+        thread (:mod:`ordnung.ingest.link` threads letters by reference), or — for a cancellation of a
+        contract — confirms the cancellation of that contract. Nothing is closed because of it (ADR 0006):
+        the waiting entry and the follow-up Idea say which letter it was, and the person checks it.
+        Limit: any later letter of the thread counts (a new tax assessment under the same tax number, a
+        monthly invoice); so it is only a *possible* answer — never proof of arrival, never written
+        into the Nachweis. What counts as an answer is :meth:`answer_of`.
+        """
+        if draft.id not in self._replies:
+            sent = parse_day(draft.sent_at) if draft.status == "sent" else None
+            contract = draft.contract_id if draft.kind == "cancellation" else None
+            self._replies[draft.id] = (
+                self.letter_after(draft.case_id, sent, exclude=draft.doc_id, contract_id=contract)
+                if sent is not None
+                else None
+            )
+        return self._replies[draft.id]
+
+    def answer_of(self, draft: Draft) -> RecordedAnswer | None:
+        """The *confirmed* answer to a sent letter (``drafts.proof`` policy 3), or ``None``: the person's
+        word that it was answered (with the letter they named, if it is still here), else — for a
+        cancellation of a contract — a confirmation of that contract's cancellation that arrived after
+        it was sent. A letter that is only in the same thread is no confirmed answer (:meth:`reply_to`)."""
+        if draft.status != "sent":
+            return None
+        if draft.answered_on:
+            named = self.document(draft.answer_doc_id)
+            if named is not None:
+                return RecordedAnswer(None, named, "letter")
+            return RecordedAnswer(draft.answered_on[:10], None, "noted")
+        sent = parse_day(draft.sent_at)
+        if draft.kind != "cancellation" or not draft.contract_id or sent is None:
+            return None
+        confirmation = self.letter_after(None, sent, exclude=draft.doc_id, contract_id=draft.contract_id)
+        return RecordedAnswer(None, confirmation, "confirmation") if confirmation is not None else None
+
     def is_dunning_item(self, item: Item) -> bool:
         """Items of a payment reminder are reported by ``dunning_escalation`` only."""
         doc = self.document(item.doc_id)
@@ -461,6 +683,12 @@ class Ledger:
             found = _scam_reasons(self.store, doc, party) if doc.direction == "incoming" else []
             self._scam_reasons[doc.id] = found
         return self._scam_reasons[doc.id]
+
+    def scam_signs(self, doc: Document) -> list[str]:
+        """The warning signs a letter with scam signs shows — on its page and in its Idea, one list and one
+        count (:func:`scam_signs`); empty for a letter without scam signs."""
+        reasons = self.scam_reasons(doc)
+        return scam_signs(doc, reasons) if reasons else []
 
     def is_suspicious_item(self, item: Item) -> bool:
         """Items of a letter with scam signs are never suggested as something to pay or do."""
@@ -569,13 +797,14 @@ def _item_priority(kind: str, days_left: int) -> Priority:
 
 def _handled_elsewhere(ledger: Ledger, item: Item) -> bool:
     """Money coming in, direct debits (the sender collects them — nothing to do), payment reminders
-    (``dunning_escalation``) and letters with scam signs (``scam_warning``) never become "do this
-    by" Ideas."""
+    (``dunning_escalation``), letters with scam signs (``scam_warning``) and payments another letter
+    took over (a payment reminder, an e-mail's attached bill) never become "do this by" Ideas."""
     return (
         is_collected_or_incoming(item)
         or ledger.is_dunning_item(item)
         or ledger.is_suspicious_item(item)
         or ledger.is_superseded_by_reminder(item)
+        or ledger.is_covered_by_attachment(item)
     )
 
 
@@ -603,6 +832,8 @@ def _soon_idea(ledger: Ledger, item: Item, due: date, act: date, days: int) -> S
         when = f"on {day_label(due, today)}" + (f" at {item.due_time}" if item.due_time else "")
     elif item.kind == "payment":
         when = f"pay by {day_label(act, today)}"
+    elif sending_time_passed(item.computation):
+        when = f"must arrive by {day_label(due, today)}"
     elif act < due:
         when = f"send by {day_label(act, today)}"
     else:
@@ -610,7 +841,7 @@ def _soon_idea(ledger: Ledger, item: Item, due: date, act: date, days: int) -> S
     send_note = None
     if act < due:
         send_note = f"Send it by {day_label(act, today)} so it arrives by {day_label(due, today)}."
-    if days < 0:
+    if days < 0 or sending_time_passed(item.computation):
         send_note = "The usual sending time has passed — use the fastest channel allowed today."
     english_consequence = english(item.consequence)
     consequence = f"If you don't: {english_consequence.rstrip('.')}." if english_consequence else None
@@ -688,13 +919,13 @@ def contract_cancel_window(ledger: Ledger) -> list[Suggestion]:
     """Active contracts whose cancellation must be sent within 60 days to avoid a renewal."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    confirmed = ledger.pending_confirmations()
+    decided = ledger.decided_contracts()
     for contract in ledger.active_contracts():
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
         if not is_decision(comp) or send is None or (send - today).days > CANCEL_WINDOW_DAYS:
             continue
-        if contract.id in confirmed:
+        if contract.id in decided:
             continue
         days = (send - today).days
         term_end = parse_day(comp.current_term_end)
@@ -837,6 +1068,15 @@ def _expiry_window(ledger: Ledger, klass: str) -> int:
     return ledger.reminder_window("expiry")
 
 
+RESIDENCE_EXTENSION_LAW = "§ 81 Abs. 4 AufenthG"
+"""Applying before a residence permit expires keeps it in force until the office decides."""
+STUDENT_WORK_LAW = "§ 16b Abs. 3 AufenthG"
+"""How much a student with a residence permit may work."""
+IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW)
+"""The § citations Ordnung's own Ideas state outside the rules catalog: Ask's check knows them like
+the catalog's (ADR 0008), so a correct "§ 81 Abs. 4 AufenthG" is not taken for an unvouched law."""
+
+
 def _expiry_text(klass: str, item: Item, expiry: date, today: date) -> IdeaText:
     day = day_label(expiry, today)
     past = expiry < today
@@ -846,14 +1086,14 @@ def _expiry_text(klass: str, item: Item, expiry: date, today: date) -> IdeaText:
                 f"Your residence permit expired on {day}",
                 "Contact the immigration office (Ausländerbehörde) right away and get advice — the "
                 "Studierendenwerk, your international office or a migration counselling service can help.",
-                "Residence permits must be extended before they expire (§ 81 Abs. 4 AufenthG).",
+                f"Residence permits must be extended before they expire ({RESIDENCE_EXTENSION_LAW}).",
             )
         return IdeaText(
             f"Residence permit expires {day} — apply for the extension now",
             "Apply at the immigration office (Ausländerbehörde) before it expires. If you apply in time, "
-            "your current permit continues to count until they decide (§ 81 Abs. 4 AufenthG) — ask for a "
+            f"your current permit continues to count until they decide ({RESIDENCE_EXTENSION_LAW}) — ask for a "
             "Fiktionsbescheinigung. Appointments are often booked out for weeks.",
-            "Residence permits: apply before expiry (§ 81 Abs. 4 AufenthG).",
+            f"Residence permits: apply before expiry ({RESIDENCE_EXTENSION_LAW}).",
         )
     if klass == "identity":
         return IdeaText(
@@ -981,15 +1221,84 @@ def _matching_draft(ledger: Ledger, item: Item) -> Draft | None:
     return None
 
 
+def _followup_draft(ledger: Ledger, item: Item) -> Draft | None:
+    """The sent letter whose follow-up to-do ``item`` is (its id is derived from the letter's)."""
+    return next((draft for draft in ledger.sent_drafts() if followup_item_id(draft.id) == item.id), None)
+
+
+def _proof_sentences(ledger: Ledger, draft: Draft) -> list[str]:
+    """What the letter's proof adds to a reminder: the delivery day and the tracking number."""
+    today = ledger.today
+    said: list[str] = []
+    delivered = sorted(
+        day
+        for proof in ledger.proofs_of(draft.id)
+        if proof.kind in ("delivery_record", "return_receipt") and (day := parse_day(proof.on_date))
+    )
+    if delivered:
+        said.append(
+            f"Your proof shows it was delivered on {day_label(delivered[0], today)} — say so when you remind them."
+        )
+    tracking = tracking_info(draft.tracking_number)
+    if tracking is not None:
+        said.append(f"Quote the tracking number {tracking.display} if you call.")
+    return said
+
+
+def _answered_idea(ledger: Ledger, item: Item, draft: Draft, reply: Document, due: date) -> Suggestion:
+    today = ledger.today
+    who = ledger.party_name(reply.party_id) or ledger.party_name(item.party_id) or "They"
+    reply_day = parse_day(reply.doc_date or reply.received_date or reply.created_at)
+    when = f" of {day_label(reply_day, today)}" if reply_day else ""
+    sent_day = parse_day(draft.sent_at)
+    sent = f", sent {day_label(sent_day, today)}" if sent_day else ""
+    body = _sentences(
+        f"Their letter “{reply.title or reply.filename}”{when} came after yours (“{draft.subject}”{sent}).",
+        "Check that it answers your letter, then mark the follow-up done.",
+    )
+    answer = ledger.answer_of(draft)
+    confirmed = answer is not None and answer.document is not None and answer.document.id == reply.id
+    # a letter that is only in the same thread may be about something else: ask, don't state
+    title = (
+        f"{who} confirmed — close the follow-up?"
+        if confirmed
+        else f"A letter from {who} came — is it the answer?"
+    )
+    if who == "They" and not confirmed:
+        title = "A letter came in the same thread — is it the answer?"
+    return make_idea(
+        "followup_due",
+        item.id,
+        (item.due_date, "answered", reply.id),
+        IdeaText(title, body, f"Follow-up date {day_label(due, today)}."),
+        kind="followup",
+        priority="normal",
+        refs=[_ref("item", item.id), _ref("draft", draft.id), _ref("document", reply.id)],
+        action=_open("draft", draft.id, "Open the letter"),
+        due_date=due,
+    )
+
+
 def followup_due(ledger: Ledger) -> list[Suggestion]:
-    """A sent letter's follow-up item (created when a draft is marked as sent) has become due."""
+    """A sent letter's follow-up item (created when a draft is marked as sent) has become due.
+
+    With the letter's proof state: when a letter linked to it arrived (:meth:`Ledger.reply_to`) the Idea
+    asks the person to check that answer and close the follow-up (it closes nothing itself); otherwise a
+    recorded delivery day and tracking number are named for the reminder. A letter without proof keeps
+    the plain reminder.
+    """
     ideas: list[Suggestion] = []
     today = ledger.today
     for item in ledger.active_items():
         due = parse_day(item.due_date)
         if item.origin != "draft" or due is None or due > today:
             continue
-        draft = _matching_draft(ledger, item)
+        exact = _followup_draft(ledger, item)
+        reply = ledger.reply_to(exact) if exact is not None else None
+        if exact is not None and reply is not None:
+            ideas.append(_answered_idea(ledger, item, exact, reply, due))
+            continue
+        draft = exact or _matching_draft(ledger, item)
         refs = [_ref("item", item.id)]
         sent = None
         if draft is not None:
@@ -1008,6 +1317,7 @@ def followup_due(ledger: Ledger) -> list[Suggestion]:
         body = _sentences(
             sent,
             "If you haven't had an answer, send a short reminder or call them — and keep a note of it.",
+            *(_proof_sentences(ledger, exact) if exact is not None else ()),
         )
         ideas.append(
             make_idea(
@@ -1020,6 +1330,79 @@ def followup_due(ledger: Ledger) -> list[Suggestion]:
                 refs=refs,
                 action=action,
                 due_date=due,
+            )
+        )
+    return ideas
+
+
+#: Days after sending before a registered cancellation or objection without proof becomes an Idea.
+PROOF_GRACE_DAYS = 2
+#: Letters whose proof of arrival decides a deadline (``proof_missing`` watches these).
+PROOF_WATCHED_KINDS = frozenset({"cancellation", "objection"})
+
+
+def proof_missing(ledger: Ledger) -> list[Suggestion]:
+    """A cancellation or objection sent by Einschreiben has no tracking number and no proof two days on.
+
+    Not raised when an answer from them shows it arrived (:meth:`Ledger.answer_of` — a later letter that
+    is merely in the same thread is not one, and the person's word that it was answered shows nothing
+    about arrival: ``drafts.proof`` policy 3), when the person closed its follow-up themselves, or once
+    Deutsche Post no longer issues the delivery record (15 months after posting). Once a tracking
+    number or a proof is added the Idea expires.
+    """
+    ideas: list[Suggestion] = []
+    today = ledger.today
+    for draft in ledger.sent_drafts():
+        sent = parse_day(draft.sent_at)
+        if (
+            draft.kind not in PROOF_WATCHED_KINDS
+            or draft.sent_channel != "registered_letter"
+            or sent is None
+            or (today - sent).days < PROOF_GRACE_DAYS
+            or draft.tracking_number
+            or ledger.proofs_of(draft.id)
+            or not delivery_record_obtainable(draft, today)
+        ):
+            continue
+        answer = ledger.answer_of(draft)
+        if answer is not None and answer.how != "noted":
+            continue
+        followup = ledger.followup_item(draft)
+        # "I got an answer" closes the follow-up too, but says nothing about arrival
+        if answer is None and followup is not None and followup.status in ("done", "dismissed"):
+            continue
+        who = ledger.party_name(draft.party_id) or "the recipient"
+        what = "cancellation" if draft.kind == "cancellation" else "objection"
+        body = _sentences(
+            f"You sent “{draft.subject}” on {day_label(sent, today)} by Einschreiben, but Ordnung has no "
+            "tracking number or receipt for it.",
+            "Add the tracking number and a photo of the posting receipt (Einlieferungsbeleg) — or, for an "
+            "Einschreiben bought online, the number next to the stamp's square code — and ask Deutsche "
+            "Post for the delivery record (Auslieferungsbeleg); they issue it only within 15 months of "
+            "posting. Together with the posting receipt, that is what courts have accepted as a sign "
+            "that a letter arrived — never as proof of what was inside.",
+        )
+        refs = [_ref("draft", draft.id)]
+        if draft.contract_id:
+            refs.append(_ref("contract", draft.contract_id))
+        if draft.doc_id and ledger.document(draft.doc_id):
+            refs.append(_ref("document", draft.doc_id))
+        ideas.append(
+            make_idea(
+                "proof_missing",
+                draft.id,
+                (draft.sent_at,),
+                IdeaText(
+                    f"Keep the proof of your {what} to {who}",
+                    body,
+                    "The posting receipt with the online tracking status alone was not accepted as proof "
+                    "that a letter arrived (BAG 2 AZR 68/24).",
+                ),
+                kind="followup",
+                priority="normal",
+                refs=refs,
+                action=_open("draft", draft.id, "Add proof"),
+                due_date=None,
             )
         )
     return ideas
@@ -1079,8 +1462,27 @@ def _earlier_invoice(ledger: Ledger, dunning: Document) -> Document | None:
     return max(candidates, key=lambda doc: (doc.doc_date or "", doc.id), default=None)
 
 
+#: Senders that are public bodies: a library's, a university's or an authority's fee is never taken to
+#: a debt collector or a court payment order — they add reminder fees and, in the end, collect it
+#: themselves (administrative enforcement). UI audit R1-backend-7: a €4.50 library fee warned of a
+#: Mahnbescheid.
+PUBLIC_CREDITOR_KINDS = frozenset(
+    {"authority", "tax_office", "immigration_office", "university", "public_broadcaster"}
+)
+_PRIVATE_UNPAID = (
+    "If it stays unpaid, the next step is usually a debt collector or a court payment order "
+    "(Mahnbescheid), which adds costs."
+)
+_PUBLIC_UNPAID = (
+    "If it stays unpaid, more reminder fees can follow, and a public body can in the end collect it "
+    "itself (administrative enforcement)."
+)
+
+
 def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
-    """Payment reminders (Mahnungen) with an open payment: pay, or object if you don't owe it."""
+    """Payment reminders (Mahnungen) with an open payment: pay, or object if you don't owe it. What
+    follows if it stays unpaid depends on the sender: a company's claim goes to a debt collector or a
+    court payment order, a public body's is collected by the body itself (:data:`PUBLIC_CREDITOR_KINDS`)."""
     ideas: list[Suggestion] = []
     today = ledger.today
     active = ledger.active_items()
@@ -1092,6 +1494,7 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             and i.kind == "payment"
             and i.due_date
             and not ledger.is_superseded_by_reminder(i)
+            and not ledger.is_covered_by_attachment(i)
         ]
         if doc.kind != "dunning" or not payments or ledger.scam_reasons(doc):
             continue  # letters with scam signs get a scam warning instead of "pay"
@@ -1107,11 +1510,11 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
         )
         invoice = _earlier_invoice(ledger, doc)
         invoice_day = parse_day(invoice.doc_date) if invoice else None
+        party = ledger.parties.get(doc.party_id) if doc.party_id else None
         body = _sentences(
             "This is a payment reminder (Mahnung)"
             + (f" for the invoice of {day_label(invoice_day, today)}." if invoice_day else "."),
-            "If it stays unpaid, the next step is usually a debt collector or a court payment order "
-            "(Mahnbescheid), which adds costs.",
+            _PUBLIC_UNPAID if party is not None and party.kind in PUBLIC_CREDITOR_KINDS else _PRIVATE_UNPAID,
             f"If you already paid, tell {who} when and keep the proof; if you don't owe it, say so in writing.",
         )
         refs = [_ref("document", doc.id), _ref("item", payment.id)]
@@ -1149,6 +1552,30 @@ def iban_fails_checksum(doc: Document) -> bool:
     return _scam is not None and not _scam.iban_valid(_scam.normalize_iban(payment.iban))
 
 
+#: Warnings that are no scam sign of their own: the reading's count of dates it couldn't confirm, a "Please
+#: check" note, and text meant for software — said once, as hidden text (as ``otherWarnings`` and
+#: ``isHiddenTextWarning`` in ``web/src/features/document/Warnings.tsx``).
+_NOT_A_SIGN = re.compile(
+    r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
+    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection",
+    re.I,
+)
+HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."
+
+
+def scam_signs(doc: Document, reasons: Sequence[str]) -> list[str]:
+    """Every warning sign of a letter with scam signs (``reasons``, :func:`_scam_reasons`, not empty), as
+    its page and its Idea list them — one list, one count (walkthrough of phase 2: the Idea said "5
+    warning signs", the page "the 3 strongest of 7", and hidden text was said twice). Once a letter shows
+    scam signs, each warning its reading carries is one more — except notes that are no sign
+    (:data:`_NOT_A_SIGN`) —, hidden text is said once, in Ordnung's words, and the code's findings come
+    too (a payee that doesn't match, a failing IBAN)."""
+    signs = [HIDDEN_TEXT_SIGN] if doc.hidden_text else []
+    signs.extend(w for w in doc.warnings if w.strip() and not _NOT_A_SIGN.search(w))
+    signs.extend(r for r in reasons if not _NOT_A_SIGN.search(r))
+    return list(dict.fromkeys(signs))
+
+
 def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]:
     """Hidden text, scam-like warnings and — via :mod:`ordnung.secretary.scam` — an IBAN or payee that
     doesn't match what the sender (or a look-alike organisation) used before.
@@ -1159,11 +1586,13 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     """
     reasons: list[str] = []
     if doc.hidden_text:
-        reasons.append("The letter contains hidden text that you can't see on the page.")
+        reasons.append(HIDDEN_TEXT_SIGN)
     reasons.extend(
         w
         for w in doc.warnings
-        if any(word in w.casefold() for word in _SCAM_WORDS) and not is_checksum_note(w)
+        if any(word in w.casefold() for word in _SCAM_WORDS)
+        and not is_checksum_note(w)
+        and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
     )
     finding = None
     if _scam is not None and party is not None and doc.payment is not None:
@@ -1184,7 +1613,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
     today = ledger.today
     active = ledger.active_items()
     for doc in ledger.documents.values():
-        reasons = ledger.scam_reasons(doc)
+        reasons = ledger.scam_signs(doc)
         if not reasons:
             continue
         pay_days = [action_day(i) for i in active if i.doc_id == doc.id and i.kind == "payment"]
@@ -1203,7 +1632,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
                 doc.id,
                 tuple(sorted(reasons)),
                 IdeaText(
-                    f"This may be a scam: {doc.title or doc.filename}",
+                    f"Possible scam: {_letter_title(doc.title or doc.filename)}",
                     body,
                     "1 warning sign." if len(reasons) == 1 else f"{len(reasons)} warning signs.",
                 ),
@@ -1319,7 +1748,12 @@ def _changed_after(stamp: str, since: datetime | None) -> bool:
 
 
 def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
-    """Open future dates (items and contract send-by days) added or changed since the last .ics export."""
+    """Open future dates (items and contract send-by days) added or changed since the last .ics export.
+
+    Not while a calendar is connected for calendar sync (paused or not): it gets the dates by itself,
+    and importing the file into it as well would clash with the synced events (the same UIDs)."""
+    if ledger.store.get_meta(CALENDAR_SYNC_META_KEY):
+        return []
     today = ledger.today
     raw = ledger.store.get_meta(CALENDAR_META_KEY)
     since = parse_timestamp(raw)
@@ -1358,8 +1792,53 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
     ]
 
 
+def cancellations_sent(sent: Iterable[Draft]) -> dict[str, CancellationSent]:
+    """Contract id → the person's latest cancellation of it among ``sent`` (letters marked as sent,
+    newest first): a ``cancellation`` letter that names the contract."""
+    found: dict[str, CancellationSent] = {}
+    for draft in sent:
+        if draft.kind == "cancellation" and draft.status == "sent" and draft.contract_id:
+            sent_on = parse_day(draft.sent_at)
+            found.setdefault(
+                draft.contract_id,
+                CancellationSent(
+                    draft_id=draft.id,
+                    sent_on=sent_on.isoformat() if sent_on else None,
+                    channel=draft.sent_channel,
+                ),
+            )
+    return found
+
+
+def _sent_cancellation(ledger: Ledger, contract_id: str) -> Draft | None:
+    """The person's latest cancellation of this contract that was marked as sent."""
+    return next(
+        (
+            draft
+            for draft in ledger.sent_drafts()
+            if draft.kind == "cancellation" and draft.contract_id == contract_id
+        ),
+        None,
+    )
+
+
+def _cancellation_sent_line(ledger: Ledger, draft: Draft) -> str:
+    sent = parse_day(draft.sent_at)
+    when = f" on {day_label(sent, ledger.today)}" if sent else ""
+    tracking = tracking_info(draft.tracking_number)
+    how = f" (tracking number {tracking.display})" if tracking else ""
+    return (
+        f"It answers your cancellation sent{when} by {channel_label(draft.sent_channel)}{how}: keep the two "
+        "together as your proof."
+    )
+
+
 def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
-    """A cancellation confirmation arrived for a contract that is still marked active."""
+    """A cancellation confirmation arrived for a contract that is still marked active.
+
+    When the person's own cancellation of that contract was marked as sent, the Idea names it (how and
+    when it went, its tracking number) and links it, so the confirmation is kept with the proof.
+    """
     ideas: list[Suggestion] = []
     today = ledger.today
     by_id = {contract.id: contract for contract in ledger.contracts}
@@ -1367,11 +1846,16 @@ def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
         contract = by_id[contract_id]
         when = f" effective {day_label(effective, today)}" if effective else ""
         who = ledger.party_name(doc.party_id) or ledger.party_name(contract.party_id) or "The provider"
+        mine = _sent_cancellation(ledger, contract.id)
         body = _sentences(
             f"{who} confirmed that your contract ends{' on ' + day_label(effective, today) if effective else ''}.",
+            _cancellation_sent_line(ledger, mine) if mine is not None else None,
             "Check that this matches what you asked for, then confirm it so Ordnung stops tracking its "
             "deadlines and costs.",
         )
+        refs = [_ref("document", doc.id), _ref("contract", contract.id)]
+        if mine is not None:
+            refs.append(_ref("draft", mine.id))
         ideas.append(
             make_idea(
                 "confirm_cancellation",
@@ -1380,7 +1864,7 @@ def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
                 IdeaText(f"Confirm cancellation of {contract.name}{when}?", body),
                 kind="followup",
                 priority="normal",
-                refs=[_ref("document", doc.id), _ref("contract", contract.id)],
+                refs=refs,
                 action=SuggestionAction(
                     type="mark_done",
                     target_type="contract",
@@ -1409,7 +1893,7 @@ def student_permit_info(ledger: Ledger) -> list[Suggestion]:
     )
     body = _sentences(
         "A student residence permit lets you work up to 140 full or 280 half days a year, plus student "
-        "jobs at your university (§ 16b Abs. 3 AufenthG).",
+        f"jobs at your university ({STUDENT_WORK_LAW}).",
         "Check the conditions printed on your permit (Nebenbestimmungen) and ask the international "
         "office or the Studierendenwerk before taking on more.",
         "Law: " + _PERMIT_LINKS[0] + " · Advice: " + _PERMIT_LINKS[1],
@@ -1444,6 +1928,7 @@ TRIGGERS: dict[str, Trigger] = {
     "expiry_soon": expiry_soon,
     "passport_before_permit": passport_before_permit,
     "followup_due": followup_due,
+    "proof_missing": proof_missing,
     "please_check": please_check,
     "dunning_escalation": dunning_escalation,
     "scam_warning": scam_warning,

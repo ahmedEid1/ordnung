@@ -23,6 +23,14 @@ const OUT_TITLE: Record<Draft["kind"], string> = {
   cancellation: "Your cancellation",
   objection: "Your objection",
   general_reply: "Your reply",
+  withdrawal: "Your withdrawal",
+  extension_request: "Your request for more time",
+  payment_plan: "Your instalment request",
+  defect_notice: "Your defect notice",
+  data_access: "Your data request",
+  receipts_inspection: "Your receipts request",
+  deposit_return: "Your deposit request",
+  address_change: "Your new address",
 };
 
 /** Their letters and the letters you wrote to them, newest first (undated last). */

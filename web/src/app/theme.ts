@@ -24,13 +24,18 @@ function systemDark(): boolean {
 
 let pref: ThemePref = typeof window === "undefined" ? "system" : readPref();
 
+/** Browser-chrome colours: the `--color-canvas` of each theme (index.css). */
+export const THEME_COLORS = { light: "#f7f5f0", dark: "#12110e" } as const;
+
 function apply() {
   if (typeof document === "undefined") return;
   const dark = pref === "dark" || (pref === "system" && systemDark());
   document.documentElement.classList.toggle("dark", dark);
   document.documentElement.style.colorScheme = dark ? "dark" : "light";
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#12110e" : "#f7f5f0");
+  // index.html has one theme-color per OS scheme (media queries); a chosen theme overrides both
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+    meta.setAttribute("content", dark ? THEME_COLORS.dark : THEME_COLORS.light);
+  }
 }
 
 /** Set the theme preference (persisted) and apply it. */

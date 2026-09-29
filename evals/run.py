@@ -14,8 +14,12 @@ prompt's text changed under the same version (the baselines' keys include their 
 
 Each (letter, condition) prediction is also cached in ``evals/results/cache/<run_id>/`` together
 with a fingerprint of the prompts (full text) and code it depends on, under a name that includes the
-letter's inputs (file hash, today, regions), so a rerun only redoes what changed or failed. Results go to ``evals/results/<YYYY-MM-DD>-<model>-<split>.json``; a full test-split run
-also regenerates ``docs/evals.md`` and its chart.
+letter's inputs (file hash, today, regions), so a rerun only redoes what changed or failed. Results go to ``evals/results/<YYYY-MM-DD>-<model>-<split>.json``; a complete,
+error-free live run of every condition on the test split also regenerates ``docs/evals.md`` and its
+chart. A run of some conditions never does (the page would lose the others' published rows): a
+condition recorded again after the published run (``llm_rules_tool``, :data:`RECORD_AGAIN`) joins it
+with ``python -m evals.report … --add-condition``, which keeps the held-out run's own conditions as
+they were.
 
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
@@ -42,6 +46,7 @@ from pydantic import ValidationError
 
 from evals import __version__, report
 from evals.conditions import (
+    TOOLS_CONDITION,
     CallLog,
     MeteredBackend,
     PreparedDocument,
@@ -112,6 +117,14 @@ class RunConfig:
     run_date: str | None = None
     write_docs: bool | None = None  # None: only for a complete test-split run without errors
     allow_errors: bool = False
+    #: The CI gate checks Ordnung: the tool condition, whose recorded answers go missing on replay when
+    #: the rules tools' descriptions change in code, is then left out with a warning (see
+    #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
+    gate_ordnung_only: bool = False
+    #: Whether the results file is written: the CI gate's replay (thresholds, no ``--live``) only checks and
+    #: writes nothing unless ``--results-dir`` is given (review round 3 of phase 2: running the gate locally
+    #: left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree).
+    write_results: bool = True
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
     manifest_path: Path = MANIFEST_PATH
@@ -128,6 +141,11 @@ class RunConfig:
     def partial(self) -> bool:
         """Entries were filtered: the run is not the whole split."""
         return bool(self.families or self.ids or self.limit is not None)
+
+    @property
+    def every_condition(self) -> bool:
+        """Every benchmark condition runs: a published page from fewer would drop the others' rows."""
+        return set(CONDITIONS) <= set(self.conditions)
 
     @property
     def date(self) -> str:
@@ -148,6 +166,8 @@ class ModelRun:
     results_path: Path | None = None
     errors: list[Prediction] = field(default_factory=list)
     fatal: str | None = None
+    #: Conditions left out of a gated replay because their recorded answers are missing.
+    left_out: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -158,7 +178,7 @@ class RunOutcome:
 
     @property
     def ok(self) -> bool:
-        return all(run.results_path is not None and run.fatal is None for run in self.runs)
+        return all(run.results is not None and run.fatal is None for run in self.runs)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -457,13 +477,21 @@ def _commit() -> str | None:
     return None
 
 
-def run_meta(config: RunConfig, model: str, entries: Sequence[Entry], backend_label: str) -> dict[str, Any]:
-    return {
+def run_meta(
+    config: RunConfig,
+    model: str,
+    entries: Sequence[Entry],
+    backend_label: str,
+    *,
+    left_out: Sequence[str] = (),
+) -> dict[str, Any]:
+    conditions = [condition for condition in config.conditions if condition not in left_out]
+    meta: dict[str, Any] = {
         "date": config.date,
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "model": model,
         "split": config.split,
-        "conditions": list(config.conditions),
+        "conditions": conditions,
         "backend": backend_label,
         "run_id": config.effective_run_id,
         "entries": len(entries),
@@ -476,10 +504,13 @@ def run_meta(config: RunConfig, model: str, entries: Sequence[Entry], backend_la
         "seed": config.seed,
         "resamples": config.resamples,
         "evals_version": __version__,
-        "fingerprints": {condition: fingerprint(condition, model) for condition in config.conditions},
+        "fingerprints": {condition: fingerprint(condition, model) for condition in conditions},
         "dataset": _manifest_info(config.manifest_path),
         "commit": _commit(),
     }
+    if left_out:
+        meta["left_out"] = {condition: "recorded answers missing on replay" for condition in left_out}
+    return meta
 
 
 async def run_benchmark(
@@ -522,30 +553,37 @@ async def run_benchmark(
         if run.fatal:
             say(f"{model}: stopped — {run.fatal}")
             continue
+        if config.gate_ordnung_only and not config.live:
+            _leave_out_unrecorded(run, say)
         if run.errors and not config.allow_errors:
             _report_errors(run, config, say)
             continue
         evaluation = evaluate(entries, run.predictions, seed=config.seed, resamples=config.resamples)
         run.results = report.build_results(
-            meta=run_meta(config, model, entries, label),
+            meta=run_meta(config, model, entries, label, left_out=run.left_out),
             entries=entries,
             predictions=run.predictions,
             evaluation=evaluation,
         )
+        if not config.write_results:
+            say(f"{model}: results not written (the gate's replay; pass --results-dir to keep them)")
+            continue
         name = report.results_filename(config.date, model, config.split, partial=config.partial)
         run.results_path = report.write_json(config.results_dir / name, run.results)
         say(f"{model}: results → {run.results_path}")
     finished = [run.results for run in outcome.runs if run.results is not None]
     write_docs = config.write_docs
     if write_docs is None:
-        # The published page only from a complete, error-free live run (--allow-errors scores
-        # missing answers as empty — fine for a look, not for docs/evals.md). A replay recomputes the
-        # numbers without touching the page, which may also show a re-scored run (evals.report
-        # --rescored); pass --docs to force it.
+        # The published page only from a complete, error-free live run of every condition
+        # (--allow-errors scores missing answers as empty — fine for a look, not for docs/evals.md; a
+        # run of some conditions joins the published run with evals.report --add-condition). A replay
+        # recomputes the numbers without touching the page, which may also show a re-scored run
+        # (evals.report --rescored); pass --docs to force it.
         write_docs = (
             config.live
             and config.split == "test"
             and not config.partial
+            and config.every_condition
             and outcome.ok
             and not any(run.errors for run in outcome.runs)
         )
@@ -557,11 +595,50 @@ async def run_benchmark(
     return outcome
 
 
+REPLAY_MISS = "no recorded response"
+#: How to record a condition added after the published run again, and publish it (docs never change
+#: on the recording itself: it runs one condition). Recording costs tokens: see ``docs/evals.md``.
+RECORD_AGAIN = (
+    "record it again with `python -m evals.run --live --split dev --conditions {condition}` and then "
+    "`--split test` (neither rewrites docs/evals.md), then add the test run to the published one: "
+    "`python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json "
+    "--add-condition {condition}=evals/results/<new run>.json --note <finding>.md`"
+)
+#: The only condition a gated replay may leave out: its replay key includes the rules tools' Python
+#: docstrings and schemas, which change with the code. The published baselines' prompts are files
+#: that must not change unnoticed, so their misses still fail the gate.
+GATE_MAY_LEAVE_OUT = frozenset({TOOLS_CONDITION})
+
+
+def _leave_out_unrecorded(run: ModelRun, say: Progress) -> None:
+    """Drop from ``run`` a :data:`GATE_MAY_LEAVE_OUT` condition that misses recorded answers (a gated replay).
+
+    The gate checks Ordnung's numbers; the tool condition misses every answer on replay once a tool
+    description or the ``DateSpec`` schema changed since it was recorded, and that must not fail the
+    gate. It is named, loudly, instead. Ordnung's own misses, the other baselines' misses (a changed
+    ``llm_only`` or rules-text prompt: their published numbers must keep replaying) and every other
+    error still fail the run.
+    """
+    missing: dict[str, int] = {}
+    for prediction in run.errors:
+        if prediction.condition in GATE_MAY_LEAVE_OUT and REPLAY_MISS in (prediction.error or ""):
+            missing[prediction.condition] = missing.get(prediction.condition, 0) + 1
+    for condition, count in sorted(missing.items()):
+        say(
+            f"warning: {run.model}: {condition} has no recorded answer for {count} letter(s) — its prompt "
+            "or tool definitions changed since it was recorded. It is left out of this gated run (the gate "
+            f"checks Ordnung only); {RECORD_AGAIN.format(condition=condition)}."
+        )
+        del run.predictions[condition]
+    run.left_out = sorted(missing)
+    run.errors = [prediction for prediction in run.errors if prediction.condition not in missing]
+
+
 def _report_errors(run: ModelRun, config: RunConfig, say: Progress) -> None:
     say(f"{run.model}: {len(run.errors)} prediction(s) failed to run — no results written:")
     for prediction in run.errors[:10]:
         say(f"  {prediction.condition} {prediction.entry_id}: {prediction.error}")
-    if any("no recorded response" in (p.error or "") for p in run.errors) and not config.live:
+    if any(REPLAY_MISS in (p.error or "") for p in run.errors) and not config.live:
         say(
             f"  Recorded outputs are missing in {config.recorded_dir / safe_name(run.model)} — "
             "record them with --live, or pass --allow-errors to score the missing ones as empty."
@@ -614,7 +691,8 @@ def gate_failures(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m evals.run",
-        description="Ordnung's deadline benchmark: Ordnung vs LLM-only vs LLM + rules text (SPEC § 17).",
+        description="Ordnung's deadline benchmark: Ordnung vs LLM only, LLM + rules text and LLM + rules tool "
+        "(SPEC § 17).",
     )
     parser.add_argument("--live", action="store_true", help="call the claude CLI and record its answers")
     parser.add_argument("--refresh", action="store_true", help="with --live: record every call anew")
@@ -656,7 +734,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--manifest", type=Path, default=MANIFEST_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--recorded-dir", type=Path, default=RECORDED_DIR, help="recorded outputs root")
-    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR, help="results directory")
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help=f"results directory (default: {RESULTS_DIR.name}/; the gate's replay writes none unless given)",
+    )
     parser.add_argument("--docs-path", type=Path, default=report.DOCS_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--chart-path", type=Path, default=report.CHART_PATH, help=argparse.SUPPRESS)
     parser.add_argument("--quiet", action="store_true", help="no per-letter progress lines")
@@ -664,7 +747,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--min-accuracy",
         type=float,
         metavar="RATE",
-        help="fail unless Ordnung's due-date accuracy is at least RATE",
+        help="fail unless Ordnung's due-date accuracy is at least RATE (a gate on Ordnung: on replay, the "
+        "rules-tool condition without recorded answers is left out with a warning)",
     )
     parser.add_argument(
         "--max-dangerous-late",
@@ -698,7 +782,7 @@ def config_from_args(ns: argparse.Namespace) -> RunConfig:
         resamples=ns.resamples,
         manifest_path=ns.manifest,
         recorded_dir=ns.recorded_dir,
-        results_dir=ns.results_dir,
+        results_dir=ns.results_dir or RESULTS_DIR,
         docs_path=ns.docs_path,
         chart_path=ns.chart_path,
     )
@@ -717,6 +801,9 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
+    # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
+    config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
+    config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))
@@ -726,6 +813,12 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     for line in summary_lines(outcome):
         _stderr(line)
     failures = gate_failures(outcome, min_accuracy=ns.min_accuracy, max_dangerous_late=ns.max_dangerous_late)
+    for run in outcome.runs:
+        for condition in run.left_out:
+            _stderr(
+                f"warning: {run.model}: left out of the gate, recorded answers missing: {condition} — "
+                f"{RECORD_AGAIN.format(condition=condition)}"
+            )
     for line in failures:
         _stderr(f"threshold missed: {line}")
     return 0 if outcome.ok and not failures else 1

@@ -1,19 +1,25 @@
 /**
- * The month-by-month list under the lanes: sticky month headers, a Today divider the list scrolls
- * to on load, entries with kind icon, title, party, amount and status. Scrolls inside its own card
- * so the lanes above stay put.
+ * The month-by-month list under the lanes: sticky month headers, a Today divider, and entries with
+ * the date, what the date is ("Payment due"), who it's with, amount and status.
+ *
+ * From 768 px it scrolls inside its own card, opened at Today, so the page keeps its place. On
+ * phones it is part of the page instead (a box inside a scrolling page traps the thumb): month
+ * headers stick under the top bar, the months before this one fold into "Show … earlier dates", and
+ * "Back to today" floats above the tab bar.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { format, parseISO } from "date-fns";
-import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ChevronsUp } from "lucide-react";
 import type { TimelineEntry } from "@/api/types";
+import { Button } from "@/components/ui/Button";
+import { DateLeaf } from "@/components/ui/DateLeaf";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
-import { TONES } from "@/lib/copy";
+import { TIMELINE_TYPE_COPY, TONES, copyFor } from "@/lib/copy";
 import { formatDate, formatTime, formatTotals } from "@/lib/format";
+import { useIsTabletUp } from "@/lib/hooks";
 import { cn, plural, prefersReducedMotion } from "@/lib/utils";
-import { entryMeta, entryStatus, isPastEntry, type MonthGroup } from "./model";
+import { entryDetail, entryRole, entryStatus, foldPast, isPastEntry, type MonthGroup } from "./model";
 
 export interface TimelineListProps {
   groups: MonthGroup[];
@@ -30,50 +36,66 @@ export interface TimelineListProps {
   className?: string;
 }
 
-const HEADER_H = 44;
-
-function DateLeaf({ date, past, isToday }: { date: string; past: boolean; isToday: boolean }) {
-  const d = parseISO(date);
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex w-10 shrink-0 flex-col items-center rounded-lg border py-1 leading-none",
-        isToday ? "border-ink/70 bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-ink)]" : past ? "border-line bg-surface-2/60 text-muted" : "border-line bg-surface text-ink",
-      )}
-    >
-      <span className={cn("text-[9.5px] font-semibold uppercase tracking-[0.08em]", isToday ? "text-ink" : "text-muted")}>{format(d, "EEE")}</span>
-      <span className="display mt-0.5 text-[16px] font-semibold tabular-nums">{format(d, "d")}</span>
-    </span>
-  );
-}
+/** Height of a sticky month header (`h-11`). */
+export const MONTH_HEADER_H = 44;
+/** Height of the app's sticky top bar (`TopBar`, `h-14`): phones' month headers stick under it. */
+const TOP_BAR_H = 56;
+/** Room the phone tab bar (`h-16`) takes at the bottom of the viewport, plus a little air. */
+const TAB_BAR_ROOM = 72;
 
 function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: string; href: string | null; highlighted: boolean }) {
   const past = isPastEntry(e, today);
   const status = entryStatus(e, today);
-  const meta = [entryMeta(e), e.time ? formatTime(e.time) : null].filter(Boolean).join(" · ");
+  const role = entryRole(e);
+  const kind = copyFor(TIMELINE_TYPE_COPY, e.type);
+  const detail = [entryDetail(e), e.time ? formatTime(e.time) : null].filter(Boolean).join(" · ") || null;
+  const meta = [role, e.party_name, detail].filter(Boolean).join(" · ");
+  const amount = e.amount && e.type !== "contract" ? <Money amount={e.amount} currency={e.currency} tone={past ? "muted" : "default"} className="text-base" /> : null;
   const pill = status ? (
-    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-[3px] text-[11.5px] font-medium leading-4", TONES[status.tone].soft, TONES[status.tone].text)}>
+    <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium leading-4", TONES[status.tone].soft, TONES[status.tone].text)}>
       <status.icon className="size-3" aria-hidden />
       {status.label}
     </span>
   ) : null;
   const inner = (
     <>
-      <DateLeaf date={e.date} past={past} isToday={e.date === today} />
-      <KindIcon kind={e.type} size="sm" className={cn(past && "opacity-60")} />
+      <DateLeaf date={e.date} size="sm" tone={e.date === today ? "today" : past ? "muted" : "default"} decorative />
+      <KindIcon kind={e.type} size="sm" className={cn("max-sm:hidden", past && "opacity-60")} />
       <span className="min-w-0 flex-1">
-        <span className={cn("line-clamp-2 text-[14px] font-medium leading-snug sm:line-clamp-1", past ? "text-ink/70" : "text-ink")}>{e.title}</span>
-        {meta ? <span className="mt-0.5 block truncate text-[12.5px] text-muted">{meta}</span> : null}
-        {pill ? <span className="mt-1 flex sm:hidden">{pill}</span> : null}
+        {/* phones: the whole title and who it's with, wrapped; from sm one line each (full text on hover) */}
+        <span title={e.title} className={cn("block break-words text-base font-medium leading-snug sm:line-clamp-1", past ? "text-ink/70" : "text-ink")}>
+          {e.title}
+        </span>
+        <span title={meta} className="mt-0.5 block break-words text-sm leading-5 text-muted sm:truncate">
+          <kind.icon className={cn("mr-1 inline size-3.5 -translate-y-px align-middle sm:hidden", TONES[kind.tone].icon, past && "opacity-60")} aria-hidden />
+          <span className="font-medium">{role}</span>
+          {e.party_name ? ` · ${e.party_name}` : null}
+          {detail ? <span className="max-sm:hidden"> · {detail}</span> : null}
+        </span>
+        {/* phones: up to two lines — a day ("Transfer by Thu 14 Jan 2027") is never cut short */}
+        {detail ? (
+          <span title={detail} className="mt-0.5 line-clamp-2 break-words text-sm leading-5 text-muted sm:hidden">
+            {detail}
+          </span>
+        ) : null}
+        {amount || pill ? (
+          <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
+            {amount}
+            {pill}
+          </span>
+        ) : null}
       </span>
-      {e.amount && e.type !== "contract" ? <Money amount={e.amount} currency={e.currency} tone={past ? "muted" : "default"} className="shrink-0 text-[13.5px]" /> : null}
+      {amount ? <span className="hidden shrink-0 sm:block">{amount}</span> : null}
       {pill ? <span className="hidden shrink-0 sm:flex">{pill}</span> : null}
-      {href ? <ChevronRight className="size-4 shrink-0 text-faint transition-colors group-hover:text-muted" aria-hidden /> : <span className="w-4 shrink-0" aria-hidden />}
+      {href ? (
+        <ChevronRight className="size-4 shrink-0 self-center text-faint transition-colors group-hover:text-muted" aria-hidden />
+      ) : (
+        <span className="w-4 shrink-0" aria-hidden />
+      )}
     </>
   );
   const cls = cn(
-    "group flex items-center gap-3 px-4 py-2.5 transition-colors duration-500 sm:px-5",
+    "group flex items-start gap-3 px-4 py-3 transition-colors duration-500 sm:items-center sm:px-5 sm:py-2.5",
     highlighted ? "bg-marker/45" : href && "hover:bg-surface-2/70",
   );
   const sr = <span className="sr-only">{formatDate(e.date, { style: "long" })}: </span>;
@@ -94,118 +116,198 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
   );
 }
 
-function TodayDivider({ today, nothingElse }: { today: string; nothingElse: boolean }) {
+function TodayDivider({ today, note }: { today: string; note: string | null }) {
   return (
-    <li data-today className="flex items-center gap-3 px-4 py-2 sm:px-5" aria-label={`Today, ${formatDate(today, { style: "long" })}`}>
-      <span className="rounded-full bg-ink px-2 py-[3px] text-[10.5px] font-semibold uppercase leading-none tracking-[0.07em] text-canvas">Today</span>
-      <span className="whitespace-nowrap text-[12.5px] font-semibold text-ink">{formatDate(today, { style: "short" })}</span>
-      <span aria-hidden className="h-[2px] flex-1 rounded-full bg-ink" />
-      {nothingElse ? <span className="text-[12px] text-muted">nothing else this month</span> : null}
+    <li
+      data-today
+      className="flex flex-wrap items-center gap-x-3 gap-y-0.5 px-4 py-2 sm:px-5"
+      aria-label={`Today, ${formatDate(today, { style: "long" })}${note ? ` — ${note.toLowerCase()}` : ""}`}
+    >
+      <span className="rounded-full bg-ink px-2 py-0.5 text-2xs font-semibold uppercase leading-4 tracking-[0.07em] text-canvas">Today</span>
+      <span className="whitespace-nowrap text-sm font-semibold text-ink">{formatDate(today, { style: "short" })}</span>
+      <span aria-hidden className="h-[2px] min-w-6 flex-1 rounded-full bg-ink" />
+      {note ? <span className="text-xs text-muted max-sm:basis-full">{note}</span> : null}
     </li>
   );
 }
 
+function MonthHeader({ g }: { g: MonthGroup }) {
+  const count = g.entries.length;
+  const toPay = Object.values(g.toPay).some((total) => total > 0) ? formatTotals(g.toPay) : null;
+  return (
+    <h3
+      id={`tl-month-${g.key}`}
+      className="sticky top-14 z-10 flex h-11 items-center gap-3 border-b border-line bg-surface px-4 sm:px-5 md:top-0"
+    >
+      <span className={cn("display shrink-0 whitespace-nowrap text-lg font-semibold leading-none", g.past ? "text-ink/70" : "text-ink")}>
+        {g.month} <span className="font-normal text-muted">{g.year}</span>
+      </span>
+      {count || toPay ? (
+        <span className="ml-auto min-w-0 truncate text-xs text-muted">
+          {/* below 360 px only the money: "€586.35 to pay" */}
+          {count ? <span className={cn(toPay && "max-[360px]:hidden")}>{`${plural(count, "date")}${toPay ? " · " : ""}`}</span> : null}
+          {toPay ? (
+            <>
+              <span className="font-medium tabular-nums text-ink">{toPay}</span> to pay
+            </>
+          ) : null}
+        </span>
+      ) : null}
+    </h3>
+  );
+}
+
 export function TimelineList({ groups, today, hrefFor, highlight, header, empty, scrollKey = "", className }: TimelineListProps) {
+  const wide = useIsTabletUp();
   const scroller = useRef<HTMLDivElement | null>(null);
   const card = useRef<HTMLElement | null>(null);
   const [todayPos, setTodayPos] = useState<"above" | "below" | "visible">("visible");
+  const [showEarlier, setShowEarlier] = useState(false);
+  const [scrollable, setScrollable] = useState(false);
   const hasEntries = groups.some((g) => g.entries.length);
-  const hasToday = groups.some((g) => g.todayIndex !== null);
 
-  // On first render with data (and when `scrollKey` changes): bring the Today divider to the top.
+  // Phones: the dates before today fold away until asked for, so the list starts at Today.
+  const fold = useMemo(() => foldPast(groups), [groups]);
+  let folded = !wide && !showEarlier && fold.hidden > 0;
+  // a highlighted entry (a lane marker was clicked) among the folded ones unfolds them for good
+  const has = (gs: MonthGroup[], id: string) => gs.some((g) => g.entries.some((e) => e.id === id));
+  if (folded && highlight && has(groups, highlight.id) && !has(fold.groups, highlight.id)) {
+    folded = false;
+    setShowEarlier(true);
+  }
+  const shown = folded ? fold.groups : groups;
+
+  /** Where a row should land: right under the sticky month header, in the card (wide) or the page. */
+  const scrollRowTo = useCallback(
+    (row: HTMLElement, behavior: ScrollBehavior) => {
+      const el = scroller.current;
+      if (!el) return;
+      if (wide) {
+        el.scrollTo?.({ top: el.scrollTop + row.getBoundingClientRect().top - el.getBoundingClientRect().top - MONTH_HEADER_H, behavior });
+      } else {
+        window.scrollTo?.({ top: window.scrollY + row.getBoundingClientRect().top - TOP_BAR_H - MONTH_HEADER_H, behavior });
+      }
+    },
+    [wide],
+  );
+
+  // From 768 px, on first render with data (and when `scrollKey` changes): open the card at Today.
+  // Phones never move the page on their own.
   const scrolledFor = useRef<string | null>(null);
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (!el || scrolledFor.current === scrollKey || !hasEntries) return;
+    if (!wide || !el || scrolledFor.current === scrollKey || !hasEntries) return;
     const mark = el.querySelector<HTMLElement>("[data-today]");
     if (!mark) return;
     scrolledFor.current = scrollKey;
-    el.scrollTop += mark.getBoundingClientRect().top - el.getBoundingClientRect().top - HEADER_H - 4;
-  }, [hasEntries, groups, scrollKey]);
+    // exactly under the sticky month header: no sliver of the row before it
+    el.scrollTop += mark.getBoundingClientRect().top - el.getBoundingClientRect().top - MONTH_HEADER_H;
+  }, [wide, hasEntries, groups, scrollKey]);
 
-  // "Back to today" pill when the divider scrolled out of view.
+  // "Back to today" when the divider is out of sight — in the card, or (phones) while reading the list.
   useEffect(() => {
     const el = scroller.current;
-    const mark = el?.querySelector<HTMLElement>("[data-today]");
-    if (!el || !mark || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-        if (entry.isIntersecting) setTodayPos("visible");
-        else setTodayPos(entry.boundingClientRect.top < (entry.rootBounds?.top ?? 0) ? "above" : "below");
-      },
-      { root: el, rootMargin: `-${HEADER_H}px 0px 0px 0px` },
-    );
-    io.observe(mark);
-    return () => io.disconnect();
-  }, [groups]);
+    if (!el) return;
+    const update = () => {
+      const mark = el.querySelector<HTMLElement>("[data-today]");
+      const box = el.getBoundingClientRect();
+      // (the room at the end is only there when the card scrolls — measured without it)
+      setScrollable(wide && el.scrollHeight - (parseFloat(getComputedStyle(el).paddingBottom) || 0) > el.clientHeight + 1);
+      if (!mark || !box.height) return setTodayPos("visible");
+      const r = mark.getBoundingClientRect();
+      const top = wide ? box.top + MONTH_HEADER_H : TOP_BAR_H + MONTH_HEADER_H;
+      const bottom = wide ? box.bottom : window.innerHeight - TAB_BAR_ROOM;
+      // phones: only once the list fills the screen, not while the lanes above are in view
+      const reading = wide || (box.top < top && box.bottom > top + 80);
+      if (!reading) setTodayPos("visible");
+      else if (r.bottom <= top) setTodayPos("above");
+      else if (r.top >= bottom) setTodayPos("below");
+      else setTodayPos("visible");
+    };
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(update);
+    };
+    const target: HTMLElement | Window = wide ? el : window;
+    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    update();
+    return () => {
+      cancelAnimationFrame(frame);
+      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [wide, groups, folded]);
 
-  // Scroll to a highlighted entry.
+  // Scroll to a highlighted entry (once — after its month unfolded, if it had to).
+  const scrolledTo = useRef<number | null>(null);
   useEffect(() => {
-    if (!highlight) return;
-    const el = scroller.current;
-    const row = el?.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(highlight.id)}"]`);
-    if (!el || !row) return;
-    const top = el.scrollTop + row.getBoundingClientRect().top - el.getBoundingClientRect().top - HEADER_H - 24;
+    if (!highlight || scrolledTo.current === highlight.nonce) return;
+    const row = scroller.current?.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(highlight.id)}"]`);
+    if (!row) return;
+    scrolledTo.current = highlight.nonce;
     const behavior = prefersReducedMotion() ? "auto" : "smooth";
-    el.scrollTo?.({ top, behavior });
-    card.current?.scrollIntoView?.({ block: "start", behavior });
-  }, [highlight]);
+    if (wide) card.current?.scrollIntoView?.({ block: "start", behavior });
+    scrollRowTo(row, behavior);
+  }, [highlight, wide, folded, scrollRowTo]);
 
   const jumpToToday = () => {
-    const el = scroller.current;
-    const mark = el?.querySelector<HTMLElement>("[data-today]");
-    if (!el || !mark) return;
-    const top = el.scrollTop + mark.getBoundingClientRect().top - el.getBoundingClientRect().top - HEADER_H - 4;
-    el.scrollTo?.({ top, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    const mark = scroller.current?.querySelector<HTMLElement>("[data-today]");
+    if (mark) scrollRowTo(mark, prefersReducedMotion() ? "auto" : "smooth");
   };
 
   return (
-    <section ref={card} aria-labelledby="timeline-list-title" className={cn("card relative isolate scroll-mt-20 overflow-hidden", className)}>
+    // `overflow-clip`, not `hidden`: on phones the month headers stick to the page, through the card
+    <section ref={card} aria-labelledby="timeline-list-title" className={cn("card relative isolate overflow-clip", className)}>
       {header}
-      <div ref={scroller} className="relative max-h-[min(46rem,74vh)] overflow-y-auto overscroll-contain scrollbar-thin">
+      <div
+        ref={scroller}
+        className={cn(
+          "relative",
+          // the card scrolls from 768 px, with a soft edge where more follows and room at the end so
+          // "Back to today" never covers the last row
+          wide && "scroll-shadow max-h-[min(46rem,74vh)] overflow-y-auto scrollbar-thin",
+          wide && scrollable && "pb-14",
+        )}
+      >
         {!hasEntries ? (
           <div className="p-5">{empty}</div>
         ) : (
-          groups.map((g) => {
-            const count = g.entries.length;
-            return (
+          <>
+            {folded ? (
+              <div className="px-2 py-1.5 sm:px-3">
+                <Button variant="ghost" size="sm" icon={ChevronsUp} aria-expanded={false} onClick={() => setShowEarlier(true)}>
+                  Show {plural(fold.hidden, "earlier date")}
+                </Button>
+              </div>
+            ) : null}
+            {shown.map((g) => (
               <section key={g.key} aria-labelledby={`tl-month-${g.key}`} className="border-t border-line first:border-t-0">
-                <h3
-                  id={`tl-month-${g.key}`}
-                  className="sticky top-0 z-10 flex items-baseline gap-3 border-b border-line bg-surface px-4 sm:px-5"
-                  style={{ height: HEADER_H, paddingTop: 11 }}
-                >
-                  <span className={cn("display text-[17px] font-semibold leading-none", g.past ? "text-ink/70" : "text-ink")}>
-                    {g.month} <span className="font-normal text-muted">{g.year}</span>
-                  </span>
-                  <span className="ml-auto flex items-baseline gap-2 text-[12px] text-muted">
-                    <span>{plural(count, "date")}</span>
-                    {Object.values(g.toPay).some((total) => total > 0) ? (
-                      <span>
-                        · To pay <span className="font-medium tabular-nums text-ink">{formatTotals(g.toPay)}</span>
-                      </span>
-                    ) : null}
-                  </span>
-                </h3>
+                <MonthHeader g={g} />
                 <ol className="divide-y divide-line/70">
                   {g.entries.map((e, i) => (
                     <FragmentWithToday key={e.id} show={g.todayIndex === i} today={today}>
                       <Entry e={e} today={today} href={hrefFor(e)} highlighted={highlight?.id === e.id} />
                     </FragmentWithToday>
                   ))}
-                  {g.todayIndex !== null && g.todayIndex >= g.entries.length ? <TodayDivider today={today} nothingElse /> : null}
+                  {g.todayIndex !== null && g.todayIndex >= g.entries.length ? (
+                    <TodayDivider today={today} note={g.entries.length || g.folded ? "Nothing else this month" : "Nothing this month"} />
+                  ) : null}
                 </ol>
               </section>
-            );
-          })
+            ))}
+          </>
         )}
       </div>
-      {hasToday && todayPos !== "visible" ? (
+      {hasEntries && todayPos !== "visible" ? (
         <button
           type="button"
           onClick={jumpToToday}
-          className="absolute bottom-4 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-ink px-3.5 py-2 text-[13px] font-semibold text-canvas shadow-[var(--shadow-pop)] transition-transform hover:scale-[1.03] motion-reduce:hover:scale-100"
+          className={cn(
+            "left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-ink px-3.5 py-2 text-sm font-semibold text-canvas shadow-[var(--shadow-pop)] transition-transform hover:scale-[1.03] motion-reduce:hover:scale-100",
+            wide ? "absolute bottom-4" : "fixed bottom-[calc(5rem+env(safe-area-inset-bottom)+var(--ordnung-tour-bar,0px))]",
+          )}
         >
           {todayPos === "above" ? <ArrowUp className="size-3.5" aria-hidden /> : <ArrowDown className="size-3.5" aria-hidden />}
           Back to today
@@ -218,7 +320,7 @@ export function TimelineList({ groups, today, hrefFor, highlight, header, empty,
 function FragmentWithToday({ show, today, children }: { show: boolean; today: string; children: ReactNode }) {
   return (
     <>
-      {show ? <TodayDivider today={today} nothingElse={false} /> : null}
+      {show ? <TodayDivider today={today} note={null} /> : null}
       {children}
     </>
   );

@@ -1,22 +1,28 @@
 /**
- * "Why this date?" — the rules engine's receipt: a plain sentence first, the key dates, how sure
- * we are (and why), then "Show the rules" with every step, its citation and the holiday calendar.
- * Always ends with the point-of-use disclaimer (SPEC §21).
+ * "Why this date?" for a letter's to-do — the rules engine's receipt in the shared {@link Receipt}:
+ * the key dates, the plain sentence, how sure we are (and why), what the letter says, then "Show
+ * the rules" with every step, its citation and the holiday calendar. Always ends with the
+ * point-of-use disclaimer (SPEC §21), with independent advice for high-stakes areas.
  */
-import { useState, type ReactNode } from "react";
-import { CalendarDays, ChevronDown, ExternalLink, HelpCircle, Mail, Quote, ShieldCheck } from "lucide-react";
-import type { Area, ComputationReceipt, DateSpec } from "@/api/types";
-import { useRules } from "@/api/hooks";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
-import { ConfidenceNote } from "@/components/ui/ConfidenceNote";
-import { DateText } from "@/components/ui/DateText";
-import { Disclaimer, ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
-import { Popover } from "@/components/ui/Popover";
-import { looksGerman } from "@/lib/format";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, Item, ItemOrigin, PartyKind } from "@/api/types";
+import { qk } from "@/api/hooks";
+import { isTransfer } from "@/lib/payments";
+import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
+import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
+import { dueDateLabel, sendByLabel } from "./dateLabels";
 
-/** Independent advice links for high-stakes areas (tax, residence, rent, fines). */
-export function adviceFor(area: Area | null | undefined): AdviceLink[] | undefined {
+/** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
+const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
+
+/**
+ * Companies whose letters are consumer matters (an electricity contract, a phone bill, a gym): the consumer
+ * advice centre, not the tenants' association or student services, when such a letter is filed under a home
+ * or residence area.
+ */
+const CONSUMER_PARTIES: ReadonlySet<PartyKind> = new Set<PartyKind>(["utility", "telecom", "retailer", "gym", "bank", "insurer", "transport"]);
+
+function areaAdvice(area: Area | null | undefined): AdviceLink[] | undefined {
   switch (area) {
     case "tax":
       return ADVICE_LINKS.tax;
@@ -31,6 +37,56 @@ export function adviceFor(area: Area | null | undefined): AdviceLink[] | undefin
   }
 }
 
+/**
+ * Independent advice links for high-stakes areas (tax, residence, rent, fines). The letter's kind and its
+ * sender's kind come first when known: a lease or an operating-cost statement is the tenants' association's
+ * (UI audit round 1: a landlord's statement read under "residence" pointed to the Studierendenwerk), a
+ * residence permit the student services', a Stadtwerke bill filed under housing the consumer advice centre's.
+ */
+export function adviceFor(area: Area | null | undefined, docKind?: DocumentKind | null, partyKind?: PartyKind | null): AdviceLink[] | undefined {
+  if ((docKind && TENANCY_KINDS.has(docKind)) || partyKind === "landlord") return ADVICE_LINKS.rent;
+  if (docKind === "residence_permit" || partyKind === "immigration_office") return ADVICE_LINKS.residence;
+  if (docKind === "tax_assessment" || docKind === "tax_letter" || partyKind === "tax_office") return ADVICE_LINKS.tax;
+  if (docKind === "fine") return ADVICE_LINKS.fines;
+  const byArea = areaAdvice(area);
+  if (byArea && (area === "home" || area === "residence") && partyKind && CONSUMER_PARTIES.has(partyKind)) return ADVICE_LINKS.consumer;
+  return byArea;
+}
+
+/** The to-do a receipt belongs to: what kind of date it is, and its letter. */
+export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" | "description" | "doc_id">;
+
+/**
+ * The receipt's key dates, named by the deadline's nature as the Today page and the verdict name them
+ * (`dateLabels.ts`): an appointment's day is "On", a payment's "Pay by", an objection's "Must arrive by";
+ * a bank transfer is made by its send-by day ("Transfer by", UI audit round 1: not "Send by" / "Post it
+ * by" beside the verdict's "Transfer it by"), anything else is sent by it, and next to a send-by day the
+ * due date is the day it must arrive. `transfer` says whether the to-do is a transfer (default: from
+ * `item`, else from the spec's nature). A send-by day that is the due date itself (the usual posting time
+ * has passed: "send it today") is no second tile — the verdict's date box leaves it out too (UI audit
+ * round 2: "Send by Mon 28 Sep" beside "Must arrive by Mon 28 Sep").
+ */
+export function receiptDates(
+  receipt: ComputationReceipt,
+  item?: ReceiptItem | null,
+  spec?: Pick<DateSpec, "nature"> | null,
+  transfer?: boolean,
+): ReceiptDate[] {
+  const dates: ReceiptDate[] = [];
+  const isTransferred = transfer ?? (item ? isTransfer(item) : undefined);
+  if (receipt.send_by && receipt.send_by !== receipt.due_date) dates.push({ label: sendByLabel(spec?.nature, isTransferred), date: receipt.send_by });
+  if (receipt.due_date) dates.push({ label: dueDateLabel(spec?.nature, Boolean(receipt.send_by)), date: receipt.due_date });
+  if (receipt.safe_date && receipt.safe_date !== receipt.due_date) dates.push({ label: "Safe date (a working day)", date: receipt.safe_date });
+  return dates;
+}
+
+/** The kinds of the to-do's letter and sender, from the letter already loaded for the page (nothing is fetched). */
+function useLetterKinds(docId: string | null | undefined): { docKind: DocumentKind | null; partyKind: PartyKind | null } {
+  const qc = useQueryClient();
+  const detail = docId ? qc.getQueryData<DocumentDetail>(qk.documents.detail(docId)) : undefined;
+  return { docKind: detail?.document.kind ?? null, partyKind: detail?.party?.kind ?? null };
+}
+
 export interface ReceiptViewProps {
   receipt: ComputationReceipt;
   /** What the letter says (shown as the quote the date came from). */
@@ -38,154 +94,72 @@ export interface ReceiptViewProps {
   area?: Area | null;
   /** Start with the rule steps open. */
   defaultShowRules?: boolean;
+  /**
+   * Where the to-do came from: a deadline the law adds (`rule`) has a spec Ordnung wrote in the law's
+   * words — never shown as what the letter says.
+   */
+  origin?: ItemOrigin | null;
+  /** The to-do: a transfer's "Transfer by", and its letter's kind for the advice links. */
+  item?: ReceiptItem | null;
+  /** The to-do is money you transfer (`isTransfer`), when no `item` says so: its send-by date is "Transfer by". */
+  transfer?: boolean;
 }
 
-function KeyDate({ icon: Icon, label, date, strong }: { icon: typeof Mail; label: string; date: string; strong?: boolean }) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer }: ReceiptViewProps) {
+  const steps = useReceiptSteps(receipt.steps);
+  const { docKind, partyKind } = useLetterKinds(item?.doc_id);
   return (
-    <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="flex items-center gap-2 text-[13px] text-muted">
-        <Icon className="size-3.5" aria-hidden />
-        {label}
-      </span>
-      <DateText date={date} className={cn("text-[13px]", strong ? "font-semibold text-ink" : "font-medium text-ink/85")} />
-    </div>
-  );
-}
-
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false }: ReceiptViewProps) {
-  const [showRules, setShowRules] = useState(defaultShowRules);
-  const rules = useRules();
-  const byId = new Map((rules.data ?? []).map((r) => [r.id, r]));
-  const stepsId = "receipt-steps";
-
-  return (
-    <div className="space-y-3.5">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Why this date?</p>
-      <p className="text-[14px] leading-relaxed text-ink">{receipt.summary}</p>
-
-      {receipt.due_date || receipt.send_by || receipt.safe_date ? (
-        <div className="divide-y divide-line rounded-lg border border-line bg-surface-2/50 px-3">
-          {receipt.due_date ? <KeyDate icon={CalendarDays} label="Must arrive by" date={receipt.due_date} strong /> : null}
-          {receipt.safe_date && receipt.safe_date !== receipt.due_date ? <KeyDate icon={ShieldCheck} label="Safe date (a working day)" date={receipt.safe_date} /> : null}
-          {receipt.send_by ? <KeyDate icon={Mail} label="Post it by" date={receipt.send_by} /> : null}
-        </div>
-      ) : null}
-
-      <ConfidenceNote confidence={receipt.confidence} warnings={receipt.warnings} hideWhenHigh={false} />
-
-      {spec?.text ? (
-        <figure className="rounded-lg border border-line px-3 py-2.5">
-          <figcaption className="mb-1 flex items-center gap-1.5 text-[12px] font-medium text-muted">
-            <Quote className="size-3.5" aria-hidden /> What the letter says{looksGerman(spec.text) ? " (in German — the sentence above says it in English)" : ""}
-          </figcaption>
-          <blockquote lang={looksGerman(spec.text) ? "de" : undefined} className="text-[13px] leading-relaxed text-ink">
-            <span className="marker box-decoration-clone px-0.5">{spec.text}</span>
-          </blockquote>
-        </figure>
-      ) : null}
-
-      {receipt.steps.length ? (
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 text-accent hover:text-accent"
-            aria-expanded={showRules}
-            aria-controls={stepsId}
-            iconRight={ChevronDown}
-            onClick={() => setShowRules((v) => !v)}
-          >
-            {showRules ? "Hide the rules" : "Show the rules"}
-          </Button>
-          {showRules ? (
-            <div id={stepsId} className="mt-2 space-y-3">
-              <ol className="relative space-y-3 pl-5 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-line-strong">
-                {receipt.steps.map((s, i) => {
-                  const rule = s.rule_id ? byId.get(s.rule_id) : undefined;
-                  const last = i === receipt.steps.length - 1;
-                  return (
-                    <li key={`${s.label}-${i}`} className="relative text-[13px]">
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "absolute -left-5 top-[5px] size-[11px] rounded-full border-2",
-                          last ? "border-accent bg-accent" : "border-line-strong bg-surface",
-                        )}
-                      />
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className={cn("leading-snug", last ? "font-medium text-ink" : "text-ink/90")}>{s.label}</span>
-                        {s.date ? <DateText date={s.date} className="shrink-0 text-[12.5px] font-medium text-ink" /> : null}
-                      </div>
-                      {s.citation || rule ? (
-                        <div className="mt-0.5 text-[12px] text-muted">
-                          {rule?.url ? (
-                            <a href={rule.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 hover:text-accent hover:underline">
-                              {s.citation ?? rule.citation}
-                              <ExternalLink className="size-3" aria-hidden />
-                              <span className="sr-only">(opens the law text in a new tab)</span>
-                            </a>
-                          ) : (
-                            (s.citation ?? rule?.citation)
-                          )}
-                        </div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ol>
-              {receipt.holiday_calendar ? (
-                <p className="flex items-start gap-2 rounded-lg bg-surface-2/60 px-3 py-2 text-[12.5px] leading-5 text-muted">
-                  <CalendarDays className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                  <span>
-                    Weekends and public holidays counted: <span className="font-medium text-ink/85">{receipt.holiday_calendar}</span>
-                  </span>
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <Disclaimer variant="block" advice={adviceFor(area)} />
-    </div>
+    <Receipt
+      dates={receiptDates(receipt, item, spec, transfer)}
+      summary={receipt.summary}
+      confidence={receipt.confidence}
+      warnings={receipt.warnings}
+      quote={spec?.text ? (origin === "rule" ? { text: spec.text, source: "law", citation: spec.legal_basis } : { text: spec.text }) : null}
+      steps={steps}
+      holidayCalendar={receipt.holiday_calendar}
+      defaultShowRules={defaultShowRules}
+      advice={adviceFor(area, docKind, partyKind)}
+    />
   );
 }
 
 /**
  * A "Why this date?" trigger that opens the receipt in a popover.
  *
- * @example <WhyThisDate receipt={item.computation} spec={item.date_spec} />
+ * @example <WhyThisDate receipt={item.computation} spec={item.date_spec} item={item} />
  */
 export function WhyThisDate({
   receipt,
   spec,
   area,
-  children,
+  origin,
+  item,
+  transfer,
+  context,
+  title,
   className,
 }: {
   receipt: ComputationReceipt;
   spec?: DateSpec | null;
   area?: Area | null;
-  children?: ReactNode;
+  /** Where the to-do came from (see {@link ReceiptViewProps.origin}). */
+  origin?: ItemOrigin | null;
+  /** The to-do (see {@link ReceiptViewProps.item}). */
+  item?: ReceiptItem | null;
+  /** The to-do is money you transfer (see {@link ReceiptViewProps.transfer}). */
+  transfer?: boolean;
+  /** What the date belongs to (the to-do's title), for screen readers. */
+  context?: string;
+  /** The trigger's words (default "Why this date?"). */
+  title?: string;
   className?: string;
 }) {
   return (
-    <Popover
-      label="Why this date?"
-      placement="bottom-start"
-      className="w-[23rem] p-4"
-      content={<ReceiptView receipt={receipt} spec={spec} area={area} />}
-    >
-      <button
-        type="button"
-        className={cn(
-          "inline-flex items-center gap-1 rounded-md text-[13px] font-medium text-accent underline decoration-accent/30 underline-offset-[3px] transition-colors hover:decoration-accent",
-          className,
-        )}
-      >
-        <HelpCircle className="size-3.5" aria-hidden />
-        {children ?? "Why this date?"}
-      </button>
-    </Popover>
+    <ReceiptPopover
+      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} transfer={transfer} />}
+      context={context}
+      title={title}
+      className={className}
+    />
   );
 }

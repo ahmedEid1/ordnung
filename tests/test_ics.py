@@ -229,3 +229,89 @@ def test_mark_exported(store: Store) -> None:
     stamp = mark_exported(store)
     assert store.get_meta("last_calendar_export_at") == stamp
     assert datetime.fromisoformat(stamp).tzinfo is not None
+
+
+def test_an_open_one_off_that_was_history_when_filed_is_left_out(store: Store) -> None:
+    """Walkthrough of phase 2: the export carried a 2025 security deposit and a 2025 meter reading as open
+    dates — both long past when their letters were read (a backfilled archive), so no dates to keep."""
+    deposit = _item(
+        store,
+        kind="payment",
+        title="Security deposit",
+        due_date="2025-10-01",
+        direction="out",
+        filed_on="2026-09-20",
+    )
+    current = _item(
+        store, kind="payment", title="Rent", due_date="2026-10-01", direction="out", filed_on="2026-09-20"
+    )
+    uids = set(_events(build_ics(store)))
+    assert f"{deposit}@ordnung.local" not in uids and f"{current}@ordnung.local" in uids
+    store.update_item(deposit, status="done")  # a done one stays in an export that includes done dates
+    assert f"{deposit}@ordnung.local" in set(_events(build_ics(store, include_done=True)))
+
+
+def test_an_invoice_payment_a_payment_reminder_took_over_is_left_out(store: Store) -> None:
+    """As on the agenda: pay the reminder, not both — so the calendar (and calendar sync) gets one."""
+    party = store.add_party(name="TechMarkt Online", kind="retailer").id
+    case = store.add_case(title="Invoice TM-2026-0048213", party_id=party).id
+    number = [{"label": "Rechnungsnummer", "value": "TM-2026-0048213"}]
+    invoice = _doc(
+        store,
+        "invoice",
+        kind="invoice",
+        doc_date="2026-08-20",
+        party_id=party,
+        case_id=case,
+        references=number,
+    )
+    reminder = _doc(
+        store,
+        "dunning",
+        kind="dunning",
+        doc_date="2026-09-18",
+        party_id=party,
+        case_id=case,
+        references=number,
+    )
+    paid_by_invoice = _item(
+        store,
+        kind="payment",
+        title="Pay TechMarkt invoice",
+        due_date="2026-10-03",
+        amount=89.99,
+        doc_id=invoice,
+        direction="out",
+    )
+    by_reminder = _item(
+        store,
+        kind="payment",
+        title="Pay the reminder",
+        due_date="2026-10-06",
+        amount=94.99,
+        doc_id=reminder,
+        direction="out",
+    )
+    uids = set(_events(build_ics(store)))
+    assert f"{by_reminder}@ordnung.local" in uids
+    assert f"{paid_by_invoice}@ordnung.local" not in uids
+    store.trash_document(reminder)  # the reminder goes to the trash: the invoice's payment is back
+    assert f"{paid_by_invoice}@ordnung.local" in set(_events(build_ics(store)))
+
+
+def test_an_emailed_bill_is_one_event_and_leaves_with_the_bill_paid(store: Store) -> None:
+    """An e-mail repeating its attached bill's payment: the bill is the one to pay, so the calendar (and
+    calendar sync, which sends these events) carries one "Pay" event — and the e-mail's copy doesn't stay
+    behind, reminding of a bill already paid, once the bill's to-do is done."""
+    from helpers_secretary import add_emailed_bill
+
+    bill = add_emailed_bill(store, due="2026-10-15")
+    uids = set(_events(build_ics(store)))
+    assert f"{bill['bill_payment']}@ordnung.local" in uids
+    assert f"{bill['email_payment']}@ordnung.local" not in uids
+    store.update_item(bill["bill_payment"], status="done")
+    uids = set(_events(build_ics(store)))
+    assert f"{bill['email_payment']}@ordnung.local" not in uids
+    assert f"{bill['bill_payment']}@ordnung.local" not in uids
+    store.trash_document(bill["bill"])  # the bill goes: the e-mail's payment is the one to pay again
+    assert f"{bill['email_payment']}@ordnung.local" in set(_events(build_ics(store)))

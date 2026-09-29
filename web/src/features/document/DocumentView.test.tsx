@@ -6,6 +6,7 @@ import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
+import { toast } from "@/components/ui/Toast";
 import { DocumentView } from "./DocumentView";
 import { DocumentWarnings } from "./Warnings";
 import { makeDetail, makeDoc, makeItem } from "./fixtures";
@@ -40,10 +41,13 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     expect(within(verdict).getByText("Tax assessment")).toBeInTheDocument();
     expect(within(verdict).getByText(/Decide whether to object/)).toBeInTheDocument();
     expect(within(verdict).getByText("Wed 21 Oct")).toBeInTheDocument();
-    expect(within(verdict).getByText("in 23 days")).toBeInTheDocument();
+    // the app's one countdown formatter, as in the to-do list and on Today (UI audit round 1: "in 23 days" here,
+    // "in 3 weeks" everywhere else)
+    expect(within(verdict).getByText("in 3 weeks")).toBeInTheDocument();
     expect(within(verdict).getByRole("button", { name: /Why this date\?/ })).toBeInTheDocument();
     expect(within(verdict).getByText(/can hardly be changed/)).toBeInTheDocument();
-    expect(within(verdict).getByRole("button", { name: "Draft objection" })).toBeInTheDocument();
+    // an objection that may ask to suspend payment opens the composer, which asks (review round 1)
+    expect(within(verdict).getByRole("link", { name: "Draft objection" })).toHaveAttribute("href", "/letters?kind=objection&doc=doc_tax");
     expect(within(verdict).queryByRole("button", { name: /^Pay/ })).toBeNull();
     expect(within(verdict).getByText(/Not legal advice/)).toBeInTheDocument();
     // explained simply with the German term explained
@@ -62,9 +66,14 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     const pop = await screen.findByRole("dialog", { name: "Why this date?" });
     expect(within(pop).getByText(/counts as delivered on Sat 19 Sep/)).toBeInTheDocument();
     expect(within(pop).getByText(/Medium confidence/)).toBeInTheDocument();
-    expect(within(pop).queryByText("§ 122 Abs. 2 Nr. 1 AO")).toBeNull();
-    await user.click(within(pop).getByRole("button", { name: "Show the rules" }));
-    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeInTheDocument();
+    // the rules are there for "Show the rules" to point at, but hidden until asked for
+    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).not.toBeVisible();
+    const show = within(pop).getByRole("button", { name: "Show the rules" });
+    expect(show).toHaveAttribute("aria-expanded", "false");
+    await user.click(show);
+    expect(within(pop).getByText("§ 122 Abs. 2 Nr. 1 AO")).toBeVisible();
+    // the chevron turns with the state
+    expect(within(pop).getByRole("button", { name: "Hide the rules" }).className).toContain("[&_svg]:rotate-180");
     expect(within(pop).getByText(/Germany \+ North Rhine-Westphalia/)).toBeInTheDocument();
     expect(within(pop).getByText(/Not legal advice/)).toBeInTheDocument();
   });
@@ -83,6 +92,32 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
   });
 });
 
+describe("Document viewer — the arrival day's name", () => {
+  it("names a court order's one date 'delivered', as its question and receipts do (review round 1)", () => {
+    const dates = { doc_date: "2026-09-10", received_date: "2026-09-12" };
+    const court = makeDetail({ document: makeDoc({ kind: "court_payment_order", title: "Mahnbescheid", ...dates }) });
+    const { unmount } = renderWithProviders(<DocumentView detail={court} />, { client: client() });
+    const verdict = screen.getByRole("article", { name: "Mahnbescheid" });
+    expect(verdict).toHaveTextContent(/Letter of .+, delivered /);
+    expect(verdict).not.toHaveTextContent(/arrived/);
+    unmount();
+    const letter = makeDetail({ document: makeDoc({ kind: "other", title: "A letter", ...dates }) });
+    renderWithProviders(<DocumentView detail={letter} />, { client: client() });
+    expect(screen.getByRole("article", { name: "A letter" })).toHaveTextContent(/Letter of .+, arrived /);
+  });
+});
+
+describe("Document viewer — the online demo's own note", () => {
+  it("shows a re-filed letter's demo note at the top of the verdict, not under Please check (review round 1)", () => {
+    const note = "Online demo: the dates and to-dos on this page are still those of the kind it was read as, “Payment reminder”.";
+    const detail = makeDetail({ document: makeDoc({ kind: "enforcement_order", title: "Mahnbescheid", warnings: [note, "Check the amount."] }) });
+    renderWithProviders(<DocumentView detail={detail} />, { client: client() });
+    expect(within(screen.getByRole("article", { name: "Mahnbescheid" })).getByText(note)).toBeInTheDocument();
+    expect(screen.getAllByText(note)).toHaveLength(1);
+    expect(screen.getByText("Check the amount.")).toBeInTheDocument();
+  });
+});
+
 describe("Document viewer — suspected scam", () => {
   it("warns loudly, never offers to pay and shows the hidden-text banner", async () => {
     const detail = await detailFromMock("doc_scam");
@@ -94,6 +129,23 @@ describe("Document viewer — suspected scam", () => {
     expect(screen.getByRole("link", { name: /Compare with your real letter/ })).toHaveAttribute("href", "/documents/doc_rundfunk");
     expect(screen.getByText(/don't pay to this account/)).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
+  });
+
+  it("lists the signs its Idea counts, and never asks to correct the date of the demand (walkthrough of phase 2)", async () => {
+    const base = await detailFromMock("doc_scam");
+    const signs = ["The letter contains hidden text that you can't see on the page.", "The IBAN is abroad.", "It threatens enforcement within 48 hours.", "The e-mail domain is not the office's."];
+    const demand = base.items.find((i) => i.kind === "payment") ?? base.items[0]!;
+    const unsure = { ...demand, grounding: "unverified" as const, status: "open" as const };
+    const detail = { ...base, scam_signs: signs, items: base.items.map((i) => (i.id === demand.id ? unsure : i)) };
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    const banner = screen.getByRole("alert", { name: "" });
+    expect(banner).toHaveTextContent(`The 3 strongest of ${signs.length} warning signs`);
+    // the demand: only "not a real to-do" or "it's a real to-do" — no "Correct", no "Change date"
+    expect(screen.getByRole("button", { name: "Not a real to-do" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "It's a real to-do" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Correct" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change date" })).toBeNull();
+    expect(screen.getByText(/shows signs of a scam: don't pay/)).toBeInTheDocument();
   });
 });
 
@@ -152,6 +204,70 @@ describe("warnings & Please check", () => {
     const [url, init] = fetchSpy.mock.calls[0]! as [string, RequestInit];
     expect(url).toBe("/api/documents/doc_parking");
     expect(JSON.parse(String(init.body))).toEqual({ received_date: "2026-09-27" });
+  });
+
+  it("says a late arrival may not move a company's date, and what saving the day did", async () => {
+    // reviewer repro: the engine still counted from the day the letter usually counts as delivered,
+    // but the toast said "Counting from <arrival>, when the letter arrived"
+    const gym = await detailFromMock("doc_gym_price");
+    const company = { ...gym, party: { ...gym.party!, kind: "company" as const } };
+    const item = company.items.find((i) => i.id === "itm_gym_price")!;
+    const late = { label: "It arrived on Sun 27 Sep 2026, later than …", date: "2026-09-21", rule_id: "private_sender_late_arrival", citation: null };
+    const recomputed = {
+      ...company,
+      items: [{ ...item, computation: { ...item.computation!, rule_ids: ["private_sender_late_arrival", "bgb_187_1"], steps: [late] } }],
+    };
+    fetchSpy.mockImplementation(async (url: string, init?: RequestInit) => {
+      const body = init?.method === "PATCH" ? company.document : url === "/api/documents/doc_gym_price" ? recomputed : {};
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const success = vi.spyOn(toast, "success");
+    renderWithProviders(<DocumentWarnings detail={company} />, { client: client() });
+    expect(screen.getByText(/unless it took longer than letters usually do: this sender may be an authority/)).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Yesterday" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(success).toHaveBeenCalled());
+    expect(success.mock.calls[0]![1]!.description).toMatch(/^The letter arrived later than letters usually take, so to be safe we still count from Mon 21 Sep/);
+    success.mockRestore();
+  });
+
+  it("asks a gym's letter's arrival day plainly: it always counts from that day", async () => {
+    renderWithProviders(<DocumentWarnings detail={await detailFromMock("doc_gym_price")} />, { client: client() });
+    expect(screen.getByText("When did this letter arrive?")).toBeInTheDocument();
+    expect(screen.queryByText(/may be an authority/)).toBeNull();
+  });
+
+  it("never fills in a day for a dismissal, and says when a letter counts as received (review round 2)", async () => {
+    // a dismissal uploaded after a holiday saved "today" — § 4 KSchG runs from Zugang: the day it was put in the letterbox
+    const doc = makeDoc({ kind: "dismissal", doc_date: "2026-09-20", received_date: null });
+    const item = makeItem({
+      kind: "deadline",
+      date_spec: { type: "relative", anchor: "receipt", amount: 3, unit: "weeks", nature: "objection" } as never,
+      computation: { due_date: "2026-10-11", rule_ids: ["kschg_4", "private_sender_arrival"], steps: [], warnings: [], confidence: "medium", summary: "", holiday_calendar: "", send_by: null, safe_date: null },
+    });
+    // an employer may be a public body, but a dismissal is a declaration under private law: its three weeks
+    // count from the day it really arrived, never capped at the day a letter usually counts as delivered
+    const employer = { ...(await detailFromMock("doc_gym_price")).party!, kind: "employer" as const };
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item], party: employer })} />, { client: client() });
+    expect(screen.getByText(/put in your letterbox or handed to you, even if you\s+were away/)).toBeInTheDocument();
+    expect(screen.queryByText(/may be an authority/)).toBeNull();
+    expect(screen.getByLabelText("Arrival date")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("says why a day before the letter's own date can't be saved (WCAG 3.3.1)", async () => {
+    const doc = makeDoc({ kind: "invoice", doc_date: "2026-09-23", received_date: null });
+    const item = makeItem({ date_spec: { type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "payment" } as never });
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item] })} />, { client: client() });
+    const input = screen.getByLabelText("Arrival date");
+    const user = userEvent.setup();
+    await user.clear(input);
+    await user.type(input, "2026-09-20");
+    const problem = screen.getByText(/before the letter's own date/);
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input.getAttribute("aria-describedby")).toBe(problem.id);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
   it("renders nothing when all is well", () => {

@@ -48,7 +48,7 @@ LABELS: dict[str, str] = {
     "no_placeholders": "No placeholders left to fill in",
     "language_matches": "Written in the letter's language",
     "citations_known": "Only laws Ordnung knows are cited",
-    "no_new_identifiers": "No unknown account numbers, e-mails or ID numbers",
+    "no_new_identifiers": "No unknown account numbers, emails or ID numbers",
     "delivery_channel_ok": "Sent in a way that counts",
 }
 
@@ -229,9 +229,29 @@ def _any_date(text: str) -> bool:
     return bool(_DE_DATE_RE.search(text) or _EN_DATE_RE.search(text))
 
 
+#: Template letters that need a date in them: (passed, what to add).
+_DATED_TEMPLATES: dict[str, tuple[str, str]] = {
+    "withdrawal": (
+        "Names when you ordered or received it.",
+        "Add when you ordered or received it, so they find your order.",
+    ),
+    "extension_request": ("Names the new date you ask for.", "Name the new date you ask for."),
+    "payment_plan": ("Names when the instalments start.", "Name the day of the first instalment."),
+    "defect_notice": (
+        "Says since when, or by when it should be fixed.",
+        "Say since when the defect exists or by when it should be fixed.",
+    ),
+    "deposit_return": ("Names when you handed the flat back.", "Add the day you handed the flat back."),
+}
+
+
 def has_dates(draft: Draft, context: CheckContext) -> DraftCheck:
-    """Cancellations name the end date (or "nächstmöglichen Zeitpunkt"); objections the decision date."""
+    """Cancellations name the end date (or "nächstmöglichen Zeitpunkt"); objections the decision date;
+    template letters the date they are about (:data:`_DATED_TEMPLATES`)."""
     body = draft.body
+    if draft.kind in _DATED_TEMPLATES:
+        passed, missing = _DATED_TEMPLATES[draft.kind]
+        return _check("has_dates", _any_date(body), passed if _any_date(body) else missing)
     if draft.kind == "cancellation":
         if _any_date(body) or any(phrase in body.casefold() for phrase in _NEXT_POSSIBLE):
             return _check("has_dates", True, "Says when the contract should end.")
@@ -255,21 +275,31 @@ def has_dates(draft: Draft, context: CheckContext) -> DraftCheck:
 def _address_gaps(block: str) -> list[str]:
     parts = _parts(block)
     if not parts:
-        return ["name", "street and house number", "postcode and town"]
+        return ["name", _STREET_GAP, "postcode and town"]
     rest = parts[1:]
     postcode = [part for part in rest if _POSTCODE_RE.search(part)]
     street = [part for part in rest if part not in postcode and _STREET_RE.match(part)]
     gaps = []
     if not street:
-        gaps.append("street and house number")
+        gaps.append(_STREET_GAP)
     if not postcode:
         gaps.append("postcode and town")
     return gaps
 
 
+_STREET_GAP = "street and house number"
+
+
 def recipient_complete(draft: Draft, context: CheckContext) -> DraftCheck:
-    """The address field has a name, a street (or PO box) and a postcode with town."""
+    """The address field has a name, a street (or PO box) and a postcode with town — for a court (its name,
+    :func:`~ordnung.rules.routing.may_be_court`), the postcode and town alone: a central Mahngericht is addressed
+    by its own postcode ("Amtsgericht Hünfeld / Zentrales Mahngericht / 36088 Hünfeld"; review round 4 of
+    phase 2: a correct court address was flagged as missing a street)."""
+    from ordnung.rules.routing import may_be_court
+
     gaps = _address_gaps(draft.recipient_block)
+    if any(may_be_court(line) for line in _parts(draft.recipient_block)[:2]):
+        gaps = [gap for gap in gaps if gap != _STREET_GAP]
     if gaps:
         return _check("recipient_complete", False, f"Add the recipient's {' and '.join(gaps)}.")
     return _check("recipient_complete", True, None)

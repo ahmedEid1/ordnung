@@ -86,3 +86,17 @@ export function useHotkey(match: (e: KeyboardEvent) => boolean, handler: (e: Key
     return () => window.removeEventListener("keydown", onKey);
   }, [allowInInputs]);
 }
+
+/**
+ * A query's error, remembered while "Try again" runs (a retry of a failed load starts over as "pending"
+ * and forgets it), so the message stays on screen, worded the same. Cleared once data arrived and no
+ * error is current — never while one is: a background refetch that fails while data is cached (TanStack
+ * keeps `data` and sets `error`) would otherwise flip it on and off on every render until React gives up
+ * ("Too many re-renders").
+ */
+export function useStickyError(error: unknown, loaded: boolean): unknown {
+  const [last, setLast] = useState<unknown>(null);
+  if (error && error !== last) setLast(error);
+  else if (!error && loaded && last !== null) setLast(null);
+  return error || last;
+}

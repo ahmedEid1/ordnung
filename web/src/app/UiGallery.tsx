@@ -26,9 +26,11 @@ import {
   ConfidenceNote,
   Countdown,
   CountBadge,
+  DateLeaf,
   DateText,
   Dialog,
   Disclaimer,
+  ADVICE_LINKS,
   Drawer,
   EmptyState,
   Field,
@@ -38,11 +40,11 @@ import {
   Input,
   Kbd,
   KindBadge,
+  LoadError,
   KindIcon,
   Menu,
   Money,
   PartyChip,
-  Popover,
   ProgressRing,
   SectionHeader,
   SegmentedControl,
@@ -58,11 +60,79 @@ import {
   Tooltip,
   useToast,
 } from "@/components/ui";
-import { ITEM_KINDS, SUGGESTION_KINDS, type ComputationReceipt } from "@/api/types";
-import { useDashboard, useItems } from "@/api/hooks";
+import { ITEM_KINDS, SUGGESTION_KINDS, type ComputationReceipt, type DateSpec } from "@/api/types";
+import { WhyThisDate } from "@/features/document/WhyThisDate";
+import { useDashboard } from "@/api/hooks";
 import { PIPELINE_STEPS } from "@/lib/copy";
 import { useToday } from "@/lib/today";
 import { addDays, format } from "date-fns";
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/** "Why this date?" samples: fixtures here, so the gallery shows them with any data (not only the demo's). */
+const SPEC_BASE: DateSpec = {
+  type: "relative",
+  date: null,
+  time: null,
+  anchor: null,
+  anchor_date: null,
+  amount: null,
+  unit: null,
+  delivery_rule: "none",
+  shift_rule: "auto",
+  nature: "other",
+  legal_basis: null,
+  text: "",
+};
+const RECEIPT_BASE: Omit<ComputationReceipt, "due_date" | "summary"> = {
+  send_by: null,
+  safe_date: null,
+  holiday_calendar: "Germany + North Rhine-Westphalia (NW)",
+  steps: [],
+  rule_ids: [],
+  warnings: [],
+  confidence: "high",
+};
+const PHONE_SAMPLE = {
+  spec: {
+    ...SPEC_BASE,
+    anchor: "explicit_date",
+    anchor_date: "2026-11-14",
+    amount: 1,
+    unit: "months",
+    nature: "notice",
+    text: "Kündigungsfrist: 1 Monat zum Ende der Mindestvertragslaufzeit, danach jederzeit mit einer Frist von einem Monat.",
+  } satisfies DateSpec,
+  receipt: {
+    ...RECEIPT_BASE,
+    due_date: "2026-10-14",
+    send_by: "2026-10-08",
+    summary:
+      "The minimum term of 24 months from 15 Nov 2024 ends on Sat 14 Nov 2026. With one month's notice, FunkNetz must receive your cancellation by Wed 14 Oct. Post it by Thu 8 Oct — or use their cancel button until the 14th.",
+    steps: [
+      { label: "Contract started", date: "2024-11-15", rule_id: null, citation: null },
+      { label: "Minimum term of 24 months ends", date: "2026-11-14", rule_id: "bgb188_months", citation: "§ 188 Abs. 2 BGB" },
+      { label: "One month's notice → must arrive by", date: "2026-10-14", rule_id: "tkg56", citation: "§ 56 Abs. 3 TKG" },
+      { label: "Allow 4 working days for the post", date: "2026-10-08", rule_id: "postal_buffer", citation: null },
+    ],
+    rule_ids: ["tkg56", "bgb188_months", "postal_buffer"],
+  } satisfies ComputationReceipt,
+};
+const PARKING_SAMPLE = {
+  spec: { ...SPEC_BASE, anchor: "receipt", amount: 1, unit: "weeks", nature: "payment", text: "Bitte zahlen Sie das Verwarnungsgeld innerhalb einer Woche." } satisfies DateSpec,
+  receipt: {
+    ...RECEIPT_BASE,
+    due_date: "2026-09-29",
+    summary: "One week after the letter arrived. We don't know when it arrived, so we count from the letter date (22 Sep) — the earliest possible.",
+    steps: [
+      { label: "Letter dated", date: "2026-09-22", rule_id: null, citation: null },
+      { label: "Arrival date unknown — using the letter date instead (earliest possible)", date: "2026-09-22", rule_id: "receipt_fallback", citation: null },
+      { label: "One week later", date: "2026-09-29", rule_id: "bgb188_weeks", citation: "§ 188 Abs. 2 BGB" },
+    ],
+    rule_ids: ["receipt_fallback", "bgb188_weeks"],
+    confidence: "medium",
+  } satisfies ComputationReceipt,
+};
 
 function Block({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
   return (
@@ -82,52 +152,21 @@ function Row({ children, label }: { children: ReactNode; label?: string }) {
   );
 }
 
-/** The receipt popover content as the Document page will show it ("Why this date?"). */
-function ReceiptView({ receipt }: { receipt: ComputationReceipt }) {
-  const [showRules, setShowRules] = useState(false);
-  return (
-    <div className="space-y-3">
-      <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">Why this date?</p>
-      <p className="text-sm leading-relaxed text-ink">{receipt.summary}</p>
-      <ConfidenceNote confidence={receipt.confidence} warnings={receipt.warnings} />
-      <Button variant="link" size="sm" onClick={() => setShowRules((v) => !v)}>
-        {showRules ? "Hide the rules" : "Show the rules"}
-      </Button>
-      {showRules ? (
-        <ol className="space-y-2 border-l-2 border-line pl-3">
-          {receipt.steps.map((s) => (
-            <li key={s.label} className="text-[13px]">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-ink">{s.label}</span>
-                {s.date ? <DateText date={s.date} className="shrink-0 font-medium" /> : null}
-              </div>
-              {s.citation ? <div className="text-[12px] text-muted">{s.citation}</div> : null}
-            </li>
-          ))}
-        </ol>
-      ) : null}
-      <Disclaimer variant="block" />
-    </div>
-  );
-}
-
 export default function UiGallery() {
   const today = useToday();
   const { toast } = useToast();
   const { data: dash } = useDashboard();
-  const { data: items } = useItems({ status: "open" });
   const [dialog, setDialog] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [tab, setTab] = useState("all");
   const [seg, setSeg] = useState<"list" | "lanes">("lanes");
+  const [range, setRange] = useState<"all" | "open">("all");
   const [sw, setSw] = useState(true);
   const [step, setStep] = useState(2);
   const d = (n: number) => format(addDays(today, n), "yyyy-MM-dd");
-  const phone = items?.find((i) => i.id === "itm_phone_cancel");
-  const parking = items?.find((i) => i.id === "itm_parking");
 
   return (
-    <Page title="Design system" width="wide">
+    <Page title="Design system">
       <PageHeader
         eyebrow="Ordnung · calm paper"
         title="Design system"
@@ -184,6 +223,18 @@ export default function UiGallery() {
             <KindBadge key={k} ideaKind={k} />
           ))}
         </Row>
+        <Row label="Money">
+          <KindBadge kind="payment" />
+          <KindBadge kind="payment" direction="in" />
+        </Row>
+        <Row label="Date leaves">
+          <DateLeaf date={d(1)} size="sm" />
+          <DateLeaf date={d(0)} size="sm" tone="today" />
+          <DateLeaf date={d(-3)} size="sm" tone="muted" />
+          <DateLeaf date={d(10)} size="md" />
+          <DateLeaf date={d(-1)} size="md" tone="danger" />
+          <DateLeaf date={d(10)} size="lg" tone="warn" />
+        </Row>
         <Row label="Icons">
           {ITEM_KINDS.map((k) => (
             <KindIcon key={k} kind={k} />
@@ -225,27 +276,17 @@ export default function UiGallery() {
           </div>
         </Row>
         <Row label="Why this date?">
-          {phone?.computation ? (
-            <Popover content={<ReceiptView receipt={phone.computation} />} className="w-[22rem]" label="Why this date?">
-              <Button variant="link">Why this date? (phone contract)</Button>
-            </Popover>
-          ) : (
-            <Skeleton className="h-5 w-40" />
-          )}
-          {parking?.computation ? (
-            <Popover content={<ReceiptView receipt={parking.computation} />} className="w-[22rem]" label="Why this date?">
-              <Button variant="link">Why this date? (parking fine)</Button>
-            </Popover>
-          ) : null}
+          <WhyThisDate receipt={PHONE_SAMPLE.receipt} spec={PHONE_SAMPLE.spec} area="home" context="phone contract" />
+          <WhyThisDate receipt={PARKING_SAMPLE.receipt} spec={PARKING_SAMPLE.spec} area="mobility" context="parking fine" />
         </Row>
         <Row label="Glossary">
-          <p className="text-sm text-ink">
+          <p className="text-base text-ink">
             You can file an <Glossary term="Einspruch" /> within a month of the <Glossary term="Bekanntgabe" />. Check the{" "}
             <Glossary term="Rechtsbehelfsbelehrung" /> and quote your <Glossary term="Aktenzeichen" />.
           </p>
         </Row>
         <Row label="Disclaimer">
-          <Disclaimer advice={[{ label: "Studierendenwerk advice", href: "https://www.studierendenwerke.de/" }]} />
+          <Disclaimer advice={ADVICE_LINKS.rent} />
         </Row>
       </Block>
 
@@ -323,14 +364,31 @@ export default function UiGallery() {
                 { value: "private", label: "Private", count: 0 },
               ]}
             />
-            <TabPanel id="gallery-tabs" value="all" current={tab} className="pt-3 text-sm text-muted">All letters…</TabPanel>
-            <TabPanel id="gallery-tabs" value="check" current={tab} className="pt-3 text-sm text-muted">Letters that need you…</TabPanel>
-            <TabPanel id="gallery-tabs" value="private" current={tab} className="pt-3 text-sm text-muted">Kept private — no AI.</TabPanel>
+            <TabPanel id="gallery-tabs" value="all" current={tab} className="pt-3 text-base text-muted">All letters…</TabPanel>
+            <TabPanel id="gallery-tabs" value="check" current={tab} className="pt-3 text-base text-muted">Letters that need you…</TabPanel>
+            <TabPanel id="gallery-tabs" value="private" current={tab} className="pt-3 text-base text-muted">Kept private — no AI.</TabPanel>
           </div>
         </Row>
         <Row label="Pill tabs">
-          <Tabs variant="pill" label="Range" value={seg} onChange={setSeg} items={[{ value: "lanes", label: "Life lanes" }, { value: "list", label: "List" }]} />
-          <SegmentedControl label="View" value={seg} onChange={setSeg} options={[{ value: "lanes", label: "Lanes" }, { value: "list", label: "List" }]} />
+          <div className="w-full">
+            <Tabs
+              id="gallery-pill-tabs"
+              variant="pill"
+              label="Show letters"
+              value={range}
+              onChange={setRange}
+              items={[
+                { value: "all", label: "All", count: dash?.stats.documents ?? 21 },
+                { value: "open", label: "With open to-dos", count: 6 },
+              ]}
+            />
+            <TabPanel id="gallery-pill-tabs" value="all" current={range} className="pt-3 text-base text-muted">Pill tabs filter what a list shows.</TabPanel>
+            <TabPanel id="gallery-pill-tabs" value="open" current={range} className="pt-3 text-base text-muted">Only letters that still need you.</TabPanel>
+          </div>
+        </Row>
+        <Row label="Segmented control">
+          <SegmentedControl label="View" value={seg} onChange={setSeg} options={[{ value: "lanes", label: "Life lanes" }, { value: "list", label: "List" }]} />
+          <span className="text-sm text-muted">The same track and thumb, for a setting or a view.</span>
         </Row>
         <Row label="Fields">
           <div className="grid w-full gap-4 sm:grid-cols-2">
@@ -355,8 +413,8 @@ export default function UiGallery() {
           </div>
         </Row>
         <Row label="Keys & tips">
-          <span className="inline-flex items-center gap-1 text-sm text-muted">
-            Search <Kbd>/</Kbd> or <Kbd>⌘</Kbd>
+          <span className="inline-flex items-center gap-1 text-base text-muted">
+            Search <Kbd>/</Kbd> or <Kbd>{IS_MAC ? "⌘" : "Ctrl"}</Kbd>
             <Kbd>K</Kbd>
           </span>
           <Tooltip content="Found on page 2 of the letter">
@@ -406,19 +464,23 @@ export default function UiGallery() {
           }
         />
         <Drawer open={drawer} onClose={() => setDrawer(false)} eyebrow="Example" title="Right-side sheet" description="Used for People & organisations.">
-          <p className="text-sm text-muted">Drawer content.</p>
+          <p className="text-base text-muted">Drawer content.</p>
         </Drawer>
       </Block>
 
       <Block title="Empty & loading">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
           <EmptyState
             illustration="clear"
+            headingLevel={3}
             title="All clear until Friday"
             description="Nothing needs you this week. Enjoy it."
             action={<Button icon={FileText}>See the timeline</Button>}
           />
-          <EmptyState illustration="inbox" title="No letters yet" description="Drop a PDF or a phone photo anywhere to start." size="sm" />
+          <EmptyState illustration="inbox" headingLevel={3} title="No letters yet" description="Drop a PDF or a phone photo anywhere to start." size="sm" />
+          <EmptyState illustration="letter" headingLevel={3} title="No letters written yet" description="Cancel a contract or object to a decision." size="sm" />
+          <EmptyState illustration="contract" headingLevel={3} title="No contracts yet" description="Add a contract and Ordnung works out the notice." size="sm" />
+          <LoadError what="your letters" headingLevel={3} error={new Error("Failed to fetch")} onRetry={() => toast({ title: "Trying again…" })} className="md:col-span-2" />
           <SkeletonCard />
           <div className="space-y-3">
             <Skeleton className="h-6 w-1/2" />
@@ -428,20 +490,32 @@ export default function UiGallery() {
       </Block>
 
       <Block title="Cards">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card accent="danger" interactive>
+        <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
+          <Card accent="danger">
             <CardHeader
               title="Pay TechMarkt reminder"
-              description="Invoice RE-2026-084213 + 5 € fee"
+              description={
+                <>
+                  Invoice <span className="whitespace-nowrap">RE-2026-084213</span> + <Money amount={5} decimals="auto" /> fee
+                </>
+              }
               action={<Countdown date="2026-09-30" variant="pill" />}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Money amount={94.99} className="text-lg" />
               <Button size="sm" variant="primary" icon={Euro}>Pay</Button>
             </div>
           </Card>
           <Card>
-            <CardHeader title="Decide on your phone contract" description="FunkNetz Allnet L · 34,99 €/month" icon={PenLine} />
+            <CardHeader
+              title="Decide on your phone contract"
+              description={
+                <>
+                  FunkNetz Allnet L · <Money amount={34.99} interval="monthly" />
+                </>
+              }
+              icon={PenLine}
+            />
             <Countdown date="2026-10-08" prefix="send by" />
           </Card>
         </div>

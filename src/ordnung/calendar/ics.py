@@ -2,7 +2,8 @@
 
 * One VEVENT per open (or snoozed) to-do with a date — all-day unless it has a time, which is then
   written in the person's time zone (with its VTIMEZONE). To-dos of letters with scam signs are left
-  out. The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
+  out, and so are invoice payments a later payment reminder took over (the reminder's is the one).
+  The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
   person's confirmation; the description says what to do, what happens otherwise, why this date and
   who it is with, and that it is not legal advice.
 * For contracts with a renewal decision: a "post your cancellation" event on the send-by day and a
@@ -35,6 +36,7 @@ from ordnung.secretary.triggers import (
     is_decision,
     parse_day,
     parse_timestamp,
+    was_history_when_filed,
 )
 from ordnung.tick import local_today
 
@@ -76,6 +78,11 @@ def _stamp(value: str | None) -> datetime:
 
 def _uid(key: str) -> str:
     return f"{key}@{UID_DOMAIN}"
+
+
+def item_uid(item_id: str) -> str:
+    """The stable UID of a to-do's event."""
+    return _uid(item_id)
 
 
 def needs_check(item: Item) -> bool:
@@ -279,12 +286,18 @@ def _calendar(profile: Profile) -> Calendar:
 
 
 def _exported_items(ledger: Ledger, include_done: bool) -> list[Item]:
+    """Dated to-dos, none set aside (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: letters
+    with scam signs, invoice payments a later payment reminder took over, an e-mail's payment its
+    attached bill repeats — the other letter is the one to act on, as on the agenda), and no open one-off
+    whose date had long passed when its letter was read (:func:`~ordnung.secretary.triggers.
+    was_history_when_filed`: a backfilled archive's 2025 deposit is no date to keep — walkthrough of phase 2)."""
     return [
         item
         for item in ledger.items
         if item.due_date
         and (include_done or item.status in OPEN_STATUSES)
-        and not ledger.is_suspicious_item(item)
+        and not ledger.is_set_aside(item)
+        and not (item.status in OPEN_STATUSES and item.recurrence is None and was_history_when_filed(item))
     ]
 
 
@@ -297,9 +310,9 @@ def _events(
             raise NotFoundError(f"items: no row with id {only_item_id!r}")
         return [item_event(ledger, item, profile)]
     events = [item_event(ledger, item, profile) for item in _exported_items(ledger, include_done)]
-    confirmed = ledger.pending_confirmations()
+    decided = ledger.decided_contracts()  # confirmed, or the person's cancellation was sent
     for contract in ledger.active_contracts():
-        if contract.id not in confirmed:
+        if contract.id not in decided:
             events.extend(contract_events(ledger, contract, profile))
     return events
 

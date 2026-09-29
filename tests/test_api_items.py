@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
 from test_api_support import TODAY, Api, ApiRouter, api_for
 
@@ -53,6 +54,22 @@ async def test_manual_due_date_is_marked_and_survives_reprocess(data_dir: Path) 
 
         cleared = (await api.client.patch(f"/api/items/{payment['id']}", json={"due_date": None})).json()
         assert cleared["due_date"] is None and cleared["due_date_source"] == "none"
+
+
+async def test_a_date_set_by_hand_for_a_payment_made_in_person_has_no_send_by(data_dir: Path) -> None:
+    """UI audit R1-backend-8: a fee paid at the desk (or by card at the appointment) is paid on the day, so a
+    date the person sets for it gets no bank transfer's send-by day — nor when they say so in the same edit."""
+    async with api_for(data_dir) as api:
+        payment = _by_kind(await _items_of(api, TAX_LETTER.pdf()), "payment")
+        url = f"/api/items/{payment['id']}"
+        on_site = {"due_date": "2026-10-30", "description": "Pay the fee in cash at the service desk."}
+        item = (await api.client.patch(url, json=on_site)).json()
+        assert (item["due_date"], item["send_by"]) == ("2026-10-30", None)
+        again = (await api.client.patch(url, json={"due_date": "2026-11-02"})).json()
+        assert (again["due_date"], again["send_by"]) == ("2026-11-02", None)
+        by_transfer = {"due_date": "2026-11-03", "description": "Pay it to the tax office's account."}
+        moved = (await api.client.patch(url, json=by_transfer)).json()
+        assert moved["send_by"] is not None and moved["send_by"] < "2026-11-03"
 
 
 async def test_status_changes_are_explicit(data_dir: Path) -> None:
@@ -121,6 +138,56 @@ async def test_add_list_and_delete_by_hand(data_dir: Path) -> None:
         assert (await api.client.get("/api/activity", params={"limit": 1})).json()[0][
             "kind"
         ] == "item.deleted"
+
+
+async def test_the_list_says_which_to_dos_are_set_aside(data_dir: Path) -> None:
+    """UI audit R2-inbox-timeline-contracts-2: the Inbox counted an invoice payment its payment reminder took
+    over as "1 to-do" and showed it as the letter's next step, "25 days overdue" — the list said nothing of
+    what Today, the verdict and the party drawer set aside. Each listed to-do now says so (``aside``)."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        party = store.add_party(name="TechMarkt Online GmbH", kind="retailer").id
+        case = store.add_case(title="Invoice TM-4711", party_id=party, reference="TM-4711").id
+        refs = [{"label": "Rechnungsnummer", "value": "TM-4711"}]
+        letter = {"party_id": party, "case_id": case, "references": refs}
+        invoice = add_doc(store, "invoice", kind="invoice", doc_date="2026-08-20", **letter)
+        reminder = add_doc(store, "reminder", kind="dunning", doc_date="2026-09-10", **letter)
+        money = {"kind": "payment", "direction": "out", "party_id": party}
+        replaced = add_item(
+            store,
+            title="Pay the invoice",
+            due_date="2026-09-03",
+            filed_on="2026-08-21",
+            doc_id=invoice,
+            **money,
+        )
+        due = add_item(
+            store,
+            title="Pay the reminder",
+            due_date="2026-09-30",
+            filed_on="2026-09-11",
+            doc_id=reminder,
+            **money,
+        )
+        lease = add_doc(store, "lease", kind="rent_lease", doc_date="2025-09-15", party_id=party)
+        history = add_item(
+            store, title="Security deposit", due_date="2025-10-01", filed_on=TODAY, doc_id=lease, **money
+        )
+
+        listed = {
+            item["id"]: item
+            for item in (await api.client.get("/api/items", params={"status": "open"})).json()
+        }
+        assert listed[replaced]["aside"] == {
+            "item_id": replaced,
+            "reason": "replaced",
+            "replaced_by": reminder,
+        }
+        assert listed[history]["aside"] == {"item_id": history, "reason": "history", "replaced_by": None}
+        assert listed[due]["aside"] is None
+        assert (
+            "aside" not in (await api.client.get(f"/api/items/{replaced}")).json()
+        )  # worked out for the list
 
 
 async def test_confirming_the_last_unchecked_date_clears_please_check(data_dir: Path) -> None:

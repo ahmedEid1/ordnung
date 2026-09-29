@@ -8,6 +8,13 @@
  */
 const KEY = "ordnung.mock";
 
+/**
+ * How a note from the online demo about itself starts, in a letter's `warnings` (the mock server writes it: a
+ * letter filed as another kind keeps the dates of the kind it was read as). The letter's page shows such a
+ * note at the top of its verdict, next to what it is about; the real server never writes one.
+ */
+export const DEMO_NOTE = "Online demo:";
+
 export function isStaticDemo(): boolean {
   return import.meta.env.VITE_STATIC_DEMO === "1";
 }

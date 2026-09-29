@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ordnung.ingest.pipeline import ingest_document, run_triggers
 from ordnung.llm.base import ClaudeRateLimited
 from ordnung.models import Job
+from ordnung.trace.runs import recover_readings
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
@@ -178,6 +179,8 @@ class IngestWorker:
             requeued = self.ctx.store.requeue_running_jobs()
             if requeued:
                 log.info("requeued %d interrupted job(s)", requeued)
+            # the readings those jobs were in the middle of stopped with the previous process
+            recover_readings(self.ctx.store)
             self._recovered = True
 
     async def _run(self) -> None:

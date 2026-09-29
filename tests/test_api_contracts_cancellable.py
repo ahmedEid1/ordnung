@@ -127,3 +127,34 @@ def test_the_store_decodes_contracts_with_the_defaults(data_dir: Path) -> None:
         stored = store.add_contract(name="Rundfunkbeitrag")
         assert (stored.cancellable, stored.cancel_hint) == (True, None)
         assert store.get_contract(stored.id) == stored
+
+
+async def test_a_contract_says_when_its_cancellation_was_sent(data_dir: Path) -> None:
+    """Walkthrough of phase 2: after the FunkNetz cancellation was marked as sent, its card still asked the
+    person to decide and offered "Draft cancellation". The contract carries the sent letter (worked out on
+    read, never stored): the latest cancellation that names it and was marked as sent."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        phone = store.add_contract(name="FunkNetz Smart M", category="mobile")
+        store.add_draft(kind="cancellation", contract_id=phone.id, status="final")
+        listed = {c["id"]: c for c in (await api.client.get("/api/contracts")).json()}
+        assert listed[phone.id]["cancellation_sent"] is None
+        sent = store.add_draft(
+            kind="cancellation",
+            contract_id=phone.id,
+            status="sent",
+            sent_at="2026-09-28T09:00:00Z",
+            sent_channel="registered_letter",
+        )
+        listed = {c["id"]: c for c in (await api.client.get("/api/contracts")).json()}
+        assert listed[phone.id]["cancellation_sent"] == {
+            "draft_id": sent.id,
+            "sent_on": "2026-09-28",
+            "channel": "registered_letter",
+        }
+        # once the contract is closed, nothing waits any more
+        store.update_contract(phone.id, status="cancelled")
+        listed = {c["id"]: c for c in (await api.client.get("/api/contracts")).json()}
+        assert listed[phone.id]["cancellation_sent"] is None
+        columns = {row[1] for row in store._conn().execute("PRAGMA table_info(contracts)")}
+        assert "cancellation_sent" not in columns

@@ -1,20 +1,28 @@
 import { describe, expect, it } from "vitest";
-import type { TimelineEntry } from "@/api/types";
+import type { Lane, LaneBar, TimelineEntry, TimelineMarker } from "@/api/types";
 import { TIMELINE_TYPES } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
 import {
   NO_FILTERS,
   activeFilterCount,
   applyFilters,
+  emptyFilterHint,
+  emptyLanesCopy,
+  entryDetail,
   entryForDate,
   entryMeta,
+  entryRole,
   entryStatus,
+  filterLanes,
   filterOptions,
+  filterSummary,
   filtersFromParams,
   filtersToParams,
+  foldPast,
   groupByMonth,
+  openDateCount,
 } from "./model";
-import { reminderSentence } from "./calendar";
+import { CALENDAR_GUIDES, reminderDays, reminderSentence } from "./calendar";
 
 const TODAY = "2026-09-28";
 
@@ -33,6 +41,8 @@ const entry = (e: Partial<TimelineEntry> & Pick<TimelineEntry, "date">): Timelin
   amount: null,
   currency: null,
   past: e.date < TODAY,
+  direction: null,
+  aside: null,
   ...e,
 });
 
@@ -135,8 +145,143 @@ describe("filters", () => {
       { value: "deadline", label: "Deadlines", count: 2 },
       { value: "payment", label: "Payments", count: 2 },
     ]);
-    expect(o.areas.map((a) => a.label)).toEqual(["Home", "Residence", "Tax"]);
+    expect(o.areas.map((a) => a.label)).toEqual(["Home", "Residence permit", "Tax"]);
     expect(o.parties.map((p) => `${p.label} (${p.count})`)).toEqual(["Ausländerbehörde (1)", "Wohnbau Musterstadt eG (2)"]);
+  });
+
+  it("counts each menu's options against the other filters, so no option leads to an empty list", () => {
+    // with Wohnbau chosen there are no deadlines: "Deadlines (0)", greyed out in the menu
+    const o = filterOptions(entries, { ...NO_FILTERS, party: "Wohnbau Musterstadt eG" }, TODAY);
+    expect(o.types.map((t) => [t.value, t.count])).toEqual([
+      ["deadline", 0],
+      ["payment", 2],
+    ]);
+    // the chosen party's own menu still counts over all people (its own filter doesn't apply)
+    expect(o.parties.map((p) => p.count)).toEqual([1, 2]);
+    // past dates hidden: September's payment no longer counts
+    expect(filterOptions(entries, { ...NO_FILTERS, showPast: false }, TODAY).types.find((t) => t.value === "payment")?.count).toBe(1);
+    // a chosen value that no entry has (an old link) is still offered, so the menu shows it
+    expect(filterOptions(entries, { ...NO_FILTERS, party: "Gone GmbH" }, TODAY).parties.map((p) => p.label)).toContain("Gone GmbH");
+  });
+
+  it("sums up the chosen filters and what to try when nothing matches", () => {
+    expect(filterSummary(NO_FILTERS)).toBeNull();
+    expect(filterSummary({ ...NO_FILTERS, type: "payment", area: "mobility" })).toBe("Payments · Getting around");
+    expect(emptyFilterHint({ ...NO_FILTERS, type: "task", party: "Musterbank eG" })).toBe("Try another kind or person.");
+    expect(emptyFilterHint({ ...NO_FILTERS, type: "task", area: "home", party: "X" })).toBe("Try another kind, area or person.");
+    expect(emptyFilterHint({ ...NO_FILTERS, party: "X" })).toBe("Try another person or organisation.");
+    // "or show past dates" only while past dates are hidden
+    expect(emptyFilterHint({ ...NO_FILTERS, area: "home" })).toBe("Try another area.");
+    expect(emptyFilterHint({ ...NO_FILTERS, area: "home", showPast: false })).toBe("Try another area, or show past dates.");
+    expect(emptyFilterHint({ ...NO_FILTERS, showPast: false })).toMatch(/show past dates/);
+  });
+
+  it("never lets the lanes say 'nothing' while the list below has dates", () => {
+    expect(emptyLanesCopy({ ...NO_FILTERS, area: "mobility" }, 3)).toEqual({ title: "These dates aren't on the lanes", description: "All 3 are in the list below." });
+    expect(emptyLanesCopy({ ...NO_FILTERS, area: "mobility" }, 1).description).toBe("It's in the list below.");
+    // the lanes show the whole year: no "show past dates" there
+    expect(emptyLanesCopy({ ...NO_FILTERS, area: "tax", showPast: false }, 0)).toEqual({ title: "Nothing on the lanes for these filters", description: "Try another area." });
+    // letters are records, never drawn
+    expect(emptyLanesCopy({ ...NO_FILTERS, type: "document" }, 12).title).toBe("Letters aren't drawn on the lanes");
+    expect(emptyLanesCopy({ ...NO_FILTERS, type: "document", showPast: false }, 0).description).toMatch(/Show past/);
+    expect(emptyLanesCopy(NO_FILTERS, 5).title).toBe("Nothing on your lanes yet");
+  });
+});
+
+describe("foldPast (phones start the list at Today)", () => {
+  it("folds earlier months and this month's earlier days, and says how many", () => {
+    const groups = groupByMonth(
+      [entry({ date: "2026-08-03" }), entry({ date: "2026-09-02" }), entry({ date: "2026-09-10" }), entry({ date: "2026-09-30" }), entry({ date: "2026-10-01" })],
+      TODAY,
+    );
+    const { groups: shown, hidden } = foldPast(groups);
+    expect(hidden).toBe(3);
+    expect(shown.map((g) => [g.key, g.entries.map((e) => e.date), g.todayIndex, g.folded])).toEqual([
+      ["2026-09", ["2026-09-30"], 0, 2],
+      ["2026-10", ["2026-10-01"], null, undefined],
+    ]);
+  });
+
+  it("keeps everything when nothing lies before today", () => {
+    const groups = groupByMonth([entry({ date: "2026-09-30" })], TODAY);
+    expect(foldPast(groups)).toEqual({ groups, hidden: 0 });
+  });
+});
+
+describe("filterLanes (the lanes under the list's filters)", () => {
+  const marker = (date: string, label: string, kind: TimelineMarker["kind"]): TimelineMarker => ({ date, label, kind });
+  const bar = (id: string, ref: LaneBar["ref"], kind: LaneBar["kind"] = "contract", markers: TimelineMarker[] = []): LaneBar => ({
+    id,
+    label: id,
+    start: "2026-01-01",
+    end: "2027-06-30",
+    kind,
+    status: "ok",
+    markers,
+    ref,
+  });
+  const lanes: Lane[] = [
+    { id: "residence", label: "Residence", area: "residence", bars: [bar("permit", { type: "item", id: "itm_permit" }, "validity")], markers: [] },
+    {
+      id: "contracts",
+      label: "Contracts",
+      area: "other",
+      bars: [
+        bar("phone", { type: "contract", id: "ctr_phone" }, "contract", [marker("2026-11-15", "Continues · cancel any time", "renewal")]),
+        bar("ticket", { type: "contract", id: "ctr_ticket" }),
+        bar("bank", { type: "contract", id: "ctr_bank" }),
+      ],
+      markers: [],
+    },
+    {
+      id: "money",
+      label: "Money",
+      area: "money",
+      bars: [],
+      markers: [marker("2026-10-01", "Monatliche Abbuchung Deutschlandticket", "payment"), marker("2026-10-15", "Monthly health insurance contribution", "payment")],
+    },
+  ];
+  const entries = [
+    entry({ date: "2026-11-30", type: "expiry", area: "residence", ref: { type: "item", id: "itm_permit" }, party_name: "Ausländerbehörde" }),
+    entry({ date: "2026-11-14", type: "contract", area: "home", ref: { type: "contract", id: "ctr_phone" }, party_name: "FunkNetz" }),
+    entry({ date: "2026-10-01", type: "payment", area: "mobility", title: "Monatliche Abbuchung Deutschlandticket", party_name: "Verkehrsbetriebe" }),
+    entry({ date: "2026-10-15", type: "payment", area: "health", title: "Monthly health insurance contribution", party_name: "Muster BKK" }),
+    entry({ date: "2026-10-20", type: "payment", area: "mobility", title: "Parking fine", party_name: "Ordnungsamt" }),
+  ];
+  // open-ended contracts have no dated entry in the range: their area comes from the contract
+  const contracts = new Map([
+    ["ctr_ticket", { area: "mobility" as const, party: "Verkehrsbetriebe" }],
+    ["ctr_bank", { area: "money" as const, party: "Musterbank eG" }],
+  ]);
+  const ids = (ls: Lane[]) => ls.map((l) => [l.id, [...l.bars.map((b) => b.id), ...l.markers.map((m) => m.label)]]);
+
+  it("keeps every lane when no kind, area or person is chosen (Show past doesn't touch the year)", () => {
+    expect(filterLanes(lanes, { ...NO_FILTERS, showPast: false }, { entries })).toBe(lanes);
+  });
+
+  it("judges each bar and marker by its own area, not its lane's", () => {
+    expect(ids(filterLanes(lanes, { ...NO_FILTERS, area: "mobility" }, { entries, contracts }))).toEqual([
+      ["contracts", ["ticket"]],
+      ["money", ["Monatliche Abbuchung Deutschlandticket"]],
+    ]);
+    // "other" is the Contracts lane's placeholder area, not a filter match for its contracts
+    expect(filterLanes(lanes, { ...NO_FILTERS, area: "other" }, { entries, contracts })).toEqual([]);
+    expect(ids(filterLanes(lanes, { ...NO_FILTERS, area: "residence" }, { entries, contracts }))).toEqual([["residence", ["permit"]]]);
+  });
+
+  it("filters by kind and person too", () => {
+    expect(ids(filterLanes(lanes, { ...NO_FILTERS, type: "payment" }, { entries, contracts }))).toEqual([
+      ["money", ["Monatliche Abbuchung Deutschlandticket", "Monthly health insurance contribution"]],
+    ]);
+    expect(ids(filterLanes(lanes, { ...NO_FILTERS, type: "expiry" }, { entries, contracts }))).toEqual([["residence", ["permit"]]]);
+    expect(ids(filterLanes(lanes, { ...NO_FILTERS, party: "Musterbank eG" }, { entries, contracts }))).toEqual([["contracts", ["bank"]]]);
+    expect(filterLanes(lanes, { ...NO_FILTERS, type: "document" }, { entries, contracts })).toEqual([]);
+  });
+
+  it("uses the area and to-do the server sends with a mark, where it does", () => {
+    const withOrigin = [{ ...lanes[2]!, markers: [{ ...marker("2026-12-01", "Premium", "payment"), area: "insurance", ref: null }] }] as unknown as Lane[];
+    expect(filterLanes(withOrigin, { ...NO_FILTERS, area: "insurance" }, { entries })).toHaveLength(1);
+    expect(filterLanes(withOrigin, { ...NO_FILTERS, area: "money" }, { entries })).toHaveLength(0);
   });
 });
 
@@ -156,12 +301,57 @@ describe("copy", () => {
     expect(entryStatus({ type: "contract", status: "active", date: "2026-10-01", past: false }, TODAY)).toBeNull();
   });
 
+  it("never calls money coming in or a to-do that is not one to act on overdue (walkthrough of phase 2)", () => {
+    const salary = { type: "payment" as const, status: "open", date: "2026-09-10", past: true, direction: "in" as const };
+    expect(entryStatus(salary, TODAY)?.label).toBe("Received?");
+    expect(entryStatus({ ...salary, date: "2026-10-10", past: false }, TODAY)).toBeNull();
+    expect(entryRole(salary)).toBe("Money in");
+    const invoice = { type: "payment" as const, status: "open", date: "2026-09-03", past: true, direction: "out" as const };
+    expect(entryStatus(invoice, TODAY)?.label).toBe("Overdue");
+    expect(entryStatus({ ...invoice, aside: "replaced" as const }, TODAY)?.label).toBe("Replaced by the reminder");
+    expect(entryStatus({ ...invoice, aside: "attached" as const }, TODAY)?.label).toBe("On the attached bill");
+    expect(entryStatus({ ...invoice, aside: "history" as const }, TODAY)?.label).toBe("Not marked done");
+    // done stays done
+    expect(entryStatus({ ...invoice, status: "done", aside: "replaced" as const }, TODAY)?.label).not.toBe("Replaced by the reminder");
+  });
+
+  it("leaves money in and replaced payments out of a month's 'to pay'", () => {
+    const month = groupByMonth(
+      [
+        entry({ date: "2026-10-05", type: "payment", amount: 100, status: "open" }),
+        entry({ date: "2026-10-06", type: "payment", amount: 1285.2, status: "open", direction: "in" }),
+        entry({ date: "2026-10-07", type: "payment", amount: 89.99, status: "open", aside: "replaced" }),
+      ],
+      TODAY,
+    );
+    expect(month.find((m) => m.key === "2026-10")?.toPay).toEqual({ EUR: 100 });
+  });
+
   it("maps send channels and drops repeated party names in the second line", () => {
     expect(entryMeta({ type: "draft", party_name: "FunkNetz Mobil GmbH", subtitle: "registered_letter", time: null })).toBe(
       "FunkNetz Mobil GmbH · Einschreiben (registered letter)",
     );
     expect(entryMeta({ type: "document", party_name: "Stadtwerke", subtitle: "Letter from Stadtwerke", time: null })).toBe("Stadtwerke");
     expect(entryMeta({ type: "deadline", party_name: null, subtitle: "Send by Thu 8 Oct", time: null })).toBe("Send by Thu 8 Oct");
+  });
+
+  it("drops the sender a letter's summary starts with ('TechMarkt Online GmbH · TechMarkt Online GmbH sent …')", () => {
+    const party = "TechMarkt Online GmbH";
+    expect(entryDetail({ party_name: party, subtitle: "TechMarkt Online GmbH sent a 1st payment reminder for invoice TM-2026" })).toBe("Sent a 1st payment reminder for invoice TM-2026");
+    expect(entryDetail({ party_name: "Muster BKK", subtitle: "Muster BKK (statutory health insurer) informs Sam that …" })).toBe("Informs Sam that …");
+    expect(entryDetail({ party_name: "Global Talent Foundation", subtitle: "The Global Talent Foundation, represented by Dr. Exa, awards …" })).toBe("Represented by Dr. Exa, awards …");
+    // only a whole name: "Muster" is not "Musterbank eG"
+    expect(entryDetail({ party_name: "Muster", subtitle: "Musterbank eG raises its fees" })).toBe("Musterbank eG raises its fees");
+    expect(entryMeta({ type: "document", party_name: party, subtitle: "TechMarkt Online GmbH sent a reminder", time: null })).toBe("TechMarkt Online GmbH · Sent a reminder");
+  });
+
+  it("says what each date is", () => {
+    expect(entryRole({ type: "payment", status: "open" })).toBe("Payment due");
+    expect(entryRole({ type: "payment", status: "done" })).toBe("Payment");
+    expect(entryRole({ type: "document", status: "processed" })).toBe("Letter");
+    expect(entryRole({ type: "draft", status: "sent" })).toBe("You sent");
+    expect(entryRole({ type: "expiry", status: "open" })).toBe("Expires");
+    for (const type of TIMELINE_TYPES) assertNoRawEnums(entryRole({ type, status: "open" }), { exactWord: true });
   });
 
   it("finds the entry a lane marker points to", () => {
@@ -171,9 +361,52 @@ describe("copy", () => {
     expect(entryForDate(list, "2026-12-01")).toBeNull();
   });
 
+  it("never lets one shared word pick another bill of the same day", () => {
+    const electricity = entry({ date: "2026-10-15", type: "payment", title: "Monthly advance payment (Abschlag) for electricity", amount: 48 });
+    const health = entry({ date: "2026-10-15", type: "payment", title: "Monthly health & nursing care insurance contribution", amount: 156.55 });
+    const list = [electricity, health];
+    // the marker's label is the to-do's title: the exact match wins, whatever sorts first
+    expect(entryForDate(list, "2026-10-15", "Monthly health & nursing care insurance contribution")).toBe(health);
+    // a shortened label: the title sharing the largest part of its words
+    expect(entryForDate(list, "2026-10-15", "Health insurance contribution")).toBe(health);
+    expect(entryForDate(list, "2026-10-15", "Electricity advance payment")).toBe(electricity);
+    // the to-do itself, when the marker says which one
+    expect(entryForDate(list, "2026-10-15", "Monthly payment", health.ref)).toBe(health);
+  });
+
+  it("counts the open dates the calendar file holds", () => {
+    expect(
+      openDateCount([
+        entry({ date: "2026-10-01", type: "payment" }),
+        entry({ date: "2026-10-02", type: "payment", status: "done" }),
+        entry({ date: "2026-09-01", type: "document", status: "processed" }),
+        entry({ date: "2026-09-02", type: "draft", status: "sent" }),
+        entry({ date: "2026-10-08", type: "contract", status: "active" }),
+      ]),
+    ).toBe(2);
+    expect(openDateCount([])).toBe(0);
+  });
+
   it("describes calendar reminders from the profile", () => {
-    expect(reminderSentence([14, 7, 3, 1])).toBe("Reminders: 14, 7, 3 and 1 days before each deadline (change them in Settings).");
-    expect(reminderSentence([1])).toBe("Reminders: 1 day before each deadline (change them in Settings).");
-    expect(reminderSentence(undefined)).toMatch(/follow your settings/);
+    // Settings → Calendar says it in the words of the Reminders chips
+    expect(reminderSentence([14, 7, 3, 1])).toBe("2 weeks, 1 week, 3 days and 1 day before each deadline");
+    expect(reminderSentence([1])).toBe("1 day before each deadline");
+    expect(reminderSentence([0, 21, 21])).toBe("3 weeks before each deadline and on the day");
+    expect(reminderSentence([0])).toBe("on the day of each deadline");
+    expect(reminderSentence(undefined)).toBeNull();
+    expect(reminderDays([3, 14, 3])).toBe("14 and 3 days before each deadline");
+    expect(reminderDays([])).toBeNull();
+  });
+
+  it("numbers each way of importing on its own (Mac and iPhone are alternatives, not steps 1–3)", () => {
+    const apple = CALENDAR_GUIDES.find((g) => g.app === "apple")!;
+    expect(apple.sections.map((s) => [s.title, s.steps.length])).toEqual([
+      ["On a Mac", 2],
+      ["On an iPhone or iPad", 1],
+    ]);
+    const outlook = CALENDAR_GUIDES.find((g) => g.app === "outlook")!;
+    expect(outlook.sections.map((s) => s.title)).toEqual(["Outlook on the web", "Outlook for Windows"]);
+    // every link placeholder has its link
+    for (const g of CALENDAR_GUIDES) for (const s of g.sections) for (const step of s.steps) expect(step.text.includes("{link}")).toBe(Boolean(step.link));
   });
 });

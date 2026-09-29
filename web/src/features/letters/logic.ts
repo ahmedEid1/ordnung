@@ -17,6 +17,8 @@ import {
   type Draft,
   type DraftCheck,
   type DraftKind,
+  type Item,
+  type LetterAdvice,
   type Remedy,
   type SendChannel,
   type SendChannelKind,
@@ -25,6 +27,7 @@ import { SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { toISODate } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
+import { isRollingContract } from "@/features/contracts/model";
 
 // ------------------------------------------------------------------------------------------------
 // Composer pre-fill
@@ -61,8 +64,15 @@ export function parsePrefill(params: URLSearchParams): ComposerPrefill | null {
 // ------------------------------------------------------------------------------------------------
 
 export type ObjectionCheck =
-  | { ok: true; remedy: Remedy & { type: "einspruch" | "widerspruch" }; term: "Einspruch" | "Widerspruch" }
-  | { ok: false; reason: "missing" | "klage" | "none" | "unclear"; title: string; body: string; advice: AdviceLink[] };
+  | {
+      ok: true;
+      /** the letter's own instructions, or `null` when the law gives the remedy (a court order, a landlord's notice) */
+      remedy: (Remedy & { type: "einspruch" | "widerspruch" }) | null;
+      term: "Einspruch" | "Widerspruch";
+      /** the remedy comes from the law, not the letter's instructions (§ 694, § 700 ZPO; § 574 BGB) */
+      statutory: boolean;
+    }
+  | { ok: false; reason: "missing" | "klage" | "none" | "unclear" | "no_hardship"; title: string; body: string; advice: AdviceLink[] };
 
 export function adviceFor(area: Area | null | undefined): AdviceLink[] {
   switch (area) {
@@ -78,15 +88,49 @@ export function adviceFor(area: Area | null | undefined): AdviceLink[] {
   }
 }
 
-/** Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") */
-export function objectionCheck(doc: Pick<Document, "remedy" | "area"> | null | undefined): ObjectionCheck {
+/**
+ * The remedy the law gives these letters, whatever their instructions were read as (mirrors
+ * `STATUTORY_REMEDIES` in `src/ordnung/drafts/templates.py`).
+ */
+export const STATUTORY_REMEDY: Partial<Record<NonNullable<Document["kind"]>, "Einspruch" | "Widerspruch">> = {
+  court_payment_order: "Widerspruch",
+  enforcement_order: "Einspruch",
+  landlord_notice: "Widerspruch",
+};
+
+/**
+ * Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") `card` is the
+ * letter's "get advice" card, when loaded: a landlord's notice without notice period has no hardship
+ * objection (§ 574 Abs. 1 S. 2 BGB) — its card offers no letter (`draft: null`), and the server refuses
+ * one (`compose.objection_remedy`) with the card's words.
+ */
+export function objectionCheck(
+  doc: (Pick<Document, "remedy" | "area"> & Partial<Pick<Document, "kind">>) | null | undefined,
+  card?: LetterAdvice | null,
+): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
   const advice = adviceFor(doc?.area);
+  const statutory = doc?.kind ? STATUTORY_REMEDY[doc.kind] : undefined;
+  if (doc?.kind === "landlord_notice" && card?.kind === "landlord_notice" && card.draft === null) {
+    const [fact] = card.facts;
+    return {
+      ok: false,
+      reason: "no_hardship",
+      title: fact?.title ?? "There is no hardship objection against this notice",
+      body: fact?.text ?? "The hardship objection doesn't apply to a notice without notice period. Get advice at once.",
+      advice,
+    };
+  }
+  if (statutory) {
+    const own = remedy && (remedy.type === "einspruch" || remedy.type === "widerspruch") ? (remedy as Remedy & { type: "einspruch" | "widerspruch" }) : null;
+    return { ok: true, remedy: own, term: statutory, statutory: true };
+  }
   if (remedy && (remedy.type === "einspruch" || remedy.type === "widerspruch")) {
     return {
       ok: true,
       remedy: remedy as Remedy & { type: "einspruch" | "widerspruch" },
       term: remedy.type === "einspruch" ? "Einspruch" : "Widerspruch",
+      statutory: false,
     };
   }
   if (!remedy) {
@@ -126,33 +170,80 @@ export function objectionCheck(doc: Pick<Document, "remedy" | "area"> | null | u
   };
 }
 
-/** Documents a letter can relate to (read, not in the trash). */
+/** Papers nobody writes back to: an ID document or a payslip is kept, never answered. */
+const NOT_ANSWERED = new Set<Document["kind"]>(["identity_document", "payslip"]);
+
+/** The date a letter is known by: its own date, else the day it arrived. */
+export function letterDate(d: Pick<Document, "doc_date" | "received_date">): string | null {
+  return d.doc_date ?? d.received_date ?? null;
+}
+
+/** Documents a letter can relate to (read, not in the trash, not an ID or a payslip) — newest first. */
 export function usableDocuments(docs: Document[]): Document[] {
   return docs
-    .filter((d) => !d.deleted_at && (d.status === "processed" || d.status === "needs_review"))
-    .sort((a, b) => ((b.doc_date ?? b.received_date ?? "") < (a.doc_date ?? a.received_date ?? "") ? -1 : 1));
+    .filter((d) => !d.deleted_at && (d.status === "processed" || d.status === "needs_review") && !NOT_ANSWERED.has(d.kind))
+    .sort((a, b) => ((letterDate(b) ?? "") < (letterDate(a) ?? "") ? -1 : 1));
+}
+
+type DeadlineItem = Pick<Item, "kind" | "status" | "due_date"> & Partial<Pick<Item, "date_spec">>;
+
+/** The open objection deadline among a letter's to-dos (the day the objection must arrive by), if any. */
+export function objectionDeadline<T extends DeadlineItem>(items: readonly T[]): T | null {
+  const open = items.filter((i) => i.kind === "deadline" && i.due_date && i.date_spec?.nature === "objection" && i.status !== "done" && i.status !== "dismissed");
+  return open.sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0))[0] ?? null;
 }
 
 export function objectionDocuments(docs: Document[]): Document[] {
   return usableDocuments(docs).filter((d) => objectionCheck(d).ok);
 }
 
-/** Contracts a cancellation (or, for a job, resignation) letter can end — soonest send-by first. */
+/**
+ * Contracts a cancellation (or, for a job, resignation) letter can end — soonest send-by first. A contract
+ * you can cancel any month has no send-by that runs out (its date only says when it would end): it follows
+ * the dated ones, as on the Contracts page.
+ */
 export function cancellableContracts(contracts: Contract[]): Contract[] {
-  return contracts
-    .filter((c) => offersEndingLetter(c))
-    .sort((a, b) => ((a.computed?.send_by ?? "9999") < (b.computed?.send_by ?? "9999") ? -1 : 1));
+  const key = (c: Contract) => (isRollingContract(c) ? null : c.computed?.send_by) ?? "9999";
+  return contracts.filter((c) => offersEndingLetter(c)).sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
 }
 
 // ------------------------------------------------------------------------------------------------
 // Drafts
 // ------------------------------------------------------------------------------------------------
 
+/** When a letter in progress is due: its send-by date, else the day it must arrive (a reply may have neither). */
+function draftDue(d: Pick<Draft, "send_guidance">): string | null {
+  return d.send_guidance?.send_by ?? d.send_guidance?.must_arrive_by ?? null;
+}
+
+/**
+ * The Letters list's two groups: letters in progress by what is due first (those without a date after
+ * them, the newest first), sent letters the latest first.
+ */
+export function splitDrafts<T extends Pick<Draft, "status" | "send_guidance" | "created_at" | "sent_at">>(drafts: readonly T[]): { inProgress: T[]; sent: T[] } {
+  const inProgress = drafts
+    .filter((d) => d.status !== "sent")
+    .sort((a, b) => {
+      const da = draftDue(a);
+      const db = draftDue(b);
+      if (da && db && da !== db) return da < db ? -1 : 1;
+      if (da && !db) return -1;
+      if (db && !da) return 1;
+      return b.created_at.localeCompare(a.created_at);
+    });
+  const sent = drafts.filter((d) => d.status === "sent").sort((a, b) => (b.sent_at ?? b.created_at).localeCompare(a.sent_at ?? a.created_at));
+  return { inProgress, sent };
+}
+
 /** The follow-up to-do is created 21 days after sending (SPEC §11). */
 export const FOLLOW_UP_DAYS = 21;
 
-export function followUpDate(sentOn: string): string {
-  return toISODate(addDays(parseISO(sentOn.slice(0, 10)), FOLLOW_UP_DAYS));
+/** Kinds with a longer answer time: a data request gets a month (Art. 12(3) GDPR), so 35 days. */
+export const FOLLOW_UP_DAYS_BY_KIND: Partial<Record<DraftKind, number>> = { data_access: 35 };
+
+export function followUpDate(sentOn: string, kind?: DraftKind | null): string {
+  const days = (kind && FOLLOW_UP_DAYS_BY_KIND[kind]) || FOLLOW_UP_DAYS;
+  return toISODate(addDays(parseISO(sentOn.slice(0, 10)), days));
 }
 
 /** First line of an address block ("FunkNetz Mobil GmbH"). */
@@ -164,6 +255,29 @@ const KIND_TITLE: Record<DraftKind, string> = {
   cancellation: "Cancellation",
   objection: "Objection",
   general_reply: "Reply",
+  withdrawal: "Withdrawal",
+  extension_request: "Request for more time",
+  payment_plan: "Instalment request",
+  defect_notice: "Defect notice",
+  data_access: "Data request",
+  receipts_inspection: "Receipts request",
+  deposit_return: "Deposit request",
+  address_change: "New address",
+};
+
+/** German file-name stems of the PDF ("Kuendigung-FunkNetz-….pdf"). */
+const PDF_STEM: Record<DraftKind, string> = {
+  cancellation: "Kuendigung",
+  objection: "Einspruch",
+  general_reply: "Schreiben",
+  withdrawal: "Widerruf",
+  extension_request: "Fristverlaengerung",
+  payment_plan: "Ratenzahlung",
+  defect_notice: "Maengelanzeige",
+  data_access: "Auskunft-Art15-DSGVO",
+  receipts_inspection: "Belegeinsicht",
+  deposit_return: "Kaution",
+  address_change: "Adressaenderung",
 };
 
 /** English page title: "Cancellation to FunkNetz Mobil GmbH". */
@@ -172,9 +286,15 @@ export function draftTitle(d: Pick<Draft, "kind" | "recipient_block">, partyName
   return to ? `${KIND_TITLE[d.kind]} to ${to}` : `${KIND_TITLE[d.kind]} letter`;
 }
 
-/** A readable PDF file name: "Kuendigung-FunkNetz-Mobil-GmbH-2026-09-28.pdf". */
-export function pdfFileName(d: Pick<Draft, "kind" | "recipient_block" | "created_at">): string {
-  const kind = d.kind === "cancellation" ? "Kuendigung" : d.kind === "objection" ? "Einspruch" : "Schreiben";
+/** The objection's own term, as its subject names it ("Widerspruch gegen …", "Objection (Widerspruch) …"). */
+function objectionStem(subject: string | undefined): string {
+  const m = /\b(Einspruch|Widerspruch)\b/.exec(subject ?? "");
+  return m ? m[1]! : PDF_STEM.objection;
+}
+
+/** A readable PDF file name: "Kuendigung-FunkNetz-Mobil-GmbH-2026-09-28.pdf" ("Widerspruch-…" for a Widerspruch). */
+export function pdfFileName(d: Pick<Draft, "kind" | "recipient_block" | "created_at"> & Partial<Pick<Draft, "subject">>): string {
+  const kind = d.kind === "objection" ? objectionStem(d.subject) : PDF_STEM[d.kind];
   const to = firstLine(d.recipient_block)
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -248,20 +368,105 @@ export interface SendChoice {
   label: string;
   allowed: boolean;
   recommended: boolean;
+  /** not one of the ways "How to send it" names for this letter ("Another way" in the dialog) */
+  other: boolean;
 }
 
-/** The ways offered in the dialog: the guidance's channels (best first), then the usual others. */
+/**
+ * The ways offered in the dialog: the guidance's channels with the guidance's own labels (best
+ * first, the ones that don't count last), then — as "Another way" — the usual others.
+ */
 export function sendChoices(guidance: Draft["send_guidance"]): SendChoice[] {
   const fromGuidance = rankChannels(guidance?.channels ?? []).map((c: SendChannel) => ({
     channel: c.channel,
     label: c.label || copyFor(SEND_CHANNEL_COPY, c.channel).label,
     allowed: c.allowed,
     recommended: c.recommended,
+    other: false,
   }));
   const seen = new Set(fromGuidance.map((c) => c.channel));
   const common: SendChannelKind[] = ["registered_letter", "letter", "email", "online_button", "portal", "fax", "in_person"];
   const rest = common
     .filter((c) => (SEND_CHANNELS as readonly string[]).includes(c) && !seen.has(c))
-    .map((c) => ({ channel: c, label: copyFor(SEND_CHANNEL_COPY, c).label, allowed: guidance?.form !== "written_form" || c === "registered_letter" || c === "letter" || c === "in_person", recommended: false }));
-  return [...fromGuidance.filter((c) => c.allowed), ...rest, ...fromGuidance.filter((c) => !c.allowed)];
+    .map((c) => ({
+      channel: c,
+      label: copyFor(SEND_CHANNEL_COPY, c).label,
+      allowed: guidance?.form !== "written_form" || c === "registered_letter" || c === "letter" || c === "in_person",
+      recommended: false,
+      other: fromGuidance.length > 0,
+    }));
+  return [...fromGuidance, ...rest];
+}
+
+/** Whether sending it this way counts for this letter (a way the guidance doesn't name counts unless it needs signed paper). */
+export function channelCounts(guidance: Draft["send_guidance"], channel: string | null | undefined): boolean {
+  if (!channel) return true;
+  const choice = sendChoices(guidance).find((c) => c.channel === channel);
+  return choice ? choice.allowed : true;
+}
+
+/** "Based on the law as of …" among a letter's notes: the page's own disclaimer says it (with advice links). */
+const DISCLAIMER_NOTE = /^Based on the law as of\b/;
+
+/** The letter's "Good to know" notes, without the disclaimer the page shows anyway. */
+export function notesToShow(notes: string[]): string[] {
+  return notes.filter((n) => !DISCLAIMER_NOTE.test(n.trim()));
+}
+
+/** "All 9 checks passed" / "1 thing needs a look". */
+export function checksSummary(checks: DraftCheck[]): { failed: number; text: string } {
+  const failed = checks.filter((c) => !c.ok).length;
+  return { failed, text: failed ? `${failed} ${failed === 1 ? "thing needs" : "things need"} a look` : `All ${checks.length} checks passed` };
+}
+
+/** An API message as plain text: the demo's "Run `ordnung serve` …" without the code marks. */
+export function plainText(message: string): string {
+  return message.replace(/`([^`]*)`/g, "“$1”");
+}
+
+/**
+ * Whether an objection to this letter can ask to suspend enforcement: an enforcement order or an
+ * authority's decision — not a court payment order (nothing to enforce yet) or a landlord's notice.
+ * The composer asks it (an explicit choice), so "Draft objection" on such a letter opens the composer.
+ */
+export function canSuspend(doc: Pick<Document, "kind"> | null): boolean {
+  return Boolean(doc) && doc!.kind !== "court_payment_order" && doc!.kind !== "landlord_notice";
+}
+
+const COURT_NAME =
+  /(?:amts|land|landes|oberlandes|kammer|arbeits|sozial|verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|register|verfassungs|staats|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b/i;
+/** A court's abbreviation before its place ("AG Hagen") — a federal court's may stand alone ("BGH"), a local one's
+ * never ("AG" alone is no court for the server either: review round 4 of phase 2). */
+const COURT_ABBREVIATION =
+  /(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG)\s+\p{Lu}|(?:BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s+\p{Lu}|\s*$|\s*[-–—,;/(]))/u;
+const LEGAL_FORM = /\b(?:GmbH|mbH|AG|SE|KGaA|KG|OHG|UG|GbR|eG|e\.\s?V|Ltd|Inc|LLC)(?![\p{L}\d])/u;
+const NOT_A_COURT = /vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle/i;
+
+/**
+ * Whether a name may be a court's (`routing.may_be_court`): it names a kind of court ("Amtsgericht Hünfeld",
+ * "Zentrales Mahngericht") or abbreviates one before its place ("AG Hagen") — no company ("LG Electronics GmbH"),
+ * bailiff or court cashier. The server decides for sure; this only tells when to ask for the court.
+ */
+export function mayBeCourt(name: string | null | undefined): boolean {
+  const text = (name ?? "").trim();
+  if (!text || NOT_A_COURT.test(text)) return false;
+  if (COURT_NAME.test(text)) return true;
+  const firstLine = text.split("\n")[0]!;
+  return COURT_ABBREVIATION.test(firstLine) && !LEGAL_FORM.test(firstLine.replace(/^\s*(?:AG|LG|OLG)\b/, ""));
+}
+
+/**
+ * Whether an objection to this letter needs the court typed in: a court order whose sender, as filed, is no
+ * court (a Mahnbescheid re-filed from what was read as the claimant's reminder) and whose instructions name
+ * none. An objection goes to the court that issued the order — sent to the claimant it doesn't stop the order
+ * (§ 694, § 700 ZPO); the server refuses to address it to anyone else (drafts/compose.py
+ * `objection_to_typed_court`, review round 3 of phase 2).
+ */
+export function needsTypedCourt(
+  doc: Pick<Document, "kind" | "remedy"> | null,
+  party: { name: string } | null | undefined,
+): boolean {
+  if (!doc || (doc.kind !== "court_payment_order" && doc.kind !== "enforcement_order")) return false;
+  if (party && mayBeCourt(party.name)) return false;
+  return !mayBeCourt(doc.remedy?.addressee ?? null);
 }

@@ -14,6 +14,7 @@ from email.message import EmailMessage
 import pillow_heif
 import pypdfium2 as pdfium
 from fpdf import FPDF
+from fpdf.enums import TextMode
 from PIL import Image, ImageDraw, ImageFont
 
 from ordnung.config import PACKAGE_DIR
@@ -34,6 +35,7 @@ class Line:
     size: float = 12
     color: tuple[int, int, int] = (0, 0, 0)
     angle: float = 0  # counter-clockwise rotation of the run around (x, y)
+    invisible: bool = False  # drawn with text render mode 3 (a scanner's OCR layer, or hidden text)
 
 
 @dataclass(frozen=True)
@@ -61,11 +63,13 @@ def make_pdf(pages: list[list[Line | Fill]], size: tuple[float, float] = A4) -> 
                 continue
             pdf.set_font("DejaVu", size=item.size)
             pdf.set_text_color(*item.color)
+            pdf.text_mode = TextMode.INVISIBLE if item.invisible else TextMode.FILL
             if item.angle:
                 with pdf.rotation(item.angle, item.x, item.y):
                     pdf.text(item.x, item.y, item.text)
             else:
                 pdf.text(item.x, item.y, item.text)
+            pdf.text_mode = TextMode.FILL
     return bytes(pdf.output())
 
 
@@ -177,8 +181,9 @@ def hidden_text_pdf() -> bytes:
     )
 
 
-def scanned_pdf() -> bytes:
-    """An image-only PDF (a 'scan'): text is pixels, there is no text layer."""
+def scanned_pdf(ocr: bool = False) -> bytes:
+    """An image-only PDF (a 'scan'): text is pixels, there is no text layer — or, with ``ocr``, an
+    invisible OCR layer over the picture (a scanner's "searchable PDF")."""
     image = Image.new("RGB", (1240, 1754), "white")
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(str(FONT), 40)
@@ -189,6 +194,13 @@ def scanned_pdf() -> bytes:
     pdf = FPDF(unit="pt", format=A4)
     pdf.add_page()
     pdf.image(io.BytesIO(buffer.getvalue()), x=0, y=0, w=A4[0], h=A4[1])
+    if ocr:
+        pdf.add_font("DejaVu", "", str(FONT))
+        pdf.set_font("DejaVu", size=19)
+        pdf.text_mode = TextMode.INVISIBLE
+        scale = A4[0] / 1240
+        for row, text in enumerate(LETTER_PAGES[0]):
+            pdf.text(150 * scale, (200 + row * 60 + 40) * scale, text)
     return bytes(pdf.output())
 
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
-import type { Contract } from "@/api/types";
-import { filterCounts, filterDocuments, groupLetters, kindOptions, openItemsByDoc, parseFilter } from "./filters";
-import { recapSentence, summarizeBatch } from "./recap";
+import type { Contract, Item, ItemAside, ListedItem } from "@/api/types";
+import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, parseFilter, pinJustRead } from "./filters";
+import { dueSoon, recapSentence, recapTitle, summarizeBatch } from "./recap";
 
 const TODAY = "2026-09-28";
 
@@ -46,6 +46,37 @@ describe("inbox filters", () => {
     ]);
   });
 
+  it("pins letters read from New mail on top ('Just read'), after the ones being read", () => {
+    const reading = makeDoc({ id: "r", status: "processing", received_date: "2026-09-28", kind: null });
+    const groups = groupLetters([...docs.slice(0, 4), reading], TODAY);
+    // "c" arrived in August, but it just came out of the New-mail tray
+    expect(pinJustRead(groups, new Set(["c", "r", "gone"])).map((g) => [g.label, g.docs.map((d) => d.id)])).toEqual([
+      ["Being read", ["r"]],
+      ["Just read", ["c"]],
+      ["Last 7 days", ["a", "b"]],
+      ["December 2025", ["d"]],
+    ]);
+    expect(pinJustRead(groups.slice(1), new Set(["a"])).map((g) => g.label)).toEqual(["Just read", "Last 7 days", "August", "December 2025"]);
+    // nothing to pin: the very same groups
+    expect(pinJustRead(groups, new Set())).toBe(groups);
+    expect(pinJustRead(groups, new Set(["r", "zzz"]))).toBe(groups);
+  });
+
+  it("dates a row by its arrival (the grouping date) and keeps the letter's own date aside", () => {
+    expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-08-31" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: "2026-08-31" });
+    expect(inboxDateInfo(makeDoc({ received_date: "2026-09-02", doc_date: "2026-09-02" }))).toEqual({ date: "2026-09-02", verb: "Arrived", docDate: null });
+    expect(inboxDateInfo(makeDoc({ received_date: null, doc_date: null, created_at: "2026-09-26T08:00:00Z" }))).toEqual({ date: "2026-09-26", verb: "Added", docDate: null });
+    // review round 2: a court order's day is the one it was delivered, as everywhere else
+    expect(inboxDateInfo(makeDoc({ kind: "court_payment_order", received_date: "2026-09-24", doc_date: "2026-09-21" })).verb).toBe("Delivered");
+    // review round 3 of phase 2: a letter of another kind whose to-do counts from formal service, as its page says
+    const served = openItemsByDoc([
+      makeItem({ id: "s", doc_id: "v", computation: { due_date: "2026-10-08", rule_ids: ["zpo_180", "zpo_222"], steps: [], warnings: [], summary: "", confidence: "medium", send_by: null, safe_date: null, holiday_calendar: "" } }),
+    ]).get("v");
+    expect(served?.served).toBe(true);
+    expect(inboxDateInfo(makeDoc({ kind: "authority_letter", received_date: "2026-09-24" }), served?.served).verb).toBe("Delivered");
+    expect(inboxDateInfo(makeDoc({ kind: "authority_letter", received_date: "2026-09-24" })).verb).toBe("Arrived");
+  });
+
   it("counts open to-dos per letter and finds the next one", () => {
     const m = openItemsByDoc([
       makeItem({ id: "1", doc_id: "a", due_date: "2026-10-21", send_by: "2026-10-15" }),
@@ -55,6 +86,23 @@ describe("inbox filters", () => {
     ]);
     expect(m.get("a")).toMatchObject({ count: 2, next: { id: "2" } });
     expect(m.size).toBe(1);
+  });
+
+  it("leaves out to-dos the list sets aside: no count, never the next step (R2-inbox-timeline-contracts-2)", () => {
+    // the TechMarkt invoice its payment reminder took over read "Pay by Thu 3 Sep · 25 days overdue", "1 to-do"
+    const listed = (i: Partial<Item>, aside: ItemAside | null = null): ListedItem => ({ ...makeItem(i), aside });
+    const m = openItemsByDoc(
+      [
+        listed({ id: "invoice", doc_id: "inv", kind: "payment", due_date: "2026-09-03" }, { item_id: "invoice", reason: "replaced", replaced_by: "rem" }),
+        listed({ id: "reminder", doc_id: "rem", kind: "payment", due_date: "2026-10-01", send_by: "2026-09-29" }),
+        listed({ id: "deposit", doc_id: "lease", kind: "payment", due_date: "2026-09-20" }, { item_id: "deposit", reason: "history", replaced_by: null }),
+        listed({ id: "rent", doc_id: "lease", kind: "payment", due_date: "2026-10-01" }),
+      ],
+      TODAY,
+    );
+    expect(m.get("inv")).toEqual({ count: 0, next: null });
+    expect(m.get("rem")).toMatchObject({ count: 1, next: { id: "reminder" } });
+    expect(m.get("lease")).toMatchObject({ count: 1, next: { id: "rent" } });
   });
 });
 
@@ -86,9 +134,27 @@ describe("batch recap", () => {
     expect(r.fixedCostsMonthly).toBeCloseTo(94.99, 2);
   });
 
-  it("counts letters with something due within 14 days as needing you", () => {
-    const soon = makeDetail({ document: makeDoc({ id: "soon" }), items: [makeItem({ due_date: "2026-10-05" })] });
-    expect(summarizeBatch([soon], TODAY).needYouDocIds).toEqual(["soon"]);
+  it("counts as 'need you now' exactly the letters its tile leads to (Please check), and what is due soon apart", () => {
+    const soon = makeDetail({ document: makeDoc({ id: "soon" }), items: [makeItem({ due_date: "2026-10-20" }), makeItem({ id: "i2", send_by: "2026-10-05", due_date: "2026-10-09" })] });
+    const later = makeDetail({ document: makeDoc({ id: "later" }), items: [makeItem({ due_date: "2026-11-30" })] });
+    const check = makeDetail({ document: makeDoc({ id: "check", status: "needs_review" }) });
+    const failed = makeDetail({ document: makeDoc({ id: "failed", status: "failed" }) });
+    const batch = [soon, later, check, failed];
+    const r = summarizeBatch(batch, TODAY);
+    // the tile opens /inbox?filter=check: the same letters the filter lists
+    const listed = filterDocuments(batch.map((d) => d.document), { filter: "check" }).map((d) => d.id);
+    expect(r.needYouDocIds).toEqual(listed);
+    expect(r).toMatchObject({ needYou: 2, dueSoon: 1, dueSoonDocIds: ["soon"] });
+    // the earliest open date (send-by before due) — shown on the letter in the recap
+    expect(dueSoon(soon, TODAY)).toBe("2026-10-05");
+    expect(dueSoon(later, TODAY)).toBeNull();
+    expect(recapSentence(r)).toBe("I read 4 letters: 3 deadlines, 2 need you now, 1 due within 2 weeks.");
+  });
+
+  it("titles the recap with the letters that couldn't be read", () => {
+    expect(recapTitle(3, 0)).toBe("I read 3 letters");
+    expect(recapTitle(3, 1)).toBe("I read 2 of 3 letters");
+    expect(recapTitle(2, 2)).toBe("I couldn't read 2 letters");
   });
 
   it("writes the recap sentence", () => {

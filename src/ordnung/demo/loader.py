@@ -12,7 +12,8 @@
   snapshot (instant), else rebuild from the fixtures.
 * :func:`check_demo` (``ordnung demo --check``, CI) rebuilds twice with strict replay and checks:
   zero misses, identical canonical dumps, fixtures valid against the current output models and
-  referencing sample documents only, every Idea reference and recorded citation resolves.
+  referencing sample documents only, every Idea reference and recorded citation resolves, and every
+  recorded Ask answer's tool results are what Ordnung's tools give on that ledger today.
 """
 
 from __future__ import annotations
@@ -101,6 +102,7 @@ DUMP_TABLES = (
     "activity",
     "llm_calls",
     "llm_cache",
+    "trace_spans",
 )
 VOLATILE_FIELDS = frozenset(
     {
@@ -112,6 +114,7 @@ VOLATILE_FIELDS = frozenset(
         "generated_at",
         "completed_at",
         "sent_at",
+        "job_id",  # jobs get random ids; a trace's own ids and times are the demo's (ordnung.trace.runs)
     }
 )
 MAX_DIFF_LINES = 12
@@ -309,7 +312,8 @@ def _describe(req: LLMRequest) -> str:
 
 
 class _Tracked:
-    """Wraps the build's backend: remembers replay misses and every fixture file the build used."""
+    """Wraps the build's backend: remembers replay misses, every fixture file the build used and the
+    tool calls of each Ask turn (``asks``: fixture file → its tool events)."""
 
     def __init__(self, inner: LLMBackend, fixtures: Path) -> None:
         self.inner = inner
@@ -317,6 +321,7 @@ class _Tracked:
         self.name = inner.name
         self.misses: list[str] = []
         self.used: set[Path] = set()
+        self.asks: list[tuple[Path, list[StreamEvent]]] = []
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         self.used.add(fixture_path(self.fixtures, req))
@@ -327,10 +332,16 @@ class _Tracked:
             raise
 
     async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
-        self.used.add(fixture_path(self.fixtures, req))
+        path = fixture_path(self.fixtures, req)
+        self.used.add(path)
+        events: list[StreamEvent] = []
+        if req.purpose == "ask":
+            self.asks.append((path, events))
         async for event in self.inner.stream(req):
             if event.type == "error" and (event.error or "").startswith(REPLAY_MISS_PREFIX):
                 self.misses.append(_describe(req))
+            if event.type in ("tool_use", "tool_result"):
+                events.append(event)
             yield event
 
 
@@ -444,8 +455,20 @@ def _note(run: _BuildRun, label: str, exc: BaseException) -> None:
         run.failures.append(f"{label}: {describe_error(exc)}")
 
 
+def _added_on_arrival(store: Store, doc_id: str, received: str | None, index: int) -> None:
+    """Date a library letter as added on the day it arrived (its received date), as a person adds a letter
+    when it comes — not on the day the demo was built: the weekly review's *New in the last 7 days* then
+    lists the week's letters, not the whole sample life (walkthrough of phase 2: "23 letters since Mon 21
+    Sep", each "Added Mon 28 Sep"). The manifest's order stays the order they were added (``index``
+    minutes after 8:00). ``created_at`` is no input of any recorded model call, nor of the demo check."""
+    if received:
+        with store.tx() as conn:
+            stamp = f"{received}T{8 + index // 60:02d}:{index % 60:02d}:00Z"
+            conn.execute("UPDATE documents SET created_at = ? WHERE id = ?", (stamp, doc_id))
+
+
 async def _read_library(ctx: AppContext, plan: _Plan, run: _BuildRun) -> None:
-    for sample in plan.manifest.library:
+    for index, sample in enumerate(plan.manifest.library):
         try:
             document, job = await add_sample(ctx, sample, plan.samples)
             document = await read_sample(ctx, document, job)
@@ -454,6 +477,7 @@ async def _read_library(ctx: AppContext, plan: _Plan, run: _BuildRun) -> None:
             continue
         if document.status == "failed":
             run.failures.append(f"{sample.slug}: {document.error}")
+        _added_on_arrival(ctx.store, document.id, sample.received_date, index)
         run.documents += 1
 
 
@@ -510,13 +534,33 @@ async def _exercise_asks(
                 await open_tray_item(
                     ctx, sample.slug, stage_delay=0, manifest=plan.manifest, samples=plan.samples
                 )
+            first = len(run.backend.asks)
             run.asks += await _ask_all(ctx, questions)
+            run.failures += _stale_asks(ctx.store, run.backend.asks[first:], index)
         except Exception as exc:  # collect every problem of the build, not just the first
             _note(run, f"tray state {index}", exc)
         finally:
             ctx.close()
         states.append(state)
     return states
+
+
+def _stale_asks(store: Store, asks: Sequence[tuple[Path, list[StreamEvent]]], state: int) -> list[str]:
+    """Recorded Ask answers whose tool results Ordnung's tools no longer give on this ledger: a change
+    to the MCP output (ADR 0008) must be recorded again, or the replay checks answers against stale
+    evidence."""
+    from ordnung.assistant.mcp_server import LedgerTools, stale_tool_results
+
+    tools = LedgerTools(store)
+    problems = []
+    for path, events in asks:
+        stale = stale_tool_results(tools, events)
+        if stale:
+            problems.append(
+                f"tray state {state}: the recorded Ask answer {path.name} has tool results the current "
+                f"tools no longer give ({', '.join(stale)}) — delete it and record it again"
+            )
+    return problems
 
 
 async def _build_and_ask(

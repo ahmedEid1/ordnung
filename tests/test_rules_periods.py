@@ -272,3 +272,45 @@ def test_shift_to_business_day(raw: str, region: str | None, expected: str) -> N
 def test_days_in_month() -> None:
     assert periods.days_in_month(2028, 2) == 29
     assert periods.days_in_month(2026, 2) == 28
+
+
+def test_a_joint_calendar_counts_only_the_holidays_both_lander_have() -> None:
+    """Review round 4 of phase 2: a Kündigungsschutzklage may be filed in either of two Länder (§ 48 Abs. 1a
+    ArbGG) — only a holiday both have counts, and the calendar says so (it said "nationwide only")."""
+    assert calendar_de.joint_region("nw", "RP") == "NW+RP"
+    assert calendar_de.joint_region("RP", "NW") == "NW+RP"
+    assert calendar_de.joint_region("BY", "Bayern") == "BY"
+    assert calendar_de.joint_region("BY", None) is None and calendar_de.joint_region(None, None) is None
+    assert normalize_region("NW+RP") is None  # never a person's or a sender's Land
+    assert calendar_de.joint_lands("NW+RP") == ("NW", "RP") and calendar_de.joint_lands(None) == ()
+    for bad in ("BY+XX", "BY+BY", "BY+NW+RP", "+"):
+        assert calendar_de.joint_lands(bad) == ()
+    assert is_holiday(D("2027-11-01"), "NW+RP")  # All Saints' Day in both
+    assert not is_holiday(D("2027-05-27"), "BE+BY")  # Corpus Christi: Bayern only
+    assert is_holiday(D("2027-05-27"), "BY")
+    assert (
+        holiday_calendar_label("NW+RP") == "Nordrhein-Westfalen and Rheinland-Pfalz (only holidays both have)"
+    )
+    assert (
+        holiday_calendar_label("BY") == "Bayern"
+        and holiday_calendar_label(None) == "Germany (nationwide holidays only)"
+    )
+
+
+def test_a_joint_calendar_warns_of_a_partial_holiday_the_other_land_has_too() -> None:
+    # Assumption Day: in all of Saarland, in part of Bavaria — a holiday in both only where Bavaria has it
+    assumption = [(D("2025-08-15"), "Mariä Himmelfahrt")]
+    assert calendar_de.partial_holidays("BY+SL", D("2025-08-01"), D("2025-08-31")) == assumption
+    assert calendar_de.partial_holidays("BY+NW", D("2025-08-01"), D("2025-08-31")) == []  # none in NW
+    assert calendar_de.partial_holidays("BE+HH", D("2025-08-01"), D("2025-08-31")) == []
+    assert calendar_de.partial_holiday_place("BY+SL", "Mariä Himmelfahrt").startswith(
+        "the communities of Bayern"
+    )
+    # Corpus Christi: in part of Saxony and of Thuringia — both places
+    corpus = calendar_de.partial_holidays("SN+TH", D("2026-06-01"), D("2026-06-30"))
+    assert corpus == [(D("2026-06-04"), "Fronleichnam")]
+    place = calendar_de.partial_holiday_place("SN+TH", "Fronleichnam")
+    assert "Sachsen" in place and "Thüringen" in place and " and " in place
+    assert calendar_de.partial_holiday_place("BY", "Mariä Himmelfahrt").startswith(
+        "the communities of Bayern"
+    )

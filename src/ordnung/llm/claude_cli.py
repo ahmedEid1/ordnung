@@ -46,6 +46,7 @@ from ordnung.llm.base import (
     LLMRequest,
     LLMResponse,
     StreamEvent,
+    ToolCall,
     Usage,
 )
 
@@ -117,7 +118,7 @@ def classify_result(result: dict[str, Any], stderr: str = "") -> LLMError | None
     text = " ".join(str(x) for x in (result.get("result"), result.get("terminal_reason"), stderr) if x)
     if status in (401, 403) or _AUTH_RE.search(text):
         return ClaudeAuthError(
-            "Claude Code is not signed in (or the key is invalid). Run `claude` once in a terminal and log in."
+            "Claude Code is not signed in (or the key is invalid). Run “claude” once in a terminal and sign in."
         )
     if status == 429 or _RATE_LIMIT_RE.search(text):
         m = _RESET_RE.search(text)
@@ -174,7 +175,14 @@ def translate(msg: dict[str, Any]) -> list[StreamEvent]:
         out = []
         for block in (msg.get("message") or {}).get("content") or []:
             if block.get("type") == "tool_use" and block.get("name") != "StructuredOutput":
-                out.append(StreamEvent(type="tool_use", name=block.get("name"), input=block.get("input")))
+                out.append(
+                    StreamEvent(
+                        type="tool_use",
+                        name=block.get("name"),
+                        input=block.get("input"),
+                        tool_use_id=block.get("id"),
+                    )
+                )
         return out
     if kind == "user":
         out = []
@@ -185,9 +193,39 @@ def translate(msg: dict[str, Any]) -> list[StreamEvent]:
                     body = block.get("content")
                     if isinstance(body, list):
                         body = "".join(c.get("text", "") for c in body if isinstance(c, dict))
-                    out.append(StreamEvent(type="tool_result", text=str(body)[:20000]))
+                    # whole, as the model read it: Ask checks its answer against this text (ADR 0008),
+                    # and Ordnung's MCP tools keep each result within channels.RESULT_BUDGET themselves
+                    out.append(
+                        StreamEvent(type="tool_result", text=str(body), tool_use_id=block.get("tool_use_id"))
+                    )
         return out
     return []
+
+
+class ToolTrace:
+    """Pairs ``tool_use`` and ``tool_result`` events into :class:`ToolCall` objects, in call order.
+
+    A result belongs to the call with its ``tool_use_id``: parallel calls may answer out of order.
+    A result for a call that is not traced (the CLI's own ``StructuredOutput`` tool) is dropped.
+    Events without ids (fakes, older recordings) pair with the oldest call still waiting.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[ToolCall] = []
+        self._by_id: dict[str, int] = {}
+
+    def add(self, ev: StreamEvent) -> None:
+        if ev.type == "tool_use":
+            if ev.tool_use_id:
+                self._by_id[ev.tool_use_id] = len(self.calls)
+            self.calls.append(ToolCall(name=ev.name or "", input=dict(ev.input or {})))
+        elif ev.type == "tool_result":
+            if ev.tool_use_id:
+                index = self._by_id.pop(ev.tool_use_id, None)
+            else:
+                index = next((i for i, call in enumerate(self.calls) if call.result is None), None)
+            if index is not None:
+                self.calls[index].result = ev.text
 
 
 class ClaudeCLIBackend:
@@ -217,8 +255,8 @@ class ClaudeCLIBackend:
     def _require_binary(self) -> str:
         if not self.binary:
             raise ClaudeNotInstalled(
-                "The `claude` CLI was not found. Install Claude Code (https://claude.com/claude-code), "
-                "sign in by running `claude` once, then try again."
+                "The “claude” command was not found. Install Claude Code (https://claude.com/claude-code), "
+                "sign in by running “claude” once, then try again."
             )
         return self.binary
 
@@ -273,11 +311,15 @@ class ClaudeCLIBackend:
 
     async def _complete_once(self, req: LLMRequest) -> LLMResponse:
         final: LLMResponse | None = None
+        calls = ToolTrace()
         async for ev in self._run(req, partial=False):
             if ev.type == "done":
                 final = ev.response
+            else:
+                calls.add(ev)
         if final is None:  # pragma: no cover - _run always ends with done or raises
             raise LLMError("Claude ended without a result")
+        final.tool_calls = calls.calls
         return final
 
     async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:

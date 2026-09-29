@@ -2,7 +2,8 @@
 
 ``create_app`` stores one :class:`ApiState` on ``app.state.ordnung``; routes reach the application
 context, the store and the app's "today" through the ``*Dep`` aliases below. The state also owns the
-API's own background tasks (the on-demand Ideas review) and the cached Claude CLI status shown by
+API's own background tasks (the on-demand Ideas review), the watched folder (started by the
+lifespan, restarted when its setting changes) and the cached Claude CLI status shown by
 ``GET /api/health`` (probed at most every 10 minutes, never with a model call). "Run check"
 (``GET /api/health?probe=1``) runs the doctor with one tiny live call, at most once a minute.
 """
@@ -24,7 +25,9 @@ from fastapi import Depends, Request
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.doctor import DoctorReport, run_doctor
+from ordnung.ingest.watcher import FolderWatcher
 from ordnung.llm import claude_cli
+from ordnung.llm.replay import ReplayBackend
 from ordnung.models import ClaudeStatus
 from ordnung.tick import local_today
 
@@ -56,7 +59,7 @@ def _status_detail(installed: bool, signed_in: bool | None) -> str:
     if not installed:
         return "The claude command-line tool was not found. Install Claude Code and sign in to let Ordnung read letters."
     if signed_in is False:
-        return "Claude is installed but not signed in. Run `claude` once in a terminal and log in."
+        return "Claude is installed but not signed in. Run “claude” once in a terminal and sign in."
     detail = "Signed in with your Claude account." if signed_in else "Claude is installed."
     if os.environ.get("ANTHROPIC_API_KEY"):
         detail += (
@@ -195,6 +198,16 @@ class ApiState:
     background: BackgroundTasks = field(default_factory=BackgroundTasks)
     doctor: DoctorRunner = run_doctor
     probe_limit: RateLimit = field(default_factory=lambda: RateLimit(PROBE_INTERVAL_S))
+    folder: FolderWatcher = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.folder = FolderWatcher(self.ctx, can_read=self.reads_letters)
+
+    @property
+    def reads_letters(self) -> bool:
+        """Whether new letters can be read here: not in the demo when it only replays its recordings."""
+        backend = self.ctx.llm.backend
+        return not (self.demo and isinstance(backend, ReplayBackend) and backend.fallback is None)
 
 
 def get_state(request: Request) -> ApiState:

@@ -124,7 +124,8 @@ export interface paths {
         get: operations["read_settings_api_settings_get"];
         /**
          * Update Settings
-         * @description Change settings (``demo`` and ``simulated_today`` can't be changed here).
+         * @description Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
+         *     restarts the folder watcher.
          */
         put: operations["update_settings_api_settings_put"];
         post?: never;
@@ -146,7 +147,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Everything
-         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty.
+         * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
+         *     (Ordnung's events leave a connected calendar first).
          *
          *     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise).
          */
@@ -205,7 +207,8 @@ export interface paths {
         };
         /**
          * List Documents
-         * @description Letters, newest first (trash excluded); ``q`` searches their text.
+         * @description Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
+         *     (``source="proof"``) are listed with their letter, never here.
          */
         get: operations["list_documents_api_documents_get"];
         put?: never;
@@ -328,6 +331,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Folder Status
+         * @description The watched folder: its path, whether it is watched, the letters waiting and the last files.
+         */
+        get: operations["folder_status_api_folder_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read Held
+         * @description “Read these”: the waiting letters may be sent to Claude; they are queued for reading.
+         */
+        post: operations["read_held_api_documents_held_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/keep-private": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep Held Private Route
+         * @description “Keep private”: the waiting letters stay on this computer and are never sent to Claude.
+         */
+        post: operations["keep_held_private_route_api_documents_held_keep_private_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/held/wait": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Wait Again
+         * @description Undo “Keep private”: letters kept private from waiting (never read by Claude) wait again.
+         */
+        post: operations["wait_again_api_documents_held_wait_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{doc_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Trace
+         * @description How the letter was read: every step of one reading, with its model calls, and the kept readings.
+         */
+        get: operations["get_trace_api_documents__doc_id__trace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{doc_id}/trace/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare Trace
+         * @description What a later reading of the letter decided differently from an earlier one.
+         */
+        get: operations["compare_trace_api_documents__doc_id__trace_compare_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/traces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Traces
+         * @description Every kept reading of the letters not in the trash, as stored (no letter text).
+         */
+        get: operations["export_traces_api_traces_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/items": {
         parameters: {
             query?: never;
@@ -338,7 +481,7 @@ export interface paths {
         /**
          * List Items
          * @description To-dos & dates, soonest first. With a ``from``/``to`` range undated ones are left out unless
-         *     ``include_undated``.
+         *     ``include_undated``. Each says whether it is set aside (``aside``: not one to act on, as on Today).
          */
         get: operations["list_items_api_items_get"];
         put?: never;
@@ -421,6 +564,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/items/{item_id}/girocode/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Girocode
+         * @description "These match the letter": the person compared a payment's details with the paper letter.
+         */
+        post: operations["confirm_girocode_api_items__item_id__girocode_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/contracts": {
         parameters: {
             query?: never;
@@ -491,6 +654,10 @@ export interface paths {
         /**
          * Get Party
          * @description One party with its letters (newest first), to-dos (not dismissed), contracts and threads.
+         *
+         *     ``set_aside`` names the open to-dos that are not something to do — an invoice payment a payment
+         *     reminder took over, a date that was already history when the letter was read, a letter with
+         *     scam signs — so the drawer can list them apart instead of as overdue.
          */
         get: operations["get_party_api_parties__party_id__get"];
         put?: never;
@@ -581,6 +748,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/numbers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Numbers
+         * @description About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,
+         *     one call sheet per organisation and the open cases with their references.
+         */
+        get: operations["my_numbers_api_numbers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly Session
+         * @description New letters, values to check, payments this week, letters to post, replies awaited, decisions in
+         *     the next 30 days and what to file — and the next day to act ("All clear until …").
+         */
+        get: operations["weekly_session_api_week_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week/done": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Week Done
+         * @description Remember that the weekly session was done now; answers the session as it stands afterwards.
+         */
+        post: operations["week_done_api_week_done_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/week/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Week Dismiss
+         * @description Say "Not now": Today stops suggesting the session until it is due again (a week, or a Sunday).
+         */
+        post: operations["week_dismiss_api_week_dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/suggestions": {
         parameters: {
             query?: never;
@@ -650,13 +899,14 @@ export interface paths {
         };
         /**
          * Read Brief
-         * @description Today's note: the stored one, else the agenda written by code.
+         * @description Today's note: the stored one Claude wrote, else the agenda written by code as it stands now.
          */
         get: operations["read_brief_api_brief_get"];
         put?: never;
         /**
          * Regenerate Brief
-         * @description Write today's note again (Claude when "AI note" is on and available, else code).
+         * @description Write today's note again (Claude when "AI note" is on and available, else code; ``llm=false``: code
+         *     only, from the records — ``ordnung brief --no-llm``).
          */
         post: operations["regenerate_brief_api_brief_post"];
         delete?: never;
@@ -720,8 +970,9 @@ export interface paths {
         put?: never;
         /**
          * Create Draft
-         * @description Draft a cancellation, objection or reply: fixed legal wording, model-written courtesy text and
-         *     translation, automatic checks and "how to send it".
+         * @description Draft a cancellation, objection, reply or template letter (withdrawal, more time, instalments,
+         *     defect, data access, receipts, deposit, new address): fixed legal wording, model-written courtesy
+         *     text and translation, automatic checks and "how to send it".
          */
         post: operations["create_draft_api_drafts_post"];
         delete?: never;
@@ -746,14 +997,16 @@ export interface paths {
         post?: never;
         /**
          * Delete Draft
-         * @description Delete a letter.
+         * @description Delete a letter with its proofs; their files are deleted for good too unless ``keep_proof_files``
+         *     (they then stay as documents of their own).
          */
         delete: operations["delete_draft_api_drafts__draft_id__delete"];
         options?: never;
         head?: never;
         /**
          * Update Draft
-         * @description Edit the letter; the checks (placeholders, references, dates …) run again.
+         * @description Edit the letter; the checks (placeholders, references, dates …) run again. A sent letter is
+         *     refused: it stays as it went out.
          */
         patch: operations["update_draft_api_drafts__draft_id__patch"];
         trace?: never;
@@ -787,9 +1040,29 @@ export interface paths {
         };
         /**
          * Draft Pdf
-         * @description The letter as a printable DIN 5008 PDF.
+         * @description The letter as a printable DIN 5008 PDF (a sent letter as it went out).
          */
         get: operations["draft_pdf_api_drafts__draft_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/preview.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Draft Preview
+         * @description The printable letter as one PNG, page under page (the web app's print preview).
+         */
+        get: operations["draft_preview_api_drafts__draft_id__preview_png_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -816,6 +1089,205 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proof": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Proof
+         * @description A letter's proof: tracking number, proofs with what each shows, timeline, what's missing and
+         *     what the letter waits for.
+         */
+        get: operations["get_proof_api_drafts__draft_id__proof_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/tracking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Tracking
+         * @description Save the tracking number of a sent letter (checked: a mistyped check digit is refused).
+         */
+        put: operations["set_tracking_api_drafts__draft_id__tracking_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Proof
+         * @description Attach a proof file to a sent letter. The file is kept private: it is never sent to Claude. A file
+         *     already in Ordnung is linked as it is, and ``notice`` says what that means for it.
+         */
+        post: operations["add_proof_api_drafts__draft_id__proofs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proofs/{proof_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Proof
+         * @description Remove a proof; its file is deleted for good unless another proof uses it.
+         */
+        delete: operations["remove_proof_api_drafts__draft_id__proofs__proof_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Proof
+         * @description Correct what a proof is, the day it shows or its note.
+         */
+        patch: operations["update_proof_api_drafts__draft_id__proofs__proof_id__patch"];
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/answered": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Answered
+         * @description Say the sent letter was answered (by a letter in Ordnung, or otherwise); closes its follow-up.
+         */
+        post: operations["mark_answered_api_drafts__draft_id__answered_post"];
+        /**
+         * Unmark Answered
+         * @description Take back "it's answered": the letter waits again and its follow-up reopens.
+         */
+        delete: operations["unmark_answered_api_drafts__draft_id__answered_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/drafts/{draft_id}/proof.pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Nachweis Pdf
+         * @description The Nachweis: a summary with the timeline, the letter as sent and every proof file, as one PDF.
+         */
+        get: operations["nachweis_pdf_api_drafts__draft_id__proof_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/waiting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Waiting
+         * @description Replies, money and callbacks you are waiting for: overdue first, then the ones a letter may have
+         *     answered, then the rest — each by expected day.
+         */
+        get: operations["list_waiting_api_waiting_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Calls
+         * @description Call notes, newest call first (of one person or organisation, or one thread).
+         */
+        get: operations["list_calls_api_calls_get"];
+        put?: never;
+        /**
+         * Create Call
+         * @description Note a phone call. Nothing is sent anywhere; no AI reads it.
+         */
+        post: operations["create_call_api_calls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calls/{call_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Call
+         * @description Delete a call note.
+         */
+        delete: operations["delete_call_api_calls__call_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Call
+         * @description Say the promise made on the call was kept (or take that back).
+         */
+        patch: operations["update_call_api_calls__call_id__patch"];
         trace?: never;
     };
     "/api/calendar.ics": {
@@ -852,6 +1324,175 @@ export interface paths {
          * @description Remember that the dates were just added to the person's calendar.
          */
         post: operations["calendar_exported_api_calendar_exported_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Status
+         * @description Whether calendar sync can be used here, the connected calendar and the last sync.
+         */
+        get: operations["calendar_sync_status_api_calendar_sync_get"];
+        /**
+         * Calendar Sync Connect
+         * @description Connect a calendar (checked with its server first) and send the events; or change the mode.
+         */
+        put: operations["calendar_sync_connect_api_calendar_sync_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Calendar Sync Preview
+         * @description Every event exactly as calendar sync would send it in ``mode`` (nothing is sent).
+         */
+        get: operations["calendar_sync_preview_api_calendar_sync_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Discover
+         * @description The calendars that take events at or under ``url`` (the account's calendar home, found the
+         *     way calendar apps find it). Nothing is stored or written.
+         */
+        post: operations["calendar_sync_discover_api_calendar_sync_discover_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Run
+         * @description Send what changed now (the report is in ``last_sync``; a paused sync resumes).
+         */
+        post: operations["calendar_sync_run_api_calendar_sync_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/calendar/sync/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calendar Sync Disconnect
+         * @description Forget the calendar and its app password — first removing Ordnung's events if asked (only those).
+         */
+        post: operations["calendar_sync_disconnect_api_calendar_sync_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/desktop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Desktop Reminders
+         * @description The desktop notification's tool, today's text in each mode, and the start-at-login entry.
+         */
+        get: operations["desktop_reminders_api_reminders_desktop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reminders/desktop/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Desktop Test
+         * @description Show today's notification now (a sample when nothing is due); the morning one still comes.
+         */
+        post: operations["desktop_test_api_reminders_desktop_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Backup Info
+         * @description What an encrypted backup would hold now, and how long its passphrase must be.
+         */
+        get: operations["backup_info_api_backup_get"];
+        put?: never;
+        /**
+         * Create Backup
+         * @description An encrypted backup of everything (database, letters, page images, letter PDFs) as a download.
+         */
+        post: operations["create_backup_api_backup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -969,6 +1610,32 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * AdviceFact
+         * @description One computed or legal point on a high-stakes letter's card (e.g. the rent cap check).
+         */
+        AdviceFact: {
+            /** Title */
+            title: string;
+            /** Text */
+            text: string;
+            /**
+             * Tone
+             * @default info
+             * @enum {string}
+             */
+            tone: "info" | "warn" | "good";
+            /** Citation */
+            citation: string | null;
+        };
+        /**
+         * AnsweredRequest
+         * @description The sent letter was answered — by this letter (``doc_id``), or by phone, e-mail … (``null``).
+         */
+        AnsweredRequest: {
+            /** Doc Id */
+            doc_id?: string | null;
+        };
         /** AppSettings */
         AppSettings: {
             models: components["schemas"]["ModelSettings"];
@@ -979,6 +1646,11 @@ export interface components {
             concurrency: number;
             /** Inbox Dir */
             inbox_dir: string | null;
+            /**
+             * Inbox Auto Read
+             * @default false
+             */
+            inbox_auto_read: boolean;
             /**
              * Ocr
              * @default true
@@ -994,6 +1666,17 @@ export interface components {
              * @default true
              */
             llm_review: boolean;
+            /**
+             * Desktop Notifications
+             * @default off
+             * @enum {string}
+             */
+            desktop_notifications: "off" | "discreet" | "full";
+            /**
+             * Desktop Notify Time
+             * @default 08:00
+             */
+            desktop_notify_time: string;
             /**
              * Demo
              * @default false
@@ -1037,6 +1720,105 @@ export interface components {
             /** Thread Id */
             thread_id?: string | null;
         };
+        /**
+         * AutostartInfo
+         * @description Whether ``ordnung autostart`` starts Ordnung at login, and for which data folder.
+         */
+        AutostartInfo: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Kind
+             * @description systemd user service, LaunchAgent or Startup folder
+             */
+            kind: string;
+            /**
+             * Path
+             * @description The entry's file
+             */
+            path: string;
+            /**
+             * Points Here
+             * @description The entry starts this data folder
+             */
+            points_here: boolean;
+            /**
+             * Command
+             * @description The command that starts this data folder at login (null: the demo, which doesn't)
+             * @default ordnung autostart enable
+             */
+            command: string | null;
+        };
+        /**
+         * BackupInfo
+         * @description What a backup made now would hold.
+         */
+        BackupInfo: {
+            /**
+             * Letters
+             * @description Letters, the trash included (as the backup holds them)
+             */
+            letters: number;
+            /**
+             * Files
+             * @description Originals, page images and letter PDFs
+             */
+            files: number;
+            /**
+             * Bytes
+             * @description Their size plus the database's, before encryption
+             */
+            bytes: number;
+            /**
+             * File Name
+             * @description The name the download gets
+             */
+            file_name: string;
+            /**
+             * Left Out
+             * @description Symbolic links under the backed-up folders (or a folder that is one), which a backup leaves out: it never follows links
+             */
+            left_out: string[];
+            /**
+             * Min Passphrase
+             * @default 12
+             */
+            min_passphrase: number;
+            /**
+             * Format Version
+             * @default 1
+             */
+            format_version: number;
+        };
+        /**
+         * BackupRequest
+         * @description The passphrase that protects the backup (checked against the policy by the route).
+         */
+        BackupRequest: {
+            /** Passphrase */
+            passphrase: string;
+        };
+        /** Body_add_proof_api_drafts__draft_id__proofs_post */
+        Body_add_proof_api_drafts__draft_id__proofs_post: {
+            /**
+             * File
+             * @description The proof: a photo or PDF of a receipt, a fax report, an e-mail …
+             */
+            file: string;
+            /**
+             * Kind
+             * @description What the proof is
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
+            /**
+             * On Date
+             * @description The day it shows (posted, delivered …)
+             */
+            on_date?: string | null;
+            /** Note */
+            note?: string | null;
+        };
         /** Body_upload_documents_api_documents_post */
         Body_upload_documents_api_documents_post: {
             /**
@@ -1054,7 +1836,7 @@ export interface components {
             combine?: boolean;
             /**
              * Private
-             * @description Keep private — never sent to AI
+             * @description Keep private — never sent to Claude
              * @default false
              */
             private?: boolean;
@@ -1093,12 +1875,331 @@ export interface components {
             generated_at: string | null;
         };
         /**
+         * CalendarChoice
+         * @description A calendar that takes events.
+         */
+        CalendarChoice: {
+            /** Url */
+            url: string;
+            /** Name */
+            name?: string | null;
+        };
+        /**
+         * CalendarEventPreview
+         * @description One event exactly as calendar sync would send it.
+         */
+        CalendarEventPreview: {
+            /** Uid */
+            uid: string;
+            /** Summary */
+            summary: string;
+            /** Start */
+            start: string;
+            /** All Day */
+            all_day: boolean;
+            /** Description */
+            description: string;
+            /** Location */
+            location: string | null;
+            /** Alarms */
+            alarms: string[];
+            /**
+             * Alarms Passed
+             * @default 0
+             */
+            alarms_passed: number;
+        };
+        /**
          * CalendarExportResult
          * @description When the person last exported their dates.
          */
         CalendarExportResult: {
             /** Last Calendar Export At */
             last_calendar_export_at: string;
+        };
+        /**
+         * CalendarSyncConnect
+         * @description The calendar to connect; ``password: null`` keeps the saved app password (to change the mode).
+         */
+        CalendarSyncConnect: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password?: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * CalendarSyncDisconnect
+         * @description Whether to remove Ordnung's events from the calendar before forgetting it.
+         */
+        CalendarSyncDisconnect: {
+            /**
+             * Remove Events
+             * @default true
+             */
+            remove_events?: boolean;
+        };
+        /**
+         * CalendarSyncDisconnected
+         * @description How many of Ordnung's events were removed from the calendar.
+         */
+        CalendarSyncDisconnected: {
+            /** Removed */
+            removed: number;
+        };
+        /**
+         * CalendarSyncFind
+         * @description Where to look for calendars, and the account to look with (nothing is stored).
+         */
+        CalendarSyncFind: {
+            /** Url */
+            url: string;
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * CalendarSyncFound
+         * @description The calendars Ordnung could write into (the address itself first, when it is one).
+         */
+        CalendarSyncFound: {
+            /** Calendars */
+            calendars: components["schemas"]["CalendarChoice"][];
+        };
+        /**
+         * CalendarSyncPreview
+         * @description Exactly what each event would contain in ``mode``.
+         */
+        CalendarSyncPreview: {
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /** Events */
+            events: components["schemas"]["CalendarEventPreview"][];
+        };
+        /**
+         * CalendarSyncReport
+         * @description What one calendar sync did (:mod:`ordnung.calendar.caldav`).
+         */
+        CalendarSyncReport: {
+            /** At */
+            at: string;
+            /**
+             * Sent
+             * @default 0
+             */
+            sent: number;
+            /**
+             * Removed
+             * @default 0
+             */
+            removed: number;
+            /**
+             * Unchanged
+             * @default 0
+             */
+            unchanged: number;
+            /**
+             * Failed
+             * @default 0
+             */
+            failed: number;
+            /**
+             * Missing
+             * @default 0
+             */
+            missing: number;
+            /** Error */
+            error: string | null;
+            /** Error Kind */
+            error_kind: ("address" | "auth" | "forbidden" | "not_found" | "not_calendar" | "network" | "tls" | "conflict" | "server" | "unavailable" | "not_connected") | null;
+        };
+        /**
+         * CalendarSyncStatus
+         * @description What Settings shows about calendar sync.
+         */
+        CalendarSyncStatus: {
+            /**
+             * Available
+             * @description Calendar sync can be used on this computer
+             */
+            available: boolean;
+            /**
+             * Unavailable
+             * @description Why not, in words
+             */
+            unavailable: string | null;
+            /**
+             * Install Command
+             * @description The command that makes it available
+             */
+            install_command: string | null;
+            /** Connected */
+            connected: boolean;
+            /** Url */
+            url: string | null;
+            /** Username */
+            username: string | null;
+            /**
+             * Calendar Name
+             * @description The calendar's name on the server
+             */
+            calendar_name: string | null;
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode: "discreet" | "full";
+            /**
+             * Password Saved
+             * @description The app password was in this computer's keyring when Ordnung last needed it
+             * @default false
+             */
+            password_saved: boolean;
+            /**
+             * Paused
+             * @description Automatic syncing waits after a refused password
+             * @default false
+             */
+            paused: boolean;
+            /**
+             * Events
+             * @description How many events the calendar gets now
+             */
+            events: number;
+            /**
+             * Synced
+             * @description How many of Ordnung's events are in the calendar
+             * @default 0
+             */
+            synced: number;
+            last_sync: components["schemas"]["CalendarSyncReport"] | null;
+        };
+        /**
+         * CallNote
+         * @description A phone call the person noted (Gesprächsnotiz): when, with whom, what was said and what was
+         *     promised. A promise with a date is waited for (``secretary.waiting``).
+         */
+        CallNote: {
+            /** Id */
+            id: string;
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Called On */
+            called_on: string;
+            /** Contact */
+            contact: string | null;
+            /** Summary */
+            summary: string;
+            /** Promise */
+            promise: string | null;
+            /** Promise Due */
+            promise_due: string | null;
+            /** Promise Amount */
+            promise_amount: number | null;
+            /** Promise Kept On */
+            promise_kept_on: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * CallNoteCreate
+         * @description A phone call to note: when, with whom, what was said and what they promised (a promise with a
+         *     day is waited for).
+         */
+        CallNoteCreate: {
+            /** Party Id */
+            party_id?: string | null;
+            /** Case Id */
+            case_id?: string | null;
+            /** Called On */
+            called_on: string;
+            /** Contact */
+            contact?: string | null;
+            /** Summary */
+            summary: string;
+            /** Promise */
+            promise?: string | null;
+            /** Promise Due */
+            promise_due?: string | null;
+            /** Promise Amount */
+            promise_amount?: number | null;
+        };
+        /**
+         * CallNotePatch
+         * @description Whether the call's promise was kept.
+         */
+        CallNotePatch: {
+            /** Kept */
+            kept: boolean;
+        };
+        /**
+         * CallSheet
+         * @description Everything to have at hand when you call or write to one organisation.
+         */
+        CallSheet: {
+            /** Party Id */
+            party_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default other
+             * @enum {string}
+             */
+            kind: "authority" | "tax_office" | "immigration_office" | "health_insurer" | "insurer" | "bank" | "landlord" | "employer" | "university" | "utility" | "telecom" | "retailer" | "doctor" | "gym" | "public_broadcaster" | "transport" | "person" | "company" | "other";
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Website */
+            website: string | null;
+            /**
+             * Numbers
+             * @description Your numbers its letters show
+             */
+            numbers: components["schemas"]["MyNumber"][];
+            /**
+             * Their Numbers
+             * @description Its own (registry, bank)
+             */
+            their_numbers: components["schemas"]["MyNumber"][];
+            /** Open Cases */
+            open_cases: components["schemas"]["OpenCase"][];
+            last_letter: components["schemas"]["LetterRef"] | null;
+            /**
+             * Open Items
+             * @default 0
+             */
+            open_items: number;
+        };
+        /**
+         * CancellationSent
+         * @description The person's cancellation of a contract, marked as sent (a ``cancellation`` letter with the
+         *     contract's id): the decision is taken, what is left is waiting for the provider's confirmation.
+         */
+        CancellationSent: {
+            /** Draft Id */
+            draft_id: string;
+            /** Sent On */
+            sent_on: string | null;
+            /** Channel */
+            channel: string | null;
         };
         /** Case */
         Case: {
@@ -1140,27 +2241,39 @@ export interface components {
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
         };
-        /** ChatMessage */
-        ChatMessage: {
+        /**
+         * CaseItemRef
+         * @description The next open to-do of a case.
+         */
+        CaseItemRef: {
             /** Id */
             id: string;
-            /** Thread Id */
-            thread_id: string;
+            /** Title */
+            title: string;
             /**
-             * Role
+             * Kind
              * @enum {string}
              */
-            role: "user" | "assistant";
-            /** Content */
-            content: string;
-            /** Citations */
-            citations: components["schemas"]["SuggestionRef"][];
-            /** Tool Calls */
-            tool_calls: {
-                [key: string]: unknown;
-            }[];
-            /** Created At */
-            created_at: string;
+            kind: "deadline" | "payment" | "appointment" | "task" | "expiry" | "reminder" | "milestone";
+            /** Due Date */
+            due_date: string | null;
+            /**
+             * Send By
+             * @description None for a fee paid at an appointment
+             */
+            send_by: string | null;
+            /**
+             * At Appointment
+             * @description A fee paid in person at the appointment: on its day, never a transfer
+             * @default false
+             */
+            at_appointment: boolean;
+            /**
+             * Needs Check
+             * @description Its date or amount is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
         };
         /**
          * CitationRef
@@ -1316,6 +2429,7 @@ export interface components {
             cancellable: boolean;
             /** Cancel Hint */
             cancel_hint: string | null;
+            cancellation_sent: components["schemas"]["CancellationSent"] | null;
         };
         /** ContractComputation */
         ContractComputation: {
@@ -1324,7 +2438,7 @@ export interface components {
              * @default as_written
              * @enum {string}
              */
-            regime: "bgb309_new" | "bgb309_old" | "tkg56" | "vvg11" | "sgbv175" | "stromgvv20" | "rent573c" | "employment622" | "as_written";
+            regime: "bgb309_new" | "bgb309_old" | "tkg56" | "vvg11" | "sgbv175" | "stromgvv20" | "rent573c" | "employment622" | "bgb675h" | "as_written";
             /** Current Term End */
             current_term_end: string | null;
             /** Cancel By */
@@ -1427,6 +2541,11 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Recent Documents */
             recent_documents: components["schemas"]["Document"][];
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
             stats: components["schemas"]["DashboardStats"];
         };
         /** DashboardStats */
@@ -1472,6 +2591,11 @@ export interface components {
              * @description Entries Ordnung did not create, left untouched
              */
             kept: string[];
+            /**
+             * Calendar Events Removed
+             * @description Ordnung's events removed from the connected calendar first (null: none was connected)
+             */
+            calendar_events_removed: number | null;
         };
         /**
          * DateSpec
@@ -1546,6 +2670,83 @@ export interface components {
             removed_open_items: number;
         };
         /**
+         * DesktopPreview
+         * @description Today's notification in each mode (``null``: nothing is due, so none would be shown).
+         */
+        DesktopPreview: {
+            discreet: components["schemas"]["NotificationText"] | null;
+            full: components["schemas"]["NotificationText"] | null;
+        };
+        /**
+         * DesktopReminders
+         * @description What Settings shows about the morning desktop notification.
+         */
+        DesktopReminders: {
+            /**
+             * System
+             * @enum {string}
+             */
+            system: "linux" | "macos" | "windows";
+            /**
+             * Tool
+             * @description notify-send, osascript or powershell (null: none found)
+             */
+            tool: string | null;
+            /**
+             * Missing
+             * @description Why no notification can be shown, if so
+             */
+            missing: string | null;
+            preview: components["schemas"]["DesktopPreview"];
+            /**
+             * Last Shown On
+             * @description The last day the morning notification was shown (or done with)
+             */
+            last_shown_on: string | null;
+            /**
+             * Last Failure
+             * @description Why the system couldn't show the last notification (null: it could)
+             */
+            last_failure: string | null;
+            /**
+             * Last Failure On
+             * @description The day of that failure
+             */
+            last_failure_on: string | null;
+            /**
+             * Demo
+             * @description The demo: it never notifies on its own
+             * @default false
+             */
+            demo: boolean;
+            autostart: components["schemas"]["AutostartInfo"];
+        };
+        /**
+         * DesktopTestRequest
+         * @description Which mode to show the test notification in.
+         */
+        DesktopTestRequest: {
+            /**
+             * Mode
+             * @default discreet
+             * @enum {string}
+             */
+            mode?: "discreet" | "full";
+        };
+        /**
+         * DesktopTestResult
+         * @description Whether the test notification was shown, and what it said.
+         */
+        DesktopTestResult: {
+            /** Shown */
+            shown: boolean;
+            /** Tool */
+            tool: string | null;
+            notification: components["schemas"]["NotificationText"];
+            /** Detail */
+            detail: string | null;
+        };
+        /**
          * DoctorCheck
          * @description One ``ordnung doctor`` check: what was looked at, the outcome and — when it is not ok — how to
          *     fix it.
@@ -1599,11 +2800,11 @@ export interface components {
              * @default queued
              * @enum {string}
              */
-            status: "queued" | "processing" | "processed" | "needs_review" | "failed";
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
             /** Error */
             error: string | null;
             /** Kind */
-            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
             /** Area */
             area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
             /** Title */
@@ -1667,6 +2868,7 @@ export interface components {
         /** DocumentDetail */
         DocumentDetail: {
             document: components["schemas"]["Document"];
+            advice: components["schemas"]["LetterAdvice"] | null;
             /** Pages */
             pages: components["schemas"]["PageInfo"][];
             /** Items */
@@ -1681,18 +2883,40 @@ export interface components {
             suggestions: components["schemas"]["Suggestion"][];
             /** Drafts */
             drafts: components["schemas"]["Draft"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
+            /** Girocodes */
+            girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
+            /** Attachments */
+            attachments: components["schemas"]["EmailAttachment"][];
+            /**
+             * Attachments More
+             * @default 0
+             */
+            attachments_more: number;
+            email: components["schemas"]["Document"] | null;
+            /**
+             * Can Wait Again
+             * @default false
+             */
+            can_wait_again: boolean;
+            /** Proof Of */
+            proof_of: components["schemas"]["ProofLink"][];
+            /** Scam Signs */
+            scam_signs: string[];
         };
         /**
          * DocumentPatch
          * @description Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
          *     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
-         *     ``false``.
+         *     ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
+         *     dismissal …).
          */
         DocumentPatch: {
             /** Title */
             title?: string | null;
             /** Kind */
-            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
             /** Area */
             area?: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
             /** Tags */
@@ -1712,6 +2936,20 @@ export interface components {
             /** Direction */
             direction?: ("incoming" | "outgoing" | "note") | null;
         };
+        /**
+         * DocumentTrace
+         * @description How a letter was read: the reading shown (the latest unless another was asked for), its steps
+         *     and every reading Ordnung keeps (newest first).
+         */
+        DocumentTrace: {
+            /** Doc Id */
+            doc_id: string;
+            run: components["schemas"]["TraceRun"] | null;
+            /** Runs */
+            runs: components["schemas"]["TraceRun"][];
+            /** Spans */
+            spans: components["schemas"]["TraceSpan"][];
+        };
         /** Draft */
         Draft: {
             /** Id */
@@ -1720,7 +2958,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
             /**
              * Language
              * @default de
@@ -1781,6 +3019,12 @@ export interface components {
             status: "draft" | "final" | "sent";
             /** Sent At */
             sent_at: string | null;
+            /** Tracking Number */
+            tracking_number: string | null;
+            /** Answered On */
+            answered_on: string | null;
+            /** Answer Doc Id */
+            answer_doc_id: string | null;
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -1806,7 +3050,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
             /** Party Id */
             party_id?: string | null;
             /** Doc Id */
@@ -1829,6 +3073,14 @@ export interface components {
              * @enum {string}
              */
             language?: "de" | "en";
+            /** @description the facts a template letter needs (withdrawal, payment plan …) */
+            details?: components["schemas"]["LetterDetails"] | null;
+            /**
+             * Suspend Enforcement
+             * @description an objection also applies to suspend enforcement (einstweilige Einstellung at a court, Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order
+             * @default false
+             */
+            suspend_enforcement?: boolean;
         };
         /**
          * DraftPatch
@@ -1851,6 +3103,34 @@ export interface components {
             enclosures?: string[] | null;
             /** Status */
             status?: ("draft" | "final") | null;
+        };
+        /**
+         * EmailAttachment
+         * @description One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).
+         *
+         *     ``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in
+         *     Ordnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a
+         *     type Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake
+         *     refused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.
+         *     ``doc_id`` is only set while that letter exists and is not in the trash.
+         */
+        EmailAttachment: {
+            /** Filename */
+            filename: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "added" | "known" | "inline" | "not_read" | "refused" | "over_limit";
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
         };
         /**
          * Evidence
@@ -1886,6 +3166,131 @@ export interface components {
             /** Boxes */
             boxes: components["schemas"]["Box"][];
         };
+        /**
+         * FolderPickup
+         * @description A file the watched folder brought in (from the activity log, newest first).
+         *
+         *     ``added``: it became a letter (``doc_id``, its ``status`` now); ``known``: the same file was already
+         *     in Ordnung; ``refused``: intake refused it (``detail`` says why). ``doc_id`` and ``status`` are
+         *     ``None`` once that letter is gone.
+         */
+        FolderPickup: {
+            /** At */
+            at: string;
+            /** Filename */
+            filename: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "added" | "known" | "refused";
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
+        };
+        /**
+         * FolderStatus
+         * @description ``GET /api/folder``: the watched folder, whether it is watched, and what it brought in.
+         */
+        FolderStatus: {
+            /** Folder */
+            folder: string | null;
+            /**
+             * State
+             * @default off
+             * @enum {string}
+             */
+            state: "off" | "watching" | "problem";
+            /** Problem */
+            problem: string | null;
+            /**
+             * Auto Read
+             * @default false
+             */
+            auto_read: boolean;
+            /**
+             * Can Read
+             * @default true
+             */
+            can_read: boolean;
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
+            /**
+             * Suggested
+             * @default
+             */
+            suggested: string;
+            /** Recent */
+            recent: components["schemas"]["FolderPickup"][];
+        };
+        /**
+         * GiroCodeBlocked
+         * @description Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
+         *     names the details to compare with the paper letter and ``values`` are the ones to confirm.
+         */
+        GiroCodeBlocked: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "blocked";
+            /** Item Id */
+            item_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "incoming" | "direct_debit" | "settled" | "replaced" | "several" | "scam" | "currency" | "no_amount" | "no_iban" | "invalid_iban" | "no_payee" | "invalid" | "check_letter";
+            /** Message */
+            message: string;
+            /** To Check */
+            to_check: ("amount" | "iban" | "reference")[];
+            values: components["schemas"]["TransferValues"] | null;
+        };
+        /**
+         * GiroCodeConfirm
+         * @description The transfer details the person compared with the paper letter, exactly as they were shown.
+         */
+        GiroCodeConfirm: {
+            /** Payee */
+            payee?: string | null;
+            /** Iban */
+            iban?: string | null;
+            /** Reference */
+            reference?: string | null;
+            /** Amount */
+            amount?: number | null;
+        };
+        /**
+         * GiroCodeReady
+         * @description A GiroCode for one payment: ``payload`` is the EPC069-12 text to show as a QR code at error
+         *     correction level M. ``checked``: the person compared these details with the paper letter.
+         */
+        GiroCodeReady: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "ready";
+            /** Item Id */
+            item_id: string;
+            /** Payload */
+            payload: string;
+            /**
+             * Checked
+             * @default false
+             */
+            checked: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1920,12 +3325,88 @@ export interface components {
              */
             checks: components["schemas"]["DoctorCheck"][];
         };
+        /**
+         * HeldRequest
+         * @description The waiting letters the person answered for (as shown to them).
+         */
+        HeldRequest: {
+            /** Doc Ids */
+            doc_ids: string[];
+        };
+        /**
+         * HeldResult
+         * @description What an answer changed: the letters, the reading jobs queued (Read only), ids no longer waiting.
+         */
+        HeldResult: {
+            /** Documents */
+            documents: components["schemas"]["Document"][];
+            /** Jobs */
+            jobs: components["schemas"]["Job"][];
+            /**
+             * Skipped
+             * @description ids that were not waiting (any more)
+             */
+            skipped: string[];
+        };
+        /**
+         * HelpLink
+         * @description Independent, free or low-cost help for a high-stakes letter (information, not legal advice).
+         */
+        HelpLink: {
+            /** Name */
+            name: string;
+            /** What */
+            what: string;
+            /** Url */
+            url: string | null;
+        };
         /** Identifier */
         Identifier: {
             /** Label */
             label: string;
             /** Value */
             value: string;
+        };
+        /**
+         * IdentityDocument
+         * @description A passport, residence permit or ID card: its number (when a letter shows it) and expiry.
+         */
+        IdentityDocument: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "passport" | "residence_permit" | "id_card" | "identity_document";
+            /** Name */
+            name: string;
+            number: components["schemas"]["MyNumber"] | null;
+            /** Valid Until */
+            valid_until: string | null;
+            /**
+             * Status
+             * @default unknown
+             * @enum {string}
+             */
+            status: "ok" | "renew_soon" | "expired" | "unknown";
+            /**
+             * Note
+             * @description What to do about it (written by code)
+             */
+            note: string | null;
+            /**
+             * Item Id
+             * @description The expiry to-do
+             */
+            item_id: string | null;
+            /**
+             * Needs Check
+             * @description The expiry date is not confirmed against the letter (compare it)
+             * @default false
+             */
+            needs_check: boolean;
+            letter: components["schemas"]["LetterRef"] | null;
         };
         /** Item */
         Item: {
@@ -2024,6 +3505,26 @@ export interface components {
             updated_at: string;
             /** Completed At */
             completed_at: string | null;
+        };
+        /**
+         * ItemAside
+         * @description An open to-do that is not one to act on (worked out on read, never stored).
+         *
+         *     ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
+         *     pay once, not twice. ``attached``: an e-mail's payment that the bill attached to it
+         *     (``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an
+         *     archive letter). ``suspicious``: the letter shows signs of a scam.
+         */
+        ItemAside: {
+            /** Item Id */
+            item_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "replaced" | "attached" | "history" | "suspicious";
+            /** Replaced By */
+            replaced_by: string | null;
         };
         /**
          * ItemCreate
@@ -2220,6 +3721,28 @@ export interface components {
              * @default 0
              */
             bytes_sent: number;
+            /** Request Key */
+            request_key: string | null;
+            /** Prompt Name */
+            prompt_name: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
+            /** Served Model */
+            served_model: string | null;
+            /** Job Id */
+            job_id: string | null;
+            /** Stage */
+            stage: string | null;
+            /** Span Id */
+            span_id: string | null;
+            /** Repair Of */
+            repair_of: number | null;
+            /**
+             * Outcome
+             * @default ok
+             * @enum {string}
+             */
+            outcome: "ok" | "invalid" | "repaired" | "failed";
         };
         /** Lane */
         Lane: {
@@ -2263,6 +3786,270 @@ export interface components {
             /** Markers */
             markers: components["schemas"]["TimelineMarker"][];
             ref: components["schemas"]["RefLink"] | null;
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            /**
+             * Open End
+             * @default false
+             */
+            open_end: boolean;
+        };
+        /**
+         * LetterAdvice
+         * @description The "get advice" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).
+         *
+         *     ``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information.
+         */
+        LetterAdvice: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs";
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Urgent
+             * @default false
+             */
+            urgent: boolean;
+            /** Steps */
+            steps: string[];
+            /** Facts */
+            facts: components["schemas"]["AdviceFact"][];
+            /** Help */
+            help: components["schemas"]["HelpLink"][];
+            /** Rule Ids */
+            rule_ids: string[];
+            /** Draft */
+            draft: ("cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change") | null;
+            /**
+             * Handled
+             * @default false
+             */
+            handled: boolean;
+            /**
+             * Closable
+             * @default false
+             */
+            closable: boolean;
+        };
+        /**
+         * LetterDetails
+         * @description Facts a template letter needs besides the letter, contract or person it is about.
+         *
+         *     Everything is optional here; each template names the facts it requires
+         *     (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+         *     with a clear message, never a server error), amounts in euros.
+         */
+        LetterDetails: {
+            /**
+             * Subject Matter
+             * @description what was ordered or agreed, e.g. 'Kaffeemaschine'
+             */
+            subject_matter?: string | null;
+            /**
+             * Ordered On
+             * @description the day the contract was concluded
+             */
+            ordered_on?: string | null;
+            /**
+             * Received On
+             * @description the day the goods arrived
+             */
+            received_on?: string | null;
+            /**
+             * Instructions Missing
+             * @description no (or wrong) instructions about the right of withdrawal were given
+             * @default false
+             */
+            instructions_missing?: boolean;
+            /**
+             * Deadline
+             * @description the deadline that should be extended
+             */
+            deadline?: string | null;
+            /**
+             * Until
+             * @description the new date asked for
+             */
+            until?: string | null;
+            /**
+             * Amount
+             * @description the total owed, or the deposit
+             */
+            amount?: number | null;
+            /**
+             * Instalment
+             * @description the monthly instalment offered
+             */
+            instalment?: number | null;
+            /**
+             * First Instalment
+             * @description the day of the first instalment
+             */
+            first_instalment?: string | null;
+            /**
+             * Defect
+             * @description what is broken or wrong
+             */
+            defect?: string | null;
+            /**
+             * Noticed On
+             * @description since when the defect exists
+             */
+            noticed_on?: string | null;
+            /**
+             * Fix By
+             * @description the day by which it should be repaired
+             */
+            fix_by?: string | null;
+            /**
+             * Period
+             * @description the billing period
+             */
+            period?: string | null;
+            /**
+             * Moved Out On
+             * @description the day the flat was handed back
+             */
+            moved_out_on?: string | null;
+            /**
+             * Moved On
+             * @description the day of the move
+             */
+            moved_on?: string | null;
+            /** Old Address */
+            old_address?: string | null;
+            /** New Address */
+            new_address?: string | null;
+            /**
+             * Recipient
+             * @description name and address of a recipient not in Ordnung yet
+             */
+            recipient?: string | null;
+        };
+        /**
+         * LetterRef
+         * @description A letter a number or case links to.
+         */
+        LetterRef: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Date */
+            date: string | null;
+            /** Kind */
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
+        };
+        /**
+         * ListedItem
+         * @description A to-do as the list (``GET /api/items``) returns it.
+         *
+         *     ``aside`` is worked out on read (never stored): why the to-do is not one to act on — the same
+         *     rules as Today, the letter's verdict and the party drawer (:class:`ItemAside`) — so the Inbox
+         *     neither counts it nor shows it as a letter's next step; ``None`` for one to act on.
+         */
+        ListedItem: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "deadline" | "payment" | "appointment" | "task" | "expiry" | "reminder" | "milestone";
+            /** Title */
+            title: string;
+            /** Description */
+            description: string | null;
+            /** Action */
+            action: string | null;
+            /** Consequence */
+            consequence: string | null;
+            /** Due Date */
+            due_date: string | null;
+            /** Due Time */
+            due_time: string | null;
+            /** Send By */
+            send_by: string | null;
+            date_spec: components["schemas"]["DateSpec"] | null;
+            computation: components["schemas"]["ComputationReceipt"] | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /** Direction */
+            direction: ("out" | "in") | null;
+            recurrence: components["schemas"]["Recurrence-Output"] | null;
+            /**
+             * Status
+             * @default open
+             * @enum {string}
+             */
+            status: "open" | "done" | "dismissed" | "snoozed" | "missed";
+            /** Snoozed Until */
+            snoozed_until: string | null;
+            /**
+             * Priority
+             * @default normal
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "critical";
+            /**
+             * Area
+             * @default other
+             * @enum {string}
+             */
+            area: "home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other";
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Contract Id */
+            contract_id: string | null;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /**
+             * Grounding
+             * @default unverified
+             * @enum {string}
+             */
+            grounding: "verified" | "model_read" | "unverified" | "user";
+            /** Slot Key */
+            slot_key: string | null;
+            /**
+             * User Modified
+             * @default false
+             */
+            user_modified: boolean;
+            /**
+             * Due Date Source
+             * @default none
+             * @enum {string}
+             */
+            due_date_source: "computed" | "fixed" | "manual" | "none";
+            /**
+             * Origin
+             * @default extracted
+             * @enum {string}
+             */
+            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            /** Location */
+            location: string | null;
+            /** Filed On */
+            filed_on: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Completed At */
+            completed_at: string | null;
+            aside: components["schemas"]["ItemAside"] | null;
         };
         /**
          * MailOpenRequest
@@ -2304,6 +4091,8 @@ export interface components {
             opened: boolean;
             /** Doc Id */
             doc_id: string | null;
+            /** Received Date */
+            received_date: string | null;
         };
         /**
          * MarkSentRequest
@@ -2314,6 +4103,11 @@ export interface components {
             channel: string;
             /** Date */
             date: string;
+            /**
+             * Tracking Number
+             * @description the Einschreiben's number (its check digit is checked)
+             */
+            tracking_number?: string | null;
         };
         /** ModelSettings */
         ModelSettings: {
@@ -2382,6 +4176,96 @@ export interface components {
             };
         };
         /**
+         * MyNumber
+         * @description One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and
+         *     copy it, the check-digit test and the latest letter that shows it.
+         */
+        MyNumber: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "tax_id" | "tax_number" | "social_insurance" | "health_insurance" | "student" | "broadcasting_fee" | "vehicle" | "passport" | "residence_permit" | "id_card" | "customer" | "contract" | "policy" | "member" | "employee" | "account" | "mandate" | "meter" | "other" | "case_file" | "payment_reference" | "invoice" | "order" | "tracking" | "reference" | "vat_id" | "register" | "creditor_id" | "iban" | "bic" | "their_tax_number" | "their_other";
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "about_you" | "document" | "organisation" | "case" | "theirs";
+            /**
+             * Name
+             * @description What it is, in plain English (“Tax ID (Steuer-ID)”)
+             */
+            name: string;
+            /**
+             * Label
+             * @description The label the letter prints next to it
+             */
+            label: string;
+            /**
+             * Value
+             * @description The value as printed
+             */
+            value: string;
+            /**
+             * Display
+             * @description The value grouped for reading
+             */
+            display: string;
+            /**
+             * Copy Value
+             * @description What “Copy” puts on the clipboard (forms want no spaces)
+             */
+            copy_value: string;
+            /**
+             * Check
+             * @default none
+             * @enum {string}
+             */
+            check: "ok" | "fails" | "none";
+            /** Check Note */
+            check_note: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** @description The latest letter that shows it */
+            letter: components["schemas"]["LetterRef"] | null;
+            /**
+             * Letters
+             * @description How many letters show it
+             * @default 1
+             */
+            letters: number;
+        };
+        /**
+         * MyNumbers
+         * @description The *My numbers* page.
+         */
+        MyNumbers: {
+            /** Today */
+            today: string;
+            /** About You */
+            about_you: components["schemas"]["MyNumber"][];
+            /** Documents */
+            documents: components["schemas"]["IdentityDocument"][];
+            /** Organisations */
+            organisations: components["schemas"]["CallSheet"][];
+            /** Open Cases */
+            open_cases: components["schemas"]["OpenCase"][];
+        };
+        /**
+         * NotificationText
+         * @description What a desktop notification says.
+         */
+        NotificationText: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /**
          * OnboardingRequest
          * @description The first-run wizard's answers.
          */
@@ -2393,6 +4277,32 @@ export interface components {
              * @default false
              */
             skip_ai?: boolean;
+        };
+        /**
+         * OpenCase
+         * @description A matter with an open one-off to-do, and the references to quote when you call or write.
+         */
+        OpenCase: {
+            /** Key */
+            key: string;
+            /** Case Id */
+            case_id: string | null;
+            /** Title */
+            title: string;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** References */
+            references: components["schemas"]["MyNumber"][];
+            next_item: components["schemas"]["CaseItemRef"] | null;
+            /**
+             * Open Items
+             * @default 0
+             */
+            open_items: number;
+            /** @description The case's latest letter */
+            letter: components["schemas"]["LetterRef"] | null;
         };
         /** PageInfo */
         PageInfo: {
@@ -2455,6 +4365,8 @@ export interface components {
             contracts: components["schemas"]["Contract"][];
             /** Cases */
             cases: components["schemas"]["Case"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
         };
         /** PaymentDetails */
         PaymentDetails: {
@@ -2528,6 +4440,11 @@ export interface components {
              * @default false
              */
             onboarded: boolean;
+            /**
+             * Iban
+             * @default
+             */
+            iban: string;
         };
         /**
          * ProfilePatch
@@ -2560,6 +4477,133 @@ export interface components {
             is_student_visa?: boolean | null;
             /** Onboarded */
             onboarded?: boolean | null;
+            /**
+             * Iban
+             * @description your account, for refunds (empty: none)
+             */
+            iban?: string | null;
+        };
+        /**
+         * Proof
+         * @description One piece of proof that a letter was sent or arrived. ``doc_id`` is its file: a private outgoing
+         *     document (``source="proof"``) that is never sent to a model. ``on_date`` is the day it shows (the
+         *     day posted, delivered, faxed or confirmed).
+         */
+        Proof: {
+            /** Id */
+            id: string;
+            /** Draft Id */
+            draft_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
+            /** Doc Id */
+            doc_id: string | null;
+            /** On Date */
+            on_date: string | null;
+            /** Note */
+            note: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+        };
+        /**
+         * ProofEntry
+         * @description A proof with its file and, in code-written words, what it shows and what it does not.
+         */
+        ProofEntry: {
+            proof: components["schemas"]["Proof"];
+            document: components["schemas"]["Document"] | null;
+            /** Label */
+            label: string;
+            /** Shows */
+            shows: string;
+            /** Does Not Show */
+            does_not_show: string;
+        };
+        /**
+         * ProofEvent
+         * @description One line of a sent letter's timeline (the "Nachweis"). ``date`` is ``None`` for a proof without a
+         *     day (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be
+         *     the answer — shown to the person, never written into the Nachweis.
+         */
+        ProofEvent: {
+            /** Date */
+            date: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "created" | "sent" | "tracking" | "proof" | "delivered" | "answered" | "possible_answer";
+            /** Label */
+            label: string;
+            /** Detail */
+            detail: string | null;
+            ref: components["schemas"]["RefLink"] | null;
+            /** Added On */
+            added_on: string | null;
+        };
+        /**
+         * ProofLink
+         * @description A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is.
+         */
+        ProofLink: {
+            /** Draft Id */
+            draft_id: string;
+            /** Subject */
+            subject: string;
+            /** Proof Id */
+            proof_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other";
+        };
+        /**
+         * ProofOverview
+         * @description ``GET /api/drafts/{id}/proof``: a letter's tracking number, proofs, timeline, what is missing and
+         *     what it waits for.
+         */
+        ProofOverview: {
+            /** Draft Id */
+            draft_id: string;
+            /** Sent */
+            sent: boolean;
+            /** Channel */
+            channel: string | null;
+            tracking: components["schemas"]["TrackingInfo"] | null;
+            /** Proofs */
+            proofs: components["schemas"]["ProofEntry"][];
+            /** Timeline */
+            timeline: components["schemas"]["ProofEvent"][];
+            /** Missing */
+            missing: string[];
+            /** Conflicts */
+            conflicts: string[];
+            /** Notice */
+            notice: string | null;
+            waiting: components["schemas"]["WaitingEntry"] | null;
+            /**
+             * Caveat
+             * @default
+             */
+            caveat: string;
+        };
+        /**
+         * ProofPatch
+         * @description Corrections to a proof: what it is, the day it shows and a note (``null`` or empty removes them).
+         */
+        ProofPatch: {
+            /** Kind */
+            kind?: ("posting_receipt" | "delivery_record" | "return_receipt" | "fax_report" | "sent_email" | "cancel_confirmation" | "other") | null;
+            /** On Date */
+            on_date?: string | null;
+            /** Note */
+            note?: string | null;
         };
         /**
          * PublicHealth
@@ -2576,7 +4620,8 @@ export interface components {
         };
         /**
          * PurposeUsage
-         * @description Model use for one purpose (``extract``, ``ask`` …).
+         * @description Model use for one purpose (``extract``, ``ask`` …). ``input_tokens`` counts every prompt token, those
+         *     read from or written to the prompt cache too.
          */
         PurposeUsage: {
             /**
@@ -2689,6 +4734,11 @@ export interface components {
             url: string | null;
             /** Effective From */
             effective_from: string | null;
+            /**
+             * Topic
+             * @description The group it is listed under (“Counting periods”, “Price increases” …)
+             */
+            topic: string | null;
         };
         /** SendChannel */
         SendChannel: {
@@ -2721,6 +4771,11 @@ export interface components {
             /** Must Arrive By */
             must_arrive_by: string | null;
             /**
+             * Post Too Late
+             * @default false
+             */
+            post_too_late: boolean;
+            /**
              * Form
              * @default text_form
              * @enum {string}
@@ -2746,12 +4801,24 @@ export interface components {
             concurrency?: number | null;
             /** Inbox Dir */
             inbox_dir?: string | null;
+            /**
+             * Inbox Auto Read
+             * @description read new files from the watched folder at once (else they wait for you)
+             */
+            inbox_auto_read?: boolean | null;
             /** Ocr */
             ocr?: boolean | null;
             /** Llm Brief */
             llm_brief?: boolean | null;
             /** Llm Review */
             llm_review?: boolean | null;
+            /** Desktop Notifications */
+            desktop_notifications?: ("off" | "discreet" | "full") | null;
+            /**
+             * Desktop Notify Time
+             * @description Local time of day, HH:MM (24 h)
+             */
+            desktop_notify_time?: string | null;
             /** Demo */
             demo?: boolean | null;
             /** Simulated Today */
@@ -2769,7 +4836,7 @@ export interface components {
             type: "text" | "tool_use" | "tool_result" | "done" | "error";
             /**
              * Text
-             * @description text delta, tool label/summary, or the final answer
+             * @description tool label/summary or the checked answer (done); none on the text event that says the answer is being written
              */
             text?: string | null;
             /**
@@ -2786,6 +4853,21 @@ export interface components {
             } | null;
             /** Error */
             error?: string | null;
+            /**
+             * Error Code
+             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question
+             */
+            error_code?: "demo_miss" | null;
+            /**
+             * Note
+             * @description what the answer check left out or quoted (done); shown apart from the text
+             */
+            note?: string | null;
+            /**
+             * Note Label
+             * @description the label of the note in the answer's language (done), e.g. 'Checked by Ordnung:'
+             */
+            note_label?: string | null;
             /**
              * Citations
              * @description validated citations (done)
@@ -2884,6 +4966,47 @@ export interface components {
             /** Id */
             id: string;
         };
+        /**
+         * ThreadMessage
+         * @description A stored question or answer; an answer's check note is split off its text into ``note``.
+         */
+        ThreadMessage: {
+            /** Id */
+            id: string;
+            /** Thread Id */
+            thread_id: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Content */
+            content: string;
+            /** Citations */
+            citations: components["schemas"]["SuggestionRef"][];
+            /** Tool Calls */
+            tool_calls: {
+                [key: string]: unknown;
+            }[];
+            /** Created At */
+            created_at: string;
+            /**
+             * Note
+             * @description what the answer check left out or quoted; shown apart from the text
+             */
+            note: string | null;
+            /**
+             * Note Label
+             * @description the note's label in the answer's language
+             */
+            note_label: string | null;
+            /**
+             * Checked
+             * @description the answer went through the claim-level check (answers stored before it did not)
+             * @default false
+             */
+            checked: boolean;
+        };
         /** TimelineEntry */
         TimelineEntry: {
             /** Id */
@@ -2927,6 +5050,10 @@ export interface components {
              * @default false
              */
             past: boolean;
+            /** Direction */
+            direction: ("out" | "in") | null;
+            /** Aside */
+            aside: ("replaced" | "attached" | "history") | null;
         };
         /** TimelineMarker */
         TimelineMarker: {
@@ -2940,6 +5067,9 @@ export interface components {
              * @enum {string}
              */
             kind: "deadline" | "send_by" | "cancel_by" | "renewal" | "expiry" | "payment" | "appointment" | "other";
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            ref: components["schemas"]["RefLink"] | null;
         };
         /**
          * TourPatch
@@ -2972,6 +5102,296 @@ export interface components {
             completed: boolean;
         };
         /**
+         * TraceChange
+         * @description One thing two readings of a letter decided differently (a date, a quote's grounding, a
+         *     model call's outcome …); ``before``/``after`` are ``None`` when the step is missing in that reading.
+         */
+        TraceChange: {
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Field */
+            field: string;
+            /** Before */
+            before: unknown;
+            /** After */
+            after: unknown;
+            ref: components["schemas"]["RefLink"] | null;
+            /** Label */
+            label: string | null;
+        };
+        /**
+         * TraceComparison
+         * @description What a later reading (``head``) decided differently from an earlier one (``base``).
+         */
+        TraceComparison: {
+            /** Doc Id */
+            doc_id: string;
+            base: components["schemas"]["TraceRun"];
+            head: components["schemas"]["TraceRun"];
+            /** Changes */
+            changes: components["schemas"]["TraceChange"][];
+        };
+        /**
+         * TraceExport
+         * @description Every kept reading of the letters not in the trash, as stored (for "Download your records").
+         */
+        TraceExport: {
+            /** Spans */
+            spans: components["schemas"]["TraceSpanRecord"][];
+            /** Calls */
+            calls: components["schemas"]["LLMCallRecord"][];
+        };
+        /**
+         * TraceRun
+         * @description One reading of a letter, summed up (its root span and its model calls).
+         */
+        TraceRun: {
+            /** Trace Id */
+            trace_id: string;
+            /**
+             * Reading
+             * @default 1
+             */
+            reading: number;
+            /** Job Id */
+            job_id: string | null;
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at: string;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /**
+             * Ended
+             * @default done
+             * @enum {string}
+             */
+            ended: "done" | "failed" | "paused" | "stopped";
+            /** Error */
+            error: string | null;
+            /**
+             * Trigger
+             * @default read
+             * @enum {string}
+             */
+            trigger: "read" | "read_again";
+            /**
+             * Timing
+             * @default measured
+             * @enum {string}
+             */
+            timing: "measured" | "recorded";
+            /** Result */
+            result: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
+            /**
+             * Model Calls
+             * @default 0
+             */
+            model_calls: number;
+            /**
+             * Cache Hits
+             * @default 0
+             */
+            cache_hits: number;
+            /**
+             * Repairs
+             * @default 0
+             */
+            repairs: number;
+            /**
+             * Input Tokens
+             * @default 0
+             */
+            input_tokens: number;
+            /**
+             * Output Tokens
+             * @default 0
+             */
+            output_tokens: number;
+            /**
+             * Cache Read Tokens
+             * @default 0
+             */
+            cache_read_tokens: number;
+            /**
+             * Cache Creation Tokens
+             * @default 0
+             */
+            cache_creation_tokens: number;
+            /**
+             * Cost Usd
+             * @default 0
+             */
+            cost_usd: number;
+            /**
+             * Model Ms
+             * @default 0
+             */
+            model_ms: number;
+        };
+        /**
+         * TraceSpan
+         * @description A step of a reading as the "How it was read" view shows it (display order, depth-first).
+         */
+        TraceSpan: {
+            /** Id */
+            id: string;
+            /** Parent Id */
+            parent_id: string | null;
+            /**
+             * Depth
+             * @default 0
+             */
+            depth: number;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string | null;
+            /**
+             * Start Ms
+             * @default 0
+             */
+            start_ms: number;
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /** Error */
+            error: string | null;
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+            call: components["schemas"]["LLMCallRecord"] | null;
+            ref: components["schemas"]["RefLink"] | null;
+            /** Label */
+            label: string | null;
+        };
+        /**
+         * TraceSpanRecord
+         * @description One stored step of one reading of a letter (``trace_spans``).
+         *
+         *     ``key`` names the step within its reading (``run/verify:quotes/verify:item:<slot>``) and is the
+         *     same in every reading of the letter, so two readings can be compared step by step. ``attributes``
+         *     hold only what code computed or decided and the ids of the records a step used or produced —
+         *     never letter text (the written policy is :mod:`ordnung.trace.facts`).
+         */
+        TraceSpanRecord: {
+            /** Id */
+            id: string;
+            /** Trace Id */
+            trace_id: string;
+            /** Doc Id */
+            doc_id: string;
+            /** Job Id */
+            job_id: string | null;
+            /** Parent Id */
+            parent_id: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Seq
+             * @default 0
+             */
+            seq: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "run" | "model" | "ocr" | "verify" | "rules" | "link" | "plan";
+            /** Name */
+            name: string;
+            /** Stage */
+            stage: string | null;
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at: string;
+            /**
+             * Status
+             * @default ok
+             * @enum {string}
+             */
+            status: "ok" | "error";
+            /** Error */
+            error: string | null;
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * TrackingInfo
+         * @description A letter's tracking number as Ordnung read it (``drafts.proof.parse_tracking_number``).
+         */
+        TrackingInfo: {
+            /** Number */
+            number: string;
+            /** Display */
+            display: string;
+            /**
+             * Format
+             * @enum {string}
+             */
+            format: "s10" | "online_stamp" | "domestic" | "unknown";
+            /** Checked */
+            checked: boolean;
+            /** Note */
+            note: string | null;
+        };
+        /**
+         * TrackingUpdate
+         * @description A sent letter's tracking number (``null`` or empty removes it).
+         */
+        TrackingUpdate: {
+            /** Tracking Number */
+            tracking_number?: string | null;
+        };
+        /**
+         * TransferValues
+         * @description The transfer details a GiroCode carries — what the person compares with the paper letter.
+         */
+        TransferValues: {
+            /** Payee */
+            payee: string | null;
+            /** Iban */
+            iban: string | null;
+            /** Reference */
+            reference: string | null;
+            /** Amount */
+            amount: number | null;
+        };
+        /**
          * UploadError
          * @description A file that was not accepted, with the reason written for the person.
          */
@@ -2998,7 +5418,10 @@ export interface components {
             /** Errors */
             errors: components["schemas"]["UploadError"][];
         };
-        /** UsageStats */
+        /**
+         * UsageStats
+         * @description Model use in total and per purpose; ``input_tokens`` counts every prompt token, cached ones too.
+         */
         UsageStats: {
             /**
              * Calls
@@ -3044,6 +5467,195 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /**
+         * WaitingEntry
+         * @description Something the person is owed — a reply, money or a callback (``secretary.waiting``), worked out on
+         *     read. ``answered``: a letter linked to it arrived (``answered_by``); nothing is closed for the person,
+         *     closing the follow-up to-do (``followup_item_id``) or marking the money received is their click.
+         */
+        WaitingEntry: {
+            /** Id */
+            id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "letter" | "money" | "call";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "waiting" | "overdue" | "answered" | "closed";
+            /** Title */
+            title: string;
+            /** About */
+            about: string;
+            /** Note */
+            note: string;
+            /** Since */
+            since: string | null;
+            /** Expected By */
+            expected_by: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /**
+             * Area
+             * @default other
+             * @enum {string}
+             */
+            area: "home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other";
+            ref: components["schemas"]["RefLink"];
+            answered_by: components["schemas"]["RefLink"] | null;
+            /** Answered On */
+            answered_on: string | null;
+            /** Followup Item Id */
+            followup_item_id: string | null;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+        };
+        /**
+         * WeekEntry
+         * @description One row of a weekly-session step: a letter, a to-do, a contract decision or a letter you wrote.
+         */
+        WeekEntry: {
+            /** Key */
+            key: string;
+            ref: components["schemas"]["RefLink"];
+            /** Title */
+            title: string;
+            /**
+             * Kind
+             * @description The item's, letter's or draft's kind, or “contract” (or “call”, a promise)
+             */
+            kind: string;
+            /** Date */
+            date: string | null;
+            /** Date Role */
+            date_role: ("added" | "due" | "by" | "on" | "expires" | "send_by" | "transfer_by" | "pay_by" | "act_today" | "at_appointment" | "collected" | "expected" | "decide_by" | "sent" | "reply_by" | "promised_by" | "done") | null;
+            /**
+             * Due Date
+             * @description The due date, when the row's date is an earlier day to act (send by, act today)
+             */
+            due_date: string | null;
+            /** Amount */
+            amount: number | null;
+            /** Currency */
+            currency: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Party Name */
+            party_name: string | null;
+            /** Doc Id */
+            doc_id: string | null;
+            /** Status */
+            status: string | null;
+            /**
+             * Note
+             * @description One line written by code
+             */
+            note: string | null;
+            /**
+             * Tone
+             * @default neutral
+             * @enum {string}
+             */
+            tone: "neutral" | "warn" | "danger" | "ok";
+            /**
+             * Overdue
+             * @description Counted in the session's overdue (never on Compare with the letter)
+             * @default false
+             */
+            overdue: boolean;
+            /** @description The to-do itself (Pay and Confirm need it) */
+            item: components["schemas"]["Item"] | null;
+        };
+        /**
+         * WeekStep
+         * @description One step of the weekly session.
+         */
+        WeekStep: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "now" | "new" | "check" | "pay" | "post" | "waiting" | "decide" | "file";
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Entries */
+            entries: components["schemas"]["WeekEntry"][];
+            /**
+             * More
+             * @description Rows left out to keep the step short
+             * @default 0
+             */
+            more: number;
+            /**
+             * Total
+             * @description Euros (the pay step)
+             */
+            total: number | null;
+            /** Total Other Currencies */
+            total_other_currencies: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * WeeklySession
+         * @description The guided weekly review: seven steps (and *Act now* first when something is overdue or due
+         *     today), how it ends and whether Today should suggest it.
+         */
+        WeeklySession: {
+            /** Today */
+            today: string;
+            /**
+             * Since
+             * @description New since this day (the last session, else a week ago)
+             */
+            since: string;
+            /** Last Session */
+            last_session: string | null;
+            /**
+             * Due
+             * @description Today shows its one gentle prompt
+             */
+            due: boolean;
+            /**
+             * Next Prompt
+             * @description The day Today suggests the session next (none while it is due)
+             */
+            next_prompt: string | null;
+            /**
+             * Minutes
+             * @default 10
+             */
+            minutes: number;
+            /** Steps */
+            steps: components["schemas"]["WeekStep"][];
+            /**
+             * Overdue
+             * @description Deadlines, payments and tasks past their due date: never “All clear”
+             * @default 0
+             */
+            overdue: number;
+            /** @description The earliest day to act from today on: “All clear until …” */
+            next_deadline: components["schemas"]["WeekEntry"] | null;
+            /**
+             * Due Today
+             * @description How many days to act from today on are today (the ending counts them)
+             * @default 0
+             */
+            due_today: number;
         };
         /**
          * BriefUpdatedEvent
@@ -3112,7 +5724,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "queued" | "processing" | "processed" | "needs_review" | "failed";
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
         };
         /**
          * DocumentUpdatedEvent
@@ -3133,7 +5745,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "cancellation" | "objection" | "general_reply";
+            kind: "cancellation" | "objection" | "general_reply" | "withdrawal" | "extension_request" | "payment_plan" | "defect_notice" | "data_access" | "receipts_inspection" | "deposit_return" | "address_change";
         };
         /**
          * DraftSentEvent
@@ -3150,6 +5762,27 @@ export interface components {
          * @description An event without data (``llm.resumed``, ``profile.updated``).
          */
         EmptyEvent: Record<string, never>;
+        /**
+         * FolderUpdatedEvent
+         * @description ``folder.updated``: the watched folder started, stopped, hit a problem or brought in a file.
+         */
+        FolderUpdatedEvent: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "off" | "watching" | "problem";
+            /**
+             * Doc Id
+             * @default null
+             */
+            doc_id?: string | null;
+            /**
+             * Held
+             * @default null
+             */
+            held?: boolean | null;
+        };
         /**
          * ItemUpdatedEvent
          * @description ``item.updated``: to-dos changed (``item_id`` when it was one).
@@ -3248,6 +5881,7 @@ export interface components {
             "draft.created": components["schemas"]["DraftCreatedEvent"];
             "draft.sent": components["schemas"]["DraftSentEvent"];
             "demo.mail": components["schemas"]["DemoMailEvent"];
+            "folder.updated": components["schemas"]["FolderUpdatedEvent"];
         };
         /**
          * SuggestionsUpdatedEvent
@@ -3553,7 +6187,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataDeleted"];
                 };
             };
-            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over). */
+            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3626,10 +6260,10 @@ export interface operations {
         parameters: {
             query?: {
                 q?: string | null;
-                kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other") | null;
+                kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
                 party_id?: string | null;
                 case_id?: string | null;
-                status?: ("queued" | "processing" | "processed" | "needs_review" | "failed") | null;
+                status?: ("queued" | "processing" | "processed" | "needs_review" | "failed" | "held") | null;
                 direction?: ("incoming" | "outgoing" | "note") | null;
                 private?: boolean | null;
                 limit?: number | null;
@@ -3913,6 +6547,222 @@ export interface operations {
             };
         };
     };
+    folder_status_api_folder_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderStatus"];
+                };
+            };
+        };
+    };
+    read_held_api_documents_held_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    keep_held_private_route_api_documents_held_keep_private_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wait_again_api_documents_held_wait_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeldRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeldResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trace_api_documents__doc_id__trace_get: {
+        parameters: {
+            query?: {
+                /** @description A reading's trace id */
+                run?: string | null;
+            };
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_trace_api_documents__doc_id__trace_compare_get: {
+        parameters: {
+            query?: {
+                /** @description A reading's trace id */
+                base?: string | null;
+                /** @description A reading's trace id */
+                head?: string | null;
+            };
+            header?: never;
+            path: {
+                doc_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceComparison"];
+                };
+            };
+            /** @description No such letter or reading, or only one reading is kept. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_traces_api_traces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceExport"];
+                };
+            };
+        };
+    };
     list_items_api_items_get: {
         parameters: {
             query?: {
@@ -3940,7 +6790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Item"][];
+                    "application/json": components["schemas"]["ListedItem"][];
                 };
             };
             /** @description Validation Error */
@@ -4130,6 +6980,55 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Item"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_girocode_api_items__item_id__girocode_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GiroCodeConfirm"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"];
+                };
+            };
+            /** @description Unknown to-do. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Nothing to compare: the details changed since they were shown, the payment has a code already, or it has no code for another reason (the reason is the detail). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4379,6 +7278,86 @@ export interface operations {
             };
         };
     };
+    my_numbers_api_numbers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyNumbers"];
+                };
+            };
+        };
+    };
+    weekly_session_api_week_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
+                };
+            };
+        };
+    };
+    week_done_api_week_done_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
+                };
+            };
+        };
+    };
+    week_dismiss_api_week_dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklySession"];
+                };
+            };
+        };
+    };
     list_suggestions_api_suggestions_get: {
         parameters: {
             query?: {
@@ -4488,7 +7467,9 @@ export interface operations {
     };
     regenerate_brief_api_brief_post: {
         parameters: {
-            query?: never;
+            query?: {
+                llm?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4502,6 +7483,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Brief"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4556,7 +7546,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChatMessage"][];
+                    "application/json": components["schemas"]["ThreadMessage"][];
                 };
             };
             /** @description Validation Error */
@@ -4656,7 +7646,9 @@ export interface operations {
     };
     delete_draft_api_drafts__draft_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                keep_proof_files?: boolean;
+            };
             header?: never;
             path: {
                 draft_id: string;
@@ -4706,6 +7698,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Draft"];
                 };
+            };
+            /** @description A sent letter's text can't be changed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4785,6 +7784,35 @@ export interface operations {
             };
         };
     };
+    draft_preview_api_drafts__draft_id__preview_png_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     draft_sent_api_drafts__draft_id__sent_post: {
         parameters: {
             query?: never;
@@ -4807,6 +7835,419 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Draft"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_proof_api_drafts__draft_id__proof_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_tracking_api_drafts__draft_id__tracking_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackingUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_proof_api_drafts__draft_id__proofs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_proof_api_drafts__draft_id__proofs_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_proof_api_drafts__draft_id__proofs__proof_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                proof_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_proof_api_drafts__draft_id__proofs__proof_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+                proof_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProofPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_answered_api_drafts__draft_id__answered_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnsweredRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unmark_answered_api_drafts__draft_id__answered_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProofOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    nachweis_pdf_api_drafts__draft_id__proof_pdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_waiting_api_waiting_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaitingEntry"][];
+                };
+            };
+        };
+    };
+    list_calls_api_calls_get: {
+        parameters: {
+            query?: {
+                party_id?: string | null;
+                case_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_call_api_calls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_call_api_calls__call_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_call_api_calls__call_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallNotePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallNote"];
                 };
             };
             /** @description Validation Error */
@@ -4857,6 +8298,337 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CalendarExportResult"];
                 };
+            };
+        };
+    };
+    calendar_sync_status_api_calendar_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+        };
+    };
+    calendar_sync_connect_api_calendar_sync_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_preview_api_calendar_sync_preview_get: {
+        parameters: {
+            query?: {
+                mode?: "discreet" | "full";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calendar_sync_discover_api_calendar_sync_discover_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncFind"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncFound"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_run_api_calendar_sync_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncStatus"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calendar_sync_disconnect_api_calendar_sync_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarSyncDisconnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarSyncDisconnected"];
+                };
+            };
+            /** @description Not connected, connected elsewhere, the demo, or no password store on this computer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address, user name or app password can't be used (``code`` says which) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The calendar server couldn't be reached or answered with an error */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    desktop_reminders_api_reminders_desktop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopReminders"];
+                };
+            };
+        };
+    };
+    desktop_test_api_reminders_desktop_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesktopTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesktopTestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_info_api_backup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupInfo"];
+                };
+            };
+        };
+    };
+    create_backup_api_backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupRequest"];
+            };
+        };
+        responses: {
+            /** @description The encrypted backup file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description The passphrase is too short or too long (the rule, never the value) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

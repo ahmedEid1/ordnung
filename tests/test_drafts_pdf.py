@@ -1,4 +1,5 @@
-"""DIN 5008 letter PDF: readable, marks drawn, address in the window, deterministic, no branding."""
+"""DIN 5008 letter PDF: readable, marks drawn, address in the window, deterministic, no branding —
+and its print preview (a PNG of every page)."""
 
 from __future__ import annotations
 
@@ -6,8 +7,9 @@ import io
 from typing import Any
 
 import pdfplumber
+from PIL import Image
 
-from ordnung.drafts.pdf import render
+from ordnung.drafts.pdf import PREVIEW_GAP, PREVIEW_WIDTH, render, render_preview
 from ordnung.models import Draft, Profile
 
 MM = 72 / 25.4
@@ -103,3 +105,19 @@ def test_english_letter_and_missing_profile_name() -> None:
         text = pdf.pages[0].extract_text()
     assert "Yours faithfully" in text and "Enclosures" in text
     assert "Telefon" not in text
+
+
+def test_preview_is_every_page_as_one_png() -> None:
+    """The web app's print preview: an image (phones show no PDF inline), page under page."""
+    with Image.open(io.BytesIO(render_preview(_draft(), PROFILE))) as one:
+        assert one.format == "PNG" and one.width == PREVIEW_WIDTH
+        assert abs(one.height / one.width - 297 / 210) < 0.01  # one A4 page
+        assert one.convert("RGBA").getpixel((one.width // 2, 8)) == (255, 255, 255, 255)
+
+    paragraph = "Dies ist ein längerer Absatz, der zeigt, wie ein mehrseitiger Brief umbricht. " * 3
+    long = render_preview(_draft(body=BODY + ("\n\n" + paragraph) * 12), PROFILE)
+    with Image.open(io.BytesIO(long)) as two:
+        page = round(PREVIEW_WIDTH * 297 / 210)
+        assert abs(two.height - (2 * page + PREVIEW_GAP)) <= 2
+        # the gap between the pages is transparent: the preview's frame shows through
+        assert two.convert("RGBA").getpixel((two.width // 2, page + PREVIEW_GAP // 2))[3] == 0

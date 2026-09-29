@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMatches } from "react-router";
+import type { PageWidth } from "./layout";
 
 export interface PageMeta {
   /** Title shown in the top bar and the browser tab. */
   title: string;
-  /** Optional parent for a breadcrumb ("Inbox › Utility statement"). */
+  /** Optional parent for a breadcrumb ("Inbox › Utility statement") and the phone back button. */
   parent?: { to: string; label: string };
+  /** The page's content width, so the top bar can line up with it. */
+  width?: PageWidth;
 }
 
 interface PageMetaApi {
@@ -41,15 +44,15 @@ export function usePageMeta(): PageMeta {
  *
  * @example usePageTitle(doc?.title ?? "Letter", { to: "/inbox", label: "Inbox" })
  */
-export function usePageTitle(title: string | null | undefined, parent?: { to: string; label: string }): void {
+export function usePageTitle(title: string | null | undefined, parent?: { to: string; label: string }, width?: PageWidth): void {
   const { setMeta } = useContext(Ctx);
   const parentTo = parent?.to;
   const parentLabel = parent?.label;
   useEffect(() => {
     if (!title) return;
-    setMeta({ title, parent: parentTo && parentLabel ? { to: parentTo, label: parentLabel } : undefined });
+    setMeta({ title, parent: parentTo && parentLabel ? { to: parentTo, label: parentLabel } : undefined, width });
     return () => setMeta(null);
-  }, [title, parentTo, parentLabel, setMeta]);
+  }, [title, parentTo, parentLabel, width, setMeta]);
 }
 
 /** Keeps `document.title` in sync with the page meta. */

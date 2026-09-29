@@ -89,6 +89,7 @@ function contract(p: Partial<Contract> & Pick<Contract, "id" | "name">): Contrac
     area: "home",
     cancellable: true,
     cancel_hint: null,
+    cancellation_sent: null,
     created_at: "2026-01-01T10:00:00Z",
     updated_at: "2026-01-01T10:00:00Z",
     ...p,
@@ -219,9 +220,18 @@ describe("contract decisions", () => {
     expect(a.draftKind).toBe("cancellation");
   });
 
+  it("asks to check a contract's uncertain dates — not a notice period the person entered (R2-inbox-timeline-contracts-1)", () => {
+    const low = { ...phone, computed: { ...phone.computed!, regime: "as_written" as const, confidence: "low" as const } };
+    expect(actionFromContract(low, ctx)!.needsCheck).toBe(true);
+    const entered = { doc_id: "doc_phone", page: null, quote: "one month's notice to the end of a month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
+    expect(actionFromContract({ ...low, evidence: [entered] }, ctx)!.needsCheck).toBe(false);
+  });
+
   it("ignores inactive contracts and passed decision dates", () => {
     expect(actionFromContract({ ...phone, status: "cancelled" }, ctx)).toBeNull();
     expect(actionFromContract({ ...phone, cancellable: false, cancel_hint: "Required by law." }, ctx)).toBeNull();
+    // its cancellation was marked as sent: nothing left to decide (walkthrough of phase 2)
+    expect(actionFromContract({ ...phone, cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } }, ctx)).toBeNull();
     expect(actionFromContract(phone, { today: "2026-10-20" })).toBeNull();
   });
 
@@ -301,8 +311,9 @@ describe("Coming up · grouped by week", () => {
       ],
       TODAY,
     );
-    expect(groups.map((g) => g.label)).toEqual(["Overdue", "This week", "Next week", "Week of 12 Oct"]);
-    expect(groups[1]!.range).toBe("28 Sep – 4 Oct");
+    // later weeks are named by their days, not "Week of 12 Oct 12 – 18 Oct"
+    expect(groups.map((g) => g.label)).toEqual(["Overdue", "This week", "Next week", "12 – 18 Oct"]);
+    expect(groups.map((g) => g.range)).toEqual(["", "28 Sep – 4 Oct", "5 – 11 Oct", ""]);
     expect(groups[1]!.totals).toEqual({ EUR: 94.99 });
     expect(groups[2]!.totals).toEqual({ EUR: 640 });
     expect(groups.flatMap((g) => g.entries).some((e) => e.date === "2026-11-30")).toBe(false);
@@ -371,6 +382,12 @@ describe("words", () => {
     );
     expect(agendaSentence([], [], TODAY)).toMatch(/^Nothing needs you right now/);
   });
+
+  it("never says 'nothing needs you' while letters from the folder wait unread", () => {
+    expect(agendaSentence([], [], TODAY, 2)).toBe("Nothing due from the letters that were read. 2 letters from your folder aren't read yet.");
+    const tm = actionFromItem(item({ kind: "payment", title: "Pay TechMarkt reminder", due_date: "2026-09-30", amount: 94.99 }), ctx)!;
+    expect(agendaSentence([tm], [], TODAY, 1)).toMatch(/by Wednesday\. One letter from your folder isn't read yet\.$/);
+  });
 });
 
 describe("Ideas that came with new mail", () => {
@@ -401,5 +418,23 @@ describe("money to pay", () => {
     // a direct debit is "collected", not "sent"
     expect(actions[1]!.dateRole).toBe("collected");
     expect(actions[0]!.dateRole).toBe("pay_by");
+  });
+
+  it("files a debit that failed under Pay, by its transfer date — the person pays it now", () => {
+    const returned = actionFromItem(
+      item({
+        id: "returned",
+        kind: "payment",
+        title: "Rundfunkbeitrag nachzahlen – konnte nicht eingezogen werden",
+        action: "Pay 49.99 € by 01.10.2026",
+        due_date: "2026-10-01",
+        send_by: "2026-09-29",
+        amount: 49.99,
+        direction: "out",
+      }),
+      { today: "2026-09-28" },
+    )!;
+    expect(returned.dateRole).toBe("transfer_by");
+    expect(returned.actionDate).toBe("2026-09-29");
   });
 });

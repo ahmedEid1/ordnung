@@ -2,7 +2,7 @@
  * Inbox list logic (pure, unit-tested): filters, month grouping, open to-dos per letter.
  */
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { Document, DocumentKind, Item } from "@/api/types";
+import type { Document, DocumentKind, Item, ListedItem } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import { daysUntil } from "@/lib/format";
 
@@ -16,6 +16,11 @@ export function parseFilter(v: string | null): InboxFilter {
 /** Letters that need the person: "Please check" (or reading failed). */
 export const needsYou = (d: Document) => d.status === "needs_review" || d.status === "failed";
 export const isReading = (d: Document) => d.status === "queued" || d.status === "processing";
+/**
+ * From the watched folder (or attached to an e-mail from it) and not read yet: these wait for the
+ * person's "Read these" in their own group above the list, and are in no other group or filter.
+ */
+export const isHeld = (d: Document) => d.status === "held" && !d.deleted_at;
 
 export function matchesFilter(d: Document, filter: InboxFilter): boolean {
   if (filter === "check") return needsYou(d);
@@ -24,11 +29,11 @@ export function matchesFilter(d: Document, filter: InboxFilter): boolean {
 }
 
 export function filterDocuments(docs: Document[], opts: { filter: InboxFilter; kind?: DocumentKind | null }): Document[] {
-  return docs.filter((d) => !d.deleted_at && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
+  return docs.filter((d) => !d.deleted_at && !isHeld(d) && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
 }
 
 export function filterCounts(docs: Document[]): Record<InboxFilter, number> {
-  const live = docs.filter((d) => !d.deleted_at);
+  const live = docs.filter((d) => !d.deleted_at && !isHeld(d));
   return {
     all: live.length,
     check: live.filter(needsYou).length,
@@ -50,10 +55,52 @@ export function inboxDate(d: Document): string {
   return d.received_date ?? d.created_at.slice(0, 10);
 }
 
+/**
+ * The date a row shows — the one its month group is built from ({@link inboxDate}) — and what it
+ * is: "Arrived" (the letter's arrival date; "Delivered" for a letter served formally) or "Added" (no arrival
+ * date: when it was added). The letter's own date goes along when it differs ("dated 31 Aug"). `served`: an
+ * open to-do of the letter counts from formal service ({@link OpenSummary.served}) — as its page says (review
+ * round 3 of phase 2: a court letter filed as another kind read "delivered" there and "Arrived" here); a court
+ * order is served whatever its to-dos.
+ */
+export function inboxDateInfo(
+  d: Document,
+  served = false,
+): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
+  const date = inboxDate(d);
+  // a court order's day is the one on the yellow envelope: "delivered", as everywhere (review round 2)
+  const arrived = served || d.kind === "court_payment_order" || d.kind === "enforcement_order" ? "Delivered" : "Arrived";
+  return { date, verb: d.received_date ? arrived : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
+}
+
 export interface LetterGroup {
   key: string;
   label: string;
   docs: Document[];
+}
+
+export const JUST_READ_LABEL = "Just read";
+
+/**
+ * Letters read from the demo's New mail go on top ("Just read", after the letters being read):
+ * they arrived today in the story, but their arrival date (from the letter) would file them
+ * somewhere down the list. Groups left empty disappear; order within groups is kept.
+ */
+export function pinJustRead(groups: LetterGroup[], ids: ReadonlySet<string>): LetterGroup[] {
+  if (!ids.size) return groups;
+  const pinned: Document[] = [];
+  const rest: LetterGroup[] = [];
+  for (const g of groups) {
+    if (g.key === "reading") {
+      rest.push(g);
+      continue;
+    }
+    const docs = g.docs.filter((d) => (ids.has(d.id) ? (pinned.push(d), false) : true));
+    if (docs.length) rest.push(docs.length === g.docs.length ? g : { ...g, docs });
+  }
+  if (!pinned.length) return groups;
+  const at = rest[0]?.key === "reading" ? 1 : 0;
+  return [...rest.slice(0, at), { key: "just-read", label: JUST_READ_LABEL, docs: pinned }, ...rest.slice(at)];
 }
 
 /**
@@ -102,6 +149,8 @@ export interface OpenSummary {
   count: number;
   /** earliest open dated item (send-by first) */
   next: Item | null;
+  /** an open to-do counts from formal service (the rules engine's `zpo_180`): the letter was delivered */
+  served?: boolean;
 }
 
 /** Items further back than this are history, not something overdue to act on. */
@@ -120,17 +169,25 @@ export function isNextCandidate(i: Item, today?: string): boolean {
   return daysUntil(d, today) >= -HISTORY_DAYS;
 }
 
-/** Open to-dos per letter, with the next one to act on (see {@link isNextCandidate}). */
-export function openItemsByDoc(items: Item[], today?: string): Map<string, OpenSummary> {
+/**
+ * Open to-dos per letter, with the next one to act on (see {@link isNextCandidate}). A to-do the list
+ * sets aside (`aside`: a payment its reminder took over, a date that was history when the letter was
+ * read, a letter with scam signs — as on Today and the letter's page) is no to-do here: not counted,
+ * never the next step ("25 days overdue" for an invoice its reminder replaced).
+ */
+export function openItemsByDoc(items: readonly (Item & Partial<Pick<ListedItem, "aside">>)[], today?: string): Map<string, OpenSummary> {
   const out = new Map<string, OpenSummary>();
   for (const i of items) {
     if (!i.doc_id || (i.status !== "open" && i.status !== "missed")) continue;
     const s = out.get(i.doc_id) ?? { count: 0, next: null };
+    out.set(i.doc_id, s);
+    // how the letter came (formal service), whatever becomes of its to-dos
+    if (i.computation?.rule_ids.includes("zpo_180")) s.served = true;
+    if (i.aside) continue;
     s.count += 1;
     const d = i.send_by ?? i.due_date;
     const nd = s.next ? (s.next.send_by ?? s.next.due_date) : null;
     if (d && isNextCandidate(i, today) && (!nd || d < nd)) s.next = i;
-    out.set(i.doc_id, s);
   }
   return out;
 }

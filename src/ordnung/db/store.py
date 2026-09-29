@@ -29,7 +29,7 @@ import sqlite3
 import threading
 import types
 import unicodedata
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -41,12 +41,14 @@ from pydantic_core import to_jsonable_python
 
 from ordnung.clock import now_iso, real_now_iso
 from ordnung.config import Paths
-from ordnung.db.migrate import current_version, latest_version, migrate
+from ordnung.db.migrate import current_version, latest_version, migrate, pending
 from ordnung.ids import content_id, doc_id_for_sha, new_id
 from ordnung.llm.base import Usage
 from ordnung.models import (
+    PROOF_SOURCE,
     Activity,
     AppSettings,
+    CallNote,
     Case,
     ChatMessage,
     Contract,
@@ -63,9 +65,13 @@ from ordnung.models import (
     Page,
     Party,
     Profile,
+    Proof,
     PurposeUsage,
     SearchHit,
+    SentSigner,
+    SpanKind,
     Suggestion,
+    TraceSpanRecord,
     UsageStats,
 )
 
@@ -99,6 +105,8 @@ PRIVATE_FILE_MODE = 0o600
 _CACHE_TAG_SEP = "|"  # llm_cache.doc_sha of a call carrying several documents: "doc_a|doc_b"
 _PROFILE_KEY = "profile"
 _SETTINGS_KEY = "settings"
+#: The ``meta`` row that holds the app settings (JSON of :class:`~ordnung.models.AppSettings`).
+SETTINGS_META_KEY = _SETTINGS_KEY
 
 
 class NotFoundError(LookupError):
@@ -172,8 +180,8 @@ class _Table(Generic[M]):
         if unknown:
             raise ValueError(f"unknown or read-only {self.name} field(s): {', '.join(unknown)}")
 
-    def decode(self, row: sqlite3.Row) -> M:
-        """Row → model (JSON columns parsed, columns renamed to field names)."""
+    def decode(self, row: sqlite3.Row | Mapping[str, Any]) -> M:
+        """Row (or column → value mapping) → model (JSON columns parsed, columns renamed to fields)."""
         data: dict[str, Any] = {}
         for column in row.keys():  # noqa: SIM118 - sqlite3.Row is not iterable by key
             value = row[column]
@@ -214,15 +222,18 @@ _DOCUMENTS = _Table(
     extras={"file_path": None, "text": None, "extraction": DocumentExtraction},
 )
 _PAGES = _Table("pages", Page)
-_CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint"))
+_CONTRACTS = _Table("contracts", Contract, "ctr", on_read=("cancellable", "cancel_hint", "cancellation_sent"))
 _ITEMS = _Table("items", Item, "itm")
 _SUGGESTIONS = _Table("suggestions", Suggestion, "sug")
-_DRAFTS = _Table("drafts", Draft, "drf")
+_DRAFTS = _Table("drafts", Draft, "drf", extras={"sent_profile": SentSigner})
 _NOTES = _Table("notes", Note, "nte")
+_PROOFS = _Table("proofs", Proof, "prf")
+_CALL_NOTES = _Table("call_notes", CallNote, "cal")
 _CHAT = _Table("chat_messages", ChatMessage, "msg")
 _JOBS = _Table("jobs", Job, "job")
 _ACTIVITY = _Table("activity", Activity)
 _LLM_CALLS = _Table("llm_calls", LLMCallRecord)
+_TRACE_SPANS = _Table("trace_spans", TraceSpanRecord)
 
 _INDEXED_DOCUMENT_FIELDS = frozenset({"title", "filename", "summary", "explanation", "party_id"})
 _INDEXED_PARTY_FIELDS = frozenset({"name", "aliases"})
@@ -500,9 +511,10 @@ class Store:
                     path.chmod(PRIVATE_FILE_MODE)
 
     def _check_schema(self) -> int:
-        version = current_version(self._conn())
+        conn = self._conn()
+        version = current_version(conn)
         latest = latest_version()
-        if version != latest:
+        if version != latest or pending(conn):
             raise RuntimeError(
                 f"database schema is at version {version}, expected {latest}; open it writable first"
             )
@@ -645,6 +657,22 @@ class Store:
             conn.execute(f"RELEASE {name}")
         finally:
             state.depth -= 1
+
+    @contextmanager
+    def snapshot(self) -> Iterator[None]:
+        """Reads in the block see one state of the database: a read transaction (``BEGIN`` … end),
+        so a write another thread commits meanwhile is not half seen. Inside a :meth:`tx` or another
+        snapshot it joins that transaction. Only for reads: a :meth:`tx` inside it raises."""
+        conn = self._conn()
+        if conn.in_transaction:
+            yield
+            return
+        conn.execute("BEGIN")
+        try:
+            yield
+        finally:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
 
     def _after_commit(self, callback: Callable[[], None]) -> None:
         """Inside :meth:`tx`: run ``callback`` once the outermost transaction commits (never on rollback)."""
@@ -838,18 +866,25 @@ class Store:
         *,
         ai_private: bool | None = None,
         include_deleted: bool = False,
+        source: str | None = None,
+        exclude_source: str | None = None,
     ) -> list[Document]:
         """Documents, newest first by ``COALESCE(doc_date, created_at)``.
 
         ``q`` filters by the same full-text/substring matching as :meth:`search`. Trashed documents
-        are left out unless ``include_deleted``.
+        are left out unless ``include_deleted``. ``source`` keeps the documents of one source
+        (``upload``, ``folder``, ``email:<id>`` …); ``exclude_source`` leaves out one source (the
+        Inbox leaves out proof files).
         """
         where = _Where()
+        if exclude_source is not None:
+            where.add("source != ?", exclude_source)
         where.within("kind", kind)
         where.equals("party_id", party_id)
         where.equals("case_id", case_id)
         where.within("status", status)
         where.equals("direction", direction)
+        where.equals("source", source)
         if ai_private is not None:
             where.add("ai_private = ?", int(ai_private))
         if not include_deleted:
@@ -890,8 +925,9 @@ class Store:
         In one transaction: its items, pages, jobs and search rows (the indexes are then optimised so
         none of its terms stays in them), ``llm_cache`` rows of calls that carried it (alone or with
         other documents), the Ideas and activity entries about it or its items, its quotes in the
-        evidence of kept contracts, its id in the usage log, and the document row (contracts and
-        drafts keep existing, unlinked). Deleted rows are overwritten (``secure_delete``). After the
+        evidence of kept contracts, the traces of its readings, its id and its calls' replay keys,
+        spans and jobs in the usage log, and the document row (contracts and drafts keep existing,
+        unlinked). Deleted rows are overwritten (``secure_delete``). After the
         commit the WAL is truncated and, with ``purge_files``, the original file and
         ``derived/<id>/`` are removed. Files outside the data directory are never touched.
         """
@@ -937,7 +973,33 @@ class Store:
             "SELECT id, doc_ids FROM llm_calls WHERE doc_ids LIKE ?", (quoted,)
         ).fetchall():
             others = [value for value in json.loads(call["doc_ids"]) if value != doc_id]
-            conn.execute("UPDATE llm_calls SET doc_ids = ? WHERE id = ?", (json.dumps(others), call["id"]))
+            # the replay key hashes the letter's content and the span and job point at its trace:
+            # only the anonymous numbers stay (purpose, prompt, model, tokens, cost, outcome)
+            conn.execute(
+                "UPDATE llm_calls SET doc_ids = ?, request_key = NULL, span_id = NULL, job_id = NULL "
+                "WHERE id = ?",
+                (json.dumps(others), call["id"]),
+            )
+        conn.execute("DELETE FROM trace_spans WHERE doc_id = ?", (doc_id,))
+
+    def given_to_model(self, doc_id: str) -> bool:
+        """Whether a model call ever carried the document: a logged call (a failed one too — the
+        file may have reached the model before the call failed), a cached answer tagged with it,
+        or a page a model transcribed. Used before telling the person a file was never read."""
+        conn = self._conn()
+        row = conn.execute("SELECT sha256 FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        sha = row["sha256"] if row is not None else doc_id
+        called = conn.execute(
+            "SELECT 1 FROM llm_calls WHERE doc_ids LIKE ? LIMIT 1", (f'%"{doc_id}"%',)
+        ).fetchone()
+        cached = conn.execute(  # tagged as in delete_document: the id, the file's hash, or "doc_a|doc_b"
+            "SELECT 1 FROM llm_cache WHERE doc_sha IN (?, ?) OR instr(? || doc_sha || ?, ?) > 0 LIMIT 1",
+            (doc_id, sha, _CACHE_TAG_SEP, _CACHE_TAG_SEP, f"{_CACHE_TAG_SEP}{doc_id}{_CACHE_TAG_SEP}"),
+        ).fetchone()
+        transcribed = conn.execute(
+            "SELECT 1 FROM pages WHERE doc_id = ? AND text_source = 'transcript' LIMIT 1", (doc_id,)
+        ).fetchone()
+        return any(row is not None for row in (called, cached, transcribed))
 
     def _truncate_wal(self) -> None:
         """Checkpoint and empty the write-ahead log, so deleted pages don't linger in it."""
@@ -1162,7 +1224,7 @@ class Store:
     def merge_parties(self, keep_id: str, drop_id: str) -> Party:
         """Fold ``drop`` into ``keep`` and delete ``drop``.
 
-        Documents, cases, contracts, items and drafts are re-pointed; names become aliases;
+        Documents, cases, contracts, items, drafts and call notes are re-pointed; names become aliases;
         identifiers and IBANs are united; empty contact fields of ``keep`` are filled from ``drop``.
         """
         if keep_id == drop_id:
@@ -1171,7 +1233,7 @@ class Store:
             keep = self._require(_PARTIES, keep_id)
             drop = self._require(_PARTIES, drop_id)
             now = now_iso()
-            for table in ("documents", "cases", "contracts", "items", "drafts"):
+            for table in ("documents", "cases", "contracts", "items", "drafts", "call_notes"):
                 conn.execute(
                     f"UPDATE {table} SET party_id = ?, updated_at = ? WHERE party_id = ?",
                     (keep_id, now, drop_id),
@@ -1201,6 +1263,11 @@ class Store:
     def update_case(self, id: str, **fields: Any) -> Case:
         """Update case fields; returns the updated model."""
         return self._update(_CASES, id, fields)
+
+    def delete_case(self, id: str) -> bool:
+        """Delete a case (thread); ``False`` if it did not exist. Letters, to-dos, contracts and drafts
+        still in it stay, unthreaded (``ON DELETE SET NULL``)."""
+        return self._delete(_CASES, id)
 
     def list_cases(self, party_id: str | None = None) -> list[Case]:
         """Cases (threads), most recently updated first."""
@@ -1483,6 +1550,13 @@ class Store:
         """Delete a draft; ``False`` if it did not exist."""
         return self._delete(_DRAFTS, id)
 
+    def get_sent_signer(self, draft_id: str) -> SentSigner | None:
+        """What the letter's PDF showed of the sender when it was marked as sent (``None``: not kept)."""
+        row = self._conn().execute("SELECT sent_profile FROM drafts WHERE id = ?", (draft_id,)).fetchone()
+        if row is None or row["sent_profile"] is None:
+            return None
+        return SentSigner.model_validate_json(row["sent_profile"])
+
     def add_note(self, text: str, item_ids: Sequence[str] = (), *, id: str | None = None) -> Note:
         """Insert a note, optionally attached to items."""
         return self._insert(_NOTES, {"id": id, "text": text, "item_ids": list(item_ids)})
@@ -1493,6 +1567,60 @@ class Store:
         if item_id is not None:
             where.add("EXISTS (SELECT 1 FROM json_each(notes.item_ids) WHERE value = ?)", item_id)
         return self._many(_NOTES, f"{where.sql()} ORDER BY created_at DESC, rowid DESC", where.params)
+
+    # ---------------------------------------------------------------------------------------------
+    # proofs of sent letters / call notes
+    # ---------------------------------------------------------------------------------------------
+
+    def add_proof(self, **fields: Any) -> Proof:
+        """Insert a proof of a sent letter (``draft_id``, ``kind``, optional ``doc_id``/``on_date``/``note``)."""
+        return self._insert(_PROOFS, fields)
+
+    def get_proof(self, id: str) -> Proof | None:
+        """A proof by id."""
+        return self._one(_PROOFS, "id = ?", (id,))
+
+    def update_proof(self, id: str, **fields: Any) -> Proof:
+        """Update a proof's kind, day or note."""
+        return self._update(_PROOFS, id, fields)
+
+    def delete_proof(self, id: str) -> bool:
+        """Delete a proof row (its file stays; the caller decides about it)."""
+        return self._delete(_PROOFS, id)
+
+    def list_proofs(self, draft_id: str | None = None, *, doc_id: str | None = None) -> list[Proof]:
+        """Proofs, oldest first (optionally of one letter, or using one file). A proof whose file is in
+        the trash is left out until the file is restored."""
+        where = _Where()
+        where.equals("draft_id", draft_id)
+        where.equals("doc_id", doc_id)
+        where.add("(doc_id IS NULL OR doc_id NOT IN (SELECT id FROM documents WHERE deleted_at IS NOT NULL))")
+        return self._many(_PROOFS, f"{where.sql()} ORDER BY created_at, rowid", where.params)
+
+    def add_call_note(self, **fields: Any) -> CallNote:
+        """Insert a call note (``called_on`` and ``summary`` required)."""
+        return self._insert(_CALL_NOTES, fields)
+
+    def get_call_note(self, id: str) -> CallNote | None:
+        """A call note by id."""
+        return self._one(_CALL_NOTES, "id = ?", (id,))
+
+    def update_call_note(self, id: str, **fields: Any) -> CallNote:
+        """Update a call note (e.g. ``promise_kept_on``)."""
+        return self._update(_CALL_NOTES, id, fields)
+
+    def delete_call_note(self, id: str) -> bool:
+        """Delete a call note; ``False`` if it did not exist."""
+        return self._delete(_CALL_NOTES, id)
+
+    def list_call_notes(self, *, party_id: str | None = None, case_id: str | None = None) -> list[CallNote]:
+        """Call notes, newest call first (optionally of one party or thread)."""
+        where = _Where()
+        where.equals("party_id", party_id)
+        where.equals("case_id", case_id)
+        return self._many(
+            _CALL_NOTES, f"{where.sql()} ORDER BY called_on DESC, created_at DESC, rowid DESC", where.params
+        )
 
     def add_chat_message(
         self,
@@ -1651,9 +1779,25 @@ class Store:
             data=payload,
         )
 
-    def list_activity(self, limit: int = 50) -> list[Activity]:
-        """The newest activity entries first."""
-        return self._many(_ACTIVITY, "ORDER BY id DESC LIMIT ?", (limit,))
+    def list_activity(
+        self,
+        limit: int | None = 50,
+        *,
+        kinds: Sequence[str] | None = None,
+        data: Mapping[str, str] | None = None,
+    ) -> list[Activity]:
+        """The newest activity entries first (``limit`` ``None``: all); ``kinds`` keeps those kinds,
+        ``data`` the entries whose data has these values (``{"source": "folder"}``; keys are plain names)."""
+        where = _Where()
+        where.within("kind", None if kinds is None else list(kinds))
+        for key, value in (data or {}).items():
+            if not key.isidentifier():
+                raise ValueError(f"not a data key: {key!r}")
+            where.add(f"json_extract(data, '$.{key}') = ?", value)
+        paging, paging_params = _paging(limit)
+        return self._many(
+            _ACTIVITY, f"{where.sql()} ORDER BY id DESC{paging}", [*where.params, *paging_params]
+        )
 
     def last_activity(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> Activity | None:
         """The newest activity entry of one of ``kinds`` about a row (``None``: there is none)."""
@@ -1676,13 +1820,36 @@ class Store:
         doc_ids: list[str] | None = None,
         pages_sent: int = 0,
         bytes_sent: int = 0,
-    ) -> None:
-        """Record one model call (never the prompt or the response — only accounting data)."""
+        *,
+        request_key: str | None = None,
+        prompt_name: str | None = None,
+        prompt_version: str | None = None,
+        served_model: str | None = None,
+        job_id: str | None = None,
+        stage: str | None = None,
+        span_id: str | None = None,
+        repair_of: int | None = None,
+        outcome: str = "ok",
+    ) -> int:
+        """Record one model call and return its id (never the prompt or the response — accounting data,
+        the replay/cache key, the prompt's name and version, and where the call belongs).
+
+        A letter the call carried that was deleted while the call ran is treated as if it had been
+        deleted after the call (:meth:`delete_document`): its id, the replay key, span and job are
+        left out, and only the anonymous numbers are written.
+        """
         with self.tx() as conn:
-            conn.execute(
+            carried = list(doc_ids or [])
+            gone = self._gone_documents(conn, carried)
+            if gone:
+                carried = [doc_id for doc_id in carried if doc_id not in gone]
+                request_key = span_id = job_id = None
+            cursor = conn.execute(
                 "INSERT INTO llm_calls (ts, purpose, model, backend, duration_ms, input_tokens, "
                 "output_tokens, cache_read_tokens, cache_creation_tokens, cost_usd, ok, error, cache_hit, "
-                "doc_ids, pages_sent, bytes_sent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "doc_ids, pages_sent, bytes_sent, request_key, prompt_name, prompt_version, served_model, "
+                "job_id, stage, span_id, repair_of, outcome) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     now_iso(),
                     purpose,
@@ -1697,11 +1864,21 @@ class Store:
                     ok,
                     error,
                     cache_hit,
-                    _LLM_CALLS.encode("doc_ids", list(doc_ids or [])),
+                    _LLM_CALLS.encode("doc_ids", carried),
                     pages_sent,
                     bytes_sent,
+                    request_key,
+                    prompt_name,
+                    prompt_version,
+                    served_model,
+                    job_id,
+                    stage,
+                    span_id,
+                    repair_of,
+                    outcome,
                 ),
             )
+        return int(cursor.lastrowid or 0)
 
     def usage_stats(self, recent: int = 20) -> UsageStats:
         """Totals, per-purpose totals and the ``recent`` newest calls."""
@@ -1736,16 +1913,39 @@ class Store:
         return None if row is None else dict(json.loads(row["response"]))
 
     def cache_put(
-        self, key: str, purpose: str, model: str, response: dict[str, Any], doc_sha: str | None = None
-    ) -> None:
+        self,
+        key: str,
+        purpose: str,
+        model: str,
+        response: dict[str, Any],
+        doc_sha: str | None = None,
+        *,
+        doc_ids: Sequence[str] = (),
+    ) -> bool:
         """Store (or replace) a model response; ``doc_sha`` tags it for purging with its document
-        (``doc_a|doc_b`` for a call that carried several — deleting any one of them purges it)."""
+        (``doc_a|doc_b`` for a call that carried several — deleting any one of them purges it).
+        Nothing is stored when one of ``doc_ids`` (the letters the call carried) was deleted while
+        the call ran; returns whether it was stored."""
         with self.tx() as conn:
+            if self._gone_documents(conn, doc_ids):
+                return False
             conn.execute(
                 "INSERT OR REPLACE INTO llm_cache (key, purpose, model, response, doc_sha, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (key, purpose, model, json.dumps(response, ensure_ascii=False), doc_sha, now_iso()),
             )
+        return True
+
+    @staticmethod
+    def _gone_documents(conn: sqlite3.Connection, doc_ids: Sequence[str]) -> set[str]:
+        """The ids among ``doc_ids`` with no document (deleted — the trash still has its letters)."""
+        wanted = set(doc_ids)
+        if not wanted:
+            return set()
+        found = conn.execute(
+            f"SELECT id FROM documents WHERE id IN ({', '.join('?' * len(wanted))})", sorted(wanted)
+        ).fetchall()
+        return wanted - {row["id"] for row in found}
 
     def purge_cache_for(self, doc_sha: str) -> int:
         """Delete the cached responses tagged with ``doc_sha`` (alone or among others); returns how many."""
@@ -1755,6 +1955,128 @@ class Store:
                 "DELETE FROM llm_cache WHERE doc_sha = ? OR instr(? || doc_sha || ?, ?) > 0",
                 (doc_sha, sep, sep, f"{sep}{doc_sha}{sep}"),
             ).rowcount
+
+    # ---------------------------------------------------------------------------------------------
+    # traces: how a letter was read (ordnung.trace)
+    # ---------------------------------------------------------------------------------------------
+
+    def reserve_trace(self, root: TraceSpanRecord) -> None:
+        """Keep a reading's root span as ``running`` while it is read: its number is taken (see
+        :meth:`next_trace_reading`) but it is shown nowhere until :meth:`save_trace` replaces it."""
+        row = _TRACE_SPANS.row(root) | {"status": _RUNNING}
+        columns = list(row)
+        with self.tx() as conn:
+            conn.execute(
+                f"INSERT OR REPLACE INTO trace_spans ({', '.join(columns)}) "
+                f"VALUES ({', '.join('?' * len(columns))})",
+                [row[column] for column in columns],
+            )
+
+    def end_running_traces(self, *, ended: str, error: str) -> int:
+        """Mark every reading still ``running`` as ended (``error`` code, ``ended`` attribute) — at
+        startup, when no reading can be running; returns how many."""
+        with self.tx() as conn:
+            return conn.execute(
+                "UPDATE trace_spans SET status = 'error', error = ?, "
+                "attributes = json_set(attributes, '$.ended', ?) WHERE kind = 'run' AND status = ?",
+                (error, ended, _RUNNING),
+            ).rowcount
+
+    def save_trace(
+        self, spans: Sequence[TraceSpanRecord], *, keep: int, interrupted: Collection[str] = ()
+    ) -> int:
+        """Store the spans of one reading of one letter, then delete that letter's readings beyond
+        what is kept: the newest ``keep`` that ran to the end and, of the readings whose ``ended``
+        attribute is one of ``interrupted``, only the newest — while it is newer than the oldest
+        reading kept. Readings still running are never deleted. Returns how many readings were
+        deleted (their usage-log rows stay, with a span id that no longer resolves)."""
+        if not spans:
+            return 0
+        rows = [_TRACE_SPANS.row(span) for span in spans]
+        columns = list(rows[0])
+        sql = (
+            f"INSERT OR REPLACE INTO trace_spans ({', '.join(columns)}) "
+            f"VALUES ({', '.join('?' * len(columns))})"
+        )
+        with self.tx() as conn:
+            conn.executemany(sql, [[row[column] for column in columns] for row in rows])
+            readings = conn.execute(
+                "SELECT trace_id, json_extract(attributes, '$.ended') AS ended, "
+                f"CAST(json_extract(attributes, '$.reading') AS INTEGER) AS reading FROM trace_spans "
+                f"{_TRACE_RUNS_TAIL}",
+                (spans[0].doc_id,),
+            ).fetchall()
+            stale = [(trace_id,) for trace_id in _stale_readings(readings, keep, frozenset(interrupted))]
+            conn.executemany("DELETE FROM trace_spans WHERE trace_id = ?", stale)
+        return len(stale)
+
+    def trace_runs(self, doc_id: str) -> list[TraceSpanRecord]:
+        """The root spans of a letter's kept readings, newest first (not the ones still running)."""
+        return self._many(_TRACE_SPANS, _TRACE_RUNS_TAIL, (doc_id,))
+
+    def trace_spans(self, trace_id: str) -> list[TraceSpanRecord]:
+        """Every span of one reading in display order."""
+        return self._many(
+            _TRACE_SPANS, "WHERE trace_id = ? AND status != ? ORDER BY seq", (trace_id, _RUNNING)
+        )
+
+    def trace_steps(self, doc_id: str, kind: SpanKind) -> list[TraceSpanRecord]:
+        """The steps of ``kind`` of every kept reading of a letter (by reading, in display order)."""
+        tail = "WHERE doc_id = ? AND kind = ? AND status != ? ORDER BY trace_id, seq"
+        return self._many(_TRACE_SPANS, tail, (doc_id, kind, _RUNNING))
+
+    def next_trace_reading(self, doc_id: str) -> int:
+        """The number of a letter's next reading: one more than the highest kept or running (1 for
+        the first). Call it in the transaction that reserves the number (:meth:`reserve_trace`)."""
+        row = (
+            self._conn()
+            .execute(
+                "SELECT MAX(CAST(json_extract(attributes, '$.reading') AS INTEGER)) FROM trace_spans "
+                "WHERE doc_id = ? AND kind = 'run'",
+                (doc_id,),
+            )
+            .fetchone()
+        )
+        return int(row[0] or 0) + 1
+
+    def count_trace_runs(self) -> int:
+        """How many readings are kept, of all letters (not the ones still running)."""
+        return int(
+            self._conn()
+            .execute("SELECT COUNT(*) FROM trace_spans WHERE kind = 'run' AND status != ?", (_RUNNING,))
+            .fetchone()[0]
+        )
+
+    def trace_calls(self, doc_id: str) -> dict[str, list[LLMCallRecord]]:
+        """The usage-log rows of the model steps of a letter's kept readings, by trace id.
+
+        One query joins each row to its step, so a reading stored meanwhile (its rows are logged
+        while it runs, its steps at its end) is either wholly in the result or not at all."""
+        rows = self._conn().execute(
+            f"SELECT s.trace_id AS owner, {_LLM_CALLS.columns('c')} FROM llm_calls c "
+            "JOIN trace_spans s ON s.id = c.span_id WHERE s.doc_id = ? AND s.kind = 'model' ORDER BY c.id",
+            (doc_id,),
+        )
+        calls: dict[str, list[LLMCallRecord]] = {}
+        for row in rows:
+            fields = {column: row[column] for column in row.keys() if column != "owner"}  # noqa: SIM118
+            calls.setdefault(row["owner"], []).append(_LLM_CALLS.decode(fields))
+        return calls
+
+    def export_traces(self) -> tuple[list[TraceSpanRecord], list[LLMCallRecord]]:
+        """Every kept span of the letters not in the trash, and the usage-log rows of their model steps."""
+        spans = self._many(
+            _TRACE_SPANS,
+            "WHERE doc_id IN (SELECT id FROM documents WHERE deleted_at IS NULL) "
+            "AND trace_id NOT IN (SELECT trace_id FROM trace_spans WHERE status = ?) ORDER BY doc_id, trace_id, seq",
+            (_RUNNING,),
+        )
+        calls = self._many(
+            _LLM_CALLS,
+            "WHERE span_id IN (SELECT s.id FROM trace_spans s JOIN documents d ON d.id = s.doc_id "
+            "WHERE d.deleted_at IS NULL) ORDER BY id",
+        )
+        return spans, calls
 
     # ---------------------------------------------------------------------------------------------
     # counts
@@ -1789,16 +2111,44 @@ ORDER BY rank LIMIT ?
 
 _USAGE_AGGREGATES = (
     "COUNT(*) AS calls, COALESCE(SUM(cache_hit), 0) AS cache_hits, "
-    "COALESCE(SUM(1 - ok), 0) AS errors, COALESCE(SUM(input_tokens), 0) AS input_tokens, "
+    "COALESCE(SUM(1 - ok), 0) AS errors, "
+    # every prompt token counts as "in", those read from or written to the prompt cache too — as a letter's
+    # "How it was read" counts them (walkthrough of phase 2: "2 in" beside the trace's "20k in")
+    "COALESCE(SUM(input_tokens + cache_read_tokens + cache_creation_tokens), 0) AS input_tokens, "
     "COALESCE(SUM(output_tokens), 0) AS output_tokens, COALESCE(SUM(cost_usd), 0.0) AS cost_usd"
 )
 
 _LIVE_DOCUMENT_ITEMS = "FROM items i LEFT JOIN documents d ON d.id = i.doc_id WHERE d.deleted_at IS NULL"
 
+#: The status of a reading's root span while the reading runs (never read into a ``TraceSpanRecord``).
+_RUNNING = "running"
+# a letter's kept readings, newest first: by the reading's number (its root span's ``reading``)
+_TRACE_RUNS_TAIL = (
+    f"WHERE doc_id = ? AND kind = 'run' AND status != '{_RUNNING}' "
+    "ORDER BY CAST(json_extract(attributes, '$.reading') AS INTEGER) DESC, started_at DESC, id"
+)
+
+
+def _stale_readings(readings: Sequence[sqlite3.Row], keep: int, interrupted: frozenset[str]) -> list[str]:
+    """The trace ids :meth:`Store.save_trace` deletes, of a letter's readings newest first."""
+    finished = [row for row in readings if row["ended"] not in interrupted]
+    stopped = [row for row in readings if row["ended"] in interrupted]
+    kept = {row["trace_id"] for row in finished[:keep]}
+    if stopped and (
+        len(finished) < keep or (stopped[0]["reading"] or 0) > (finished[keep - 1]["reading"] or 0)
+    ):
+        kept.add(stopped[0]["trace_id"])
+    return [row["trace_id"] for row in readings if row["trace_id"] not in kept]
+
+
 _COUNT_QUERIES = {
-    "documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL",
+    # letters only: a proof file belongs to its letter and is no letter of its own
+    "documents": f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND source != '{PROOF_SOURCE}'",
     "trashed_documents": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NOT NULL",
-    "needs_review": "SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review'",
+    "needs_review": (
+        f"SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND status = 'needs_review' "
+        f"AND source != '{PROOF_SOURCE}'"
+    ),
     "pages": "SELECT COUNT(*) FROM pages",
     "parties": "SELECT COUNT(*) FROM parties",
     "cases": "SELECT COUNT(*) FROM cases",

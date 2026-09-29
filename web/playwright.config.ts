@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { BASE_URL, DATA_DIR, ORDNUNG_BIN, PORT, STORAGE_STATE } from "./e2e/env";
+import { BASE_URL, DATA_DIR, ORDNUNG_BIN, OUTPUT_DIR, PORT, STORAGE_STATE } from "./e2e/env";
 
 /**
  * End-to-end tests against the real demo (FastAPI + the built UI from `npm run build`, recorded
@@ -11,6 +11,7 @@ import { BASE_URL, DATA_DIR, ORDNUNG_BIN, PORT, STORAGE_STATE } from "./e2e/env"
  */
 export default defineConfig({
   testDir: "./e2e",
+  outputDir: OUTPUT_DIR,
   // `e2e/*.ts` helpers import the app's own copy tables (`@/lib/copy`)
   tsconfig: "./tsconfig.node.json",
   timeout: 60_000,
@@ -32,10 +33,33 @@ export default defineConfig({
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : {},
   },
   // Same browser twice, only to fix the order: the guided tour runs first, on the untouched demo
-  // (before other tests open New-mail letters); then every page. One worker runs projects in order.
+  // (before other tests open New-mail letters); then every page, then the layout sweep (every page and key
+  // state at 320–1920 px in light and dark: e2e/layout-sweep.spec.ts), then the layout guards (with the
+  // feedback components: toasts, stepper, receipts — and the app shell), and last the high-stakes
+  // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
+  // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
+  // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
+  // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
+  // One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // it changes nothing and asks Ask a recorded question, on the demo as `pages` left it. It opens its own
+    // contexts, dozens per test: no traces or failure screenshots of them (it attaches the first failing view
+    // of each state itself)
+    {
+      name: "sweep",
+      testMatch: /layout-sweep\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, trace: "off", screenshot: "off" },
+    },
+    {
+      name: "layout",
+      testMatch: /(layout|feedback|shell)\.spec\.ts$/,
+      testIgnore: /girocode-layout\.spec\.ts$/,
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    { name: "girocode", testMatch: /girocode-layout\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
     command: `"${ORDNUNG_BIN}" demo --serve --no-browser --port ${PORT} --data-dir "${DATA_DIR}" --reset`,

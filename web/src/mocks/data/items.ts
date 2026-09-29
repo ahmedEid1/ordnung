@@ -1,6 +1,7 @@
 import type { Item } from "@/api/types";
 import { ts } from "./constants";
 import { ev, item, receipt, spec, step } from "./helpers";
+import { DISMISSAL_RULES, ORDER_RECEIPTS } from "./highStakes";
 import { Q } from "./letters";
 
 export const ITEMS: Item[] = [
@@ -9,7 +10,7 @@ export const ITEMS: Item[] = [
     kind: "payment",
     title: "Pay the parking fine",
     description: "Verwarnungsgeld OA-VW-2026-55012 (Bahnhofstraße 8, 17 Sep).",
-    action: "Transfer 30 € to the Stadtkasse with the reference OA-VW-2026-55012.",
+    action: "Transfer €30 to the Stadtkasse with the reference OA-VW-2026-55012.",
     consequence: "A formal fine procedure starts, with extra fees.",
     amount: 30,
     due_date: "2026-09-29",
@@ -18,7 +19,7 @@ export const ITEMS: Item[] = [
     party_id: "pty_ordnungsamt",
     case_id: "cas_parking",
     doc_id: "doc_parking",
-    evidence: [ev("doc_parking", Q.parking.pay)],
+    evidence: [ev("doc_parking", Q.parking.pay, "model_read")],
     date_spec: spec({ type: "relative", anchor: "receipt", amount: 1, unit: "weeks", nature: "payment", text: Q.parking.pay }),
     computation: receipt({
       due_date: "2026-09-29",
@@ -27,20 +28,64 @@ export const ITEMS: Item[] = [
       steps: [
         step("Letter dated", "2026-09-22"),
         step("Arrival date unknown — using the letter date instead (earliest possible)", "2026-09-22", "receipt_fallback"),
-        step("One week later", "2026-09-29", "bgb188_weeks", "§ 188 Abs. 2 BGB"),
+        step("One week later", "2026-09-29", "bgb_188", "§ 188 Abs. 2 BGB"),
       ],
-      rule_ids: ["receipt_fallback", "bgb188_weeks"],
+      rule_ids: ["receipt_fallback", "bgb_188"],
       warnings: ["Tell us when the letter arrived to get the exact date."],
       confidence: "low",
     }),
     created_at: ts("2026-09-24", "20:15"),
   }),
   item({
+    id: "itm_gym_price",
+    kind: "deadline",
+    title: "Object to FitWell's price increase",
+    description: "FitWell wants to raise the monthly fee from €29.90 to €32.90 from 1 Nov.",
+    action: "If you don't agree, tell FitWell in writing (an email is enough) — or cancel with one month's notice.",
+    consequence: "FitWell says it will charge €32.90 from 1 Nov unless you object.",
+    due_date: "2026-10-12",
+    send_by: "2026-10-06",
+    area: "leisure",
+    party_id: "pty_fitwell",
+    contract_id: "ctr_gym",
+    doc_id: "doc_gym_price",
+    evidence: [ev("doc_gym_price", Q.gymPrice.objection)],
+    // read as if it were an authority's letter; the engine counts a company's letter from its arrival
+    date_spec: spec({
+      type: "relative",
+      anchor: "deemed_delivery",
+      amount: 4,
+      unit: "weeks",
+      delivery_rule: "de_admin_post",
+      nature: "objection",
+      text: Q.gymPrice.objection,
+    }),
+    computation: receipt({
+      due_date: "2026-10-12",
+      send_by: "2026-10-06",
+      summary: "Four weeks after the letter's date (Mon 14 Sep 2026) is Mon 12 Oct 2026.",
+      steps: [
+        step("Not an authority's letter, so no delivery days: the period runs from the letter's date (Mon 14 Sep 2026)", "2026-09-14", "private_sender_arrival", "§ 130 Abs. 1 BGB"),
+        step("Counting starts the day after Mon 14 Sep 2026", "2026-09-14", "bgb_187_1", "§ 187 Abs. 1 BGB"),
+        step("Four weeks later: Mon 12 Oct 2026", "2026-10-12", "bgb_188", "§ 188 Abs. 2 BGB"),
+        step("Mon 12 Oct 2026 is a working day, so it stays", "2026-10-12", "bgb_193", "§ 193 BGB"),
+        step("Send by Tue 6 Oct 2026 to allow 4 business days for a letter to arrive", "2026-10-06", "postal_buffer"),
+      ],
+      rule_ids: ["private_sender_arrival", "bgb_187_1", "bgb_188", "bgb_193", "postal_buffer"],
+      warnings: [
+        "No delivery days were added: the rule that a letter counts as delivered a few days after posting is only for authorities' letters, and this sender is not an authority. The period runs from the day the letter arrived.",
+        "We assumed the letter arrived on the date printed on it — tell us when it actually arrived.",
+      ],
+      confidence: "low",
+    }),
+    created_at: ts("2026-09-15", "19:03"),
+  }),
+  item({
     id: "itm_tm_dunning",
     kind: "payment",
     title: "Pay TechMarkt reminder",
-    description: "Invoice RE-2026-084213 (USB-C dock) plus 5 € reminder fee.",
-    action: "Transfer 94,99 € with the reference RE-2026-084213 — or reply with proof if you already paid.",
+    description: "Invoice RE-2026-084213 (USB-C dock) plus €5 reminder fee.",
+    action: "Transfer €94.99 with the reference RE-2026-084213 — or reply with proof if you already paid.",
     consequence: "They may pass the debt to a collection agency (more fees).",
     amount: 94.99,
     due_date: "2026-09-30",
@@ -57,7 +102,7 @@ export const ITEMS: Item[] = [
     id: "itm_tm_invoice",
     kind: "payment",
     title: "Pay TechMarkt invoice",
-    description: "Replaced by the payment reminder from 18 Sep (now 94,99 € incl. 5 € fee).",
+    description: "Replaced by the payment reminder from 18 Sep (now €94.99 incl. €5 fee).",
     amount: 89.99,
     due_date: "2026-09-03",
     status: "dismissed",
@@ -168,9 +213,9 @@ export const ITEMS: Item[] = [
     id: "itm_phone_cancel",
     kind: "deadline",
     title: "Cancel phone contract — if you want to switch",
-    description: "FunkNetz Allnet L, 34,99 €/month. The minimum term ends on Sat 14 Nov.",
+    description: "FunkNetz Allnet L, €34.99/month. The minimum term ends on Sat 14 Nov.",
     action: "Decide whether to keep it. To leave at the end of the minimum term, send the cancellation.",
-    consequence: "Nothing bad: it continues month to month at 34,99 € and you can cancel any time with one month's notice.",
+    consequence: "Nothing bad: it continues month to month at €34.99 and you can cancel any time with one month's notice.",
     due_date: "2026-10-14",
     send_by: "2026-10-08",
     priority: "high",
@@ -189,11 +234,11 @@ export const ITEMS: Item[] = [
         "The minimum term of 24 months from 15 Nov 2024 ends on Sat 14 Nov 2026. With one month's notice, FunkNetz must receive your cancellation by Wed 14 Oct. Post it by Thu 8 Oct — or use their cancel button until the 14th.",
       steps: [
         step("Contract started", "2024-11-15"),
-        step("Minimum term of 24 months ends", "2026-11-14", "bgb188_months", "§ 188 Abs. 2 BGB"),
+        step("Minimum term of 24 months ends", "2026-11-14", "bgb_188", "§ 188 Abs. 2 BGB"),
         step("One month's notice → must arrive by", "2026-10-14", "tkg56", "§ 56 Abs. 3 TKG"),
         step("Allow 4 working days for the post", "2026-10-08", "postal_buffer"),
       ],
-      rule_ids: ["tkg56", "bgb188_months", "postal_buffer"],
+      rule_ids: ["tkg56", "bgb_188", "postal_buffer"],
     }),
     created_at: ts("2026-09-01", "06:00"),
   }),
@@ -202,7 +247,7 @@ export const ITEMS: Item[] = [
     kind: "payment",
     title: "Pay utility back payment (Nebenkosten)",
     description: "Betriebskostenabrechnung 2025 for flat no. 12.",
-    action: "Transfer 184,30 € to Wohnbau Musterstadt eG.",
+    action: "Transfer €184.30 to Wohnbau Musterstadt eG.",
     consequence: "Late payment can lead to reminder fees.",
     amount: 184.3,
     due_date: "2026-10-09",
@@ -321,7 +366,7 @@ export const ITEMS: Item[] = [
     id: "itm_bank_decide",
     kind: "task",
     title: "Decide on Musterbank's new account fee",
-    description: "6,90 €/month instead of 4,90 € from 1 Dec — only with your consent.",
+    description: "€6.90/month instead of €4.90 from 1 Dec — only with your consent.",
     due_date: "2026-11-30",
     area: "money",
     party_id: "pty_musterbank",
@@ -368,7 +413,7 @@ export const ITEMS: Item[] = [
     party_id: "pty_hochschule",
     case_id: "cas_uni",
     doc_id: "doc_uni",
-    consequence: "20 € late fee; without re-registration you can be de-registered.",
+    consequence: "€20 late fee; without re-registration you can be de-registered.",
     evidence: [ev("doc_uni", Q.uni.due), ev("doc_uni", Q.uni.amount)],
     created_at: ts("2026-09-23", "17:16"),
   }),
@@ -401,14 +446,61 @@ export const ITEMS: Item[] = [
   }),
 ];
 
+/** The dismissal's deadlines set by law, as the pipeline files them (`origin: "rule"`, no quote). */
+function dismissalRule(ruleId: "kschg_4" | "sgb3_38", id: string): Item {
+  const rule = DISMISSAL_RULES[ruleId]!;
+  return item({
+    id,
+    kind: "deadline",
+    title: rule.title,
+    action: rule.action,
+    consequence: rule.consequence,
+    due_date: rule.receipt.due_date,
+    send_by: rule.receipt.send_by,
+    priority: rule.priority,
+    area: "work",
+    party_id: "pty_mustertech",
+    case_id: "cas_job",
+    doc_id: "doc_dismissal",
+    origin: "rule",
+    grounding: "model_read",
+    slot_key: `rule:${ruleId}`,
+    filed_on: "2026-09-28",
+    date_spec: rule.spec,
+    computation: rule.receipt,
+    created_at: ts("2026-09-28", "09:06"),
+  });
+}
+
 /** Items created when a New-mail tray letter is processed (keyed by document). */
 export const TRAY_ITEMS: Record<string, Item[]> = {
+  doc_mahnbescheid: [
+    item({
+      id: "itm_court_objection",
+      kind: "deadline",
+      title: "Pay or object to the court payment order",
+      description: "Streamline Media claims €111.88 for a 2022 subscription.",
+      action: "If you don't owe the money, object (Widerspruch) on the enclosed form or online — no reasons needed. If you owe it, pay Streamline Media.",
+      consequence: "Streamline Media can get an enforcement order (Vollstreckungsbescheid) and have the money collected by a bailiff.",
+      due_date: ORDER_RECEIPTS.unknown!.due_date,
+      send_by: ORDER_RECEIPTS.unknown!.send_by,
+      priority: "critical",
+      area: "money",
+      party_id: "pty_mahngericht",
+      doc_id: "doc_mahnbescheid",
+      evidence: [ev("doc_mahnbescheid", Q.court.period)],
+      date_spec: spec({ type: "relative", anchor: "receipt", amount: 2, unit: "weeks", nature: "objection", text: "binnen zwei Wochen seit der Zustellung dieses Bescheids" }),
+      computation: ORDER_RECEIPTS.unknown!,
+      created_at: ts("2026-09-28", "09:05"),
+    }),
+  ],
+  doc_dismissal: [dismissalRule("kschg_4", "itm_dismissal_court"), dismissalRule("sgb3_38", "itm_dismissal_register")],
   doc_power_price: [
     item({
       id: "itm_power_cancel",
       kind: "deadline",
       title: "Special right to cancel electricity — if you want to switch",
-      description: "Stadtwerke raise the price from 1 Nov (+84 €/year).",
+      description: "Stadtwerke raise the price from 1 Nov (+€84/year).",
       action: "Compare providers. To leave, send a cancellation (email is fine).",
       consequence: "The contract continues at the new price.",
       due_date: "2026-10-31",
@@ -458,7 +550,7 @@ export const TRAY_ITEMS: Record<string, Item[]> = {
       id: "itm_tax_objection",
       kind: "deadline",
       title: "Einspruch (objection) against your 2025 tax assessment",
-      description: "Only if you disagree — e.g. to claim the laptop (1.049 €) with proof of work use.",
+      description: "Only if you disagree — e.g. to claim the laptop (€1,049) with proof of work use.",
       action: "Decide whether to object. A short letter is enough; reasons can follow later.",
       consequence: "The assessment becomes final and can hardly be changed.",
       due_date: "2026-10-21",
@@ -499,5 +591,23 @@ export const TRAY_ITEMS: Record<string, Item[]> = {
       created_at: ts("2026-09-28", "09:04"),
     }),
   ],
-  doc_scam: [],
+  // what the letter demands, as the model reads it: never suggested (no date to act on, like the
+  // server leaves a letter with scam signs out of Today) and never given a GiroCode
+  doc_scam: [
+    item({
+      id: "itm_scam_demand",
+      kind: "payment",
+      title: "Demanded “arrears” of €210 — check before paying (likely a scam)",
+      action: "The letter demands a transfer to the account it names within 3 days.",
+      consequence: "The letter threatens enforcement — the real Beitragsservice never did.",
+      amount: 210,
+      priority: "critical",
+      area: "home",
+      party_id: "pty_beitrag",
+      case_id: "cas_rundfunk",
+      doc_id: "doc_scam",
+      evidence: [ev("doc_scam", Q.scam.amount)],
+      created_at: ts("2026-09-28", "09:06"),
+    }),
+  ],
 };

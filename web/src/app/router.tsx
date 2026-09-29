@@ -41,11 +41,27 @@ export const routes: RouteObject[] = [
           },
           { path: "timeline", lazy: page(() => import("@/pages/TimelinePage")), handle: { title: "Timeline" } satisfies RouteHandle },
           { path: "contracts", lazy: page(() => import("@/pages/ContractsPage")), handle: { title: "Contracts" } satisfies RouteHandle },
+          { path: "numbers", lazy: page(() => import("@/pages/NumbersPage")), handle: { title: "My numbers" } satisfies RouteHandle },
+          {
+            path: "week",
+            lazy: page(() => import("@/pages/WeekPage")),
+            handle: { title: "Weekly review", parent: { to: "/", label: "Today" } } satisfies RouteHandle,
+          },
           { path: "letters", lazy: page(() => import("@/pages/LettersPage")), handle: { title: "Letters" } satisfies RouteHandle },
+          {
+            path: "letters/waiting",
+            lazy: page(() => import("@/pages/WaitingPage")),
+            handle: { title: "Waiting for", parent: { to: "/letters", label: "Letters" } } satisfies RouteHandle,
+          },
           {
             path: "letters/:id",
             lazy: page(() => import("@/pages/LetterPage")),
             handle: { title: "Letter draft", parent: { to: "/letters", label: "Letters" } } satisfies RouteHandle,
+          },
+          {
+            path: "letters/:id/proofs/:docId",
+            lazy: page(() => import("@/pages/ProofFilePage")),
+            handle: { title: "Proof", parent: { to: "/letters", label: "Letters" } } satisfies RouteHandle,
           },
           { path: "ask", lazy: page(() => import("@/pages/AskPage")), handle: { title: "Ask" } satisfies RouteHandle },
           { path: "settings", lazy: page(() => import("@/pages/SettingsPage")), handle: { title: "Settings" } satisfies RouteHandle },

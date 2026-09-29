@@ -5,19 +5,25 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+import pytest
+
 from ordnung.db.store import Store
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.plan import (
     ComputedDate,
     activity_message,
     compute_item,
+    end_date_grounding,
+    for_item,
     grade_receipt,
+    needs_check,
     payment_details,
     remedy_text,
     remedy_warnings,
     rule_context,
     slot_key,
     slot_keys,
+    square_iban_claims,
     verify_extraction,
     write_items,
 )
@@ -35,6 +41,7 @@ from ordnung.models import (
     Remedy,
 )
 from ordnung.rules import RuleContext
+from ordnung.secretary.scam import invalid_iban_message
 
 PAGE_TEXT = (
     "Musterstadt, 15.09.2026\n"
@@ -123,7 +130,8 @@ def test_unfound_or_inconsistent_dated_items_need_review() -> None:
     result = verify_extraction("doc_x", extraction([missing]), [TEXT_PAGE])
     assert result.items[0].evidence.grounding == "unverified"
     assert result.needs_review
-    assert result.warnings == ["Please check: 1 date could not be confirmed against the letter's text."]
+    # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
+    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
 
 
 def test_undated_items_never_need_review() -> None:
@@ -190,6 +198,42 @@ def test_compute_item_sources() -> None:
     assert undated == ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
 
 
+def test_a_payment_made_in_person_is_stored_without_a_send_by_day() -> None:
+    """UI audit R1-backend-8: the residence permit's 100 € fee, paid by girocard at the appointment, was
+    stored with a bank transfer's send-by day ("transfer by 13 Oct"). Its words say it is paid on site
+    (``pays_on_site``), so its date is computed without one; a transfer keeps its day."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    on_site = PAYMENT.model_copy(
+        update={"action": "Pay the €100 fee on site at the appointment by girocard."}
+    )
+    computed = compute_item(verified_item(on_site), for_item(ctx, on_site, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
+    assert computed.receipt is not None and "bgb_675s" not in computed.receipt.rule_ids
+    transfer = PAYMENT.model_copy(update={"action": "Transfer 49,99 EUR to the account below."})
+    kept = compute_item(verified_item(transfer), for_item(ctx, transfer, None), postal_buffer_days=4)
+    assert (kept.due_date, kept.send_by) == ("2026-10-15", "2026-10-14")
+
+
+def test_a_collected_or_incoming_payment_is_stored_without_a_send_by_day() -> None:
+    """Walkthrough of phase 2: the Deutschlandticket's direct debit (due Thu 1 Oct) was stored with a bank
+    transfer's send-by day, Wed 30 Sep, which the daily note then called its date. Nobody transfers money the
+    sender collects or money that comes in (``is_collected_or_incoming``): the due day is the day."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    debit = PAYMENT.model_copy(
+        update={"title": "Monatliche Abbuchung Deutschlandticket", "action": "Keep €63 in your account."}
+    )
+    computed = compute_item(verified_item(debit), for_item(ctx, debit, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
+    assert computed.receipt is not None and "bgb_675s" not in computed.receipt.rule_ids
+    incoming = PAYMENT.model_copy(update={"direction": "in", "title": "Salary"})
+    paid_in = compute_item(verified_item(incoming), for_item(ctx, incoming, None), postal_buffer_days=4)
+    assert (paid_in.due_date, paid_in.send_by) == ("2026-10-15", None)
+    # a direct debit that failed is paid by transfer again: it keeps its day
+    failed = debit.model_copy(update={"action": "Die Lastschrift wurde zurückgegeben: bitte überweisen."})
+    kept = compute_item(verified_item(failed), for_item(ctx, failed, None), postal_buffer_days=4)
+    assert kept.send_by == "2026-10-14"
+
+
 def test_rule_context_from_party_and_document(store: Store) -> None:
     party = store.add_party(name="Finanzamt", kind="tax_office", region="BY")
     document = store.add_document(
@@ -208,6 +252,139 @@ def test_rule_context_from_party_and_document(store: Store) -> None:
         date(2026, 9, 25),
     )
     assert fallback.delivery_scope == "sgbx" and fallback.region is None and not fallback.received_confirmed
+
+
+def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store) -> None:
+    """A company's letter has no deemed delivery (the engine counts it from arrival); a party of kind
+    ``other`` is the app's "don't know" and keeps the earliest plausible deemed delivery; a sender filed
+    as an insurer whose remedy notice names a Widerspruch against a Bescheid is an authority's decision,
+    an employer's letter naming the Kündigungsschutzklage is not."""
+    document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    company = store.add_party(name="Muster GmbH", kind="company")
+    assert rule_context(company, document, extraction([]), date(2026, 9, 25)).private_sender is True
+    unknown = store.add_party(name="Stadt Musterstadt")  # kind "other" by default
+    assert rule_context(unknown, document, extraction([]), date(2026, 9, 25)).private_sender is False
+    bescheid = {
+        "type": "widerspruch",
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+    }
+    misfiled = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "AOK Nordost", "kind": "insurer"}, remedy=bescheid),
+        date(2026, 9, 25),
+    )
+    assert misfiled.private_sender is False and misfiled.delivery_scope == "sgbx"  # a statutory insurer
+    muster = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Muster Versicherung", "kind": "insurer"}, remedy=bescheid),
+        date(2026, 9, 25),
+    )
+    assert muster.private_sender is False and muster.delivery_scope is None
+    dismissal = {
+        "type": "klage",
+        "quote": "Eine Kündigungsschutzklage muss innerhalb von drei Wochen nach Zugang erhoben werden.",
+        "addressee": "Arbeitsgericht Berlin",
+    }
+    employer = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Land Berlin", "kind": "employer"}, remedy=dismissal),
+        date(2026, 9, 25),
+    )
+    assert employer.private_sender is True and employer.delivery_scope is None
+
+
+@pytest.mark.parametrize(
+    ("kind", "quote"),
+    [
+        ("gym", "Sie können innerhalb von zwei Wochen nach Bekanntgabe der Preiserhöhung kündigen."),
+        ("bank", "Bitte legen Sie uns Ihren Rentenbescheid innerhalb von zwei Wochen vor."),
+    ],
+)
+def test_a_quote_naming_a_bescheid_never_brings_deemed_delivery_back(
+    store: Store, kind: str, quote: str
+) -> None:
+    """Reviewer repro: a gym's "nach Bekanntgabe der Preiserhöhung", a bank asking for "Ihren
+    Rentenbescheid". The item's quote may name an administrative act, but a private sender's period still
+    runs from the day it arrived (Fri 16 Oct) — deemed delivery would give Sun 18 Oct — and the app keeps
+    asking for that day while it is missing (``private_sender_arrival``)."""
+    party = store.add_party(name="FitWell GmbH", kind=kind)
+    spec = {
+        "type": "relative",
+        "amount": 2,
+        "unit": "weeks",
+        "anchor": "deemed_delivery",
+        "nature": "notice",
+        "text": "innerhalb von zwei Wochen",
+    }
+    extracted = item(quote, kind="deadline", **spec)
+    page = (1, "Musterstadt, 01.10.2026\n" + quote, [], "text")
+    for digit, received, due in (("1", "2026-10-02", "2026-10-16"), ("2", None, "2026-10-15")):
+        document = store.add_document(
+            sha256=digit * 64,
+            filename="x",
+            mime="application/pdf",
+            file_path="x",
+            received_date=received,
+        )
+        ctx = rule_context(
+            party, document, extraction([extracted], document_date="2026-10-01"), date(2026, 10, 5)
+        )
+        computed = compute_item(verified_item(extracted, page), ctx, postal_buffer_days=4)
+        assert computed.due_date == due and computed.receipt is not None
+        assert "private_sender_arrival" in computed.receipt.rule_ids
+        assert "posting_day" not in computed.receipt.rule_ids
+
+
+@pytest.mark.parametrize(
+    "words",
+    ["innerhalb eines Monats nach Bekanntgabe dieses Bescheides", "innerhalb eines Monats"],
+)
+def test_a_late_arrival_of_a_letter_naming_a_bescheid_keeps_the_earlier_date(
+    store: Store, words: str
+) -> None:
+    """A municipal office's Gebührenbescheid filed under a kind no public body goes by (a ``landlord``),
+    without a remedy notice read. It counts from the day it arrived, but its sentence names the
+    Bescheid — in the spec's words, or only in the item's quote around them — so an arrival after the day
+    it would usually count as delivered does not make the date later: Mon 5 Oct, not Wed 14 Oct."""
+    document = store.add_document(
+        sha256="d" * 64, filename="x", mime="application/pdf", file_path="x", received_date="2026-09-14"
+    )
+    office = store.add_party(name="Stadt Musterstadt Wohnungsamt", kind="landlord")
+    fee = item(
+        "Die Gebühr ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides zu zahlen.",
+        type="relative",
+        amount=1,
+        unit="months",
+        anchor="deemed_delivery",
+        delivery_rule="de_admin_post",
+        nature="payment",
+        text=words,
+    )
+    page = (1, "Musterstadt, 01.09.2026\n" + fee.quote, [], "text")
+    ctx = rule_context(
+        office,
+        document,
+        extraction([fee], document_date="2026-09-01"),
+        date(2026, 9, 26),
+        recipient_region="NW",
+    )
+    assert ctx.private_sender is True and ctx.sender_kind == "landlord" and ctx.region is None
+    computed = compute_item(verified_item(fee, page), ctx, postal_buffer_days=4)
+    assert computed.due_date == "2026-10-05" and computed.receipt is not None
+    assert "private_sender_late_arrival" in computed.receipt.rule_ids
+    assert "posting_day" not in computed.receipt.rule_ids and computed.receipt.confidence == "medium"
+    # a sentence without one runs from the day it arrived, however late (§ 130 BGB)
+    firm = item(
+        "Bitte zahlen Sie innerhalb eines Monats.",
+        **{**fee.date.model_dump(), "text": "innerhalb eines Monats"},
+    )
+    firm_page = (1, "Musterstadt, 01.09.2026\n" + firm.quote, [], "text")
+    private = compute_item(verified_item(firm, firm_page), ctx, postal_buffer_days=4)
+    assert private.due_date == "2026-10-14" and private.receipt is not None
+    assert "private_sender_arrival" in private.receipt.rule_ids
 
 
 def test_rule_context_recognises_social_law_senders_filed_as_authority(store: Store) -> None:
@@ -247,6 +424,130 @@ def test_rule_context_recognises_social_law_senders_filed_as_authority(store: St
     )
 
 
+def test_rule_context_marks_a_courts_letter_whatever_kind_it_was_filed_as(store: Store) -> None:
+    """A court's letter never gets an authority's delivery fiction, even when it isn't filed as a court
+    order (the policy missed it, or it is another kind of court letter); a labour court's orders give one
+    week."""
+    document = store.add_document(sha256="f" * 64, filename="x", mime="application/pdf", file_path="x")
+    court = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "AG Coburg – Mahngericht", "kind": "authority"}),
+        date(2026, 9, 25),
+    )
+    assert court.court and not court.labour_court and court.letter_kind != "court_payment_order"
+    labour = store.add_party(name="Arbeitsgericht Berlin", kind="authority")
+    assert rule_context(labour, document, extraction([]), date(2026, 9, 25)).labour_court
+    bailiff = rule_context(
+        None,
+        document,
+        extraction([], sender={"name": "Gerichtsvollzieher beim Amtsgericht Köln", "kind": "authority"}),
+        date(2026, 9, 25),
+    )
+    assert not bailiff.court
+
+
+def _notice(quote: str, end: str) -> DocumentExtraction:
+    return extraction([], change={"type": "termination_by_provider", "effective_date": end, "quote": quote})
+
+
+def test_a_dismissal_without_notice_period_ends_the_job_on_arrival() -> None:
+    """Review round 4 of phase 2: "außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026" counted the
+    § 38 SGB III registration from the end given in the alternative (Wed 30 Sep, high) — the job ends when a
+    notice without notice period arrives, so the three days count from then (Mon 28 Sep)."""
+    from ordnung.ingest.plan import law_deadlines
+    from ordnung.rules import compute_due
+
+    quote = "Hiermit kündigen wir das Arbeitsverhältnis außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026."
+    reading = extraction(
+        [],
+        document_date="2026-09-24",
+        sender={"name": "Muster GmbH", "kind": "employer"},
+        change={"type": "termination_by_provider", "effective_date": "2026-12-31", "quote": quote},
+    ).model_copy(update={"kind": "employment"})
+    document = Document(
+        id="doc_x", sha256="a" * 64, filename="x.pdf", mime="application/pdf", file_path="x",
+        received_date="2026-09-25", doc_date="2026-09-24", created_at="2026-09-25T00:00:00",
+        updated_at="2026-09-25T00:00:00",
+    )  # fmt: skip
+    ctx = rule_context(None, document, reading, date(2026, 9, 26), pages=[(1, quote, [], "text")])
+    assert ctx.letter_kind == "dismissal" and ctx.ends_on_arrival
+    dates = {
+        entry.rule_id: compute_due(entry.spec, ctx).due_date
+        for entry in law_deadlines("dismissal", reading, ctx)
+    }
+    assert dates == {"kschg_4": "2026-10-16", "sgb3_38": "2026-09-28"}
+    ordinary = reading.model_copy(
+        update={
+            "change": reading.change.model_copy(update={"quote": "Wir kündigen fristgerecht zum 31.12.2026."})
+        }
+    )
+    assert not rule_context(None, document, ordinary, date(2026, 9, 26)).ends_on_arrival
+    # only a dismissal: a landlord's notice without notice period keeps its end (the objection counts from it)
+    notice = reading.model_copy(update={"kind": "rent_lease", "sender": None})
+    assert not rule_context(None, document, notice, date(2026, 9, 26)).ends_on_arrival
+
+
+def test_a_notice_too_short_for_its_period_counts_its_objection_from_the_earliest_end() -> None:
+    """Review round 4 of phase 2: a notice dated 25 Aug "zum 31.10.2026" that arrived on 28 Aug can end the
+    tenancy on 30 Nov at the earliest (§ 573c Abs. 1 BGB): the law's objection counts back from that end."""
+    from ordnung.ingest.plan import law_deadlines
+
+    quote = "Hiermit kündigen wir das Mietverhältnis zum 31.10.2026."
+    reading = extraction(
+        [],
+        document_date="2026-08-25",
+        change={"type": "termination_by_provider", "effective_date": "2026-10-31", "quote": quote},
+    ).model_copy(update={"kind": "rent_lease"})
+    ctx = RuleContext(
+        today=date(2026, 9, 2),
+        document_date=date(2026, 8, 25),
+        received_date=date(2026, 8, 28),
+        received_confirmed=True,
+        end_date=date(2026, 10, 31),
+    )
+    [objection] = law_deadlines("landlord_notice", reading, ctx)
+    assert objection.spec.legal_basis == "§ 574b Abs. 2, § 573c Abs. 1 BGB"
+    early = RuleContext(today=date(2026, 8, 5), document_date=date(2026, 8, 3), end_date=date(2026, 10, 31))
+    [stated] = law_deadlines("landlord_notice", reading, early)
+    assert stated.spec.anchor_date == "2026-10-31"
+
+
+def test_the_end_a_termination_announces_is_grounded_like_an_items_date() -> None:
+    quote = "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.03.2027."
+    page = (1, f"Hausverwaltung\nMietende: 31.03.2027\n{quote}", [], "text")
+    assert end_date_grounding(_notice(quote, "2027-03-31"), [page]) == "quote"
+    assert end_date_grounding(_notice(quote, "2027-05-31"), [page]) == "none"  # misread
+    vague = "hiermit kündigen wir das Mietverhältnis fristgerecht zum nächstmöglichen Zeitpunkt."
+    heading = (1, f"Mietende: 31.03.2027\n{vague}", [], "text")
+    assert end_date_grounding(_notice(vague, "2027-03-31"), [heading]) == "letter"
+    # a quote that states the end but isn't on the page: only the page counts
+    assert (
+        end_date_grounding(_notice(quote, "2027-03-31"), [(1, "Mietende: 31.03.2027", [], "text")])
+        == "letter"
+    )
+    assert end_date_grounding(_notice(quote, "2027-03-31"), []) == "none"  # no letter text to check
+    assert end_date_grounding(extraction([]), []) == "quote"  # no end: nothing to ground
+
+
+def test_a_rule_to_do_needs_checking_only_when_its_end_date_isnt_written(store: Store) -> None:
+    document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
+    fields: dict[str, Any] = {
+        "kind": "deadline",
+        "title": "Decide whether to object",
+        "due_date": "2027-01-29",
+        "origin": "rule",
+        "grounding": "model_read",
+    }
+    plain = store.add_item(doc_id=document.id, **fields)
+    assert not needs_check(plain)  # the law's date: nothing quoted, nothing to check
+    unwritten = Evidence(doc_id=document.id, quote="zum 31.03.2027", value_consistent=False)
+    flagged = store.add_item(doc_id=document.id, evidence=[unwritten], **fields)
+    assert needs_check(flagged)
+    confirmed = store.update_item(flagged.id, grounding="user")
+    assert not needs_check(confirmed)
+
+
 def test_remedy_warnings_and_payment_details() -> None:
     assert remedy_warnings(Remedy(type="klage"))[0].startswith(
         "This decision can only be challenged in court"
@@ -271,6 +572,50 @@ def test_a_misread_iban_is_taken_from_the_page() -> None:
     # an unrelated IBAN on the page is never swapped in
     other = payment_details(PaymentDetails(iban="DE05123456000044556660"), "IBAN DE89 3704 0044 0532 0130 00")
     assert other is not None and other.iban == "DE05123456000044556660" and not other.iban_valid
+
+
+#: The demo fitness contract's reading (UI audit R1-backend-7): a false checksum claim about a valid IBAN.
+FALSE_CLAIM = (
+    "The studio's stated bank account IBAN (DE05 1234 6700 0029 9001 50) does not pass the standard IBAN "
+    "checksum, and several details in this document (names, addresses) look like generic placeholder/sample "
+    "data, so verify the account before relying on it."
+)
+VALID = PaymentDetails(iban="DE89370400440532013000", iban_valid=True)
+BROKEN = PaymentDetails(iban="DE89370400440532013001", iban_valid=False)
+
+
+def test_a_checksum_claim_the_check_contradicts_is_not_stored() -> None:
+    """R1-backend-7: code checks the IBAN's digits (ADR 0002); the model's claim about them is squared with
+    that check when the letter is read, sentence by sentence."""
+    assert square_iban_claims([FALSE_CLAIM, "Payment is due monthly."], VALID) == ["Payment is due monthly."]
+    mixed = "The IBAN fails its checksum. The contract renews automatically."
+    assert square_iban_claims([mixed], VALID) == ["The contract renews automatically."]
+    # a claim that agrees with the check stays, in German too
+    agrees = "The IBAN's check digits are valid, but the payee differs from the sender."
+    assert square_iban_claims([agrees], VALID) == [agrees]
+    german = "Die Prüfziffer der IBAN ist ungültig."
+    assert square_iban_claims([german], VALID) == []
+    # warnings about something else are kept as read
+    other = "The IBAN belongs to a bank in Lithuania, not Germany."
+    assert square_iban_claims([other], VALID) == [other]
+
+
+def test_a_failing_iban_is_said_in_ordnungs_words_once() -> None:
+    claims = ["The IBAN does not pass its checksum.", "IBAN checksum wrong — maybe a typo. Pay soon."]
+    squared = square_iban_claims(claims, BROKEN)
+    assert squared[0] == "Pay soon."
+    assert squared[1:] == [invalid_iban_message(BROKEN.iban or "")]
+    assert "valid" in squared[1] and "IBAN" in squared[1]
+    # a positive claim about a failing IBAN is wrong too
+    assert square_iban_claims(["The IBAN's checksum is fine."], BROKEN) == [
+        invalid_iban_message("DE89370400440532013001")
+    ]
+
+
+def test_without_an_iban_the_warnings_stay_as_read() -> None:
+    assert square_iban_claims([FALSE_CLAIM], None) == [FALSE_CLAIM]
+    assert square_iban_claims([FALSE_CLAIM], PaymentDetails(iban=None)) == [FALSE_CLAIM]
+    assert square_iban_claims([FALSE_CLAIM], PaymentDetails(iban="DE89370400440532013000")) == [FALSE_CLAIM]
 
 
 # --------------------------------------------------------------------------------------------------

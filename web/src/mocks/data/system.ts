@@ -1,5 +1,6 @@
 import type { Activity, AppSettings, DoctorCheck, Health, LLMCallRecord, MailTrayItem, Profile, RuleInfo, TourState, UsageStats } from "@/api/types";
 import { SAM, TODAY, ts } from "./constants";
+import { FOLDER_PATH } from "./folder";
 
 export const HEALTH: Health = {
   version: "0.1.0",
@@ -40,15 +41,19 @@ export const PROFILE: Profile = {
   postal_buffer_days: 4,
   is_student_visa: true,
   onboarded: true,
+  iban: "",
 };
 
 export const SETTINGS: AppSettings = {
   models: { transcribe: "sonnet", extract: "sonnet", review: "sonnet", ask: "sonnet", draft: "sonnet", brief: "haiku", capture: "haiku", bank: "haiku" },
   concurrency: 2,
-  inbox_dir: null,
+  inbox_dir: FOLDER_PATH,
+  inbox_auto_read: false,
   ocr: true,
   llm_brief: true,
   llm_review: true,
+  desktop_notifications: "off",
+  desktop_notify_time: "08:00",
   demo: true,
   simulated_today: TODAY,
 };
@@ -56,9 +61,11 @@ export const SETTINGS: AppSettings = {
 export const TOUR: TourState = { active: true, step: 0, completed: false };
 
 export const MAIL_TRAY: MailTrayItem[] = [
-  { id: "mail_stadtwerke", filename: "Stadtwerke_Preisanpassung.pdf", sender: "Stadtwerke Musterstadt", subject: "Preisanpassung zum 01.11.2026", kind_hint: "Price change", photo: false, opened: false, doc_id: null },
-  { id: "mail_finanzamt", filename: "IMG_2044.jpg", sender: "Finanzamt Musterstadt", subject: "Bescheid für 2025 über Einkommensteuer", kind_hint: "Tax assessment (phone photo)", photo: true, opened: false, doc_id: null },
-  { id: "mail_scam", filename: "Letzte_Mahnung_Rundfunk.pdf", sender: "Beitragsservice Musterstadt?", subject: "LETZTE MAHNUNG – Rundfunkbeitrag", kind_hint: "Payment demand", photo: false, opened: false, doc_id: null },
+  { id: "mail_stadtwerke", filename: "Stadtwerke_Preisanpassung.pdf", sender: "Stadtwerke Musterstadt", subject: "Preisanpassung zum 01.11.2026", kind_hint: "Price change", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_finanzamt", filename: "IMG_2044.jpg", sender: "Finanzamt Musterstadt", subject: "Bescheid für 2025 über Einkommensteuer", kind_hint: "Tax assessment (phone photo)", photo: true, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_scam", filename: "Letzte_Mahnung_Rundfunk.pdf", sender: "Beitragsservice Musterstadt?", subject: "LETZTE MAHNUNG – Rundfunkbeitrag", kind_hint: "Payment demand", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
+  { id: "mail_court", filename: "Mahnbescheid_AG_Hagen.pdf", sender: "Amtsgericht Hagen", subject: "Mahnbescheid", kind_hint: "Court letter (yellow envelope)", photo: false, opened: false, doc_id: null, received_date: null },
+  { id: "mail_dismissal", filename: "Kuendigung_MusterTech.pdf", sender: "Muster Tech GmbH", subject: "Kündigung Ihres Arbeitsverhältnisses", kind_hint: "Letter from your employer", photo: false, opened: false, doc_id: null, received_date: "2026-09-28" },
 ];
 
 /** Which document each tray letter becomes. */
@@ -66,42 +73,48 @@ export const TRAY_DOC: Record<string, string> = {
   mail_stadtwerke: "doc_power_price",
   mail_finanzamt: "doc_tax",
   mail_scam: "doc_scam",
+  mail_court: "doc_mahnbescheid",
+  mail_dismissal: "doc_dismissal",
 };
 
 export const RULES: RuleInfo[] = [
-  { id: "ao122_2_4days", title: "Tax letters count as delivered 4 days after posting", citation: "§ 122 Abs. 2 Nr. 1 AO", summary: "A tax decision sent by post counts as delivered on the fourth day after it was posted (three days until 2024), unless it arrived later.", url: "https://www.gesetze-im-internet.de/ao_1977/__122.html", effective_from: "2025-01-01" },
-  { id: "ao108_3", title: "Deadlines ending on a weekend or holiday move to the next working day", citation: "§ 108 Abs. 3 AO", summary: "If the end of a period — including the deemed delivery date — falls on a Saturday, Sunday or public holiday, it moves to the next working day.", url: "https://www.gesetze-im-internet.de/ao_1977/__108.html", effective_from: null },
-  { id: "ao355_1", title: "Tax objection: one month", citation: "§ 355 Abs. 1 AO", summary: "An Einspruch against a tax decision must be filed within one month after it was delivered.", url: "https://www.gesetze-im-internet.de/ao_1977/__355.html", effective_from: null },
-  { id: "vwvfg41", title: "Federal authority letters: 4-day delivery rule", citation: "§ 41 Abs. 2 VwVfG", summary: "Administrative acts sent by post count as delivered on the fourth day after posting.", url: "https://www.gesetze-im-internet.de/vwvfg/__41.html", effective_from: "2025-01-01" },
-  { id: "sgbx37", title: "Social-law letters: 4-day delivery rule", citation: "§ 37 Abs. 2 SGB X", summary: "Decisions of social insurers sent by post count as delivered on the fourth day after posting.", url: "https://www.gesetze-im-internet.de/sgb_10/__37.html", effective_from: "2025-01-01" },
-  { id: "bgb187", title: "Counting starts the day after the event", citation: "§ 187 Abs. 1 BGB", summary: "When a period starts with an event (e.g. delivery), that day is not counted.", url: "https://www.gesetze-im-internet.de/bgb/__187.html", effective_from: null },
-  { id: "bgb188_months", title: "Month periods end on the same date", citation: "§ 188 Abs. 2 BGB", summary: "A period of months ends on the day of the last month with the same number as the start day (or the month's last day).", url: "https://www.gesetze-im-internet.de/bgb/__188.html", effective_from: null },
-  { id: "bgb188_weeks", title: "Week periods end on the same weekday", citation: "§ 188 Abs. 2 BGB", summary: "A period of weeks ends on the weekday with the same name as the start day.", url: "https://www.gesetze-im-internet.de/bgb/__188.html", effective_from: null },
-  { id: "bgb193", title: "Declarations due on a weekend move to the next working day", citation: "§ 193 BGB", summary: "If a declaration or payment is due on a Saturday, Sunday or holiday, the next working day counts. Not for notice periods of contracts.", url: "https://www.gesetze-im-internet.de/bgb/__193.html", effective_from: null },
-  { id: "bgb309_9", title: "Consumer contracts since March 2022", citation: "§ 309 Nr. 9 BGB", summary: "Max. 24 months initial term; afterwards the contract runs indefinitely and can be cancelled with at most one month's notice.", url: "https://www.gesetze-im-internet.de/bgb/__309.html", effective_from: "2022-03-01" },
-  { id: "tkg56", title: "Phone & internet contracts", citation: "§ 56 TKG", summary: "Max. 24 months minimum term; afterwards cancellable at any time with one month's notice.", url: "https://www.gesetze-im-internet.de/tkg_2021/__56.html", effective_from: "2021-12-01" },
-  { id: "bgb312k", title: "Online cancel button", citation: "§ 312k BGB", summary: "Businesses that sell contracts online must offer a cancel button on their website.", url: "https://www.gesetze-im-internet.de/bgb/__312k.html", effective_from: "2022-07-01" },
-  { id: "vvg11", title: "Insurance renewals", citation: "§ 11 VVG", summary: "Insurance contracts renew as agreed (usually yearly); notice as written, typically 3 months before the end of the insurance year.", url: "https://www.gesetze-im-internet.de/vvg_2008/__11.html", effective_from: null },
-  { id: "sgbv175", title: "Switching statutory health insurance", citation: "§ 175 SGB V", summary: "Minimum membership 12 months; a switch takes effect at the end of the second following month.", url: "https://www.gesetze-im-internet.de/sgb_5/__175.html", effective_from: "2021-01-01" },
-  { id: "enwg41_5", title: "Special right to cancel energy contracts after a price change", citation: "§ 41 Abs. 5 EnWG", summary: "When the supplier changes prices, you may cancel without notice with effect from the date of the change.", url: "https://www.gesetze-im-internet.de/enwg_2005/__41.html", effective_from: null },
-  { id: "rent573c", title: "Tenant's notice", citation: "§ 573c Abs. 1 BGB", summary: "Notice by the 3rd working day of a month ends the tenancy at the end of the month after next.", url: "https://www.gesetze-im-internet.de/bgb/__573c.html", effective_from: null },
-  { id: "bgb556b", title: "Rent is due by the 3rd working day", citation: "§ 556b Abs. 1 BGB", summary: "Rent must be paid in advance, at the latest by the third working day of each month.", url: "https://www.gesetze-im-internet.de/bgb/__556b.html", effective_from: null },
-  { id: "aufenthg81_4", title: "Apply for an extension before your permit expires", citation: "§ 81 Abs. 4 AufenthG", summary: "If you apply for an extension before your permit expires, it continues to count as valid until the office decides (Fiktionsbescheinigung).", url: "https://www.gesetze-im-internet.de/aufenthg_2004/__81.html", effective_from: null },
-  { id: "postal_buffer", title: "Allow time for the post", citation: "Ordnung safety buffer", summary: "Letters are shown with a 'send by' date 4 working days before they must arrive. Online buttons, portals and fax need no buffer.", url: null, effective_from: null },
+  { id: "ao122_2_4days", title: "Tax letters count as delivered 4 days after posting", citation: "§ 122 Abs. 2 Nr. 1 AO", summary: "A tax decision sent by post counts as delivered on the fourth day after it was posted (three days until 2024), unless it arrived later.", url: "https://www.gesetze-im-internet.de/ao_1977/__122.html", effective_from: "2025-01-01", topic: "When a letter counts as delivered" },
+  { id: "ao108_3", title: "Deadlines ending on a weekend or holiday move to the next working day", citation: "§ 108 Abs. 3 AO", summary: "If the end of a period — including the deemed delivery date — falls on a Saturday, Sunday or public holiday, it moves to the next working day.", url: "https://www.gesetze-im-internet.de/ao_1977/__108.html", effective_from: null, topic: "Counting periods" },
+  { id: "ao355_1", title: "Tax objection: one month", citation: "§ 355 Abs. 1 AO", summary: "An Einspruch against a tax decision must be filed within one month after it was delivered.", url: "https://www.gesetze-im-internet.de/ao_1977/__355.html", effective_from: null, topic: "Objections and court action" },
+  { id: "vwvfg41", title: "Federal authority letters: 4-day delivery rule", citation: "§ 41 Abs. 2 VwVfG", summary: "Administrative acts sent by post count as delivered on the fourth day after posting.", url: "https://www.gesetze-im-internet.de/vwvfg/__41.html", effective_from: "2025-01-01", topic: "When a letter counts as delivered" },
+  { id: "sgbx37", title: "Social-law letters: 4-day delivery rule", citation: "§ 37 Abs. 2 SGB X", summary: "Decisions of social insurers sent by post count as delivered on the fourth day after posting.", url: "https://www.gesetze-im-internet.de/sgb_10/__37.html", effective_from: "2025-01-01", topic: "When a letter counts as delivered" },
+  // the engine's ids (ordnung.rules.catalog) for the rules the static demo's receipts share with the app
+  { id: "kschg_4", title: "Dismissal: three weeks to go to the labour court", citation: "§ 4 S. 1 KSchG; § 7 KSchG", summary: "A court action against a dismissal (Kündigungsschutzklage) must reach the labour court within three weeks of receiving the written dismissal; otherwise the dismissal counts as valid. Ordnung shows the date with a 'get advice' card and never drafts court actions.", url: "https://www.gesetze-im-internet.de/kschg/__4.html", effective_from: null, topic: "Objections and court action" },
+  { id: "sgb3_38", title: "Register as job-seeking (arbeitsuchend)", citation: "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III", summary: "Register with the Agentur für Arbeit at the latest three months before your job ends, or within three days of learning the end date if less time is left. A short notice with your details and the end date keeps the deadline. Registering late can cost one week of unemployment benefit — not an issue for working students and mini-jobbers, who are usually not insured against unemployment (§ 27 SGB III).", url: "https://www.gesetze-im-internet.de/sgb_3/__38.html", effective_from: null, topic: "Objections and court action" },
+  { id: "bgb_187_1", title: "The day of the event is not counted", citation: "§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X", summary: "When a period starts with an event (a letter arriving, a delivery), that day is not counted; counting starts the next day.", url: "https://www.gesetze-im-internet.de/bgb/__187.html", effective_from: null, topic: "Counting periods" },
+  { id: "bgb_188", title: "When a period ends", citation: "§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG", summary: "A period in days ends on its last day. A period in weeks, months or years ends on the day with the same weekday name or day number as the event day (or, for periods starting at the beginning of a day, on the day before it).", url: "https://www.gesetze-im-internet.de/bgb/__188.html", effective_from: null, topic: "Counting periods" },
+  { id: "bgb_193", title: "Weekend and holiday shift (private law)", citation: "§ 193 BGB", summary: "If a deadline for a declaration or a payment ends on a Saturday, Sunday or public holiday at the place of performance, it moves to the next working day.", url: "https://www.gesetze-im-internet.de/bgb/__193.html", effective_from: null, topic: "Counting periods" },
+  { id: "private_sender_arrival", title: "Letters from companies count from arrival", citation: "§ 130 Abs. 1 BGB", summary: "Deemed delivery (the 4-day rule) applies only to letters from authorities. A letter from a company, landlord, bank or other private sender takes effect when it arrives, so a period in it runs from that day. Without the day it arrived, Ordnung counts from the letter's date, the earliest plausible start.", url: "https://www.gesetze-im-internet.de/bgb/__130.html", effective_from: null, topic: "When a letter counts as delivered" },
+  { id: "bgb309_9", title: "Consumer contracts since March 2022", citation: "§ 309 Nr. 9 BGB", summary: "Max. 24 months initial term; afterwards the contract runs indefinitely and can be cancelled with at most one month's notice.", url: "https://www.gesetze-im-internet.de/bgb/__309.html", effective_from: "2022-03-01", topic: "Contracts and notice" },
+  { id: "tkg56", title: "Phone & internet contracts", citation: "§ 56 TKG", summary: "Max. 24 months minimum term; afterwards cancellable at any time with one month's notice.", url: "https://www.gesetze-im-internet.de/tkg_2021/__56.html", effective_from: "2021-12-01", topic: "Contracts and notice" },
+  { id: "bgb312k", title: "Online cancel button", citation: "§ 312k BGB", summary: "Businesses that sell contracts online must offer a cancel button on their website.", url: "https://www.gesetze-im-internet.de/bgb/__312k.html", effective_from: "2022-07-01", topic: "Sending and form" },
+  { id: "vvg11", title: "Insurance renewals", citation: "§ 11 VVG", summary: "Insurance contracts renew as agreed (usually yearly); notice as written, typically 3 months before the end of the insurance year.", url: "https://www.gesetze-im-internet.de/vvg_2008/__11.html", effective_from: null, topic: "Contracts and notice" },
+  { id: "sgbv175", title: "Switching statutory health insurance", citation: "§ 175 SGB V", summary: "Minimum membership 12 months; a switch takes effect at the end of the second following month.", url: "https://www.gesetze-im-internet.de/sgb_5/__175.html", effective_from: "2021-01-01", topic: "Contracts and notice" },
+  { id: "enwg41_5", title: "Special right to cancel energy contracts after a price change", citation: "§ 41 Abs. 5 EnWG", summary: "When the supplier changes prices, you may cancel without notice with effect from the date of the change.", url: "https://www.gesetze-im-internet.de/enwg_2005/__41.html", effective_from: null, topic: "Price increases" },
+  { id: "rent573c", title: "Tenant's notice", citation: "§ 573c Abs. 1 BGB", summary: "Notice by the 3rd working day of a month ends the tenancy at the end of the month after next.", url: "https://www.gesetze-im-internet.de/bgb/__573c.html", effective_from: null, topic: "Contracts and notice" },
+  { id: "bgb556b", title: "Rent is due by the 3rd working day", citation: "§ 556b Abs. 1 BGB", summary: "Rent must be paid in advance, at the latest by the third working day of each month.", url: "https://www.gesetze-im-internet.de/bgb/__556b.html", effective_from: null, topic: "Contracts and notice" },
+  { id: "aufenthg81_4", title: "Apply for an extension before your permit expires", citation: "§ 81 Abs. 4 AufenthG", summary: "If you apply for an extension before your permit expires, it continues to count as valid until the office decides (Fiktionsbescheinigung).", url: "https://www.gesetze-im-internet.de/aufenthg_2004/__81.html", effective_from: null, topic: null },
+  { id: "postal_buffer", title: "Send-by date", citation: "Ordnung safety policy; § 18 PostG (delivery targets)", summary: "Deadlines are about when a letter arrives, not when it is sent. The post must deliver 95 % of letters by the 3rd and 99 % by the 4th working day after posting, so Ordnung suggests posting 4 business days before the last business day on or before the deadline (0 for online buttons, portals, fax and email where allowed).", url: null, effective_from: null, topic: "Counting periods" },
 ];
 
 const d = (date: string, time: string) => ts(date, time);
 
 export const ACTIVITY: Activity[] = [
-  { id: 118, ts: d("2026-09-27", "19:02"), kind: "review", message: "Weekly review: 2 new Ideas", ref_type: null, ref_id: null, data: { model: "sonnet", tokens: 9120 } },
-  { id: 117, ts: d("2026-09-26", "09:49"), kind: "document.processed", message: "Read “Library: overdue books” (1 page)", ref_type: "document", ref_id: "doc_library", data: { pages: 1, model: "sonnet" } },
-  { id: 116, ts: d("2026-09-25", "13:06"), kind: "document.processed", message: "Read “Dentist appointment reminder” (1 page)", ref_type: "document", ref_id: "doc_dentist", data: { pages: 1 } },
-  { id: 115, ts: d("2026-09-24", "20:15"), kind: "document.needs_review", message: "“Parking fine” needs you: when did it arrive?", ref_type: "document", ref_id: "doc_parking", data: {} },
-  { id: 114, ts: d("2026-09-23", "17:16"), kind: "document.processed", message: "Read “Re-registration for summer semester 2027” (1 page)", ref_type: "document", ref_id: "doc_uni", data: { pages: 1 } },
-  { id: 113, ts: d("2026-09-22", "18:06"), kind: "document.processed", message: "Read “Residence permit extension — appointment 14 Oct” (1 page)", ref_type: "document", ref_id: "doc_abh", data: { pages: 1 } },
-  { id: 112, ts: d("2026-09-20", "18:00"), kind: "calendar.exported", message: "Exported 14 dates to your calendar", ref_type: null, ref_id: null, data: { count: 14 } },
-  { id: 111, ts: d("2026-09-19", "10:33"), kind: "document.processed", message: "Read “TechMarkt payment reminder” — linked to invoice RE-2026-084213", ref_type: "document", ref_id: "doc_tm_dunning", data: { pages: 1 } },
-  { id: 110, ts: d("2026-09-17", "18:03"), kind: "document.processed", message: "Read “Musterbank: new account fee” (1 page)", ref_type: "document", ref_id: "doc_bank", data: { pages: 1 } },
+  { id: 119, ts: d("2026-09-27", "19:02"), kind: "review", message: "Weekly Ideas: 2 new", ref_type: null, ref_id: null, data: { model: "sonnet", tokens: 9120 } },
+  { id: 118, ts: d("2026-09-26", "09:49"), kind: "document.processed", message: "Read “Library: overdue books” (1 page)", ref_type: "document", ref_id: "doc_library", data: { pages: 1, model: "sonnet" } },
+  { id: 117, ts: d("2026-09-25", "13:06"), kind: "document.processed", message: "Read “Dentist appointment reminder” (1 page)", ref_type: "document", ref_id: "doc_dentist", data: { pages: 1 } },
+  { id: 116, ts: d("2026-09-24", "20:15"), kind: "document.needs_review", message: "“Parking fine” needs you: when did it arrive?", ref_type: "document", ref_id: "doc_parking", data: {} },
+  { id: 115, ts: d("2026-09-23", "17:16"), kind: "document.processed", message: "Read “Re-registration for summer semester 2027” (1 page)", ref_type: "document", ref_id: "doc_uni", data: { pages: 1 } },
+  { id: 114, ts: d("2026-09-22", "18:06"), kind: "document.processed", message: "Read “Residence permit extension — appointment 14 Oct” (1 page)", ref_type: "document", ref_id: "doc_abh", data: { pages: 1 } },
+  { id: 113, ts: d("2026-09-20", "18:00"), kind: "calendar.exported", message: "Exported 14 dates to your calendar", ref_type: null, ref_id: null, data: { count: 14 } },
+  { id: 112, ts: d("2026-09-19", "10:33"), kind: "document.processed", message: "Read “TechMarkt payment reminder” — linked to invoice RE-2026-084213", ref_type: "document", ref_id: "doc_tm_dunning", data: { pages: 1 } },
+  { id: 111, ts: d("2026-09-17", "18:03"), kind: "document.processed", message: "Read “Musterbank: new account fee” (1 page)", ref_type: "document", ref_id: "doc_bank", data: { pages: 1 } },
+  { id: 110, ts: d("2026-09-15", "19:03"), kind: "document.processed", message: "Read “Gym price increase — FitWell” (1 page)", ref_type: "document", ref_id: "doc_gym_price", data: { pages: 1 } },
   { id: 109, ts: d("2026-09-15", "19:00"), kind: "draft.sent", message: "You sent “Bitte um Belegeinsicht” to Wohnbau Musterstadt eG by email", ref_type: "draft", ref_id: "drf_wohnbau", data: {} },
   { id: 108, ts: d("2026-09-12", "11:31"), kind: "document.processed", message: "Read “Health insurance contributions from 1 Oct” (1 page)", ref_type: "document", ref_id: "doc_bkk", data: { pages: 1 } },
   { id: 107, ts: d("2026-09-11", "19:23"), kind: "document.processed", message: "Read “Utility cost statement 2025” (2 pages)", ref_type: "document", ref_id: "doc_nebenkosten", data: { pages: 2 } },
@@ -127,6 +140,16 @@ function call(id: number, date: string, time: string, purpose: string, model: st
     doc_ids: [],
     pages_sent: 0,
     bytes_sent: 0,
+    // what each call was and how its answer turned out (a trace's model steps point here)
+    request_key: null,
+    prompt_name: purpose,
+    prompt_version: "1",
+    served_model: model,
+    job_id: null,
+    stage: null,
+    span_id: null,
+    repair_of: null,
+    outcome: extra.ok === false ? "failed" : "ok",
     ...extra,
   };
 }
@@ -146,18 +169,18 @@ export const USAGE: UsageStats = {
     brief: { calls: 14, cache_hits: 2, errors: 0, input_tokens: 7_200, output_tokens: 1_400, cost_usd: 0.07 },
   },
   recent: [
-    call(64, "2026-09-27", "19:02", "review", "claude-sonnet-4-6", 9120, 1040, 0.06),
-    call(63, "2026-09-27", "07:00", "brief", "claude-haiku-4-5", 520, 96, 0.004),
-    call(62, "2026-09-26", "09:49", "extract", "claude-sonnet-4-6", 10_880, 912, 0.066, { doc_ids: ["doc_library"], pages_sent: 1, bytes_sent: 2_140 }),
-    call(61, "2026-09-25", "13:06", "extract", "claude-sonnet-4-6", 10_410, 868, 0.061, { doc_ids: ["doc_dentist"], pages_sent: 1, bytes_sent: 1_890 }),
-    call(60, "2026-09-24", "20:14", "extract", "claude-sonnet-4-6", 11_020, 1_120, 0.07, { doc_ids: ["doc_parking"], pages_sent: 1, bytes_sent: 2_410 }),
-    call(59, "2026-09-24", "18:30", "ask", "claude-sonnet-4-6", 6_900, 420, 0.04, { doc_ids: ["doc_phone"] }),
-    call(58, "2026-09-23", "17:15", "extract", "claude-sonnet-4-6", 10_950, 990, 0.067, { doc_ids: ["doc_uni"], pages_sent: 1, bytes_sent: 2_300 }),
-    call(57, "2026-09-22", "18:05", "extract", "claude-sonnet-4-6", 11_600, 1_240, 0.074, { doc_ids: ["doc_abh"], pages_sent: 1, bytes_sent: 2_780 }),
-    call(56, "2026-09-22", "18:05", "extract", "claude-sonnet-4-6", 11_600, 1_240, 0, { doc_ids: ["doc_abh"], cache_hit: true }),
-    call(55, "2026-09-19", "10:31", "extract", "claude-sonnet-4-6", 10_700, 930, 0.064, { doc_ids: ["doc_tm_dunning"], pages_sent: 1, bytes_sent: 2_050 }),
+    call(64, "2026-09-27", "19:02", "review", "sonnet", 9120, 1040, 0.06),
+    call(63, "2026-09-27", "07:00", "brief", "haiku", 520, 96, 0.004),
+    call(62, "2026-09-26", "09:49", "extract", "sonnet", 10_880, 912, 0.066, { doc_ids: ["doc_library"], pages_sent: 1, bytes_sent: 2_140 }),
+    call(61, "2026-09-25", "13:06", "extract", "sonnet", 10_410, 868, 0.061, { doc_ids: ["doc_dentist"], pages_sent: 1, bytes_sent: 1_890 }),
+    call(60, "2026-09-24", "20:14", "extract", "sonnet", 11_020, 1_120, 0.07, { doc_ids: ["doc_parking"], pages_sent: 1, bytes_sent: 2_410 }),
+    call(59, "2026-09-24", "18:30", "ask", "sonnet", 6_900, 420, 0.04, { doc_ids: ["doc_phone"] }),
+    call(58, "2026-09-23", "17:15", "extract", "sonnet", 10_950, 990, 0.067, { doc_ids: ["doc_uni"], pages_sent: 1, bytes_sent: 2_300 }),
+    call(57, "2026-09-22", "18:05", "extract", "sonnet", 11_600, 1_240, 0.074, { doc_ids: ["doc_abh"], pages_sent: 1, bytes_sent: 2_780 }),
+    call(56, "2026-09-22", "18:05", "extract", "sonnet", 11_600, 1_240, 0, { doc_ids: ["doc_abh"], cache_hit: true }),
+    call(55, "2026-09-19", "10:31", "extract", "sonnet", 10_700, 930, 0.064, { doc_ids: ["doc_tm_dunning"], pages_sent: 1, bytes_sent: 2_050 }),
   ],
 };
 
 export const BRIEF_TEXT =
-  "Good morning, Sam. Two small payments this week: TechMarkt's reminder (94,99 €) is due Wednesday and the library wants 4,50 € by Friday. Please tell me when the parking fine arrived — until then I count from the letter date, so pay by tomorrow to be safe. Next week: dentist on Thursday, and your phone-contract decision (post by Thu 8 Oct).";
+  "Good morning, Sam. Two small payments this week: TechMarkt's reminder (€94.99) is due Wednesday and the library wants €4.50 by Friday. Please tell me when the parking fine arrived — until then I count from the letter date, so pay by tomorrow to be safe. Next week: FitWell's price increase (object by Tue 6 Oct if you post it), the dentist on Thursday, your phone-contract decision (post by Thu 8 Oct) and the Nebenkosten back payment (€184.30 by Fri 9 Oct).";

@@ -24,6 +24,7 @@ import type {
 } from "@/api/types";
 import { addToTotals, formatDate, formatMoney, type Totals } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
+import { cancellationSent, noticeFromYou } from "@/features/contracts/model";
 import { isDirectDebit } from "@/lib/payments";
 
 // ------------------------------------------------------------------------------------------------
@@ -34,7 +35,17 @@ import { isDirectDebit } from "@/lib/payments";
 export type ActionVerb = "pay" | "draft" | "done" | "check" | "open";
 
 /** What the date of an action means — drives the countdown prefix ("send by", "pay by"…). */
-export type DateRole = "send_by" | "pay_by" | "transfer_by" | "collected" | "due" | "by" | "on" | "expires" | "decide_by";
+export type DateRole = "send_by" | "arrive_by" | "pay_by" | "transfer_by" | "collected" | "due" | "by" | "on" | "expires" | "decide_by";
+
+/** How a to-do's receipt says the usual time to post has passed (`SENDING_TIME_PASSED` in
+ * `ordnung.rules.deadlines`; a backend test reads this file): its send-by is only "today", and a letter
+ * posted today may arrive too late — the date that counts is when it must arrive (review round 4 of phase 2). */
+export const SENDING_TIME_PASSED = "The usual sending time has passed";
+
+/** Whether the usual time to post an item's letter has passed (its receipt says so). */
+export function postTooLate(item: Pick<Item, "send_by" | "due_date" | "computation">): boolean {
+  return Boolean(item.send_by && item.due_date && item.computation?.warnings.some((w) => w.startsWith(SENDING_TIME_PASSED)));
+}
 
 export interface TodayAction {
   /** `item:<id>` or `contract:<id>` */
@@ -152,6 +163,7 @@ function verbFor(item: Item, needsCheck: boolean, draftKind: DraftKind | null): 
 function roleFor(item: Item): DateRole {
   // money: a transfer has to leave the account in time; a direct debit is collected by the sender
   if (item.kind === "payment" && item.direction !== "in") return isDirectDebit(item) ? "collected" : item.send_by ? "transfer_by" : "pay_by";
+  if (postTooLate(item)) return "arrive_by";
   if (item.send_by) return "send_by";
   switch (item.kind) {
     case "payment":
@@ -200,8 +212,9 @@ function reasonForItem(
 /** Build an action from a to-do or date. Returns null for closed or undated items. */
 export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction | null {
   if (!isOpen(item, ctx.today)) return null;
-  // a direct debit happens on its due date — there is no "send by"
-  const actionDate = isDirectDebit(item) ? item.due_date : item.send_by ?? item.due_date;
+  // a direct debit happens on its due date — there is no "send by"; nor is there once posting is too late
+  const late = item.kind !== "payment" && postTooLate(item);
+  const actionDate = isDirectDebit(item) || late ? item.due_date : item.send_by ?? item.due_date;
   if (!actionDate) return null;
   const reviewIds = new Set((ctx.reviewDocs ?? []).map((d) => d.id));
   const docWarnings = new Map((ctx.reviewDocs ?? []).map((d) => [d.id, d.warnings] as const));
@@ -215,9 +228,9 @@ export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction |
     contract: null,
     title: item.title,
     actionDate,
-    dueDate: item.send_by && item.due_date && item.due_date !== item.send_by ? item.due_date : null,
+    dueDate: item.send_by && !late && item.due_date && item.due_date !== item.send_by ? item.due_date : null,
     dateRole: roleFor(item),
-    time: item.send_by ? null : item.due_time,
+    time: item.send_by && !late ? null : item.due_time,
     kind: item.kind,
     priority: item.priority,
     partyId: item.party_id,
@@ -238,11 +251,13 @@ export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction |
 export function actionFromContract(contract: Contract, ctx: CandidateContext): TodayAction | null {
   const c = contract.computed;
   if (!offersEndingLetter(contract) || !c) return null; // e.g. the broadcasting fee: nothing to decide
+  if (cancellationSent(contract)) return null; // its cancellation was sent: decided (walkthrough of phase 2)
   const actionDate = c.send_by ?? c.cancel_by;
   if (!actionDate) return null;
   const daysLeft = daysBetween(actionDate, ctx.today);
   if (daysLeft < 0) return null; // a passed decision date is not an action any more
-  const needsCheck = c.confidence === "low";
+  // low confidence asks for a check — not once the person entered the notice period (as on its card)
+  const needsCheck = c.confidence === "low" && !noticeFromYou(contract);
   const base = {
     key: `contract:${contract.id}`,
     source: "contract" as const,
@@ -349,9 +364,9 @@ export function toPayWithin(actions: readonly TodayAction[], days = 30): number 
 export interface WeekGroup<T> {
   /** "overdue" or the ISO Monday of the week */
   key: string;
-  /** "Overdue", "This week", "Next week", "Week of 12 Oct" */
+  /** "Overdue", "This week", "Next week", "12 – 18 Oct" */
   label: string;
-  /** "28 Sep – 4 Oct" (empty for overdue) */
+  /** "28 Sep – 4 Oct" for this and next week (empty for overdue and later weeks, whose label is their days) */
   range: string;
   entries: T[];
   /** Sum of outgoing payments in the group, per currency */
@@ -360,7 +375,7 @@ export interface WeekGroup<T> {
 
 /**
  * Group dated entries by calendar week (Monday first, as in Germany): "Overdue", "This week",
- * "Next week", "Week of 12 Oct". Entries after `today + days` are dropped. Sorted by date.
+ * "Next week", "12 – 18 Oct". Entries after `today + days` are dropped. Sorted by date.
  */
 export function groupByWeek<T extends { date: string; amount?: number | null; currency?: string | null; outgoing?: boolean }>(
   entries: readonly T[],
@@ -383,12 +398,14 @@ export function groupByWeek<T extends { date: string; amount?: number | null; cu
       const monday = startOfWeek(parseISO(e.date), { weekStartsOn: 1 });
       key = format(monday, "yyyy-MM-dd");
       const weeks = Math.round(differenceInCalendarDays(monday, thisWeek) / 7);
-      label = weeks === 0 ? "This week" : weeks === 1 ? "Next week" : `Week of ${format(monday, "d MMM")}`;
       const sunday = addDays(monday, 6);
-      range =
+      const days =
         monday.getMonth() === sunday.getMonth()
           ? `${format(monday, "d")} – ${format(sunday, "d MMM")}`
           : `${format(monday, "d MMM")} – ${format(sunday, "d MMM")}`;
+      // later weeks are named by their days ("12 – 18 Oct", not "Week of 12 Oct 12 – 18 Oct")
+      label = weeks === 0 ? "This week" : weeks === 1 ? "Next week" : days;
+      range = weeks <= 1 ? days : "";
     }
     let g = groups.get(key);
     if (!g) {
@@ -515,9 +532,12 @@ function verbPhrase(a: TodayAction): string {
  * Code-generated fallback for the secretary's note (when the AI note is unavailable): one or two
  * plain sentences built only from the ledger, so every date and amount is right by construction.
  */
-export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string): string {
+export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0): string {
+  // letters from the watched folder nobody read: their dates are unknown, so nothing is "all clear"
+  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
   if (!top.length) {
     const next = upcoming[0];
+    if (waiting) return `Nothing due from the letters that were read.${unread}`;
     if (!next) return "Nothing needs you right now. New letters will show up here as soon as they're read.";
     return `Nothing needs you this week. Next up: ${verbPhrase(next)} ${next.dateRole === "on" ? "on" : "by"} ${shortDay(next.actionDate, today)}.`;
   }
@@ -531,7 +551,7 @@ export function agendaSentence(top: readonly TodayAction[], upcoming: readonly T
   const list = parts.length > 1 ? `${parts.slice(0, -1).join("; ")}; and ${parts[parts.length - 1]}` : parts[0];
   const check = top.find((a) => a.needsCheck);
   const tail = check ? " One date needs a quick check from you." : "";
-  return `${head} ${list}.${tail}`;
+  return `${head} ${list}.${tail}${unread}`;
 }
 
 /** "All clear until Friday" (next date within a week) / "until Wed 14 Oct" / "All clear". */

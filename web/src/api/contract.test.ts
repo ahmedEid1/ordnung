@@ -112,6 +112,9 @@ async function responseProblems(op: Operation, res: Response): Promise<string[]>
     return schema ? events.flatMap((event, i) => strict.check(event, schema, `event[${i}]`)) : [];
   }
   const schema = content["application/json"]?.schema;
+  // a file download (the encrypted backup): the declared media type, not JSON
+  const file = Object.keys(content).find((type) => type !== "application/json");
+  if (!schema && file) return res.headers.get("content-type")?.startsWith(file) ? [] : [`expected a ${file} file, got ${res.headers.get("content-type")}`];
   if (!schema) return text ? [`unexpected body for a ${res.status} without JSON content`] : [];
   if (!text) return ["empty body, the API returns JSON"];
   return strict.check(JSON.parse(text), schema, "response");
@@ -140,6 +143,13 @@ interface Ids {
   suggestion: string;
   mail: string;
   thread: string;
+  /** letters waiting for the person (from the watched folder) */
+  held: string;
+  otherHeld: string;
+  /** a letter that was sent (proof belongs to sent letters) */
+  sentDraft: string;
+  proof: string;
+  call: string;
 }
 
 interface Case {
@@ -157,6 +167,7 @@ async function drain(stream: AsyncGenerator<StreamEvent>): Promise<StreamEvent[]
 }
 
 const pdf = () => new File(["%PDF-1.4\n%demo\n"], "letter.pdf", { type: "application/pdf" });
+const photo = () => new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "zustellung.jpg", { type: "image/jpeg" });
 
 /** One case per endpoint function (the type makes adding an endpoint without a case a compile error). */
 const CASES = {
@@ -178,12 +189,24 @@ const CASES = {
   fileUrl: { run: (ids) => api.fileUrl(ids.doc), asset: true },
   pageUrl: { run: (ids) => api.pageUrl(ids.doc, 1), asset: true },
   thumbnailUrl: { run: (ids) => api.thumbnailUrl(ids.doc), asset: true },
+  folder: { run: () => api.folder() },
+  readHeld: { run: (ids) => api.readHeld([ids.held, "doc_gone"]) },
+  keepHeldPrivate: { run: (ids) => api.keepHeldPrivate([ids.otherHeld]) },
+  waitAgain: { run: (ids) => api.waitAgain([ids.otherHeld]) }, // after keepHeldPrivate: undoes it
+  documentTrace: { run: (ids) => api.documentTrace(ids.doc) },
+  // the parking fine was read twice (mocks/data/traces.ts)
+  traceComparison: { run: () => api.traceComparison("doc_parking") },
+  traces: { run: () => api.traces() },
 
   items: { run: () => api.items({ status: "open", from: "2026-09-01", to: "2026-12-31", include_undated: true, limit: 50 }) },
   createItem: { run: () => api.createItem({ kind: "task", title: "Call the bank", due_date: "2026-10-05", area: "money" }) },
   updateItem: { run: (ids) => api.updateItem(ids.item, { status: "done" }) },
   deleteItem: { run: (ids) => api.deleteItem(ids.otherItem) },
   confirmItem: { run: (ids) => api.confirmItem(ids.item) },
+  // the photographed parking fine waits for the person to compare it with the paper letter
+  confirmGiroCode: {
+    run: () => api.confirmGiroCode("itm_parking", { payee: "Stadtkasse Musterstadt", iban: "DE51123456000000100017", reference: "OA-VW-2026-55012", amount: 30 }),
+  },
   itemIcsUrl: { run: (ids) => api.itemIcsUrl(ids.item), asset: true },
 
   contracts: { run: () => api.contracts({ status: "active" }) },
@@ -195,6 +218,10 @@ const CASES = {
   timeline: { run: () => api.timeline("2026-09-01", "2026-12-31") },
   lanes: { run: () => api.lanes() },
   dashboard: { run: () => api.dashboard() },
+  numbers: { run: () => api.numbers() },
+  week: { run: () => api.week() },
+  weekDone: { run: () => api.weekDone() },
+  weekDismiss: { run: () => api.weekDismiss() },
 
   suggestions: { run: () => api.suggestions({ limit: 20 }) },
   updateSuggestion: { run: (ids) => api.updateSuggestion(ids.suggestion, { status: "snoozed", snoozed_until: "2026-10-05" }) },
@@ -212,10 +239,41 @@ const CASES = {
   deleteDraft: { run: (ids) => api.deleteDraft(ids.draft) },
   translateDraft: { run: (ids) => api.translateDraft(ids.draft), status: 409 },
   draftPdfUrl: { run: (ids) => api.draftPdfUrl(ids.draft), asset: true },
-  markDraftSent: { run: (ids) => api.markDraftSent(ids.draft, { channel: "registered_letter", date: "2026-09-28" }) },
+  draftPreviewUrl: { run: (ids) => api.draftPreviewUrl(ids.draft), asset: true },
+  markDraftSent: { run: (ids) => api.markDraftSent(ids.draft, { channel: "registered_letter", date: "2026-09-28", tracking_number: "RT 123 456 785 DE" }) },
+
+  draftProof: { run: (ids) => api.draftProof(ids.sentDraft) },
+  setTracking: { run: (ids) => api.setTracking(ids.sentDraft, { tracking_number: "0034 0434 1234" }) },
+  addProof: { run: (ids) => api.addProof(ids.sentDraft, { file: photo(), kind: "delivery_record", onDate: "2026-09-24", note: "Copy from Deutsche Post" }) },
+  updateProof: { run: (ids) => api.updateProof(ids.sentDraft, ids.proof, { on_date: "2026-09-22", note: "Filiale Mitte" }) },
+  removeProof: { run: (ids) => api.removeProof(ids.sentDraft, ids.proof) },
+  proofPdfUrl: { run: (ids) => api.proofPdfUrl(ids.sentDraft), asset: true },
+  markAnswered: { run: (ids) => api.markAnswered(ids.sentDraft, null) },
+  unmarkAnswered: { run: (ids) => api.unmarkAnswered(ids.sentDraft) },
+  waiting: { run: () => api.waiting() },
+  calls: { run: (ids) => api.calls({ party_id: ids.party }) },
+  createCall: {
+    run: (ids) =>
+      api.createCall({ party_id: ids.party, called_on: "2026-09-25", contact: "Frau Weber", summary: "Asked about my letter.", promise: "Call back", promise_due: "2026-10-02", promise_amount: null }),
+  },
+  updateCall: { run: (ids) => api.updateCall(ids.call, { kept: true }) },
+  deleteCall: { run: (ids) => api.deleteCall(ids.call) },
 
   calendarIcsUrl: { run: () => api.calendarIcsUrl(), asset: true },
   calendarExported: { run: () => api.calendarExported() },
+  calendarSync: { run: () => api.calendarSync() },
+  calendarSyncPreview: { run: () => api.calendarSyncPreview("full") },
+  discoverCalendars: { run: () => api.discoverCalendars({ url: "https://cloud.example.org/", username: "sam", password: "abcd-efgh-ijkl-mnop" }) },
+  connectCalendarSync: {
+    run: () => api.connectCalendarSync({ url: "https://cloud.example.org/remote.php/dav/calendars/sam/ordnung/", username: "sam", password: "abcd-efgh-ijkl-mnop", mode: "discreet" }),
+  },
+  runCalendarSync: { run: () => api.runCalendarSync() },
+  disconnectCalendarSync: { run: () => api.disconnectCalendarSync(true) },
+
+  desktopReminders: { run: () => api.desktopReminders() },
+  testDesktopNotification: { run: () => api.testDesktopNotification("full") },
+  backupInfo: { run: () => api.backupInfo() },
+  downloadBackup: { run: () => api.downloadBackup("correct horse battery staple") },
 
   activity: { run: () => api.activity(50) },
   usage: { run: () => api.usage() },
@@ -233,11 +291,29 @@ const CASES = {
 const ORDER: (keyof Api)[] = [
   "ask",
   "chat",
+  "updateDraft", // before it is sent: a sent letter's text can't change (409)
   "markDraftSent",
   "translateDraft",
+  "confirmGiroCode", // before a later case marks the parking fine paid
   ...(Object.keys(CASES) as (keyof Api)[]).filter(
-    (name) => !["ask", "chat", "markDraftSent", "translateDraft", "deleteDraft", "deleteDocument", "deleteItem", "deleteEverything"].includes(name),
+    (name) =>
+      ![
+        "ask",
+        "chat",
+        "updateDraft",
+        "markDraftSent",
+        "translateDraft",
+        "confirmGiroCode",
+        "deleteDraft",
+        "deleteDocument",
+        "deleteItem",
+        "deleteEverything",
+        "removeProof",
+        "deleteCall",
+      ].includes(name),
   ),
+  "removeProof",
+  "deleteCall",
   "deleteDraft",
   "deleteItem",
   "deleteDocument",
@@ -288,6 +364,11 @@ function ids(): Ids {
     suggestion: s.suggestions[0]!.id,
     mail: s.tray.find((t) => !t.opened)!.id,
     thread: "",
+    held: docs.find((d) => d.status === "held")!.id,
+    otherHeld: docs.filter((d) => d.status === "held").at(-1)!.id,
+    sentDraft: s.drafts.find((d) => d.status === "sent" && d.sent_channel === "registered_letter")!.id,
+    proof: s.proofs[0]!.id,
+    call: s.calls[0]!.id,
   };
 }
 

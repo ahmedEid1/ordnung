@@ -6,6 +6,7 @@
  *
  *   node scripts/source-hash.mjs                                  # print the hash
  *   node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
+ *   node scripts/source-hash.mjs --check                          # the same: that file is the default
  *
  * The built app is committed (src/ordnung/web/dist) so `pip install git+…` works without Node.
  */
@@ -15,6 +16,8 @@ import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const WEB_DIR = resolve(fileURLToPath(new URL("..", import.meta.url)));
+/** The committed build's `build-info.json` (what `--check` reads when no file is given). */
+const COMMITTED_BUILD_INFO = join(WEB_DIR, "..", "src", "ordnung", "web", "dist", "build-info.json");
 
 const ROOTS = ["src", "public", "index.html", "package-lock.json", "vite.config.ts", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json"];
 const EXCLUDED = [/\.test\.tsx?$/, /^src\/test\//];
@@ -46,7 +49,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (at === -1) {
     console.log(current);
   } else {
-    const file = process.argv[at + 1];
+    const file = process.argv[at + 1] ?? COMMITTED_BUILD_INFO;
     let built = null;
     try {
       built = JSON.parse(readFileSync(file, "utf8")).sourceHash;

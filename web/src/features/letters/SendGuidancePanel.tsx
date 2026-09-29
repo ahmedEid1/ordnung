@@ -1,4 +1,4 @@
-import { Lightbulb, Send, Signature } from "lucide-react";
+import { Ban, Lightbulb, Send, Signature, TriangleAlert } from "lucide-react";
 import type { SendChannel, SendGuidance } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Countdown } from "@/components/ui/Countdown";
@@ -10,41 +10,69 @@ import { useToday } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { rankChannels } from "./logic";
 
-const INSTANT = new Set(["online_button", "email", "fax", "portal"]);
+/** Channels that arrive the same day, as the must-arrive sentence names them. */
+const INSTANT: Record<string, string> = { online_button: "online", portal: "online", fax: "by fax", email: "by email" };
+/** Channels a written-form letter rules out, named when the guidance marks them not allowed. */
+const NOT_ENOUGH: Record<string, string> = { email: "An email", fax: "a fax", online_button: "an online button" };
+
+/** "online or by fax" — the same-day channels this letter allows, without repeats. */
+export function instantPhrase(channels: SendChannel[]): string | null {
+  const words = [...new Set(channels.filter((c) => c.allowed && INSTANT[c.channel]).map((c) => INSTANT[c.channel]!))];
+  return words.length ? `${words.slice(0, -1).join(", ")}${words.length > 1 ? " or " : ""}${words[words.length - 1]}` : null;
+}
+
+/** "by fax, online or in person" — every way this letter allows that reaches the recipient the same day. */
+export function sameDayPhrase(channels: SendChannel[]): string | null {
+  const words = [
+    ...new Set(channels.filter((c) => c.allowed && (INSTANT[c.channel] || c.channel === "in_person")).map((c) => INSTANT[c.channel] ?? "in person")),
+  ];
+  return words.length ? `${words.slice(0, -1).join(", ")}${words.length > 1 ? " or " : ""}${words[words.length - 1]}` : null;
+}
+
+/** "An email or a fax is not enough." — only what this guidance really rules out (a court takes a fax). */
+export function notEnoughPhrase(channels: SendChannel[]): string | null {
+  const words = [...new Set(channels.filter((c) => !c.allowed && NOT_ENOUGH[c.channel]).map((c) => NOT_ENOUGH[c.channel]!))];
+  if (!words.length) return null;
+  const list = `${words.slice(0, -1).join(", ")}${words.length > 1 ? " or " : ""}${words[words.length - 1]}`;
+  return `${list.charAt(0).toUpperCase()}${list.slice(1)} is not enough.`;
+}
 
 function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
   const copy = copyFor(SEND_CHANNEL_COPY, c.channel);
   const Icon = copy.icon;
   const t = TONES[c.allowed ? copy.tone : "neutral"];
   return (
-    <li className={cn("flex gap-3 py-3 first:pt-0 last:pb-0", !c.allowed && "opacity-70")}>
-      <span className="relative mt-0.5 shrink-0">
-        <span className={cn("grid size-8 place-items-center rounded-lg", t.soft, t.icon)}>
-          <Icon className="size-4" aria-hidden />
-        </span>
-        {c.allowed ? (
-          <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-surface text-[10px] font-bold text-muted ring-1 ring-line" aria-hidden>
-            {n}
-          </span>
-        ) : null}
+    // a channel that isn't allowed is said in full-contrast text (review round 2: the faded row failed WCAG
+    // 1.4.3 — and a court's letter depends on this row to say that e-mail is invalid): only its name is struck.
+    // The rank is a plain "1." before the name (a number on the icon's corner read as a notification count).
+    <li className="flex gap-3 py-3 first:pt-0 last:pb-0">
+      <span className={cn("mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg", t.soft, t.icon)}>
+        <Icon className="size-4" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className={cn("text-[14px] font-medium", c.allowed ? "text-ink" : "text-muted line-through decoration-muted/50")}>{c.label || copy.label}</span>
+          <span className={cn("text-[14px] font-medium [overflow-wrap:anywhere]", c.allowed ? "text-ink" : "text-ink/80 line-through decoration-ink/40")}>
+            {c.allowed ? (
+              <span className="mr-1 tabular-nums text-muted" aria-hidden>
+                {n}.
+              </span>
+            ) : null}
+            {c.label || copy.label}
+          </span>
           {c.recommended && c.allowed ? (
             <Badge tone="ok" size="sm">
               Recommended
             </Badge>
           ) : null}
           {!c.allowed ? (
-            <Badge tone="neutral" size="sm">
+            <Badge tone="neutral" size="sm" icon={Ban}>
               Not enough for this letter
             </Badge>
           ) : null}
         </div>
-        {c.note ? <p className="mt-0.5 text-[13px] leading-5 text-muted">{c.note}</p> : null}
+        {c.note ? <p className={cn("mt-0.5 text-[13px] leading-5", c.allowed ? "text-muted" : "text-ink/80")}>{c.note}</p> : null}
         {c.citation ? (
-          <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-px text-[11.5px] font-medium text-muted" title="Legal basis">
+          <p className="mt-1 inline-flex rounded-md bg-surface-2 px-1.5 py-px text-[12px] font-medium text-muted" title="Legal basis">
             {c.citation}
           </p>
         ) : null}
@@ -60,13 +88,17 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
 export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance | null; sent?: boolean }) {
   const today = useToday();
   if (!guidance) {
-    return <p className="text-sm text-muted">No special rules for sending this letter. Post or email both work — keep a copy.</p>;
+    return <p className="text-base text-muted">No special rules for sending this letter. Post or email both work — keep a copy.</p>;
   }
   const ranked = rankChannels(guidance.channels);
   const allowed = ranked.filter((c) => c.allowed);
-  const hasInstant = allowed.some((c) => INSTANT.has(c.channel));
+  const instant = instantPhrase(allowed);
+  const sameDay = sameDayPhrase(allowed);
+  const notEnough = notEnoughPhrase(ranked);
   const form = copyFor(SEND_FORM_COPY, guidance.form);
-  const due = guidance.send_by ?? guidance.must_arrive_by;
+  // the usual time to post has passed (review round 4 of phase 2): the date that counts is when it must arrive
+  const late = Boolean(guidance.post_too_late && guidance.must_arrive_by);
+  const due = late ? guidance.must_arrive_by : (guidance.send_by ?? guidance.must_arrive_by);
   const u = due ? urgencyOf(due, today) : null;
 
   return (
@@ -78,22 +110,30 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
             u === "overdue" || u === "today" || u === "soon" ? "border-danger/25 bg-danger-soft/60" : u === "week" ? "border-warn/30 bg-warn-soft/60" : "border-accent/20 bg-accent-soft/50",
           )}
         >
-          <p className="text-[11.5px] font-semibold uppercase tracking-[0.07em] text-muted">{guidance.send_by ? "Send it by" : "Must arrive by"}</p>
+          <p className="eyebrow">{guidance.send_by && !late ? "Send it by" : "Must arrive by"}</p>
           <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <DateText date={due} style="short" className="display text-[26px] font-semibold leading-tight text-ink" />
             <Countdown date={due} variant="pill" />
           </div>
-          {guidance.send_by && guidance.must_arrive_by && guidance.must_arrive_by !== guidance.send_by ? (
+          {late ? (
+            <p className="mt-1.5 flex gap-2 text-[13px] leading-5 text-ink/90" data-post-too-late>
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
+              <span>
+                <strong className="font-semibold">A letter posted today may arrive too late.</strong> Use a way that reaches them today
+                {sameDay ? ` — ${sameDay}` : ""}.
+              </span>
+            </p>
+          ) : guidance.send_by && guidance.must_arrive_by && guidance.must_arrive_by !== guidance.send_by ? (
             <p className="mt-1.5 text-[13px] leading-5 text-ink/80">
               It must <strong className="font-semibold">arrive</strong> by <DateText date={guidance.must_arrive_by} className="font-medium" />. That's why the post needs a head start
-              {hasInstant ? "; online or by email you have until then" : ""}.
+              {instant ? `; ${instant} you have until then` : ""}.
             </p>
           ) : null}
         </div>
       ) : null}
 
       <div>
-        <h3 className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Form</h3>
+        <h3 className="eyebrow mb-1.5">Form</h3>
         <p className="flex items-start gap-2 text-[14px] font-medium text-ink">
           <form.icon className={cn("mt-0.5 size-4 shrink-0", TONES[form.tone].icon)} aria-hidden />
           {form.label}
@@ -102,17 +142,18 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
           <div className="mt-2 flex gap-2.5 rounded-xl border border-warn/30 bg-warn-soft/70 px-3 py-2.5 text-[13px] leading-5 text-ink/90">
             <Signature className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
             <p>
-              <strong className="font-semibold text-warn-ink">Print it, sign it by hand and send it by </strong>
-              <Glossary term="Einschreiben" /> — ideally Einwurf-Einschreiben. An email or fax is not enough. Keep the receipt.
+              <strong className="font-semibold text-warn-ink">Print it and sign it by hand.</strong> By post, send it by <Glossary term="Einschreiben" /> —
+              ideally Einwurf-Einschreiben — and keep the receipt.{notEnough ? ` ${notEnough}` : ""}
             </p>
           </div>
         ) : null}
+        {/* a written-form letter's note is among the letter's own notes ("Good to know") */}
         {guidance.form_note && guidance.form !== "written_form" ? <p className="mt-1 text-[13px] leading-5 text-muted">{guidance.form_note}</p> : null}
       </div>
 
       {ranked.length ? (
         <div>
-          <h3 className="mb-2.5 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">
+          <h3 className="eyebrow mb-2.5 flex items-center gap-1.5">
             <Send className="size-3.5" aria-hidden /> Ways to send it, best first
           </h3>
           <ol className="divide-y divide-line">

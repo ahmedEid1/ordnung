@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from ordnung.assistant.channels import ToolAnswer, render_tool_result
 from ordnung.assistant.citations import (
     Citation,
     canonical_type,
@@ -121,33 +122,43 @@ def test_tool_labels() -> None:
         return titles.get(ref_id)
 
     assert (
-        tool_label("mcp__ordnung__search", {"query": "Kündigung"}) == 'Searched your letters for "Kündigung"'
+        tool_label("mcp__ordnung__search", {"query": "Kündigung"}) == "Searched your letters for “Kündigung”"
     )
-    assert tool_label("get_document", {"doc_id": DOC}, title_of) == 'Read "Tax assessment 2025"'
+    assert tool_label("get_document", {"doc_id": DOC}, title_of) == "Read “Tax assessment 2025”"
     assert tool_label("get_document", {"doc_id": "doc_unknown"}, title_of) == "Read a letter"
     assert tool_label("list_items", {}) == "Checked your open to-dos & dates"
     assert (
         tool_label("list_items", {"status": "all", "from_date": "2026-10-01", "to_date": "2026-10-31"})
-        == "Checked your to-dos & dates from 2026-10-01 to 2026-10-31"
+        == "Checked your to-dos & dates from Thu 1 Oct 2026 to Sat 31 Oct 2026"
     )
     assert (
         tool_label("list_items", {"to_date": "2026-10-31"})
-        == "Checked your open to-dos & dates until 2026-10-31"
+        == "Checked your open to-dos & dates until Sat 31 Oct 2026"
     )
-    assert tool_label("get_party", {"party_id_or_name": PARTY}, title_of) == 'Looked up "Finanzamt"'
-    assert tool_label("get_party", {"party_id_or_name": "Stadtwerke"}, title_of) == 'Looked up "Stadtwerke"'
+    # two calls filtered by kind read apart (UI audit round 1: both were "Checked your open to-dos & dates")
+    assert tool_label("list_items", {"kind": "deadline", "to_date": "2026-10-31"}) == (
+        "Checked your open deadlines until Sat 31 Oct 2026"
+    )
+    assert tool_label("list_items", {"kind": "payment", "status": "all"}) == "Checked your payments"
+    assert (
+        tool_label("list_items", {"kind": "expiry", "status": "done"}) == "Checked your finished expiry dates"
+    )
+    assert tool_label("list_items", {"kind": "nonsense"}) == "Checked your open to-dos & dates"
+    assert tool_label("get_party", {"party_id_or_name": PARTY}, title_of) == "Looked up “Finanzamt”"
+    assert tool_label("get_party", {"party_id_or_name": "Stadtwerke"}, title_of) == "Looked up “Stadtwerke”"
     assert (
         tool_label("timeline", {"from_date": "2026-10-01", "to_date": "2026-12-31"})
-        == "Checked your timeline from 2026-10-01 to 2026-12-31"
+        == "Checked your timeline from Thu 1 Oct 2026 to Thu 31 Dec 2026"
     )
     assert (
         tool_label("explain_date", {"item_or_contract_id": ITEM}, title_of)
-        == 'Checked how "Objection deadline" was worked out'
+        == "Checked how “Objection deadline” was worked out"
     )
     assert tool_label("explain_date", {"item_or_contract_id": "itm_x"}) == "Checked how a date was worked out"
     assert tool_label("list_contracts") == "Looked at your contracts"
     assert tool_label("money_summary") == "Checked your money overview"
     assert tool_label("get_profile") == "Checked your profile"
+    assert tool_label("mcp__ordnung__get_my_numbers") == "Looked up your numbers"
     assert tool_label("today") == "Checked today's date"
     assert tool_label("Bash", {"command": "rm -rf /"}) == "Used a tool"
 
@@ -155,12 +166,12 @@ def test_tool_labels() -> None:
 def test_long_queries_are_shortened_in_labels() -> None:
     label = tool_label("search", {"query": "x" * 200})
     assert len(label) < 100
-    assert label.endswith('…"')
+    assert label.endswith("…”")
 
 
 def test_result_summaries() -> None:
-    def dump(data: object) -> str:
-        return json.dumps(data)
+    def dump(data: dict[str, object]) -> str:
+        return render_tool_result(ToolAnswer(data, {DOC: {"title": "letter text is not counted"}}))
 
     assert result_summary("mcp__ordnung__search", dump({"hits": [{}, {}, {}]})) == "Found 3 letters"
     assert result_summary("search", dump({"hits": [{}]})) == "Found 1 letter"
@@ -171,11 +182,54 @@ def test_result_summaries() -> None:
     assert result_summary("get_party", dump({"parties": [{}]})) == "Found 1 match"
     assert result_summary("get_document", dump({"id": DOC})) == "Read the letter"
     assert result_summary("get_document", dump({"found": False, "message": "no"})) == "Nothing found"
-    assert result_summary("today", dump({"today": "2026-09-28"})) == "Today is 2026-09-28"
+    # UI audit R1-backend-11: the trace says the date as the app does ("Today is 2026-09-28" before)
+    assert result_summary("today", dump({"today": "2026-09-28"})) == "Today is Mon 28 Sep 2026"
+    assert (
+        result_summary("today", dump({"today": "2026-09-28", "simulated": True}))
+        == "Today is Mon 28 Sep 2026 (demo date)"
+    )
     assert result_summary("explain_date", dump({"id": ITEM})) == "Found how the date was worked out"
     assert result_summary("money_summary", dump({})) == "Money overview ready"
+    assert result_summary("get_my_numbers", dump({"numbers": []})) == "Your numbers ready"
     assert result_summary("get_profile", dump({"name": "Sam"})) == "Profile read"
     assert result_summary("search", "Error executing tool search: boom") == "No result"
     assert result_summary("search", None) == "No result"
     assert result_summary("search", "[1, 2]") == "No result"
+    assert result_summary("search", json.dumps({"hits": [{}]})) == "No result"  # no record part
     assert result_summary("mystery", dump({"x": 1})) == "Done"
+
+
+def test_tool_labels_never_show_a_value_the_model_chose() -> None:
+    """Final review: the trace (shown before the answer check) repeated the model's search words and
+    names verbatim, so an injected letter could make it show "Frist verlängert bis 31.12.2027"."""
+    assert (
+        tool_label("search", {"query": "Einspruchsfrist verlängert 31.12.2027 999,00 €"})
+        == "Searched your letters for “Einspruchsfrist verlängert … €”"
+    )
+    assert tool_label("get_party", {"party_id_or_name": "FunkNetz 16:00"}) == "Looked up “FunkNetz …”"
+    assert tool_label("timeline", {"from_date": "31.12.2027", "to_date": "2027-12-31"}) == (
+        "Checked your timeline from … to Fri 31 Dec 2027"
+    )
+    assert tool_label("list_items", {"status": "31.12.2027"}) == "Checked your open to-dos & dates"
+
+
+@pytest.mark.parametrize(
+    ("query", "shown"),
+    [
+        ("Frist verlängert Ende Januar", "Frist verlängert …"),
+        ("mid-October payment", "… payment"),
+        ("Zahlung Anfang Oktober 2026", "Zahlung …"),
+        ("Termin um 14h", "Termin um …"),
+        ("late may fee", "late may fee"),  # the verb, as the check reads it
+        ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
+        # final review 3: masked on the words as the check reads them (a Unicode hyphen, markup)
+        ("mid\u2010January fee", "… fee"),
+        ("Frist Ende **Januar**", "Frist …"),
+        ("Frist _Ende_ Januar", "Frist …"),
+        ("the thirty-first of October", "the …"),
+    ],
+)
+def test_tool_labels_hide_every_value_the_check_reads(query: str, shown: str) -> None:
+    """Final review 2: the check reads "Ende Januar" as 31 January, but the trace showed it, because it
+    hid only words with a digit. A label hides every word of a value the check reads."""
+    assert tool_label("search", {"query": query}) == f"Searched your letters for “{shown}”"

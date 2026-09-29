@@ -14,18 +14,30 @@ Layout (mm from the top-left corner):
 
 The letter carries no software branding. Output is deterministic: the PDF creation date is the
 draft's ``created_at``, so the same draft always gives the same bytes.
+
+:func:`render_preview` draws the same PDF as one PNG, page under page, for the web app's print
+preview (browsers on phones show no PDF inline, and a PDF viewer in a frame can't follow the theme).
+
+:func:`render_nachweis` puts the letter as sent together with a summary of its proof and the proof
+files (the section at the end).
 """
 
 from __future__ import annotations
 
+import io
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
+import pypdfium2 as pdfium
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
+from PIL import Image
 
 from ordnung.drafts.templates import closing
+from ordnung.ingest.intake import PDFIUM_LOCK
 from ordnung.models import Draft, Profile
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"
@@ -248,3 +260,327 @@ def render(draft: Draft, profile: Profile) -> bytes:
     """The letter as PDF bytes (A4, DIN 5008 Form B; page numbers only on multi-page letters)."""
     pages = _layout(draft, profile, total_pages=1).pages_count
     return bytes(_layout(draft, profile, total_pages=pages).output())
+
+
+#: Width of the print preview in pixels: twice the preview's widest CSS size (560 px), so it is sharp.
+PREVIEW_WIDTH = 1120
+#: Transparent gap between two pages of the preview, in pixels (the page's frame shows through).
+PREVIEW_GAP = 32
+
+
+def render_preview(draft: Draft, profile: Profile, *, width: int = PREVIEW_WIDTH) -> bytes:
+    """The letter as it prints: every page of :func:`render`'s PDF, ``width`` pixels wide, one under
+    the other with a transparent gap between them, as a PNG."""
+    data = render(draft, profile)
+    pages: list[Image.Image] = []
+    with PDFIUM_LOCK:
+        pdf = pdfium.PdfDocument(data)
+        try:
+            for index in range(len(pdf)):
+                page = pdf[index]
+                try:
+                    page_width, _ = page.get_size()
+                    bitmap = page.render(scale=width / page_width)
+                    try:
+                        pages.append(bitmap.to_pil().convert("RGB"))
+                    finally:
+                        bitmap.close()
+                finally:
+                    page.close()
+        finally:
+            pdf.close()
+    height = sum(image.height for image in pages) + PREVIEW_GAP * (len(pages) - 1)
+    sheet = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    top = 0
+    for image in pages:
+        sheet.paste(image, (0, top))
+        top += image.height + PREVIEW_GAP
+    buffer = io.BytesIO()
+    sheet.save(buffer, "PNG", optimize=False, compress_level=6)
+    return buffer.getvalue()
+
+
+# --------------------------------------------------------------------------------------------------
+# The "Nachweis": the letter as sent, a summary with its timeline, and the proof files
+# --------------------------------------------------------------------------------------------------
+#
+# One PDF to keep or hand over in a dispute: a summary page (the timeline in German with English below,
+# proofs without a day apart from it, the tracking number, what each enclosure shows and does not show,
+# and the caveat), then the letter (enclosure 1, named for how it went out), then each proof file
+# (enclosure 2 …): a PDF with its own pages, anything else as
+# its rendered page images, one per A4 page under a caption. The summary carries no software branding
+# and proves nothing by itself: it lists what the person recorded.
+
+NACHWEIS_MARGIN = 20.0
+NACHWEIS_WIDTH = PAGE_WIDTH - 2 * NACHWEIS_MARGIN
+DATE_COLUMN = 26.0
+FACT_COLUMN = 48.0
+MUTED = (95, 95, 95)
+INK = (20, 20, 20)
+CAPTION_HEIGHT = 12.0
+A4_HEIGHT = 297.0
+
+
+@dataclass(frozen=True)
+class NachweisLine:
+    """One timeline line: the day (``01.09.2026``), German and English wording, an optional detail."""
+
+    day: str
+    german: str
+    english: str
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class NachweisFile:
+    """A proof to enclose: its name in both languages, what it shows, and the original PDF or page images."""
+
+    german: str
+    english: str
+    shows: str
+    does_not_show: str
+    pdf: bytes | None = None
+    images: tuple[Path, ...] = ()
+
+
+@dataclass(frozen=True)
+class NachweisFacts:
+    """What the summary page says besides the timeline. ``letter`` names the enclosed letter (German,
+    English): "as sent" only when it is what went out (``drafts.sent``)."""
+
+    recipient: str
+    sender: str
+    sent: str | None
+    tracking: str | None
+    created: str
+    caveat_de: str
+    caveat_en: str
+    letter: tuple[str, str] = ("Das Schreiben wie versandt", "The letter as sent")
+
+
+class _SummaryPDF(FPDF):
+    def footer(self) -> None:
+        self.set_y(-15)
+        self.set_font(FONT, "", FOOTER_SIZE)
+        self.set_text_color(*MUTED)
+        # {nb}: the summary's own page count (the letter and the enclosures follow it)
+        page = self.page_no()
+        self.cell(0, 4, f"Übersicht, Seite {page} von {{nb}} · Summary, page {page} of {{nb}}", align="R")
+        self.set_text_color(*INK)
+
+
+def _new_summary(draft: Draft, profile: Profile) -> _SummaryPDF:
+    pdf = _SummaryPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_creation_date(_creation_date(draft))
+    pdf.set_title(f"Versandnachweis: {draft.subject}")
+    if profile.name:
+        pdf.set_author(profile.name)
+    pdf.set_lang("de-DE")
+    pdf.add_font(FONT, "", str(FONT_DIR / "DejaVuSans.ttf"))
+    pdf.add_font(FONT, "B", str(FONT_DIR / "DejaVuSans-Bold.ttf"))
+    pdf.set_margins(NACHWEIS_MARGIN, NACHWEIS_MARGIN, NACHWEIS_MARGIN)
+    pdf.set_auto_page_break(auto=True, margin=BOTTOM)
+    pdf.add_page()
+    return pdf
+
+
+def _say(
+    pdf: FPDF, text: str, *, size: float = 10.0, bold: bool = False, muted: bool = False, height: float = 5.0
+) -> None:
+    pdf.set_font(FONT, "B" if bold else "", size)
+    pdf.set_text_color(*(MUTED if muted else INK))
+    pdf.multi_cell(0, height, text, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(*INK)
+
+
+def _section(pdf: FPDF, german: str, english: str) -> None:
+    pdf.ln(4)
+    _say(pdf, german, size=12, bold=True, height=6)
+    _say(pdf, english, size=8.5, muted=True, height=4)
+    pdf.ln(1.5)
+
+
+def _fact(pdf: FPDF, german: str, english: str, value: str) -> None:
+    top = pdf.get_y()
+    pdf.set_font(FONT, "B", 9.5)
+    pdf.cell(FACT_COLUMN, 5, german, new_x=XPos.RIGHT, new_y=YPos.TOP)
+    pdf.set_font(FONT, "", 10)
+    pdf.multi_cell(NACHWEIS_WIDTH - FACT_COLUMN, 5, value, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    after = pdf.get_y()
+    pdf.set_xy(NACHWEIS_MARGIN, top + 5)
+    pdf.set_font(FONT, "", 7.5)
+    pdf.set_text_color(*MUTED)
+    pdf.cell(FACT_COLUMN, 3.5, english, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(*INK)
+    pdf.set_y(max(after, top + 8.5) + 1)
+
+
+def _timeline_row(pdf: FPDF, line: NachweisLine) -> None:
+    if pdf.will_page_break(14):
+        pdf.add_page()
+    pdf.set_font(FONT, "", 10)
+    pdf.cell(DATE_COLUMN, 5, line.day, new_x=XPos.RIGHT, new_y=YPos.TOP)
+    width = NACHWEIS_WIDTH - DATE_COLUMN
+    pdf.set_font(FONT, "B", 10)
+    pdf.multi_cell(width, 5, line.german, align="L", new_x=XPos.LEFT, new_y=YPos.NEXT)
+    pdf.set_font(FONT, "", 8.5)
+    pdf.set_text_color(*MUTED)
+    english = f"{line.english} — {line.detail}" if line.detail else line.english
+    pdf.multi_cell(width, 4, english, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(*INK)
+    pdf.ln(1.5)
+
+
+def _text_height(pdf: FPDF, text: str, *, size: float, height: float, bold: bool = False) -> float:
+    pdf.set_font(FONT, "B" if bold else "", size)
+    measured = pdf.multi_cell(0, height, text, dry_run=True, output="HEIGHT")
+    return float(cast(float, measured))
+
+
+def _note_block(pdf: FPDF, facts: NachweisFacts) -> None:
+    """The caveat and the made-on line, kept on one page (never three lines alone on a new one)."""
+    made = (
+        f"Erstellt am {facts.created} aus den eigenen Angaben des Absenders. "
+        f"Made on {facts.created} from the sender's own records."
+    )
+    needed = (
+        4
+        + 6
+        + 4
+        + 1.5  # the section heading
+        + _text_height(pdf, facts.caveat_de, size=9.5, height=5)
+        + 1
+        + _text_height(pdf, facts.caveat_en, size=8.5, height=4)
+        + 3
+        + _text_height(pdf, made, size=8, height=4)
+    )
+    if pdf.will_page_break(needed):
+        pdf.add_page()
+    _section(pdf, "Hinweis", "Note")
+    _say(pdf, facts.caveat_de, size=9.5)
+    pdf.ln(1)
+    _say(pdf, facts.caveat_en, size=8.5, muted=True, height=4)
+    pdf.ln(3)
+    _say(pdf, made, size=8, muted=True, height=4)
+
+
+def _summary(
+    draft: Draft,
+    profile: Profile,
+    facts: NachweisFacts,
+    lines: list[NachweisLine],
+    files: list[NachweisFile],
+    letter_pages: int,
+    undated: list[NachweisLine],
+) -> bytes:
+    pdf = _new_summary(draft, profile)
+    _say(pdf, "Versandnachweis", size=18, bold=True, height=8)
+    _say(pdf, "Proof of sending — a summary of what the sender recorded", size=9.5, muted=True)
+    pdf.ln(4)
+    _fact(pdf, "Schreiben", "Letter", draft.subject or "—")
+    _fact(pdf, "Empfänger", "To", facts.recipient or "—")
+    _fact(pdf, "Absender", "From", facts.sender or "—")
+    if facts.sent:
+        _fact(pdf, "Versandt", "Sent", facts.sent)
+    if facts.tracking:
+        _fact(pdf, "Sendungsnummer", "Tracking number", facts.tracking)
+
+    _section(pdf, "Verlauf", "Timeline")
+    for line in lines:
+        _timeline_row(pdf, line)
+    if undated:
+        _section(pdf, "Nachweise ohne Datum", "Proofs without a day — not placed on the timeline")
+        for line in undated:
+            _timeline_row(pdf, line)
+
+    _section(pdf, "Anlagen", "Enclosures")
+    pages = f"{letter_pages} {'Seite' if letter_pages == 1 else 'Seiten'}"
+    german, english = facts.letter
+    _say(pdf, f"1. {german} ({pages})", bold=True)
+    _say(pdf, english, size=8.5, muted=True, height=4)
+    pdf.ln(1.5)
+    for number, enclosed in enumerate(files, start=2):
+        if pdf.will_page_break(22):
+            pdf.add_page()
+        _say(pdf, f"{number}. {enclosed.german}", bold=True)
+        explained = f"{enclosed.english}. Shows: {enclosed.shows} Does not show: {enclosed.does_not_show}"
+        _say(pdf, explained, size=8.5, muted=True, height=4)
+        pdf.ln(1.5)
+
+    _note_block(pdf, facts)
+    return bytes(pdf.output())
+
+
+def _image_pages(draft: Draft, number: int, enclosed: NachweisFile) -> bytes:
+    """The page images of an enclosure, each on its own A4 page under a caption."""
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.set_creation_date(_creation_date(draft))
+    pdf.add_font(FONT, "", str(FONT_DIR / "DejaVuSans.ttf"))
+    pdf.set_margins(NACHWEIS_MARGIN, NACHWEIS_MARGIN, NACHWEIS_MARGIN)
+    pdf.set_auto_page_break(auto=False)
+    box_height = A4_HEIGHT - 2 * NACHWEIS_MARGIN - CAPTION_HEIGHT
+    count = len(enclosed.images)
+    for index, image in enumerate(enclosed.images, start=1):
+        pdf.add_page()
+        pdf.set_font(FONT, "", 9)
+        pdf.set_text_color(*MUTED)
+        part = f" · {index}/{count}" if count > 1 else ""
+        pdf.cell(0, 5, f"Anlage {number}: {enclosed.german} / {enclosed.english}{part}")
+        pdf.set_text_color(*INK)
+        pdf.image(
+            str(image),
+            x=NACHWEIS_MARGIN,
+            y=NACHWEIS_MARGIN + CAPTION_HEIGHT,
+            w=NACHWEIS_WIDTH,
+            h=box_height,
+            keep_aspect_ratio=True,
+        )
+    return bytes(pdf.output())
+
+
+def _page_count(data: bytes) -> int:
+    with PDFIUM_LOCK:
+        document = pdfium.PdfDocument(data)
+        try:
+            return len(document)
+        finally:
+            document.close()
+
+
+def _merge(parts: list[bytes]) -> bytes:
+    """One PDF of all ``parts`` in order (PDFium, under the app-wide lock)."""
+    with PDFIUM_LOCK:
+        merged = pdfium.PdfDocument.new()
+        try:
+            for part in parts:
+                source = pdfium.PdfDocument(part)
+                try:
+                    merged.import_pages(source)
+                finally:
+                    source.close()
+            buffer = io.BytesIO()
+            merged.save(buffer)
+            return buffer.getvalue()
+        finally:
+            merged.close()
+
+
+def render_nachweis(
+    draft: Draft,
+    profile: Profile,
+    facts: NachweisFacts,
+    lines: list[NachweisLine],
+    files: list[NachweisFile],
+    *,
+    undated: list[NachweisLine] | None = None,
+) -> bytes:
+    """The Nachweis PDF: summary, the letter (``profile`` as it was when sent), then every proof file
+    (see the section comment). ``undated``: proofs without a day, listed apart from the timeline."""
+    letter = render(draft, profile)
+    parts = [_summary(draft, profile, facts, lines, files, _page_count(letter), undated or []), letter]
+    for number, enclosed in enumerate(files, start=2):
+        if enclosed.pdf is not None:
+            parts.append(enclosed.pdf)
+        elif enclosed.images:
+            parts.append(_image_pages(draft, number, enclosed))
+    return _merge(parts)

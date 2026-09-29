@@ -19,17 +19,19 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-ConditionName = Literal["ordnung", "llm_only", "llm_rules_text"]
-CONDITIONS: tuple[ConditionName, ...] = ("ordnung", "llm_only", "llm_rules_text")
+ConditionName = Literal["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+CONDITIONS: tuple[ConditionName, ...] = ("ordnung", "llm_only", "llm_rules_text", "llm_rules_tool")
 CONDITION_LABELS: dict[str, str] = {
     "ordnung": "Ordnung (LLM reads, rules compute)",
     "llm_only": "LLM only",
     "llm_rules_text": "LLM + rule text",
+    "llm_rules_tool": "LLM + rules tool (MCP)",
 }
 SHORT_LABELS: dict[str, str] = {
     "ordnung": "Ordnung",
     "llm_only": "LLM only",
     "llm_rules_text": "LLM + rules text",
+    "llm_rules_tool": "LLM + rules tool",
 }
 
 #: The demo persona lives in Nordrhein-Westfalen (SPEC § 1.3). Letters whose letterhead names no Land
@@ -289,6 +291,22 @@ class PredictedItem(BaseModel):
         return self.confidence == "low" or self.needs_check
 
 
+class ToolUse(BaseModel):
+    """One tool call a condition's model made (``llm_rules_tool``), as the scorer needs it.
+
+    ``ok`` is false when the tool refused the arguments (its answer was not a JSON object);
+    ``due_date`` is what ``compute_deadline`` returned and ``date`` what ``add_working_days``
+    returned (``None`` for no date or other tools).
+    """
+
+    name: str
+    input: dict[str, Any] = Field(default_factory=dict)
+    ok: bool = True
+    due_date: str | None = None
+    date: str | None = None
+    error: str | None = None
+
+
 class PredictedContract(BaseModel):
     current_term_end: str | None = None
     cancel_by: str | None = None
@@ -315,6 +333,8 @@ class Prediction(BaseModel):
     signals: list[str] = Field(default_factory=list)
     #: Whether invisible text was detected; ``None`` when the condition cannot observe it.
     hidden_text: bool | None = None
+    #: The model's tool calls in order; ``None`` for conditions without tools (``[]``: had tools, used none).
+    tools: list[ToolUse] | None = None
     calls: list[CallRecord] = Field(default_factory=list)
     #: The system gave no usable answer (e.g. invalid output after the repair attempt) — scored as empty.
     failed: str | None = None

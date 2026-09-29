@@ -15,6 +15,7 @@ import {
   startOfDay,
 } from "date-fns";
 import type { CostInterval } from "@/api/types";
+import { NBSP, protectRefs } from "./glue";
 
 export type DateInput = string | Date;
 
@@ -46,7 +47,11 @@ export type DateStyle = "short" | "day" | "medium" | "long" | "numeric" | "month
 
 export interface FormatDateOptions {
   style?: DateStyle;
-  /** When given (and `withYear` is "auto"), the year is shown only if it differs from today's. */
+  /**
+   * When given (and `withYear` is "auto"), the year is shown only if it differs from today's.
+   * Without it "auto" can't tell and never shows the year — in components use `useFormatDate()`
+   * (`@/lib/today`), which always passes the app's today.
+   */
   today?: DateInput;
   withYear?: "auto" | "always" | "never";
 }
@@ -54,7 +59,9 @@ export interface FormatDateOptions {
 /**
  * Format a date for humans.
  * - `short` (default): "Fri 16 Oct" (+ " 2027" when not this year)
- * - `day`: "16 Oct" · `medium`: "16 Oct 2026" · `long`: "Friday, 16 October 2026"
+ * - `day`: "16 Oct" · `medium`: "16 Oct 2026"
+ * - `long`: "Friday, 16 October 2026" — always with the year (screen-reader dates name it), unless
+ *   `withYear: "never"` ("Friday, 16 October", a page's date line as on Today and This week)
  * - `numeric`: "16.10.2026" (as on German letters) · `month`: "October 2026" · `weekday`: "Friday"
  */
 export function formatDate(value: DateInput | null | undefined, opts: FormatDateOptions = {}): string {
@@ -73,7 +80,8 @@ export function formatDate(value: DateInput | null | undefined, opts: FormatDate
     case "medium":
       return fnsFormat(d, "d MMM yyyy");
     case "long":
-      return fnsFormat(d, "EEEE, d MMMM yyyy");
+      // not `showYear`: callers that pass neither `withYear` nor `today` keep the year
+      return fnsFormat(d, withYear === "never" ? "EEEE, d MMMM" : "EEEE, d MMMM yyyy");
     case "numeric":
       return fnsFormat(d, "dd.MM.yyyy");
     case "month":
@@ -125,17 +133,82 @@ export function formatRelativeDays(date: DateInput, today: DateInput, mode: Rela
 export type Urgency = "overdue" | "today" | "soon" | "week" | "month" | "later" | "past";
 
 /**
- * Urgency bucket for colouring countdowns: overdue (due, past) · today · soon (≤ 3 days) ·
- * week (≤ 7) · month (≤ 30) · later · past (events in the past).
+ * Urgency bucket of a date — the app's one urgency scale (countdowns, card stripes, charts, lists):
+ * `overdue` (due, in the past) · `today` · `soon` (tomorrow) · `week` (2–7 days) · `month`
+ * (8–30 days) · `later` · `past` (events in the past). {@link urgencyTone} colours it.
  */
 export function urgencyOf(date: DateInput, today: DateInput, mode: RelativeMode = "due"): Urgency {
   const n = daysUntil(date, today);
   if (n < 0) return mode === "due" ? "overdue" : "past";
   if (n === 0) return "today";
-  if (n <= 3) return "soon";
+  if (n === 1) return "soon";
   if (n <= 7) return "week";
   if (n <= 30) return "month";
   return "later";
+}
+
+/** How loud an urgency is: red, amber, plain ink or muted. */
+export type UrgencyLevel = "danger" | "warn" | "ink" | "muted";
+
+/** overdue / today / tomorrow → danger · within a week → warn · within 30 days → ink · later → muted. */
+export const URGENCY_LEVEL: Record<Urgency, UrgencyLevel> = {
+  overdue: "danger",
+  today: "danger",
+  soon: "danger",
+  week: "warn",
+  month: "ink",
+  later: "muted",
+  past: "muted",
+};
+
+export interface UrgencyToneOptions {
+  /**
+   * The loudest this date may get. Direct debits (the bank collects them, nothing to do) and
+   * appointments (nothing to send) use `"warn"`: they never turn red.
+   */
+  cap?: "warn";
+  /** Show `later` dates in ink instead of muted — for card rows where the date is the content. */
+  inkLater?: boolean;
+}
+
+/** Tailwind classes for an urgency level (full literal class names so Tailwind can see them). */
+export interface UrgencyTone {
+  level: UrgencyLevel;
+  /** text colour (AA on surfaces and on `soft`) */
+  text: string;
+  /** soft tinted background (pills) — pair with `text` */
+  soft: string;
+  /** solid fill (dots, bars) */
+  solid: string;
+  /** a card's urgency edge: loud for danger/warn, a quiet line otherwise */
+  stripe: string;
+  /** subtle border */
+  border: string;
+}
+
+const URGENCY_TONES: Record<UrgencyLevel, Omit<UrgencyTone, "level">> = {
+  danger: { text: "text-danger-ink", soft: "bg-danger-soft", solid: "bg-danger", stripe: "bg-danger", border: "border-danger/25" },
+  warn: { text: "text-warn-ink", soft: "bg-warn-soft", solid: "bg-warn", stripe: "bg-warn", border: "border-warn/30" },
+  ink: { text: "text-ink", soft: "bg-surface-2", solid: "bg-muted", stripe: "bg-line-strong", border: "border-line-strong" },
+  muted: { text: "text-muted", soft: "bg-surface-2", solid: "bg-faint", stripe: "bg-line", border: "border-line" },
+};
+
+/** The level of an urgency after the options (`cap`, `inkLater`). */
+export function urgencyLevel(u: Urgency, opts: UrgencyToneOptions = {}): UrgencyLevel {
+  let level = URGENCY_LEVEL[u];
+  if (opts.cap === "warn" && level === "danger") level = "warn";
+  if (opts.inkLater && u === "later") level = "ink";
+  return level;
+}
+
+/**
+ * Colours for an urgency — the same everywhere a date is coloured by how close it is.
+ *
+ * @example urgencyTone(urgencyOf(due, today)).text  → "text-warn-ink" five days out
+ */
+export function urgencyTone(u: Urgency, opts: UrgencyToneOptions = {}): UrgencyTone {
+  const level = urgencyLevel(u, opts);
+  return { level, ...URGENCY_TONES[level] };
 }
 
 /** "3 min ago", "2 h ago", "yesterday", "12 Sep" — for activity logs (real timestamps). */
@@ -181,9 +254,9 @@ function moneyFormatter(currency: string, decimals: number): Intl.NumberFormat {
 
 export interface MoneyOptions {
   currency?: string | null;
-  /** prefix "+" for positive amounts (e.g. "+84,00 €/year") */
+  /** prefix "+" for positive amounts (e.g. "+€84.00/year") */
   signed?: boolean;
-  /** decimals; "auto" drops ",00" for whole amounts ≥ 100 */
+  /** decimals; "auto" drops ".00" for whole amounts ≥ 100 */
   decimals?: number | "auto";
 }
 
@@ -271,16 +344,42 @@ export function formatUsd(n: number | null | undefined): string {
   return `$${n.toFixed(2)}`;
 }
 
-/** 0.873 → "87 %". */
+const percentFormat = new Intl.NumberFormat("en-GB", { style: "percent", maximumFractionDigits: 0 });
+
+/** 0.873 → "87%" (English, like the rest of the UI — no space before the sign). */
 export function formatPercent(ratio: number | null | undefined): string {
   if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return "—";
-  return `${Math.round(ratio * 100)} %`;
+  return percentFormat.format(ratio);
 }
 
 /** Group an IBAN in blocks of four: "DE44500105175407324931" → "DE44 5001 0517 5407 3249 31". */
 export function formatIban(iban: string | null | undefined): string {
   if (!iban) return "—";
   return iban.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
+}
+
+/** "de89 3704-0044 …" → "DE89370400440532013000" (like the server: spaces, dashes and dots removed). */
+export function normalizeIban(iban: string): string {
+  return iban.replace(/[\s\-.]+/g, "").toUpperCase();
+}
+
+/** Each country's IBAN length, as the server checks it (`secretary/scam.py` `IBAN_LENGTHS`). */
+const IBAN_LENGTHS: Record<string, number> = {
+  AT: 20, BE: 16, CH: 21, CZ: 24, DE: 22, DK: 18, ES: 24, FI: 18, FR: 27, GB: 22, IE: 22, IT: 27, LU: 20, NL: 18, NO: 15,
+  PL: 28, PT: 25, SE: 24,
+};
+
+/** Shape, length for its country and ISO 13616 mod-97 checksum of an IBAN, like the server (`iban_valid`). */
+export function ibanLooksValid(iban: string): boolean {
+  const v = normalizeIban(iban);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v)) return false;
+  const length = IBAN_LENGTHS[v.slice(0, 2)];
+  if (length !== undefined && v.length !== length) return false;
+  let rest = 0;
+  for (const ch of v.slice(4) + v.slice(0, 4)) {
+    for (const digit of String(parseInt(ch, 36))) rest = (rest * 10 + Number(digit)) % 97;
+  }
+  return rest === 1;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -340,14 +439,98 @@ export function formatFactValue(value: string): string {
   return value;
 }
 
-/** ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep". */
-export function formatInlineDates(text: string, today?: DateInput): string {
-  return text.replace(/\b(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2})(?::\d{2})?Z?)?\b/g, (whole, day: string, time?: string) => {
-    if (!tryParseDate(day)) return whole;
-    // without "today" the year can't be left out safely
-    const date = formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
+// German two-letter weekdays only with their dot: "So 2026-10-04" may be English "so"
+const WEEKDAY_BEFORE =
+  "(?:(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tues?|Wed|Thu(?:rs?)?|Fri|Sat|Sun|" +
+  "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)\\.?|(?:Mo|Di|Mi|Do|Fr|Sa|So)\\.),?[ \\u00a0])?";
+const INLINE_ISO = new RegExp(`\\b${WEEKDAY_BEFORE}(\\d{4}-\\d{2}-\\d{2})(?:[ T](\\d{2}:\\d{2})(?::\\d{2})?Z?)?\\b`, "g");
+
+/**
+ * ISO dates inside running text ("from 2026-09-28 to 2026-10-26") → "Mon 28 Sep" (German: "Mo. 28.09.2026").
+ * A weekday written just before the date ("due Wed 2026-09-30") is part of it: the formatted date brings its
+ * own, so it never reads "Wed Wed 30 Sep".
+ */
+export function formatInlineDates(text: string, today?: DateInput, language: "en" | "de" = "en"): string {
+  return text.replace(INLINE_ISO, (whole, day: string, time?: string) => {
+    const parsed = tryParseDate(day);
+    if (!parsed) return whole;
+    // a German answer's dates as Ordnung's German check note writes them ("Do. 15.10.2026")
+    const date =
+      language === "de"
+        ? `${GERMAN_WEEKDAYS[parsed.getDay()]} ${fnsFormat(parsed, "dd.MM.yyyy")}`
+        : // without "today" the year can't be left out safely
+          formatDate(day, { style: "short", today, withYear: today ? "auto" : "always" });
     return time ? `${date}, ${formatTime(time)}` : date;
   });
+}
+
+const GERMAN_WEEKDAYS = ["So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa."];
+
+// ------------------------------------------------------------------------------------------------
+// Running text: keep units together
+// ------------------------------------------------------------------------------------------------
+
+export { plainText, protectRefs } from "./glue";
+
+const WEEKDAY = String.raw`(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag)`;
+const MONTH = String.raw`(?:Jan(?:uary|uar)?|Feb(?:ruary|ruar)?|Mar(?:ch)?|März|Apr(?:il)?|May|Mai|Jun[ei]?|Jul[iy]?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Okt(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|Dez(?:ember)?)\.?(?![\p{L}])`;
+/** "Wed 14 Oct", "Wednesday, 14 October 2026", "14. Oktober 2026", "October 14, 2026". */
+const DAY_MONTH = new RegExp(String.raw`(?:\b${WEEKDAY},?\s+)?\b\d{1,2}\.?\s+${MONTH}(?:\s+\d{4}\b)?|\b${MONTH}\s+\d{1,2}\b(?:,\s+\d{4}\b)?`, "gu");
+/** "§ 56", "§§ 312", "Abs. 3", "Art. 6", "Nr. 2", "Satz 1" — the label stays with its number. */
+const LAW_REF = /(§§?|\b(?:Abs|Art|Nr|No|Ziff|S)\.|\b(?:Absatz|Artikel|Satz|Nummer))\s+(?=\d)/g;
+/** "10:30 Uhr" */
+const TIME_UHR = /\b(\d{1,2}[:.]\d{2})\s+(Uhr)\b/g;
+/** "94,99 €", "1.560,00 EUR", "30 Euro" (amount first). */
+const MONEY_AFTER = /(?<![\d.,])(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)\s?(€|EUR|Euro)(?![\p{L}])/gu;
+/** "€ 94,99", "EUR 94.99" (currency first). */
+const MONEY_BEFORE = /(?<![\p{L}])(€|EUR)\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?|\d+(?:[.,]\d{2})?)(?![\d])/gu;
+
+function inlineMoney(num: string): string | null {
+  const n = parseLooseNumber(num);
+  // as precise as written: "30 €" → "€30", "30,00 €" → "€30.00"
+  return n === null ? null : formatMoney(n, { decimals: /[.,]\d{2}$/.test(num) ? 2 : 0 });
+}
+
+export interface InlineTextOptions {
+  /** The app's today, so ISO dates leave out the current year. */
+  today?: DateInput;
+  /**
+   * Rewrite money ("94,99 €" → "€94.99") and ISO dates into the app's English format (default).
+   * `false` only glues units together — for quotes that must stay as the letter wrote them.
+   */
+  rewrite?: boolean;
+}
+
+/**
+ * Model- or letter-written running text in the app's style: money in one English format
+ * ("94.99 EUR", "1.560,00 €" → "€94.99", "€1,560.00"), ISO dates as "Wed 14 Oct", and units that
+ * must not break across lines glued with non-breaking spaces and hyphens — dates ("Wed 14 Oct"),
+ * "§ 56", "Abs. 3", "Art. 6", "€ 30", "10:30 Uhr" and reference numbers ({@link protectRefs}).
+ * Display only (see {@link plainText}).
+ */
+export function formatInlineText(text: string, opts: InlineTextOptions = {}): string {
+  let out = text;
+  if (opts.rewrite !== false) {
+    out = formatInlineDates(out, opts.today);
+    out = out.replace(MONEY_AFTER, (whole, num: string) => inlineMoney(num) ?? whole);
+    out = out.replace(MONEY_BEFORE, (whole, _cur: string, num: string) => inlineMoney(num) ?? whole);
+  }
+  return protectRefs(
+    out
+      .replace(DAY_MONTH, (d) => d.replace(/\s+/g, NBSP))
+      .replace(LAW_REF, `$1${NBSP}`)
+      .replace(TIME_UHR, `$1${NBSP}$2`)
+      .replace(/(\d)[ \t]+(€|EUR\b|Euro\b)/g, `$1${NBSP}$2`)
+      .replace(/(€|\bEUR)[ \t]+(?=\d)/g, `$1${NBSP}`),
+  );
+}
+
+/**
+ * A letter's words kept whole where the line wraps, as written: money ("30 €"), dates, law references
+ * and references with hyphens ("TM-2026-0048213") never split — titles, names and notes in rows.
+ */
+export function glueText(text: string): string {
+  return formatInlineText(text, { rewrite: false });
 }
 
 const GERMAN_WORDS = /\b(der|die|das|und|nicht|wir|Sie|Ihr|Ihre|Ihren|ist|wird|werden|bei|mit|zu|auf|dem|den|des|ein|eine|einen|für|oder|von|bis|zum|zur|im|am|sich|bitte|sicherstellen|müssen|Betrag|Frist)\b/g;

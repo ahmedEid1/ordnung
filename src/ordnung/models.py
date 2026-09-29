@@ -6,9 +6,10 @@ database, the API and the LLM outputs. Timestamps are ISO-8601 UTC strings.
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from datetime import date
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 # --------------------------------------------------------------------------------------------------
 # Enums
@@ -44,8 +45,29 @@ DocumentKind = Literal[
     "other",
 ]
 DOCUMENT_KINDS: tuple[str, ...] = DocumentKind.__args__  # type: ignore[attr-defined]
+#: Letters whose deadlines the rules engine handles specially. Only code assigns these kinds, from
+#: the model's reading (:mod:`ordnung.rules.routing`), so the extraction schema and the benchmark keep
+#: the model's own vocabulary (:data:`DocumentKind`) and its recorded answers stay valid.
+HighStakesKind = Literal[
+    "court_payment_order",
+    "enforcement_order",
+    "dismissal",
+    "landlord_notice",
+    "rent_increase",
+    "operating_costs",
+]
+HIGH_STAKES_KINDS: tuple[str, ...] = HighStakesKind.__args__  # type: ignore[attr-defined]
+#: Letters that demand an earlier invoice's money again and take over its payment: a reminder, and a
+#: court order about the claim (the model may read a Mahnbescheid as a reminder; code files it as a
+#: court order, and it must still count as one).
+PAYMENT_DEMAND_KINDS: tuple[str, ...] = ("dunning", "court_payment_order", "enforcement_order")
+#: The kind stored on a letter: the model's reading, or a high-stakes kind code assigned.
+LetterKind = Literal[DocumentKind, HighStakesKind]
+LETTER_KINDS: tuple[str, ...] = (*DOCUMENT_KINDS, *HIGH_STAKES_KINDS)
 
-DocumentStatus = Literal["queued", "processing", "processed", "needs_review", "failed"]
+#: ``held``: stored and read on this computer only, waiting for the person to say it may be sent to
+#: Claude (a file from the watched folder, or an attachment of one — :mod:`ordnung.ingest.held`).
+DocumentStatus = Literal["queued", "processing", "processed", "needs_review", "failed", "held"]
 Direction = Literal["incoming", "outgoing", "note"]
 PartyKind = Literal[
     "authority",
@@ -90,7 +112,20 @@ SuggestionKind = Literal[
     "deadline", "saving", "risk", "followup", "hygiene", "tax", "opportunity", "scam", "info"
 ]
 SuggestionStatus = Literal["new", "accepted", "dismissed", "snoozed", "done", "expired"]
-DraftKind = Literal["cancellation", "objection", "general_reply"]
+#: Letters an Idea may offer to draft (part of the review model's schema, so kept as it was).
+SuggestedDraftKind = Literal["cancellation", "objection", "general_reply"]
+#: Letters written from fixed templates only (:mod:`ordnung.drafts.templates`).
+TemplateDraftKind = Literal[
+    "withdrawal",
+    "extension_request",
+    "payment_plan",
+    "defect_notice",
+    "data_access",
+    "receipts_inspection",
+    "deposit_return",
+    "address_change",
+]
+DraftKind = Literal[SuggestedDraftKind, TemplateDraftKind]
 ContractCategory = Literal[
     "mobile",
     "internet",
@@ -122,10 +157,20 @@ ContractRegime = Literal[
     "stromgvv20",
     "rent573c",
     "employment622",
+    "bgb675h",
     "as_written",
 ]
 RemedyType = Literal["einspruch", "widerspruch", "klage", "none", "unclear"]
 DateNature = Literal["objection", "payment", "declaration", "notice", "appointment", "other"]
+#: How a model call's answer turned out: ``invalid`` — it did not validate (a repair may follow);
+#: ``repaired`` — a repair's answer validated; ``failed`` — the call errored or its repair was invalid too.
+CallOutcome = Literal["ok", "invalid", "repaired", "failed"]
+#: What a step of reading a letter did (``run`` is the reading itself, the root of its spans).
+SpanKind = Literal["run", "model", "ocr", "verify", "rules", "link", "plan"]
+SpanStatus = Literal["ok", "error"]
+#: How a reading of a letter ended: ran to the end (``done``), ``failed``, or was interrupted —
+#: ``paused`` by a usage limit or ``stopped`` by a shutdown — and is read again later.
+ReadingEnd = Literal["done", "failed", "paused", "stopped"]
 
 
 class _Model(BaseModel):
@@ -283,7 +328,7 @@ class Document(_Model):
     source: str = "upload"
     status: DocumentStatus = "queued"
     error: str | None = None
-    kind: DocumentKind | None = None
+    kind: LetterKind | None = None
     area: Area | None = None
     title: str | None = None
     summary: str | None = None
@@ -346,6 +391,15 @@ class ContractTerms(_Model):
     status: Literal["active", "cancelled", "ended"] = "active"
 
 
+class CancellationSent(_Model):
+    """The person's cancellation of a contract, marked as sent (a ``cancellation`` letter with the
+    contract's id): the decision is taken, what is left is waiting for the provider's confirmation."""
+
+    draft_id: str
+    sent_on: str | None = None
+    channel: str | None = None
+
+
 class Contract(_Model):
     id: str
     party_id: str | None = None
@@ -377,6 +431,9 @@ class Contract(_Model):
     # (not to the broadcasting fee, statutory obligations or a job) and, if not, why.
     cancellable: bool = True
     cancel_hint: str | None = None
+    # Worked out on read by the API: the person's cancellation of it, marked as sent (the decision is
+    # taken — no "decide by", no "Draft cancellation"; walkthrough of phase 2).
+    cancellation_sent: CancellationSent | None = None
 
     def terms(self, party_kind: str | None = None) -> ContractTerms:
         return ContractTerms(
@@ -446,7 +503,7 @@ class SuggestionRef(_Model):
 
 class SuggestionAction(_Model):
     type: Literal["draft", "open", "mark_done", "snooze", "none"] = "none"
-    draft_kind: DraftKind | None = None
+    draft_kind: SuggestedDraftKind | None = None
     target_type: str | None = None
     target_id: str | None = None
     label: str | None = None
@@ -484,6 +541,8 @@ class SendChannel(_Model):
 class SendGuidance(_Model):
     send_by: str | None = None
     must_arrive_by: str | None = None
+    #: The usual time to post it has passed: a letter posted today may arrive too late (``send_by`` is today).
+    post_too_late: bool = False
     form: Literal["text_form", "written_form", "any"] = "text_form"
     form_note: str | None = None
     channels: list[SendChannel] = Field(default_factory=list)
@@ -518,8 +577,67 @@ class Draft(_Model):
     sent_channel: str | None = None
     status: Literal["draft", "final", "sent"] = "draft"
     sent_at: str | None = None
+    #: The Einschreiben's tracking number, normalised (``drafts.proof.parse_tracking_number``).
+    tracking_number: str | None = None
+    #: The day the person said the sent letter was answered (``drafts.sent.mark_answered``) and the
+    #: letter they said is the answer (``None``: answered by phone, e-mail … or not said).
+    answered_on: str | None = None
+    answer_doc_id: str | None = None
     created_at: str
     updated_at: str
+
+
+def _iso_day(value: str) -> str:
+    try:
+        return date.fromisoformat(value.strip()).isoformat()
+    except ValueError as exc:
+        raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
+
+
+#: A ``YYYY-MM-DD`` day (validated and normalised).
+IsoDay = Annotated[str, AfterValidator(_iso_day)]
+
+
+def _one_line(value: str) -> str:
+    return " ".join(value.split())
+
+
+#: Text that ends up in a letter's subject line: line breaks and runs of spaces become one space.
+OneLine = Annotated[str, AfterValidator(_one_line)]
+
+
+class LetterDetails(_Model):
+    """Facts a template letter needs besides the letter, contract or person it is about.
+
+    Everything is optional here; each template names the facts it requires
+    (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+    with a clear message, never a server error), amounts in euros.
+    """
+
+    subject_matter: OneLine | None = Field(
+        default=None, max_length=200, description="what was ordered or agreed, e.g. 'Kaffeemaschine'"
+    )
+    ordered_on: IsoDay | None = Field(default=None, description="the day the contract was concluded")
+    received_on: IsoDay | None = Field(default=None, description="the day the goods arrived")
+    instructions_missing: bool = Field(
+        default=False, description="no (or wrong) instructions about the right of withdrawal were given"
+    )
+    deadline: IsoDay | None = Field(default=None, description="the deadline that should be extended")
+    until: IsoDay | None = Field(default=None, description="the new date asked for")
+    amount: float | None = Field(default=None, ge=0, description="the total owed, or the deposit")
+    instalment: float | None = Field(default=None, gt=0, description="the monthly instalment offered")
+    first_instalment: IsoDay | None = Field(default=None, description="the day of the first instalment")
+    defect: str | None = Field(default=None, max_length=1000, description="what is broken or wrong")
+    noticed_on: IsoDay | None = Field(default=None, description="since when the defect exists")
+    fix_by: IsoDay | None = Field(default=None, description="the day by which it should be repaired")
+    period: OneLine | None = Field(default=None, max_length=80, description="the billing period")
+    moved_out_on: IsoDay | None = Field(default=None, description="the day the flat was handed back")
+    moved_on: IsoDay | None = Field(default=None, description="the day of the move")
+    old_address: str | None = Field(default=None, max_length=300)
+    new_address: str | None = Field(default=None, max_length=300)
+    recipient: str | None = Field(
+        default=None, max_length=300, description="name and address of a recipient not in Ordnung yet"
+    )
 
 
 class Note(_Model):
@@ -527,6 +645,64 @@ class Note(_Model):
     text: str
     item_ids: list[str] = Field(default_factory=list)
     created_at: str
+
+
+#: ``Document.source`` of a proof file: a private outgoing document that belongs to its letter
+#: (``drafts.proof``) and is never listed or counted as a letter.
+PROOF_SOURCE = "proof"
+
+
+class SentSigner(_Model):
+    """What a letter's PDF showed of the sender when it was marked as sent (the profile may change later)."""
+
+    name: str = ""
+    email: str = ""
+    phone: str = ""
+
+
+#: What a piece of proof of a sent letter is (``drafts.proof.PROOF_KINDS`` says what each one shows).
+ProofKind = Literal[
+    "posting_receipt",  # Einlieferungsbeleg
+    "delivery_record",  # Auslieferungsbeleg
+    "return_receipt",  # Rückschein
+    "fax_report",  # Sendebericht
+    "sent_email",
+    "cancel_confirmation",  # § 312k BGB: the saved page or the provider's confirmation
+    "other",
+]
+
+
+class Proof(_Model):
+    """One piece of proof that a letter was sent or arrived. ``doc_id`` is its file: a private outgoing
+    document (``source="proof"``) that is never sent to a model. ``on_date`` is the day it shows (the
+    day posted, delivered, faxed or confirmed)."""
+
+    id: str
+    draft_id: str
+    kind: ProofKind
+    doc_id: str | None = None
+    on_date: str | None = None
+    note: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class CallNote(_Model):
+    """A phone call the person noted (Gesprächsnotiz): when, with whom, what was said and what was
+    promised. A promise with a date is waited for (``secretary.waiting``)."""
+
+    id: str
+    party_id: str | None = None
+    case_id: str | None = None
+    called_on: str
+    contact: str | None = None
+    summary: str
+    promise: str | None = None
+    promise_due: str | None = None
+    promise_amount: float | None = None
+    promise_kept_on: str | None = None
+    created_at: str
+    updated_at: str
 
 
 class Activity(_Model):
@@ -557,6 +733,19 @@ class LLMCallRecord(_Model):
     doc_ids: list[str] = Field(default_factory=list)
     pages_sent: int = 0
     bytes_sent: int = 0
+    #: the replay and cache key (``purpose:prompt_version:model:sha256(inputs)``, ADR 0004); cleared
+    #: when a document the call carried is deleted
+    request_key: str | None = None
+    prompt_name: str | None = None
+    prompt_version: str | None = None
+    #: the model that answered, as the CLI reported it (``model`` is that model, else the one asked for)
+    served_model: str | None = None
+    job_id: str | None = None
+    stage: str | None = None
+    span_id: str | None = None
+    #: the call (``id``) this call retried with the validation problems appended
+    repair_of: int | None = None
+    outcome: CallOutcome = "ok"
 
 
 class Job(_Model):
@@ -615,6 +804,8 @@ class Profile(_Model):
     postal_buffer_days: int = 4
     is_student_visa: bool = False
     onboarded: bool = False
+    #: The person's own account, only for letters that ask for money back (e.g. the deposit).
+    iban: str = ""
 
     @property
     def known_region(self) -> str | None:
@@ -637,15 +828,93 @@ class ModelSettings(_Model):
     bank: str = "haiku"
 
 
+DesktopNotifyMode = Literal["off", "discreet", "full"]
+
+
 class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
     concurrency: int = 2
     inbox_dir: str | None = None
+    #: Files from the watched folder are read by Claude at once; off (the default), they wait for the
+    #: person's "Read these" (:mod:`ordnung.ingest.watcher`).
+    inbox_auto_read: bool = False
     ocr: bool = True
     llm_brief: bool = True
     llm_review: bool = True
+    #: The morning desktop notification (:mod:`ordnung.notify.desktop`): off, a count only, or the details.
+    desktop_notifications: DesktopNotifyMode = "off"
+    #: Local time (``HH:MM``) from which the day's desktop notification is shown.
+    desktop_notify_time: str = "08:00"
     demo: bool = False
     simulated_today: str | None = None
+
+
+CalendarSyncMode = Literal["discreet", "full"]
+CalendarSyncErrorKind = Literal[
+    "address",
+    "auth",
+    "forbidden",
+    "not_found",
+    "not_calendar",
+    "network",
+    "tls",
+    "conflict",
+    "server",
+    "unavailable",
+    "not_connected",
+]
+
+
+class CalendarSyncReport(_Model):
+    """What one calendar sync did (:mod:`ordnung.calendar.caldav`)."""
+
+    at: str
+    sent: int = 0
+    removed: int = 0
+    unchanged: int = 0
+    failed: int = 0
+    #: events Ordnung had sent that were no longer in the calendar (sent again, counted in ``sent``)
+    missing: int = 0
+    error: str | None = None
+    error_kind: CalendarSyncErrorKind | None = None
+
+
+class CalendarSyncState(_Model):
+    """The calendar-sync connection (meta ``calendar_sync``): where, in which mode, and a digest of
+    every event Ordnung put there. Never the password (that lives in the OS keyring)."""
+
+    url: str
+    username: str
+    mode: CalendarSyncMode = "discreet"
+    calendar_name: str | None = None
+    #: this data folder's connection: names its password in the keyring (a restored copy gets a new
+    #: one, so it never reads or deletes the password of the Ordnung it came from)
+    connection: str = ""
+    #: resource name (``ordnung-<id>.ics``) → SHA-256 of the event as last sent
+    events: dict[str, str] = Field(default_factory=dict)
+    last: CalendarSyncReport | None = None
+    #: automatic syncing waits after the server refused the password (until a manual sync or reconnect)
+    paused: bool = False
+    #: the app password was in the keyring when Ordnung last needed it (Settings never reads it)
+    password_saved: bool = True
+    #: the day Ordnung last checked that the events it sent are still in the calendar (ISO date)
+    checked_on: str | None = None
+
+
+class CalendarEventPreview(_Model):
+    """One event exactly as calendar sync would send it."""
+
+    uid: str
+    summary: str
+    #: ISO date (all-day) or local date-time with offset
+    start: str
+    all_day: bool
+    description: str
+    location: str | None = None
+    #: when each alarm rings, in words ("3 days before at 09:00"), earliest first
+    alarms: list[str] = Field(default_factory=list)
+    #: how many of those (the first ones) fell before today: they won't ring any more
+    alarms_passed: int = 0
 
 
 # --------------------------------------------------------------------------------------------------
@@ -839,6 +1108,11 @@ class TimelineEntry(_Model):
     amount: float | None = None
     currency: str | None = None  # of the amount (None: euros)
     past: bool = False
+    #: A payment's direction: money coming in ("in") is never due from the person, never overdue.
+    direction: Literal["in", "out"] | None = None
+    #: Why an open to-do is not one to act on (``ItemAside.reason``): a payment reminder replaced it, the bill
+    #: attached to the e-mail repeats it, or its date had long passed when the letter was read.
+    aside: Literal["replaced", "attached", "history"] | None = None
 
 
 class AreaStatus(_Model):
@@ -877,6 +1151,9 @@ class Dashboard(_Model):
     areas: list[AreaStatus] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     recent_documents: list[Document] = Field(default_factory=list)
+    #: Letters waiting for the person's "Read these" (``held``, from the watched folder): not read, so
+    #: in no other part of the page — Today says they wait instead of "nothing needs you".
+    waiting: int = 0
     stats: DashboardStats = Field(default_factory=DashboardStats)
 
 
@@ -897,8 +1174,169 @@ class Page(PageInfo):
     hidden: str = ""  # invisible text found on the page (never sent to a model)
 
 
+class HelpLink(_Model):
+    """Independent, free or low-cost help for a high-stakes letter (information, not legal advice)."""
+
+    name: str
+    what: str
+    url: str | None = None
+
+
+class AdviceFact(_Model):
+    """One computed or legal point on a high-stakes letter's card (e.g. the rent cap check)."""
+
+    title: str
+    text: str
+    tone: Literal["info", "warn", "good"] = "info"
+    citation: str | None = None
+
+
+class LetterAdvice(_Model):
+    """The "get advice" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).
+
+    ``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information.
+    """
+
+    kind: HighStakesKind
+    title: str
+    summary: str
+    urgent: bool = False
+    steps: list[str] = Field(default_factory=list)
+    facts: list[AdviceFact] = Field(default_factory=list)
+    help: list[HelpLink] = Field(default_factory=list)
+    rule_ids: list[str] = Field(default_factory=list)
+    #: The letter the card offers to draft; ``None`` when none fits (no hardship objection to a notice
+    #: without notice period; court orders get theirs from the verdict's main button).
+    draft: DraftKind | None = None
+    #: The person has dealt with the letter (:func:`ordnung.rules.advice.settles`, or ``closable`` and they said
+    #: so): it has a to-do that carries
+    #: its legal deadline (never a recurring one or a rent increase's new rent), and every such to-do is
+    #: closed — an operating-cost statement that came in time has none, so it is never handled. The card is
+    #: then no longer urgent, and the verdict says it is filed.
+    handled: bool = False
+    #: No to-do carries this letter's deadline (a landlord's notice without notice period, or with no
+    #: objection to-do), so only the person can say they have dealt with it: the card offers "I've dealt
+    #: with this", stored as the letter's tag ``dealt-with`` (ADR 0006: nothing is closed for them).
+    closable: bool = False
+
+
+# --------------------------------------------------------------------------------------------------
+# GiroCode (worked out on read by ordnung.secretary.girocode_gate, never stored)
+# --------------------------------------------------------------------------------------------------
+
+#: Why a payment has no GiroCode. ``check_letter`` is the one the person can resolve in the app, by
+#: comparing the details with the paper letter; the others are resolved on the letter, or not at all.
+GiroCodeBlock = Literal[
+    "incoming",
+    "direct_debit",
+    "settled",
+    "replaced",
+    "several",
+    "scam",
+    "currency",
+    "no_amount",
+    "no_iban",
+    "invalid_iban",
+    "no_payee",
+    "invalid",
+    "check_letter",
+]
+#: A transfer detail whose grounding the gate checks (the payee's name is checked by the payer's bank).
+TransferField = Literal["amount", "iban", "reference"]
+
+
+class TransferValues(_Model):
+    """The transfer details a GiroCode carries — what the person compares with the paper letter."""
+
+    payee: str | None = None
+    iban: str | None = None
+    reference: str | None = None
+    amount: float | None = None
+
+
+class GiroCodeReady(_Model):
+    """A GiroCode for one payment: ``payload`` is the EPC069-12 text to show as a QR code at error
+    correction level M. ``checked``: the person compared these details with the paper letter."""
+
+    status: Literal["ready"] = "ready"
+    item_id: str
+    payload: str
+    checked: bool = False
+
+
+class GiroCodeBlocked(_Model):
+    """Why a payment has no GiroCode, in plain words (``message``). For ``check_letter``, ``to_check``
+    names the details to compare with the paper letter and ``values`` are the ones to confirm."""
+
+    status: Literal["blocked"] = "blocked"
+    item_id: str
+    reason: GiroCodeBlock
+    message: str
+    to_check: list[TransferField] = Field(default_factory=list)
+    values: TransferValues | None = None
+
+
+GiroCode = Annotated[GiroCodeReady | GiroCodeBlocked, Field(discriminator="status")]
+
+
+AttachmentOutcome = Literal["added", "known", "inline", "not_read", "refused", "over_limit"]
+
+
+class EmailAttachment(_Model):
+    """One attachment of an e-mail and what Ordnung did with it (:mod:`ordnung.ingest.attachments`).
+
+    ``added``: it became a letter of its own (``doc_id``); ``known``: the same file was already in
+    Ordnung (``doc_id``); ``inline``: a picture shown inside the e-mail (a logo), skipped; ``not_read``: a
+    type Ordnung does not read from e-mails (a zip, a Word file …), listed only; ``refused``: intake
+    refused it (``detail`` says why); ``over_limit``: past the most attachments read from one e-mail.
+    ``doc_id`` is only set while that letter exists and is not in the trash.
+    """
+
+    filename: str
+    outcome: AttachmentOutcome
+    detail: str = ""
+    doc_id: str | None = None
+    #: That letter's status now (``held`` while it waits for the person); ``None`` without ``doc_id``.
+    status: DocumentStatus | None = None
+
+
+class ItemAside(_Model):
+    """An open to-do that is not one to act on (worked out on read, never stored).
+
+    ``replaced``: a payment reminder (``replaced_by``, a document id) took over the invoice payment —
+    pay once, not twice. ``attached``: an e-mail's payment that the bill attached to it
+    (``replaced_by``) asks for too. ``history``: its date had long passed when the letter was read (an
+    archive letter). ``suspicious``: the letter shows signs of a scam.
+    """
+
+    item_id: str
+    reason: Literal["replaced", "attached", "history", "suspicious"]
+    replaced_by: str | None = None
+
+
+class ListedItem(Item):
+    """A to-do as the list (``GET /api/items``) returns it.
+
+    ``aside`` is worked out on read (never stored): why the to-do is not one to act on — the same
+    rules as Today, the letter's verdict and the party drawer (:class:`ItemAside`) — so the Inbox
+    neither counts it nor shows it as a letter's next step; ``None`` for one to act on.
+    """
+
+    aside: ItemAside | None = None
+
+
+class ProofLink(_Model):
+    """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
+
+    draft_id: str
+    subject: str
+    proof_id: str
+    kind: ProofKind
+
+
 class DocumentDetail(_Model):
     document: Document
+    advice: LetterAdvice | None = None
     pages: list[PageInfo] = Field(default_factory=list)
     items: list[Item] = Field(default_factory=list)
     contracts: list[Contract] = Field(default_factory=list)
@@ -907,6 +1345,116 @@ class DocumentDetail(_Model):
     related: list[Document] = Field(default_factory=list)
     suggestions: list[Suggestion] = Field(default_factory=list)
     drafts: list[Draft] = Field(default_factory=list)
+    #: The letter's open to-dos that are not one to act on (the same rules as Today and the party
+    #: drawer): the verdict never leads with them ("362 days overdue", an invoice its reminder replaced).
+    set_aside: list[ItemAside] = Field(default_factory=list)
+    #: one per payment to-do of the letter (:mod:`ordnung.secretary.girocode_gate`)
+    girocodes: list[GiroCode] = Field(default_factory=list)
+    #: An e-mail's attachments and what became of each (empty for other letters).
+    attachments: list[EmailAttachment] = Field(default_factory=list)
+    #: More parts of that e-mail, past the most that are listed.
+    attachments_more: int = 0
+    #: The e-mail this letter came attached to (``None``: it did not, or that e-mail is gone).
+    email: Document | None = None
+    #: Whether its "Keep private" can be undone: it was kept private while it waited for the person,
+    #: and nothing was read since (:func:`ordnung.ingest.held.was_kept_from_waiting`).
+    can_wait_again: bool = False
+    #: the sent letters this file is proof of (a proof file, or a letter also linked as proof)
+    proof_of: list[ProofLink] = Field(default_factory=list)
+    #: The letter's scam warning signs, as its Idea lists them (empty: none;
+    #: :func:`ordnung.secretary.triggers.scam_signs`).
+    scam_signs: list[str] = Field(default_factory=list)
+
+
+class TrackingInfo(_Model):
+    """A letter's tracking number as Ordnung read it (``drafts.proof.parse_tracking_number``)."""
+
+    number: str
+    #: grouped for reading, the groups joined by no-break spaces (never breaks inside the number)
+    display: str
+    #: ``online_stamp``: the 20 characters next to an online stamp's square code (Internetmarke);
+    #: ``unknown``: a stored number the current policy no longer accepts (shown as typed)
+    format: Literal["s10", "online_stamp", "domestic", "unknown"]
+    #: The check digit was verified (UPU S10); the other formats have no check Ordnung knows.
+    checked: bool
+    note: str | None = None
+
+
+class ProofEntry(_Model):
+    """A proof with its file and, in code-written words, what it shows and what it does not."""
+
+    proof: Proof
+    document: Document | None = None
+    label: str
+    shows: str
+    does_not_show: str
+
+
+class ProofEvent(_Model):
+    """One line of a sent letter's timeline (the "Nachweis"). ``date`` is ``None`` for a proof without a
+    day (listed apart, with ``added_on``: the day it was added). ``possible_answer``: a letter that may be
+    the answer — shown to the person, never written into the Nachweis."""
+
+    date: str | None = None
+    kind: Literal["created", "sent", "tracking", "proof", "delivered", "answered", "possible_answer"]
+    label: str
+    detail: str | None = None
+    ref: RefLink | None = None
+    added_on: str | None = None
+
+
+WaitingSource = Literal["letter", "money", "call"]
+WaitingStatus = Literal["waiting", "overdue", "answered", "closed"]
+
+
+class WaitingEntry(_Model):
+    """Something the person is owed — a reply, money or a callback (``secretary.waiting``), worked out on
+    read. ``answered``: a letter linked to it arrived (``answered_by``); nothing is closed for the person,
+    closing the follow-up to-do (``followup_item_id``) or marking the money received is their click."""
+
+    id: str
+    source: WaitingSource
+    status: WaitingStatus
+    title: str
+    about: str
+    note: str
+    since: str | None = None
+    expected_by: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    area: Area = "other"
+    ref: RefLink
+    answered_by: RefLink | None = None
+    answered_on: str | None = None
+    followup_item_id: str | None = None
+    #: the letter it comes from: the one a sent letter answers, or the one that promised the money
+    doc_id: str | None = None
+    #: the thread it belongs to (a sent letter's, a call's): a call noted about it goes there
+    case_id: str | None = None
+
+
+class ProofOverview(_Model):
+    """``GET /api/drafts/{id}/proof``: a letter's tracking number, proofs, timeline, what is missing and
+    what it waits for."""
+
+    draft_id: str
+    sent: bool
+    channel: str | None = None
+    tracking: TrackingInfo | None = None
+    proofs: list[ProofEntry] = Field(default_factory=list)
+    timeline: list[ProofEvent] = Field(default_factory=list)
+    #: what would make the proof stronger, in the person's words (empty: nothing Ordnung knows of)
+    missing: list[str] = Field(default_factory=list)
+    #: proof days that contradict the day the letter is marked as sent (one of them is wrong)
+    conflicts: list[str] = Field(default_factory=list)
+    #: only in the answer to adding a proof: what to tell the person about a file that was already in
+    #: Ordnung (made private now, or already read by AI); ``None``: it was stored privately
+    notice: str | None = None
+    waiting: WaitingEntry | None = None
+    #: the fixed caveat: proof of sending never shows what was inside
+    caveat: str = ""
 
 
 class PartyDetail(_Model):
@@ -915,6 +1463,8 @@ class PartyDetail(_Model):
     items: list[Item] = Field(default_factory=list)
     contracts: list[Contract] = Field(default_factory=list)
     cases: list[Case] = Field(default_factory=list)
+    #: open items of ``items`` the drawer lists apart as "older or replaced" (Today leaves them out)
+    set_aside: list[ItemAside] = Field(default_factory=list)
 
 
 class CaseDetail(_Model):
@@ -926,7 +1476,8 @@ class CaseDetail(_Model):
 
 
 class PurposeUsage(_Model):
-    """Model use for one purpose (``extract``, ``ask`` …)."""
+    """Model use for one purpose (``extract``, ``ask`` …). ``input_tokens`` counts every prompt token, those
+    read from or written to the prompt cache too."""
 
     calls: int = 0
     cache_hits: int = 0
@@ -937,6 +1488,8 @@ class PurposeUsage(_Model):
 
 
 class UsageStats(_Model):
+    """Model use in total and per purpose; ``input_tokens`` counts every prompt token, cached ones too."""
+
     calls: int = 0
     cache_hits: int = 0
     input_tokens: int = 0
@@ -944,6 +1497,135 @@ class UsageStats(_Model):
     cost_usd: float = 0.0
     by_purpose: dict[str, PurposeUsage] = Field(default_factory=dict)
     recent: list[LLMCallRecord] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------------------
+# Traces: how a letter was read (ordnung.trace)
+# --------------------------------------------------------------------------------------------------
+
+
+class TraceSpanRecord(_Model):
+    """One stored step of one reading of a letter (``trace_spans``).
+
+    ``key`` names the step within its reading (``run/verify:quotes/verify:item:<slot>``) and is the
+    same in every reading of the letter, so two readings can be compared step by step. ``attributes``
+    hold only what code computed or decided and the ids of the records a step used or produced —
+    never letter text (the written policy is :mod:`ordnung.trace.facts`).
+    """
+
+    id: str
+    trace_id: str
+    doc_id: str
+    job_id: str | None = None
+    parent_id: str | None = None
+    key: str
+    seq: int = 0
+    kind: SpanKind
+    name: str
+    stage: str | None = None
+    started_at: str
+    ended_at: str
+    status: SpanStatus = "ok"
+    error: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class TraceRun(_Model):
+    """One reading of a letter, summed up (its root span and its model calls)."""
+
+    trace_id: str
+    #: the letter's reading this was: 1 for the first, then 2, 3 … (older ones may no longer be kept)
+    reading: int = 1
+    job_id: str | None = None
+    started_at: str
+    ended_at: str
+    duration_ms: float = 0.0
+    status: SpanStatus = "ok"
+    #: how it ended (``paused`` and ``stopped`` readings are read again later)
+    ended: ReadingEnd = "done"
+    #: why it did not run to the end, in words (``None`` when it was done)
+    error: str | None = None
+    trigger: Literal["read", "read_again"] = "read"
+    #: ``measured`` by the computer's clock; ``recorded`` in the demo: laid out from the recorded
+    #: model latencies, the steps of code shown without a duration
+    timing: Literal["measured", "recorded"] = "measured"
+    #: the letter's status the reading ended with (``None`` when it failed)
+    result: DocumentStatus | None = None
+    model_calls: int = 0
+    cache_hits: int = 0
+    repairs: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    #: prompt tokens read from or written to the model's prompt cache (not in ``input_tokens``)
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    cost_usd: float = 0.0
+    #: how long at least one call to Claude was under way (calls at the same time count once)
+    model_ms: float = 0.0
+
+
+class TraceSpan(_Model):
+    """A step of a reading as the "How it was read" view shows it (display order, depth-first)."""
+
+    id: str
+    parent_id: str | None = None
+    depth: int = 0
+    key: str
+    kind: SpanKind
+    name: str
+    stage: str | None = None
+    #: milliseconds from the start of the reading
+    start_ms: float = 0.0
+    duration_ms: float = 0.0
+    status: SpanStatus = "ok"
+    error: str | None = None
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    #: a model step's call from the usage log (tokens, cost, prompt, outcome)
+    call: LLMCallRecord | None = None
+    #: the record the step used or produced (a to-do, the sender, the thread, a contract)
+    ref: RefLink | None = None
+    #: that record's name now (``None`` when it no longer exists)
+    label: str | None = None
+
+
+class DocumentTrace(_Model):
+    """How a letter was read: the reading shown (the latest unless another was asked for), its steps
+    and every reading Ordnung keeps (newest first)."""
+
+    doc_id: str
+    run: TraceRun | None = None
+    runs: list[TraceRun] = Field(default_factory=list)
+    spans: list[TraceSpan] = Field(default_factory=list)
+
+
+class TraceChange(_Model):
+    """One thing two readings of a letter decided differently (a date, a quote's grounding, a
+    model call's outcome …); ``before``/``after`` are ``None`` when the step is missing in that reading."""
+
+    key: str
+    kind: SpanKind
+    name: str
+    field: str
+    before: Any = None
+    after: Any = None
+    ref: RefLink | None = None
+    label: str | None = None
+
+
+class TraceComparison(_Model):
+    """What a later reading (``head``) decided differently from an earlier one (``base``)."""
+
+    doc_id: str
+    base: TraceRun
+    head: TraceRun
+    changes: list[TraceChange] = Field(default_factory=list)
+
+
+class TraceExport(_Model):
+    """Every kept reading of the letters not in the trash, as stored (for "Download your records")."""
+
+    spans: list[TraceSpanRecord] = Field(default_factory=list)
+    calls: list[LLMCallRecord] = Field(default_factory=list)
 
 
 class ClaudeStatus(_Model):
@@ -991,6 +1673,9 @@ class RuleInfo(_Model):
     summary: str
     url: str | None = None
     effective_from: str | None = None
+    topic: str | None = Field(
+        default=None, description="The group it is listed under (“Counting periods”, “Price increases” …)"
+    )
 
 
 class LaneBar(_Model):
@@ -1002,6 +1687,10 @@ class LaneBar(_Model):
     status: Literal["ok", "attention", "urgent", "past"] = "ok"
     markers: list[TimelineMarker] = Field(default_factory=list)
     ref: RefLink | None = None
+    #: the life area of what the bar stands for (the Contracts lane holds contracts of every area)
+    area: Area | None = None
+    #: no end date (an open-ended contract): ``end`` is only where the lanes stop drawing it
+    open_end: bool = False
 
 
 class TimelineMarker(_Model):
@@ -1010,6 +1699,9 @@ class TimelineMarker(_Model):
     kind: Literal[
         "deadline", "send_by", "cancel_by", "renewal", "expiry", "payment", "appointment", "other"
     ] = "other"
+    #: the life area and the to-do or contract the date belongs to (to filter the lanes and open it)
+    area: Area | None = None
+    ref: RefLink | None = None
 
 
 class Lane(_Model):
@@ -1042,6 +1734,286 @@ class MailTrayItem(_Model):
     photo: bool = False
     opened: bool = False
     doc_id: str | None = None
+    #: the day the letter arrived (ISO date), for the tray's postmark
+    received_date: str | None = None
+
+
+# --------------------------------------------------------------------------------------------------
+# My numbers (``GET /api/numbers``, :mod:`ordnung.numbers`)
+# --------------------------------------------------------------------------------------------------
+
+NumberKind = Literal[
+    "tax_id",
+    "tax_number",
+    "social_insurance",
+    "health_insurance",
+    "student",
+    "broadcasting_fee",
+    "vehicle",
+    "passport",
+    "residence_permit",
+    "id_card",
+    "customer",
+    "contract",
+    "policy",
+    "member",
+    "employee",
+    "account",
+    "mandate",
+    "meter",
+    "other",
+    "case_file",
+    "payment_reference",
+    "invoice",
+    "order",
+    "tracking",
+    "reference",
+    "vat_id",
+    "register",
+    "creditor_id",
+    "iban",
+    "bic",
+    "their_tax_number",
+    "their_other",
+]
+#: ``about_you`` (issued to the person), ``document`` (an identity document's number), ``organisation``
+#: (yours with one organisation), ``case`` (one matter) or ``theirs`` (the organisation's own).
+NumberGroup = Literal["about_you", "document", "organisation", "case", "theirs"]
+#: The check-digit test: ``ok``, ``fails`` or ``none`` (no public algorithm for this kind of number).
+NumberCheck = Literal["ok", "fails", "none"]
+
+
+class LetterRef(_Model):
+    """A letter a number or case links to."""
+
+    id: str
+    title: str
+    date: str | None = None
+    kind: LetterKind | None = None
+
+
+class MyNumber(_Model):
+    """One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and
+    copy it, the check-digit test and the latest letter that shows it."""
+
+    key: str
+    kind: NumberKind
+    group: NumberGroup
+    name: str = Field(description="What it is, in plain English (“Tax ID (Steuer-ID)”)")
+    label: str = Field(description="The label the letter prints next to it")
+    value: str = Field(description="The value as printed")
+    display: str = Field(description="The value grouped for reading")
+    copy_value: str = Field(description="What “Copy” puts on the clipboard (forms want no spaces)")
+    check: NumberCheck = "none"
+    check_note: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    letter: LetterRef | None = Field(default=None, description="The latest letter that shows it")
+    letters: int = Field(default=1, description="How many letters show it")
+
+
+class IdentityDocument(_Model):
+    """A passport, residence permit or ID card: its number (when a letter shows it) and expiry."""
+
+    key: str
+    kind: Literal["passport", "residence_permit", "id_card", "identity_document"]
+    name: str
+    number: MyNumber | None = None
+    valid_until: str | None = None
+    status: Literal["ok", "renew_soon", "expired", "unknown"] = "unknown"
+    note: str | None = Field(default=None, description="What to do about it (written by code)")
+    item_id: str | None = Field(default=None, description="The expiry to-do")
+    needs_check: bool = Field(
+        default=False, description="The expiry date is not confirmed against the letter (compare it)"
+    )
+    letter: LetterRef | None = None
+
+
+class CaseItemRef(_Model):
+    """The next open to-do of a case."""
+
+    id: str
+    title: str
+    kind: ItemKind
+    due_date: str | None = None
+    send_by: str | None = Field(default=None, description="None for a fee paid at an appointment")
+    at_appointment: bool = Field(
+        default=False, description="A fee paid in person at the appointment: on its day, never a transfer"
+    )
+    needs_check: bool = Field(
+        default=False, description="Its date or amount is not confirmed against the letter (compare it)"
+    )
+
+
+class OpenCase(_Model):
+    """A matter with an open one-off to-do, and the references to quote when you call or write."""
+
+    key: str
+    case_id: str | None = None
+    title: str
+    party_id: str | None = None
+    party_name: str | None = None
+    references: list[MyNumber] = Field(default_factory=list)
+    next_item: CaseItemRef | None = None
+    open_items: int = 0
+    letter: LetterRef | None = Field(default=None, description="The case's latest letter")
+
+
+class CallSheet(_Model):
+    """Everything to have at hand when you call or write to one organisation."""
+
+    party_id: str
+    name: str
+    kind: PartyKind = "other"
+    phone: str | None = None
+    email: str | None = None
+    website: str | None = None
+    numbers: list[MyNumber] = Field(default_factory=list, description="Your numbers its letters show")
+    their_numbers: list[MyNumber] = Field(default_factory=list, description="Its own (registry, bank)")
+    open_cases: list[OpenCase] = Field(default_factory=list)
+    last_letter: LetterRef | None = None
+    open_items: int = 0
+
+
+class MyNumbers(_Model):
+    """The *My numbers* page."""
+
+    today: str
+    about_you: list[MyNumber] = Field(default_factory=list)
+    documents: list[IdentityDocument] = Field(default_factory=list)
+    organisations: list[CallSheet] = Field(default_factory=list)
+    open_cases: list[OpenCase] = Field(default_factory=list)
+
+
+# --------------------------------------------------------------------------------------------------
+# The weekly session (``GET /api/week``, :mod:`ordnung.secretary.week`)
+# --------------------------------------------------------------------------------------------------
+
+WeekStepId = Literal["now", "new", "check", "pay", "post", "waiting", "decide", "file"]
+#: What a row's day means (:mod:`ordnung.secretary.week`, "The day on a row"): ``act_today`` once a
+#: send-by day has passed but the due date has not (the due date is then ``WeekEntry.due_date``),
+#: ``at_appointment`` for a fee paid in person on the appointment's day.
+WeekDateRole = Literal[
+    "added",
+    "due",
+    "by",
+    "on",
+    "expires",
+    "send_by",
+    "transfer_by",
+    "pay_by",
+    "act_today",
+    "at_appointment",
+    "collected",
+    "expected",
+    "decide_by",
+    "sent",
+    "reply_by",
+    "promised_by",
+    "done",
+]
+
+
+class WeekEntry(_Model):
+    """One row of a weekly-session step: a letter, a to-do, a contract decision or a letter you wrote."""
+
+    key: str
+    ref: RefLink
+    title: str
+    kind: str = Field(
+        description="The item's, letter's or draft's kind, or “contract” (or “call”, a promise)"
+    )
+    date: str | None = None
+    date_role: WeekDateRole | None = None
+    due_date: str | None = Field(
+        default=None,
+        description="The due date, when the row's date is an earlier day to act (send by, act today)",
+    )
+    amount: float | None = None
+    currency: str | None = None
+    party_id: str | None = None
+    party_name: str | None = None
+    doc_id: str | None = None
+    status: str | None = None
+    note: str | None = Field(default=None, description="One line written by code")
+    tone: Literal["neutral", "warn", "danger", "ok"] = "neutral"
+    overdue: bool = Field(
+        default=False, description="Counted in the session's overdue (never on Compare with the letter)"
+    )
+    item: Item | None = Field(default=None, description="The to-do itself (Pay and Confirm need it)")
+
+
+class WeekStep(_Model):
+    """One step of the weekly session."""
+
+    id: WeekStepId
+    title: str
+    summary: str
+    entries: list[WeekEntry] = Field(default_factory=list)
+    more: int = Field(default=0, description="Rows left out to keep the step short")
+    total: float | None = Field(default=None, description="Euros (the pay step)")
+    total_other_currencies: dict[str, float] = Field(default_factory=dict)
+
+
+class WeeklySession(_Model):
+    """The guided weekly review: seven steps (and *Act now* first when something is overdue or due
+    today), how it ends and whether Today should suggest it."""
+
+    today: str
+    since: str = Field(description="New since this day (the last session, else a week ago)")
+    last_session: str | None = None
+    due: bool = Field(description="Today shows its one gentle prompt")
+    next_prompt: str | None = Field(
+        default=None, description="The day Today suggests the session next (none while it is due)"
+    )
+    minutes: int = 10
+    steps: list[WeekStep] = Field(default_factory=list)
+    overdue: int = Field(
+        default=0, description="Deadlines, payments and tasks past their due date: never “All clear”"
+    )
+    next_deadline: WeekEntry | None = Field(
+        default=None, description="The earliest day to act from today on: “All clear until …”"
+    )
+    due_today: int = Field(
+        default=0, description="How many days to act from today on are today (the ending counts them)"
+    )
+
+
+FolderState = Literal["off", "watching", "problem"]
+FolderOutcome = Literal["added", "known", "refused"]
+
+
+class FolderPickup(_Model):
+    """A file the watched folder brought in (from the activity log, newest first).
+
+    ``added``: it became a letter (``doc_id``, its ``status`` now); ``known``: the same file was already
+    in Ordnung; ``refused``: intake refused it (``detail`` says why). ``doc_id`` and ``status`` are
+    ``None`` once that letter is gone.
+    """
+
+    at: str
+    filename: str
+    outcome: FolderOutcome
+    detail: str = ""
+    doc_id: str | None = None
+    status: DocumentStatus | None = None
+
+
+class FolderStatus(_Model):
+    """``GET /api/folder``: the watched folder, whether it is watched, and what it brought in."""
+
+    folder: str | None = None
+    state: FolderState = "off"
+    #: Why the folder is not watched right now (missing, not readable …), for the person.
+    problem: str | None = None
+    auto_read: bool = False
+    #: Whether letters can be read here at all (not in the demo that only replays): else files always wait.
+    can_read: bool = True
+    #: Letters waiting for the person's "Read these" (``held``), from the folder or attached to its e-mails.
+    waiting: int = 0
+    #: Ordnung's own inbox folder in the data directory, offered as a ready-made choice.
+    suggested: str = ""
+    recent: list[FolderPickup] = Field(default_factory=list)
 
 
 LaneBar.model_rebuild()
@@ -1163,6 +2135,14 @@ class DraftSentEvent(_Event):
     item_id: str
 
 
+class FolderUpdatedEvent(_Event):
+    """``folder.updated``: the watched folder started, stopped, hit a problem or brought in a file."""
+
+    state: FolderState
+    doc_id: str | None = None
+    held: bool | None = None
+
+
 class DemoMailEvent(_Event):
     """``demo.mail``: a letter of the demo's New-mail tray was opened."""
 
@@ -1195,6 +2175,7 @@ class ServerEvents(BaseModel):
     draft_created: DraftCreatedEvent = Field(alias="draft.created")
     draft_sent: DraftSentEvent = Field(alias="draft.sent")
     demo_mail: DemoMailEvent = Field(alias="demo.mail")
+    folder_updated: FolderUpdatedEvent = Field(alias="folder.updated")
 
 
 SERVER_EVENTS: dict[str, type[BaseModel]] = {

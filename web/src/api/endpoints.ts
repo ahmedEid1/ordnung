@@ -15,8 +15,15 @@ import type {
   ApiQuery,
   ApiResponse,
   AskRequest,
+  CalendarSyncConnect,
+  CalendarSyncFind,
+  CalendarSyncMode,
+  CallListParams,
+  CallNoteCreate,
+  CallNotePatch,
   ContractListParams,
   ContractPatch,
+  DesktopMode,
   DocumentListParams,
   DocumentPatch,
   DraftCreate,
@@ -29,12 +36,16 @@ import type {
   OnboardingRequest,
   PathsWith,
   ProfilePatch,
+  ProofKind,
+  ProofPatch,
   PublicHealth,
   SettingsPatch,
   StreamEvent,
   SuggestionListParams,
   SuggestionPatch,
   TourPatch,
+  TrackingUpdate,
+  TransferValues,
 } from "./types";
 
 const enc = encodeURIComponent;
@@ -86,9 +97,17 @@ export interface UploadOptions {
   private?: boolean;
 }
 
+/** A proof to attach to a sent letter: the file (kept private, never read by Claude), what it is and the day it shows. */
+export interface ProofUpload {
+  file: File;
+  kind: ProofKind;
+  onDate?: string | null;
+  note?: string | null;
+}
+
 export const api = {
   // -- system ------------------------------------------------------------------------------------
-  health: () => call("get", "/api/health").then(signedIn),
+  health: (signal?: AbortSignal) => call("get", "/api/health", { signal }).then(signedIn),
   /** "Run check": every `ordnung doctor` check plus one tiny live call (429 within a minute). */
   probeHealth: () => call("get", "/api/health", { query: { probe: true } }).then(signedIn),
   profile: () => call("get", "/api/profile"),
@@ -122,6 +141,27 @@ export const api = {
   /** Rendered page image (1-based page number). */
   pageUrl: (id: string, page: number) => assetUrl(apiRoute("/api/documents/{doc_id}/pages/{page}.jpg", { doc_id: id, page })),
   thumbnailUrl: (id: string) => assetUrl(apiRoute("/api/documents/{doc_id}/thumbnail.jpg", { doc_id: id })),
+  /** "How it was read": one reading's steps (`run`: its trace id; default the newest kept) and every kept reading. */
+  documentTrace: (id: string, run?: string | null) =>
+    call("get", "/api/documents/{doc_id}/trace", { params: { doc_id: id }, query: { run: run ?? undefined } }),
+  /** What a later reading (`head`, default the newest) decided differently from an earlier one (`base`, default the one before). */
+  traceComparison: (id: string, runs: { base?: string | null; head?: string | null } = {}) =>
+    call("get", "/api/documents/{doc_id}/trace/compare", {
+      params: { doc_id: id },
+      query: { base: runs.base ?? undefined, head: runs.head ?? undefined },
+    }),
+  /** Every kept reading of the letters not in the trash, as stored (for "Download your records"). */
+  traces: () => call("get", "/api/traces"),
+
+  // -- the watched folder ------------------------------------------------------------------------
+  /** The watched folder: path, state (or problem), auto-read, letters waiting, the last files. */
+  folder: () => call("get", "/api/folder"),
+  /** "Read these": the waiting letters the person saw may be sent to Claude (409 in the replay-only demo). */
+  readHeld: (docIds: string[]) => call("post", "/api/documents/held/read", { body: { doc_ids: docIds } }),
+  /** "Keep private": the waiting letters stay on this computer, never sent to Claude. */
+  keepHeldPrivate: (docIds: string[]) => call("post", "/api/documents/held/keep-private", { body: { doc_ids: docIds } }),
+  /** Undo "Keep private": letters kept private from waiting (never read since) wait again. */
+  waitAgain: (docIds: string[]) => call("post", "/api/documents/held/wait", { body: { doc_ids: docIds } }),
 
   // -- to-dos & dates ----------------------------------------------------------------------------
   items: (params: ItemListParams = {}) => call("get", "/api/items", { query: { ...params } }),
@@ -130,6 +170,9 @@ export const api = {
   deleteItem: (id: string) => call("delete", "/api/items/{item_id}", { params: { item_id: id } }),
   /** "Yes, that's right" — sets grounding to `user`. */
   confirmItem: (id: string) => call("post", "/api/items/{item_id}/confirm", { params: { item_id: id } }),
+  /** "These match the letter": the person compared a payment's transfer details with the letter. */
+  confirmGiroCode: (id: string, values: TransferValues) =>
+    call("post", "/api/items/{item_id}/girocode/confirm", { params: { item_id: id }, body: values }),
   itemIcsUrl: (id: string) => assetUrl(apiRoute("/api/items/{item_id}.ics", { item_id: id })),
 
   // -- contracts, parties, threads ---------------------------------------------------------------
@@ -144,6 +187,14 @@ export const api = {
   timeline: (from?: string, to?: string) => call("get", "/api/timeline", { query: { from, to } }),
   lanes: (from?: string, to?: string) => call("get", "/api/lanes", { query: { from, to } }),
   dashboard: () => call("get", "/api/dashboard"),
+  /** My numbers: yours, your documents, a call sheet per organisation, open cases (worked out on read). */
+  numbers: () => call("get", "/api/numbers"),
+  /** The weekly session: seven steps and "All clear until …". */
+  week: () => call("get", "/api/week"),
+  /** "Done": remembers the session (answers the session as it stands afterwards). */
+  weekDone: () => call("post", "/api/week/done"),
+  /** "Not now" on Today's prompt. */
+  weekDismiss: () => call("post", "/api/week/dismiss"),
 
   // -- ideas & brief -----------------------------------------------------------------------------
   suggestions: (params: SuggestionListParams = {}) => call("get", "/api/suggestions", { query: { ...params } }),
@@ -177,16 +228,82 @@ export const api = {
   draft: (id: string) => call("get", "/api/drafts/{draft_id}", { params: { draft_id: id } }),
   updateDraft: (id: string, patch: DraftPatch) =>
     call("patch", "/api/drafts/{draft_id}", { params: { draft_id: id }, body: patch }),
-  deleteDraft: (id: string) => call("delete", "/api/drafts/{draft_id}", { params: { draft_id: id } }),
+  /** Deletes the letter and its proofs; their files too unless `keepProofFiles` (they stay as documents). */
+  deleteDraft: (id: string, keepProofFiles = false) =>
+    call("delete", "/api/drafts/{draft_id}", { params: { draft_id: id }, query: keepProofFiles ? { keep_proof_files: true } : {} }),
   /** Translate the (edited) letter again; only `body_translation` changes. 409 in the demo. */
   translateDraft: (id: string) => call("post", "/api/drafts/{draft_id}/translate", { params: { draft_id: id } }),
   draftPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/pdf", { draft_id: id })),
+  /** The printable letter as one image, page under page (the print preview: phones show no PDF inline). */
+  draftPreviewUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/preview.png", { draft_id: id })),
   markDraftSent: (id: string, body: MarkSentRequest) =>
     call("post", "/api/drafts/{draft_id}/sent", { params: { draft_id: id }, body }),
+
+  // -- proof of a sent letter --------------------------------------------------------------------
+  /** Tracking number, proofs (what each shows and doesn't), timeline, what's missing, what it waits for. */
+  draftProof: (id: string) => call("get", "/api/drafts/{draft_id}/proof", { params: { draft_id: id } }),
+  /** Save or (with `null`) remove the tracking number; a mistyped check digit answers 422 with the reason. */
+  setTracking: (id: string, body: TrackingUpdate) =>
+    call("put", "/api/drafts/{draft_id}/tracking", { params: { draft_id: id }, body }),
+  /** Multipart: `file`, `kind`, `on_date`, `note` → 201 with the letter's new proof overview. */
+  addProof: (id: string, upload: ProofUpload) => {
+    const form = new FormData();
+    form.append("file", upload.file);
+    form.append("kind", upload.kind);
+    if (upload.onDate) form.append("on_date", upload.onDate);
+    if (upload.note?.trim()) form.append("note", upload.note.trim());
+    return call("post", "/api/drafts/{draft_id}/proofs", { params: { draft_id: id }, body: form });
+  },
+  updateProof: (id: string, proofId: string, patch: ProofPatch) =>
+    call("patch", "/api/drafts/{draft_id}/proofs/{proof_id}", { params: { draft_id: id, proof_id: proofId }, body: patch }),
+  /** Removes the proof; its file is deleted for good unless another proof uses it. */
+  removeProof: (id: string, proofId: string) =>
+    call("delete", "/api/drafts/{draft_id}/proofs/{proof_id}", { params: { draft_id: id, proof_id: proofId } }),
+  /** "It's answered": by the letter `docId`, or (`null`) by phone, e-mail …; closes the follow-up. */
+  markAnswered: (id: string, docId: string | null) =>
+    call("post", "/api/drafts/{draft_id}/answered", { params: { draft_id: id }, body: { doc_id: docId } }),
+  /** Take back "it's answered" (Undo): the letter waits again and its follow-up reopens. */
+  unmarkAnswered: (id: string) => call("delete", "/api/drafts/{draft_id}/answered", { params: { draft_id: id } }),
+  /** The Nachweis: summary and timeline, the letter as sent, every proof file — one PDF. */
+  proofPdfUrl: (id: string) => assetUrl(apiRoute("/api/drafts/{draft_id}/proof.pdf", { draft_id: id })),
+
+  // -- waiting for & call notes ------------------------------------------------------------------
+  /** Replies, money and callbacks the person is owed: overdue first, then answered, then waiting (each by day). */
+  waiting: () => call("get", "/api/waiting"),
+  calls: (params: CallListParams = {}) => call("get", "/api/calls", { query: { ...params } }),
+  createCall: (body: CallNoteCreate) => call("post", "/api/calls", { body }),
+  /** Say the promise made on the call was kept (or take that back). */
+  updateCall: (id: string, patch: CallNotePatch) => call("patch", "/api/calls/{call_id}", { params: { call_id: id }, body: patch }),
+  deleteCall: (id: string) => call("delete", "/api/calls/{call_id}", { params: { call_id: id } }),
 
   // -- calendar ----------------------------------------------------------------------------------
   calendarIcsUrl: () => assetUrl(apiRoute("/api/calendar.ics")),
   calendarExported: () => call("post", "/api/calendar/exported"),
+
+  // -- reminders outside the browser & backup ----------------------------------------------------
+  desktopReminders: () => call("get", "/api/reminders/desktop"),
+  /** Show today's notification now (a sample when nothing is due); the morning one still comes. */
+  testDesktopNotification: (mode: DesktopMode) => call("post", "/api/reminders/desktop/test", { body: { mode } }),
+  backupInfo: () => call("get", "/api/backup"),
+  /**
+   * The encrypted backup file. The passphrase goes to this computer's Ordnung only, in the request
+   * body; the file comes back as it is made (a Blob once complete).
+   */
+  downloadBackup: async (passphrase: string, signal?: AbortSignal): Promise<Blob> => {
+    const body: ApiBody<"/api/backup", "post"> = { passphrase };
+    const res = await requestRaw(apiRoute("/api/backup"), { method: "POST", body, signal });
+    return res.blob();
+  },
+
+  // -- calendar sync (CalDAV) --------------------------------------------------------------------
+  calendarSync: () => call("get", "/api/calendar/sync"),
+  calendarSyncPreview: (mode: CalendarSyncMode) => call("get", "/api/calendar/sync/preview", { query: { mode } }),
+  /** The calendars that take events at or under an address (nothing is stored). */
+  discoverCalendars: (body: CalendarSyncFind) => call("post", "/api/calendar/sync/discover", { body }),
+  /** Connect (or change the mode of) the calendar; the app password goes to this computer's keyring only. */
+  connectCalendarSync: (body: CalendarSyncConnect) => call("put", "/api/calendar/sync", { body }),
+  runCalendarSync: () => call("post", "/api/calendar/sync/run"),
+  disconnectCalendarSync: (removeEvents: boolean) => call("post", "/api/calendar/sync/disconnect", { body: { remove_events: removeEvents } }),
 
   // -- privacy & AI usage ------------------------------------------------------------------------
   activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),

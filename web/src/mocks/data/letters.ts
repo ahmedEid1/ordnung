@@ -28,6 +28,10 @@ export const Q = {
     notice: "Kündigungsfrist: 1 Monat zum Ende der Mindestvertragslaufzeit, danach jederzeit mit einer Frist von einem Monat.",
     concluded: "Vertragsschluss: 15.10.2024",
   },
+  gymPrice: {
+    change: "Ab dem 01.11.2026 beträgt Ihr Monatsbeitrag 32,90 EUR statt bisher 29,90 EUR.",
+    objection: "Sie können der Anpassung innerhalb von vier Wochen nach Zugang dieses Schreibens widersprechen.",
+  },
   gym: {
     start: "Beginn der Mitgliedschaft: 01.03.2025",
     fee: "Monatsbeitrag: 29,90 EUR",
@@ -50,7 +54,7 @@ export const Q = {
   },
   rundfunk: {
     due: "Für den Zeitraum 01.10.2026 bis 31.12.2026 wird ein Betrag von 55,08 EUR am 15.11.2026 fällig.",
-    iban: "IBAN: DE02 4401 0046 0123 4567 89",
+    iban: "IBAN: DE57 1234 8900 0055 0818 36",
   },
   abh: {
     valid: "Ihre Aufenthaltserlaubnis nach § 16b AufenthG ist gültig bis zum 30.11.2026.",
@@ -111,6 +115,18 @@ export const Q = {
     consent: "benötigen wir Ihre ausdrückliche Zustimmung bis zum 30.11.2026",
   },
   // New-mail tray
+  court: {
+    title: "Mahnbescheid",
+    claim: "Hauptforderung: Abonnement-Entgelte 01/2022 – 12/2022 · 59,88 EUR",
+    period: "Sie können binnen zwei Wochen seit der Zustellung dieses Bescheids Widerspruch erheben.",
+    warning: "Nach Ablauf dieser Frist kann der Antragsteller einen Vollstreckungsbescheid erwirken und aus diesem die Zwangsvollstreckung betreiben.",
+    unchecked: "Das Gericht hat nicht geprüft, ob dem Antragsteller der geltend gemachte Anspruch zusteht.",
+    total: "Gesamtbetrag 111,88 EUR",
+  },
+  dismissal: {
+    notice: "hiermit kündigen wir das mit Ihnen bestehende Arbeitsverhältnis fristgerecht zum 31.10.2026.",
+    register: "Wir weisen Sie darauf hin, dass Sie verpflichtet sind, sich unverzüglich bei der Agentur für Arbeit arbeitsuchend zu melden (§ 38 Abs. 1 SGB III).",
+  },
   power2: {
     price: "Ihr Arbeitspreis steigt von 32,10 Cent/kWh auf 34,90 Cent/kWh (brutto).",
     abschlag: "Ihr monatlicher Abschlag erhöht sich damit ab November von 48,00 EUR auf 55,00 EUR.",
@@ -144,14 +160,14 @@ export const LETTERS: Record<string, LetterSpec> = {
     info: [
       ["Datum", "15.09.2025"],
       ["Mieternummer", "12-0412-07"],
-      ["Objekt", "Musterweg 12, Whg. 12"],
+      ["Objekt", "Beispielweg 5, Whg. 12"],
     ],
     pages: [
       {
         subject: "Mietvertrag über Wohnraum",
         blocks: [
           { text: "§ 1 Mietsache", bold: true },
-          "Vermietet wird die Wohnung Nr. 12, 2. OG links, Musterweg 12, 12345 Musterstadt (1 Zimmer, Küche, Bad, ca. 34 m²).",
+          "Vermietet wird die Wohnung Nr. 12, 2. OG links, Beispielweg 5, 12345 Musterstadt (1 Zimmer, Küche, Bad, ca. 34 m²).",
           { text: "§ 2 Mietzeit", bold: true },
           Q.lease.start,
           { text: "§ 3 Miete", bold: true },
@@ -165,7 +181,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Wohnbau Musterstadt eG · Genossenschaftsregister GnR 118 · IBAN DE44 5001 0517 5407 3249 31"],
+    footer: ["Wohnbau Musterstadt eG · Genossenschaftsregister GnR 118 · IBAN DE05 1234 5600 0004 4556 60"],
   },
 
   doc_nebenkosten: {
@@ -191,7 +207,7 @@ export const LETTERS: Record<string, LetterSpec> = {
             ],
             boldLast: true,
           },
-          `${Q.nk.pay} auf unser Konto.`,
+          `${Q.nk.pay} auf unser Konto. Verwendungszweck: MV-2025-0412 NK 2025`,
           Q.nk.receipts,
           "Die Aufstellung der einzelnen Kostenarten finden Sie auf Seite 2.",
           "Mit freundlichen Grüßen",
@@ -219,7 +235,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Wohnbau Musterstadt eG · IBAN DE44 5001 0517 5407 3249 31 · BIC MUSTDEXX"],
+    footer: ["Wohnbau Musterstadt eG · IBAN DE05 1234 5600 0004 4556 60 · BIC MUSTDEXX"],
   },
 
   doc_phone: {
@@ -331,7 +347,7 @@ export const LETTERS: Record<string, LetterSpec> = {
     recipient: RECIPIENT,
     info: [
       ["Datum", "10.09.2026"],
-      ["Versichertennummer", "R123456789"],
+      ["Versichertennummer", "R482019379"],
     ],
     pages: [
       {
@@ -432,7 +448,7 @@ export const LETTERS: Record<string, LetterSpec> = {
           `${Q.uni.amount} (${Q.uni.ticket}, Studierendenwerk 96,00 EUR, Studierendenschaft 40,00 EUR).`,
           Q.uni.due,
           `Erfolgt die Zahlung nicht fristgerecht, ${Q.uni.late}; ohne Rückmeldung droht die Exmatrikulation.`,
-          { text: "Empfänger: Hochschule Musterstadt · IBAN DE93 2505 0000 0004 4556 67 · Verwendungszweck: 2231847 SoSe27", size: 19 },
+          { text: "Empfänger: Hochschule Musterstadt · IBAN DE10 1234 5600 0007 7002 20 · Verwendungszweck: 2231847 SoSe27", size: 19 },
         ],
       },
     ],
@@ -466,6 +482,8 @@ export const LETTERS: Record<string, LetterSpec> = {
     info: [
       ["Abrechnungsmonat", "August 2026"],
       ["Personalnummer", "WS-0417"],
+      ["Steuer-ID", "57 216 480 354"],
+      ["SV-Nummer", "65 140300 R 005"],
     ],
     pages: [
       {
@@ -513,7 +531,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["TechMarkt Online GmbH · IBAN DE72 8605 5592 0090 1234 56"],
+    footer: ["TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00"],
   },
 
   doc_tm_dunning: {
@@ -545,7 +563,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["TechMarkt Online GmbH · IBAN DE72 8605 5592 0090 1234 56"],
+    footer: ["TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00"],
   },
 
   doc_dentist: {
@@ -610,6 +628,7 @@ export const LETTERS: Record<string, LetterSpec> = {
 
   doc_parking: {
     brand: { name: "Stadt Musterstadt", color: "#7a1f2b", tagline: "Ordnungsamt · Verkehrsüberwachung", mark: "eagle", serif: true },
+    photo: true,
     senderLine: "Stadt Musterstadt · Ordnungsamt · Rathausplatz 1 · 12345 Musterstadt",
     recipient: RECIPIENT,
     info: [
@@ -624,7 +643,28 @@ export const LETTERS: Record<string, LetterSpec> = {
           { text: Q.parking.amount, bold: true },
           Q.parking.pay,
           "Wenn Sie nicht fristgerecht zahlen, wird ein Bußgeldverfahren eingeleitet. Dabei entstehen zusätzliche Gebühren und Auslagen.",
-          { text: "Empfänger: Stadtkasse Musterstadt · IBAN DE47 7002 0270 0015 8935 21", size: 19 },
+          { text: "Empfänger: Stadtkasse Musterstadt · IBAN DE51 1234 5600 0000 1000 17", size: 19 },
+        ],
+      },
+    ],
+  },
+
+  doc_gym_price: {
+    brand: { name: "FitWell Studios", color: "#e4572e", tagline: "Stark in Musterstadt", mark: "bars" },
+    senderLine: "FitWell Studios · Lindenallee 22 · 12345 Musterstadt",
+    recipient: RECIPIENT,
+    info: [
+      ["Datum", "14.09.2026"],
+      ["Mitgliedsnummer", "FW-20931"],
+    ],
+    pages: [
+      {
+        subject: "Anpassung Ihres Monatsbeitrags",
+        blocks: [
+          "Liebes Mitglied,",
+          `wir modernisieren unsere Geräte und verlängern die Öffnungszeiten. ${Q.gymPrice.change}`,
+          Q.gymPrice.objection,
+          "Ihr FitWell-Team",
         ],
       },
     ],
@@ -674,6 +714,61 @@ export const LETTERS: Record<string, LetterSpec> = {
   },
 
   // ---------------------------------------------------------------- New-mail tray
+  doc_mahnbescheid: {
+    brand: { name: "Amtsgericht Hagen", color: "#8a6d1f", tagline: "Zentrales Mahngericht · 58084 Hagen", mark: "eagle", serif: true },
+    senderLine: "Amtsgericht Hagen · Zentrales Mahngericht · 58084 Hagen",
+    recipient: RECIPIENT,
+    info: [
+      ["Geschäftsnummer", "26-4471902-0-3"],
+      ["Datum", "23.09.2026"],
+    ],
+    pages: [
+      {
+        subject: Q.court.title,
+        blocks: [
+          "Antragsteller: Streamline Media GmbH, Medienallee 4, 50667 Köln",
+          {
+            rows: [
+              [Q.court.claim, ""],
+              ["Zinsen und Nebenforderungen", "16,00 EUR"],
+              ["Kosten dieses Verfahrens", "36,00 EUR"],
+              [Q.court.total, ""],
+            ],
+            boldLast: true,
+          },
+          Q.court.unchecked,
+          `${Q.court.period} Soweit Sie den Anspruch für begründet halten, zahlen Sie den Gesamtbetrag an den Antragsteller.`,
+          Q.court.warning,
+          "Für den Widerspruch soll der beigefügte Vordruck verwendet werden; er ist auch online unter www.online-mahnantrag.de möglich.",
+        ],
+      },
+    ],
+    footer: ["Zugestellt durch die Post – bitte das Datum auf dem gelben Umschlag beachten."],
+  },
+
+  doc_dismissal: {
+    brand: { name: "Muster Tech GmbH", color: "#3056d3", tagline: "Software für Musterstadt", mark: "bars" },
+    senderLine: "Muster Tech GmbH · Innovationsring 17 · 12345 Musterstadt",
+    recipient: RECIPIENT,
+    info: [
+      ["Datum", "25.09.2026"],
+      ["Personalnummer", "WS-0417"],
+    ],
+    pages: [
+      {
+        subject: "Kündigung Ihres Arbeitsverhältnisses",
+        blocks: [
+          "Sehr geehrte*r Sam Rivera,",
+          Q.dismissal.notice,
+          "Ihren restlichen Urlaub gewähren wir Ihnen bis zum Ende des Arbeitsverhältnisses. Ein Arbeitszeugnis erhalten Sie mit gesonderter Post.",
+          Q.dismissal.register,
+          "Mit freundlichen Grüßen",
+          "Muster Tech GmbH · Personalabteilung",
+        ],
+      },
+    ],
+  },
+
   doc_power_price: {
     brand: { name: "Stadtwerke Musterstadt", color: "#0b7a53", tagline: "Energie für Musterstadt", mark: "circle" },
     senderLine: "Stadtwerke Musterstadt · Energieplatz 1 · 12345 Musterstadt",

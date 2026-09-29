@@ -59,15 +59,15 @@ describe("unsaved edits", () => {
     const nav = screen.getByRole("navigation", { name: "Settings sections" });
 
     await user.click(within(nav).getByRole("link", { name: "Reminders" }));
-    const dialog = await screen.findByRole("dialog", { name: "Discard your changes?" });
-    expect(dialog).toHaveTextContent("You changed something in Profile & address and haven't saved it — going to Reminders throws it away.");
+    const dialog = await screen.findByRole("dialog", { name: "Save your changes?" });
+    expect(dialog).toHaveTextContent("You changed something in Profile & address and haven't saved it — going to Reminders without saving throws it away.");
     await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
     expect(router.state.location.search).toBe("?section=profile");
     expect(screen.getByLabelText("Full name")).toHaveValue("Sam R.");
 
     await user.click(within(nav).getByRole("link", { name: "Reminders" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "Discard your changes?" })).getByRole("button", { name: "Discard changes" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Save your changes?" })).getByRole("button", { name: "Discard changes" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Reminders" })).toBeInTheDocument();
     expect(router.state.location.search).toBe("?section=reminders");
 
@@ -84,7 +84,7 @@ describe("unsaved edits", () => {
     renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
     await user.type(await screen.findByLabelText(/^Phone/), "1");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await screen.findByText("All changes saved");
+    await screen.findByText("Saved.");
     await user.click(within(screen.getByRole("navigation", { name: "Settings sections" })).getByRole("link", { name: "Calendar" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Calendar" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -139,13 +139,20 @@ describe("Data → delete everything", () => {
       { route: "/settings?section=data", client },
     );
 
-    await user.click(await screen.findByRole("button", { name: "Delete everything…" }));
+    const deleteAll = await screen.findByRole("button", { name: "Delete everything…" });
+    expect(deleteAll.className).toMatch(/(^|\s)w-full(\s|$)/);
+    // a person's own Ordnung has no guided tour to restart
+    expect(screen.queryByRole("region", { name: "Guided tour" })).not.toBeInTheDocument();
+    await user.click(deleteAll);
     const dialog = await screen.findByRole("dialog", { name: "Delete everything?" });
     const confirm = within(dialog).getByRole("button", { name: "Delete everything" });
     expect(confirm).toBeDisabled();
     const input = within(dialog).getByLabelText("Type DELETE to confirm");
-    await user.type(input, "delete");
+    await user.type(input, "delet");
     expect(confirm).toBeDisabled();
+    // the word in any case (a keyboard types "delete"); the API still gets "DELETE"
+    await user.type(input, "e");
+    expect(confirm).toBeEnabled();
     await user.clear(input);
     await user.type(input, "DELETE");
     expect(confirm).toBeEnabled();
@@ -159,10 +166,77 @@ describe("Data → delete everything", () => {
     expect(srv.db.state.profile.onboarded).toBe(false);
   });
 
-  it("the demo offers a reset instead", async () => {
+  it("the demo offers a calm “Start over” instead of a danger zone", async () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
-    expect(await screen.findByText(/This is the demo, so there is nothing of yours to delete/)).toBeInTheDocument();
+    const reset = await screen.findByRole("region", { name: "Start over" });
+    expect(reset).toHaveTextContent(/This is the demo, so there is nothing of yours to delete/);
+    expect(within(reset).getByRole("button", { name: /Copy command to reset the demo/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Delete everything" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete everything…" })).not.toBeInTheDocument();
+    // …and the guided tour again (UI audit round 1: R1-tour-5, the Settings entry)
+    const tour = await screen.findByRole("region", { name: "Guided tour" });
+    expect(within(tour).getByRole("button", { name: "Restart the demo tour" })).toBeInTheDocument();
+    // one rule for the stacked cards' lone footer action: the whole row on phones, its own width from `sm`
+    // (round 2: only the backup's spanned the footer, the others sat small at the right)
+    for (const name of ["Download encrypted backup…", "Download JSON", "Restart the demo tour"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toMatch(/(^|\s)w-full(\s|$)/);
+      expect(button.className).toMatch(/(^|\s)sm:w-auto(\s|$)/);
+    }
+  });
+
+  it("the online demo starts over by reloading", async () => {
+    vi.stubEnv("VITE_STATIC_DEMO", "1");
+    useMockApi({ staticDemo: true });
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
+    const reset = await screen.findByRole("region", { name: "Start over" });
+    expect(reset).toHaveTextContent("This online demo keeps nothing you do in it.");
+    expect(within(reset).getByRole("button", { name: "Start over" }).className).toMatch(/(^|\s)w-full(\s|$)/);
+    expect(within(reset).queryByRole("button", { name: /Copy command/ })).not.toBeInTheDocument();
+    vi.unstubAllEnvs();
+  });
+
+  it("shows the whole data folder path, wrapping after each “/”", async () => {
+    const { srv } = useMockApi();
+    const path = "/Users/samantha-rivera-musterfrau/Library/Application Support/Ordnung/data";
+    srv.db.state.health.data_dir = path;
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, data_dir: path });
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data", client });
+    const where = await screen.findByRole("region", { name: "Where your data lives" });
+    const code = within(where).getByText((_, el) => el?.tagName === "CODE");
+    expect(code.textContent).toBe(path);
+    // after every "/" that ends a name — never after the root "/", which would hang alone at a line's end
+    expect(code.querySelectorAll("wbr")).toHaveLength(path.split("/").length - 2);
+    expect(code.innerHTML).toMatch(/^\/Users\/<wbr>samantha-rivera-musterfrau\/<wbr>/);
+    // no sideways scrolling box that cuts the path off
+    expect(code.className).not.toMatch(/overflow-x-auto|whitespace-nowrap/);
+    expect(within(where).getByRole("button", { name: "Copy the folder path" })).toBeInTheDocument();
+  });
+});
+
+describe("refund IBAN", () => {
+  it("flags a wrong IBAN once you leave it, won't save it, and saves a right one without spaces", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=profile" });
+    const iban = await screen.findByLabelText(/IBAN for refunds/);
+    await user.type(iban, "DE89 3704 0044 0532 0130 01");
+    expect(iban).not.toHaveAttribute("aria-invalid");
+    await user.tab();
+    expect(iban).toHaveAttribute("aria-invalid", "true");
+    expect(iban).toHaveAccessibleDescription(/That IBAN isn't valid/);
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(screen.getByText("Fix the highlighted field to save")).toBeInTheDocument();
+    await waitFor(() => expect(iban).toHaveFocus());
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    await user.clear(iban);
+    await user.type(iban, "de89 3704 0044 0532 0130 00");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ iban: "DE89370400440532013000" });
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
+    expect(iban).toHaveValue("DE89 3704 0044 0532 0130 00");
   });
 });

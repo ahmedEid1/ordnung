@@ -35,7 +35,7 @@ test.describe("pages", () => {
     const year = page.getByRole("region", { name: "Your year ahead" });
     const lanes = year.getByRole("list", { name: "Lanes" }).getByRole("listitem");
     await expect(lanes.first()).toBeVisible();
-    for (const area of ["Residence", "Contracts", "Study", "Money", "Health"]) {
+    for (const area of ["Residence permit", "Contracts", "Study", "Money", "Health", "Home", "Getting around"]) {
       await expect(year.getByRole("listitem", { name: area, exact: true })).toBeVisible();
     }
     await expect(year.getByTestId("lanes-today")).toHaveText("Today");
@@ -50,11 +50,15 @@ test.describe("pages", () => {
     await open(page, "/contracts");
     const decide = page.getByRole("region", { name: /^Decide by/ });
     const funknetz = decide.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /FunkNetz Smart M/ }) });
-    await expect(funknetz).toContainText("post your Kündigung (cancellation / notice) by Thu 8 Oct");
+    // "send", like the chart's "Send by" diamond and the card's "Send by" row
+    await expect(funknetz).toContainText("send your Kündigung (cancellation / notice) by Thu 8 Oct");
     await expect(funknetz).toContainText("must arrive by Wed 14 Oct");
     await expect(funknetz.getByRole("link", { name: "Draft cancellation for FunkNetz Smart M" })).toBeVisible();
-    // the lanes chart marks the same send-by date
-    await expect(page.getByRole("button", { name: /^Send by · Thu 8 Oct, in 10 days\. FunkNetz Smart M/ })).toBeVisible();
+    // the lanes chart marks the same send-by date (with the must-arrive-by date six days later, when
+    // the two sit too close to tell apart they are one mark that names both)
+    await expect(
+      page.getByRole("button", { name: /^Send by · Thu 8 Oct, in 10 days(; Must arrive by · Wed 14 Oct, in 16 days)?\. FunkNetz Smart M/ }),
+    ).toBeVisible();
   });
 
   test("Ask: a suggested question streams an answer whose citation opens the letter", async ({ page }) => {
@@ -67,7 +71,8 @@ test.describe("pages", () => {
     const turn = page.getByRole("article", { name: `Question: ${question}` });
     await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
     // the permit's expiry (checked against the records; the recording depends on which letters are read)
-    await expect(turn).toContainText(/30 Nov 2026|30\.11\.2026/);
+    // a date never breaks (no-break spaces), and this year's leaves its year out as on every other page
+    await expect(turn).toContainText(/\b30\sNov(?!\s\d{4})|30\.11\.2026/);
     await expect(turn.getByRole("button", { name: /^Looked at \d+ things?/ })).toBeVisible();
     const toLetter = turn.locator('a[href^="/documents/"]');
     await expect(toLetter.first()).toBeVisible();
@@ -83,20 +88,20 @@ test.describe("pages", () => {
     await composer.locator("label", { hasText: "Cancel a contract" }).click();
     await composer.locator("label", { hasText: "FunkNetz Smart M" }).click();
     await expect(composer.getByRole("radio", { name: /^FunkNetz Smart M/ })).toBeChecked();
-    await expect(composer).toContainText("FunkNetz Mobil GmbH · Wellenweg 7");
+    // the recipient's whole name and address, the address on a line of its own (never cut off)
+    await expect(composer).toContainText("ToFMFunkNetz Mobil GmbHWellenweg 7, 12351 Beispielhausen");
 
-    const pdf = page.waitForResponse((r) => /\/api\/drafts\/[^/]+\/pdf/.test(r.url()));
+    // the print preview is an image of the printed letter (phones show no PDF inline); the PDF is a link away
+    const png = page.waitForResponse((r) => /\/api\/drafts\/[^/]+\/preview\.png/.test(r.url()));
     await composer.getByRole("button", { name: "Write the letter" }).click();
     await page.waitForURL(/\/letters\/drf_/);
 
-    const response = await pdf;
+    const response = await png;
     expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toBe("application/pdf");
+    expect(response.headers()["content-type"]).toBe("image/png");
     const preview = page.getByRole("region", { name: "Print preview" });
-    const frame = preview.locator("iframe");
-    await expect(frame).toHaveAttribute("title", "Preview of the printable letter (PDF)");
-    await expect(frame).toBeVisible();
-    const file = await page.request.get((await frame.getAttribute("src"))!.split("#")[0]!);
+    await expect(preview.getByRole("img", { name: "Preview of the printable letter" })).toBeVisible();
+    const file = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!);
     expect(file.headers()["content-type"]).toBe("application/pdf");
     expect((await file.body()).subarray(0, 5).toString()).toBe("%PDF-");
 
@@ -204,6 +209,79 @@ test.describe("phone", () => {
     await expect(page.getByRole("navigation", { name: "Primary" }).last()).toBeVisible();
     await expectNoSideways(page);
     await expectAccessible(page, testInfo, "today-phone");
+  });
+
+  test("Settings fit a 320 px phone: the privacy log, every rule's sources and the data folder", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+
+    // Privacy: nothing (not even the screen-reader table behind the chart) widens the page
+    await open(page, "/settings?section=privacy", "Settings");
+    const usage = page.getByRole("region", { name: "AI usage" });
+    await expect(usage.getByRole("term").first()).toBeVisible();
+    await expectNoSideways(page);
+    // a label that wraps keeps the values of its row on one line
+    const valueTops = await usage.locator("dl > div").evaluateAll((tiles) => tiles.map((t) => Math.round(t.querySelector("dd")!.getBoundingClientRect().top)));
+    expect(valueTops[0]).toBe(valueTops[1]);
+    expect(valueTops[2]).toBe(valueTops[3]);
+
+    // Rules: every citation chip stays inside its card (no source cut off at the edge)
+    await open(page, "/settings?section=rules", "Settings");
+    await expect(page.getByRole("navigation", { name: "Rule topics" })).toBeVisible();
+    const cutOff = await page.locator("#main section[aria-labelledby='set-rules'] .card").evaluateAll((cards) =>
+      cards.flatMap((card) => {
+        const box = card.getBoundingClientRect();
+        return [...card.querySelectorAll<HTMLElement>("h4 ~ span")].filter((chip) => chip.getBoundingClientRect().right > box.right - 1).map((chip) => chip.textContent);
+      }),
+    );
+    expect(cutOff).toEqual([]);
+    await expectNoSideways(page);
+
+    // Data: the whole folder path is on screen (it wraps instead of scrolling or clipping)
+    await open(page, "/settings?section=data", "Settings");
+    const path = page.getByRole("region", { name: "Where your data lives" }).locator("code");
+    expect(await path.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+    await expectNoSideways(page);
+  });
+
+  test("Ask answers fit a phone: no citation chip starts a line, nothing scrolls sideways", async ({ page }) => {
+    // review round 2: a no-break space before a chip did not keep it on its line (an inline-grid
+    // chip is a line-break opportunity of its own); the word before it now wraps with it
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await open(page, "/ask");
+      for (const question of [
+        "When does my phone contract end, and by when do I have to cancel it?",
+        "What do I have to pay in the next four weeks?",
+        "When does my residence permit expire, and what should I do before then?",
+      ]) {
+        await page.getByRole("textbox").first().fill(question);
+        await page.getByRole("textbox").first().press("Enter");
+        await expect(page.getByRole("main").getByRole("status")).toHaveText("Answer ready.");
+      }
+      await expectNoSideways(page);
+      const orphans = await page.evaluate(() => {
+        const found: string[] = [];
+        for (const chip of document.querySelectorAll("article p [aria-label^='Source'], article li [aria-label^='Source']")) {
+          const block = chip.closest("p, li")!;
+          const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+          let before: Text | null = null;
+          for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+            if (chip.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING || chip.contains(n)) break;
+            if (n.textContent?.trim() && !n.parentElement?.closest("[aria-label^='Source']")) before = n;
+          }
+          if (!before) continue;
+          const text = before.textContent ?? "";
+          let i = text.length - 1;
+          while (i > 0 && /\s/.test(text[i]!)) i--;
+          const range = document.createRange();
+          range.setStart(before, i);
+          range.setEnd(before, i + 1);
+          if (range.getBoundingClientRect().bottom <= chip.getBoundingClientRect().top + 1) found.push(`${chip.textContent} after “${text.slice(-30)}”`);
+        }
+        return found;
+      });
+      expect(orphans, `citation chips alone at the start of a line at ${width} px`).toEqual([]);
+    }
   });
 
   test("the letter viewer stacks the page images below the verdict card", async ({ page }, testInfo) => {

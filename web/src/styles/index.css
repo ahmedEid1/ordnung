@@ -3,6 +3,10 @@
 @import "@fontsource-variable/fraunces";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* inside a phone bottom sheet (Popover on phones) — e.g. `in-sheet:hidden` on a heading the sheet's title repeats */
+@custom-variant in-sheet (&:where([data-sheet] *));
+/* a control that can't be used right now — disabled, and not merely busy (a `loading` button keeps its look) */
+@custom-variant inactive (&:is(:disabled, [aria-disabled="true"]):not([aria-busy="true"]));
 
 /*
  * Ordnung design tokens — "calm paper".
@@ -12,6 +16,45 @@
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  /* code and commands (CLI lines, code in answers) — a sans monospace, never a Courier look-alike */
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", "Segoe UI Mono", Consolas, "JetBrains Mono",
+    "DejaVu Sans Mono", "Liberation Mono", monospace;
+  /* `font-ident`: IBANs, reference and customer numbers — the UI face, so a long IBAN fits where a
+     monospace one wraps; no contextual alternates (no "->" arrows or "×" inside a reference) and a
+     slashed zero where the font has one. Pair with `wrap-anywhere` so groups break at spaces first. */
+  --font-ident: var(--font-sans);
+  --font-ident--font-feature-settings: "cv11", "ss01", "zero", "calt" 0;
+
+  /*
+   * Type scale (use these instead of text-[Npx]). Text that carries information is at least
+   * --text-xs (12 px); --text-2xs is only for counters inside a larger, labelled target.
+   * UI sizes keep the body rhythm (line-height 1.5); titles are tighter. --text-h1 is the page
+   * title (30 px on phones, growing to 38 px from tablets up). --text-detail is the title of one
+   * thing's page — a letter (its verdict and "How it was read" tabs alike), a held letter, a draft,
+   * a proof file: 26 px on phones, growing to 30 px by `sm` (640 px). --text-detail-long is the same
+   * title one step smaller on phones (23 px, also 30 px by `sm`), for a title with a very long word
+   * ("Betriebskostenabrechnung") that would otherwise break mid-word at 320 px.
+   */
+  --text-2xs: 0.6875rem; /* 11 px */
+  --text-2xs--line-height: 1.5;
+  --text-xs: 0.75rem; /* 12 px — captions, meta, eyebrows */
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.8125rem; /* 13 px — secondary text, hints, table cells */
+  --text-sm--line-height: 1.5;
+  --text-base: 0.875rem; /* 14 px — UI body: buttons, inputs, list rows */
+  --text-base--line-height: 1.5;
+  --text-md: 0.9375rem; /* 15 px — reading text, card titles */
+  --text-md--line-height: 1.5;
+  --text-lg: 1.0625rem; /* 17 px — lead text, small headings */
+  --text-lg--line-height: 1.4;
+  --text-title: 1.375rem; /* 22 px — section and dialog titles (Fraunces) */
+  --text-title--line-height: 1.25;
+  --text-h1: clamp(1.875rem, 1.25rem + 2.5vw, 2.375rem); /* 30 → 38 px */
+  --text-h1--line-height: 1.1;
+  --text-detail: clamp(1.625rem, 1.235rem + 1.6vw, 1.875rem); /* 26 px up to 390 → 30 px from 640 */
+  --text-detail--line-height: 1.15;
+  --text-detail-long: clamp(1.4375rem, 0.755rem + 2.8vw, 1.875rem); /* 23 px up to 390 → 30 px from 640 */
+  --text-detail-long--line-height: 1.15;
 
   --color-canvas: #f7f5f0;
   --color-surface: #ffffff;
@@ -19,6 +62,8 @@
   --color-surface-3: #e9e5db;
   --color-line: #e4dfd4;
   --color-line-strong: #d3ccbd;
+  /* the edge of a text field, select or checkbox: ≥ 3:1 on surface, canvas and surface-2 (WCAG 1.4.11) */
+  --color-control-border: #8f8877;
   --color-ink: #1d1b16;
   --color-muted: #6b6558;
   --color-faint: #9a937f;
@@ -28,13 +73,17 @@
   --color-accent-soft: #e3f1ef;
   --color-on-accent: #ffffff;
 
+  /* behind dialogs, drawers and sheets: dims the page in both themes (never ink, which is light in dark mode) */
+  --color-scrim: rgb(20 18 14 / 0.4);
+
   --color-marker: #fde68a;       /* evidence highlighter */
   --color-marker-strong: #f59e0b;
 
   /* semantic kinds */
-  --color-k-deadline: #e11d48;
-  --color-k-deadline-soft: #ffe4e6;
-  --color-k-payment: #d97706;
+  /* kinds are categories, not alarms: a deadline is not an error, so it never borrows the danger rose */
+  --color-k-deadline: #c026d3;
+  --color-k-deadline-soft: #fae8ff;
+  --color-k-payment: #c96a05; /* ≥ 3:1 on its soft tint too (icons sit in soft tiles) */
   --color-k-payment-soft: #fef3c7;
   --color-k-appointment: #0284c7;
   --color-k-appointment-soft: #e0f2fe;
@@ -58,7 +107,7 @@
   --color-danger-soft: #ffe4e6;
 
   /* text-on-soft "ink" variants (WCAG AA ≥ 4.5:1 on their -soft background and on surfaces) */
-  --color-k-deadline-ink: #be123c;
+  --color-k-deadline-ink: #a21caf;
   --color-k-payment-ink: #a14c05;
   --color-k-appointment-ink: #0369a1;
   --color-k-task-ink: #475569;
@@ -94,6 +143,7 @@
   --color-surface-3: #2c2a24;
   --color-line: #34312a;
   --color-line-strong: #454035;
+  --color-control-border: #756e5e;
   --color-ink: #f2efe7;
   --color-muted: #ada697;
   --color-faint: #7d776a;
@@ -103,11 +153,13 @@
   --color-accent-soft: #15302d;
   --color-on-accent: #0b1f1d;
 
+  --color-scrim: rgb(0 0 0 / 0.6);
+
   --color-marker: #a16207;
   --color-marker-strong: #facc15;
 
-  --color-k-deadline: #fb7185;
-  --color-k-deadline-soft: #3b1219;
+  --color-k-deadline: #e879f9;
+  --color-k-deadline-soft: #3b1340;
   --color-k-payment: #fbbf24;
   --color-k-payment-soft: #3a2a0b;
   --color-k-appointment: #38bdf8;
@@ -130,7 +182,7 @@
   --color-danger: #fb7185;
   --color-danger-soft: #3b1219;
 
-  --color-k-deadline-ink: #fb7185;
+  --color-k-deadline-ink: #e879f9;
   --color-k-payment-ink: #fbbf24;
   --color-k-appointment-ink: #38bdf8;
   --color-k-task-ink: #94a3b8;
@@ -151,13 +203,68 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* native controls, scrollbars and the page canvas follow the app theme, not only the OS */
+    color-scheme: light;
+    /*
+     * Whatever gets focus or is scrolled to (Tab, anchor jumps, scrollIntoView) stops clear of the
+     * sticky top bar (h-14) and of what floats over the bottom edge — WCAG 2.4.11. Mirrors
+     * `.room-for-overlays` (so the last buttons can scroll that far), plus the Ask page's sticky
+     * question box (--ask-composer-h). Phones: the fixed tab bar (h-16 + home indicator), then the
+     * demo tour bar (--ordnung-tour-bar) or the toast column above it (lifted by --ordnung-toast-lift,
+     * --ordnung-toast-space tall while a toast or an upload card is up), whichever is taller. From md:
+     * the floating tour card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted).
+     * Above the toasts, 0.25rem to spare on phones and from md alike — the focus ring's reach (2px +
+     * 2px offset): flush with the column, a focused card's ring went under it (and a sub-pixel of the card).
+     */
+    scroll-padding-top: 4.5rem;
+    scroll-padding-bottom: calc(
+      5rem + env(safe-area-inset-bottom, 0px) +
+        max(var(--ordnung-tour-bar, 0px), calc(var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))) +
+        var(--ask-composer-h, 0px)
+    );
+    @variant md {
+      scroll-padding-bottom: calc(
+        max(
+            1.5rem,
+            var(--ordnung-tour-clearance, 0px),
+            calc(1.5rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+          ) +
+          var(--ask-composer-h, 0px)
+      );
+    }
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
     @apply bg-canvas text-ink font-sans;
     font-feature-settings: "cv11", "ss01"; /* tabular figures opt-in via `tabular-nums` (Inter's tnum also widens hyphens) */
+    /* the viewport covers the whole screen (viewport-fit=cover): keep content out of the notch in landscape */
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+  }
+  /* no one-word last lines: balanced headings, "pretty" paragraphs (longhands, so `truncate` and
+     `whitespace-nowrap` keep working) */
+  h1,
+  h2,
+  h3 {
+    text-wrap-style: balance;
+  }
+  p,
+  dd,
+  li,
+  figcaption,
+  blockquote {
+    text-wrap-style: pretty;
   }
   ::selection {
     background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  }
+  /* the outline colour is the accent at rest too, so `transition-colors` (which includes
+     outline-color) never fades the focus ring in from the text colour */
+  *,
+  ::before,
+  ::after {
+    outline-color: var(--color-accent);
   }
   :focus-visible {
     outline: 2px solid var(--color-accent);
@@ -173,6 +280,14 @@
     @apply font-display tracking-tight;
     font-variation-settings: "opsz" 72, "SOFT" 50;
   }
+  /* small uppercase label above a title or a group ("BY WHEN", "BANK DETAILS") */
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.07em] text-muted;
+  }
+  /* the title of a card or list item */
+  .card-title {
+    @apply text-md font-semibold leading-snug text-ink;
+  }
   .marker {
     background: linear-gradient(transparent 12%, color-mix(in srgb, var(--color-marker) 85%, transparent) 12%, color-mix(in srgb, var(--color-marker) 85%, transparent) 88%, transparent 88%);
     border-radius: 3px;
@@ -181,11 +296,42 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-line-strong) transparent;
   }
+  /* scroll shadows: a soft edge where a scroll area has more to show (the surface-coloured covers
+     scroll with the content and hide the shadow at either end) */
+  .scroll-shadow {
+    background:
+      linear-gradient(var(--color-surface) 30%, transparent) top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--color-surface) 70%) bottom / 100% 2.5rem no-repeat local,
+      radial-gradient(farthest-side at 50% 0, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) top / 100% 0.625rem no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) bottom / 100% 0.625rem no-repeat scroll,
+      var(--color-surface);
+  }
   .hatch {
     background-image: repeating-linear-gradient(
       -45deg,
       color-mix(in srgb, currentColor 22%, transparent) 0 4px,
       transparent 4px 8px
     );
+  }
+  /*
+   * The shell's <main>: room under the page for what floats over its bottom edge, so the last
+   * buttons can always be scrolled clear of it. Phones: the tab bar (h-16 + home indicator), then
+   * the demo tour bar or the toast above it, whichever is taller. From md: the floating demo tour
+   * card (--ordnung-tour-clearance) or the toast column (1.25rem up, lifted above the tour card,
+   * --ordnung-toast-space tall), with 0.25rem to spare above the toasts for a focus ring, as on
+   * phones. `scroll-padding-bottom` on <html> mirrors it (keep the two in step).
+   */
+  .room-for-overlays {
+    padding-bottom: calc(
+      5rem + env(safe-area-inset-bottom, 0px) +
+        max(var(--ordnung-tour-bar, 0px), calc(var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px)))
+    );
+    @variant md {
+      padding-bottom: max(
+        1.5rem,
+        var(--ordnung-tour-clearance, 0px),
+        calc(1.5rem + var(--ordnung-toast-lift, 0px) + var(--ordnung-toast-space, 0px))
+      );
+    }
   }
 }

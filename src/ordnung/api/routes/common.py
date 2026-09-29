@@ -14,8 +14,13 @@ from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import run_triggers
 from ordnung.llm.replay import ReplayBackend
-from ordnung.models import Contract, Party, Profile
-from ordnung.secretary.triggers import contract_computation
+from ordnung.models import CancellationSent, Contract, Item, ItemAside, Party, Profile
+from ordnung.secretary.triggers import (
+    Ledger,
+    cancellations_sent,
+    contract_computation,
+    was_history_when_filed,
+)
 
 T = TypeVar("T")
 
@@ -72,31 +77,69 @@ def cancellability(contract: Contract, party: Party | None) -> tuple[bool, str |
     return True, None
 
 
-def with_computation(contract: Contract, party: Party | None, today: date, profile: Profile) -> Contract:
-    """The contract with its cancellation dates recomputed by the rules engine for ``today`` and
-    whether it can be cancelled (:func:`cancellability`)."""
+def with_computation(
+    contract: Contract,
+    party: Party | None,
+    today: date,
+    profile: Profile,
+    *,
+    sent: CancellationSent | None = None,
+) -> Contract:
+    """The contract with its cancellation dates recomputed by the rules engine for ``today``, whether it
+    can be cancelled (:func:`cancellability`) and the person's cancellation of it marked as sent."""
     cancellable, hint = cancellability(contract, party)
     return contract.model_copy(
         update={
             "computed": contract_computation(contract, party, today, profile),
             "cancellable": cancellable,
             "cancel_hint": hint,
+            "cancellation_sent": sent if contract.status == "active" else None,
         }
     )
 
 
 def contracts_with_computations(store: Store, contracts: list[Contract], today: date) -> list[Contract]:
-    """Contracts with fresh computations (parties looked up once each)."""
+    """Contracts with fresh computations (parties looked up once each) and the cancellations marked as
+    sent (:func:`ordnung.secretary.triggers.cancellations_sent`)."""
     profile = store.get_profile()
     parties: dict[str, Party | None] = {}
+    sent = cancellations_sent(store.list_drafts(status="sent"))
     result = []
     for contract in contracts:
         party_id = contract.party_id
         if party_id is not None and party_id not in parties:
             parties[party_id] = store.get_party(party_id)
         party = parties.get(party_id) if party_id else None
-        result.append(with_computation(contract, party, today, profile))
+        result.append(with_computation(contract, party, today, profile, sent=sent.get(contract.id)))
     return result
+
+
+def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
+    """Why an open to-do is not one to act on (the same rules as Today), or ``None``: its letter shows
+    scam signs, a payment reminder took over its invoice payment, an e-mail repeats the payment of the
+    bill attached to it, or its date had long passed when the letter was read (a one-off; a schedule
+    shows its next date)."""
+    if item.status in ("done", "dismissed"):
+        return None
+    if ledger.is_suspicious_item(item):
+        return ItemAside(item_id=item.id, reason="suspicious")
+    if ledger.is_superseded_by_reminder(item):
+        reminder = ledger.covering_reminders()[item.doc_id or ""]
+        return ItemAside(item_id=item.id, reason="replaced", replaced_by=reminder.id)
+    if ledger.is_covered_by_attachment(item):
+        bill = ledger.covering_attachments()[item.id]
+        return ItemAside(item_id=item.id, reason="attached", replaced_by=bill.id)
+    if item.recurrence is None and was_history_when_filed(item):
+        return ItemAside(item_id=item.id, reason="history")
+    return None
+
+
+def set_aside(store: Store, items: list[Item], today: date) -> list[ItemAside]:
+    """The to-dos among ``items`` that are not one to act on, with why (:func:`item_aside`)."""
+    if not any(item.status not in ("done", "dismissed") for item in items):
+        return []
+    ledger = Ledger(store, today)
+    return [aside for item in items if (aside := item_aside(ledger, item)) is not None]
 
 
 def replay_only(ctx: AppContext) -> bool:

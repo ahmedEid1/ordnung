@@ -25,6 +25,8 @@ import {
   sortChecks,
   versioned,
 } from "./logic";
+import { SendGuidancePanel, instantPhrase, notEnoughPhrase, sameDayPhrase } from "./SendGuidancePanel";
+import { STATUTORY_OBJECTIONS } from "@/mocks/data/highStakes";
 
 /** Render `ui` at `route` under a real `:id` route pattern (so useParams works). */
 function renderAt(ui: ReactElement, pattern: string, route: string) {
@@ -135,6 +137,7 @@ describe("sending", () => {
   const guidance: SendGuidance = {
     send_by: "2026-10-08",
     must_arrive_by: "2026-10-14",
+    post_too_late: false,
     form: "written_form",
     form_note: null,
     channels: [
@@ -144,6 +147,36 @@ describe("sending", () => {
     ],
     tips: [],
   };
+
+  it("says only what the letter's own ways allow: a court takes a fax and online, never an email", () => {
+    const court: SendGuidance = { ...STATUTORY_OBJECTIONS.court_payment_order!.guidance, send_by: "2026-10-01", must_arrive_by: "2026-10-07" };
+    expect(instantPhrase(court.channels)).toBe("online or by fax");
+    expect(notEnoughPhrase(court.channels)).toBe("An email is not enough.");
+    renderWithProviders(<SendGuidancePanel guidance={court} />);
+    expect(screen.getByText(/online or by fax you have until then/)).toBeInTheDocument();
+    expect(screen.queryByText(/fax is not enough/)).toBeNull();
+    expect(screen.getByText(/An email is not enough\./)).toBeInTheDocument();
+    // a tenancy notice on paper: neither an email nor a fax
+    expect(notEnoughPhrase([...guidance.channels, { channel: "fax", label: "Fax", allowed: false, recommended: false, note: null, citation: null }])).toBe(
+      "An email or a fax is not enough.",
+    );
+    expect(instantPhrase(guidance.channels)).toBeNull();
+  });
+
+  it("on the last days, says when it must arrive and that a letter may be too late (review round 4)", () => {
+    const court: SendGuidance = {
+      ...STATUTORY_OBJECTIONS.enforcement_order!.guidance,
+      send_by: "2026-09-28",
+      must_arrive_by: "2026-09-29",
+      post_too_late: true,
+    };
+    const { container } = renderWithProviders(<SendGuidancePanel guidance={court} />);
+    expect(screen.getByText("Must arrive by")).toBeInTheDocument();
+    expect(screen.queryByText("Send it by")).toBeNull();
+    expect(container.querySelector("[data-post-too-late]")).toHaveTextContent(/A letter posted today may arrive too late\. Use a way that reaches them today — in person or by fax\./);
+    expect(screen.queryByText(/the post needs a head start/)).toBeNull();
+    expect(sameDayPhrase(court.channels)).toBe("in person or by fax");
+  });
 
   it("ranks recommended first and not-allowed last", () => {
     expect(rankChannels(guidance.channels).map((c) => c.channel)).toEqual(["registered_letter", "letter", "email"]);
@@ -201,13 +234,30 @@ describe("Letters page", () => {
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
-    expect(await within(dialog).findByText("Einspruch possible")).toBeInTheDocument();
-    expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt · Steuerring 10/);
+    // said on phones too: under the letter's name there, beside it from 640 px (UI audit round 1)
+    const pills = await within(dialog).findAllByText("Einspruch possible");
+    expect(pills.map((p) => p.parentElement!.className)).toEqual([expect.stringMatching(/(^| )sm:hidden( |$)/), expect.stringMatching(/(^| )hidden .*sm:inline-flex/)]);
+    expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt\s*Steuerring 10, 12345 Musterstadt/);
     await user.type(within(dialog).getByLabelText(/Your wishes/), "Laptop is for work");
     await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
     await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
     const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
     expect(post?.body).toMatchObject({ kind: "objection", doc_id: "doc_tax", party_id: "pty_finanzamt", instructions: "Laptop is for work", language: "de" });
+  });
+
+  it("asks to suspend enforcement only when ticked — never from the wishes", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    const box = await within(dialog).findByRole("checkbox", { name: /Also ask to suspend enforcement/ });
+    expect(box).not.toBeChecked();
+    await user.type(within(dialog).getByLabelText(/Your wishes/), "I don't want to suspend enforcement");
+    await user.click(box);
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(true));
+    const post = calls.find((c) => c.method === "POST" && c.path === "/drafts");
+    expect(post?.body).toMatchObject({ kind: "objection", doc_id: "doc_tax", suspend_enforcement: true });
   });
 
   it("pre-fills a cancellation from a contract", async () => {
@@ -227,12 +277,19 @@ describe("Letter editor", () => {
     const { container } = renderAt(<LetterPage />, "/letters/:id", "/letters/drf_phone");
     expect(await screen.findByRole("heading", { level: 1, name: "Cancellation to FunkNetz Mobil GmbH" })).toBeInTheDocument();
     expect((screen.getByLabelText("Letter text (German)") as HTMLTextAreaElement).value).toContain("hiermit kündige ich meinen Mobilfunkvertrag");
-    // phones: a toggle switches to the translation
+    // a narrow card: a toggle switches to the translation (a wide one shows both, by a container query)
+    const english = container.querySelector<HTMLElement>("[data-pane=english]")!;
+    const letter = container.querySelector<HTMLElement>("[data-pane=letter]")!;
+    expect(english.className).toMatch(/@max-\[47\.5rem\]\/letter:hidden/);
+    expect(letter.className).not.toMatch(/letter:hidden/);
     await user.click(screen.getByRole("radio", { name: "In English" }));
-    expect(screen.getByText(/I hereby cancel my mobile contract/)).toBeInTheDocument();
-    expect(screen.getByText(/For your understanding only/)).toBeInTheDocument();
-    // checks
-    expect(screen.getByText("All 8 checks passed")).toBeInTheDocument();
+    expect(within(english).getByText(/I hereby cancel my mobile contract/)).toBeInTheDocument();
+    expect(english.className).not.toMatch(/letter:hidden/);
+    expect(letter.className).toMatch(/@max-\[47\.5rem\]\/letter:hidden/);
+    expect(screen.getByText(/For your understanding only — send the German letter/)).toBeInTheDocument();
+    // checks — summed up at the top too, with a way down to them
+    expect(within(screen.getByRole("region", { name: "Checks" })).getByText("All 9 checks passed")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All 9 checks passed" })).toHaveAttribute("href", "#letter-checks");
     // how to send it
     const send = screen.getByRole("region", { name: "How to send it" });
     expect(within(send).getByText("Send it by")).toBeInTheDocument();
@@ -249,8 +306,12 @@ describe("Letter editor", () => {
     renderAt(<LetterPage />, "/letters/:id", "/letters/drf_phone");
     const body = await screen.findByLabelText("Letter text (German)");
     expect(screen.getByRole("button", { name: /Saved/ })).toBeDisabled();
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
     await user.type(body, " Danke.");
-    expect(screen.getByText(/Unsaved changes/)).toBeInTheDocument();
+    // said to screen readers; on screen a dot on Save — no line above the letter that pushed everything down
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "Unsaved changes")).toBe(true);
+    expect(screen.getByRole("button", { name: /^Save$/ }).querySelector("[data-unsaved]")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Save$/ })).toHaveAttribute("title", "Unsaved changes — save (Ctrl+S)");
     await user.click(screen.getByRole("button", { name: /^Save$/ }));
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     const patch = calls.find((c) => c.method === "PATCH")!;

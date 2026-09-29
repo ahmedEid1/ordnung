@@ -25,6 +25,9 @@ import type {
   AppSettings,
   Health,
   Area,
+  FolderPickup,
+  CallNote,
+  Proof,
 } from "@/api/types";
 import { addDays, differenceInCalendarDays, parseISO, format } from "date-fns";
 import { PARTIES, TRAY_ONLY_PARTIES } from "./data/parties";
@@ -35,8 +38,13 @@ import { SUGGESTIONS, TRAY_SUGGESTIONS } from "./data/suggestions";
 import { DRAFTS } from "./data/drafts";
 import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "./data/system";
 import { LETTERS } from "./data/letters";
+import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
+import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
+import { paysOnSite } from "@/features/document/item-meta";
+import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
+import type { ReadingSeed } from "./data/traces";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -45,7 +53,7 @@ const rendered = new Map<string, RenderedLetter>();
 /** Rendered page images + layout for a document (cached). */
 export function letterFor(docId: string): RenderedLetter | null {
   if (rendered.has(docId)) return rendered.get(docId)!;
-  const spec = LETTERS[docId];
+  const spec = LETTERS[docId] ?? FOLDER_LETTERS[docId];
   if (!spec) return null;
   const r = renderLetter(spec);
   rendered.set(docId, r);
@@ -70,8 +78,21 @@ function resolveDoc(d: Document): Document {
 }
 
 const daysFrom = (a: string, b: string) => differenceInCalendarDays(parseISO(a), parseISO(b));
+/** The day a recent letter is listed under: when it arrived, else its date, else when it was added. */
+const recentDay = (d: Document) => d.received_date ?? d.doc_date ?? d.created_at.slice(0, 10);
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
-const nowTs = () => new Date().toISOString().replace(/\.\d+Z$/, "Z");
+/**
+ * The mock's clock day: records are stamped on the demo's today with the real time of day, as the demo
+ * server stamps them (`ordnung.clock.stamp_simulated_day`) — never the real date, which drifts further into
+ * the demo's future every day (walkthrough of phase 2: "Read by Claude on 29 Sep 2026" in a demo of 28 Sep).
+ * The newest mock world sets it.
+ */
+let clockDay: () => string | null = () => null;
+const nowTs = () => {
+  const real = new Date().toISOString().replace(/\.\d+Z$/, "Z");
+  const day = clockDay();
+  return day ? `${day}${real.slice(10)}` : real;
+};
 
 export interface MockState {
   health: Health;
@@ -91,29 +112,54 @@ export interface MockState {
   lastCalendarExport: string;
   /** documents uploaded in this session (for page images of unknown files) */
   uploads: Record<string, { name: string; objectUrl?: string }>;
+  /** the last files the watched folder brought in, newest first */
+  folderRecent: FolderPickup[];
+  /** proofs of sent letters (their files are documents with `source: "proof"`) */
+  proofs: Proof[];
+  /** call notes (Gesprächsnotizen) */
+  calls: CallNote[];
+  /** readings added in this session ("Read again"); others follow from the letter (`data/traces.ts`) */
+  readings: Record<string, ReadingSeed[]>;
+}
+
+/**
+ * What a to-do's day asks of the person on the timeline, as the API's `_item_subtitle` words it: money
+ * sent by bank transfer "Transfer by …", a direct debit "Collected by direct debit" (the sender takes
+ * it: nothing to send), anything posted "Send by …"; a fee paid on site has no day to transfer by.
+ */
+function timelineSubtitle(i: Item): string | null {
+  const payment = i.kind === "payment" && i.direction !== "in";
+  if (payment && isDirectDebit(i)) return "Collected by direct debit";
+  if (!i.send_by || paysOnSite(i)) return null;
+  return `${payment ? "Transfer" : "Send"} by ${format(parseISO(i.send_by), "EEE d MMM")}`;
 }
 
 export class MockDb {
   state: MockState;
 
   constructor() {
+    clockDay = () => this.today;
     this.state = {
       health: clone(HEALTH),
       profile: clone(PROFILE),
       settings: clone(SETTINGS),
-      parties: clone(PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id))),
+      parties: clone([...PARTIES.filter((p) => !TRAY_ONLY_PARTIES.has(p.id)), ...PROOF_PARTIES]),
       cases: clone(CASES),
-      documents: clone(DOCUMENTS).map(resolveDoc),
-      items: resolveAll(clone(ITEMS)),
+      documents: clone([...DOCUMENTS, ...FOLDER_DOCUMENTS, ...PROOF_DOCUMENTS]).map(resolveDoc),
+      items: resolveAll(clone([...ITEMS, ...PROOF_ITEMS])),
       contracts: resolveAll(clone(CONTRACTS)),
       suggestions: clone(SUGGESTIONS),
-      drafts: clone(DRAFTS),
+      drafts: clone([...DRAFTS, ...PROOF_DRAFTS]),
       activity: clone(ACTIVITY),
       chat: [],
       tray: clone(MAIL_TRAY),
       tour: clone(TOUR),
       lastCalendarExport: "2026-09-20T16:00:00Z",
       uploads: {},
+      folderRecent: clone(FOLDER_RECENT),
+      proofs: clone(PROOFS),
+      calls: clone(CALL_NOTES),
+      readings: {},
     };
   }
 
@@ -131,8 +177,31 @@ export class MockDb {
   document(id: string): Document | null {
     return this.state.documents.find((d) => d.id === id && !d.deleted_at) ?? null;
   }
+  /** Letters (trash and proof files left out: a proof belongs to its letter, like in the API). */
   liveDocuments(): Document[] {
-    return this.state.documents.filter((d) => !d.deleted_at);
+    return this.state.documents.filter((d) => !d.deleted_at && d.source !== "proof");
+  }
+
+  /** The kind a demo letter was filed as when it was read (its seed), or `null` for an upload. */
+  seedKind(docId: string): Document["kind"] | null {
+    return (TRAY_DOCUMENTS[docId] ?? DOCUMENTS.find((d) => d.id === docId))?.kind ?? null;
+  }
+
+  /**
+   * The person chose a letter's kind: the deadlines the law added to the kind it was read as leave with
+   * it (open, unedited ones — as the real app files them), and come back when it is filed as that kind
+   * again. The demo can't work out the deadlines of a kind it wasn't read as.
+   */
+  refileRuleItems(d: Document) {
+    const seeded = [...(TRAY_ITEMS[d.id] ?? []), ...ITEMS.filter((i) => i.doc_id === d.id)].filter((i) => i.origin === "rule");
+    if (d.kind === this.seedKind(d.id)) {
+      const now = nowTs();
+      for (const it of resolveAll(clone(seeded))) {
+        if (!this.state.items.some((x) => x.id === it.id)) this.state.items.push({ ...it, created_at: now, updated_at: now });
+      }
+      return;
+    }
+    this.state.items = this.state.items.filter((i) => !(i.doc_id === d.id && i.origin === "rule" && i.status === "open" && !i.user_modified));
   }
 
   /** Apply the processed result of a New-mail tray letter (docs, items, ideas, parties). */
@@ -161,7 +230,7 @@ export class MockDb {
           cancel_by: "2026-10-31",
           send_by: "2026-10-27",
           safe_date: "2026-10-30",
-          warnings: ["Price increase from 1 Nov: 55,00 €/month (+84 €/year). Special right to cancel until 31 Oct."],
+          warnings: ["Price increase from 1 Nov: €55.00/month (+€84/year). Special right to cancel until 31 Oct."],
         };
         c.updated_at = now;
       }
@@ -220,7 +289,10 @@ export class MockDb {
     const upcoming = open
       .filter((i) => !attentionIds.has(i.id) && daysFrom(i.due_date ?? this.eff(i)!, today) <= 30)
       .sort((a, b) => (this.eff(a)! < this.eff(b)! ? -1 : 1));
-    const decisions = this.state.contracts.filter((c) => c.status === "active" && c.computed?.send_by && daysFrom(c.computed.send_by, today) >= 0 && daysFrom(c.computed.send_by, today) <= 60);
+    // like the API: a contract whose cancellation was marked as sent is no decision any more
+    const decisions = this.state.contracts.filter(
+      (c) => c.status === "active" && c.computed?.send_by && daysFrom(c.computed.send_by, today) >= 0 && daysFrom(c.computed.send_by, today) <= 60 && !this.cancellationSent(c.id),
+    );
     const in30 = iso(addDays(parseISO(today), 30));
     const payments = open.filter((i) => i.kind === "payment" && i.direction !== "in" && i.due_date && i.due_date <= in30).sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1));
     const byCat: Record<string, number> = {};
@@ -255,7 +327,13 @@ export class MockDb {
       },
       areas: this.areas(),
       suggestions: this.state.suggestions.filter((s) => s.status === "new").sort((a, b) => prio(b.priority) - prio(a.priority)),
-      recent_documents: [...this.liveDocuments()].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 6),
+      // like views.py: newest first by the day each letter is listed under (arrived, else dated, else added);
+      // letters waiting from the watched folder are not filed yet — Today counts them apart
+      recent_documents: [...this.liveDocuments()]
+        .filter((d) => d.status !== "held")
+        .sort((a, b) => recentDay(b).localeCompare(recentDay(a)) || b.id.localeCompare(a.id))
+        .slice(0, 6),
+      waiting: this.liveDocuments().filter((d) => d.status === "held").length,
       stats: {
         documents: this.liveDocuments().length,
         open_items: this.openItems().length,
@@ -269,7 +347,7 @@ export class MockDb {
   areas(): AreaStatus[] {
     const today = this.today;
     const labels: Partial<Record<Area, string>> = {
-      residence: "Residence",
+      residence: "Residence permit",
       home: "Home",
       money: "Money",
       study: "Study",
@@ -282,24 +360,48 @@ export class MockDb {
     };
     const out: AreaStatus[] = [];
     for (const area of Object.keys(labels) as Area[]) {
+      // like views.py: a payment nobody sends by bank (a direct debit, money coming in, a fee paid on
+      // site) by its due day; the app's one urgency scale — overdue, today and tomorrow urgent, the week
+      // attention — where such a payment or an appointment never turns urgent (nothing to send)
+      const noTransfer = (i: Item) => isDirectDebit(i) || isIncomingMoney(i) || paysOnSite(i);
+      const day = (i: Item) => (noTransfer(i) ? i.due_date : this.eff(i))!;
+      const capped = (i: Item) => i.kind === "appointment" || noTransfer(i);
       const items = this.openItems()
         .filter((i) => i.area === area && i.due_date)
-        .sort((a, b) => (this.eff(a)! < this.eff(b)! ? -1 : 1));
+        .sort((a, b) => (day(a) < day(b) ? -1 : 1));
       const hasData = items.length || this.liveDocuments().some((d) => d.area === area);
       if (!hasData) continue;
       const next = items[0];
-      const days = next ? daysFrom(this.eff(next)!, today) : 999;
-      const status: AreaStatus["status"] = days <= 3 ? "urgent" : days <= 14 ? "attention" : "ok";
+      const rank = { ok: 0, attention: 1, urgent: 2 } as const;
+      const levelOf = (i: Item): AreaStatus["status"] => {
+        const days = daysFrom(day(i), today);
+        if (days <= 1 && !capped(i)) return "urgent";
+        return days <= 7 ? "attention" : "ok";
+      };
+      const status = items.map(levelOf).reduce<AreaStatus["status"]>((a, b) => (rank[b] > rank[a] ? b : a), "ok");
       out.push({
         area,
         label: labels[area]!,
         status,
         headline: next ? next.title : "Nothing coming up",
-        next_date: next ? this.eff(next) : null,
+        next_date: next ? day(next) : null,
         count: items.length,
       });
     }
     return out;
+  }
+
+  /** The person's latest cancellation of a contract marked as sent, as the API's `cancellation_sent`. */
+  cancellationSent(contractId: string): Contract["cancellation_sent"] {
+    const draft = this.state.drafts
+      .filter((d) => d.kind === "cancellation" && d.status === "sent" && d.contract_id === contractId)
+      .sort((a, b) => (b.sent_at ?? "").localeCompare(a.sent_at ?? ""))[0];
+    return draft ? { draft_id: draft.id, sent_on: draft.sent_at?.slice(0, 10) ?? null, channel: draft.sent_channel } : null;
+  }
+
+  /** A contract as the API sends it: with its sent cancellation worked out on read. */
+  contractView(c: Contract): Contract {
+    return { ...c, cancellation_sent: c.status === "active" ? this.cancellationSent(c.id) : null };
   }
 
   timeline(from?: string | null, to?: string | null): TimelineEntry[] {
@@ -314,7 +416,7 @@ export class MockDb {
         time: i.due_time,
         type: i.kind,
         title: i.title,
-        subtitle: i.send_by ? `Send by ${format(parseISO(i.send_by), "EEE d MMM")}` : p?.name ?? null,
+        subtitle: timelineSubtitle(i) ?? p?.name ?? null,
         status: i.status === "open" && i.due_date < today ? "missed" : i.status,
         priority: i.priority,
         area: i.area,
@@ -323,6 +425,8 @@ export class MockDb {
         amount: i.amount,
         currency: i.currency,
         past: i.due_date < today,
+        direction: i.kind === "payment" ? i.direction : null,
+        aside: null, // the route adds why a to-do is not one to act on (`setAside` in server.ts)
       });
     }
     for (const d of this.liveDocuments()) {
@@ -344,6 +448,8 @@ export class MockDb {
         amount: null,
         currency: null,
         past: date < today,
+        direction: null,
+        aside: null,
       });
     }
     for (const c of this.state.contracts) {
@@ -364,6 +470,8 @@ export class MockDb {
           amount: c.cost_amount,
           currency: c.cost_currency,
           past: c.computed.current_term_end < today,
+          direction: null,
+          aside: null,
         });
       }
     }
@@ -386,6 +494,8 @@ export class MockDb {
         amount: null,
         currency: null,
         past: date < today,
+        direction: null,
+        aside: null,
       });
     }
     return out
@@ -414,7 +524,7 @@ export class MockDb {
     const lanes: Lane[] = [
       {
         id: "lane_residence",
-        label: "Residence",
+        label: "Residence permit",
         area: "residence",
         bars: [
           bar({ id: "bar_permit", label: "Residence permit", start: "2024-12-01", end: "2026-11-30", kind: "validity", ref: { type: "document", id: "doc_abh" }, markers: [m("2026-10-14", "Appointment 10:30", "appointment"), m("2026-11-30", "Permit expires", "expiry")] }),
@@ -432,8 +542,8 @@ export class MockDb {
         id: "lane_home",
         label: "Home",
         area: "home",
-        bars: [bar({ id: "bar_lease", label: "Lease Musterweg 12 (open-ended)", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_rent" } })],
-        markers: [m("2026-10-05", "Rent", "payment"), m("2026-10-09", "Utility back payment 184,30 €", "payment"), m("2026-11-15", "Broadcasting fee", "payment")],
+        bars: [bar({ id: "bar_lease", label: "Lease Beispielweg 5", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_rent" } })],
+        markers: [m("2026-10-05", "Rent", "payment"), m("2026-10-09", "Utility back payment €184.30", "payment"), m("2026-11-15", "Broadcasting fee", "payment")],
       },
       {
         id: "lane_phone",
@@ -442,7 +552,7 @@ export class MockDb {
         bars: [
           bar({ id: "bar_phone_term", label: "Minimum term", start: "2024-11-15", end: "2026-11-14", kind: "contract", ref: { type: "contract", id: "ctr_phone" }, markers: [m("2026-11-14", "Minimum term ends", "renewal")] }),
           bar({ id: "bar_phone_notice", label: "Time to cancel", start: "2026-08-15", end: "2026-10-14", kind: "notice_window", ref: { type: "contract", id: "ctr_phone" }, markers: [m("2026-10-08", "Send by", "send_by"), m("2026-10-14", "Cancel by", "cancel_by")] }),
-          bar({ id: "bar_phone_after", label: "Month to month", start: "2026-11-15", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_phone" } }),
+          bar({ id: "bar_phone_after", label: "Month to month", start: "2026-11-15", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_phone" } }),
         ],
         markers: [],
       },
@@ -451,12 +561,12 @@ export class MockDb {
         label: "Electricity · Stadtwerke",
         area: "home",
         bars: [
-          bar({ id: "bar_power", label: "MusterStrom Natur", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_power" } }),
+          bar({ id: "bar_power", label: "MusterStrom Natur", start: "2025-10-01", end: "2027-12-31", kind: "contract", status: "ok", open_end: true, ref: { type: "contract", id: "ctr_power" } }),
           ...(has("itm_power_cancel")
             ? [bar({ id: "bar_power_right", label: "Special right to cancel", start: "2026-09-28", end: "2026-10-31", kind: "notice_window", ref: { type: "document", id: "doc_power_price" }, markers: [m("2026-10-27", "Send by (post)", "send_by"), m("2026-10-31", "Cancel by", "cancel_by")] })]
             : []),
         ],
-        markers: has("itm_power_new") ? [m("2026-11-01", "Price rises (+84 €/year)", "other")] : [],
+        markers: has("itm_power_new") ? [m("2026-11-01", "Price rises (+€84/year)", "other")] : [],
       },
       {
         id: "lane_insurance",
@@ -464,7 +574,7 @@ export class MockDb {
         area: "insurance",
         bars: [
           bar({ id: "bar_liab_2026", label: "Insurance year", start: "2025-12-01", end: "2026-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" } }),
-          bar({ id: "bar_liab_2027", label: "Insurance year (renewed)", start: "2026-12-01", end: "2027-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2026-12-01", "Renews · 59,90 €", "renewal")] }),
+          bar({ id: "bar_liab_2027", label: "Insurance year (renewed)", start: "2026-12-01", end: "2027-11-30", kind: "contract", status: "ok", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2026-12-01", "Renews · €59.90", "renewal")] }),
           bar({ id: "bar_liab_notice", label: "Time to cancel", start: "2027-06-01", end: "2027-08-31", kind: "notice_window", ref: { type: "contract", id: "ctr_liability" }, markers: [m("2027-08-25", "Send by", "send_by"), m("2027-08-31", "Cancel by", "cancel_by")] }),
         ],
         markers: [],
@@ -477,7 +587,7 @@ export class MockDb {
           bar({ id: "bar_ws", label: "Winter semester 2026/27", start: "2026-10-01", end: "2027-03-31", kind: "period", status: "ok", ref: { type: "document", id: "doc_uni" } }),
           bar({ id: "bar_ss", label: "Summer semester 2027", start: "2027-04-01", end: "2027-09-30", kind: "period", status: "ok", ref: { type: "document", id: "doc_uni" } }),
         ],
-        markers: [m("2026-12-15", "Scholarship report", "deadline"), m("2027-01-15", "Semester fee 312,40 €", "payment")],
+        markers: [m("2026-12-15", "Scholarship report", "deadline"), m("2027-01-15", "Semester fee €312.40", "payment")],
       },
       {
         id: "lane_work",
@@ -491,7 +601,7 @@ export class MockDb {
         label: "Money",
         area: "money",
         bars: [],
-        markers: [m("2026-09-30", "TechMarkt 94,99 €", "payment"), m("2026-11-30", "Bank fee decision", "deadline"), m("2026-12-01", "Liability 59,90 €", "payment")],
+        markers: [m("2026-09-30", "TechMarkt €94.99", "payment"), m("2026-11-30", "Bank fee decision", "deadline"), m("2026-12-01", "Liability €59.90", "payment")],
       },
     ];
     if (has("itm_tax_objection")) {
@@ -503,14 +613,29 @@ export class MockDb {
         markers: [],
       });
     }
-    if (!from && !to) return lanes;
+    // like the API: every bar and date says its life area and what it stands for (a date here
+    // with no to-do behind it has no `ref`), and a bar with no end date says so
+    const complete: Lane[] = lanes.map((l) => ({
+      ...l,
+      bars: l.bars.map((b) => {
+        const area = b.area ?? l.area;
+        return { ...b, area, open_end: b.open_end ?? false, markers: b.markers.map((mk) => ({ ...mk, area: mk.area ?? area, ref: mk.ref ?? b.ref })) };
+      }),
+      markers: l.markers.map((mk) => ({ ...mk, area: mk.area ?? l.area, ref: mk.ref ?? null })),
+    }));
+    if (!from && !to) return complete;
     const f = from ?? "0000-01-01";
     const t = to ?? "9999-12-31";
-    return lanes
+    // like the API: bars are clipped to the range (the chart then says "started before" /
+    // "continues after" instead of showing an edge as a date), markers outside it are dropped
+    const inRange = (mk: TimelineMarker) => mk.date >= f && mk.date <= t;
+    return complete
       .map((l) => ({
         ...l,
-        bars: l.bars.filter((b) => b.end >= f && b.start <= t),
-        markers: l.markers.filter((mk) => mk.date >= f && mk.date <= t),
+        bars: l.bars
+          .filter((b) => b.end >= f && b.start <= t)
+          .map((b) => ({ ...b, start: b.start < f ? f : b.start, end: b.end > t ? t : b.end, markers: b.markers.filter(inRange) })),
+        markers: l.markers.filter(inRange),
       }))
       .filter((l) => l.bars.length || l.markers.length);
   }

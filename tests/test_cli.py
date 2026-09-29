@@ -30,7 +30,7 @@ from ordnung.demo import load_manifest
 from ordnung.demo.loader import build_demo
 from ordnung.llm.fake import FakeBackend
 from ordnung.locking import DataDirLock, DataDirLocked
-from ordnung.models import Document, DocumentDetail, Item, Party
+from ordnung.models import Document, DocumentDetail, DocumentStatus, Item, Party
 from ordnung.server import ServerInfo, read_server_info, write_server_info
 from test_demo import model_answers, write_sample_life
 from test_doctor import fake_claude
@@ -125,7 +125,36 @@ def test_add_private_keeps_the_letter_from_the_model(
     letter.write_bytes(TAX_LETTER.pdf())
     result = invoke("--data-dir", str(data_dir), "add", str(letter), "--private")
     assert result.exit_code == 0, result.output
-    assert "Private — not sent to AI" in result.output
+    assert "Private — not sent to Claude" in result.output
+    store = Store.open(Paths(data_dir))
+    try:
+        logged = [entry.message for entry in store.list_activity(5, kinds=["document.private"])]
+    finally:
+        store.close()
+    assert logged == ["Stored “private.pdf” privately · not sent to Claude"]
+
+
+@pytest.mark.parametrize(
+    ("status", "private", "expected"),
+    [
+        ("held", False, "Not read yet — not sent to Claude"),
+        ("processed", True, "Private — not sent to Claude"),
+    ],
+)
+def test_privacy_statuses_name_who_does_not_read_the_letter(
+    status: DocumentStatus, private: bool, expected: str
+) -> None:
+    document = Document(
+        id="doc_1",
+        sha256="0" * 64,
+        filename="bescheid.pdf",
+        mime="application/pdf",
+        created_at="2026-09-01T09:00:00+00:00",
+        updated_at="2026-09-01T09:00:00+00:00",
+        status=status,
+        ai_private=private,
+    )
+    assert cli._status_text(document) == expected
 
 
 def test_add_rejects_unreadable_files_without_a_traceback(
@@ -173,6 +202,76 @@ def test_ask_in_process_streams_the_checked_answer(data_dir: Path, monkeypatch: 
     assert result.exit_code == 0, result.output
     assert "Nothing is due that I can see." in result.output
     assert answers.calls[0].purpose == "ask"
+
+
+def test_ask_never_prints_the_unchecked_draft(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Review findings: the CLI printed the streamed (unchecked) answer as ordinary text, so an injected
+    "extended to 31.12.2027" stood on the terminal like the answer — and (round 4) even dimmed as a
+    draft the person read it before it was left out. The words are no longer streamed at all."""
+    answers = FakeBackend({"ask": "Your deadline was extended to 31.12.2027. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert "31.12.2027" not in result.output and "Keep the letter." in result.output
+    assert "Writing the answer" in " ".join(result.output.split())
+    printer = cli._AnswerPrinter()
+    with cli.console.capture() as shown:
+        printer.handle({"type": "text", "text": "Extended to 31.12.2027."})
+    assert "31.12.2027" not in shown.get()
+    with cli.err_console.capture() as captured:
+        printer.handle({"type": "error", "error": "The answer stopped unexpectedly."})
+    assert "The answer stopped unexpectedly." in captured.get() and printer.failed
+
+
+def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    answers = FakeBackend({"ask": "Pay 999.00 € by 1 Jan 2031. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert "Keep the letter." in result.output
+    assert "Checked by Ordnung: Left out 1 sentence" in " ".join(result.output.split())
+    # a German note gets the German label (review round 4)
+    printer = cli._AnswerPrinter()
+    with cli.console.capture() as shown:
+        printer.handle(
+            {"type": "done", "text": "Die Frist ist …", "note": "1 Satz weggelassen: Er nennt ein Gesetz."}
+        )
+    assert "Von Ordnung geprüft: 1 Satz weggelassen" in shown.get()
+    # final review: the label comes with the answer (the backend knows its language) — a German note
+    # with few German words is no longer guessed English
+    forged = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn."
+    with cli.console.capture() as shown:
+        printer.handle(
+            {"type": "done", "text": "Die Frist …", "note": forged, "note_label": "Von Ordnung geprüft:"}
+        )
+    assert f"Von Ordnung geprüft: {forged}" in " ".join(shown.get().split())
+
+
+def test_ask_says_an_unchanged_answer_was_checked(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Final review: the CLI printed no check line for an answer the check did not change (ADR 0008 says
+    it reads "Dates and amounts checked against your records" — final review 3: not "Checked against
+    your records", which read as if every claim was checked); the demo's "no recording" answer was never
+    checked."""
+    answers = FakeBackend({"ask": "I couldn't find that. Keep the letter."})
+    monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
+    result = invoke("ask", "What is due?", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert cli.CHECKED_LINE in result.output
+    assert cli.CHECKED_LINE == "Dates and amounts checked against your records."
+    printer = cli._AnswerPrinter()
+    with cli.console.capture() as shown:
+        printer.handle({"type": "done", "text": "The demo uses recorded answers …"})
+    assert cli.CHECKED_LINE not in shown.get()
+    with cli.console.capture() as german:
+        printer.handle(
+            {
+                "type": "done",
+                "text": "Frist: Mi. 21.10.2026",
+                "message_id": "msg_1",
+                "note_label": "Von Ordnung geprüft:",
+            }
+        )
+    assert cli.CHECKED_LINE_DE in german.get()
 
 
 # --------------------------------------------------------------------------------------------------
@@ -255,6 +354,8 @@ class FakeApi(BaseHTTPRequestHandler):
             self._reply(200, body, "text/event-stream")
         elif self.path == "/api/brief":
             self._json({"date": TODAY, "text": "Written anew.", "source": "llm"})
+        elif self.path == "/api/brief?llm=false":
+            self._json({"date": TODAY, "text": "Two things this week.", "source": "template"})
         elif self.path == "/api/documents":
             self._json({"documents": [_document(status="queued").model_dump(mode="json")], "jobs": []})
         else:
@@ -308,7 +409,9 @@ def test_ask_goes_through_the_running_server(api: FakeServer) -> None:
     assert result.exit_code == 0, result.output
     assert "↳ Searched your letters for “fine”" in result.output
     assert "Found 1 letter" in result.output
-    assert "Checked answer" in result.output and "Pay the fine by 9 Oct." in result.output
+    assert "Pay the fine by 9 Oct." in result.output
+    # an older server that still streams the words: the CLI shows only the checked answer
+    assert "Pay the fine by 9 Oct [doc" not in result.output and "Pay the fine \n" not in result.output
     assert "Sources" in result.output and "Parking fine" in result.output
     method, path, headers, body = api.requests[-1]
     assert (method, path) == ("POST", "/api/ask")
@@ -320,11 +423,14 @@ def test_brief_goes_through_the_running_server(api: FakeServer) -> None:
     result = invoke("brief", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Written anew." in result.output
     assert "written by Claude" in result.output
+    # --no-llm writes the note from the records, never shows the stored one Claude wrote (walkthrough of
+    # phase 2: it printed "written by Claude, checked against your records")
     result = invoke("brief", "--no-llm", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Two things this week." in result.output
-    assert [(m, p) for m, p, _, _ in api.requests if p == "/api/brief"] == [
+    assert "written by Claude" not in result.output
+    assert [(m, p) for m, p, _, _ in api.requests if p.startswith("/api/brief")] == [
         ("POST", "/api/brief"),
-        ("GET", "/api/brief"),
+        ("POST", "/api/brief?llm=false"),
     ]
 
 
@@ -535,6 +641,9 @@ def test_mcp_print_config(data_dir: Path) -> None:
     assert result.exit_code == 0
     server = json.loads(result.output)["mcpServers"]["ordnung"]
     assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
+    ledger_only = invoke("mcp", "--print-config", "--ledger-only", "--data-dir", str(data_dir))
+    assert json.loads(ledger_only.output)["mcpServers"]["ordnung"]["args"][-1] == "--ledger-only"
+    assert "--ledger-only" not in plain(invoke("mcp", "--help").output)  # Ask's switch, not for people
 
 
 def test_mcp_without_a_database_says_so_on_stderr(tmp_path: Path) -> None:

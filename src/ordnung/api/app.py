@@ -3,9 +3,9 @@ Security Policy, the localhost security middleware and a lifespan that runs the 
 
 ``create_app(ctx, token=…, demo=…)`` wires one :class:`~ordnung.app_context.AppContext` into an app:
 
-* **lifespan** — binds the event bus to the server loop, starts the ingest worker and the daily tick,
-  and on shutdown stops them (and the API's own background tasks). The context itself stays open;
-  whoever built it closes it.
+* **lifespan** — binds the event bus to the server loop, starts the ingest worker, the daily tick and
+  the watched folder (when one is set, :mod:`ordnung.ingest.watcher`), and on shutdown stops them (and
+  the API's own background tasks). The context itself stays open; whoever built it closes it.
 * **errors** — model failures become ``503`` with a message the person can act on (and a ``code``),
   invalid input ``422``, unknown records ``404``.
 * **web app** — files of ``config.web_dist_dir()`` are served as they are; a missing file (under
@@ -50,6 +50,7 @@ from ordnung.api.security import (
     inline_script_hashes,
 )
 from ordnung.app_context import AppContext
+from ordnung.calendar import caldav
 from ordnung.config import web_dist_dir
 from ordnung.db.store import NotFoundError
 from ordnung.doctor import web_app_fix
@@ -101,6 +102,9 @@ VIEW_MODELS: tuple[type[BaseModel], ...] = (
     models.SearchHit,
     models.TourState,
     models.MailTrayItem,
+    models.EmailAttachment,
+    models.FolderPickup,
+    models.FolderStatus,
     models.DoctorCheck,
     StreamEvent,
     models.ServerEvents,
@@ -117,12 +121,14 @@ def _lifespan(state: ApiState) -> Callable[[FastAPI], AbstractAsyncContextManage
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         ctx = state.ctx
         ctx.bus.bind_loop(asyncio.get_running_loop())
-        tick = DailyTick(ctx)
+        tick = DailyTick(ctx, calendar_sync=caldav.scheduled_sync)
         await ctx.worker.start()
         tick.start()
+        await state.folder.start()
         try:
             yield
         finally:
+            await state.folder.stop()
             await tick.stop()
             await state.background.stop()
             await ctx.worker.stop()

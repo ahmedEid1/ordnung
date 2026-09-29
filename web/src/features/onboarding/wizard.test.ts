@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { BUNDESLAENDER, LANGUAGES, PRIVACY_STATEMENT } from "./options";
-import { buildOnboardingRequest, canContinue, claudeState, initialDraft, returnLine, type OnboardingDraft } from "./wizard";
+import {
+  DONE_STEP,
+  WIZARD_STEPS,
+  addressEmpty,
+  buildOnboardingRequest,
+  canContinue,
+  claudeState,
+  claudeUsable,
+  claudeView,
+  initialDraft,
+  returnLine,
+  wizardTitle,
+  type ClaudeView,
+  type OnboardingDraft,
+} from "./wizard";
 
 const draft = (p: Partial<OnboardingDraft> = {}): OnboardingDraft => ({ ...initialDraft(), ...p });
 
@@ -16,6 +30,9 @@ describe("onboarding options", () => {
   it("uses the honest privacy wording from the spec", () => {
     expect(PRIVACY_STATEMENT).toMatch(/^Your files and your database stay on this computer\./);
     expect(PRIVACY_STATEMENT).toContain("no server, no telemetry and never sees your credentials");
+    // one name for the program, in words a non-developer knows (UI audit R1-onboarding-6)
+    expect(PRIVACY_STATEMENT).toContain("(Claude Code, the Claude program you installed and signed in to)");
+    expect(PRIVACY_STATEMENT).not.toMatch(/CLI|Claude app/);
   });
 });
 
@@ -55,5 +72,33 @@ describe("wizard", () => {
     expect(claudeState({ ...base, installed: true, ok: true })).toBe("ready");
     expect(claudeState({ ...base, installed: true, ok: false })).toBe("signed_out");
     expect(claudeState({ ...base, installed: true, ok: null })).toBe("unchecked");
+  });
+
+  it("tells a pending or failed health check apart from a missing Claude (UI audit R1-onboarding-6)", () => {
+    const ready = { version: "2.1.4 (Claude Code)", path: null, detail: null, installed: true, ok: true };
+    expect(claudeView(undefined, { pending: true, failed: false })).toBe("checking");
+    expect(claudeView(undefined, { pending: false, failed: true })).toBe("unknown");
+    expect(claudeView(ready, { pending: false, failed: true })).toBe("ready"); // a failed refetch keeps the last answer
+    expect(claudeView({ ...ready, installed: false, ok: null }, { pending: false, failed: false })).toBe("missing");
+    const views: ClaudeView[] = ["ready", "unchecked", "signed_out", "missing", "checking", "unknown"];
+    expect(views.filter(claudeUsable)).toEqual(["ready", "unchecked"]);
+  });
+
+  it("names every step in the tab title (UI audit R1-onboarding-4)", () => {
+    expect(WIZARD_STEPS.map((_, i) => wizardTitle(i))).toEqual([
+      "Step 1 of 4: Welcome to Ordnung · Ordnung",
+      "Step 2 of 4: Where do you live? · Ordnung",
+      "Step 3 of 4: Your name and address · Ordnung",
+      "Step 4 of 4: Is Claude ready? · Ordnung",
+    ]);
+    expect(wizardTitle(0, { revisit: true })).toBe("Step 1 of 4: Change your setup · Ordnung");
+    expect(wizardTitle(DONE_STEP)).toBe("Setup complete · Ordnung");
+  });
+
+  it("offers “Skip for now” only while nothing is typed (UI audit R1-onboarding-7)", () => {
+    expect(addressEmpty(draft())).toBe(true);
+    expect(addressEmpty(draft({ name: "  ", address: "\n" }))).toBe(true);
+    expect(addressEmpty(draft({ address: "Musterweg 12" }))).toBe(false);
+    expect(addressEmpty(draft({ name: "Sam" }))).toBe(false);
   });
 });

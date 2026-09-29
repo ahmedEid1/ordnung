@@ -47,5 +47,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+    // the composer's flows take about 1.5 s alone and timed out at the 5 s default on a busy machine (review round 2)
+    testTimeout: 20_000,
   },
 });

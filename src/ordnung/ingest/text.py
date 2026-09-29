@@ -3,7 +3,14 @@
 * **PDF text layers** — pdfplumber characters are assembled into words and lines in their own reading
   direction, with word boxes relative (0..1) to the page image rendered by pypdfium2 (effective
   CropBox and ``/Rotate`` handled). Invisible characters (white, tiny or off-page) are kept out of
-  the page text and reported separately as ``hidden_text``.
+  the page text and reported separately as ``hidden_text``. So is text drawn *invisibly* — text render
+  mode 3 or 7, which PDFium reports for each character's text object (:func:`_invisible_chars`) — with
+  one exception: a page whose invisible text is at least a text layer's worth and no less than its
+  visible text is a scan with an OCR layer (a searchable PDF from a scanner or a phone app). Its OCR
+  text is somebody's reading of the picture, not the letter's own text: the page counts as having no
+  text layer and is read from its image like a photo (so its values are compared with the paper, ADR
+  0012), and the OCR text is neither the page text nor reported as hidden. Characters PDFium can't be
+  matched to (the same character within a fraction of its size) count as visible.
 * **Plain-text and e-mail documents** — decoded, laid out on A4 page images with a bundled font, and
   returned with exact word boxes so quotes from them can be highlighted like PDF text. Layout is
   lazy (it stops once a page limit is passed) and wrapping measures at most one row at a time, so
@@ -16,7 +23,9 @@
 from __future__ import annotations
 
 import codecs
+import ctypes
 import email
+import email.parser
 import email.policy
 import functools
 import itertools
@@ -24,6 +33,7 @@ import logging
 import math
 import re
 import sys
+import threading
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Iterator, Sequence
@@ -34,6 +44,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast
 
 import pdfplumber
+import pypdfium2 as pdfium
+import pypdfium2.raw as raw
 from PIL import ImageColor, ImageFont
 
 from ordnung.config import PACKAGE_DIR
@@ -44,6 +56,10 @@ if TYPE_CHECKING:
     from ordnung.ingest.intake import RenderedPage
 
 log = logging.getLogger(__name__)
+
+PDFIUM_LOCK = threading.Lock()
+"""PDFium is not thread-safe: every pypdfium2 call in the app holds this lock (it lives here, the lowest
+module that calls PDFium; :mod:`ordnung.ingest.intake` re-exports it)."""
 
 TextSource = Literal["text", "transcript", "none"]
 Direction = Literal["ltr", "rtl", "ttb", "btt"]
@@ -205,8 +221,86 @@ def extract_pdf_pages(pdf_path: Path, rendered: Sequence[RenderedPage]) -> list[
     except Exception:  # damaged text layer: every page falls back to transcription
         log.warning("could not read the text layer of %s", pdf_path, exc_info=True)
         return [PageText(page=r.page, text="") for r in rendered]
+    invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
     with pdf:
-        return [_extract_page_safely(pdf.pages[r.page - 1], r.page) for r in rendered]
+        return [_extract_page_safely(pdf.pages[r.page - 1], r.page, invisible.get(r.page)) for r in rendered]
+
+
+class _DrawnChar(NamedTuple):
+    """One character as PDFium reads it: its text, the centre of its box (PDF user space) and whether
+    its text object draws it invisibly (text render mode 3 or 7)."""
+
+    text: str
+    x: float
+    y: float
+    invisible: bool
+
+
+_INVISIBLE_MODES = frozenset({3, 7})  # FPDF_TEXTRENDERMODE_INVISIBLE, FPDF_TEXTRENDERMODE_CLIP
+
+
+def _invisible_chars(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+    """Page number → character → where PDFium draws it, for the pages that draw text invisibly (module
+    docstring); empty when PDFium can't read the file (every character then counts as visible)."""
+    with PDFIUM_LOCK:
+        return _invisible_chars_locked(pdf_path, numbers)
+
+
+def _invisible_chars_locked(pdf_path: Path, numbers: Sequence[int]) -> dict[int, dict[str, list[_DrawnChar]]]:
+    found: dict[int, dict[str, list[_DrawnChar]]] = {}
+    try:
+        document = pdfium.PdfDocument(pdf_path)
+    except Exception:
+        log.warning("could not check %s for invisible text", pdf_path, exc_info=True)
+        return found
+    try:
+        for number in numbers:
+            page = document[number - 1]
+            textpage = page.get_textpage()
+            try:
+                chars: dict[str, list[_DrawnChar]] = {}
+                any_invisible = False
+                box = raw.FS_RECTF()
+                for index in range(raw.FPDFText_CountChars(textpage.raw)):
+                    if raw.FPDFText_IsGenerated(textpage.raw, index):
+                        continue
+                    text = chr(raw.FPDFText_GetUnicode(textpage.raw, index))
+                    if text.isspace() or not raw.FPDFText_GetLooseCharBox(
+                        textpage.raw, index, ctypes.byref(box)
+                    ):
+                        continue
+                    obj = raw.FPDFText_GetTextObject(textpage.raw, index)
+                    hidden = bool(obj) and raw.FPDFTextObj_GetTextRenderMode(obj) in _INVISIBLE_MODES
+                    any_invisible = any_invisible or hidden
+                    drawn = _DrawnChar(text, (box.left + box.right) / 2, (box.top + box.bottom) / 2, hidden)
+                    chars.setdefault(text, []).append(drawn)
+                if any_invisible:
+                    found[number] = chars
+            finally:
+                textpage.close()
+                page.close()
+    except Exception:
+        log.warning("could not check %s for invisible text", pdf_path, exc_info=True)
+    finally:
+        document.close()
+    return found
+
+
+def _drawn_invisibly(char: dict[str, Any], drawn: dict[str, list[_DrawnChar]] | None) -> bool:
+    """Whether PDFium draws this pdfplumber character only invisibly: every character of the same
+    text within a fraction of its size of it is invisible (none visible), and there is one."""
+    if not drawn:
+        return False
+    text = str(char.get("text", ""))
+    size = float(char.get("size") or 0.0)
+    x = (float(char["x0"]) + float(char["x1"])) / 2
+    y = (float(char["y0"]) + float(char["y1"])) / 2
+    near = [
+        other
+        for other in drawn.get(text, [])
+        if abs(other.x - x) <= max(1.0, 0.25 * size) and abs(other.y - y) <= max(1.5, 0.5 * size)
+    ]
+    return bool(near) and all(other.invisible for other in near)
 
 
 def is_near_white(color: object) -> bool:
@@ -215,9 +309,11 @@ def is_near_white(color: object) -> bool:
     return rgb is not None and min(rgb) >= NEAR_WHITE
 
 
-def _extract_page_safely(page: Page, number: int) -> PageText:
+def _extract_page_safely(
+    page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None
+) -> PageText:
     try:
-        return _extract_page(page, number)
+        return _extract_page(page, number, drawn)
     except Exception:  # one broken page must not stop ingestion
         log.warning("could not read the text layer of page %d", number, exc_info=True)
         return PageText(page=number, text="")
@@ -225,24 +321,38 @@ def _extract_page_safely(page: Page, number: int) -> PageText:
         page.close()
 
 
-def _extract_page(page: Page, number: int) -> PageText:
+def _extract_page(page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None) -> PageText:
     frame = _PageFrame.of(page)
     backgrounds = _dark_backgrounds(page, frame)
     visible: list[_Glyph] = []
     hidden: list[_Glyph] = []
+    invisible: list[_Glyph] = []
     # Visible text comes from the de-duplicated characters (fake-bold overprints collapse); hidden text
     # from the raw ones — at 1-2 pt, de-duplication would merge real double letters ("Assistant").
     for char in page.dedupe_chars().chars:
         glyph = _glyph(char, frame)
-        if glyph is not None and (glyph.is_space or not _is_hidden(char, glyph, frame, backgrounds)):
+        if glyph is None:
+            continue
+        if glyph.is_space or not (
+            _is_hidden(char, glyph, frame, backgrounds) or _drawn_invisibly(char, drawn)
+        ):
             visible.append(glyph)
     for char in page.chars:
         glyph = _glyph(char, frame)
-        if glyph is not None and not glyph.is_space and _is_hidden(char, glyph, frame, backgrounds):
+        if glyph is None or glyph.is_space:
+            continue
+        if _drawn_invisibly(char, drawn):
+            invisible.append(glyph)
+        elif _is_hidden(char, glyph, frame, backgrounds):
             hidden.append(glyph)
     text, words = _assemble(visible, frame)
-    hidden_text, _ = _assemble(hidden, frame)
     meaningful = sum(ch.isalnum() for ch in text)
+    unseen = sum(ch.isalnum() for glyph in invisible for ch in glyph.text)
+    if unseen >= MIN_TEXT_CHARS and unseen >= meaningful:
+        # a scan's OCR layer (module docstring): read from the image, the OCR text left out
+        hidden_text, _ = _assemble(hidden, frame)
+        return PageText(page=number, text="", hidden_text=hidden_text, has_text_layer=False)
+    hidden_text, _ = _assemble([*hidden, *invisible], frame)
     return PageText(
         page=number,
         text=text,
@@ -717,6 +827,38 @@ def _email_document(data: bytes) -> TextDocument:
         lines.append("Attachments: " + ", ".join(attachments))
     text = "\n".join(lines) + ("\n\n" + body.strip() if body.strip() else "")
     return TextDocument(_clean_text(text), hidden)
+
+
+EMAIL_HEADING_CHARS = 200
+
+
+def email_heading(data: bytes) -> str | None:
+    """“Subject · Sender” of an e-mail from its headers alone (no model, no body parsed), e.g. “Ihre
+    Rechnung September · Muster Telecom” — what a letter nobody read yet is called. Control and
+    formatting characters are dropped and the result is at most :data:`EMAIL_HEADING_CHARS` long;
+    ``None`` without a subject or sender."""
+    try:
+        headers = email.parser.BytesHeaderParser(policy=email.policy.default).parsebytes(data)
+        subject = _heading_text(str(headers.get("Subject") or ""))
+        sender = _sender_name(headers.get("From"))
+    except (ValueError, LookupError, TypeError, AttributeError, IndexError):  # a malformed header
+        return None
+    heading = " · ".join(part for part in (subject, sender) if part)
+    if len(heading) > EMAIL_HEADING_CHARS:
+        heading = heading[: EMAIL_HEADING_CHARS - 1].rstrip() + "…"
+    return heading or None
+
+
+def _heading_text(value: str) -> str:
+    return " ".join("".join(ch if ch.isprintable() else " " for ch in value).split())
+
+
+def _sender_name(header: Any) -> str:
+    addresses = getattr(header, "addresses", ())
+    if not addresses:
+        return _heading_text(str(header or ""))
+    first = addresses[0]
+    return _heading_text(first.display_name or first.addr_spec or "")
 
 
 def _email_body(message: EmailMessage) -> tuple[str, str]:

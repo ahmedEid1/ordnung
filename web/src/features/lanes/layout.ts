@@ -8,18 +8,25 @@ import { dayNumber, type TimeScale } from "./scale";
 
 /** Visual constants shared by the layout and the component. */
 export const LANE_METRICS = {
-  /** bar thickness (dataviz: ≤ 24 px) */
-  barHeight: 22,
+  /** bar thickness (dataviz: ≤ 24 px; a bar is a button, so a full 24 px target — WCAG 2.5.8) */
+  barHeight: 24,
   /** vertical pitch of one track */
-  trackHeight: 30,
-  /** extra room under a track for direct marker labels */
-  captionHeight: 15,
+  trackHeight: 32,
+  /** extra room under a track for direct marker labels (12 px text) */
+  captionHeight: 16,
   /** padding above the first / below the last track */
   padY: 11,
-  /** markers closer than this (px) merge into one cluster */
-  clusterPx: 7,
+  /**
+   * Markers closer than this (px) merge into one mark (one tooltip listing every date), so no two
+   * markers ever overlap and each keeps a 24 px hit target (WCAG 2.5.8).
+   */
+  markerGap: 24,
   /** horizontal padding inside a bar around its label */
   labelPad: 8,
+  /** room kept free for a caption on either side of the today line (px, beyond its 2 px) */
+  todayClear: 4,
+  /** captions stay this far from the right edge of the plot (px) */
+  captionInset: 8,
 } as const;
 
 /** Most important first — decides the shape/colour of a merged marker and caption priority. */
@@ -97,7 +104,7 @@ export interface PlacedBar extends BarBox {
 
 const refKey = (ref: RefLink | null | undefined) => (ref ? `${ref.type}:${ref.id}` : null);
 
-interface Interval {
+export interface Interval {
   s: number;
   e: number;
 }
@@ -173,11 +180,26 @@ export function packBars(bars: LaneBar[], scale: TimeScale): { placed: PackedBar
   return { placed, tracks: Math.max(occupied.length, 0) };
 }
 
+/** The free stretches of `[lo, hi]` once the `blocked` intervals are taken out (left to right). */
+export function freeSegments(lo: number, hi: number, blocked: Interval[]): Interval[] {
+  const out: Interval[] = [];
+  let s = lo;
+  for (const b of [...blocked].sort((a, c) => a.s - c.s)) {
+    if (b.e <= s) continue;
+    if (b.s >= hi) break;
+    if (b.s > s) out.push({ s, e: b.s });
+    s = Math.max(s, b.e);
+  }
+  if (hi > s) out.push({ s, e: hi });
+  return out;
+}
+
 /**
- * Decide where each bar's label goes, keeping clear of markers on the bar and of a notice-window
- * overlay: inside when it fits (truncated with an ellipsis when there is still decent room —
- * the tooltip carries the full text), else right after the bar end when there is room before
- * the next bar on the track, else only in the tooltip. Notice windows are never truncated.
+ * Decide where each bar's label goes, keeping clear of the markers on the bar and of a
+ * notice-window overlay: inside, in the first free stretch between markers where the whole label
+ * fits; else truncated (the tooltip carries the full text) in the widest free stretch when that
+ * still has decent room; else right after the bar end when there is room before the next bar or
+ * marker and the plot edge; else only in the tooltip. Notice windows are never truncated.
  */
 export function placeBarLabels(
   placed: PackedBar[],
@@ -192,27 +214,35 @@ export function placeBarLabels(
     const textW = measure(text);
     const x0 = p.x;
     const x1 = p.x + p.width;
-    const onBar = markers.filter((m) => m.track === p.track && m.x > x0 - 2 && m.x < x1 + 2).map((m) => m.x);
-    // markers hugging the start push the label to the right
-    const leading = onBar.filter((mx) => mx - x0 < 18);
-    const baseStart = p.continuesBefore ? 20 : pad;
-    const labelStart = leading.length ? Math.max(baseStart, Math.max(...leading) - x0 + clear + 2) : baseStart;
-    let limit = x1 - pad;
-    for (const mx of onBar) if (mx - x0 >= 18 && mx - clear < limit) limit = mx - clear;
+    const onBar = markers.filter((m) => m.track === p.track && m.x > x0 - clear && m.x < x1 + clear).map((m) => m.x);
+    // a faded (continuing) end keeps the label out of the fade
+    const lo = x0 + (p.continuesBefore ? 20 : pad);
+    const hi = x1 - (p.continuesAfter ? 20 : pad);
+    const blocked: Interval[] = onBar.map((mx) => ({ s: mx - clear, e: mx + clear + 2 }));
     if (!p.overlay) {
-      for (const o of placed) if (o.overlay && o.track === p.track && o.x >= x0 && o.x < x1) limit = Math.min(limit, o.x - 4);
+      for (const o of placed) if (o.overlay && o.track === p.track && o.x < x1 && o.x + o.width > x0) blocked.push({ s: o.x - 4, e: o.x + o.width + 4 });
     }
+    const segments = freeSegments(lo, hi, blocked);
     const chip = p.bar.kind === "notice_window" ? 12 : 0;
-    const room = limit - x0 - labelStart;
-    const base = { ...p, labelStart, labelMax: null as number | null, labelRoom: Math.max(0, Math.floor(room)), afterX: 0 };
-    if (textW + chip <= room) return { ...base, labelMode: "inside" as const };
+    const fitting = segments.find((s) => s.e - s.s >= textW + chip);
+    const widest = segments.reduce<Interval | null>((best, s) => (!best || s.e - s.s > best.e - best.s ? s : best), null);
+    const seg = fitting ?? widest;
+    const room = seg ? seg.e - seg.s : 0;
+    const base = {
+      ...p,
+      labelStart: seg ? Math.round(seg.s - x0) : pad,
+      labelMax: null as number | null,
+      labelRoom: Math.max(0, Math.floor(room)),
+      afterX: 0,
+    };
+    if (fitting) return { ...base, labelMode: "inside" as const };
     if (!chip && !p.overlay && room >= 64) return { ...base, labelMode: "inside" as const, labelMax: Math.floor(room) };
     if (p.overlay) return { ...base, labelMode: "none" as const };
-    const endMarker = onBar.some((mx) => x1 - mx < 12);
+    const endMarker = onBar.some((mx) => Math.abs(x1 - mx) < 12);
     const afterX = x1 + (endMarker ? 14 : 8);
     const next = placed
       .filter((o) => o !== p && o.track === p.track && !o.overlay && o.x >= x1 - 1)
-      .reduce((min, o) => Math.min(min, o.x), scale.width);
+      .reduce((min, o) => Math.min(min, o.x), scale.width - LANE_METRICS.captionInset);
     const nextMarker = markers.filter((m) => m.track === p.track && m.x > afterX).reduce((min, m) => Math.min(min, m.x - clear), Infinity);
     const fits = textW <= Math.min(next, nextMarker) - afterX - 4 && !p.continuesAfter;
     return { ...base, afterX, labelMode: fits ? ("after" as const) : ("none" as const) };
@@ -240,7 +270,7 @@ export interface PlacedMarker {
   primary: MarkerEntry;
   /** every marker merged into this one, most important first */
   entries: MarkerEntry[];
-  /** width (px) of the click/hover target: 24 px, narrowed so neighbours never overlap (≥ 12 px) */
+  /** width (px) of the click/hover target: `markerGap` (24 px) — neighbours are at least that far apart */
   hitWidth: number;
 }
 
@@ -256,14 +286,16 @@ function compareEntries(a: MarkerEntry, b: MarkerEntry): number {
 
 /**
  * Put markers on their track (a bar's markers on the bar's track, lane markers on track 0) and
- * merge markers that would overlap (closer than `clusterPx`) into one cluster.
+ * merge markers that would sit closer than `minGap` (24 px) into one mark: it is drawn at its most
+ * important entry's date, and its tooltip and accessible name list every date. So markers never
+ * cover each other and every mark keeps a full 24 px hit target.
  */
 export function placeMarkers(
   lane: Pick<Lane, "id" | "markers">,
   bars: Pick<PackedBar, "bar" | "track">[],
   scale: TimeScale,
   today: string,
-  clusterPx: number = LANE_METRICS.clusterPx,
+  minGap: number = LANE_METRICS.markerGap,
 ): PlacedMarker[] {
   const todayN = dayNumber(today);
   const raw: { entry: MarkerEntry; track: number; x: number }[] = [];
@@ -274,43 +306,48 @@ export function placeMarkers(
   for (const p of bars) for (const m of p.bar.markers) push(m, p.bar, p.track);
   for (const m of lane.markers) push(m, null, 0);
 
+  interface Group {
+    items: typeof raw;
+    entries: MarkerEntry[];
+    x: number;
+  }
+  const group = (items: typeof raw): Group => {
+    const entries = items.map((c) => c.entry).sort(compareEntries);
+    return { items, entries, x: items.find((c) => c.entry === entries[0])!.x };
+  };
+
   const out: PlacedMarker[] = [];
   const byTrack = new Map<number, typeof raw>();
   for (const r of raw) byTrack.set(r.track, [...(byTrack.get(r.track) ?? []), r]);
   for (const [track, list] of [...byTrack.entries()].sort((a, b) => a[0] - b[0])) {
     list.sort((a, b) => a.x - b.x || compareEntries(a.entry, b.entry));
-    let cluster: typeof raw = [];
-    const flush = () => {
-      if (!cluster.length) return;
-      const entries = cluster.map((c) => c.entry).sort(compareEntries);
-      const primary = entries[0]!;
-      const anchor = cluster.find((c) => c.entry === primary)!;
+    let groups = list.map((r) => group([r]));
+    // merge the closest pair of neighbours until every mark is at least `minGap` from the next
+    for (;;) {
+      groups.sort((a, b) => a.x - b.x);
+      let at = -1;
+      for (let i = 0; i + 1 < groups.length; i++) {
+        const gap = groups[i + 1]!.x - groups[i]!.x;
+        if (gap < minGap && (at < 0 || gap < groups[at + 1]!.x - groups[at]!.x)) at = i;
+      }
+      if (at < 0) break;
+      const merged = group([...groups[at]!.items, ...groups[at + 1]!.items]);
+      groups = [...groups.slice(0, at), merged, ...groups.slice(at + 2)];
+    }
+    for (const g of groups) {
+      const primary = g.entries[0]!;
       out.push({
-        key: `${lane.id}:${track}:${anchor.entry.marker.date}:${out.length}`,
+        key: `${lane.id}:${track}:${primary.marker.date}:${out.length}`,
         track,
-        x: anchor.x,
+        x: g.x,
         date: primary.marker.date,
         primary,
-        entries,
-        hitWidth: 24,
+        entries: g.entries,
+        hitWidth: minGap,
       });
-      cluster = [];
-    };
-    for (const r of list) {
-      if (cluster.length && r.x - cluster[0]!.x >= clusterPx) flush();
-      cluster.push(r);
     }
-    flush();
   }
   out.sort((a, b) => a.track - b.track || a.x - b.x);
-  // narrow the hit targets of close neighbours so hovering one never triggers the other
-  for (let i = 0; i < out.length; i++) {
-    const m = out[i]!;
-    const prev = out[i - 1]?.track === m.track ? out[i - 1]!.x : -Infinity;
-    const next = out[i + 1]?.track === m.track ? out[i + 1]!.x : Infinity;
-    const room = Math.min(m.x - prev, next - m.x);
-    m.hitWidth = Math.max(12, Math.min(24, Math.floor(room)));
-  }
   return out;
 }
 
@@ -351,7 +388,8 @@ export interface PlacedCaption {
 /**
  * Greedy, collision-free direct labels: upcoming send-by / deadline / must-arrive / expiry
  * markers (most important first) get a caption under the marker when it doesn't overlap
- * an already placed caption on the same track. Everything else relies on the tooltip.
+ * an already placed caption on the same track. Captions stay inside the plot (with a small inset
+ * on the right) and clear of the today line. Everything else relies on the tooltip.
  */
 export function placeCaptions(
   markers: PlacedMarker[],
@@ -362,6 +400,9 @@ export function placeCaptions(
 ): PlacedCaption[] {
   const gap = opts.gap ?? 10;
   const maxPerTrack = opts.maxPerTrack ?? 3;
+  const { todayClear, captionInset } = LANE_METRICS;
+  const todayX = scale.contains(today) ? scale.mid(today) : null;
+  const maxX = (width: number) => Math.max(0, scale.width - captionInset - width);
   const candidates = markers
     .filter((m) => !m.primary.past && CAPTION_KINDS.has(m.primary.marker.kind))
     .sort((a, b) => compareEntries(a.primary, b.primary) || a.x - b.x);
@@ -371,7 +412,12 @@ export function placeCaptions(
     const text = markerCaption(m.primary.marker, today);
     const width = measure(text) + 4;
     // start just left of the marker and run to the right (away from the today line)
-    const x = Math.max(0, Math.min(scale.width - width, m.x - 6));
+    let x = Math.max(0, Math.min(maxX(width), m.x - 6));
+    // the today line (2 px wide) never cuts through a caption: move it to the marker's side of the line
+    if (todayX !== null && x < todayX + 1 + todayClear && x + width > todayX - 1 - todayClear) {
+      x = m.x >= todayX ? todayX + 1 + todayClear : todayX - 1 - todayClear - width;
+      x = Math.max(0, Math.min(maxX(width), x));
+    }
     const clash = placed.some((p) => p.track === m.track && x < p.x + p.width + gap && p.x < x + width + gap);
     if (!clash) placed.push({ key: `cap:${m.key}`, track: m.track, x, width, text, markerKey: m.key });
   }
@@ -444,27 +490,40 @@ export interface NextDate {
   label: string;
 }
 
+/** Bar kinds whose end is a real date to know about ("Ends 31 Mar 2027", "Valid until 10 Feb"). */
+const ENDING_BARS: Record<string, string> = { validity: "Valid until", period: "Runs until", contract: "Ends" };
+
 /**
  * The next thing on a lane from `today` on: the earliest upcoming marker (ties → most important
- * kind); if there is none, the end of a validity / period bar that is still running.
+ * kind). Renewals are skipped — a contract that simply runs on asks nothing of you, while the
+ * send-by date before it does. With no marker ahead, the end of a bar that is running now: a
+ * permit's validity, a fixed-term contract, a period ("Ends 31 Mar 2027") — never an open end,
+ * a bar that renews, or an end the chart only cut off (at or after `opts.to`).
  */
-export function nextOnLane(lane: Pick<Lane, "bars" | "markers">, today: string): NextDate | null {
+export function nextOnLane(lane: Pick<Lane, "bars" | "markers">, today: string, opts: { to?: string } = {}): NextDate | null {
   const t = dayNumber(today);
-  const all = [...lane.markers, ...lane.bars.flatMap((b) => b.markers)].filter((m) => m.date && dayNumber(m.date) >= t);
+  const all = [...lane.markers, ...lane.bars.flatMap((b) => b.markers)].filter((m) => m.date && m.kind !== "renewal" && dayNumber(m.date) >= t);
   all.sort((a, b) => a.date.localeCompare(b.date) || markerRank(a.kind) - markerRank(b.kind));
   const m = all[0];
   if (m) return { date: m.date, kind: m.kind, label: shortMarkerLabel(m) };
-  // no dated marker ahead: a running validity / period bar still says until when it lasts
   const running = lane.bars
-    .filter((b) => (b.kind === "validity" || b.kind === "period") && dayNumber(b.end) >= t && dayNumber(b.start) <= t)
+    .filter(
+      (b) =>
+        b.kind in ENDING_BARS &&
+        !b.open_end &&
+        !b.markers.some((mk) => mk.kind === "renewal") &&
+        dayNumber(b.start) <= t &&
+        dayNumber(b.end) >= t &&
+        (!opts.to || b.end < opts.to),
+    )
     .sort((a, b) => a.end.localeCompare(b.end))[0];
-  return running ? { date: running.end, kind: "other", label: running.kind === "validity" ? "Valid until" : "Runs until" } : null;
+  return running ? { date: running.end, kind: running.kind === "validity" ? "expiry" : "other", label: ENDING_BARS[running.kind]! } : null;
 }
 
-/** Marker label without legal citations, capped for the label column. */
+/** Marker label without legal citations (the label column truncates it, the tooltip has it all). */
 export function shortMarkerLabel(m: TimelineMarker): string {
   if (m.kind === "send_by") return "Send by";
   const cleaned = m.label.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+this date\b/i, "").replace(/\s+/g, " ").trim();
   if (!cleaned) return m.kind === "expiry" ? "Expires" : "Date";
-  return cleaned.length > 26 ? `${cleaned.slice(0, 25).trimEnd()}…` : cleaned;
+  return cleaned;
 }

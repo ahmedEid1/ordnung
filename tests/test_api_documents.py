@@ -12,7 +12,11 @@ from fastapi import FastAPI
 
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from helpers_docs import photo
+from helpers_secretary import TODAY as TODAY_DATE
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
+from ordnung.api.routes.documents import document_detail
+from ordnung.db.store import Store
 from ordnung.llm.base import ClaudeAuthError, ClaudeRateLimited
 from ordnung.models import DocumentDetail
 from test_api_support import FINE_LETTER, TODAY, Api, api_for, lifespan
@@ -188,6 +192,34 @@ async def test_patch_document_fields(data_dir: Path) -> None:
         assert (await api.client.patch("/api/documents/doc_nothing", json={"title": "x"})).status_code == 404
 
 
+async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data_dir: Path) -> None:
+    """Review round 4 of phase 2: a reminder re-filed as a court order still said "This is a payment reminder
+    about …" in its Please-check card: the warning is said of the kind the letter is filed as, or dropped."""
+    from ordnung.ingest.link import reminder_warning
+
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, INVOICE_LETTER.pdf())
+        other = "Keep the envelope."
+        api.ctx.store.update_document(
+            doc_id,
+            kind="dunning",
+            warnings=[reminder_warning("TechMarkt invoice 2026-118", "dunning"), other],
+        )
+        filed = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "court_payment_order"})
+        warnings = filed.json()["warnings"]
+        assert warnings == [
+            "This court order is about “TechMarkt invoice 2026-118”, which is still open. If you pay, pay the amount "
+            "this order asks once — not the invoice as well.",
+            other,
+        ]
+        back = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "dunning"})
+        assert back.json()["warnings"][0].startswith(
+            "This is a payment reminder about “TechMarkt invoice 2026-118”"
+        )
+        gone = await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "landlord_notice"})
+        assert gone.json()["warnings"] == [other]
+
+
 async def test_confirmed_arrival_date_recomputes_the_to_dos(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, FINE_LETTER.pdf())
@@ -310,7 +342,119 @@ async def test_demo_refuses_uploads_that_would_need_claude(tmp_path) -> None:  #
         headers = {"X-Ordnung-Client": "web"}
         refused = await client.post("/api/documents", files=files, headers=headers)
         assert refused.status_code == 409
-        assert "ordnung serve" in refused.json()["detail"]
+        assert "ordnung serve" in refused.json()["detail"] and refused.json()["code"] == "demo_replay"
         private = await client.post("/api/documents", files=files, data={"private": "true"}, headers=headers)
         assert private.status_code == 201
     ctx.close()
+
+
+# --------------------------------------------------------------------------------------------------
+# to-dos set aside on the letter page (the same rules as Today and the party drawer)
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_letter_detail_sets_aside_what_is_not_to_act_on(store: Store) -> None:
+    """The verdict never leads with an invoice its reminder replaced or a date that was history when the
+    letter was read ("Pay €89.99 · 25 days overdue", "Pay €1,560 deposit · 362 days overdue")."""
+    party = store.add_party(name="TechMarkt Online GmbH", kind="retailer").id
+    case = store.add_case(title="Invoice TM-4711", party_id=party, reference="TM-4711")
+    refs = [{"label": "Rechnungsnummer", "value": "TM-4711"}]
+    invoice = add_doc(
+        store,
+        "invoice",
+        kind="invoice",
+        doc_date="2026-08-20",
+        party_id=party,
+        case_id=case.id,
+        references=refs,
+    )
+    reminder = add_doc(
+        store,
+        "reminder",
+        kind="dunning",
+        doc_date="2026-09-10",
+        party_id=party,
+        case_id=case.id,
+        references=refs,
+    )
+    by_reminder = add_item(
+        store,
+        kind="payment",
+        title="Pay the invoice",
+        due_date="2026-09-03",
+        filed_on="2026-08-21",
+        amount=89.99,
+        direction="out",
+        party_id=party,
+        doc_id=invoice,
+    )
+    add_item(
+        store,
+        kind="payment",
+        title="Pay the reminder",
+        due_date="2026-09-30",
+        filed_on="2026-09-11",
+        amount=94.99,
+        direction="out",
+        party_id=party,
+        doc_id=reminder,
+    )
+    lease = add_doc(store, "lease", kind="rent_lease", doc_date="2025-09-15", party_id=party)
+    deposit = add_item(
+        store,
+        kind="payment",
+        title="Security deposit (Kaution)",
+        due_date="2025-10-01",
+        filed_on=TODAY_DATE.isoformat(),
+        amount=1560.0,
+        direction="out",
+        party_id=party,
+        doc_id=lease,
+    )
+    rent = add_item(
+        store,
+        kind="payment",
+        title="Monthly rent",
+        due_date="2025-10-01",
+        filed_on=TODAY_DATE.isoformat(),
+        amount=640.0,
+        direction="out",
+        recurrence={"interval": 1, "unit": "months"},
+        party_id=party,
+        doc_id=lease,
+    )
+
+    replaced = document_detail(store, invoice, TODAY_DATE)
+    assert [(a.item_id, a.reason, a.replaced_by) for a in replaced.set_aside] == [
+        (by_reminder, "replaced", reminder)
+    ]
+    assert [item.id for item in replaced.items] == [by_reminder]  # the list stays complete
+    assert (
+        document_detail(store, reminder, TODAY_DATE).set_aside == []
+    )  # the reminder's payment is the one to act on
+
+    archived = document_detail(store, lease, TODAY_DATE)
+    assert [(a.item_id, a.reason) for a in archived.set_aside] == [(deposit, "history")]
+    assert rent in {item.id for item in archived.items}  # a schedule shows its next date instead
+
+
+def test_a_letters_page_lists_the_scam_signs_its_idea_counts(store: Store) -> None:
+    """Walkthrough of phase 2: the letter said "the 3 strongest of 7 warning signs", its Idea "5 warning
+    signs". The page gets the Idea's list (``scam_signs``); an ordinary letter's is empty."""
+    fake = store.add_party(name="Beitrags Zahlungszentrale", kind="public_broadcaster").id
+    scam = add_doc(
+        store,
+        "scam",
+        kind="other",
+        party_id=fake,
+        hidden_text=True,
+        warnings=["Foreign IBAN — possible scam.", "It threatens enforcement within 48 hours."],
+    )
+    signs = document_detail(store, scam, TODAY_DATE).scam_signs
+    assert signs == [
+        "The letter contains hidden text that you can't see on the page.",
+        "Foreign IBAN — possible scam.",
+        "It threatens enforcement within 48 hours.",
+    ]
+    plain = add_doc(store, "plain", kind="invoice", warnings=["It threatens enforcement within 48 hours."])
+    assert document_detail(store, plain, TODAY_DATE).scam_signs == []

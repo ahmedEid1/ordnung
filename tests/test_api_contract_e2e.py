@@ -18,8 +18,10 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
+from fake_caldav import MemorySecrets
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from ordnung import clock
+from ordnung.api.routes import calendar_sync
 from test_api_support import TODAY, Api, api_for, sse_messages
 
 NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
@@ -110,6 +112,22 @@ async def _seed(api: Api, contract: Contract) -> dict[str, str]:
     draft = await client.post("/api/drafts", json={"kind": "cancellation", "contract_id": contracts[0]["id"]})
     assert draft.status_code == 201, draft.text
     contract.check_json("post", "/api/drafts", 201, draft.json())
+    sent = await client.post(
+        f"/api/drafts/{draft.json()['id']}/sent",
+        json={"channel": "registered_letter", "date": TODAY, "tracking_number": "RT123456785DE"},
+    )
+    contract.check_json("post", f"/api/drafts/{draft.json()['id']}/sent", 200, sent.json())
+    call = await client.post(
+        "/api/calls",
+        json={
+            "party_id": contracts[0]["party_id"],
+            "called_on": TODAY,
+            "summary": "They will send the confirmation.",
+            "promise": "Written confirmation",
+            "promise_due": "2026-10-05",
+        },
+    )
+    contract.check_json("post", "/api/calls", 201, call.json())
 
     ask = await client.post("/api/ask", json={"question": "Is anything due?"})
     events = [json.loads(message["data"]) for message in sse_messages(ask.text)]
@@ -146,12 +164,19 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, "/api/health")
         await _get(api, contract, "/api/profile")
         await _get(api, contract, "/api/settings")
+        await _get(api, contract, "/api/folder")
         await _get(api, contract, "/api/dashboard")
         await _get(api, contract, "/api/brief")
         await _get(api, contract, "/api/documents")
         await _get(api, contract, "/api/documents", q="Einkommensteuer", limit=8)
         detail = await _get(api, contract, f"/api/documents/{ids['doc']}")
         assert detail["items"] and detail["pages"]
+        await api.client.post(f"/api/documents/{ids['doc']}/reprocess")
+        assert await api.read_all() == 1
+        trace = await _get(api, contract, f"/api/documents/{ids['doc']}/trace")
+        assert trace["run"]["reading"] == 2 and trace["spans"]
+        await _get(api, contract, f"/api/documents/{ids['doc']}/trace/compare")
+        await _get(api, contract, "/api/traces")
         await _get(api, contract, "/api/items", status="open", include_undated="true")
         await _get(api, contract, f"/api/items/{ids['item']}")
         await _get(api, contract, "/api/contracts")
@@ -160,15 +185,31 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, f"/api/cases/{ids['case']}")
         await _get(api, contract, "/api/timeline", **{"from": "2026-01-01", "to": "2026-12-31"})
         await _get(api, contract, "/api/lanes")
+        numbers = await _get(api, contract, "/api/numbers")
+        assert numbers["organisations"], "the tax office and the gym get a call sheet"
+        week = await _get(api, contract, "/api/week")
+        assert len(week["steps"]) == 7
         await _get(api, contract, "/api/suggestions")
         await _get(api, contract, f"/api/chat/{ids['thread']}")
         await _get(api, contract, "/api/drafts")
         await _get(api, contract, f"/api/drafts/{ids['draft']}")
+        proof = await _get(api, contract, f"/api/drafts/{ids['draft']}/proof")
+        assert proof["sent"] and proof["tracking"]["checked"]
+        waiting = await _get(api, contract, "/api/waiting")
+        assert {entry["source"] for entry in waiting} >= {"letter", "call"}
+        await _get(api, contract, "/api/calls", party_id=ids["party"])
         await _get(api, contract, "/api/activity", limit=50)
         usage = await _get(api, contract, "/api/usage")
         assert usage["by_purpose"], "the fake reading is accounted per purpose"
         await _get(api, contract, "/api/rules")
         await _get(api, contract, "/api/jobs", active_only="false")
+        await _get(api, contract, "/api/reminders/desktop")
+        await _get(api, contract, "/api/backup")
+        api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: (
+            MemorySecrets()
+        )  # not the real keyring
+        await _get(api, contract, "/api/calendar/sync")
+        await _get(api, contract, "/api/calendar/sync/preview", mode="full")
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")
@@ -180,6 +221,8 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get_file(api, contract, f"/api/items/{ids['item']}.ics", "text/calendar")
         await _get_file(api, contract, "/api/calendar.ics", "text/calendar")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/pdf", "application/pdf")
+        await _get_file(api, contract, f"/api/drafts/{ids['draft']}/preview.png", "image/png")
+        await _get_file(api, contract, f"/api/drafts/{ids['draft']}/proof.pdf", "application/pdf")
 
         assert not contract.problems, "\n".join(contract.problems)
         get_routes = {path for path, operations in contract.schema["paths"].items() if "get" in operations}

@@ -14,7 +14,7 @@
   },
   "persona": {
     "name": "Sam Rivera",
-    "address": "Beispielweg 5, 12345 Musterstadt",
+    "address": "Beispielweg 5\n12345 Musterstadt",
     "email": "sam.rivera@example.org",
     "phone": "0123 98765432",
     "language": "en",
@@ -854,7 +854,7 @@
       "subject": "Gehaltsabrechnung August",
       "language": "de",
       "file": "09_gehaltsabrechnung_2026_08.pdf",
-      "sha256": "82cee5292649be35748e4705fdc594ec278efde8c6a80acda22e79281e62f686",
+      "sha256": "8ce1ddca9663da5bb30828ab52f9c8876f65f8034dbf1921b6f5dd8cb1851b79",
       "mime": "application/pdf",
       "pages": 1,
       "photo": false,
@@ -1373,7 +1373,7 @@
       "subject": "Beitragsbescheid Krankenkasse",
       "language": "de",
       "file": "14_krankenkasse_beitragsbescheid.pdf",
-      "sha256": "296ded5c84f6d2e2ca3b027d3a5a0152d43cbd62673c30dc70f8b67922d4baf8",
+      "sha256": "4e93aa6361f596aec0098b1891c6a8d2e768319060ee18f0408eac28538f29d7",
       "mime": "application/pdf",
       "pages": 1,
       "photo": false,
@@ -1388,7 +1388,7 @@
         "references": [
           {
             "label": "Versicherten-Nr.",
-            "value": "R482019375"
+            "value": "R482019379"
           },
           {
             "label": "Unser Zeichen",
@@ -2148,7 +2148,7 @@
         "23_steuerbescheid_2025_p2.jpg"
       ],
       "sha256": [
-        "eb7ce3e7d6d1ce6af7357e7b781dffe4f9180ebc2cf24db9ca86b00ed121656e",
+        "21ebb98624b340c6ce90dc601ca040ac432b4542390654a1ae93b89893609d42",
         "16ab40bad58924777a16cfb19b371c2a8b6793103fce717ab9f8dcadf5584065"
       ],
       "combine": true,
@@ -2171,7 +2171,7 @@
           },
           {
             "label": "IdNr.",
-            "value": "57 216 480 393"
+            "value": "57 216 480 354"
           }
         ],
         "amounts": [

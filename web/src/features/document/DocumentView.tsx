@@ -4,12 +4,24 @@
  * verdict first, then warnings, the pages and the rest.
  *
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
- * Thread, contract, drafts, Ideas → provenance + Reprocess / Download / Delete.
+ * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
+ * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
+ * its waiting card in the verdict's place, and nothing read from it (nothing was).
+ *
+ * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
+ * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
+ * The letter's content is split around the pages (verdict first, then the pages on phones, then the
+ * rest), so "The letter" controls two panels: its verdict and warnings, and the rest of the letter.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useLocation, useSearchParams } from "react-router";
+import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
+import { FileText, Route } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
-import { SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
+import { TabPanel, Tabs } from "@/components/ui/Tabs";
+import { cn } from "@/lib/utils";
 import { EvidenceProvider } from "./EvidenceContext";
 import { collectAnchors } from "./evidence";
 import { decisionSuggestion, leadsWithDecision, selectPrimaryItem, scamSuggestion } from "./verdict";
@@ -22,12 +34,46 @@ import { KeyFacts } from "./KeyFacts";
 import { ContractsSection, DraftsSection, IdeasSection, ThreadSection } from "./Related";
 import { DocumentFooter } from "./DocumentFooter";
 import { ProcessingCard } from "./ProcessingCard";
+import { HeldCard } from "./HeldCard";
+import { EmailParts } from "./EmailParts";
+import { TracePanel } from "./trace/TracePanel";
+
+type DocView = "letter" | "trace";
+/** The second panel of the letter tab: the rest of the letter, after the pages. */
+const LETTER_MORE_PANEL = "doc-view-panel-letter-more";
+const VIEW_TABS = [
+  { value: "letter" as const, label: "The letter", icon: FileText, controls: [LETTER_MORE_PANEL] },
+  { value: "trace" as const, label: "How it was read", icon: Route },
+];
+
+/** The tab shown (`?view=trace`), kept in the address without adding a history entry per switch. */
+function useDocView(): [DocView, (view: DocView) => void] {
+  const [params, setParams] = useSearchParams();
+  const view: DocView = params.get("view") === "trace" ? "trace" : "letter";
+  const setView = useCallback(
+    (next: DocView) =>
+      setParams(
+        (prev) => {
+          const out = new URLSearchParams(prev);
+          if (next === "trace") out.set("view", "trace");
+          else out.delete("view");
+          return out;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  return [view, setView];
+}
 
 export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const reduced = useReducedMotion();
   const anchors = useMemo(() => collectAnchors(detail), [detail]);
-  const primary = useMemo(() => selectPrimaryItem(detail.items), [detail.items]);
+  // never a to-do the server set aside (an invoice its reminder replaced, a date long past when it was read)
+  const primary = useMemo(() => selectPrimaryItem(detail.items, detail.set_aside), [detail.items, detail.set_aside]);
+  // from xl the pages sit in a sticky column beside the panel; below, in the page's own column
+  const column = useMediaQuery("(min-width: 1280px)");
   // the decision the verdict card leads with isn't repeated under "Ideas"
   const lead = useMemo(() => {
     const decision = decisionSuggestion(detail);
@@ -36,6 +82,22 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+  const held = doc.status === "held";
+
+  // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
+  // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)
+  const location = useLocation();
+  const toCard = (location.state as { focus?: string } | null)?.focus === "advice" && !neverRead;
+  useEffect(() => {
+    if (!toCard) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`advice-card-${doc.id}`)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      document.getElementById(`advice-${doc.id}`)?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [toCard, doc.id, reduced]);
+  const [view, setView] = useDocView();
+  const trace = view === "trace";
 
   const askArrival = useCallback(() => {
     const el = document.getElementById("arrival-question");
@@ -45,54 +107,87 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
 
   return (
     <EvidenceProvider anchors={anchors}>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-6">
+      {/* the first row is as tall as the verdict (or waiting) card; the page viewer's spare height goes to the rest */}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:grid-rows-[auto_1fr] xl:gap-x-8 xl:gap-y-6">
         <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
-          {busy ? <ProcessingCard doc={doc} /> : null}
-          {!neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
-          {!neverRead ? <DocumentWarnings detail={detail} /> : null}
+          <Tabs<DocView> id="doc-view" label="Show" value={view} onChange={setView} items={VIEW_TABS} fill />
+          <TabPanel id="doc-view" value="trace" current={view}>
+            <TracePanel detail={detail} />
+          </TabPanel>
+          {/* the letter's panel is its verdict (or waiting card) and warnings; the rest of the letter follows the pages */}
+          <TabPanel id="doc-view" value="letter" current={view} className="space-y-4 empty:hidden">
+            {busy ? <ProcessingCard doc={doc} /> : null}
+            {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+            {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
+          </TabPanel>
         </div>
 
-        <div className="min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start">
+        {/* on phones and tablets the pages would follow a long list of steps: the trace tab leaves them out */}
+        <div className={cn("min-w-0 xl:sticky xl:top-[72px] xl:col-start-1 xl:row-span-2 xl:row-start-1 xl:self-start", trace && "max-xl:hidden")}>
           <PageViewer
             docId={doc.id}
             pages={detail.pages}
             pageCount={doc.pages}
             photo={doc.text_mode === "vision"}
-            className="max-h-[78vh] xl:h-[calc(100dvh-88px)] xl:max-h-none"
+            // below xl one page at a time and no scroll box of its own (a swipe scrolled only the box); the
+            // sticky column is as tall as the screen at most — shorter when the pages are (a passport photo)
+            paged={!column}
+            className="xl:max-h-[calc(100dvh-88px)]"
           />
         </div>
 
-        <div className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2">
-          {neverRead ? (
-            <div className="space-y-4" aria-hidden>
-              <SkeletonCard lines={3} />
-              <div className="card p-5">
-                <SkeletonText lines={4} />
+        {trace ? null : (
+          <div
+            role="tabpanel"
+            id={LETTER_MORE_PANEL}
+            aria-labelledby="doc-view-tab-letter"
+            className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2"
+          >
+            {neverRead ? (
+              <div className="space-y-4" aria-hidden>
+                <SkeletonCard lines={3} />
+                <div className="card p-5">
+                  <SkeletonText lines={4} />
+                </div>
               </div>
-            </div>
-          ) : (
-            <>
-              <ExplainedSimply doc={doc} />
-              <ItemsList items={detail.items} docId={doc.id} />
-              <KeyFacts doc={doc} scam={scam} />
-              <ThreadSection detail={detail} />
-              <ContractsSection contracts={detail.contracts} />
-              <DraftsSection drafts={detail.drafts} />
-              <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} />
-            </>
-          )}
-          <DocumentFooter detail={detail} />
-        </div>
+            ) : held ? (
+              <EmailParts detail={detail} />
+            ) : (
+              <>
+                <ExplainedSimply doc={doc} />
+                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} setAside={detail.set_aside} documents={detail.related} />
+                <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
+                <EmailParts detail={detail} />
+                <ThreadSection detail={detail} />
+                <ContractsSection contracts={detail.contracts} />
+                <DraftsSection drafts={detail.drafts} />
+                <IdeasSection suggestions={lead ? detail.suggestions.filter((s) => s.id !== lead.id) : detail.suggestions} docId={doc.id} items={detail.items} primaryId={primary?.id} />
+              </>
+            )}
+            <DocumentFooter detail={detail} />
+          </div>
+        )}
       </div>
     </EvidenceProvider>
   );
 }
 
-/** Loading layout matching the viewer (no layout jump when the data arrives). */
+/**
+ * Loading layout matching the viewer (no layout jump when the data arrives): the view tabs' row first, as
+ * tall as the tabs (UI audit round 2: the verdict moved 56 px down when they came in).
+ */
 export function DocumentSkeleton() {
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1.04fr)_minmax(0,1fr)] xl:gap-8" aria-busy="true">
-      <div className="space-y-4 xl:col-start-2 xl:row-start-1">
+      <div className="min-w-0 space-y-4 xl:col-start-2 xl:row-start-1">
+        <div aria-hidden className="flex h-10 items-center gap-2 shadow-[inset_0_-1px_0_var(--color-line)]">
+          {/* each tab a half of the row on phones (the tabs fill it there), side by side from sm */}
+          {["w-24", "w-32"].map((w) => (
+            <span key={w} className="flex h-full items-center px-2 max-sm:flex-auto max-sm:justify-center">
+              <Skeleton className={cn("h-3.5", w)} />
+            </span>
+          ))}
+        </div>
         <SkeletonCard lines={4} />
         <SkeletonCard lines={2} />
       </div>

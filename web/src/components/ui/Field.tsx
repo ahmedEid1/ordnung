@@ -3,11 +3,27 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStableId } from "./internal";
 
+/**
+ * The look of every text field and select. The edge is `control-border` (≥ 3:1 against the page,
+ * WCAG 1.4.11) and placeholders are `muted` (4.5:1) — other fields (a search box, the letter
+ * editor) reuse these classes via {@link controlClasses}.
+ */
 const control =
-  "w-full rounded-lg border border-line-strong/80 bg-surface px-3 text-sm text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] " +
-  "placeholder:text-muted/70 transition-[border-color,box-shadow] hover:border-line-strong " +
-  "focus-visible:border-accent focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent/20 " +
-  "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger aria-invalid:ring-danger/15";
+  "w-full rounded-lg border border-control-border bg-surface px-3 text-base text-ink shadow-[inset_0_1px_1px_rgb(0_0_0/0.03)] " +
+  "placeholder:text-muted transition-[border-color,box-shadow] hover:border-muted " +
+  // focus-within, not focus-visible: a date field's calendar button is a Tab stop of its own, and while it
+  // has focus the field matches neither :focus nor :focus-visible (Chromium), so the ring would vanish
+  "focus-within:border-accent focus-within:outline-none focus-within:ring-3 focus-within:ring-accent/20 " +
+  "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger " +
+  // an invalid field keeps a visible focus indicator: its red border alone looks the same focused or not (WCAG
+  // 2.4.7; review round 3 of phase 2 — the old 15 % ring vanished on a warning background)
+  "aria-invalid:focus-within:ring-danger/25 aria-invalid:focus-within:outline-2 aria-invalid:focus-within:outline-offset-1 " +
+  "aria-invalid:focus-within:outline-solid aria-invalid:focus-within:outline-danger";
+
+/** Classes of a text field (`Input`), for fields built by hand (e.g. a search box with an icon). */
+export function controlClasses(className?: string): string {
+  return cn(control, "h-9", className);
+}
 
 export interface FieldProps {
   label: ReactNode;
@@ -42,18 +58,18 @@ export function Field({ label, hint, error, optional, children, id, className }:
     : children;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={cid} className="text-[13px] font-medium text-ink">
+      <label htmlFor={cid} className="text-sm font-medium text-ink">
         {label}
         {optional ? <span className="font-normal text-muted"> (optional)</span> : null}
       </label>
       {child}
       {hint && !error ? (
-        <p id={hintId} className="text-[12.5px] leading-5 text-muted">
+        <p id={hintId} className="text-sm leading-5 text-muted">
           {hint}
         </p>
       ) : null}
       {error ? (
-        <p id={errId} className="text-[12.5px] font-medium leading-5 text-danger-ink">
+        <p id={errId} className="text-sm font-medium leading-5 text-danger-ink">
           {error}
         </p>
       ) : null}
@@ -63,7 +79,7 @@ export function Field({ label, hint, error, optional, children, id, className }:
 
 /** Text input. */
 export function Input({ className, ...rest }: ComponentProps<"input">) {
-  return <input className={cn(control, "h-9", className)} {...rest} />;
+  return <input className={controlClasses(className)} {...rest} />;
 }
 
 /** Multi-line text input. */
@@ -71,11 +87,14 @@ export function Textarea({ className, ...rest }: ComponentProps<"textarea">) {
   return <textarea className={cn(control, "min-h-24 py-2 leading-relaxed", className)} {...rest} />;
 }
 
-/** Native select with a custom chevron. */
+/**
+ * Native select with a custom chevron. A long choice ("Nordrhein-Westfalen (North Rhine-Westphalia)")
+ * ends in "…" in the closed select; the open list shows it whole.
+ */
 export function Select({ className, children, ...rest }: ComponentProps<"select">) {
   return (
-    <div className={cn("relative", className)}>
-      <select className={cn(control, "h-9 appearance-none pr-9")} {...rest}>
+    <div className={cn("relative min-w-0", className)}>
+      <select className={cn(control, "h-9 appearance-none truncate pr-9")} {...rest}>
         {children}
       </select>
       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
@@ -125,8 +144,8 @@ export function Switch({ checked, onCheckedChange, label, description, className
   return (
     <div className={cn("flex items-start justify-between gap-4", className)}>
       <label htmlFor={sid} className="min-w-0 flex-1 cursor-pointer">
-        <span className="block text-sm font-medium text-ink">{label}</span>
-        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-muted">{description}</span> : null}
+        <span className="block text-base font-medium text-ink">{label}</span>
+        {description ? <span className="mt-0.5 block text-sm leading-5 text-pretty text-muted">{description}</span> : null}
       </label>
       {btn}
     </div>
@@ -145,9 +164,9 @@ export function Checkbox({
   return (
     <div className={cn("flex items-start gap-2.5", className)}>
       <input id={cid} type="checkbox" className="mt-0.5 size-4 shrink-0 rounded accent-[var(--color-accent)]" {...rest} />
-      <label htmlFor={cid} className="cursor-pointer text-sm">
+      <label htmlFor={cid} className="cursor-pointer text-base">
         <span className="font-medium text-ink">{label}</span>
-        {description ? <span className="mt-0.5 block text-[13px] leading-5 text-muted">{description}</span> : null}
+        {description ? <span className="mt-0.5 block text-sm leading-5 text-pretty text-muted">{description}</span> : null}
       </label>
     </div>
   );

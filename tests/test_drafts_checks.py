@@ -111,6 +111,20 @@ def test_no_placeholders_flags(token: str) -> None:
     assert not no_placeholders(_draft(enclosures=["Kopie [Datum]"]), CONTEXT).ok
 
 
+@pytest.mark.parametrize(
+    "block",
+    ["Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld", "AG Coburg\nMahnabteilung\n96447 Coburg"],
+)
+def test_a_court_addressed_by_its_own_postcode_needs_no_street(block: str) -> None:
+    """Review round 4 of phase 2: a central Mahngericht is addressed by its own postcode, with no street — the
+    objection's check said "Add the recipient's street and house number" on a correct letter."""
+    assert recipient_complete(_draft(recipient_block=block), CONTEXT).ok
+    court_only = recipient_complete(_draft(recipient_block="Amtsgericht Hünfeld"), CONTEXT)
+    assert not court_only.ok and court_only.detail == "Add the recipient's postcode and town."
+    company = recipient_complete(_draft(recipient_block="Muster Inkasso GmbH\n36088 Hünfeld"), CONTEXT)
+    assert company.detail == "Add the recipient's street and house number."
+
+
 def test_language_matches() -> None:
     assert language_matches(_draft(), CONTEXT).ok
     english = _draft(body="Dear Sir or Madam,\n\nI hereby cancel the contract with you. Please confirm this.")

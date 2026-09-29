@@ -3,9 +3,13 @@
  * pipeline (recorded answers), the viewer shows the evidence and the objection deadline with its
  * receipt, and the tour card walks on through Idea → Ask → Timeline.
  */
+import type { Locator, Page } from "@playwright/test";
 import { apiGet, envelope, expect, expectAccessible, open, openMail, setTour, test, type TourState } from "./helpers";
 
 const FINANZAMT = "Finanzamt Musterstadt";
+
+/** The tour card or bar: docked in the sidebar or floating over the page. */
+const tourCard = (page: Page): Locator => page.getByRole("region", { name: "Demo tour" });
 
 test("New mail → the tax assessment is read → evidence, Einspruch deadline and why this date", async ({ page }, testInfo) => {
   await setTour(page, 0);
@@ -15,7 +19,7 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
   const pristine = tray.every((t) => !t.opened);
 
   await open(page, "/inbox");
-  const tour = page.getByRole("complementary", { name: "Demo tour" });
+  const tour = tourCard(page);
   if (pristine) await expect(tour.getByRole("heading", { name: "You have new mail" })).toBeVisible();
 
   if (fresh) {
@@ -54,9 +58,9 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
 
   // ---- the evidence: the sentence the deadline comes from, highlighted -------------------
   const todos = page.getByRole("region", { name: /^To-dos & dates/ });
-  const objection = todos.getByRole("listitem").filter({ hasText: "Objection deadline (Einspruchsfrist)" });
+  const objection = todos.getByRole("listitem").filter({ hasText: "File objection (Einspruch) if you disagree with the assessment" });
   await expect(objection.locator("time", { hasText: "Wed 21 Oct" })).toBeVisible();
-  await objection.getByRole("button", { name: /show “Objection deadline \(Einspruchsfrist\)” on the page/ }).click();
+  await objection.getByRole("button", { name: /show “File objection \(Einspruch\) if you disagree with the assessment” on the page/ }).click();
   const evidence = page.getByRole("region", { name: "Letter pages" }).getByTestId("evidence-quote");
   await expect(evidence).toBeVisible();
   // a phone photo has no text layer: the quote is shown highlighted, labelled as read by AI
@@ -84,10 +88,11 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
 test("the tour card walks through Idea → Ask → Timeline and finishes", async ({ page }) => {
   await setTour(page, 1);
   await open(page, "/inbox");
-  const tour = page.getByRole("complementary", { name: "Demo tour" });
-  await expect(tour.getByRole("heading", { name: "An idea just arrived" })).toBeVisible();
+  const tour = tourCard(page);
+  // "An idea just arrived" once a New-mail letter brought one (the test above), else the neutral title
+  await expect(tour.getByRole("heading", { name: /^(An idea just arrived|Ideas from your secretary)$/ })).toBeVisible();
 
-  await tour.getByRole("button", { name: "Show me the Idea" }).click();
+  await tour.getByRole("button", { name: /^Show me the Ideas?$/ }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("tour-spotlight")).toHaveAttribute("data-target", "today-ideas");
 
@@ -106,4 +111,53 @@ test("the tour card walks through Idea → Ask → Timeline and finishes", async
   await tour.getByRole("button", { name: "Finish" }).click();
   await expect(tour).toBeHidden();
   await expect.poll(async () => (await apiGet<TourState>(page, "/api/demo/tour")).completed).toBe(true);
+  // focus lands on the page, not on <body>; the toast offers the tour again
+  await expect(page.locator("#main")).toBeFocused();
+  await page.getByRole("button", { name: "Restart the tour" }).click();
+  await expect(tour.getByRole("heading", { name: "You have new mail" })).toBeFocused();
+});
+
+test("laptops: every step docks in the sidebar at 1280×800, and all but the longest at 1366×768", async ({ page }) => {
+  for (const [size, docking] of [
+    [{ width: 1280, height: 800 }, [0, 1, 2, 3]],
+    [{ width: 1366, height: 768 }, [0, 2, 3]],
+  ] as const) {
+    await page.setViewportSize(size);
+    for (const step of docking) {
+      await setTour(page, step);
+      await open(page, "/inbox", "Inbox");
+      await expect(tourCard(page)).toBeVisible();
+      // docked: clear of the page (wave 2's seventh section took the room and step 2 floated over it)
+      await expect(page.locator("#tour-dock section"), `${size.width}×${size.height}: step ${step + 1} docks`).toHaveCount(1);
+      expect(await page.locator("#tour-dock").evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+    }
+  }
+  await setTour(page, null);
+});
+
+test("short laptops (1280×720, 1024×768): the tour is never cut off — docked whole, or the slim bar", async ({ page }) => {
+  for (const size of [
+    { width: 1280, height: 720 },
+    { width: 1024, height: 768 },
+    { width: 1280, height: 800 },
+  ]) {
+    await page.setViewportSize(size);
+    await setTour(page, 1); // the longest step text
+    await open(page, "/");
+    const tour = tourCard(page);
+    await expect(tour).toBeVisible();
+    const box = (await tour.boundingBox())!;
+    expect(box.y, `${size.width}×${size.height}: top on screen`).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, `${size.width}×${size.height}: bottom on screen`).toBeLessThanOrEqual(size.height);
+    // docked: the sidebar's free space holds all of it (nothing to scroll to, nothing clipped)
+    const dock = page.locator("#tour-dock");
+    if (await dock.locator("section").count()) {
+      expect(await dock.evaluate((el) => el.scrollHeight - el.clientHeight), `${size.width}×${size.height}: dock overflows`).toBeLessThanOrEqual(0);
+      const dockBox = (await dock.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(dockBox.y);
+    }
+    // every control of the tour can be seen
+    for (const control of await tour.getByRole("button").all()) await expect(control).toBeInViewport({ ratio: 1 });
+  }
+  await setTour(page, null);
 });

@@ -165,6 +165,7 @@ export function contract(c: ContractInput): Contract {
     area: "other",
     cancellable: true,
     cancel_hint: null,
+    cancellation_sent: null,
     created_at: ts("2026-01-10"),
     updated_at: ts("2026-09-20"),
     ...c,

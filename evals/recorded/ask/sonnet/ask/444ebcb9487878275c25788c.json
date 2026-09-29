@@ -1,0 +1,192 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"345f89fbc75aca25fd10925b6a35b90c3131e3e40bad6f93d294bee542a0c2c6\",\"question\":\"When do I have to pay the dog tax (Hundesteuer)?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to pay the dog tax (Hundesteuer)?\n"
+  },
+  "response": {
+    "text": "I couldn't find anything about a dog tax (Hundesteuer) in your records — no matching letters, to-dos, or contracts.\n\nIf you have a letter about this, it doesn't appear to be in Ordnung yet, so I can't give you a due date. You may want to check directly with your local Gemeinde/Stadt (dog tax is usually set by the municipality) or add the letter to Ordnung if you have it.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 339,
+      "cache_read_tokens": 18926,
+      "cache_creation_tokens": 1906,
+      "cost_usd": 0.0148112,
+      "duration_ms": 7700,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_01KeB24tWEAcnCRrxmxTUute"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01KeB24tWEAcnCRrxmxTUute"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog"
+      },
+      "tool_use_id": "toolu_01XSawimQKCrMBWRAWQT5RT9"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01XSawimQKCrMBWRAWQT5RT9"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hund"
+      },
+      "tool_use_id": "toolu_01LyiGLZNMs3hVzzUiJ11u3i"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01LyiGLZNMs3hVzzUiJ11u3i"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find anything"
+    },
+    {
+      "type": "text",
+      "text": " about a dog tax ("
+    },
+    {
+      "type": "text",
+      "text": "Hundesteuer) in"
+    },
+    {
+      "type": "text",
+      "text": " your records —"
+    },
+    {
+      "type": "text",
+      "text": " no mat"
+    },
+    {
+      "type": "text",
+      "text": "ching letters"
+    },
+    {
+      "type": "text",
+      "text": ", to-dos, or cont"
+    },
+    {
+      "type": "text",
+      "text": "racts.\n\nIf you have a"
+    },
+    {
+      "type": "text",
+      "text": " letter about this, it"
+    },
+    {
+      "type": "text",
+      "text": " do"
+    },
+    {
+      "type": "text",
+      "text": "esn't appear to be in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung yet,"
+    },
+    {
+      "type": "text",
+      "text": " so I can't give"
+    },
+    {
+      "type": "text",
+      "text": " you a due date. You"
+    },
+    {
+      "type": "text",
+      "text": " may want to check directly with your"
+    },
+    {
+      "type": "text",
+      "text": " local"
+    },
+    {
+      "type": "text",
+      "text": " G"
+    },
+    {
+      "type": "text",
+      "text": "emeinde/"
+    },
+    {
+      "type": "text",
+      "text": "Stadt (d"
+    },
+    {
+      "type": "text",
+      "text": "og tax is"
+    },
+    {
+      "type": "text",
+      "text": " usually set"
+    },
+    {
+      "type": "text",
+      "text": " by the munic"
+    },
+    {
+      "type": "text",
+      "text": "ipality)"
+    },
+    {
+      "type": "text",
+      "text": " or add"
+    },
+    {
+      "type": "text",
+      "text": " the letter to Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung if you have it."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find anything about a dog tax (Hundesteuer) in your records — no matching letters, to-dos, or contracts.\n\nIf you have a letter about this, it doesn't appear to be in Ordnung yet, so I can't give you a due date. You may want to check directly with your local Gemeinde/Stadt (dog tax is usually set by the municipality) or add the letter to Ordnung if you have it.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 339,
+          "cache_read_tokens": 18926,
+          "cache_creation_tokens": 1906,
+          "cost_usd": 0.0148112,
+          "duration_ms": 7700,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

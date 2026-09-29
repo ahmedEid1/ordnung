@@ -1,6 +1,17 @@
+import { createContext, useContext, useMemo, useRef, useState, type ReactElement, type ReactNode, type RefObject } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
-import { Check, CircleCheck, Copy, ExternalLink, FileSearch, FolderOpen, PenLine, TriangleAlert, Wallet, type LucideIcon } from "lucide-react";
+import {
+  ChartNoAxesGantt,
+  Check,
+  FileSearch,
+  FileText,
+  PenLine,
+  Signature,
+  TriangleAlert,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { useDocument, useUpdateItem } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
@@ -14,37 +25,74 @@ import { Popover } from "@/components/ui/Popover";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
-import { formatIban, formatMoney } from "@/lib/format";
+import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
+import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
-import { useClipboard } from "./clipboard";
+import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
 import { receiptForContract, receiptForItem } from "./receipt";
+import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
+import { waitingTitle } from "./WaitingCard";
 import { LetterText } from "@/components/ui/LetterText";
+import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
+import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
 
 const VERB: Record<ActionVerb, { label: string; icon: LucideIcon }> = {
   pay: { label: "Pay", icon: Wallet },
   draft: { label: "Draft letter", icon: PenLine },
   done: { label: "Mark done", icon: Check },
   check: { label: "Check", icon: FileSearch },
-  open: { label: "Open", icon: FolderOpen },
+  open: { label: "Open letter", icon: FileText },
 };
 
+/** The verb button's words: "Open" names where it goes ("Open letter", "Open contract"…). */
+export function verbFor(action: Pick<TodayAction, "verb" | "docId" | "contractId">): { label: string; icon: LucideIcon } {
+  if (action.verb !== "open" || action.docId) return VERB[action.verb];
+  if (action.contractId) return { label: "Open contract", icon: Signature };
+  return { label: "Open in Timeline", icon: ChartNoAxesGantt };
+}
+
+/**
+ * The accessible name of a verb button — the verb, then what it acts on, without saying the verb
+ * twice: "Pay: outstanding invoice plus reminder fee" (not "Pay: Pay outstanding…").
+ */
+export function verbLabel(verb: string, title: string): string {
+  const first = verb.split(" ")[0]!;
+  const rest = title.match(new RegExp(`^${first}\\s+(.+)$`, "i"))?.[1];
+  return `${verb}: ${rest ?? title}`;
+}
+
+/** The countdown pill's first words ("Transfer by Tue 29 Sep · tomorrow"). */
 const PREFIX: Record<DateRole, string | undefined> = {
-  send_by: "send by",
-  pay_by: "pay by",
-  transfer_by: "transfer by",
-  collected: "collected",
-  due: "due",
-  by: "by",
+  send_by: "Send by",
+  arrive_by: "Must arrive by",
+  pay_by: "Pay by",
+  transfer_by: "Transfer by",
+  collected: "Collected",
+  due: "Due",
+  by: "By",
   on: undefined,
-  expires: "expires",
-  decide_by: "decide by",
+  expires: "Expires",
+  decide_by: "Decide by",
 };
 
-/** Countdown for an action: "send by Thu 8 Oct · in 10 days", "Wed 14 Oct, 10:30 · in 16 days". */
+/** Appointments and money coming in are events ("2 days ago"), everything else is due. */
+const modeFor = (a: Pick<TodayAction, "dateRole">) => (a.dateRole === "on" ? "event" : "due");
+/** Nothing to send for events and direct debits (the bank collects them): never red. */
+const capFor = (a: Pick<TodayAction, "dateRole">) => (a.dateRole === "on" || a.dateRole === "collected" ? "warn" : undefined);
+
+/**
+ * How urgent an action's date is, on the app's one urgency scale — the countdown pill and the
+ * card's top edge both use it, so they always agree.
+ */
+export function actionTone(action: Pick<TodayAction, "actionDate" | "dateRole">, today: string): UrgencyTone {
+  return urgencyTone(urgencyOf(action.actionDate, today, modeFor(action)), { cap: capFor(action) });
+}
+
+/** Countdown for an action: "Send by Thu 8 Oct · in 10 days", "Wed 14 Oct, 10:30 · in 16 days". */
 export function ActionCountdown({ action, variant = "pill", className }: { action: TodayAction; variant?: "pill" | "text"; className?: string }) {
   return (
     <Countdown
@@ -53,73 +101,90 @@ export function ActionCountdown({ action, variant = "pill", className }: { actio
       showDate
       time={action.time}
       variant={variant}
-      mode={action.dateRole === "on" ? "event" : "due"}
+      mode={modeFor(action)}
+      cap={capFor(action)}
       className={className}
     />
   );
 }
 
 // ------------------------------------------------------------------------------------------------
+// Focus: a card that leaves Top 3 (paid, done) or comes back (Undo)
+// ------------------------------------------------------------------------------------------------
+
+const headingId = (key: string) => `top-${key}`;
+
+export interface TopFocus {
+  /** This card is about to leave: when it's gone, focus the card now in its place (or the section heading). */
+  leaving: (key: string) => void;
+  /** This card is coming back (Undo): focus its heading once it's there. */
+  returning: (key: string) => void;
+}
+
+const TopFocusContext = createContext<TopFocus | null>(null);
+/** Where the focus goes when a {@link PayPopover}'s "Mark as paid" takes its row away (and Undo brings it back) — for a list outside Top 3. */
+export const PayFocusProvider = TopFocusContext.Provider;
+
+function useTopFocus(list: RefObject<HTMLElement | null>): TopFocus {
+  return useMemo<TopFocus>(() => {
+    const headings = () => Array.from(list.current?.querySelectorAll<HTMLElement>("[data-top-heading]") ?? []);
+    return {
+      leaving: (key) => focusAfterLeaving(headings, headingId(key), "top3-title"),
+      returning: (key) => focusWhenReady(() => document.getElementById(headingId(key))),
+    };
+  }, [list]);
+}
+
+// ------------------------------------------------------------------------------------------------
 // Pay panel
 // ------------------------------------------------------------------------------------------------
 
-function CopyRow({ label, value, display, copyId, mono }: { label: string; value: string; display?: string; copyId: string; mono?: boolean }) {
-  const { copy, copied } = useClipboard();
-  const done = copied === copyId;
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="min-w-0 flex-1">
-        <dt className="text-[11.5px] font-medium text-muted">{label}</dt>
-        <dd className={cn("truncate text-[14px] text-ink", mono && "font-mono text-[13px] tracking-tight")}>{display ?? value}</dd>
-      </div>
-      <button
-        type="button"
-        onClick={() => void copy(value, copyId)}
-        className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[12px] font-medium text-accent transition-colors hover:bg-accent-soft"
-        aria-label={done ? `${label} copied` : `Copy ${label}`}
-      >
-        {done ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-        <span aria-hidden>{done ? "Copied" : "Copy"}</span>
-      </button>
-      <span className="sr-only" aria-live="polite">
-        {done ? `${label} copied` : ""}
-      </span>
-    </div>
-  );
-}
+/** (The transfer details, the IBAN's check and the footer are the letter's Pay panel's too: `features/pay`.) */
+export { amountForTransfer };
 
-/** "Pay": the transfer details from the letter (copyable) and "Mark as paid" (with undo). */
+/**
+ * "Pay": the transfer details from the letter (copyable), the GiroCode folded behind "Show code"
+ * (or why there is none) and "Mark as paid" (with undo).
+ */
 function PayPanel({ action, close }: { action: TodayAction; close: () => void }) {
   const doc = useDocument(action.docId ?? undefined);
   const update = useUpdateItem();
   const navigate = useNavigate();
+  const focus = useContext(TopFocusContext);
   const pay = doc.data?.document.payment;
   const item = action.item;
+  const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
+  const letter = doc.data?.document;
+  // "They don't match": the details shown are the ones the person says are wrong — no copy buttons
+  const [mismatch, setMismatch] = useState(false);
 
   const markPaid = () => {
     if (!item) return;
-    update.mutate(
-      { id: item.id, patch: { status: "done" } },
-      {
-        onSuccess: () => {
-          close();
-          toast({
-            tone: "success",
-            title: "Marked as paid",
-            description: item.title,
-            undo: async () => {
-              await update.mutateAsync({ id: item.id, patch: { status: "open" } });
-            },
-          });
-        },
+    // watched from now, while the card is in its place; the promise, not mutate's callbacks: the card leaves
+    // with the refreshed Top 3, often before every list is refreshed, and a card that has gone gets no callbacks
+    // (review round 4 of phase 2: no "Marked as paid", no Undo, focus lost — on a busy machine)
+    focus?.leaving(action.key);
+    update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
+      () => {
+        close();
+        toast({
+          tone: "success",
+          title: "Marked as paid",
+          description: item.title,
+          undo: async () => {
+            await update.mutateAsync({ id: item.id, patch: { status: "open" } });
+            focus?.returning(action.key);
+          },
+        });
       },
+      () => undefined, // the error toast comes from the mutation's meta
     );
   };
 
   return (
     <div>
-      <p className="text-[12px] font-semibold uppercase tracking-[0.07em] text-muted">Pay</p>
-      <p className="mt-0.5 text-[13px] text-muted">{action.title}</p>
+      <p className="eyebrow in-sheet:hidden">Pay</p>
+      <p className="mt-0.5 text-sm text-muted">{action.title}</p>
       {action.amount ? <Money amount={action.amount} currency={action.currency} className="display mt-2 block text-[28px] font-semibold leading-none" /> : null}
 
       {action.docId && doc.isPending ? (
@@ -127,38 +192,48 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
         </div>
-      ) : pay && (pay.iban || pay.reference) ? (
-        <dl className="mt-3 divide-y divide-line rounded-lg border border-line px-3">
-          {pay.payee ? <CopyRow label="Recipient" value={pay.payee} copyId="payee" /> : null}
-          {pay.iban ? <CopyRow label="IBAN" value={pay.iban.replace(/\s+/g, "")} display={formatIban(pay.iban)} copyId="iban" mono /> : null}
-          {action.amount ? <CopyRow label="Amount" value={formatMoney(action.amount, { currency: action.currency }).replace(/\s*€/, "").trim()} display={formatMoney(action.amount, { currency: action.currency })} copyId="amount" /> : null}
-          {pay.reference ? <CopyRow label="Reference" value={pay.reference} copyId="reference" mono /> : null}
-        </dl>
+      ) : hasTransferDetails(pay) ? (
+        <TransferDetails payment={pay} amount={action.amount || null} currency={action.currency} mismatch={mismatch} className="mt-3" />
       ) : (
-        <p className="mt-3 text-[13px] leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
+        <p className="mt-3 text-sm leading-relaxed text-muted">{item?.action ?? "The payment details are in the letter."}</p>
       )}
+      <IbanCheck ibanValid={pay?.iban_valid} code={code} />
 
-      {pay?.iban_valid === true ? (
-        <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ok-ink">
-          <CircleCheck className="size-3.5" aria-hidden /> IBAN checksum is valid. No warning does not mean it is safe.
-        </p>
+      {action.docId ? (
+        <GiroCodeSection
+          code={code}
+          docId={action.docId}
+          collapsible
+          canReadAgain={canReadLetterAgain(letter)}
+          onMismatch={setMismatch}
+          className="mt-3"
+        />
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        {action.docId ? (
-          <Button variant="ghost" size="sm" icon={ExternalLink} onClick={() => navigate(actionHref(action))}>
-            Open letter
-          </Button>
-        ) : (
-          <span />
-        )}
-        {item ? (
-          <Button variant="primary" size="sm" icon={Check} onClick={markPaid} loading={update.isPending}>
-            Mark as paid
-          </Button>
-        ) : null}
-      </div>
+      <PayFooter
+        secondary={
+          action.docId ? (
+            <Button variant="ghost" size="sm" icon={FileText} onClick={() => navigate(actionHref(action))}>
+              Open letter
+            </Button>
+          ) : null
+        }
+        onPaid={item ? markPaid : undefined}
+        pending={update.isPending}
+      />
     </div>
+  );
+}
+
+/**
+ * "Pay" opens the {@link PayPanel} (a bottom sheet on phones); the child is the trigger. Top 3 and
+ * the Ideas about the same payment use it, so "Pay" means one thing on the page.
+ */
+export function PayPopover({ action, children }: { action: TodayAction; children: ReactElement }) {
+  return (
+    <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={verbLabel(VERB.pay.label, action.title)} title="Pay" placement="bottom-start">
+      {children}
+    </Popover>
   );
 }
 
@@ -169,16 +244,17 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
 function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonVariant }) {
   const navigate = useNavigate();
   const update = useUpdateItem();
-  const verb = VERB[action.verb];
-  const label = `${verb.label}: ${action.title}`;
+  const focus = useContext(TopFocusContext);
+  const verb = verbFor(action);
+  const label = verbLabel(verb.label, action.title);
 
   if (action.verb === "pay") {
     return (
-      <Popover content={(close) => <PayPanel action={action} close={close} />} className="w-[22rem]" label={label} placement="bottom-start">
+      <PayPopover action={action}>
         <Button variant={variant} size="sm" icon={verb.icon} aria-label={label}>
           {verb.label}
         </Button>
-      </Popover>
+      </PayPopover>
     );
   }
 
@@ -190,19 +266,20 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
       case "done": {
         const item = action.item;
         if (!item) return;
-        update.mutate(
-          { id: item.id, patch: { status: "done" } },
-          {
-            onSuccess: () =>
-              toast({
-                tone: "success",
-                title: "Marked as done",
-                description: item.title,
-                undo: async () => {
-                  await update.mutateAsync({ id: item.id, patch: { status: "open" } });
-                },
-              }),
-          },
+        // as for "Mark as paid": the card can leave before the call's callbacks would run
+        focus?.leaving(action.key);
+        update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
+          () =>
+            toast({
+              tone: "success",
+              title: "Marked as done",
+              description: item.title,
+              undo: async () => {
+                await update.mutateAsync({ id: item.id, patch: { status: "open" } });
+                focus?.returning(action.key);
+              },
+            }),
+          () => undefined,
         );
         return;
       }
@@ -222,36 +299,50 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
 // Card
 // ------------------------------------------------------------------------------------------------
 
-function ActionCard({ action, index, party }: { action: TodayAction; index: number; party: Party | undefined }) {
+/** The card's reason, up to four lines; a longer one gets "Read more". */
+function Reason({ children }: { children: ReactNode }) {
+  return <ReadMore className="mt-2 text-[13.5px] leading-relaxed text-muted">{children}</ReadMore>;
+}
+
+function ActionCard({ action, index, party, today }: { action: TodayAction; index: number; party: Party | undefined; today: string }) {
   const receipt = action.item ? receiptForItem(action.item) : action.contract ? receiptForContract(action.contract) : null;
-  const urgent = action.daysLeft <= 1;
+  const tone = actionTone(action, today);
   return (
     <motion.li variants={fadeUp} className="@container flex">
       <article
-        aria-labelledby={`top-${action.key}`}
+        aria-labelledby={headingId(action.key)}
+        data-urgency={tone.level}
         className={cn(
-          "card group relative flex w-full flex-col overflow-hidden p-4 sm:p-5 @xl:flex-row @xl:gap-6",
-          index === 0 && "border-line-strong/80 shadow-[var(--shadow-pop)]",
+          "card relative flex w-full flex-col overflow-hidden p-4 sm:p-5",
+          // the first card leads: an accent edge that shows in dark mode too, where shadows don't
+          index === 0 && "border-accent/45 shadow-[var(--shadow-pop)] dark:border-accent/55",
         )}
       >
-        {/* urgency edge */}
+        {/* urgency edge — the same scale and colour as the countdown pill */}
+        <span aria-hidden data-part="stripe" className={cn("absolute inset-x-0 top-0 h-[3px]", tone.stripe)} />
+        {/* the rank, in the corner (the list is an <ol>, so it is announced already) */}
         <span
           aria-hidden
-          className={cn(
-            "absolute inset-x-0 top-0 h-[3px]",
-            action.daysLeft < 0 || urgent ? "bg-danger" : action.daysLeft <= 3 ? "bg-k-payment" : action.daysLeft <= 7 ? "bg-warn/70" : "bg-line-strong",
-          )}
-        />
+          data-part="rank"
+          className="display absolute right-4 top-4 flex h-7 items-center text-[22px] font-semibold leading-none text-faint sm:right-5 sm:top-5"
+        >
+          {index + 1}
+        </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-2">
-            {action.kind === "contract" ? <KindIcon category={action.contract?.category ?? "other"} size="sm" /> : <KindIcon kind={action.kind} size="sm" />}
-            <ActionCountdown action={action} />
-            <span aria-hidden className="display ml-auto pl-2 text-[22px] font-semibold leading-none text-line-strong @xl:hidden">
-              {index + 1}
+          <div className="flex min-h-7 flex-wrap items-center gap-2 pr-6">
+            {/* a narrow card keeps its first line for the date */}
+            <span className="contents @max-[21rem]:hidden">
+              {action.kind === "contract" ? (
+                <KindIcon category={action.contract?.category ?? "other"} size="sm" />
+              ) : (
+                <KindIcon kind={action.kind} direction={action.item?.direction} size="sm" />
+              )}
             </span>
+            {/* one line as a pill; a long one ("Transfer by Tue 22 Sep · 6 days overdue") wraps in a narrow card */}
+            <ActionCountdown action={action} className="max-w-full flex-wrap whitespace-normal rounded-[11px]" />
           </div>
 
-          <h3 id={`top-${action.key}`} className="mt-3.5 text-[16px] font-semibold leading-snug text-ink">
+          <h3 id={headingId(action.key)} data-top-heading="" className="mt-3.5 text-[16px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
             {action.title}
           </h3>
           {action.amount ? (
@@ -263,9 +354,9 @@ function ActionCard({ action, index, party }: { action: TodayAction; index: numb
             </Badge>
           ) : null}
           {action.reason ? (
-            <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-muted">
+            <Reason>
               <LetterText text={action.reason} />
-            </p>
+            </Reason>
           ) : null}
           {party ? (
             <div className="mt-auto pt-4">
@@ -274,10 +365,7 @@ function ActionCard({ action, index, party }: { action: TodayAction; index: numb
           ) : null}
         </div>
 
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line pt-3.5 @xl:mt-0 @xl:w-40 @xl:shrink-0 @xl:flex-col @xl:flex-nowrap @xl:items-start @xl:justify-center @xl:border-l @xl:border-t-0 @xl:pl-6 @xl:pt-0">
-          <span aria-hidden className="display hidden text-[26px] font-semibold leading-none text-line-strong @xl:mb-auto @xl:block">
-            {index + 1}
-          </span>
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-line pt-3.5">
           <VerbButton action={action} variant={index === 0 ? "primary" : "secondary"} />
           <WhyThisDate receipt={receipt} context={action.title} />
         </div>
@@ -287,42 +375,55 @@ function ActionCard({ action, index, party }: { action: TodayAction; index: numb
 }
 
 /**
- * "Top 3 this week": the three most urgent actions, each with a countdown, a one-line reason, the
+ * "Top 3 this week": the three most urgent actions, each with a countdown, a reason, the
  * person/organisation, one verb button and "Why this date?". Shows "All clear until …" when
- * nothing is due.
+ * nothing is due — unless letters from the watched folder wait unread: then it says so. When a card
+ * leaves (paid, done) focus moves to the card now in its place.
  */
 export function TopThree({
   actions,
   next,
   partyById,
   today,
+  waiting = 0,
 }: {
   actions: TodayAction[];
   next: TodayAction | undefined;
   partyById: Map<string, Party>;
   today: string;
+  /** Letters from the watched folder nobody read yet: while any wait, nothing is "all clear". */
+  waiting?: number;
 }) {
+  const section = useRef<HTMLElement>(null);
+  const focus = useTopFocus(section);
+  // the countdowns count from the app's today; so does the urgency edge
+  const appToday = useTodayISO();
   return (
-    <section aria-labelledby="top3-title" className="@container">
-      <SectionHeader id="top3-title" title="Top 3 this week" description={actions.length ? "The things that matter most right now — one step each." : undefined} />
-      {actions.length ? (
-        <motion.ol variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 gap-3 sm:gap-4 @4xl:grid-cols-3">
-          {actions.map((a, i) => (
-            <ActionCard key={a.key} action={a} index={i} party={a.partyId ? partyById.get(a.partyId) : undefined} />
-          ))}
-        </motion.ol>
-      ) : (
-        <EmptyState
-          illustration="clear"
-          size="sm"
-          title={allClearTitle(next?.actionDate, today)}
-          description={
-            next
-              ? `Nothing needs you this week. Next up: ${next.title}.`
-              : "Nothing needs you right now. New letters show up here as soon as they are read."
-          }
-        />
-      )}
-    </section>
+    <TopFocusContext.Provider value={focus}>
+      <section ref={section} aria-labelledby="top3-title" className="@container">
+        <SectionHeader id="top3-title" title="Top 3 this week" description={actions.length ? "The things that matter most right now — one step each." : undefined} />
+        {actions.length ? (
+          <motion.ol variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 gap-3 sm:gap-4 @4xl:grid-cols-3">
+            {actions.map((a, i) => (
+              <ActionCard key={a.key} action={a} index={i} party={a.partyId ? partyById.get(a.partyId) : undefined} today={appToday} />
+            ))}
+          </motion.ol>
+        ) : (
+          <EmptyState
+            illustration="clear"
+            size="sm"
+            headingLevel={3}
+            title={waiting ? "Nothing due from the letters that were read" : allClearTitle(next?.actionDate, today)}
+            description={
+              waiting
+                ? `${waitingTitle(waiting)} — their dates show up here once they're read.`
+                : next
+                  ? `Nothing needs you this week. Next up: ${next.title}.`
+                  : "Nothing needs you right now. New letters show up here as soon as they are read."
+            }
+          />
+        )}
+      </section>
+    </TopFocusContext.Provider>
   );
 }

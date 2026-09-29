@@ -50,6 +50,14 @@ _REMEDY_SUBJECT_EN: dict[RemedyKind, str] = {
 _DECISIONS: dict[str, tuple[str, str]] = {
     "tax_assessment": ("Steuerbescheid", "tax assessment"),
     "fine": ("Bußgeldbescheid", "fine notice"),
+    "court_payment_order": ("Mahnbescheid", "court payment order (Mahnbescheid)"),
+    "enforcement_order": ("Vollstreckungsbescheid", "enforcement order (Vollstreckungsbescheid)"),
+}
+#: The remedy the law gives a letter kind, whatever its instructions say (§ 694, § 700 ZPO; § 574 BGB).
+STATUTORY_REMEDIES: dict[str, RemedyKind] = {
+    "court_payment_order": "widerspruch",
+    "enforcement_order": "einspruch",
+    "landlord_notice": "widerspruch",
 }
 _DEFAULT_DECISION = ("Bescheid", "decision")
 
@@ -146,6 +154,31 @@ def cancellation(
     return LetterParts(subject, salutation(language, person_name), (operative, confirm), closing(language))
 
 
+# The second sentence (reasons) and the application to suspend enforcement, per kind of decision:
+# a Widerspruch against a court payment order needs no reasons and objects to the whole claim (a
+# partial objection is made on the court's form), and there is nothing to suspend yet; an
+# enforcement order is suspended by the court (einstweilige Einstellung, §§ 719, 707 ZPO), a tax or
+# administrative decision by the authority (Aussetzung der Vollziehung).
+_REASONS: dict[str, tuple[str, str]] = {
+    "court_payment_order": (
+        "Ich widerspreche dem geltend gemachten Anspruch insgesamt.",
+        "I object to the entire claim.",
+    ),
+}
+_DEFAULT_REASONS = ("Eine Begründung reiche ich nach.", "I will submit the reasons separately.")
+_SUSPEND: dict[str, tuple[str, str] | None] = {
+    "court_payment_order": None,
+    "enforcement_order": (
+        "Ich beantrage, die Zwangsvollstreckung aus dem Vollstreckungsbescheid einstweilen einzustellen.",
+        "I apply for enforcement of the order to be suspended for the time being (einstweilige Einstellung).",
+    ),
+}
+_DEFAULT_SUSPEND = (
+    "Ich beantrage die Aussetzung der Vollziehung.",
+    "I apply for suspension of enforcement (Aussetzung der Vollziehung).",
+)
+
+
 def objection(
     language: LetterLanguage,
     *,
@@ -155,21 +188,31 @@ def objection(
     reference: str | None,
     suspend_enforcement: bool = False,
     person_name: str | None = None,
+    flat: str | None = None,
 ) -> LetterParts:
     """Objection (Einspruch/Widerspruch) "…lege ich gegen den <Bescheid> vom <date>, <ref>, <remedy> ein."
 
-    Reasons are announced for later ("Eine Begründung reiche ich nach."); the application to suspend
-    enforcement is added only when the person asks for it.
+    Reasons are announced for later ("Eine Begründung reiche ich nach."), except against a court
+    payment order, which needs none: the letter objects to the whole claim. The application to suspend
+    enforcement is added only when the person asks for it, and never against a court payment order,
+    which can't be enforced yet. A landlord's notice gets the tenant's objection
+    (:func:`tenancy_objection`, ``flat`` is the flat's address).
     """
+    if document_kind == "landlord_notice":
+        return tenancy_objection(
+            language, doc_date=doc_date, reference=reference, flat=flat, person_name=person_name
+        )
     decision = decision_noun(document_kind, language)
+    reasons = _REASONS.get(document_kind or "", _DEFAULT_REASONS)
+    suspend = _SUSPEND.get(document_kind or "", _DEFAULT_SUSPEND)
     if language == "de":
         dated = f"vom {format_date(doc_date, language)}" if doc_date else None
         target = " ".join(part for part in (f"gegen den {decision}", dated) if part)
         target = f"{target}, {reference}," if reference else target
         operative = f"hiermit lege ich {target} {remedy_label(remedy, language)} ein."
-        paragraphs = [operative, "Eine Begründung reiche ich nach."]
-        if suspend_enforcement:
-            paragraphs.append("Ich beantrage die Aussetzung der Vollziehung.")
+        paragraphs = [operative, reasons[0]]
+        if suspend_enforcement and suspend is not None:
+            paragraphs.append(suspend[0])
         subject = _dash(
             " ".join(part for part in (f"{_REMEDY_DE[remedy]} gegen den {decision}", dated) if part),
             reference,
@@ -178,9 +221,9 @@ def objection(
         dated = f"of {format_date(doc_date, language)}" if doc_date else None
         target = " ".join(part for part in (f"against the {decision}", dated) if part)
         operative = f"I hereby lodge {remedy_label(remedy, language)} {_join(target, reference)}."
-        paragraphs = [operative, "I will submit the reasons separately."]
-        if suspend_enforcement:
-            paragraphs.append("I apply for suspension of enforcement (Aussetzung der Vollziehung).")
+        paragraphs = [operative, reasons[1]]
+        if suspend_enforcement and suspend is not None:
+            paragraphs.append(suspend[1])
         subject = _dash(
             " ".join(
                 part for part in (f"{_REMEDY_SUBJECT_EN[remedy]} against the {decision}", dated) if part
@@ -188,6 +231,39 @@ def objection(
             reference,
         )
     return LetterParts(subject, salutation(language, person_name), tuple(paragraphs), closing(language))
+
+
+def tenancy_objection(
+    language: LetterLanguage,
+    *,
+    doc_date: date | None,
+    reference: str | None,
+    flat: str | None,
+    person_name: str | None = None,
+) -> LetterParts:
+    """The tenant's objection to a landlord's notice asking to stay (§§ 574, 574b BGB).
+
+    Reasons are not required; they follow on request (§ 574b Abs. 1 S. 2 BGB), so the letter offers them.
+    """
+    if language == "de":
+        about = f" über die Wohnung {flat}" if flat else ""
+        dated = f" vom {format_date(doc_date, language)}" if doc_date else ""
+        operative = (
+            f"hiermit widerspreche ich Ihrer Kündigung{dated} des Mietverhältnisses{about} und verlange "
+            "die Fortsetzung des Mietverhältnisses (§ 574 BGB)."
+        )
+        reasons = "Die Gründe teile ich Ihnen auf Wunsch gesondert mit."
+        subject = _dash(f"Widerspruch gegen Ihre Kündigung{dated}", reference)
+    else:
+        about = f" of the flat at {flat}" if flat else ""
+        dated = f" of {format_date(doc_date, language)}" if doc_date else ""
+        operative = (
+            f"I hereby object to your notice{dated} terminating the tenancy{about} and request that the "
+            "tenancy be continued (§ 574 BGB)."
+        )
+        reasons = "I will give you my reasons separately on request."
+        subject = _dash(f"Objection to your notice{dated}", reference)
+    return LetterParts(subject, salutation(language, person_name), (operative, reasons), closing(language))
 
 
 def general_reply(

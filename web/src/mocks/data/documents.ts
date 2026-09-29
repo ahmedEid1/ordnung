@@ -1,23 +1,23 @@
 import type { Case, Document } from "@/api/types";
-import { SAM, ts } from "./constants";
+import { ts } from "./constants";
 import { doc, ev, fact } from "./helpers";
 import { Q } from "./letters";
 
 export const CASES: Case[] = [
-  { id: "cas_flat", title: "Flat — Musterweg 12", party_id: "pty_wohnbau", reference: "12-0412-07", status: "open", summary: "Your rental agreement, the 2025 utility statement and your request to see the receipts.", area: "home", created_at: ts("2025-09-20"), updated_at: ts("2026-09-15") },
-  { id: "cas_techmarkt", title: "TechMarkt order 4711-2026", party_id: "pty_techmarkt", reference: "RE-2026-084213", status: "open", summary: "Invoice for a USB-C dock, now with a payment reminder (+5 € fee).", area: "money", created_at: ts("2026-08-21"), updated_at: ts("2026-09-19") },
+  { id: "cas_flat", title: "Flat — Beispielweg 5", party_id: "pty_wohnbau", reference: "12-0412-07", status: "open", summary: "Your rental agreement, the 2025 utility statement and your request to see the receipts.", area: "home", created_at: ts("2025-09-20"), updated_at: ts("2026-09-15") },
+  { id: "cas_techmarkt", title: "TechMarkt order 4711-2026", party_id: "pty_techmarkt", reference: "RE-2026-084213", status: "open", summary: "Invoice for a USB-C dock, now with a payment reminder (+€5 fee).", area: "money", created_at: ts("2026-08-21"), updated_at: ts("2026-09-19") },
   { id: "cas_permit", title: "Residence permit extension", party_id: "pty_abh", reference: "ABH-2026-18841", status: "open", summary: "Appointment on 14 Oct to extend your permit, which expires on 30 Nov.", area: "residence", created_at: ts("2026-09-22"), updated_at: ts("2026-09-22") },
   { id: "cas_power", title: "Electricity — Stadtwerke Musterstadt", party_id: "pty_stadtwerke", reference: "300 512 877", status: "open", summary: "Your MusterStrom Natur contract.", area: "home", created_at: ts("2025-09-21"), updated_at: ts("2025-09-21") },
-  { id: "cas_phone", title: "Phone contract — FunkNetz", party_id: "pty_funknetz", reference: "7700 4412 09", status: "open", summary: "Allnet L, 34,99 €/month; minimum term ends 14 Nov 2026.", area: "home", created_at: ts("2024-10-16"), updated_at: ts("2026-09-20") },
+  { id: "cas_phone", title: "Phone contract — FunkNetz", party_id: "pty_funknetz", reference: "7700 4412 09", status: "open", summary: "Allnet L, €34.99/month; minimum term ends 14 Nov 2026.", area: "home", created_at: ts("2024-10-16"), updated_at: ts("2026-09-20") },
   { id: "cas_job", title: "Werkstudent job at Muster Tech", party_id: "pty_mustertech", reference: "WS-0417", status: "open", summary: "20 hours a week until 31 Mar 2027.", area: "work", created_at: ts("2025-03-16"), updated_at: ts("2026-09-01") },
   { id: "cas_uni", title: "Studies at Hochschule Musterstadt", party_id: "pty_hochschule", reference: "2231847", status: "open", summary: "Semester fees and re-registration.", area: "study", created_at: ts("2026-09-23"), updated_at: ts("2026-09-23") },
-  { id: "cas_rundfunk", title: "Broadcasting fee", party_id: "pty_beitrag", reference: "457 812 309", status: "open", summary: "Rundfunkbeitrag, 55,08 € per quarter.", area: "home", created_at: ts("2026-09-02"), updated_at: ts("2026-09-02") },
-  { id: "cas_parking", title: "Parking fine OA-VW-2026-55012", party_id: "pty_ordnungsamt", reference: "OA-VW-2026-55012", status: "open", summary: "30 € Verwarnungsgeld for parking on 17 Sep.", area: "mobility", created_at: ts("2026-09-24"), updated_at: ts("2026-09-24") },
+  { id: "cas_rundfunk", title: "Broadcasting fee", party_id: "pty_beitrag", reference: "457 812 309", status: "open", summary: "Rundfunkbeitrag, €55.08 per quarter.", area: "home", created_at: ts("2026-09-02"), updated_at: ts("2026-09-02") },
+  { id: "cas_parking", title: "Parking fine OA-VW-2026-55012", party_id: "pty_ordnungsamt", reference: "OA-VW-2026-55012", status: "open", summary: "€30 Verwarnungsgeld for parking on 17 Sep.", area: "mobility", created_at: ts("2026-09-24"), updated_at: ts("2026-09-24") },
 ];
 
 /** Thread that only exists once the tax assessment from the New-mail tray was opened. */
 export const TRAY_CASES: Case[] = [
-  { id: "cas_tax2025", title: "Income tax 2025", party_id: "pty_finanzamt", reference: "331/5012/4471", status: "open", summary: "Assessment with a 324 € refund; laptop costs were not accepted.", area: "tax", created_at: ts(TODAYISH()), updated_at: ts(TODAYISH()) },
+  { id: "cas_tax2025", title: "Income tax 2025", party_id: "pty_finanzamt", reference: "331/5012/4471", status: "open", summary: "Assessment with a €324 refund; laptop costs were not accepted.", area: "tax", created_at: ts(TODAYISH()), updated_at: ts(TODAYISH()) },
 ];
 
 function TODAYISH() {
@@ -27,8 +27,8 @@ function TODAYISH() {
 export const DOCUMENTS: Document[] = [
   doc({
     id: "doc_lease",
-    filename: "Mietvertrag_Musterweg12.pdf",
-    title: "Rental agreement — Musterweg 12",
+    filename: "Mietvertrag_Beispielweg5.pdf",
+    title: "Rental agreement — Beispielweg 5",
     kind: "rent_lease",
     area: "home",
     doc_date: "2025-09-15",
@@ -36,17 +36,17 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_wohnbau",
     case_id: "cas_flat",
     created_at: ts("2025-09-20", "20:04"),
-    summary: "Open-ended lease for your 1-room flat from 1 Oct 2025. Rent 640 €/month incl. 160 € utility prepayment.",
+    summary: "Open-ended lease for your 1-room flat from 1 Oct 2025. Rent €640/month incl. €160 utility prepayment.",
     explanation:
-      "This is your rental contract. You pay 640 € each month, at the latest on the 3rd working day. You can end it any time with three months' notice, in writing on paper with your signature. Your deposit is 1.440 €.",
+      "This is your rental contract. You pay €640 each month, at the latest on the 3rd working day. You can end it any time with three months' notice, in writing on paper with your signature. Your deposit is €1,440.",
     key_facts: [
-      fact("Monthly rent", "640,00 € (480 € rent + 160 € utilities)", ev("doc_lease", Q.lease.rent)),
+      fact("Monthly rent", "€640.00 (€480 rent + €160 utilities)", ev("doc_lease", Q.lease.rent)),
       fact("Starts", "1 Oct 2025, open-ended", ev("doc_lease", Q.lease.start)),
       fact("Your notice period", "3 months (§ 573c BGB)", ev("doc_lease", Q.lease.notice)),
-      fact("Deposit", "1.440,00 €", ev("doc_lease", Q.lease.deposit)),
+      fact("Deposit", "€1,440.00", ev("doc_lease", Q.lease.deposit)),
     ],
     references: [{ label: "Mieternummer", value: "12-0412-07" }],
-    payment: { iban: "DE44500105175407324931", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "12-0412-07" },
+    payment: { iban: "DE05123456000004455660", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "12-0412-07" },
     urgency: "low",
   }),
   doc({
@@ -62,16 +62,16 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_flat",
     created_at: ts("2026-09-11", "19:22"),
     urgency: "high",
-    summary: "Your landlord's statement for Oct–Dec 2025: you owe 184,30 € extra, due Fri 9 Oct.",
+    summary: "Your landlord's statement for Oct–Dec 2025: you owe €184.30 extra, due Fri 9 Oct.",
     explanation:
-      "Once a year your landlord compares what heating, water and other shared costs really were with the 160 € a month you prepaid. For your first three months the real costs were 664,30 €, so you need to pay the difference of 184,30 €. You have the right to see the receipts before paying.",
+      "Once a year your landlord compares what heating, water and other shared costs really were with the €160 a month you prepaid. For your first three months the real costs were €664.30, so you need to pay the difference of €184.30. You have the right to see the receipts before paying.",
     key_facts: [
-      fact("Amount to pay", "184,30 €", ev("doc_nebenkosten", Q.nk.pay)),
+      fact("Amount to pay", "€184.30", ev("doc_nebenkosten", Q.nk.pay)),
       fact("Period", "1 Oct – 31 Dec 2025", ev("doc_nebenkosten", Q.nk.period)),
       fact("Receipts", "You can inspect them by appointment", ev("doc_nebenkosten", Q.nk.receipts)),
     ],
     references: [{ label: "Mieternummer", value: "12-0412-07" }],
-    payment: { iban: "DE44500105175407324931", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "BK 2025 Whg 12" },
+    payment: { iban: "DE05123456000004455660", payee: "Wohnbau Musterstadt eG", iban_valid: true, reference: "MV-2025-0412 NK 2025" },
   }),
   doc({
     id: "doc_phone",
@@ -84,11 +84,11 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_funknetz",
     case_id: "cas_phone",
     created_at: ts("2026-01-12", "21:40"),
-    summary: "24-month phone contract at 34,99 €/month from 15 Nov 2024. The minimum term ends on 14 Nov 2026.",
+    summary: "24-month phone contract at €34.99/month from 15 Nov 2024. The minimum term ends on 14 Nov 2026.",
     explanation:
       "Your phone contract runs for at least 24 months, until 14 Nov 2026. To leave at that date, FunkNetz must receive your cancellation one month earlier. After that the contract continues month to month and you can cancel any time with one month's notice.",
     key_facts: [
-      fact("Monthly price", "34,99 €", ev("doc_phone", Q.phone.price)),
+      fact("Monthly price", "€34.99", ev("doc_phone", Q.phone.price)),
       fact("Minimum term", "24 months from 15 Nov 2024", ev("doc_phone", Q.phone.term)),
       fact("Notice", "1 month before the end of the minimum term", ev("doc_phone", Q.phone.notice)),
     ],
@@ -104,13 +104,39 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_fitwell",
     created_at: ts("2026-01-12", "21:43"),
     urgency: "low",
-    summary: "Gym membership at 29,90 €/month. Since March 2026 you can cancel any time with one month's notice.",
+    summary: "Gym membership at €29.90/month. Since March 2026 you can cancel any time with one month's notice.",
     explanation: "The first 12 months are over, so you are free to leave with one month's notice. An email is enough.",
     key_facts: [
-      fact("Monthly fee", "29,90 €", ev("doc_gym", Q.gym.fee)),
+      fact("Monthly fee", "€29.90", ev("doc_gym", Q.gym.fee)),
       fact("Cancel", "any time, 1 month's notice", ev("doc_gym", Q.gym.renewal)),
     ],
     references: [{ label: "Mitgliedsnummer", value: "FW-20931" }],
+  }),
+  // Static demo only: the real demo's samples (src/ordnung/demo/samples) have no FitWell price letter. It
+  // shows a company's letter the engine counts from its arrival (§ 130 BGB) and the arrival question; the
+  // recorded Ask answers, the brief and the activity feed (data/ask.ts, data/system.ts) know it too.
+  doc({
+    id: "doc_gym_price",
+    filename: "FitWell_Beitragsanpassung.pdf",
+    title: "Gym price increase — FitWell",
+    kind: "price_increase",
+    area: "leisure",
+    doc_date: "2026-09-14",
+    received_date: null,
+    party_id: "pty_fitwell",
+    created_at: ts("2026-09-15", "19:02"),
+    urgency: "normal",
+    summary: "FitWell wants to raise your monthly fee from €29.90 to €32.90 from 1 Nov. You can object within four weeks of receiving the letter.",
+    explanation:
+      "FitWell is a company, not an authority, so its four weeks start on the day the letter reached you — there are no extra delivery days. Tell us when it arrived; until then we count from the letter date (14 Sep), the earliest possible. You can also cancel the membership with one month's notice.",
+    key_facts: [
+      fact("New monthly fee", "€32.90 from 1 Nov 2026", ev("doc_gym_price", Q.gymPrice.change)),
+      fact("Object within", "4 weeks of receipt", ev("doc_gym_price", Q.gymPrice.objection)),
+    ],
+    references: [{ label: "Mitgliedsnummer", value: "FW-20931" }],
+    warnings: [
+      "We don't know when this letter arrived. Until you tell us, dates count from the letter date (14 Sep) — the earliest possible.",
+    ],
   }),
   doc({
     id: "doc_power",
@@ -123,11 +149,11 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_power",
     created_at: ts("2025-09-21", "10:02"),
     urgency: "low",
-    summary: "Electricity from 1 Oct 2025, 48 € monthly instalment on the 15th. After the first 12 months: one month's notice.",
+    summary: "Electricity from 1 Oct 2025, €48 monthly instalment on the 15th. After the first 12 months: one month's notice.",
     explanation:
-      "This confirms your electricity contract. You pay a fixed 48 € every month (Abschlag); once a year it is settled against what you really used.",
+      "This confirms your electricity contract. You pay a fixed €48 every month (Abschlag); once a year it is settled against what you really used.",
     key_facts: [
-      fact("Monthly instalment", "48,00 € on the 15th", ev("doc_power", Q.power.abschlag)),
+      fact("Monthly instalment", "€48.00 on the 15th", ev("doc_power", Q.power.abschlag)),
       fact("First term", "12 months from 1 Oct 2025", ev("doc_power", Q.power.term)),
     ],
     references: [{ label: "Kundennummer", value: "300 512 877" }],
@@ -142,11 +168,11 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_versicherung",
     created_at: ts("2026-01-12", "21:47"),
     urgency: "low",
-    summary: "Personal liability insurance, 59,90 € per year, renews every 1 Dec unless cancelled 3 months before.",
+    summary: "Personal liability insurance, €59.90 per year, renews every 1 Dec unless cancelled 3 months before.",
     explanation:
       "This insurance pays if you accidentally damage someone else's things. It renews automatically each year on 1 Dec. To stop it, the insurer must receive your cancellation three months before — so the next chance is 31 Aug 2027.",
     key_facts: [
-      fact("Yearly premium", "59,90 € due 1 Dec", ev("doc_liability", Q.liability.premium)),
+      fact("Yearly premium", "€59.90 due 1 Dec", ev("doc_liability", Q.liability.premium)),
       fact("Renewal", "yearly unless cancelled 3 months before", ev("doc_liability", Q.liability.renew)),
     ],
     references: [{ label: "Versicherungsnummer", value: "PHV-4471-2290" }],
@@ -161,14 +187,14 @@ export const DOCUMENTS: Document[] = [
     received_date: "2026-09-12",
     party_id: "pty_bkk",
     created_at: ts("2026-09-12", "11:30"),
-    summary: "From 1 Oct 2026 your student health and care insurance costs 142,86 € per month, payable by the 15th.",
+    summary: "From 1 Oct 2026 your student health and care insurance costs €142.86 per month, payable by the 15th.",
     explanation:
-      "As a student you pay a fixed monthly contribution for health and long-term care insurance. It changes each winter semester; from October it is 142,86 €. You can let the BKK collect it automatically.",
+      "As a student you pay a fixed monthly contribution for health and long-term care insurance. It changes each winter semester; from October it is €142.86. You can let the BKK collect it automatically.",
     key_facts: [
-      fact("Monthly contribution", "142,86 €", ev("doc_bkk", Q.bkk.amount)),
+      fact("Monthly contribution", "€142.86", ev("doc_bkk", Q.bkk.amount)),
       fact("Due", "by the 15th of each month", ev("doc_bkk", Q.bkk.due)),
     ],
-    references: [{ label: "Versichertennummer", value: "R123456789" }],
+    references: [{ label: "Versichertennummer", value: "R482019379" }],
   }),
   doc({
     id: "doc_rundfunk",
@@ -181,12 +207,12 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_beitrag",
     case_id: "cas_rundfunk",
     created_at: ts("2026-09-02", "18:40"),
-    summary: "Rundfunkbeitrag for Oct–Dec 2026: 55,08 €, due 15 Nov.",
+    summary: "Rundfunkbeitrag for Oct–Dec 2026: €55.08, due 15 Nov.",
     explanation:
-      "Every household in Germany pays the broadcasting fee (Rundfunkbeitrag), 18,36 € a month, billed every three months. This is a normal bill from the real collection office.",
-    key_facts: [fact("Amount", "55,08 € for Oct–Dec", ev("doc_rundfunk", Q.rundfunk.due)), fact("Bank account", "DE02 4401 0046 0123 4567 89", ev("doc_rundfunk", Q.rundfunk.iban))],
+      "Every household in Germany pays the broadcasting fee (Rundfunkbeitrag), €18.36 a month, billed every three months. This is a normal bill from the real collection office.",
+    key_facts: [fact("Amount", "€55.08 for Oct–Dec", ev("doc_rundfunk", Q.rundfunk.due)), fact("Bank account", "DE57 1234 8900 0055 0818 36", ev("doc_rundfunk", Q.rundfunk.iban))],
     references: [{ label: "Beitragsnummer", value: "457 812 309" }],
-    payment: { iban: "DE02440100460123456789", payee: "Beitragsservice Musterstadt", iban_valid: true, reference: "457 812 309" },
+    payment: { iban: "DE57123489000055081836", payee: "Beitragsservice Musterstadt", iban_valid: true, reference: "457 812 309" },
   }),
   doc({
     id: "doc_abh",
@@ -200,14 +226,14 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_permit",
     created_at: ts("2026-09-22", "18:05"),
     urgency: "high",
-    summary: "Your residence permit expires on 30 Nov 2026. Appointment to extend it: Wed 14 Oct, 10:30, room 2.14. Fee 93 €.",
+    summary: "Your residence permit expires on 30 Nov 2026. Appointment to extend it: Wed 14 Oct, 10:30, room 2.14. Fee €93.",
     explanation:
-      "The immigration office invites you to extend your student residence permit before it runs out on 30 Nov. Bring your passport, a biometric photo, proof of enrolment, health insurance and money (e.g. blocked account or work contract). The fee is 93 €, paid at the appointment.",
+      "The immigration office invites you to extend your student residence permit before it runs out on 30 Nov. Bring your passport, a biometric photo, proof of enrolment, health insurance and money (e.g. blocked account or work contract). The fee is €93, paid at the appointment.",
     key_facts: [
       fact("Permit valid until", "30 Nov 2026", ev("doc_abh", Q.abh.valid)),
       fact("Appointment", "Wed 14 Oct, 10:30, Rathausplatz 1, room 2.14", ev("doc_abh", Q.abh.appt)),
       fact("Bring", "passport, photo, enrolment, insurance, proof of funds", ev("doc_abh", Q.abh.bring)),
-      fact("Fee", "93,00 € at the appointment", ev("doc_abh", Q.abh.fee)),
+      fact("Fee", "€93.00 at the appointment", ev("doc_abh", Q.abh.fee)),
     ],
     references: [{ label: "Aktenzeichen", value: "ABH-2026-18841" }],
   }),
@@ -229,6 +255,7 @@ export const DOCUMENTS: Document[] = [
     explanation:
       "Your passport expires on 10 Feb 2027. The immigration office can usually only extend your residence permit up to your passport's expiry, so renewing it soon avoids a second appointment.",
     key_facts: [fact("Expires", "10 Feb 2027", ev("doc_passport", Q.passport.expiry, "model_read"))],
+    references: [{ label: "Passport no.", value: "X1234567" }],
     tags: ["identity"],
   }),
   doc({
@@ -242,16 +269,16 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_hochschule",
     case_id: "cas_uni",
     created_at: ts("2026-09-23", "17:15"),
-    summary: "Pay the semester fee of 312,40 € by 15 Jan 2027 to stay enrolled. It includes a Deutschlandsemesterticket.",
+    summary: "Pay the semester fee of €312.40 by 15 Jan 2027 to stay enrolled. It includes a Deutschlandsemesterticket.",
     explanation:
-      "To stay enrolled for the summer semester you must pay 312,40 € by 15 January. Paying late costs a 20 € fee; not paying at all can end your enrolment — which would also affect your residence permit.",
+      "To stay enrolled for the summer semester you must pay €312.40 by 15 January. Paying late costs a €20 fee; not paying at all can end your enrolment — which would also affect your residence permit.",
     key_facts: [
-      fact("Semester fee", "312,40 €", ev("doc_uni", Q.uni.amount)),
-      fact("Includes", "Deutschlandsemesterticket (176,40 €)", ev("doc_uni", Q.uni.ticket)),
+      fact("Semester fee", "€312.40", ev("doc_uni", Q.uni.amount)),
+      fact("Includes", "Deutschlandsemesterticket (€176.40)", ev("doc_uni", Q.uni.ticket)),
       fact("Pay by", "15 Jan 2027", ev("doc_uni", Q.uni.due)),
     ],
     references: [{ label: "Matrikelnummer", value: "2231847" }],
-    payment: { iban: "DE93250500000004455667", payee: "Hochschule Musterstadt", iban_valid: true, reference: "2231847 SoSe27" },
+    payment: { iban: "DE10123456000007700220", payee: "Hochschule Musterstadt", iban_valid: true, reference: "2231847 SoSe27" },
   }),
   doc({
     id: "doc_job",
@@ -264,9 +291,9 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_job",
     created_at: ts("2026-01-12", "21:55"),
     urgency: "low",
-    summary: "Student job, 20 h/week at 16,50 €/hour, fixed term until 31 Mar 2027.",
+    summary: "Student job, 20 h/week at €16.50/hour, fixed term until 31 Mar 2027.",
     explanation: "Your working-student contract ends automatically on 31 Mar 2027. Either side can end it earlier with four weeks' notice to the 15th or the end of a month.",
-    key_facts: [fact("Ends", "31 Mar 2027", ev("doc_job", Q.job.term)), fact("Hours", "20 per week", ev("doc_job", Q.job.hours)), fact("Pay", "16,50 € gross per hour", ev("doc_job", Q.job.wage))],
+    key_facts: [fact("Ends", "31 Mar 2027", ev("doc_job", Q.job.term)), fact("Hours", "20 per week", ev("doc_job", Q.job.hours)), fact("Pay", "€16.50 gross per hour", ev("doc_job", Q.job.wage))],
     references: [{ label: "Personalnummer", value: "WS-0417" }],
   }),
   doc({
@@ -282,9 +309,14 @@ export const DOCUMENTS: Document[] = [
     urgency: "low",
     tax_relevant: true,
     tax_note: "Keep for your 2026 tax return (wage and pension contributions).",
-    summary: "August salary: 1.386,00 € gross, 1.262,14 € paid out.",
+    summary: "August salary: €1,386.00 gross, €1,262.14 paid out.",
     explanation: "Your monthly pay statement. No income tax was deducted; keep it for next year's tax return.",
-    key_facts: [fact("Gross", "1.386,00 €", ev("doc_payslip", Q.payslip.gross)), fact("Paid out", "1.262,14 €", ev("doc_payslip", Q.payslip.net))],
+    key_facts: [fact("Gross", "€1,386.00", ev("doc_payslip", Q.payslip.gross)), fact("Paid out", "€1,262.14", ev("doc_payslip", Q.payslip.net))],
+    references: [
+      { label: "Personalnummer", value: "WS-0417" },
+      { label: "Steuer-ID", value: "57 216 480 354" },
+      { label: "SV-Nummer", value: "65 140300 R 005" },
+    ],
   }),
   doc({
     id: "doc_tm_invoice",
@@ -297,11 +329,11 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_techmarkt",
     case_id: "cas_techmarkt",
     created_at: ts("2026-08-21", "12:40"),
-    summary: "Invoice for a USB-C docking station, 89,99 €, due 3 Sep.",
+    summary: "Invoice for a USB-C docking station, €89.99, due 3 Sep.",
     explanation: "A normal invoice from an online shop. It has since been followed by a payment reminder.",
-    key_facts: [fact("Amount", "89,99 €", ev("doc_tm_invoice", Q.tmInvoice.total)), fact("Due", "3 Sep 2026", ev("doc_tm_invoice", Q.tmInvoice.due))],
+    key_facts: [fact("Amount", "€89.99", ev("doc_tm_invoice", Q.tmInvoice.total)), fact("Due", "3 Sep 2026", ev("doc_tm_invoice", Q.tmInvoice.due))],
     references: [{ label: "Rechnungsnummer", value: "RE-2026-084213" }],
-    payment: { iban: "DE72860555920090123456", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
+    payment: { iban: "DE70123478000048213000", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
   }),
   doc({
     id: "doc_tm_dunning",
@@ -315,15 +347,15 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_techmarkt",
     created_at: ts("2026-09-19", "10:31"),
     urgency: "high",
-    summary: "The 89,99 € invoice is still open; with a 5 € fee you now owe 94,99 €, due Wed 30 Sep.",
+    summary: "The €89.99 invoice is still open; with a €5 fee you now owe €94.99, due Wed 30 Sep.",
     explanation:
-      "TechMarkt hasn't received your payment for the docking station. Pay 94,99 € by Wednesday; otherwise they may hand it to a debt collector, which adds more costs. If you already paid, you can ignore it — or reply with proof of payment.",
+      "TechMarkt hasn't received your payment for the docking station. Pay €94.99 by Wednesday; otherwise they may hand it to a debt collector, which adds more costs. If you already paid, you can ignore it — or reply with proof of payment.",
     key_facts: [
-      fact("Amount now", "94,99 € (incl. 5 € fee)", ev("doc_tm_dunning", Q.tmDunning.pay)),
+      fact("Amount now", "€94.99 (incl. €5 fee)", ev("doc_tm_dunning", Q.tmDunning.pay)),
       fact("If ignored", "debt collection agency", ev("doc_tm_dunning", Q.tmDunning.threat)),
     ],
     references: [{ label: "Rechnungsnummer", value: "RE-2026-084213" }],
-    payment: { iban: "DE72860555920090123456", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
+    payment: { iban: "DE70123478000048213000", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "RE-2026-084213" },
   }),
   doc({
     id: "doc_dentist",
@@ -349,9 +381,9 @@ export const DOCUMENTS: Document[] = [
     received_date: "2026-09-26",
     party_id: "pty_library",
     created_at: ts("2026-09-26", "09:48"),
-    summary: "Two books are overdue. Return them and pay 4,50 € by Fri 2 Oct.",
+    summary: "Two books are overdue. Return them and pay €4.50 by Fri 2 Oct.",
     explanation: "Your library card is blocked until the books are back and the small fee is paid.",
-    key_facts: [fact("Fee", "4,50 € by 2 Oct", ev("doc_library", Q.library.pay))],
+    key_facts: [fact("Fee", "€4.50 by 2 Oct", ev("doc_library", Q.library.pay))],
   }),
   doc({
     id: "doc_dticket",
@@ -363,13 +395,14 @@ export const DOCUMENTS: Document[] = [
     party_id: "pty_verkehr",
     created_at: ts("2026-01-21", "19:30"),
     urgency: "low",
-    summary: "Monthly Deutschlandticket for 63 €. Cancel by the 10th for the end of that month.",
+    summary: "Monthly Deutschlandticket for €63. Cancel by the 10th for the end of that month.",
     explanation: "Your public-transport subscription for all of Germany. It can be cancelled monthly.",
-    key_facts: [fact("Price", "63,00 € per month", ev("doc_dticket", Q.dticket.price)), fact("Cancel", "by the 10th for the end of the month", ev("doc_dticket", Q.dticket.cancel))],
+    key_facts: [fact("Price", "€63.00 per month", ev("doc_dticket", Q.dticket.price)), fact("Cancel", "by the 10th for the end of the month", ev("doc_dticket", Q.dticket.cancel))],
   }),
   doc({
     id: "doc_parking",
-    filename: "Verwarnung_Ordnungsamt.pdf",
+    filename: "IMG_20260924_2014.jpg",
+    text_mode: "vision",
     title: "Parking fine (Verwarnungsgeld)",
     kind: "fine",
     area: "mobility",
@@ -380,12 +413,15 @@ export const DOCUMENTS: Document[] = [
     case_id: "cas_parking",
     created_at: ts("2026-09-24", "20:14"),
     urgency: "high",
-    summary: "30 € for parking in a no-stopping zone on 17 Sep. Pay within one week of receiving the letter.",
+    summary: "€30 for parking in a no-stopping zone on 17 Sep. Pay within one week of receiving the letter.",
     explanation:
       "This is a small fine for parking the car-sharing car in a restricted zone. The week to pay starts when the letter reached you — tell us when that was. If you don't pay in time, it becomes a formal fine procedure with extra fees.",
-    key_facts: [fact("Amount", "30,00 €", ev("doc_parking", Q.parking.amount)), fact("Pay within", "1 week of receipt", ev("doc_parking", Q.parking.pay))],
+    key_facts: [
+      fact("Amount", "€30.00", ev("doc_parking", Q.parking.amount, "model_read")),
+      fact("Pay within", "1 week of receipt", ev("doc_parking", Q.parking.pay, "model_read")),
+    ],
     references: [{ label: "Aktenzeichen", value: "OA-VW-2026-55012" }],
-    payment: { iban: "DE47700202700015893521", payee: "Stadtkasse Musterstadt", iban_valid: true, reference: "OA-VW-2026-55012" },
+    payment: { iban: "DE51123456000000100017", payee: "Stadtkasse Musterstadt", iban_valid: true, reference: "OA-VW-2026-55012" },
     warnings: ["We don't know when this letter arrived. Until you tell us, dates count from the letter date (22 Sep) — the earliest possible."],
   }),
   doc({
@@ -399,9 +435,9 @@ export const DOCUMENTS: Document[] = [
     received_date: "2026-09-15",
     party_id: "pty_scholarship",
     created_at: ts("2026-09-15", "16:20"),
-    summary: "Scholarship renewed: 450 €/month until Aug 2027. Progress report due 15 Dec 2026.",
+    summary: "Scholarship renewed: €450/month until Aug 2027. Progress report due 15 Dec 2026.",
     explanation: "Your scholarship continues. To keep receiving it, upload a short progress report and your transcript by 15 December.",
-    key_facts: [fact("Stipend", "450 € per month until 31 Aug 2027", ev("doc_scholarship", Q.scholarship.stipend)), fact("Report due", "15 Dec 2026", ev("doc_scholarship", Q.scholarship.report))],
+    key_facts: [fact("Stipend", "€450 per month until 31 Aug 2027", ev("doc_scholarship", Q.scholarship.stipend)), fact("Report due", "15 Dec 2026", ev("doc_scholarship", Q.scholarship.report))],
   }),
   doc({
     id: "doc_bank",
@@ -413,15 +449,60 @@ export const DOCUMENTS: Document[] = [
     received_date: "2026-09-17",
     party_id: "pty_musterbank",
     created_at: ts("2026-09-17", "18:02"),
-    summary: "Your account fee would rise from 4,90 € to 6,90 € a month from 1 Dec. The bank needs your consent by 30 Nov.",
+    summary: "Your account fee would rise from €4.90 to €6.90 a month from 1 Dec. The bank needs your consent by 30 Nov.",
     explanation:
       "Banks may only raise fees with your active consent. If you say no, the bank may close your account with two months' notice — a good moment to compare free student accounts.",
-    key_facts: [fact("New fee", "6,90 €/month (was 4,90 €)", ev("doc_bank", Q.bank.fee)), fact("Consent needed by", "30 Nov 2026", ev("doc_bank", Q.bank.consent))],
+    key_facts: [fact("New fee", "€6.90/month (was €4.90)", ev("doc_bank", Q.bank.fee)), fact("Consent needed by", "30 Nov 2026", ev("doc_bank", Q.bank.consent))],
   }),
 ];
 
 /** Documents produced by opening New-mail tray letters (full processed state). */
 export const TRAY_DOCUMENTS: Record<string, Document> = {
+  doc_mahnbescheid: doc({
+    id: "doc_mahnbescheid",
+    filename: "Mahnbescheid_AG_Hagen.pdf",
+    title: "Court payment order (Mahnbescheid) — Streamline Media",
+    kind: "court_payment_order",
+    area: "money",
+    doc_date: "2026-09-23",
+    received_date: null,
+    party_id: "pty_mahngericht",
+    source: "demo_mail",
+    urgency: "critical",
+    summary:
+      "Amtsgericht Hagen sent a court payment order for €111.88 that Streamline Media GmbH claims for a 2022 subscription. Within two weeks of delivery you pay or object (Widerspruch).",
+    explanation:
+      "This is not an ordinary reminder: a court sent it on behalf of Streamline Media, without checking whether they are right. If you don't recognise the subscription or it was cancelled, object on the enclosed form or online — no reasons needed. If you do nothing, Streamline Media can get an enforcement order and have the money collected.",
+    key_facts: [
+      fact("Claimed", "€111.88 (€59.88 subscription 2022 + interest and costs)", ev("doc_mahnbescheid", Q.court.total)),
+      fact("Object within", "two weeks of delivery", ev("doc_mahnbescheid", Q.court.period)),
+      fact("The court checked the claim", "No", ev("doc_mahnbescheid", Q.court.unchecked)),
+    ],
+    references: [{ label: "Geschäftsnummer", value: "26-4471902-0-3" }],
+    remedy: { type: "widerspruch", addressee: "Amtsgericht Hagen", period_text: "binnen zwei Wochen seit der Zustellung dieses Bescheids", form_text: null, quote: Q.court.period },
+    warnings: ["We don't know yet when the letter was delivered — the date is on the yellow envelope. Until you tell us, dates count from the letter date (23 Sep), the earliest possible."],
+  }),
+  doc_dismissal: doc({
+    id: "doc_dismissal",
+    filename: "Kuendigung_MusterTech.pdf",
+    title: "Dismissal by Muster Tech — your job ends on 31 Oct",
+    kind: "dismissal",
+    area: "work",
+    doc_date: "2026-09-25",
+    received_date: "2026-09-28",
+    party_id: "pty_mustertech",
+    case_id: "cas_job",
+    source: "demo_mail",
+    urgency: "critical",
+    summary: "Muster Tech ends your Werkstudent job with notice on 31 Oct 2026. The letter gives no reason.",
+    explanation:
+      "Your employer has dismissed you. If you think the dismissal is wrong, only a court action at the labour court within three weeks keeps your rights — get advice now. Either way, register as job-seeking with the Agentur für Arbeit within three days.",
+    key_facts: [
+      fact("Job ends", "31 Oct 2026", ev("doc_dismissal", Q.dismissal.notice)),
+      fact("Register as job-seeking", "straight away (§ 38 SGB III)", ev("doc_dismissal", Q.dismissal.register)),
+    ],
+    references: [{ label: "Personalnummer", value: "WS-0417" }],
+  }),
   doc_power_price: doc({
     id: "doc_power_price",
     filename: "Stadtwerke_Preisanpassung.pdf",
@@ -434,12 +515,12 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     case_id: "cas_power",
     source: "demo_mail",
     urgency: "normal",
-    summary: "From 1 Nov electricity costs 34,90 instead of 32,10 ct/kWh; your instalment rises from 48 € to 55 € (+84 €/year). You may cancel until 31 Oct.",
+    summary: "From 1 Nov electricity costs 34.90 instead of 32.10 ct/kWh; your instalment rises from €48 to €55 (+€84/year). You may cancel until 31 Oct.",
     explanation:
       "Stadtwerke are raising their price. Because of that you have a special right to leave the contract without the usual notice — the cancellation must reach them by 31 Oct, an email is enough. Compare other providers before you decide.",
     key_facts: [
-      fact("New price", "34,90 ct/kWh (was 32,10)", ev("doc_power_price", Q.power2.price)),
-      fact("Instalment", "55,00 € from November (+7 €/month)", ev("doc_power_price", Q.power2.abschlag)),
+      fact("New price", "34.90 ct/kWh (was 32.10)", ev("doc_power_price", Q.power2.price)),
+      fact("Instalment", "€55.00 from November (+€7/month)", ev("doc_power_price", Q.power2.abschlag)),
       fact("Special right to cancel", "until 31 Oct 2026, text form", ev("doc_power_price", Q.power2.right)),
     ],
     references: [{ label: "Kundennummer", value: "300 512 877" }],
@@ -460,12 +541,12 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     text_mode: "vision",
     urgency: "high",
     tax_relevant: true,
-    summary: "You get 324 € back for 2025. The tax office did not accept your laptop (1.049 €) as a work expense. Objection possible until Wed 21 Oct.",
+    summary: "You get €324 back for 2025. The tax office did not accept your laptop (€1,049) as a work expense. Objection possible until Wed 21 Oct.",
     explanation:
-      "This is the tax office's decision on your 2025 tax return. You get a refund of 324 €. They did not count your laptop because proof of work use was missing. If you disagree, you can file an Einspruch (objection) — it is free, a short letter is enough, and it must arrive by 21 Oct.",
+      "This is the tax office's decision on your 2025 tax return. You get a refund of €324. They did not count your laptop because proof of work use was missing. If you disagree, you can file an Einspruch (objection) — it is free, a short letter is enough, and it must arrive by 21 Oct.",
     key_facts: [
-      fact("Refund", "324,00 €", ev("doc_tax", Q.tax.refund, "model_read")),
-      fact("Not accepted", "Laptop 1.049,00 € (work equipment)", ev("doc_tax", Q.tax.laptop, "model_read")),
+      fact("Refund", "€324.00", ev("doc_tax", Q.tax.refund, "model_read")),
+      fact("Not accepted", "Laptop €1,049.00 (work equipment)", ev("doc_tax", Q.tax.laptop, "model_read")),
       fact("Letter date", "15 Sep 2026", ev("doc_tax", Q.tax.date, "model_read")),
     ],
     references: [{ label: "Steuernummer", value: "331/5012/4471" }],
@@ -492,22 +573,20 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     source: "demo_mail",
     urgency: "critical",
     hidden_text: true,
-    summary: "Demands 210 € within 3 days to a Lithuanian account. This does not match your real broadcasting-fee account — likely a scam.",
+    summary: "Demands €210 within 3 days to a Lithuanian account. This does not match your real broadcasting-fee account — likely a scam.",
     explanation:
-      "The real Beitragsservice used a German bank account (DE02 4401 …) and your account is not in arrears — your next payment of 55,08 € is due 15 Nov. This letter uses a different, foreign account, threatens immediate enforcement and hides invisible text. Do not pay. If unsure, call the Beitragsservice using the number on an older letter.",
+      "The real Beitragsservice used a German bank account (DE57 1234 …) and your account is not in arrears — your next payment of €55.08 is due 15 Nov. This letter uses a different, foreign account, threatens immediate enforcement and hides invisible text. Do not pay. If unsure, call the Beitragsservice using the number on an older letter.",
     key_facts: [
-      fact("Demanded", "210,00 € within 3 days", ev("doc_scam", Q.scam.amount)),
+      fact("Demanded", "€210.00 within 3 days", ev("doc_scam", Q.scam.amount)),
       fact("Bank account", "LT71 7300 0101 2345 6789 (Lithuania)", ev("doc_scam", Q.scam.iban)),
     ],
     references: [{ label: "Vorgang", value: "BS-2026-99812" }],
     payment: { iban: "LT717300010123456789", payee: "BS Inkasso Service", iban_valid: true, reference: "BS-2026-99812" },
     warnings: [
-      "The bank account (IBAN) differs from the one Beitragsservice Musterstadt used before (DE02 4401 0046 0123 4567 89).",
+      "The bank account (IBAN) differs from the one Beitragsservice Musterstadt used before (DE57 1234 8900 0055 0818 36).",
       "This letter contains invisible text. It was not shown to the AI.",
       "Pressure tactics: payment within 3 days, threat of seizure.",
       "No warning does not mean it is safe.",
     ],
   }),
 };
-
-export const PROFILE_ADDRESS = `${SAM.street}, ${SAM.city}`;

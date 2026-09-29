@@ -17,11 +17,13 @@ from pydantic import ValidationError
 
 from ordnung.db.store import Store
 from ordnung.llm import prompts
-from ordnung.llm.base import Attachment, ClaudeBadOutput, LLMRequest
+from ordnung.llm.base import Attachment, ClaudeBadOutput, LLMRequest, LLMResponse
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import transcription_schema
 from ordnung.models import Page, TranscriptionOutput
+from ordnung.trace import facts
+from ordnung.trace.spans import NO_SPAN, Span
 
 
 @dataclass(frozen=True)
@@ -47,20 +49,39 @@ def transcription_request(image_path: Path, *, doc_id: str, model: str) -> LLMRe
         model=model,
         cache_key=hashlib.sha256(image_path.read_bytes()).hexdigest(),
         prompt_version=f"{system_version}.{user_version}",
+        prompt_name="transcribe",
     )
 
 
-async def transcribe_page(
-    llm: LLMService, image_path: Path, *, page: int, doc_id: str, model: str, use_cache: bool = True
-) -> PageTranscript:
-    """Transcribe one page image; raises :class:`ClaudeBadOutput` if the answer is not a transcript."""
-    request = await asyncio.to_thread(transcription_request, image_path, doc_id=doc_id, model=model)
-    response = await llm.complete(request, use_cache=use_cache)
+def parse_transcription(response: LLMResponse) -> TranscriptionOutput:
+    """The transcript in a model answer (structured ``data`` or JSON in ``text``); raises
+    ``ValidationError`` when it is none."""
     data = response.data if response.data is not None else extract_json(response.text)
-    try:
-        output = TranscriptionOutput.model_validate(data)
-    except ValidationError as exc:
-        raise ClaudeBadOutput(f"Claude's transcription of page {page} could not be read.") from exc
+    return TranscriptionOutput.model_validate(data)
+
+
+async def transcribe_page(
+    llm: LLMService,
+    image_path: Path,
+    *,
+    page: int,
+    doc_id: str,
+    model: str,
+    use_cache: bool = True,
+    trace: Span = NO_SPAN,
+) -> PageTranscript:
+    """Transcribe one page image; raises :class:`ClaudeBadOutput` if the answer is not a transcript.
+
+    ``trace`` gets a model step for the page (the call, whether it was legible and how many characters
+    came back — never the text)."""
+    with trace.span("model", f"Page {page}", key=f"page:{page}") as step:
+        request = await asyncio.to_thread(transcription_request, image_path, doc_id=doc_id, model=model)
+        response = await llm.complete(request, use_cache=use_cache, trace=step, validate=parse_transcription)
+        try:
+            output = parse_transcription(response)
+        except ValidationError as exc:
+            raise ClaudeBadOutput(f"Claude's transcription of page {page} could not be read.") from exc
+        step.set(**facts.transcript(page, output.text, output.legible))
     return PageTranscript(page=page, text=output.text.strip(), legible=output.legible)
 
 
@@ -77,35 +98,40 @@ async def transcribe_pages(
     *,
     model: str,
     use_cache: bool = True,
+    trace: Span = NO_SPAN,
 ) -> list[str]:
     """Transcribe every page without a text layer (concurrently) and store the transcripts.
 
     Returns warnings for pages that were illegible or empty. A model error (rate limit, sign-in …)
-    cancels the remaining pages and propagates.
+    cancels the remaining pages and propagates. ``trace`` gets a parallel ``ocr`` step with one model
+    step per page.
     """
     todo = pages_to_transcribe(pages)
     if not todo:
         return []
-    tasks = [
-        asyncio.ensure_future(
-            transcribe_page(
-                llm,
-                store.data_dir / page.image_path,
-                page=page.page,
-                doc_id=doc_id,
-                model=model,
-                use_cache=use_cache,
+    with trace.span("ocr", "Transcribe", key="transcribe", stage="transcribe", parallel=True) as group:
+        group.set(pages=len(todo))
+        tasks = [
+            asyncio.ensure_future(
+                transcribe_page(
+                    llm,
+                    store.data_dir / page.image_path,
+                    page=page.page,
+                    doc_id=doc_id,
+                    model=model,
+                    use_cache=use_cache,
+                    trace=group,
+                )
             )
-        )
-        for page in todo
-    ]
-    try:
-        results = await asyncio.gather(*tasks)
-    except BaseException:
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
-        raise
+            for page in todo
+        ]
+        try:
+            results = await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
     warnings: list[str] = []
     for result in results:
         source = "transcript" if result.text else "none"

@@ -123,21 +123,39 @@ def language_name(code: str) -> str:
 # free-text check: dates, amounts and § citations must come from the source data
 # --------------------------------------------------------------------------------------------------
 
+_PARAGRAPH_NUMBER = r"\d+[a-z]?"
+_PARAGRAPH_LIST = rf"(?:\s*(?:,|und|and|u\.|bis|-|–)\s*{_PARAGRAPH_NUMBER}(?![\d.,]\d))*"
 _PARAGRAPH_RE = re.compile(
-    r"§§?\s*(?P<num>\d+[a-z]?)"
-    r"(?:\s*(?:Abs\.|Absatz|S\.|Satz|Nr\.|Nummer|Alt\.)\s*\d+[a-z]?)*"
+    rf"(?P<sign>§§?)\s*(?P<num>{_PARAGRAPH_NUMBER})(?:\(\d+[a-z]?\))*(?P<more>{_PARAGRAPH_LIST})"
+    rf"(?:\s*(?:Abs\.|Absatz|S\.|Satz|Nr\.|Nummer|Alt\.)\s*{_PARAGRAPH_NUMBER}{_PARAGRAPH_LIST})*"
     r"(?:\s+(?P<law>[A-ZÄÖÜ][A-Za-zÄÖÜäöü]*[A-Z](?:\s+[IVX]{1,4}\b)?))?"
 )
+"""A § citation with its law: lists of paragraphs (``§§ 269, 270 BGB``) and of subsections (``§ 622
+Abs. 1, 3, 6 BGB``) keep the law that follows them."""
+_LISTED_NUMBER = re.compile(_PARAGRAPH_NUMBER)
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 _NO_BREAK_BEFORE = re.compile(
     r"(?:\b\d{1,2}|\bAbs|\bNr|\bS|\bSatz|\bca|\bz\.B|\be\.g|\bi\.e|\bvs|\bDr|\bSt)[.]$"
 )
 
 
-def _paragraphs(text: str) -> Iterator[tuple[str, str | None]]:
+def paragraphs_in(text: str) -> Iterator[tuple[str, str | None]]:
+    """The § citations in ``text`` as ``(number, law or None)``: ``§ 122 Abs. 2 AO`` → ``("122", "AO")``."""
+    for number, law, _, _ in paragraph_spans(text):
+        yield number, law
+
+
+def paragraph_spans(text: str) -> Iterator[tuple[str, str | None, int, int]]:
+    """:func:`paragraphs_in` with where each citation stands: ``(number, law or None, start, end)``;
+    each paragraph of a ``§§`` list is its own citation (with the list's span)."""
     for match in _PARAGRAPH_RE.finditer(text):
         law = match.group("law")
-        yield match.group("num").lower(), " ".join(law.split()) if law else None
+        name = " ".join(law.split()) if law else None
+        numbers = [match.group("num")]
+        if match.group("sign") == "§§":
+            numbers += _LISTED_NUMBER.findall(match.group("more"))
+        for number in dict.fromkeys(numbers):
+            yield number.lower(), name, *match.span()
 
 
 def _strings_and_numbers(data: Any) -> Iterator[str | float]:
@@ -184,7 +202,7 @@ class Facts:
                 if (full := mention.as_date()) is not None:
                     dates.add(full)
             cents.update(_cents(amount) for amount in parse_amounts(value))
-            paragraphs.update(_paragraphs(value))
+            paragraphs.update(paragraphs_in(value))
         return cls(frozenset(dates), frozenset(day_months), frozenset(cents), frozenset(paragraphs))
 
     def supports_date(self, value: date) -> bool:
@@ -206,7 +224,7 @@ class Facts:
         problems.extend(raw for raw, ok in readings.items() if not ok)
         problems.extend(f"{amount:.2f}" for amount in parse_amounts(text) if not self.supports_amount(amount))
         numbers = {number for number, _ in self.paragraphs}
-        for number, law in _paragraphs(text):
+        for number, law in paragraphs_in(text):
             if (number, law) not in self.paragraphs and (law is not None or number not in numbers):
                 problems.append(f"§ {number} {law or ''}".strip())
         return problems

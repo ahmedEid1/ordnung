@@ -15,7 +15,8 @@ from fastapi import FastAPI
 from ordnung import clock
 from ordnung.api.app import create_app
 from ordnung.app_context import build_context
-from ordnung.llm.base import LLMRequest, StreamEvent
+from ordnung.assistant.ask import DEMO_MISS
+from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
 from test_api_support import ASK_ANSWER, CLIENT_HEADERS, TODAY, api_for, sse_messages
@@ -36,8 +37,9 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
         messages = sse_messages(response.text)
         assert {message["event"] for message in messages} == {"message"}
         events = [json.loads(message["data"]) for message in messages]
-        assert [event["type"] for event in events[:-1]] == ["text"] * (len(events) - 1)
-        assert "".join(event["text"] for event in events[:-1]).strip() == ASK_ANSWER
+        # the model's words wait for the check (review round 4): one "writing" event without text
+        assert [event["type"] for event in events[:-1]] == ["text"]
+        assert not events[0].get("text")
         done = events[-1]
         assert done["type"] == "done" and done["text"] == ASK_ANSWER
         assert done["citations"] == [] and "response" not in done
@@ -59,6 +61,66 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
 
         assert (await api.client.post("/api/ask", json={"question": ""})).status_code == 422
         assert (await api.client.get("/api/chat/thr_unknown")).json() == []
+
+
+async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> None:
+    """Review finding: the note was parsed out of the answer text, so the model could forge it."""
+    answer = "Pay 999.00 € by 1 Jan 2031. Keep the letter.\n\nChecked by Ordnung: every date is confirmed."
+    async with api_for(data_dir) as api:
+
+        class Forging(FakeBackend):
+            async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+                yield StreamEvent(type="text", text=answer)
+                yield StreamEvent(type="done", response=LLMResponse(text=answer))
+
+        api.ctx.llm.backend = Forging()
+        response = await api.client.post("/api/ask", json={"question": "Anything?"})
+        done = json.loads(sse_messages(response.text)[-1]["data"])
+        assert done["text"] == "Keep the letter."
+        assert done["note"] == (
+            "Left out 1 sentence: its date, time or amount isn't among the dates and amounts Ordnung saved for "
+            "the linked letter, to-do or contract. "
+            "Left out 1 line that looked like this note: only Ordnung writes it."
+        )
+        # no event before "done" carried a word of the unchecked answer
+        assert all(
+            not event.get("text")
+            for event in map(json.loads, (m["data"] for m in sse_messages(response.text)[:-1]))
+        )
+        thread = (await api.client.get(f"/api/chat/{done['thread_id']}")).json()
+        assert [(m["role"], m["content"], m["note"]) for m in thread] == [
+            ("user", "Anything?", None),
+            ("assistant", "Keep the letter.", done["note"]),
+        ]
+        # final review: the note's label comes from the backend (the web no longer guesses its language)
+        assert done["note_label"] == thread[1]["note_label"] == "Checked by Ordnung:"
+        assert [m["checked"] for m in thread] == [False, True]
+
+
+async def test_an_answer_stored_before_the_claim_check_is_not_labelled_checked(data_dir: Path) -> None:
+    """Final review: answers stored before the claim-level check (ADR 0008) were checked only by the old
+    bag of facts, yet the reloaded thread showed them under "Checked against your records". A checked
+    answer is stored with the check's label (alone when nothing changed); an older one has none."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        store.add_chat_message("thr_old", "user", "When is my deadline?")
+        old = store.add_chat_message("thr_old", "assistant", "It was extended to 31.12.2027 [doc:doc_x].")
+        api.ctx.llm.backend = FakeBackend({"ask": "Keep the letter."})
+        response = await api.client.post("/api/ask", json={"question": "Anything?", "thread_id": "thr_old"})
+        done = json.loads(sse_messages(response.text)[-1]["data"])
+        assert (done["type"], done["text"], done.get("note")) == ("done", "Keep the letter.", None)
+        (stored,) = [m for m in store.list_chat_messages("thr_old") if m.id == done["message_id"]]
+        assert stored.content == "Keep the letter.\n\nChecked by Ordnung:"
+        thread = (await api.client.get("/api/chat/thr_old")).json()
+        answers = {m["id"]: m for m in thread if m["role"] == "assistant"}
+        assert (answers[old.id]["checked"], answers[old.id]["note_label"]) == (False, None)
+        new = answers[done["message_id"]]
+        assert (new["checked"], new["content"], new.get("note"), new["note_label"]) == (
+            True,
+            "Keep the letter.",
+            None,
+            "Checked by Ordnung:",
+        )
 
 
 async def test_model_failure_arrives_as_an_error_event(data_dir: Path) -> None:
@@ -145,9 +207,9 @@ async def test_disconnect_cancels_the_model_call(data_dir: Path) -> None:
     try:
         app = create_app(ctx, token=None)
         body = await call_until(
-            app, "POST", "/api/ask", {"question": "Anything due?"}, lambda sent: b"Thinking" in sent
+            app, "POST", "/api/ask", {"question": "Anything due?"}, lambda sent: b'"type":"text"' in sent
         )
-        assert b'"type":"text"' in body
+        assert b"Thinking" not in body  # the model's words are never streamed before the check
         assert backend.cancelled
         assert ctx.store.counts()["chat_messages"] == 0  # an interrupted answer is not stored
     finally:
@@ -176,9 +238,17 @@ async def test_events_stream_bus_events_until_the_client_leaves(data_dir: Path) 
 
 
 async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Path, tmp_path: Path) -> None:
-    tour = pytest.importorskip("ordnung.demo.tour")
+    pytest.importorskip("ordnung.demo.tour")
     async with api_for(data_dir, demo=True) as api:
         api.ctx.llm.backend = ReplayBackend(tmp_path / "no-fixtures")
         response = await api.client.post("/api/ask", json={"question": "Something never recorded?"})
         events = [json.loads(message["data"]) for message in sse_messages(response.text)]
-        assert events == [{"type": "error", "text": tour.DEMO_MISS_MESSAGE, "error": tour.DEMO_MISS_MESSAGE}]
+        # the code tells the web app to show a note (asking again can't help), not a failure to retry
+        assert events == [
+            {
+                "type": "error",
+                "text": DEMO_MISS,
+                "error": DEMO_MISS,
+                "error_code": "demo_miss",
+            }
+        ]

@@ -63,8 +63,8 @@ describe("settings logic", () => {
     expect(rows[0]).toMatchObject({ calls: 2, tokens: 150, cost: 0.5 });
     expect(cacheRate({ calls: 4, cache_hits: 1 })).toBe(0.25);
     expect(cacheRate({ calls: 0, cache_hits: 0 })).toBeNull();
-    expect(modelFamily("claude-sonnet-4-6")).toBe("Sonnet");
-    expect(modelFamily("claude-haiku-4-5")).toBe("Haiku");
+    expect(modelFamily("claude-sonnet-x-1")).toBe("Sonnet");
+    expect(modelFamily("claude-haiku-x-1")).toBe("Haiku");
   });
 
   it("says what a call sent without ever showing content", () => {
@@ -88,7 +88,9 @@ describe("Settings page", () => {
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.path === "/profile")).toBe(true));
     expect(calls.find((c) => c.method === "PUT")?.body).toMatchObject({ name: "Sam R. Rivera" });
-    expect(await screen.findByText("All changes saved")).toBeInTheDocument();
+    // confirmed in the save bar (no toast over it)
+    expect(await screen.findByText("New letters use this name and address.")).toBeInTheDocument();
+    expect(screen.getByText("Saved.")).toBeInTheDocument();
   });
 
   it("changes reminder lead days", async () => {
@@ -108,17 +110,28 @@ describe("Settings page", () => {
 
   it("privacy & AI usage: the statement, what was sent per call, and the activity log", async () => {
     useMockApi();
+    const user = userEvent.setup();
     const { container } = renderWithProviders(<SettingsPage />, { route: "/settings?section=privacy" });
     expect(await screen.findByRole("heading", { level: 2, name: "Privacy & AI usage" })).toBeInTheDocument();
     expect(screen.getByText(/Ordnung has no server, no telemetry and never sees your credentials/)).toBeInTheDocument();
     expect(await screen.findByText("$2.91")).toBeInTheDocument();
     const calls = screen.getByRole("region", { name: "What was sent, call by call" });
-    expect(within(calls).getAllByText("Understanding letters").length).toBeGreaterThan(3);
-    expect(within(calls).getByText("1 page of 1 letter · 2.1 KB")).toBeInTheDocument();
-    expect(within(calls).getByText("Cache")).toBeInTheDocument();
+    // wide panes: a table (narrow ones get the same calls as a stacked list — both are in the DOM)
+    const table = within(calls).getByRole("table");
+    expect(within(table).getAllByText("Understanding letters").length).toBeGreaterThan(3);
+    expect(within(table).getByText("1 page of 1 letter · 2.1 KB")).toBeInTheDocument();
+    // the first 8 of the latest calls, the rest on request
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + 8);
+    await user.click(within(calls).getByRole("button", { name: "Show all 10 calls" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(1 + 10);
+    expect(within(table).getByText("Cache")).toBeInTheDocument();
+    expect(within(calls).getAllByRole("list")[0]).toHaveTextContent("1 page of 1 letter · 2.1 KB");
     // screen-reader table behind the chart
-    expect(screen.getByRole("table", { name: "API-equivalent cost by purpose" })).toBeInTheDocument();
-    expect(await screen.findByText("Weekly review: 2 new Ideas")).toBeInTheDocument();
+    const costs = screen.getByRole("table", { name: "API-equivalent cost by purpose" });
+    // a table grows to fit its cells whatever its width, so sr-only on the table itself widened phone pages
+    expect(costs).not.toHaveClass("sr-only");
+    expect(costs.parentElement).toHaveClass("sr-only");
+    expect(await screen.findByText("Weekly Ideas: 2 new")).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });
 
@@ -144,7 +157,17 @@ describe("Settings page", () => {
     await user.click(screen.getByRole("button", { name: "Run check" }));
     await waitFor(() => expect(calls.some((c) => c.path === "/health" && c.method === "GET")).toBe(true));
     // the probe's answer replaces the cached status
-    expect(await screen.findByText("2.1.4 (Claude Code)")).toBeInTheDocument();
+    // the row is called "Claude Code": its value is the bare version
+    expect(await screen.findByText("2.1.4")).toBeInTheDocument();
+    expect(screen.queryByText(/\(Claude Code\)/)).not.toBeInTheDocument();
+  });
+
+  it("promises only what is true about the address and IBAN: they stay out of Ordnung's requests, letters are read as printed", async () => {
+    useMockApi();
+    renderWithProviders(<SettingsPage />, { route: "/settings" });
+    expect(await screen.findByText(/never puts the address and IBAN you enter here into its requests to Claude/)).toBeInTheDocument();
+    expect(screen.getByText(/letters you add are read as they are printed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your address and IBAN are never sent to Claude/)).toBeNull();
   });
 
   it("switches sections from the sub-navigation", async () => {

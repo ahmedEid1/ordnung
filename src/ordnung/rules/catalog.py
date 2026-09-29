@@ -7,10 +7,44 @@ test enforces it). Wording is plain English; German terms appear in parentheses.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ordnung.models import RuleInfo
 
 #: Date on which the rules and links below were last checked against the law.
 LAST_CHECKED = "2026-09-25"
+
+
+@dataclass(frozen=True)
+class PendingChange:
+    """A change to the law that is on its way and would change rules or copy here: what it changes, where it
+    stands (as of :data:`LAST_CHECKED`), the rules it touches, what in Ordnung to update when it passes, and a
+    source."""
+
+    change: str
+    status: str
+    rule_ids: tuple[str, ...]
+    update: str
+    source: str
+
+
+#: Changes to re-check whenever :data:`LAST_CHECKED` is next updated (docs/deadline-rules.md, "Pending
+#: changes"): until they pass, Ordnung says what holds "under current law".
+PENDING_CHANGES: tuple[PendingChange, ...] = (
+    PendingChange(
+        change=(
+            "Mietrecht II (BT-Drs. 21/6807), new § 573 Abs. 4 BGB: paying the rent arrears within the grace "
+            "period (Schonfristzahlung) also undoes an ordinary notice for arrears, once per tenancy"
+        ),
+        status="Adopted by the federal cabinet on 29 Apr 2026; first reading on 9 Jul 2026, now in committee",
+        rule_ids=("bgb_574b",),
+        update=(
+            "ARREARS_CURE in ordnung.rules.advice (the card's fact, the ordinary card's step and the composer's "
+            "refusal NO_HARDSHIP_OBJECTION) and the landlord's notice section of docs/deadline-rules.md"
+        ),
+        source="https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html",
+    ),
+)
 
 _GII = "https://www.gesetze-im-internet.de"
 _DEJURE = "https://dejure.org/dienste/vernetzung/rechtsprechung"
@@ -160,6 +194,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "termination_end",
+        "An end date the letter doesn't write",
+        "Ordnung safety policy (SPEC § 21)",
+        "Some deadlines count from the day a job or tenancy ends, which Ordnung reads from the notice. When "
+        "that date isn't written in the letter, the deadline is only as sure as the reading: it gets low "
+        "confidence and 'Please check'.",
+        None,
+        None,
+    ),
+    (
         "backward_no_shift",
         "Periods counted backwards never move later",
         "§ 193 BGB; Ordnung safety policy",
@@ -185,7 +229,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Deadlines are about when a letter arrives, not when it is sent. The post must deliver 95 % of "
         "letters by the 3rd and 99 % by the 4th working day after posting, so Ordnung suggests posting 4 "
         "business days before the last business day on or before the deadline (0 for online buttons, "
-        "portals, fax and e-mail where allowed).",
+        "portals, fax and email where allowed).",
         None,
         None,
     ),
@@ -233,7 +277,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 122a Abs. 4 AO",
         "A tax decision made available for download (Mein ELSTER) counts as delivered on the 4th day "
         "after it was made available (decisions issued from 2026). For decisions issued in 2025 the 4th day "
-        "after the notification e-mail counts, before 2025 the 3rd day.",
+        "after the notification email counts, before 2025 the 3rd day.",
         f"{_GII}/ao_1977/__122a.html",
         "2025-01-01",
     ),
@@ -316,6 +360,41 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "private_sender_arrival",
+        "Letters from companies count from arrival",
+        "§ 130 Abs. 1 BGB",
+        "Deemed delivery (the 4-day rule) applies only to letters from authorities. A letter from a "
+        "company, landlord, bank or other private sender takes effect when it arrives, so a period in it "
+        "runs from that day. Without the day it arrived, Ordnung counts from the letter's date, the "
+        "earliest plausible start.",
+        f"{_GII}/bgb/__130.html",
+        None,
+    ),
+    (
+        "private_sender_late_arrival",
+        "Arriving late: the earlier, safe start",
+        "§ 130 Abs. 1 BGB; Ordnung safety policy (earliest plausible date)",
+        "Whether a sender is an authority is read from its letter, not known: a public body's Bescheid "
+        "may come from a sender filed as a company, an insurer, a utility or an employer, or name itself "
+        "in its own words. When such a letter arrived later than a letter usually counts as delivered "
+        "(a few days after posting, or the day after it was made available in a portal), and the "
+        "deadline from the day it arrived would be later, Ordnung counts from that earlier day. The later "
+        "arrival counts once it can be shown — for a private sender's letter and an authority's alike — "
+        "and the warning gives the date from the day it arrived.",
+        f"{_GII}/bgb/__130.html",
+        None,
+    ),
+    (
+        "private_sender_no_delivery",
+        "Letters from companies: no delivery days",
+        "§ 187 Abs. 1 BGB",
+        "Deemed delivery (the 4-day rule) applies only to letters from authorities. When a company's, "
+        "landlord's or other private sender's letter counts a period from its own date or another date it "
+        "names, no delivery days are added: the period runs from that date, whenever the letter arrived.",
+        f"{_GII}/bgb/__187.html",
+        None,
+    ),
+    (
         "early_receipt",
         "Arriving early changes nothing",
         "BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22",
@@ -355,7 +434,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Objection to an authority (Widerspruch): one month",
         "§ 70 Abs. 1 VwGO",
         "An objection must reach the authority within one month after delivery, in writing or for the "
-        "record; a plain e-mail is not enough.",
+        "record; a plain email is not enough.",
         f"{_GII}/vwgo/__70.html",
         None,
     ),
@@ -411,6 +490,228 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "If the instructions on how to object are missing or wrong, the objection can be filed within one "
         "year. Whether they are wrong is a legal judgement, so Ordnung only shows this as a warning.",
         f"{_GII}/ao_1977/__356.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ court letters
+    (
+        "zpo_180",
+        "Court letters count from delivery (Zustellung)",
+        "§ 180 ZPO; § 166 ZPO",
+        "A court's letter in a yellow envelope counts as delivered on the day it was handed over or put in "
+        "your letterbox, even on a Saturday; the postman writes that date on the envelope. There is no "
+        "4-day rule. Without that date Ordnung counts from the letter's own date, which can only be earlier.",
+        f"{_GII}/zpo/__180.html",
+        None,
+    ),
+    (
+        "zpo_222",
+        "Court deadlines: weekend and holiday shift",
+        "§ 222 Abs. 1, 2 ZPO",
+        "Court deadlines are counted like §§ 187, 188 BGB; one that ends on a Saturday, Sunday or public "
+        "holiday at the court's seat ends on the next working day.",
+        f"{_GII}/zpo/__222.html",
+        None,
+    ),
+    (
+        "sgg_64",
+        "Social court deadlines: counting and weekend shift",
+        "§ 64 Abs. 1–3 SGG",
+        "A social court's periods start the day after delivery and end like §§ 187, 188 BGB; one that ends on "
+        "a Saturday, Sunday or public holiday ends on the next working day.",
+        f"{_GII}/sgg/__64.html",
+        None,
+    ),
+    (
+        "zpo_692",
+        "Court payment order (Mahnbescheid): two weeks to pay or object",
+        "§ 692 Abs. 1 Nr. 3 ZPO; § 694 ZPO; § 699 Abs. 1 ZPO",
+        "Within two weeks of delivery you pay or tell the court that you object (Widerspruch), in writing, "
+        "best on the enclosed form or online. The court has not checked the claim. After the two weeks the "
+        "claimant can ask for an enforcement order; a late objection still counts until that order is issued.",
+        f"{_GII}/zpo/__692.html",
+        None,
+    ),
+    (
+        "zpo_339",
+        "Enforcement order (Vollstreckungsbescheid): two weeks to object",
+        "§ 700 Abs. 1 ZPO; § 339 Abs. 1 ZPO",
+        "An enforcement order is like a default judgment and can be enforced at once. The objection "
+        "(Einspruch) must reach the court within two weeks of delivery; this Notfrist can't be extended.",
+        f"{_GII}/zpo/__339.html",
+        None,
+    ),
+    (
+        "arbgg_46a",
+        "Labour court payment order (Mahnbescheid): one week to pay or object",
+        "§ 46a Abs. 1, 3 ArbGG; § 692 Abs. 1 Nr. 3 ZPO",
+        "A payment order from a labour court (Arbeitsgericht) — for example an employer reclaiming wages — gives "
+        "one week, not two: within one week of delivery you pay or object (Widerspruch) at that court.",
+        f"{_GII}/arbgg/__46a.html",
+        None,
+    ),
+    (
+        "arbgg_59",
+        "Labour court enforcement order (Vollstreckungsbescheid): one week to object",
+        "§ 59 S. 1, 2 ArbGG; § 46a Abs. 1 ArbGG; § 700 Abs. 1 ZPO",
+        "At a labour court the objection (Einspruch) to an enforcement order must reach the court within one "
+        "week of delivery (Notfrist), in writing or for the record at the court's office.",
+        f"{_GII}/arbgg/__59.html",
+        None,
+    ),
+    (
+        "zpo_129a",
+        "Objections for the record at any Amtsgericht",
+        "§ 129a Abs. 1, 3 ZPO",
+        "Any Amtsgericht's Rechtsantragstelle can take down an objection for the record. It only takes effect "
+        "when that record reaches the court it is meant for, so at another court a deadline can still be "
+        "missed: go early, or to the court that issued the order.",
+        f"{_GII}/zpo/__129a.html",
+        None,
+    ),
+    (
+        "bgb_195",
+        "Old claims may be time-barred",
+        "§ 195 BGB; § 199 Abs. 1 BGB; § 214 Abs. 1 BGB",
+        "Most claims become time-barred three years after the end of the year in which they arose and the "
+        "creditor knew of them. A court does not check this: you have to raise it yourself. Steps such as a "
+        "court payment order can pause the period, so Ordnung only ever says 'may be time-barred'.",
+        f"{_GII}/bgb/__199.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ employment letters
+    (
+        "kschg_4",
+        "Dismissal: three weeks to go to the labour court",
+        "§ 4 S. 1 KSchG; § 7 KSchG",
+        "A court action against a dismissal (Kündigungsschutzklage) must reach the labour court within "
+        "three weeks of receiving the written dismissal; otherwise the dismissal counts as valid. Ordnung "
+        "shows the date with a 'get advice' card and never drafts court actions.",
+        f"{_GII}/kschg/__4.html",
+        None,
+    ),
+    (
+        "sgb3_38",
+        "Register as job-seeking (arbeitsuchend)",
+        "§ 38 Abs. 1 SGB III; § 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III",
+        "Register with the Agentur für Arbeit at the latest three months before your job ends, or within "
+        "three days of learning the end date if less time is left. A short notice with your details and the "
+        "end date keeps the deadline. Registering late can cost one week of unemployment benefit — not an "
+        "issue for working students and mini-jobbers, who are usually not insured against unemployment "
+        "(§ 27 SGB III).",
+        f"{_GII}/sgb_3/__38.html",
+        None,
+    ),
+    (
+        "sgb3_141",
+        "Register as unemployed (arbeitslos melden)",
+        "§ 141 Abs. 1 SGB III; § 137 Abs. 1 SGB III",
+        "Registering as job-seeking doesn't replace this: register as unemployed online or in person at the "
+        "latest on your first day without work (up to three months before is fine). Unemployment benefit is "
+        "only paid from then.",
+        f"{_GII}/sgb_3/__141.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ tenancy letters
+    (
+        "bgb_558b",
+        "Rent increase request: decide by the end of the second month",
+        "§ 558b Abs. 1, 2 BGB",
+        "You have until the end of the second calendar month after the request arrived to agree. The higher "
+        "rent is owed from the start of the third month, and only if you agree; otherwise the landlord can "
+        "sue for your consent within the following three months.",
+        f"{_GII}/bgb/__558b.html",
+        None,
+    ),
+    (
+        "bgb_558_3",
+        "Rent cap (Kappungsgrenze)",
+        "§ 558 Abs. 1, 3 BGB",
+        "Within three years the rent (without operating costs) may rise by at most 20 %, or 15 % where the "
+        "Land has set the lower cap. The rent must also have been unchanged for 15 months when the increase "
+        "takes effect.",
+        f"{_GII}/bgb/__558.html",
+        None,
+    ),
+    (
+        "bgb_574b",
+        "Objecting to a landlord's notice: two months before the end",
+        "§ 574b Abs. 1, 2 BGB; § 574 BGB",
+        "If moving out would be a hardship, you can object to the notice and ask to stay. The objection "
+        "must reach the landlord at the latest two months before the tenancy ends; text form is enough "
+        "since 2025. The period is counted backwards and never moves to a later day. Only for a home: not "
+        "for a garage, parking space or business premises let on its own (§ 578 BGB), a short let or a "
+        "furnished room in the landlord's own flat (§ 549 Abs. 2 BGB).",
+        f"{_GII}/bgb/__574b.html",
+        "2025-01-01",
+    ),
+    (
+        "bgb_549",
+        "Short lets and furnished rooms in the landlord's flat",
+        "§ 549 Abs. 2, 3 BGB",
+        "The hardship objection (§§ 574–575 BGB) and the rent-increase rules (§§ 557–561 BGB) don't apply to "
+        "a flat let only for temporary use or a furnished room in the flat the landlord lives in; in a "
+        "student hall the rent-increase rules don't apply either. A tenants' association can tell which "
+        "applies to you.",
+        f"{_GII}/bgb/__549.html",
+        None,
+    ),
+    (
+        "bgb_556_3",
+        "Operating-cost statements: the 12-month limits",
+        "§ 556 Abs. 3 S. 2, 3, 5, 6 BGB; § 556 Abs. 4 BGB",
+        "The landlord's statement must arrive within twelve months after the billing period ends; after "
+        "that a back-payment is no longer owed unless the landlord was not responsible for the delay (a "
+        "credit stays yours). Your objections must reach the landlord within twelve months of receiving it. "
+        "You may inspect the receipts.",
+        f"{_GII}/bgb/__556.html",
+        None,
+    ),
+    (
+        "bgb_536c",
+        "Report defects in the flat",
+        "§ 536c Abs. 1, 2 BGB; § 536 Abs. 1 BGB",
+        "A tenant must report a defect to the landlord without delay. The rent is reduced by law while the defect "
+        "lasts; if you don't report it, you can lose that for the time the landlord couldn't repair it because "
+        "they didn't know (and may owe damages).",
+        f"{_GII}/bgb/__536c.html",
+        None,
+    ),
+    # ------------------------------------------------------------------ consumer letters
+    (
+        "bgb_355",
+        "Withdrawal (Widerruf): 14 days",
+        "§ 355 Abs. 1, 2 BGB; § 356 Abs. 2 BGB; § 193 BGB",
+        "Contracts concluded online, by phone or at your door can be withdrawn within 14 days without "
+        "reasons; for goods the days start when they arrive. Sending the withdrawal in time is enough, and "
+        "a period ending on a Saturday, Sunday or holiday runs to the next working day.",
+        f"{_GII}/bgb/__355.html",
+        None,
+    ),
+    (
+        "bgb_356_4",
+        "No or wrong withdrawal instructions: 12 months and 14 days",
+        "§ 356 Abs. 3 S. 1, Abs. 4 S. 1 BGB; Art. 10 Abs. 1 RL 2011/83/EU",
+        "Without proper instructions the 14 days don't start; the right to withdraw ends at the latest "
+        "twelve months after the regular 14 days would have ended. Financial services follow other rules.",
+        f"{_GII}/bgb/__356.html",
+        None,
+    ),
+    (
+        "bgb_356a",
+        "Online withdrawal button",
+        "§ 356a BGB",
+        "Shops and services that sell online must offer a withdrawal button. A withdrawal sent with it "
+        "before the deadline counts as in time; the company must confirm it at once.",
+        f"{_GII}/bgb/__356a.html",
+        "2026-06-19",
+    ),
+    (
+        "ao_222",
+        "Tax payment deferral (Stundung)",
+        "§ 222 AO",
+        "The tax office may defer a tax payment, also in instalments, if paying at once would be a "
+        "considerable hardship and the tax is not at risk. It must be applied for; interest is usually charged.",
+        f"{_GII}/ao_1977/__222.html",
         None,
     ),
     # ------------------------------------------------------------------ contracts
@@ -478,6 +779,17 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "bgb_573c_landlord",
+        "A landlord's notice: its earliest end",
+        "§ 573c Abs. 1 BGB; BGH VIII ZR 206/04",
+        "A landlord's ordinary notice on a flat that arrives by the 3rd working day (Werktag, Saturday counts) "
+        "of a month ends the tenancy at the end of the month after next — after five and eight years of "
+        "tenancy three and six months later. A notice with too short a period usually ends the tenancy at "
+        "the next date the law allows.",
+        f"{_GII}/bgb/__573c.html",
+        None,
+    ),
+    (
         "bgb_622",
         "Employee's notice",
         "§ 622 Abs. 1, 3, 6 BGB",
@@ -488,9 +800,12 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     ),
     (
         "fixed_term",
-        "Fixed-term contracts end by themselves",
+        "Fixed-term contracts",
         "§ 542 Abs. 2 BGB; § 620 Abs. 1 BGB; § 15 Abs. 1 TzBfG",
-        "A contract agreed for a fixed period ends on its end date without notice.",
+        "A contract agreed for a fixed period ends on its end date without notice — a flat let only where the "
+        "lease gives a legal reason for the fixed term in writing (§ 575 Abs. 1 BGB), otherwise it counts as "
+        "open-ended and ending it needs notice. A lease or job used on after its end may continue (§ 545 BGB, "
+        "§ 15 Abs. 6 TzBfG).",
         f"{_GII}/bgb/__620.html",
         None,
     ),
@@ -501,6 +816,15 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "When no special consumer rule applies, Ordnung uses the term and notice period written in the "
         "contract.",
         None,
+        None,
+    ),
+    (
+        "bgb_675h",
+        "Current accounts: cancel any time",
+        "§ 675h Abs. 1 BGB",
+        "A payment account (Girokonto) can be cancelled by the customer at any time without notice, unless a "
+        "notice period was agreed; an agreed period of more than one month is void.",
+        f"{_GII}/bgb/__675h.html",
         None,
     ),
     # ------------------------------------------------------------------ sending & form
@@ -525,7 +849,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "bgb_309_13",
         "Text form is enough for cancellations",
         "§ 309 Nr. 13 BGB",
-        "Standard terms cannot require more than text form (e.g. e-mail) for notices in most consumer "
+        "Standard terms cannot require more than text form (e.g. email) for notices in most consumer "
         "contracts.",
         f"{_GII}/bgb/__309.html",
         "2016-10-01",
@@ -534,7 +858,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "bgb_568",
         "Tenancy notice needs a signature",
         "§ 568 Abs. 1 BGB; § 126 BGB",
-        "Notice on a flat must be in writing with a handwritten signature; e-mail, fax or text message "
+        "Notice on a flat must be in writing with a handwritten signature; email, fax or text message "
         "is not enough.",
         f"{_GII}/bgb/__568.html",
         None,
@@ -551,7 +875,7 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "ao_357",
         "How to file a tax objection",
         "§ 357 Abs. 1 AO",
-        "A tax objection can be filed in writing, electronically (ELSTER or e-mail) or in person for the "
+        "A tax objection can be filed in writing, electronically (ELSTER or email) or in person for the "
         "record.",
         f"{_GII}/ao_1977/__357.html",
         None,
@@ -560,10 +884,20 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     (
         "enwg_41_5",
         "Energy price increase: cancel when it takes effect",
-        "§ 41 Abs. 5 EnWG; § 5 Abs. 3 StromGVV",
+        "§ 41 Abs. 5 EnWG",
         "Households must be told about a price change at least one month in advance and may then cancel "
         "without notice, effective when the change takes effect.",
         f"{_GII}/enwg_2005/__41.html",
+        None,
+    ),
+    (
+        "stromgvv_5_3",
+        "Basic supply price increase: cancel when it takes effect",
+        "§ 5 Abs. 2, 3 StromGVV; § 5 Abs. 2, 3 GasGVV",
+        "In basic supply (Grundversorgung) a price change must be announced six weeks ahead and takes effect "
+        "on the 1st of a month; you may cancel without notice, effective when it takes effect. Special "
+        "contracts follow § 41 Abs. 5 EnWG alone.",
+        f"{_GII}/stromgvv/__5.html",
         None,
     ),
     (
@@ -595,12 +929,35 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     ),
 ]
 
-RULES: dict[str, RuleInfo] = {
-    rid: RuleInfo(
-        id=rid, title=title, citation=citation, summary=summary, url=url, effective_from=effective_from
-    )
-    for rid, title, citation, summary, url, effective_from in _RULES
+#: The groups of the "How dates are computed" screen: each starts at its rule and runs to the next.
+TOPIC_STARTS: dict[str, str] = {
+    "bgb_187_1": "Counting periods",
+    "ao_122_2_1": "When a letter counts as delivered",
+    "ao_355": "Objections and court action",
+    "bgb_309_9_new": "Contracts and notice",
+    "bgb_130": "Sending and form",
+    "enwg_41_5": "Price increases",
 }
+
+
+def _with_topics() -> dict[str, RuleInfo]:
+    rules: dict[str, RuleInfo] = {}
+    topic: str | None = None
+    for rid, title, citation, summary, url, effective_from in _RULES:
+        topic = TOPIC_STARTS.get(rid, topic)
+        rules[rid] = RuleInfo(
+            id=rid,
+            title=title,
+            citation=citation,
+            summary=summary,
+            url=url,
+            effective_from=effective_from,
+            topic=topic,
+        )
+    return rules
+
+
+RULES: dict[str, RuleInfo] = _with_topics()
 
 
 def list_rules() -> list[RuleInfo]:

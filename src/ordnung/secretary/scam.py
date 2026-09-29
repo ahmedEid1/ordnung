@@ -1,6 +1,8 @@
 """Payment-scam checks done by code, never by the model (SPEC § 21 "Scam checks").
 
-* :func:`iban_valid` — ISO 13616 checksum (mod 97) plus the length of well-known countries.
+* :func:`iban_valid` — well-formed by :func:`ordnung.money.iban.inspect_iban`'s policy (a country
+  that issues IBANs, its registered length, the ISO 13616 mod-97 checksum): one policy for the
+  app's checks and the ``check_iban`` rules tool, so they never disagree on the same IBAN.
 * :func:`payment_mismatch` — a payment demand whose IBAN (or payee) differs from what was seen
   before for the same sender, or — for a sender with no payment history — from an organisation with
   a look-alike name (``Rundfunk-Beitragsservice – Zahlungszentrale`` vs ``Beitragsservice
@@ -19,31 +21,10 @@ from rapidfuzz import fuzz, utils
 
 from ordnung.db.store import Store
 from ordnung.models import Party, PaymentDetails
+from ordnung.money.iban import INVALID_IBAN_ADVICE, inspect_iban
 
 FindingKind = Literal["invalid_iban", "iban_changed", "similar_party_iban", "payee_changed"]
 
-#: IBAN lengths of countries a person in Germany commonly pays to (others: checksum only).
-IBAN_LENGTHS: dict[str, int] = {
-    "AT": 20,
-    "BE": 16,
-    "CH": 21,
-    "CZ": 24,
-    "DE": 22,
-    "DK": 18,
-    "ES": 24,
-    "FI": 18,
-    "FR": 27,
-    "GB": 22,
-    "IE": 22,
-    "IT": 27,
-    "LU": 20,
-    "NL": 18,
-    "NO": 15,
-    "PL": 28,
-    "PT": 25,
-    "SE": 24,
-}
-_IBAN_SHAPE = re.compile(r"^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$")
 _IBAN_NOISE = re.compile(r"[\s\-.]+")
 
 #: Words that say nothing about *which* organisation it is.
@@ -164,16 +145,12 @@ def _misread(iban: str, known: Iterable[str]) -> bool:
 
 
 def iban_valid(iban: str) -> bool:
-    """Whether ``iban`` has a valid shape, known-country length and ISO 13616 mod-97 checksum."""
-    value = normalize_iban(iban)
-    if not _IBAN_SHAPE.match(value):
-        return False
-    expected = IBAN_LENGTHS.get(value[:2])
-    if expected is not None and len(value) != expected:
-        return False
-    rearranged = value[4:] + value[:4]
-    digits = "".join(str(int(char, 36)) for char in rearranged)
-    return int(digits) % 97 == 1
+    """Whether ``iban`` is well-formed (:func:`ordnung.money.iban.inspect_iban`, module docstring).
+
+    Two letters that are no IBAN country (``US``, ``ZZ``) are not an IBAN, however the checksum
+    adds up, and every registry country's length counts.
+    """
+    return inspect_iban(normalize_iban(iban)).valid
 
 
 def format_iban(iban: str) -> str:
@@ -317,13 +294,20 @@ def _look_alike_conflict(
     return None
 
 
+def invalid_iban_message(iban: str) -> str:
+    """The warning for an IBAN that is not well-formed, with the reasons :func:`inspect_iban` found.
+
+    The reasons are the ``check_iban`` tool's own words (an unknown country, a wrong length, wrong
+    check digits), so the app never blames the check digits for a length or country problem.
+    """
+    problems = " ".join(inspect_iban(normalize_iban(iban)).problems)
+    return f"The IBAN {format_iban(iban)} is not a valid account number. {problems} {INVALID_IBAN_ADVICE}"
+
+
 def _invalid(party: Party, iban: str, payee: str | None) -> ScamFinding:
     return ScamFinding(
         kind="invalid_iban",
-        message=(
-            f"The IBAN {format_iban(iban)} is not a valid account number (its check digits are wrong). "
-            "It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying."
-        ),
+        message=invalid_iban_message(iban),
         party_id=party.id,
         iban=iban,
         payee=payee,

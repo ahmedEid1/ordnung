@@ -11,11 +11,12 @@ export interface AvatarProps {
   className?: string;
 }
 
+// initials are decorative (the name is always next to them), but still no smaller than 10–11 px
 const sizes = {
-  xs: "size-5 text-[9px] rounded-[5px]",
-  sm: "size-6 text-[10px] rounded-md",
+  xs: "size-5 text-[10px] rounded-[5px]",
+  sm: "size-6 text-2xs rounded-md",
   md: "size-8 text-xs rounded-lg",
-  lg: "size-12 text-base rounded-xl",
+  lg: "size-12 text-lg rounded-xl",
 };
 
 /** Initials monogram for people & organisations. Decorative (the name is always shown next to it). */

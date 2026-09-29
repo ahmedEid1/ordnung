@@ -23,7 +23,7 @@ function comp(c: Partial<ContractComputation> & Pick<ContractComputation, "regim
 export const CONTRACTS: Contract[] = [
   contract({
     id: "ctr_rent",
-    name: "Flat Musterweg 12",
+    name: "Flat Beispielweg 5",
     category: "rent",
     party_id: "pty_wohnbau",
     case_id: "cas_flat",
@@ -79,11 +79,11 @@ export const CONTRACTS: Contract[] = [
       notes: ["FunkNetz must offer a cancel button on its website (§ 312k BGB) — the fastest way."],
       steps: [
         step("Contract started", "2024-11-15"),
-        step("Minimum term (24 months) ends", "2026-11-14", "bgb188_months", "§ 188 Abs. 2 BGB"),
+        step("Minimum term (24 months) ends", "2026-11-14", "bgb_188", "§ 188 Abs. 2 BGB"),
         step("One month's notice → must arrive by", "2026-10-14", "tkg56", "§ 56 Abs. 3 TKG"),
         step("By post: allow 4 working days", "2026-10-08", "postal_buffer"),
       ],
-      rule_ids: ["tkg56", "bgb188_months", "postal_buffer", "bgb312k"],
+      rule_ids: ["tkg56", "bgb_188", "postal_buffer", "bgb312k"],
     }),
     created_at: ts("2026-01-12", "21:41"),
   }),
@@ -112,10 +112,10 @@ export const CONTRACTS: Contract[] = [
       summary: "The first 12 months end on 30 Sep 2026. From then on you can cancel any time with one month's notice.",
       steps: [
         step("Supply started", "2025-10-01"),
-        step("First term of 12 months ends", "2026-09-30", "bgb188_months", "§ 188 Abs. 2 BGB"),
+        step("First term of 12 months ends", "2026-09-30", "bgb_188", "§ 188 Abs. 2 BGB"),
         step("Afterwards: one month's notice at any time", null, "bgb309_9", "§ 309 Nr. 9 BGB"),
       ],
-      rule_ids: ["bgb309_9", "bgb188_months"],
+      rule_ids: ["bgb309_9", "bgb_188"],
     }),
     created_at: ts("2025-09-21", "10:03"),
   }),
@@ -140,7 +140,7 @@ export const CONTRACTS: Contract[] = [
       regime: "bgb309_new",
       earliest_exit: "2026-10-28",
       summary: "The first year is over. You can cancel any time with one month's notice — sent today, it would end on 28 Oct.",
-      steps: [step("First term ended", "2026-02-28", "bgb188_months"), step("One month's notice from today", "2026-10-28", "bgb309_9", "§ 309 Nr. 9 BGB")],
+      steps: [step("First term ended", "2026-02-28", "bgb_188"), step("One month's notice from today", "2026-10-28", "bgb309_9", "§ 309 Nr. 9 BGB")],
       rule_ids: ["bgb309_9"],
     }),
   }),
@@ -185,7 +185,7 @@ export const CONTRACTS: Contract[] = [
     name: "Muster BKK student insurance",
     category: "insurance",
     party_id: "pty_bkk",
-    customer_number: "R123456789",
+    customer_number: "R482019379",
     cost_amount: 142.86,
     cost_interval: "monthly",
     area: "health",
@@ -212,14 +212,18 @@ export const CONTRACTS: Contract[] = [
     area: "mobility",
     source_doc_id: "doc_dticket",
     evidence: [ev("doc_dticket", Q.dticket.price), ev("doc_dticket", Q.dticket.cancel)],
+    // as the rules engine computes it (walkthrough of phase 2: the static demo said "31 Oct", the live demo
+    // "2 Nov"): the letter's "by the 10th of a month, to its end" is no notice period the reading gives, so
+    // the engine assumes the longest the law allows — and the card asks to check it
+    concluded_date: "2026-01-20",
     computed: comp({
-      regime: "as_written",
-      cancel_by: "2026-10-10",
-      earliest_exit: "2026-10-31",
-      summary: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct.",
-      steps: [step("Cancellation must arrive by the 10th", "2026-10-10"), step("Subscription ends at the end of the month", "2026-10-31")],
+      regime: "bgb309_new",
+      earliest_exit: "2026-11-02",
+      summary: "You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.",
+      steps: [step("If it arrives by Fri 2 Oct 2026, the contract ends one month later, on Mon 2 Nov 2026", "2026-11-02", "bgb_188", "§ 188 Abs. 1, 2 BGB")],
+      rule_ids: ["bgb_309_9_new", "bgb_188"],
       confidence: "medium",
-      warnings: ["Based on the contract text; no special legal rule applies."],
+      warnings: ["The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date."],
     }),
   }),
   contract({
@@ -234,7 +238,7 @@ export const CONTRACTS: Contract[] = [
     evidence: [ev("doc_bank", Q.bank.fee)],
     computed: comp({
       regime: "as_written",
-      summary: "You can close a current account at any time. The bank wants to raise the fee to 6,90 € from 1 Dec — only with your consent.",
+      summary: "You can close a current account at any time. The bank wants to raise the fee to €6.90 from 1 Dec — only with your consent.",
       confidence: "medium",
     }),
   }),

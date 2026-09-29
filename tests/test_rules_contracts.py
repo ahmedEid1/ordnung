@@ -9,6 +9,8 @@ grundversorgung_stromgvv_gasgvv_cancellation, ``573c`` = bgb_573c_residential_le
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -297,7 +299,25 @@ def test_fixed_term_employment_is_a_milestone() -> None:
     assert result.summary == "This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed."
     assert "fixed_term" in result.rule_ids
     past = compute_contract(terms(category="employment", end_date="2026-03-31"), ctx())
-    assert past.summary == "This contract ended on Tue 31 Mar 2026."
+    # never "ended": a job the person still works in may continue with no fixed term (§ 15 Abs. 6 TzBfG)
+    assert past.summary.startswith("This job's fixed-term end date, Tue 31 Mar 2026, has passed.")
+    assert "§ 15 Abs. 6 TzBfG" in past.summary
+    gym = compute_contract(terms(category="gym", end_date="2026-03-31"), ctx())
+    assert gym.summary == "This contract ended on Tue 31 Mar 2026."
+
+
+def test_a_fixed_term_flat_let_may_still_need_notice() -> None:
+    """Release blocker (ADR 0008), resolved in review round 1: a flat let's fixed term needs a written legal
+    reason, or the lease counts as open-ended (§ 575 Abs. 1 S. 2 BGB) — never "ends by itself, no
+    cancellation needed" — and one used on after its end may continue (§ 545 BGB): never "ended"."""
+    lease = compute_contract(terms(category="rent", start_date="2025-04-01", end_date="2027-03-31"), ctx())
+    assert lease.regime == "rent573c" and "fixed_term" in lease.rule_ids
+    assert "no cancellation needed" not in lease.summary and "§ 575 Abs. 1 BGB" in lease.summary
+    assert lease.summary.startswith("This lease's fixed term ends on Wed 31 Mar 2027.")
+    past = compute_contract(terms(category="rent", end_date="2026-03-31"), ctx())
+    assert "ended on" not in past.summary and "§ 545 BGB" in past.summary
+    rule = catalog.get_rule("fixed_term")
+    assert "end by themselves" not in rule.title and "§ 575" in rule.summary
 
 
 @pytest.mark.parametrize(
@@ -611,6 +631,33 @@ def test_309_old_caps_and_bases() -> None:
     assert no_term.cancel_by is None and no_term.confidence == "low"
 
 
+def test_a_current_account_can_be_closed_any_time() -> None:
+    """Walkthrough of phase 2: "Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei
+    kündigen" (read as notice any time, no period) got "We couldn't compute a cancellation date". A consumer's
+    current account can be closed any time without notice unless one was agreed, and an agreed one counts
+    for at most a month (§ 675h Abs. 1 BGB)."""
+    account = compute_contract(terms(category="bank", notice_basis="any_time"), ctx())
+    assert account.regime == "bgb675h"
+    assert account.earliest_exit == "2026-10-01"  # the day a letter posted today arrives
+    assert account.cancel_by is None and account.next_renewal is None
+    assert account.confidence == "high" and account.warnings == []
+    assert "bgb_675h" in account.rule_ids
+    assert account.summary.startswith("You can cancel any time, without notice (§ 675h Abs. 1 BGB)")
+    assert any("§ 675h" in note for note in account.notes)
+    agreed = compute_contract(
+        terms(category="bank", notice_value=2, notice_unit="weeks", notice_basis="any_time"), ctx()
+    )
+    assert agreed.regime == "bgb675h" and agreed.earliest_exit == "2026-10-15"
+    capped = compute_contract(
+        terms(category="bank", notice_value=3, notice_unit="months", notice_basis="any_time"), ctx()
+    )
+    assert capped.earliest_exit == "2026-11-01"  # three months agreed, one month is the most (void beyond)
+    assert any("at most one month" in w for w in capped.warnings)
+    # other bank contracts (a savings plan, a loan) follow their own terms
+    fixed = compute_contract(terms(category="bank", notice_basis="end_of_term"), ctx())
+    assert fixed.regime == "as_written"
+
+
 def test_as_written_contracts() -> None:
     written = terms(
         category="bank",
@@ -629,10 +676,14 @@ def test_as_written_contracts() -> None:
         terms(category="bank", start_date="2025-01-01", initial_term_months=12), ctx()
     )
     assert no_notice.cancel_by is None
-    open_missing = compute_contract(terms(category="bank", notice_basis="any_time"), ctx())
+    # a business's bank contract that can be ended any time follows its terms (a consumer's is § 675h BGB)
+    open_missing = compute_contract(terms(category="bank", notice_basis="any_time", is_consumer=False), ctx())
     assert open_missing.earliest_exit is None
     any_time = compute_contract(
-        terms(category="bank", notice_value=1, notice_unit="months", notice_basis="any_time"), ctx()
+        terms(
+            category="bank", notice_value=1, notice_unit="months", notice_basis="any_time", is_consumer=False
+        ),
+        ctx(),
     )
     assert any_time.earliest_exit == "2026-11-01"
     unknown_renewal = compute_contract(
@@ -729,6 +780,9 @@ def test_energy_price_increase() -> None:
     assert receipt.confidence == "high"
     assert receipt.warnings == []
     assert "enwg_41_5" in receipt.rule_ids
+    # a special contract: the basic-supply regulation (StromGVV) is not cited (walkthrough of phase 2)
+    assert "stromgvv_5_3" not in receipt.rule_ids
+    assert all("StromGVV" not in step.citation for step in receipt.steps if step.citation)
 
 
 def test_energy_price_increase_holidays_and_late_notice() -> None:
@@ -745,6 +799,7 @@ def test_basic_supply_price_change() -> None:
     ok = price_increase_window(D("2027-01-01"), "energy", D("2026-11-19"), ctx(), is_basic_supply=True)
     assert ok.due_date == "2026-12-31"
     assert ok.warnings == []
+    assert {"enwg_41_5", "stromgvv_5_3"} <= set(ok.rule_ids)
     borderline = price_increase_window(
         D("2027-01-01"), "energy", D("2026-11-20"), ctx(), is_basic_supply=True
     )
@@ -902,6 +957,16 @@ def test_catalog_entries_are_complete() -> None:
         catalog.get_rule("nope")
 
 
+def test_every_rule_is_listed_under_a_topic_in_one_run() -> None:
+    """The settings screen groups the rules by topic: every rule has one and each topic is one block."""
+    assert set(catalog.TOPIC_STARTS) <= set(catalog.RULES)
+    topics = [rule.topic for rule in catalog.list_rules()]
+    assert None not in topics
+    runs = [topic for i, topic in enumerate(topics) if i == 0 or topic != topics[i - 1]]
+    assert runs == list(catalog.TOPIC_STARTS.values())
+    assert catalog.get_rule("tkg_57").topic == "Price increases"
+
+
 def test_rule_maps_only_use_catalog_ids() -> None:
     """Rule ids are validated when used (Trace.use, catalog.citation); the static maps are checked here."""
     from ordnung.rules import contracts, deadlines, delivery
@@ -919,6 +984,25 @@ def test_docs_mention_every_rule_and_the_check_date() -> None:
     text = docs.read_text(encoding="utf-8")
     assert [rule for rule in catalog.RULES if f"`{rule}`" not in text] == []
     assert "25 September 2026" in text and catalog.LAST_CHECKED == "2026-09-25"
+
+
+def test_the_static_demo_shows_the_catalogs_texts_for_the_engines_rule_ids() -> None:
+    """Reviewer repro: the static demo's rules list (``web/src/mocks/data/system.ts``) carries entries by
+    the engine's ids; their title, citation and summary are the catalog's, word for word — the demo
+    once cited § 188 Abs. 1, 2 BGB for the month-end clause of Abs. 3."""
+    mocks = Path(__file__).resolve().parents[1] / "web" / "src" / "mocks" / "data" / "system.ts"
+    shown = {
+        found.group(1): found.group(0)
+        for found in re.finditer(
+            r'\{ id: "([a-z0-9_]+)", title: .*\},$', mocks.read_text(encoding="utf-8"), re.M
+        )
+    }
+    engine_ids = sorted(set(shown) & set(catalog.RULES))
+    assert {"bgb_187_1", "bgb_188", "bgb_193", "private_sender_arrival"} <= set(engine_ids)
+    for rule_id in engine_ids:
+        rule = catalog.get_rule(rule_id)
+        for field in (rule.title, rule.citation, rule.summary):
+            assert json.dumps(field, ensure_ascii=False) in shown[rule_id], (rule_id, field)
 
 
 def test_missing_conclusion_date_uses_start_date() -> None:
@@ -976,3 +1060,36 @@ def test_energy_special_contract_mentions_section_310() -> None:
         terms(category="energy", concluded_date="2024-01-01", notice_value=1, notice_unit="months"), ctx()
     )
     assert any("§ 310 Abs. 2 BGB" in n for n in result.notes)
+
+
+def test_a_contract_notice_counted_back_over_a_partial_holiday_is_named() -> None:
+    """A gym contract in Bavaria: the letter must be posted by Fri 11 Aug 2028 to arrive by Thu 17 Aug, but
+    where Tue 15 Aug is a holiday (Munich) the post needs a working day more. A price-increase window on
+    that day itself never moves: its safe date is a working day earlier there."""
+    gym = terms(
+        category="gym",
+        party_kind="gym",
+        concluded_date="2027-09-10",
+        start_date="2027-09-18",
+        initial_term_months=12,
+        notice_value=1,
+        notice_unit="months",
+        notice_basis="end_of_term",
+    )
+    result = compute_contract(gym, ctx(today="2028-08-01", region="BY"))
+    assert (result.cancel_by, result.send_by, result.confidence) == ("2028-08-17", "2028-08-11", "high")
+    assert [w for w in result.warnings if "Mariä Himmelfahrt" in w] == [
+        "Tue 15 Aug 2028 is Mariä Himmelfahrt, a public holiday only in the communities of Bayern with more "
+        "Catholic than Protestant residents (as the Landesamt für Statistik lists them; Munich among them), "
+        "which is not counted here. Where it holds, the send-by or safe date, counted back over it, is a "
+        "working day earlier: act a working day before it to be safe."
+    ]
+    assert compute_contract(gym, ctx(today="2028-08-01", region="HH")).warnings == []
+    window = price_increase_window(
+        D("2025-08-16"), "energy", D("2025-07-01"), ctx(today="2025-07-10", region="BY")
+    )
+    assert (window.due_date, window.safe_date) == ("2025-08-15", "2025-08-15")
+    assert any(
+        "this deadline does not move off it, so the safe date is a working day earlier" in w
+        for w in window.warnings
+    )

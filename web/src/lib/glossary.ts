@@ -85,7 +85,7 @@ const entries: GlossaryEntry[] = [
   {
     term: "Rundfunkbeitrag",
     translation: "broadcasting fee",
-    explanation: "The mandatory fee per household for public TV and radio (18,36 € per month in 2026).",
+    explanation: "The mandatory fee per household for public TV and radio (€18.36 per month in 2026).",
   },
   {
     term: "Semesterbeitrag",

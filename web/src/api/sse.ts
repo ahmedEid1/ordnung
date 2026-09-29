@@ -4,7 +4,9 @@
  * One shared EventSource per app (mounted by `useEventsConnection()` in the app shell). It
  * invalidates the right queries when the backend reports changes, keeps the latest job progress
  * per document (for the upload stepper) and the "Claude paused" state. Auto-reconnects with
- * backoff; after a reconnect everything ledger-related is refetched in case events were missed.
+ * backoff; after a reconnect everything ledger-related is refetched in case events were missed. A
+ * connection that stays lost asks `/health`, so the app says when Ordnung stopped answering (and
+ * "Back online" once it answers again — see `app/queryClient.ts`).
  *
  * Components read state with {@link useEvents} / {@link useJobProgress} and can react to raw events
  * with {@link useServerEvent}.
@@ -48,6 +50,7 @@ const EVENT_TYPES = [
   "draft.created",
   "draft.sent",
   "demo.mail",
+  "folder.updated",
 ] as const satisfies readonly ServerEventType[];
 
 // compile-time: the list above names every event of the API (fails when the backend adds one)
@@ -88,8 +91,16 @@ export function dismissJob(docId: string): void {
   });
 }
 
-/** Record progress locally (used right after an upload so the stepper appears instantly). */
+/**
+ * Record progress locally (used right after an upload or a "Read again" so the stepper appears
+ * instantly). A seed never overwrites what the server already reported for the same job: callers
+ * seed in their mutation's `onSuccess`, which runs after the ledger refetch, and by then a short
+ * reading may have sent its final `done` or `failed` event (the card would otherwise stay on
+ * "Opening the file…" for good).
+ */
 export function seedJob(ev: JobProgressEvent): void {
+  const prev = state.jobs[jobKey(ev)];
+  if (prev && ev.job_id != null && prev.job_id === ev.job_id) return;
   applyJobProgress(ev);
 }
 
@@ -135,6 +146,8 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
     case "item.updated":
       void qc.invalidateQueries({ queryKey: qk.items.all });
       void qc.invalidateQueries({ queryKey: qk.dashboard });
+      // a letter's detail carries its to-dos and their GiroCodes (an amount changed elsewhere)
+      void qc.invalidateQueries({ queryKey: qk.documents.all });
       void qc.invalidateQueries({ queryKey: ["timeline"] });
       void qc.invalidateQueries({ queryKey: ["lanes"] });
       break;
@@ -162,6 +175,11 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
       void qc.invalidateQueries({ queryKey: qk.mail });
       void qc.invalidateQueries({ queryKey: qk.documents.all });
       break;
+    case "folder.updated":
+      // the watcher started, stopped or brought in a file (a waiting one sends no job events)
+      void qc.invalidateQueries({ queryKey: qk.folder });
+      if (ev.data.doc_id) void invalidateLedger(qc);
+      break;
     case "llm.paused":
       setState((s) => ({ ...s, paused: ev.data }));
       break;
@@ -184,6 +202,18 @@ let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let pauseTimer: ReturnType<typeof setTimeout> | null = null;
 let backoff = 1000;
 let everConnected = false;
+let offlineTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * A dropped connection that hasn't come back after this long asks `/health` again: if Ordnung
+ * doesn't answer, the query client's "Can't reach Ordnung" notice shows (a restart stays quiet).
+ */
+export const OFFLINE_GRACE_MS = 3000;
+
+function clearOfflineTimer() {
+  if (offlineTimer) clearTimeout(offlineTimer);
+  offlineTimer = null;
+}
 
 function open(qc: QueryClient) {
   if (typeof EventSource === "undefined") return;
@@ -191,11 +221,22 @@ function open(qc: QueryClient) {
   source = es;
   es.onopen = () => {
     backoff = 1000;
-    if (everConnected) void invalidateLedger(qc); // we may have missed events while offline
+    clearOfflineTimer();
+    if (everConnected) {
+      // we may have missed events while offline; a successful refetch also says "Back online"
+      void invalidateLedger(qc);
+      void qc.invalidateQueries({ queryKey: qk.health });
+    }
     everConnected = true;
     setState((s) => ({ ...s, connected: true }));
   };
   es.onerror = () => {
+    if (state.connected && !offlineTimer) {
+      offlineTimer = setTimeout(() => {
+        offlineTimer = null;
+        if (!state.connected && refCount > 0) void qc.refetchQueries({ queryKey: qk.health });
+      }, OFFLINE_GRACE_MS);
+    }
     setState((s) => (s.connected ? { ...s, connected: false } : s));
     if (es.readyState === EventSource.CLOSED && source === es) {
       es.close();
@@ -236,6 +277,7 @@ export function connectEvents(qc: QueryClient): () => void {
       source = null;
       if (retryTimer) clearTimeout(retryTimer);
       retryTimer = null;
+      clearOfflineTimer();
       setState((s) => ({ ...s, connected: false }));
     }
   };
@@ -301,6 +343,7 @@ export function useServerEvent<T extends ServerEventType>(
 
 /** Test helper: reset the module state. */
 export function __resetEventsForTests(): void {
+  clearOfflineTimer();
   state = { connected: false, jobs: {}, paused: null };
   subscribers.clear();
   eventListeners.clear();

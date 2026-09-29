@@ -1,5 +1,6 @@
-/** "Add to my calendar": download `calendar.ics` and the import guides per calendar app. */
+/** "Add your dates to your calendar": download `calendar.ics` and the import guides per calendar app. */
 import { api } from "@/api/endpoints";
+import { leadSpan } from "@/features/settings/logic";
 
 /** Start the download of all open dates as `ordnung.ics` (works for API URLs and mock data: URLs). */
 export function downloadCalendarFile(): void {
@@ -14,10 +15,24 @@ export function downloadCalendarFile(): void {
 
 export type CalendarApp = "google" | "apple" | "outlook";
 
+export interface GuideStep {
+  /** the step; `{link}` marks where `link` goes */
+  text: string;
+  /** a site to open, in a new tab */
+  link?: { label: string; href: string };
+}
+
+/** Steps for one way of importing (numbered from 1 — "On a Mac" and "On an iPhone" are alternatives). */
+export interface GuideSection {
+  /** "On a Mac" — none when the app has only one way */
+  title?: string;
+  steps: GuideStep[];
+}
+
 export interface CalendarGuide {
   app: CalendarApp;
   label: string;
-  steps: string[];
+  sections: GuideSection[];
   note?: string;
 }
 
@@ -25,38 +40,74 @@ export const CALENDAR_GUIDES: CalendarGuide[] = [
   {
     app: "google",
     label: "Google",
-    steps: [
-      "Open calendar.google.com on a computer (the phone app can't import files).",
-      "Click the gear icon → Settings → “Import & export”.",
-      "Choose “Select file from your computer”, pick ordnung.ics from your Downloads.",
-      "Pick the calendar to add the dates to and click Import.",
+    sections: [
+      {
+        steps: [
+          {
+            text: "Open {link} on a computer (the phone app can't import files).",
+            link: { label: "calendar.google.com", href: "https://calendar.google.com/calendar/r/settings/export" },
+          },
+          { text: "In Settings → “Import & export”, choose “Select file from your computer” and pick ordnung.ics from your Downloads." },
+          { text: "Pick the calendar to add the dates to and click Import." },
+        ],
+      },
     ],
     note: "The dates then appear on your phone too.",
   },
   {
     app: "apple",
     label: "Apple",
-    steps: [
-      "On a Mac: double-click ordnung.ics in your Downloads folder (or in Calendar choose File → Import…).",
-      "Choose the calendar for your dates and click OK.",
-      "On an iPhone or iPad: open the file from Files or Mail and tap “Add All”.",
+    sections: [
+      {
+        title: "On a Mac",
+        steps: [
+          { text: "Double-click ordnung.ics in your Downloads folder (or in Calendar choose File → Import…)." },
+          { text: "Choose the calendar for your dates and click OK." },
+        ],
+      },
+      {
+        title: "On an iPhone or iPad",
+        steps: [{ text: "Open ordnung.ics from Files or Mail and tap “Add All”." }],
+      },
     ],
   },
   {
     app: "outlook",
     label: "Outlook",
-    steps: [
-      "Outlook on the web: open Calendar → Add calendar → Upload from file.",
-      "Browse to ordnung.ics, choose a calendar and click Import.",
-      "Outlook for Windows: File → Open & Export → Import/Export → “Import an iCalendar (.ics)”.",
+    sections: [
+      {
+        title: "Outlook on the web",
+        steps: [{ text: "Open Calendar → Add calendar → Upload from file." }, { text: "Browse to ordnung.ics, choose a calendar and click Import." }],
+      },
+      {
+        title: "Outlook for Windows",
+        steps: [{ text: "File → Open & Export → Import/Export → “Import an iCalendar (.ics)”, then pick ordnung.ics." }],
+      },
     ],
   },
 ];
 
-/** "Reminders: 14, 7, 3 and 1 days before each deadline (change them in Settings)." */
-export function reminderSentence(days: number[] | null | undefined): string {
+/** "14, 7, 3 and 1 days before each deadline" (null when the profile has none). */
+export function reminderDays(days: number[] | null | undefined): string | null {
   const list = [...new Set(days ?? [])].filter((d) => d > 0).sort((a, b) => b - a);
-  if (!list.length) return "Reminders follow your settings (change them in Settings).";
+  if (!list.length) return null;
   const words = list.length === 1 ? `${list[0]}` : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
-  return `Reminders: ${words} ${list.length === 1 && list[0] === 1 ? "day" : "days"} before each deadline (change them in Settings).`;
+  return `${words} ${list.length === 1 && list[0] === 1 ? "day" : "days"} before each deadline`;
+}
+
+/**
+ * The deadline alarms in the words of the Reminders chips (Settings → Calendar): "2 weeks, 1 week,
+ * 3 days and 1 day before each deadline", "1 week before each deadline and on the day" — null when
+ * there are none.
+ */
+export function reminderSentence(days: number[] | null | undefined): string | null {
+  const unique = [...new Set(days ?? [])];
+  const before = unique
+    .filter((d) => d > 0)
+    .sort((a, b) => b - a)
+    .map(leadSpan);
+  const onTheDay = unique.includes(0);
+  if (!before.length) return onTheDay ? "on the day of each deadline" : null;
+  const words = before.length === 1 ? before[0] : `${before.slice(0, -1).join(", ")} and ${before[before.length - 1]}`;
+  return `${words} before each deadline${onTheDay ? " and on the day" : ""}`;
 }

@@ -4,12 +4,14 @@
 holiday region, country or postal buffer recomputes the dates of every letter's to-dos (contracts
 are recomputed on read anyway). Settings guard the watched inbox folder (never the home folder, a
 file-system root or Ordnung's own data) and keep the server-controlled ``demo`` and
-``simulated_today`` read-only.
+``simulated_today`` read-only. A new inbox folder restarts the folder watcher; choosing Ordnung's own
+inbox folder (``<data>/inbox``) creates it.
 """
 
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -18,18 +20,22 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ordnung.api.deps import CtxDep, StoreDep, TodayDep
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
 from ordnung.api.routes.common import ledger_changed
 from ordnung.api.routes.dates import recompute_all_items
 from ordnung.app_context import AppContext
-from ordnung.config import Paths
+from ordnung.config import Paths, private_dir
 from ordnung.ingest.pipeline import ledger_lock
-from ordnung.models import AppSettings, Profile
+from ordnung.ingest.watcher import folder_chosen
+from ordnung.models import AppSettings, DesktopNotifyMode, Profile
 from ordnung.rules import normalize_region
+from ordnung.secretary.scam import iban_valid, normalize_iban
 
 router = APIRouter(tags=["profile"])
 
 _READ_ONLY_SETTINGS = ("demo", "simulated_today")
+#: The shape the Profile form accepts (``EMAIL`` in ``web/src/features/settings/ProfileSection.tsx``).
+_EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
 #: Profile fields the rules engine uses for to-do dates (holidays, German rules, send-by buffer).
 _DATE_FIELDS = ("region", "country", "postal_buffer_days")
 
@@ -51,6 +57,46 @@ class ProfilePatch(BaseModel):
     postal_buffer_days: int | None = Field(default=None, ge=0, le=30)
     is_student_visa: bool | None = None
     onboarded: bool | None = None
+    iban: str | None = Field(
+        default=None, max_length=50, description="your account, for refunds (empty: none)"
+    )
+
+    @field_validator("name")
+    @classmethod
+    def _real_name(cls, value: str | None) -> str | None:
+        """The sender on every letter: trimmed, never blank (as the Profile form checks it)."""
+        if value is None:
+            return None
+        name = " ".join(value.split())
+        if not name:
+            raise ValueError("Enter your name — it's the sender on your letters.")
+        return name
+
+    @field_validator("email")
+    @classmethod
+    def _email_address(cls, value: str | None) -> str | None:
+        """Trimmed; empty removes it; anything else must look like an address (name@example.de)."""
+        if value is None:
+            return None
+        email = value.strip()
+        if email and not _EMAIL.fullmatch(email):
+            raise ValueError("This doesn't look like an email address — like name@example.de.")
+        return email
+
+    @field_validator("phone")
+    @classmethod
+    def _trimmed(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
+
+    @field_validator("iban")
+    @classmethod
+    def _valid_iban(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None if value is None else ""
+        iban = normalize_iban(value)
+        if not iban_valid(iban):
+            raise ValueError("That IBAN isn't valid — check it against your bank card or banking app.")
+        return iban
 
     @field_validator("region")
     @classmethod
@@ -82,9 +128,16 @@ class SettingsPatch(BaseModel):
     models: dict[str, str] | None = None
     concurrency: int | None = Field(default=None, ge=1, le=8)
     inbox_dir: str | None = None
+    inbox_auto_read: bool | None = Field(
+        default=None, description="read new files from the watched folder at once (else they wait for you)"
+    )
     ocr: bool | None = None
     llm_brief: bool | None = None
     llm_review: bool | None = None
+    desktop_notifications: DesktopNotifyMode | None = None
+    desktop_notify_time: str | None = Field(
+        default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="Local time of day, HH:MM (24 h)"
+    )
     demo: bool | None = None
     simulated_today: str | None = None
 
@@ -183,7 +236,10 @@ def _checked_inbox(value: str | None, paths: Paths) -> str | None:
     problem = inbox_dir_problem(value, paths)
     if problem:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
-    return str(Path(value).expanduser().resolve())
+    folder = Path(value).expanduser().resolve()
+    if folder == paths.inbox.resolve():
+        private_dir(folder)  # Ordnung's own inbox folder: ready to save scans into
+    return str(folder)
 
 
 def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
@@ -202,6 +258,8 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
     if "inbox_dir" in changes:
         merged["inbox_dir"] = changes["inbox_dir"]
     ctx.store.save_settings(merged)
+    if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
+        folder_chosen(ctx.store)
     return ctx.reload_settings()
 
 
@@ -212,6 +270,9 @@ def read_settings(store: StoreDep) -> AppSettings:
 
 
 @router.put("/settings", response_model=AppSettings)
-async def update_settings(patch: SettingsPatch, ctx: CtxDep) -> AppSettings:
-    """Change settings (``demo`` and ``simulated_today`` can't be changed here)."""
-    return await asyncio.to_thread(_merge_settings, ctx, patch)
+async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
+    """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
+    restarts the folder watcher."""
+    settings = await asyncio.to_thread(_merge_settings, state.ctx, patch)
+    await state.folder.reconfigure()
+    return settings

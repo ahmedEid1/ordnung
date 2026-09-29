@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./styles/index.css";
 import { initTheme } from "@/app/theme";
 import { mockMode } from "@/mocks/mode";
+import { copyWithoutGlue } from "@/lib/glue";
 
 /**
  * A tab left open across an upgrade asks for page chunks the new build no longer has (404): load
@@ -24,6 +25,8 @@ function reloadOnStaleChunks() {
 async function boot() {
   initTheme();
   reloadOnStaleChunks();
+  // on-screen glue (non-breaking spaces and hyphens) never ends up in copied text
+  document.addEventListener("copy", copyWithoutGlue);
   // Mock mode (?mock=1, ?mock=full) or the zero-install static demo build: serve /api from memory.
   const mode = mockMode();
   if (mode !== "off") {

@@ -44,11 +44,15 @@ describe("Today page", () => {
 
     const coming = screen.getByRole("region", { name: /Coming up/ });
     expect(within(coming).getByText("Cancel phone contract — if you want to switch")).toBeInTheDocument();
-    expect(within(coming).getByText(/Send by Thu 8 Oct/)).toBeInTheDocument();
+    // the leaf shows the day; the row says what it means and who it is with
+    expect(within(coming).getByRole("link", { name: /Thursday 8 October.*Cancel phone contract.*Send · / })).toBeInTheDocument();
 
     const ideas = screen.getByRole("region", { name: "Ideas from your secretary" });
     expect(ideas).toHaveAttribute("data-tour", "today-ideas");
     expect(within(ideas).getAllByRole("article")).toHaveLength(3);
+    // the demo tour's ring on phones and short screens: the first Idea only (R1-tour-6)
+    expect(ideas.querySelectorAll("[data-tour-part]")).toHaveLength(1);
+    expect(within(ideas).getAllByRole("listitem")[0]).toHaveAttribute("data-tour-part");
     expect(within(ideas).getAllByRole("button", { name: "Remind me in a week" })).toHaveLength(3);
     expect(within(ideas).getByText(/Could save about €756/)).toBeInTheDocument();
     // an Idea that repeats a Top-3 card is not shown twice
@@ -68,9 +72,36 @@ describe("Today page", () => {
       ...d,
       attention: [],
       decisions: [],
+      waiting: 0,
       upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
     }));
     renderWithProviders(<TodayView />, { client });
     expect(await screen.findByRole("heading", { name: "All clear until Wed 14 Oct" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /from your folder/ })).toBeNull();
+  });
+
+  it("never says 'all clear' while letters from the folder wait unread, and points to them", async () => {
+    const client = await seededClient((d) => ({
+      ...d,
+      attention: [],
+      decisions: [],
+      waiting: 2,
+      upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
+    }));
+    renderWithProviders(<TodayView />, { client });
+    const card = await screen.findByRole("region", { name: "Not read yet: 2 letters from your folder" });
+    expect(within(card).getByRole("link", { name: /Review them/ })).toHaveAttribute("href", "/inbox");
+    // "not read yet" once, in the card's heading: its text says what is new, and Claude's note above gets no
+    // "Not in this note: 2 letters from your folder, not read yet." (UI audit round 2)
+    expect(within(card).getByText(/^Ordnung can't tell you what they ask or by when until they're read\. Nothing has been sent to Claude\.$/)).toBeInTheDocument();
+    expect(screen.getByText(/Two small payments this week/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not in this note/)).toBeNull();
+    // the Inbox's "not read yet" mark, not the deadline's hourglass
+    const icon = card.querySelector("svg")!.getAttribute("class")!;
+    expect(icon).toMatch(/lucide-folder-input/);
+    expect(icon).not.toMatch(/hourglass/);
+    expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.queryByText(/Nothing needs you/)).toBeNull();
   });
 });

@@ -25,6 +25,8 @@ export function useMockApi(opts: { full?: boolean; staticDemo?: boolean } = {}):
       } catch {
         body = init.body;
       }
+    } else if (init?.body instanceof FormData) {
+      body = init.body; // multipart uploads (the mock handlers read the form)
     }
     const path = url.pathname.replace(/^\/api/, "");
     calls.push({ method, path, body });

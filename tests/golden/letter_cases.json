@@ -1,0 +1,509 @@
+{
+  "schema": 1,
+  "as_of": "2026-09-26",
+  "author": "high-stakes letters (brief C1): worked examples derived from the statutes and from court, ministry, Arbeitsagentur, tenants' association and Verbraucherzentrale pages; each case cites where its rule and, where one exists, its example come from",
+  "semantics": {
+    "date": "compute_due(spec, ctx): due_date (and safe_date / confidence / send_by where stated)",
+    "statement": "tenancy.statement_check(period_end, arrived, confirmed, region): deadline, late, objections_by",
+    "statement_text": "advice.billing_period(text, before=arrived), then tenancy.statement_check: period_end, exact, labelled, deadline, late",
+    "withdrawal_long": "consumer.long_withdrawal_end(start): the last day without proper instructions",
+    "alternative": "a later date some sources give; the engine keeps the earlier one (SPEC § 21)"
+  },
+  "cases": [
+    {
+      "id": "zpo692-01-envelope-thursday",
+      "description": "Mahnbescheid des Amtsgerichts Hagen (Zentrales Mahngericht, NW), Zustellung per gelber Zustellungsurkunde am Do 24.09.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "text": "binnen zwei Wochen seit der Zustellung dieses Bescheids"},
+        "ctx": {"today": "2026-09-25", "region": "NW", "document_date": "2026-09-21", "received_date": "2026-09-24", "received_confirmed": true, "letter_kind": "court_payment_order"}
+      },
+      "expected": {"due_date": "2026-10-08", "confidence": "medium"},
+      "reasoning": [
+        "The two weeks run from Zustellung, the date on the yellow envelope: Thu 24 Sep 2026 (§ 692 Abs. 1 Nr. 3 ZPO).",
+        "Counting starts the next day (§ 222 Abs. 1 ZPO with § 187 Abs. 1 BGB); two weeks end on the same weekday: Thu 8 Oct 2026 (§ 188 Abs. 2 BGB).",
+        "A court deadline is never 'high' confidence in Ordnung (safety policy)."
+      ],
+      "sources": [
+        "§ 692 Abs. 1 Nr. 3 ZPO: 'innerhalb von zwei Wochen seit der Zustellung des Mahnbescheids' — https://www.gesetze-im-internet.de/zpo/__692.html",
+        "Mahngerichte.de: 'Der Antragsgegner hat nach Zustellung des Mahnbescheid zwei Wochen lang Zeit, entweder die Forderung zu begleichen oder Widerspruch einzulegen.' — https://www.mahngerichte.de/verfahrensueberblick/verfahrensablauf/widerspruch/",
+        "§ 222 ZPO — https://www.gesetze-im-internet.de/zpo/__222.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "zpo692-02-letterbox-saturday-new-year",
+      "description": "Mahnbescheid (AG Hagen, NW) am Sa 19.12.2026 in den Briefkasten eingelegt (Ersatzzustellung).",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "legal_basis": "§ 692 Abs. 1 Nr. 3 ZPO", "text": "binnen zwei Wochen seit der Zustellung"},
+        "ctx": {"today": "2026-12-21", "region": "NW", "document_date": "2026-12-16", "received_date": "2026-12-19", "received_confirmed": true}
+      },
+      "expected": {"due_date": "2027-01-04"},
+      "reasoning": [
+        "Putting the letter in the letterbox is the Zustellung, also on a Saturday (§ 180 S. 2 ZPO).",
+        "Two weeks later is Sat 2 Jan 2027; a court deadline ending on a Saturday ends with the next working day, Mon 4 Jan 2027 (§ 222 Abs. 2 ZPO)."
+      ],
+      "sources": [
+        "§ 180 ZPO: 'Mit der Einlegung gilt das Schriftstück als zugestellt. Der Zusteller vermerkt auf dem Umschlag … das Datum der Zustellung.' — https://www.gesetze-im-internet.de/zpo/__180.html",
+        "§ 222 Abs. 2 ZPO: 'Fällt das Ende einer Frist auf einen Sonntag, einen allgemeinen Feiertag oder einen Sonnabend, so endet die Frist mit Ablauf des nächsten Werktages.' — https://www.gesetze-im-internet.de/zpo/__222.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "zpo692-03-envelope-date-unknown",
+      "description": "Mahnbescheid vom Mo 21.09.2026; das Zustelldatum (Umschlag) ist nicht bekannt.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "text": "binnen zwei Wochen seit der Zustellung dieses Bescheids"},
+        "ctx": {"today": "2026-09-25", "region": "NW", "document_date": "2026-09-21", "letter_kind": "court_payment_order"}
+      },
+      "expected": {"due_date": "2026-10-05", "confidence": "low"},
+      "reasoning": [
+        "The order can only have been delivered on or after its date, so counting from Mon 21 Sep 2026 gives the earliest plausible deadline, Mon 5 Oct 2026 (SPEC § 21).",
+        "The real deadline is two weeks after the date on the envelope; Ordnung asks for it and shows 'low' confidence until then."
+      ],
+      "sources": [
+        "§ 692 Abs. 1 Nr. 3 ZPO — https://www.gesetze-im-internet.de/zpo/__692.html",
+        "Hessen, ordentliche Gerichtsbarkeit: 'Das Zustellungsdatum finden Sie auf dem Kuvert' — https://ordentliche-gerichtsbarkeit.hessen.de/themen-der-ordentlichen-gerichtsbarkeit/mahnverfahren/einspruch-gegen-einen-vollstreckungsbescheid"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "zpo339-01-berlin-unity-day",
+      "description": "Vollstreckungsbescheid des AG Wedding (Zentrales Mahngericht Berlin-Brandenburg), zugestellt Sa 19.09.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "text": "Einspruch binnen einer Notfrist von zwei Wochen ab Zustellung"},
+        "ctx": {"today": "2026-09-21", "region": "BE", "document_date": "2026-09-16", "received_date": "2026-09-19", "received_confirmed": true, "letter_kind": "enforcement_order"}
+      },
+      "expected": {"due_date": "2026-10-05", "confidence": "medium"},
+      "reasoning": [
+        "The Einspruch period is two weeks from Zustellung and a Notfrist (§ 700 Abs. 1, § 339 Abs. 1 ZPO).",
+        "Sat 19 Sep + two weeks = Sat 3 Oct 2026, German Unity Day; the period ends on Mon 5 Oct 2026 (§ 222 Abs. 2 ZPO)."
+      ],
+      "sources": [
+        "§ 339 Abs. 1 ZPO: 'Die Einspruchsfrist beträgt zwei Wochen; sie ist eine Notfrist und beginnt mit der Zustellung' — https://www.gesetze-im-internet.de/zpo/__339.html",
+        "§ 700 Abs. 1 ZPO: 'Der Vollstreckungsbescheid steht einem für vorläufig vollstreckbar erklärten Versäumnisurteil gleich.' — https://www.gesetze-im-internet.de/zpo/__700.html",
+        "Hessen, ordentliche Gerichtsbarkeit: 'ein Einspruch nur innerhalb einer Frist von zwei Wochen nach Zustellung des Vollstreckungsbescheides zulässig' — https://ordentliche-gerichtsbarkeit.hessen.de/themen-der-ordentlichen-gerichtsbarkeit/mahnverfahren/einspruch-gegen-einen-vollstreckungsbescheid"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "arbgg46a-01-labour-court-one-week",
+      "description": "Mahnbescheid des Arbeitsgerichts Berlin (ein Arbeitgeber fordert einen Lohnvorschuss zurück), Zustellung per gelber Zustellungsurkunde am Di 22.09.2026; die Lesung nennt zwei Wochen.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "weeks", "nature": "objection", "text": "binnen zwei Wochen seit der Zustellung"},
+        "ctx": {"today": "2026-09-23", "region": "BE", "document_date": "2026-09-21", "received_date": "2026-09-22", "received_confirmed": true, "letter_kind": "court_payment_order", "court": true, "labour_court": true}
+      },
+      "expected": {"due_date": "2026-09-29", "confidence": "low"},
+      "reasoning": [
+        "At a labour court the period in a Mahnbescheid is one week, not the two weeks of § 692 Abs. 1 Nr. 3 ZPO (§ 46a Abs. 3 ArbGG).",
+        "It runs from Zustellung, Tue 22 Sep 2026; one week later is Tue 29 Sep 2026 (§ 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB).",
+        "The reading says two weeks: Ordnung keeps the law's earlier week and says so (a soft note); a court deadline is never 'high' — here 'low'."
+      ],
+      "sources": [
+        "§ 46a Abs. 3 ArbGG: 'Die in den Mahnbescheid nach § 692 Abs. 1 Nr. 3 der Zivilprozeßordnung aufzunehmende Frist beträgt eine Woche.' — https://www.gesetze-im-internet.de/arbgg/__46a.html",
+        "§ 222 ZPO — https://www.gesetze-im-internet.de/zpo/__222.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "arbgg59-01-labour-court-enforcement-unity-day",
+      "description": "Vollstreckungsbescheid des Arbeitsgerichts Berlin, am Sa 26.09.2026 in den Briefkasten eingelegt (Datum auf dem gelben Umschlag).",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 1, "unit": "weeks", "nature": "objection", "text": "Einspruch binnen einer Woche nach Zustellung"},
+        "ctx": {"today": "2026-09-28", "region": "BE", "document_date": "2026-09-23", "received_date": "2026-09-26", "received_confirmed": true, "letter_kind": "enforcement_order", "court": true, "labour_court": true}
+      },
+      "expected": {"due_date": "2026-10-05", "confidence": "medium"},
+      "reasoning": [
+        "A Vollstreckungsbescheid counts as a default judgment (§ 700 Abs. 1 ZPO, applied by § 46a Abs. 1 ArbGG); at a labour court the objection to it must be made within a one-week Notfrist (§ 59 S. 1 ArbGG).",
+        "One week from Sat 26 Sep 2026 ends on Sat 3 Oct 2026, German Unity Day, so the period ends on Mon 5 Oct 2026 (§ 222 Abs. 2 ZPO).",
+        "A court deadline is never 'high' in Ordnung."
+      ],
+      "sources": [
+        "§ 59 ArbGG: 'Gegen ein Versäumnisurteil kann eine Partei, gegen die das Urteil ergangen ist, binnen einer Notfrist von einer Woche nach seiner Zustellung Einspruch einlegen.' — https://www.gesetze-im-internet.de/arbgg/__59.html",
+        "§ 46a Abs. 1 ArbGG (the ZPO's Mahnverfahren applies unless the ArbGG says otherwise) — https://www.gesetze-im-internet.de/arbgg/__46a.html",
+        "§ 700 Abs. 1 ZPO — https://www.gesetze-im-internet.de/zpo/__700.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "kschg4-01-monday-january",
+      "description": "Kündigung am Mo 06.01.2025 zugegangen (Hamburg).",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 3, "unit": "weeks", "nature": "objection", "legal_basis": "§ 4 S. 1 KSchG", "text": "innerhalb von drei Wochen nach Zugang der Kündigung"},
+        "ctx": {"today": "2025-01-07", "region": "HH", "document_date": "2025-01-03", "received_date": "2025-01-06", "received_confirmed": true, "letter_kind": "dismissal"}
+      },
+      "expected": {"due_date": "2025-01-27", "confidence": "medium"},
+      "reasoning": [
+        "The court action must be filed within three weeks of receiving the written dismissal (§ 4 S. 1 KSchG).",
+        "Counting starts Tue 7 Jan; three weeks end on the same weekday: Mon 27 Jan 2025 (§§ 187 Abs. 1, 188 Abs. 2 BGB)."
+      ],
+      "sources": [
+        "§ 4 KSchG — https://www.gesetze-im-internet.de/kschg/__4.html",
+        "Arbeitsgericht Hamburg: 'Eine Kündigungsschutzklage muss binnen drei Wochen nach Erhalt der Kündigung beim zuständigen Arbeitsgericht eingereicht werden.' — https://justiz.hamburg.de/gerichte/arbeitsgericht-hamburg/informationen-merkblaetter-und-klagevordrucke-641146",
+        "Worked example 'Die Kündigung geht Ihnen am Montag, 6. Januar zu … endet am Montag, 27. Januar' — https://www.arbeitsrechtsiegen.de/artikel/kuendigungsschutzklage-diese-frist-muss-eingehalten-werden/"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "kschg4-02-new-year",
+      "description": "Kündigung am Fr 11.12.2026 zugegangen, Arbeitsgericht Berlin.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 3, "unit": "weeks", "nature": "objection", "legal_basis": "§ 4 KSchG", "text": "Kündigungsschutzklage"},
+        "ctx": {"today": "2026-12-14", "region": "BE", "document_date": "2026-12-10", "received_date": "2026-12-11", "received_confirmed": true, "letter_kind": "dismissal"}
+      },
+      "expected": {"due_date": "2027-01-04"},
+      "reasoning": [
+        "Three weeks after Fri 11 Dec 2026 is Fri 1 Jan 2027, New Year's Day.",
+        "The period ends on the next working day, Mon 4 Jan 2027 (§ 193 BGB; § 222 Abs. 2 ZPO)."
+      ],
+      "sources": [
+        "§ 4 KSchG — https://www.gesetze-im-internet.de/kschg/__4.html",
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "sgb3-01-three-months-before-30-september",
+      "description": "Befristeter Vertrag endet am Mi 30.09.2026; bekannt seit Vertragsschluss.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "explicit_date", "anchor_date": "2026-09-30", "amount": -3, "unit": "months", "nature": "declaration", "legal_basis": "§ 38 Abs. 1 SGB III", "text": "spätestens drei Monate vor Beendigung arbeitsuchend melden"},
+        "ctx": {"today": "2026-05-04", "document_date": "2026-05-01", "received_date": "2026-05-02", "received_confirmed": true}
+      },
+      "expected": {"due_date": "2026-06-30"},
+      "reasoning": [
+        "More than three months are left, so the registration is due three months before the end (§ 38 Abs. 1 S. 1 SGB III).",
+        "Counted back from Wed 30 Sep 2026: Tue 30 Jun 2026."
+      ],
+      "sources": [
+        "§ 38 Abs. 1 SGB III — https://www.gesetze-im-internet.de/sgb_3/__38.html",
+        "Bundesagentur für Arbeit: 'spätestens 3 Monate, bevor Ihre Beschäftigung endet' — https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden",
+        "Worked example 'Endet der Vertrag am 30. September, muss die Arbeitsuchendmeldung spätestens am 30. Juni erfolgen' — https://www.juraforum.de/lexikon/befristeter-arbeitsvertrag-wann-arbeitslos-melden"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "sgb3-02-three-months-before-31-december",
+      "description": "Arbeitsverhältnis endet am Do 31.12.2026; bekannt seit Juni.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 3, "unit": "days", "nature": "declaration", "legal_basis": "§ 38 Abs. 1 SGB III", "text": "arbeitsuchend melden"},
+        "ctx": {"today": "2026-06-16", "document_date": "2026-06-12", "received_date": "2026-06-15", "received_confirmed": true, "end_date": "2026-12-31"}
+      },
+      "expected": {"due_date": "2026-09-30"},
+      "alternative": "2026-10-01",
+      "reasoning": [
+        "Counting three months back from Thu 31 Dec 2026 gives Wed 30 Sep 2026 (the latest day from which three months still fit before the end).",
+        "Some guides name 1 Oct 2026; Ordnung keeps the earlier day (SPEC § 21)."
+      ],
+      "sources": [
+        "§ 38 Abs. 1 SGB III — https://www.gesetze-im-internet.de/sgb_3/__38.html",
+        "Guide naming 1 Oct 2026 for an end on 31 Dec 2026 — https://www.juraforum.de/lexikon/arbeitssuchend-melden"
+      ],
+      "unsure": true,
+      "unsure_note": "Whether 'three months before 31 December' is 30 September or 1 October is not settled by a court; both are before any Sperrzeit risk if the earlier is used."
+    },
+    {
+      "id": "sgb3-03-dismissal-three-days",
+      "description": "Kündigung am Fr 25.09.2026 erhalten, Ende des Arbeitsverhältnisses Sa 31.10.2026.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 3, "unit": "days", "nature": "declaration", "legal_basis": "§ 38 Abs. 1 SGB III", "text": "arbeitsuchend melden"},
+        "ctx": {"today": "2026-09-25", "document_date": "2026-09-24", "received_date": "2026-09-25", "received_confirmed": true, "letter_kind": "dismissal", "end_date": "2026-10-31"}
+      },
+      "expected": {"due_date": "2026-09-28"},
+      "reasoning": [
+        "Less than three months lie between learning of the end (Fri 25 Sep) and the end (Sat 31 Oct), so the registration is due within three days (§ 38 Abs. 1 S. 2 SGB III): Mon 28 Sep 2026."
+      ],
+      "sources": [
+        "§ 38 Abs. 1 S. 2 SGB III — https://www.gesetze-im-internet.de/sgb_3/__38.html",
+        "Bundesagentur für Arbeit: 'innerhalb von 3 Tagen' — https://www.arbeitsagentur.de/arbeitslos-arbeit-finden/arbeitslosengeld/ihre-schritte-wenn-sie-arbeitslos-werden/wie-sie-sich-arbeitsuchend-melden",
+        "§ 159 Abs. 1 S. 2 Nr. 9, Abs. 6 SGB III: 'Die Dauer einer Sperrzeit bei Meldeversäumnis oder bei verspäteter Arbeitsuchendmeldung beträgt eine Woche.' — https://www.gesetze-im-internet.de/sgb_3/__159.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "sgb3-04-three-days-end-on-sunday",
+      "description": "Kündigung am Do 01.10.2026 erhalten, Ende Mo 30.11.2026; der dritte Tag ist ein Sonntag.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 3, "unit": "days", "nature": "declaration", "legal_basis": "§ 38 Abs. 1 SGB III", "text": "arbeitsuchend melden"},
+        "ctx": {"today": "2026-10-01", "document_date": "2026-09-30", "received_date": "2026-10-01", "received_confirmed": true, "end_date": "2026-11-30"}
+      },
+      "expected": {"due_date": "2026-10-04"},
+      "alternative": "2026-10-05",
+      "reasoning": [
+        "Three days after Thu 1 Oct is Sun 4 Oct 2026.",
+        "§ 26 Abs. 3 SGB X may extend the period to Mon 5 Oct, but registering online works on Sundays, so Ordnung keeps the earlier day and says so."
+      ],
+      "sources": [
+        "§ 38 Abs. 1 SGB III — https://www.gesetze-im-internet.de/sgb_3/__38.html",
+        "§ 26 Abs. 3 SGB X — https://www.gesetze-im-internet.de/sgb_10/__26.html"
+      ],
+      "unsure": true,
+      "unsure_note": "Guides disagree whether the three days move off a weekend."
+    },
+    {
+      "id": "bgb558b-01-hamburg-15-january",
+      "description": "Mieterhöhungsverlangen am Do 15.01.2026 zugegangen (Vermieter in Hamburg).",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "months", "nature": "declaration", "legal_basis": "§ 558b Abs. 2 BGB", "text": "Zustimmung zur Mieterhöhung"},
+        "ctx": {"today": "2026-01-16", "region": "HH", "document_date": "2026-01-12", "received_date": "2026-01-15", "received_confirmed": true, "letter_kind": "rent_increase"}
+      },
+      "expected": {"due_date": "2026-03-31"},
+      "reasoning": [
+        "The tenant may decide until the end of the second calendar month after the request arrived (§ 558b Abs. 2 BGB): January → end of March, Tue 31 Mar 2026.",
+        "Only with consent is the higher rent owed, from the start of the third month: 1 Apr 2026 (§ 558b Abs. 1 BGB)."
+      ],
+      "sources": [
+        "§ 558b BGB — https://www.gesetze-im-internet.de/bgb/__558b.html",
+        "Mieterverein zu Hamburg: 'Sie läuft am Ende des zweiten Monats nach Zugang der Mieterhöhung ab' (served 15 January → 31 March) — https://mieterschutz-hamburg.de/rat-und-tipps/mieterhoehung"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb558b-02-15-may",
+      "description": "Mieterhöhungsverlangen am Fr 15.05.2026 zugegangen.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "fixed", "date": "2026-07-31", "nature": "declaration", "legal_basis": "§ 558b BGB", "text": "bis zum 31.07.2026"},
+        "ctx": {"today": "2026-05-18", "region": "BY", "document_date": "2026-05-11", "received_date": "2026-05-15", "received_confirmed": true, "letter_kind": "rent_increase"}
+      },
+      "expected": {"due_date": "2026-07-31"},
+      "reasoning": [
+        "May → end of the second month after it: Fri 31 Jul 2026, which is what the landlord wrote."
+      ],
+      "sources": [
+        "§ 558b Abs. 2 BGB — https://www.gesetze-im-internet.de/bgb/__558b.html",
+        "Worked example 'Geht das Erhöhungsverlangen beispielsweise am 15. Mai eines Jahres zu, läuft die Zustimmungsfrist am 31. Juli' — https://www.mietrecht.org/mieterhoehung/frist-zustimmung-mieterhoehung/"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb558b-03-reformation-day-lower-saxony",
+      "description": "Mieterhöhungsverlangen am Fr 29.08.2025 zugegangen, Vermieter in Niedersachsen.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "receipt", "amount": 2, "unit": "months", "nature": "declaration", "legal_basis": "§ 558b Abs. 2 BGB", "text": "Zustimmung"},
+        "ctx": {"today": "2025-09-01", "region": "NI", "document_date": "2025-08-27", "received_date": "2025-08-29", "received_confirmed": true, "letter_kind": "rent_increase"}
+      },
+      "expected": {"due_date": "2025-11-03"},
+      "reasoning": [
+        "August → end of October: Fri 31 Oct 2025, Reformation Day, a public holiday in Lower Saxony.",
+        "Consent is a declaration within a period, so § 193 BGB moves the end to the next working day: Mon 3 Nov 2025."
+      ],
+      "sources": [
+        "§ 558b Abs. 2 BGB — https://www.gesetze-im-internet.de/bgb/__558b.html",
+        "§ 193 BGB: 'Ist … innerhalb einer Frist eine Willenserklärung abzugeben … und fällt der letzte Tag der Frist auf einen … Feiertag, so tritt an die Stelle eines solchen Tages der nächste Werktag.' — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb574b-01-end-of-october",
+      "description": "Kündigung des Vermieters zum So 31.10.2027; Widerspruch des Mieters nach § 574 BGB.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "explicit_date", "anchor_date": "2027-10-31", "amount": -2, "unit": "months", "nature": "objection", "legal_basis": "§ 574b Abs. 2 BGB", "text": "spätestens zwei Monate vor der Beendigung"},
+        "ctx": {"today": "2026-09-25", "region": "NW", "document_date": "2026-09-20", "letter_kind": "landlord_notice"}
+      },
+      "expected": {"due_date": "2027-08-31", "safe_date": "2027-08-31"},
+      "reasoning": [
+        "The objection must reach the landlord at the latest two months before the tenancy ends (§ 574b Abs. 2 S. 1 BGB): counted back from Sun 31 Oct 2027, Tue 31 Aug 2027."
+      ],
+      "sources": [
+        "§ 574b BGB — https://www.gesetze-im-internet.de/bgb/__574b.html",
+        "Deutscher Mieterbund (Siegmund): 'spätestens zwei Monate vor der Beendigung des Mietverhältnisses, mit anderen Worten zwei Monate vor Ablauf der Kündigungsfrist' — https://mieterbund.de/app/uploads/2025/02/4-Siegmund-Vortrag-Kuendigungswiderspruch-und-Fortsetzung.pdf"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb574b-02-backwards-onto-sunday",
+      "description": "Kündigung des Vermieters zum Fr 30.04.2027.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "explicit_date", "anchor_date": "2027-04-30", "amount": -2, "unit": "months", "nature": "objection", "legal_basis": "§ 574b BGB", "text": "Widerspruch"},
+        "ctx": {"today": "2026-09-25", "region": "NW", "document_date": "2026-09-20", "letter_kind": "landlord_notice"}
+      },
+      "expected": {"due_date": "2027-02-28", "safe_date": "2027-02-26"},
+      "reasoning": [
+        "Two months before Fri 30 Apr 2027 is Sun 28 Feb 2027 (there is no 30 February).",
+        "A period counted backwards never moves to a later day; the working day before, Fri 26 Feb 2027, is the safe date."
+      ],
+      "sources": [
+        "§ 574b Abs. 2 BGB — https://www.gesetze-im-internet.de/bgb/__574b.html",
+        "§ 193 BGB only extends periods that end on a weekend when counted forward — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-01-statement-too-late",
+      "description": "Betriebskostenabrechnung für 2024 (Abrechnungszeitraum bis 31.12.2024), beim Mieter angekommen am Fr 02.01.2026.",
+      "input": {"kind": "statement", "period_end": "2024-12-31", "arrived": "2026-01-02", "confirmed": true, "region": "NW"},
+      "expected": {"deadline": "2025-12-31", "late": true, "objections_by": "2027-01-04"},
+      "reasoning": [
+        "The statement must reach the tenant by the end of the twelfth month after the billing period: Wed 31 Dec 2025 (§ 556 Abs. 3 S. 2 BGB).",
+        "It arrived on 2 Jan 2026, so a back-payment is excluded unless the landlord was not responsible for the delay (S. 3).",
+        "Objections are due twelve months after arrival: Sat 2 Jan 2027, moved to Mon 4 Jan 2027 (§ 193 BGB)."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 BGB — https://www.gesetze-im-internet.de/bgb/__556.html",
+        "Verbraucherzentrale Brandenburg: 'Vermieter:innen … haben Nebenkostenabrechnungen innerhalb eines Jahres nach dem letzten Tag des Abrechnungszeitraumes zu versenden.' — https://www.verbraucherzentrale-brandenburg.de/pressemeldungen/energie/verspaetete-betriebskostenabrechnung-91939"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-02-date-before-deadline-arrival-unknown",
+      "description": "Abrechnung für 2025, datiert 15.12.2026, Zugang unbekannt.",
+      "input": {"kind": "statement", "period_end": "2025-12-31", "arrived": "2026-12-15", "confirmed": false, "region": null},
+      "expected": {"deadline": "2026-12-31", "late": null},
+      "reasoning": [
+        "Its date is before the deadline of Thu 31 Dec 2026, and without the arrival day Ordnung can't say it came too late — it never claims a back-payment is not owed unless that is certain."
+      ],
+      "sources": ["§ 556 Abs. 3 S. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__556.html"],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-03-deadline-on-reformation-day",
+      "description": "Abrechnungszeitraum 01.11.2023–31.10.2024; Abrechnung kommt am Mo 03.11.2025 an, Mieter in Niedersachsen (Region unbekannt / NI).",
+      "input": {"kind": "statement", "period_end": "2024-10-31", "arrived": "2025-11-03", "confirmed": true, "region": null},
+      "expected": {"deadline": "2025-11-03", "late": false},
+      "reasoning": [
+        "Twelve months after 31 Oct 2024 end on Fri 31 Oct 2025, Reformation Day in several Länder; with § 193 BGB the landlord has until Mon 3 Nov 2025 where it is a holiday.",
+        "With the tenant's Land unknown, Ordnung resolves this in the landlord's favour, so a statement arriving on 3 Nov is not called late."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 2 BGB — https://www.gesetze-im-internet.de/bgb/__556.html",
+        "§ 193 BGB — https://www.gesetze-im-internet.de/bgb/__193.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-04-heating-year-july-to-june",
+      "description": "Heizkostenabrechnung 'Abrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)', am Mo 10.03.2025 erhalten.",
+      "input": {
+        "kind": "statement_text",
+        "text": "Heizkostenabrechnung\nAbrechnungsjahr 2023/2024 (01.07.2023 bis 30.06.2024)\nNachzahlung 214,10 EUR",
+        "arrived": "2025-03-10", "confirmed": true, "region": "NW"
+      },
+      "expected": {"period_end": "2024-06-30", "exact": true, "deadline": "2025-06-30", "late": false},
+      "reasoning": [
+        "A billing year need not be the calendar year: this one runs from 1 Jul 2023 to 30 Jun 2024, so the statement is due by the end of the twelfth month after 30 Jun 2024, Mon 30 Jun 2025.",
+        "It arrived on 10 Mar 2025, in time. Reading 'Abrechnungsjahr 2023/2024' as the calendar year 2023 would wrongly call it late and say no back-payment is owed."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 1, 2 BGB: 'Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen … Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen.' — https://www.gesetze-im-internet.de/bgb/__556.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-05-previous-year-named-too",
+      "description": "Betriebskostenabrechnung 'Abrechnungszeitraum 2024' mit Vorjahresvergleich 'Abrechnungszeitraum 01.01.2023 - 31.12.2023', am Mo 10.02.2025 erhalten.",
+      "input": {
+        "kind": "statement_text",
+        "text": "Betriebskostenabrechnung\nAbrechnungszeitraum 2024\nVorjahr: Abrechnungszeitraum 01.01.2023 - 31.12.2023",
+        "arrived": "2025-02-10", "confirmed": true, "region": "NW"
+      },
+      "expected": {"period_end": "2024-12-31", "exact": false, "deadline": "2025-12-31", "late": false},
+      "reasoning": [
+        "The statement is for 2024; the 2023 dates are the previous year's comparison. The latest period named ends on 31 Dec 2024, so the statement is due by Wed 31 Dec 2025 and arrived in time.",
+        "Only the year of this period is named, so Ordnung calls such a statement neither certainly late nor certainly on time."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 1, 2 BGB: 'Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen … Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen.' — https://www.gesetze-im-internet.de/bgb/__556.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb556-06-period-in-words-next-to-previous-year",
+      "description": "Heiz- und Betriebskostenabrechnung, die ihren Zeitraum in Worten nennt und daneben den Vorjahresvergleich in Ziffern; zugegangen am Do 10.09.2026.",
+      "input": {"kind": "statement_text", "text": "Betriebs- und Heizkostenabrechnung für den Zeitraum vom 1. Januar 2025 bis 31. Dezember 2025\nNachzahlung: 312,40 EUR\nVerbrauchsvergleich: Vorjahreszeitraum 01.01.2024 - 31.12.2024: 9.100 kWh", "arrived": "2026-09-10", "confirmed": true, "region": "BE"},
+      "expected": {"period_end": "2025-12-31", "exact": true, "labelled": true, "deadline": "2026-12-31", "late": false},
+      "reasoning": [
+        "The statement's own period ends on 31 Dec 2025; it must arrive by the end of the twelfth month after that, Thu 31 Dec 2026 (§ 556 Abs. 3 S. 2 BGB). It arrived on 10 Sep 2026: on time.",
+        "The previous year's range (01.01.2024 – 31.12.2024) is the comparison a heating statement must show — taken as the billing period it would wrongly make the statement late."
+      ],
+      "sources": [
+        "§ 556 Abs. 3 S. 2, 3 BGB — https://www.gesetze-im-internet.de/bgb/__556.html",
+        "§ 6a Abs. 3 S. 1 Nr. 5 HeizkostenV: 'einen Vergleich des witterungsbereinigten Energieverbrauchs des jüngsten Abrechnungszeitraums des Nutzers mit seinem witterungsbereinigten Energieverbrauch im vorhergehenden Abrechnungszeitraum' — https://www.gesetze-im-internet.de/heizkostenv/__6a.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb355-01-doorstep-saturday",
+      "description": "Zeitschriften-Abo an der Haustür am Sa 12.09.2026 geschlossen, Widerrufsbelehrung ausgehändigt.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "document_date", "amount": 14, "unit": "days", "nature": "declaration", "legal_basis": "§ 355 BGB", "text": "Widerrufsfrist 14 Tage ab Vertragsschluss"},
+        "ctx": {"today": "2026-09-12", "document_date": "2026-09-12"}
+      },
+      "expected": {"due_date": "2026-09-28", "send_by": "2026-09-28"},
+      "reasoning": [
+        "14 days after Sat 12 Sep is Sat 26 Sep 2026; the period runs to the next working day, Mon 28 Sep 2026 (§ 193 BGB).",
+        "Sending the withdrawal by then is enough (§ 355 Abs. 1 S. 5 BGB), so the send-by day is the deadline itself."
+      ],
+      "sources": [
+        "Verbraucherzentrale: 'Wurde also an einem Samstag an der Haustür ein Zeitschriften-Abonnement geschlossen und dem Verbraucher zugleich die Widerrufsbelehrung ausgehändigt, endet die Frist fürs Widerrufen des Vertrages erst am Montag zwei Wochen später.' — https://www.verbraucherzentrale.de/wissen/vertraege-reklamation/kundenrechte/fristen-dschungel-der-termine-10387",
+        "§ 355 BGB — https://www.gesetze-im-internet.de/bgb/__355.html"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb355-02-goods-arrive-before-new-year",
+      "description": "Online bestellte Ware am Mi 16.12.2026 erhalten.",
+      "input": {
+        "kind": "date",
+        "spec": {"type": "relative", "anchor": "explicit_date", "anchor_date": "2026-12-16", "amount": 14, "unit": "days", "nature": "declaration", "legal_basis": "§ 356 Abs. 2 BGB", "text": "Widerrufsfrist beginnt mit Erhalt der Ware"},
+        "ctx": {"today": "2026-12-17", "document_date": "2026-12-10"}
+      },
+      "expected": {"due_date": "2026-12-30"},
+      "reasoning": [
+        "For goods the 14 days start when they arrive (§ 356 Abs. 2 Nr. 1 a BGB): Wed 16 Dec → Wed 30 Dec 2026."
+      ],
+      "sources": [
+        "§ 356 Abs. 2 BGB — https://www.gesetze-im-internet.de/bgb/__356.html",
+        "Verbraucherzentrale: the period 'beginnt bei Warenbestellung mit vollständigem Erhalt der Ware' — https://www.verbraucherzentrale.de/wissen/vertraege-reklamation/kundenrechte/von-widerruf-bis-umtausch-wenn-sie-mit-der-ware-nicht-zufrieden-sind-5117"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb356-01-no-instructions",
+      "description": "Ware am 01.03.2025 erhalten, keine Widerrufsbelehrung.",
+      "input": {"kind": "withdrawal_long", "start": "2025-03-01"},
+      "expected": {"end": "2026-03-15"},
+      "reasoning": [
+        "The regular period would have ended on 15 Mar 2025; without instructions the right ends twelve months later, 15 Mar 2026 (§ 356 Abs. 4 S. 1 BGB; Art. 10 Abs. 1 Directive 2011/83/EU)."
+      ],
+      "sources": [
+        "§ 356 Abs. 4 S. 1 BGB: 'Das Widerrufsrecht erlischt spätestens zwölf Monate und 14 Tage nach dem in Absatz 2 oder § 355 Absatz 2 Satz 2 genannten Zeitpunkt.' — https://www.gesetze-im-internet.de/bgb/__356.html",
+        "Art. 10 Abs. 1 Directive 2011/83/EU: 'the withdrawal period shall expire 12 months from the end of the initial withdrawal period' — https://eur-lex.europa.eu/eli/dir/2011/83/oj",
+        "Verbraucherzentrale: without proper instructions 'beträgt die Widerrufsfrist 12 Monate und 14 Tage' — https://www.verbraucherzentrale.de/wissen/vertraege-reklamation/kundenrechte/fristen-dschungel-der-termine-10387"
+      ],
+      "unsure": false
+    },
+    {
+      "id": "bgb356-02-leap-year-readings-differ",
+      "description": "Ware am 16.02.2024 erhalten, keine Widerrufsbelehrung.",
+      "input": {"kind": "withdrawal_long", "start": "2024-02-16"},
+      "expected": {"end": "2025-03-01"},
+      "alternative": "2025-03-02",
+      "reasoning": [
+        "The Directive's reading: the regular period ends 1 Mar 2024, twelve months later is 1 Mar 2025.",
+        "The literal German reading (12 months, then 14 days) gives 2 Mar 2025; Ordnung uses the earlier."
+      ],
+      "sources": [
+        "Art. 10 Abs. 1 Directive 2011/83/EU — https://eur-lex.europa.eu/eli/dir/2011/83/oj",
+        "§ 356 Abs. 4 S. 1 BGB — https://www.gesetze-im-internet.de/bgb/__356.html"
+      ],
+      "unsure": true,
+      "unsure_note": "The two readings differ by a day around month ends; no court has decided which one is meant."
+    }
+  ]
+}
