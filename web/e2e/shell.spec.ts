@@ -8,7 +8,7 @@
  * read on a phone, and the opaque drop overlay.
  */
 import type { Page, Route } from "@playwright/test";
-import { apiGet, documentId, expect, open, settle, setTour, test } from "./helpers";
+import { apiGet, expect, letterId, open, settle, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -96,7 +96,7 @@ test.describe("phone: a letter page", () => {
   });
 
   test("the title keeps its room: My numbers gives way to it (the section pages link to it)", async ({ page }) => {
-    const id = await documentId(page, /Payment Reminder/);
+    const id = await letterId(page, "15_mahnung_techmarkt.pdf"); // the payment reminder: a long title
     await open(page, `/documents/${id}`);
     const bar = page.getByRole("banner");
     const title = bar.getByRole("navigation", { name: "Breadcrumb" }).locator('[aria-current="page"]');

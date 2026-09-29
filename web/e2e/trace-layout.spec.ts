@@ -7,7 +7,7 @@
  * row that opens has something to show, and the summary's figures line up however their labels wrap.
  */
 import type { Page } from "@playwright/test";
-import { documentId, expect, expectAccessible, open, setTour, test } from "./helpers";
+import { expect, expectAccessible, letterId, open, setTour, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -32,8 +32,12 @@ async function outOfBounds(page: Page): Promise<string[]> {
   });
 }
 
-async function openTrace(page: Page, title: RegExp): Promise<void> {
-  const id = await documentId(page, title);
+/** The demo letters, by their samples' file names (their titles are the model's, new with each recording). */
+const REMINDER = "15_mahnung_techmarkt.pdf"; // the payment reminder, a PDF
+const FINE = "21_verwarnungsgeld_parken.jpg"; // the parking fine, a photo
+
+async function openTrace(page: Page, file: string): Promise<void> {
+  const id = await letterId(page, file);
   await open(page, `/documents/${id}?view=trace`);
   await expect(page.getByRole("tab", { name: "How it was read" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("list", { name: "Steps of this reading" })).toBeVisible();
@@ -42,7 +46,7 @@ async function openTrace(page: Page, title: RegExp): Promise<void> {
 for (const width of [320, 390, 768, 1280, 1920]) {
   test(`How it was read at ${width}px: every step inside its panel, opened ones too`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await openTrace(page, /Payment Reminder|Mahnung/);
+    await openTrace(page, REMINDER);
     const steps = page.getByRole("list", { name: "Steps of this reading" });
     for (const name of [/^Claude reads the letter/, /^Quotes checked on the page/, /^Dates computed/, /^Thread, contract & payment/]) {
       await steps.getByRole("button", { name }).first().click();
@@ -55,7 +59,7 @@ for (const width of [320, 390, 768, 1280, 1920]) {
 
 test("a photo's reading shows its transcribed page; steps open with the keyboard", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openTrace(page, /Traffic fine|Verwarnung/);
+  await openTrace(page, FINE);
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   const photo = steps.getByRole("button", { name: /^Read from the photo/ });
   await photo.focus();
@@ -82,7 +86,7 @@ async function openEverything(page: Page): Promise<void> {
 for (const width of [320, 390, 1280, 1920]) {
   test(`How it was read at ${width}px: opened steps read well and the figures line up`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await openTrace(page, /Payment Reminder|Mahnung/);
+    await openTrace(page, REMINDER);
     await openEverything(page);
     const problems = await page.evaluate(() => {
       const out: string[] = [];
@@ -117,8 +121,8 @@ for (const width of [320, 390, 1280, 1920]) {
 
 test("“Read again and compare” never drops keyboard focus to the start of the page", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openTrace(page, /Payment Reminder|Mahnung/);
-  const id = await documentId(page, /Payment Reminder|Mahnung/);
+  await openTrace(page, REMINDER);
+  const id = await letterId(page, REMINDER);
   const readAgain = page.getByRole("button", { name: "Read again and compare" });
   const reprocess = `**/api/documents/${id}/reprocess`;
   // the demo is shared by the other tests, so the letter isn't really read again: the server answers here.
