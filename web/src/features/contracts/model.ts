@@ -87,11 +87,21 @@ export function isLockInDecision(c: Pick<Contract, "computed">): boolean {
 /**
  * A contract you can cancel any month (rent, statutory health insurance after its first year, a
  * fixed-term job its contract lets you leave earlier): no term runs out on you, so its "cancel by"
- * date only says when it would end — miss it, and it ends a month later. Never urgent.
+ * date only says when it would end — miss it, and it ends later (a month later, or a job at a later
+ * 15th or month's end: {@link endsAtTheFifteenth}). Never urgent.
  */
 export function isRollingContract(c: Pick<Contract, "computed" | "status">): boolean {
   const k = c.computed;
   return c.status === "active" && Boolean(k?.cancel_by) && !k?.next_renewal && (!k?.current_term_end || endsBeforeItsTerm(c));
+}
+
+/**
+ * A job whose notice runs to the 15th or the end of a month (§ 622 Abs. 1 BGB, the rules' floor unless its
+ * contract says the end of a month): a notice that arrives after its date ends it at the next 15th or month's
+ * end, not a month later.
+ */
+export function endsAtTheFifteenth(c: Pick<Contract, "computed" | "notice_basis">): boolean {
+  return c.computed?.regime === "employment622" && c.notice_basis !== "end_of_month";
 }
 
 /** Rules under which an uncancelled contract simply continues after its term, cancellable any month. */

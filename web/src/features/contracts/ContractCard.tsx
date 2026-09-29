@@ -19,6 +19,7 @@ import {
   CONTINUES_MONTHLY,
   cancellationSent,
   contractMonthlyCost,
+  endsAtTheFifteenth,
   isFixedTerm,
   isLockInDecision,
   isRollingContract,
@@ -256,7 +257,9 @@ export function ContractCard({
 
       {rollingArriveBy ? (
         <p className="mt-2 text-[12.5px] leading-5 text-muted" data-testid="rolling-note">
-          You can cancel any month — a notice that arrives later ends it a month later.
+          {endsAtTheFifteenth(c)
+            ? "You can give notice any time — a notice that arrives later ends it at a later 15th or month's end."
+            : "You can cancel any month — a notice that arrives later ends it a month later."}
         </p>
       ) : null}
 

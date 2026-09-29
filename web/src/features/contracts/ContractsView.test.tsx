@@ -297,7 +297,10 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(row(job, "Notice must arrive by")).toBe("Sat 3 Oct");
     expect(row(job, "Earliest end if you cancel now")).toBe("Sat 31 Oct");
     expect(row(job, "Ends")).toBe("Wed 31 Mar 2027");
-    expect(within(job).getByTestId("rolling-note")).toBeInTheDocument();
+    // § 622 Abs. 1 BGB: a later notice ends it at a later 15th or month's end, not a month later
+    expect(within(job).getByTestId("rolling-note")).toHaveTextContent(
+      "You can give notice any time — a notice that arrives later ends it at a later 15th or month's end.",
+    );
     expect(within(job).getByRole("button", { name: /^Change notice period/ })).toBeInTheDocument();
     // no decision to rush: no countdown to resign, nothing new under "Decide by"
     expect(within(job).queryByText("Send by")).toBeNull();
