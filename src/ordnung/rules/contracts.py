@@ -913,11 +913,12 @@ def _ends_by_itself(terms: ContractTerms, regime: ContractRegime, *, past: bool)
     """A contract with an end date ends by itself unless its terms say it renews or needs notice (a notice
     period, or a day of the month for it: :func:`_notice_day`).
 
-    A flat let always does here (the summary says it may still need notice). A job does too — a notice
-    period alone never says otherwise (§ 15 Abs. 1 TzBfG) — unless its contract lets it be ended earlier
-    by ordinary notice (``notice_before_end``, § 15 Abs. 4 TzBfG) and its end date is still ahead: it is
-    then planned like an open-ended job whose notice must end it before that date (``past``: the end date
-    has passed)."""
+    A flat let always does here (the summary says it may still need notice). A job does too (§ 15 Abs. 1
+    TzBfG) unless its contract lets it be ended earlier by ordinary notice (``notice_before_end``, § 15 Abs.
+    4 TzBfG) and its end date is still ahead: it is then planned like an open-ended job whose notice must end
+    it before that date (``past``: the end date has passed). A notice period read alone doesn't set it, as
+    it may be the probation clause's (§ 622 Abs. 3 BGB); one agreed for the time after probation is the § 15
+    Abs. 4 agreement (BAG 6 AZR 436/10), the flag's (read, or set on the card)."""
     if regime == "rent573c":
         return True
     if regime == "employment622":

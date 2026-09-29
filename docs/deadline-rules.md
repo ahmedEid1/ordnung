@@ -851,8 +851,13 @@ Two terms a notice period can't say:
   period.
 - **A fixed-term job its contract lets be ended earlier by ordinary notice** (`notice_before_end`: "Nach
   Ablauf der Probezeit kann das Arbeitsverhältnis … ordentlich gekündigt werden", § 15 Abs. 4 TzBfG). A
-  notice period alone never says so — a fixed-term job ends with its time (§ 15 Abs. 1 TzBfG) — so
-  without the flag a job with an end date simply ends then. With it, and while the end date is ahead, the
+  fixed-term job ends with its time (§ 15 Abs. 1 TzBfG). A notice period read alone doesn't set the flag,
+  since it may be the probation clause's (§ 622 Abs. 3 BGB); but a notice period the contract agrees for
+  the time after probation ("nach Ablauf der Probezeit gilt die gesetzliche Kündigungsfrist") is itself the
+  § 15 Abs. 4 agreement (BAG, 4 Aug 2011, 6 AZR 436/10). *Limitation:* the extraction prompt names only a
+  clause that says the job may be ended after probation, so a reading may leave the flag unset for one
+  that only gives the period; the card's notice edit sets it. Without the flag a job with an end date
+  simply ends then. With it, and while the end date is ahead, the
   job is planned like an open-ended one (four weeks to the 15th or the end of a month, or the written
   period), with § 622 Abs. 1 BGB as the floor: a shorter period or notice to any day is usually the
   probation clause's (§ 622 Abs. 3 BGB), and after probation a contract can rarely agree less (§ 622 Abs.
