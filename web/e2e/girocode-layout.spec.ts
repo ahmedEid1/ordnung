@@ -8,11 +8,15 @@
  * "Read the letter again" say why in the panel, clear of its footer, with focus kept.
  */
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, apiPatch, documentId, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiPatch, expect, expectAccessible, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
 });
+
+/** The demo letters, by their samples' file names (their titles are the model's, new with each recording). */
+const STATEMENT = "13_nebenkostenabrechnung_2025.pdf"; // the operating-cost statement, a PDF
+const FINE = "21_verwarnungsgeld_parken.jpg"; // the parking fine, a photo
 
 const VIEWPORTS = [
   [320, 640],
@@ -23,7 +27,7 @@ const VIEWPORTS = [
 
 /** The utility statement's Pay panel, with the code unfolded (phones fold it). */
 async function openStatementCode(page: Page): Promise<{ panel: Locator; code: Locator }> {
-  const id = await documentId(page, /Operating and Heating Cost Statement|Betriebs/);
+  const id = await letterId(page, STATEMENT);
   await open(page, `/documents/${id}`);
   await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
   const panel = page.getByRole("dialog").filter({ has: page.getByRole("region", { name: "GiroCode (EPC-QR)" }) });
@@ -78,7 +82,7 @@ for (const scheme of ["light", "dark"] as const) {
     }
 
     test("the photographed fine asks for the paper letter, and its panel passes axe", async ({ page }, testInfo) => {
-      const id = await documentId(page, /Verwarnung|traffic fine/i);
+      const id = await letterId(page, FINE);
       await open(page, `/documents/${id}`);
       await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €30\.00/ }).click();
       const section = page.getByRole("dialog").getByRole("region", { name: "GiroCode (EPC-QR)" });
@@ -94,7 +98,7 @@ test.describe("phone 390×844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("a phone can't scan its own screen: the code waits behind “Show code”", async ({ page }) => {
-    const id = await documentId(page, /Operating and Heating Cost Statement|Betriebs/);
+    const id = await letterId(page, STATEMENT);
     await open(page, `/documents/${id}`);
     await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
     const sheet = page.getByRole("dialog");
@@ -126,7 +130,7 @@ test.describe("phone turned sideways 844×390", () => {
   test.use({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
 
   test("the code still waits behind “Show code”, and the actions don't pin themselves over the little room", async ({ page }) => {
-    const id = await documentId(page, /Operating and Heating Cost Statement|Betriebs/);
+    const id = await letterId(page, STATEMENT);
     await open(page, `/documents/${id}`);
     await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
     const panel = page.getByRole("dialog");
@@ -140,17 +144,22 @@ test.describe("phone turned sideways 844×390", () => {
 // "These match the letter" where the code doesn't fit: it scrolls clear of the sticky footer
 // ------------------------------------------------------------------------------------------------
 
-interface Detail {
-  items: { id: string; kind: string; amount: number | null }[];
-}
-
 /** The photographed fine's payment to-do, asking for the paper letter again (a new amount re-arms it). */
 async function rearmedFine(page: Page, amount: number): Promise<{ docId: string; itemId: string }> {
-  const docId = await documentId(page, /Verwarnung|traffic fine/i);
-  const detail = await apiGet<Detail>(page, `/api/documents/${docId}`);
-  const item = detail.items.find((i) => i.kind === "payment")!;
+  const docId = await letterId(page, FINE);
+  const item = await letterItem(page, docId, "payment");
   await apiPatch(page, `/api/items/${item.id}`, { amount });
   return { docId, itemId: item.id };
+}
+
+/**
+ * Today's Top-3 “Pay: …” button of the fine's payment, named after its to-do (the model's title, read from
+ * the API): the verb isn't said twice ("Pay: parking fee", not "Pay: Pay parking fee").
+ */
+async function finePayButton(page: Page): Promise<Locator> {
+  const { title } = await letterItem(page, await letterId(page, FINE), "payment");
+  const name = new RegExp(`^Pay: ${shownAs(title.replace(/^pay\s+/i, "")).source}`);
+  return page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name }).first();
 }
 
 /** The confirmation line and the code end above the panel's sticky footer (once scrolling stopped). */
@@ -193,7 +202,7 @@ test.describe("confirming where the code doesn't fit", () => {
         await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }).click();
       } else {
         await open(page, "/", /Sam/);
-        await page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first().click();
+        await (await finePayButton(page)).click();
       }
       const panel = page.getByRole("dialog");
       await panel.getByRole("button", { name: "These match the letter" }).click();
@@ -219,7 +228,7 @@ async function clearAndOnTop(panel: Locator, l: Locator): Promise<void> {
 /** Today's Pay panel of the photographed fine (a popover from 768 px, a sheet below). */
 async function todayFinePanel(page: Page): Promise<Locator> {
   await open(page, "/", /Sam/);
-  await page.getByRole("region", { name: "Top 3 this week" }).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first().click();
+  await (await finePayButton(page)).click();
   return page.getByRole("dialog");
 }
 

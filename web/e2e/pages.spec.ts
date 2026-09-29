@@ -3,7 +3,7 @@
  * anywhere (§14 copy table), axe-core in light and dark mode, and a phone-sized smoke test.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, documentId, expect, expectAccessible, expectNoRawEnums, open, openMail, setTour, test } from "./helpers";
+import { apiGet, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
 
 // The tour card floats over every page; these tests are about the pages themselves.
 test.beforeEach(async ({ page }) => {
@@ -136,10 +136,24 @@ test.describe("pages", () => {
 // Every main page: copy and accessibility
 // ------------------------------------------------------------------------------------------------
 
-const MAIN_PAGES: { name: string; path: (page: Page) => Promise<string>; h1: string | RegExp }[] = [
+/** The FunkNetz phone contract, by its sample's file name (its title is the model's, new with each recording). */
+const PHONE_CONTRACT = "01_mobilfunkvertrag.pdf";
+
+interface MainPage {
+  name: string;
+  path: (page: Page) => Promise<string>;
+  /** its `<h1>`; a letter's is its title as read, from the API */
+  h1: string | RegExp | ((page: Page) => Promise<RegExp>);
+}
+
+const MAIN_PAGES: MainPage[] = [
   { name: "Today", path: async () => "/", h1: /Sam/ },
   { name: "Inbox", path: async () => "/inbox", h1: "Inbox" },
-  { name: "Letter viewer", path: async (page) => `/documents/${await documentId(page, /FunkNetz/)}`, h1: /FunkNetz/ },
+  {
+    name: "Letter viewer",
+    path: async (page) => `/documents/${await letterId(page, PHONE_CONTRACT)}`,
+    h1: async (page) => shownAs((await letterDetail(page, await letterId(page, PHONE_CONTRACT))).title, { whole: true }),
+  },
   { name: "Timeline", path: async () => "/timeline", h1: "Timeline" },
   { name: "Contracts", path: async () => "/contracts", h1: "Contracts" },
   { name: "Letters", path: async () => "/letters", h1: "Letters" },
@@ -149,9 +163,11 @@ const MAIN_PAGES: { name: string; path: (page: Page) => Promise<string>; h1: str
   { name: "How dates are computed", path: async () => "/settings?section=rules", h1: "Settings" },
 ];
 
+const heading = (page: Page, p: MainPage): Promise<string | RegExp> => (typeof p.h1 === "function" ? p.h1(page) : Promise.resolve(p.h1));
+
 test("no raw enum values in the visible text of any page", async ({ page }) => {
   for (const p of MAIN_PAGES) {
-    await open(page, await p.path(page), p.h1);
+    await open(page, await p.path(page), await heading(page, p));
     await expectNoRawEnums(page, p.name);
   }
   // a drafted letter and an answered question too
@@ -168,7 +184,7 @@ for (const scheme of ["light", "dark"] as const) {
 
     for (const p of MAIN_PAGES) {
       test(`${p.name} has no serious or critical axe violations`, async ({ page }, testInfo) => {
-        await open(page, await p.path(page), p.h1);
+        await open(page, await p.path(page), await heading(page, p));
         await expect(page.locator("html")).toHaveClass(scheme === "dark" ? /\bdark\b/ : /^(?!.*\bdark\b)/);
         await expectAccessible(page, testInfo, `${p.name}-${scheme}`);
       });
@@ -285,7 +301,7 @@ test.describe("phone", () => {
   });
 
   test("the letter viewer stacks the page images below the verdict card", async ({ page }, testInfo) => {
-    await open(page, `/documents/${await documentId(page, /FunkNetz/)}`);
+    await open(page, `/documents/${await letterId(page, PHONE_CONTRACT)}`);
     const verdict = page.getByRole("article").first();
     const pages = page.getByRole("region", { name: "Letter pages" });
     await expect(verdict).toBeVisible();

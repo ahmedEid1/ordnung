@@ -6,7 +6,7 @@
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
 import type { Page } from "@playwright/test";
-import { expect, open, openMail, setTour, test } from "./helpers";
+import { expect, letterDetail, open, openMail, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -88,12 +88,14 @@ test("headings go h1 → h2 → h3, and the month groups say how many letters", 
 });
 
 test("a letter read from New mail sits on top as 'Just read', New until its page was opened", async ({ page }) => {
-  await openMail(page, "Finanzamt Musterstadt"); // ends on the letter's page (the tour may have read it already)
-  await expect(page.getByRole("article", { name: /Income Tax Assessment 2025/ })).toBeVisible();
+  const { id } = await openMail(page, "Finanzamt Musterstadt"); // ends on the letter's page (the tour may have read it already)
+  // the letter's title as read (the model's words, new with every recording of the demo)
+  const title = shownAs((await letterDetail(page, id)).title);
+  await expect(page.getByRole("article", { name: title })).toBeVisible();
   await open(page, "/inbox", "Inbox");
   const first = page.locator("section[aria-labelledby^='grp-']").first();
   await expect(first.getByRole("heading", { level: 3 })).toHaveText(/^Just read/);
-  const row = first.getByRole("listitem").filter({ has: page.getByRole("link", { name: /Income Tax Assessment 2025/ }) });
+  const row = first.getByRole("listitem").filter({ has: page.getByRole("link", { name: title }) });
   await expect(row).toBeVisible();
   // its page was just shown: no "New"
   await expect(row.getByText("New", { exact: true })).toHaveCount(0);
