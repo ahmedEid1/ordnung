@@ -62,7 +62,10 @@ export async function demoCatalog({ api, server }) {
   const noRemedyDoc = docs.find((d) => d.remedy?.type === "none" && d.area !== "other") ?? docs.find((d) => d.remedy?.type === "none");
   const replyDoc = byFile("13_nebenkostenabrechnung_2025.pdf"); // the operating-cost statement
   const glossaryDoc = objectionDoc ?? docs[0];
-  const phoneContract = contracts.find((c) => /FunkNetz/.test(c.name)) ?? contracts[0];
+  // the phone contract by what it is, never by the name the model gave it (a re-recording renames it), and never
+  // another contract in its place
+  const phoneContract = contracts.find((c) => c.category === "mobile");
+  if (!phoneContract) throw new Error(`no mobile contract in the demo (it has ${contracts.map((c) => `${c.category} “${c.name}”`).join(", ")})`);
   const employment = contracts.find((c) => c.category === "employment");
   const draft = drafts[0];
   const bigParty = [...parties].sort((a, b) => (b.name?.length ?? 0) - (a.name?.length ?? 0))[0];
@@ -817,7 +820,7 @@ export async function demoCatalog({ api, server }) {
     });
   composer("new", "new=1", "The New-letter composer, nothing chosen yet.");
   composer("cancellation", "kind=cancellation", "Composer: “Cancel a contract” with the contract list.");
-  if (phoneContract) composer("cancellation-chosen", `kind=cancellation&contract=${phoneContract.id}`, `Composer: cancelling “${phoneContract.name}” (recipient, send-by date, instructions).`);
+  composer("cancellation-chosen", `kind=cancellation&contract=${phoneContract.id}`, `Composer: cancelling “${phoneContract.name}” (recipient, send-by date, instructions).`);
   if (employment) composer("cancellation-employment", `kind=cancellation&contract=${employment.id}`, "Composer: ending an employment contract (resignation wording and hints).");
   composer("objection", "kind=objection", "Composer: “Object to a decision” with the eligible letters.");
   if (objectionDoc) composer("objection-chosen", `kind=objection&doc=${objectionDoc.id}`, `Composer: objection against “${objectionDoc.title}”.`);
@@ -827,7 +830,7 @@ export async function demoCatalog({ api, server }) {
     const box = c.page.getByRole("dialog").getByRole("textbox").last();
     if (await c.exists(box)) await c.type(box, "Bitte schicken Sie mir die Belege zur Heizkostenabrechnung. Ich möchte in zwei Raten zahlen.");
   });
-  if (phoneContract && draft) {
+  if (draft) {
     add({
       id: "composer-written-toast",
       group: "letters",
@@ -2077,13 +2080,13 @@ export async function demoCatalog({ api, server }) {
             for (let i = 0; i < 120 && (await api.get("/api/jobs?active_only=true")).length; i += 1) await new Promise((r) => setTimeout(r, 500));
             extra.readAgain = again.id;
           }
-          const gym = contracts2.find((c) => /FitWell/.test(c.name)) ?? contracts2.find((c) => c.id !== phoneContract?.id);
+          const gym = contracts2.find((c) => c.category === "gym");
           if (gym) {
             const d = await api.post("/api/drafts", { kind: "cancellation", contract_id: gym.id, doc_id: gym.source_doc_id ?? null, party_id: gym.party_id ?? null, language: "en" });
             await api.post(`/api/drafts/${d.id}/sent`, { channel: "registered_letter", date: "2026-09-26" });
             extra.sent = d;
           }
-          const phone = contracts2.find((c) => /FunkNetz/.test(c.name));
+          const phone = contracts2.find((c) => c.category === "mobile");
           if (phone) {
             const d2 = await api.post("/api/drafts", { kind: "cancellation", contract_id: phone.id, doc_id: phone.source_doc_id ?? null, party_id: phone.party_id ?? null, language: "en" });
             await api.post(`/api/drafts/${d2.id}/sent`, { channel: "registered_letter", date: "2026-09-10", tracking_number: "1234 5678 9012" });

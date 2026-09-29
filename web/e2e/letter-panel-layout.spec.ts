@@ -5,6 +5,7 @@
  * verdict's own payment don't come back under "Ideas".
  */
 import type { Locator, Page } from "@playwright/test";
+import type { Contract } from "@/api/types";
 import { apiGet, expect, letterId, letterItem, open, openMail, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -73,8 +74,21 @@ test.describe("phone 320 px: the letter panel", () => {
   });
 
   test("the contract card keeps its name and price inside the card", async ({ page }) => {
-    await openLetter(page, "14_krankenkasse_beitragsbescheid.pdf"); // the health insurance contribution notice
+    // The hardest card to fit, chosen by what the test needs rather than by a letter: the contract with a price
+    // and the longest name (with prompt 11 the liability insurance's "Privat-Haftpflichtversicherung, Tarif Basis
+    // Single"), on the letter it was read from. The health insurance notice this test used has no contract since
+    // prompt 11 ("We couldn't match this letter to one of your contracts"), and a re-recording may rename or
+    // re-link any contract.
+    const contracts = await apiGet<Contract[]>(page, "/api/contracts");
+    const priced = contracts.filter((c) => c.cost_amount != null && c.source_doc_id);
+    expect(priced.length, "a demo contract with a price, read from a letter").toBeGreaterThan(0);
+    const contract = priced.reduce((longest, c) => (c.name.length > longest.name.length ? c : longest));
+    const id = contract.source_doc_id!;
+    const detail = await apiGet<{ contracts: { id: string }[] }>(page, `/api/documents/${id}`);
+    expect(detail.contracts.map((c) => c.id), `the letter “${contract.name}” was read from shows that one contract`).toEqual([contract.id]);
+    await open(page, `/documents/${id}`);
     const card = page.getByRole("region", { name: "Contract" }).locator(".card").first();
+    await expect(card).toContainText(shownAs(contract.name));
     const box = (await card.boundingBox())!;
     const inside = await card.evaluate((el) => {
       const r = el.getBoundingClientRect();

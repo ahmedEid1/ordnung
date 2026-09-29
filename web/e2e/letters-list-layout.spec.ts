@@ -9,7 +9,7 @@
  */
 import type { Page } from "@playwright/test";
 import { protectRefs } from "@/lib/glue";
-import { apiGet, expect, open, settle, setTour, test } from "./helpers";
+import { apiGet, contractOf, expect, open, settle, setTour, test } from "./helpers";
 
 interface DraftSummary {
   id: string;
@@ -21,8 +21,7 @@ interface DraftSummary {
 async function ensureDraft(page: Page): Promise<void> {
   const drafts = await apiGet<DraftSummary[]>(page, "/api/drafts");
   if (drafts.length) return;
-  const contracts = await apiGet<{ id: string; name: string }[]>(page, "/api/contracts");
-  const phone = contracts.find((c) => /FunkNetz/.test(c.name))!;
+  const phone = await contractOf(page, "mobile");
   const res = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: phone.id, language: "de" }, headers: { "X-Ordnung-Client": "web" } });
   expect(res.ok()).toBe(true);
 }

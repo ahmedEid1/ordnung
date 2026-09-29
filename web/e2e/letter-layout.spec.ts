@@ -6,7 +6,7 @@
  * phones "Mark as sent" comes first across the whole row, and Save stays in reach while you edit.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, expect, open, setTour, test } from "./helpers";
+import { apiGet, contractOf, expect, open, setTour, test } from "./helpers";
 
 interface DraftSummary {
   id: string;
@@ -19,8 +19,7 @@ async function cancellationId(page: Page): Promise<string> {
   const drafts = await apiGet<DraftSummary[]>(page, "/api/drafts");
   const found = drafts.find((d) => d.kind === "cancellation" && d.status !== "sent");
   if (found) return found.id;
-  const contracts = await apiGet<{ id: string; name: string }[]>(page, "/api/contracts");
-  const phone = contracts.find((c) => /FunkNetz/.test(c.name))!;
+  const phone = await contractOf(page, "mobile");
   const res = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: phone.id, language: "de" }, headers: { "X-Ordnung-Client": "web" } });
   expect(res.ok()).toBe(true);
   return ((await res.json()) as DraftSummary).id;

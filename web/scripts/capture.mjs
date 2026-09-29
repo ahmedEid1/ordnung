@@ -271,8 +271,8 @@ function receiptPdf() {
  */
 async function withdrawCancellation(context) {
   const contracts = await apiGet(context, "/api/contracts");
-  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""));
-  if (!contract) throw new Error("no FunkNetz contract in the demo");
+  const contract = contracts.find((c) => c.category === "mobile"); // FunkNetz's: by what it is, not by the name the model gave it
+  if (!contract) throw new Error("no phone (mobile) contract in the demo");
   for (const d of await apiGet(context, "/api/drafts")) {
     if (d.contract_id !== contract.id || d.kind !== "cancellation") continue;
     const res = await context.request.delete(`${BASE}/api/drafts/${d.id}`, { headers: CLIENT });
@@ -282,8 +282,8 @@ async function withdrawCancellation(context) {
 
 async function sendCancellation(context) {
   const contracts = await apiGet(context, "/api/contracts");
-  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""));
-  if (!contract) throw new Error("no FunkNetz contract in the demo");
+  const contract = contracts.find((c) => c.category === "mobile"); // FunkNetz's: by what it is, not by the name the model gave it
+  if (!contract) throw new Error("no phone (mobile) contract in the demo");
   const drafts = await apiGet(context, "/api/drafts");
   const sent = drafts.find((d) => d.contract_id === contract.id && d.status === "sent" && d.tracking_number);
   if (sent) return sent.id;

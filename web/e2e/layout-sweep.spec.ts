@@ -64,7 +64,7 @@ interface Demo {
   docs: { id: string; filename: string; title: string | null }[];
   draftId: string;
   parties: { id: string; name: string }[];
-  contracts: { id: string; name: string }[];
+  contracts: { id: string; name: string; category: string }[];
 }
 
 interface SweepState {
@@ -278,8 +278,7 @@ test.beforeAll(async ({ browser }) => {
   // the letter pages.spec.ts drafts (the phone contract's cancellation); drafted here when the sweep runs alone
   let drafts = await apiGet<{ id: string }[]>(page, "/api/drafts");
   if (!drafts.length) {
-    const phone = contracts.find((c) => /FunkNetz/.test(c.name)) ?? contracts[0]!;
-    const res = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: phone.id }, headers: CLIENT });
+    const res = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: phoneContract(contracts).id }, headers: CLIENT });
     expect(res.ok(), `POST /api/drafts → ${res.status()}`).toBe(true);
     drafts = [(await res.json()) as { id: string }];
   }
@@ -293,7 +292,15 @@ function letter(demo: Demo, file: string): Demo["docs"][number] {
   if (!doc) throw new Error(`no demo letter from the sample ${file} (the Inbox has ${demo.docs.map((d) => d.filename).join(", ")})`);
   return doc;
 }
-const phoneContract = (demo: Demo) => demo.contracts.find((c) => /FunkNetz/.test(c.name)) ?? demo.contracts[0]!;
+/**
+ * The demo's phone contract: by what it is, never by the name the model gave it (a re-recording renames it),
+ * and never another contract in its place.
+ */
+function phoneContract(contracts: Demo["contracts"]): Demo["contracts"][number] {
+  const phone = contracts.filter((c) => c.category === "mobile");
+  if (phone.length !== 1) throw new Error(`one mobile contract in the demo (it has ${contracts.map((c) => `${c.category} “${c.name}”`).join(", ")})`);
+  return phone[0]!;
+}
 
 const MAIN_PAGES: SweepState[] = [
   { name: "Today", enter: (page) => open(page, "/", /Sam/) },
@@ -357,7 +364,7 @@ const ASK_LETTERS_TRACE: SweepState[] = [
   {
     name: "Composer · cancelling the phone contract",
     enter: async (page, demo) => {
-      await open(page, `/letters?kind=cancellation&contract=${phoneContract(demo).id}`);
+      await open(page, `/letters?kind=cancellation&contract=${phoneContract(demo.contracts).id}`);
       await expect(page.getByRole("dialog", { name: "New letter" }).getByRole("button", { name: /Write the letter/ })).toBeVisible();
       await settle(page);
     },

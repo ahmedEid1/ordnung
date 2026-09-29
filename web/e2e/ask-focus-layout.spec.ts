@@ -6,13 +6,13 @@
  * Why its own file, run first: the demo replays a recorded Ask answer only for a question it recorded
  * (`demo/asks.json`) on a ledger it recorded it on — every combination of opened New-mail letters on the
  * untouched demo (`demo/loader.py`, `_exercise_asks`; the key is the question, today and a hash of the
- * ledger: every letter, to-do, contract and party). The layout project runs its files in name order, and a
- * later one changes the ledger for good: `contracts-layout.spec.ts` saves a contract's notice terms through
- * the API, and a PATCH can't always put a contract back as its letter left it — saving notice terms clears
- * the contract's day of the month unless it is sent too, and records terms that give dates as the person's
- * (the Deutschlandticket's "by the 10th" lost its day that way). From then on every question gets "No
- * recorded answer for this question". These tests were in `layout.spec.ts`, which runs after it; here they
- * run before it, on the ledger the tour, the pages and the sweep left (the tax assessment read from New mail).
+ * ledger: every field of every letter, to-do, contract and party but its timestamps). Any test that changes
+ * the ledger and doesn't put it back exactly leaves every later question with "No recorded answer for this
+ * question". The layout project runs its files in name order, and files before `layout.spec.ts` (where these
+ * tests were) change the ledger for a while and put it back (a contract's notice terms in
+ * `contracts-layout.spec.ts`, which checks that it came back; letters from a watched folder in
+ * `folder-layout.spec.ts`). Here the tests run before all of them, on the ledger the tour, the pages and the
+ * sweep left (the tax assessment read from New mail); `ask()` names the cause when a question gets no recording.
  */
 import type { Page } from "@playwright/test";
 import { obscuredFocus } from "./focus";

@@ -3,7 +3,7 @@
  * anywhere (§14 copy table), axe-core in light and dark mode, and a phone-sized smoke test.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
+import { apiGet, contractOf, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
 
 // The tour card floats over every page; these tests are about the pages themselves.
 test.beforeEach(async ({ page }) => {
@@ -47,18 +47,20 @@ test.describe("pages", () => {
   });
 
   test("Contracts shows when to send the FunkNetz cancellation", async ({ page }) => {
+    // the phone contract by what it is: its name is the model's, and a re-recording may rename it
+    const phone = await contractOf(page, "mobile");
     await open(page, "/contracts");
     const decide = page.getByRole("region", { name: /^Decide by/ });
-    const funknetz = decide.getByRole("listitem").filter({ has: page.getByRole("heading", { name: /FunkNetz Smart M/ }) });
+    // (the heading names the organisation after the contract)
+    const funknetz = decide.getByRole("listitem").filter({ has: page.getByRole("heading", { name: new RegExp(`^${shownAs(phone.name).source}`) }) });
     // "send", like the chart's "Send by" diamond and the card's "Send by" row
     await expect(funknetz).toContainText("send your Kündigung (cancellation / notice) by Thu 8 Oct");
     await expect(funknetz).toContainText("must arrive by Wed 14 Oct");
-    await expect(funknetz.getByRole("link", { name: "Draft cancellation for FunkNetz Smart M" })).toBeVisible();
+    await expect(funknetz.getByRole("link", { name: shownAs(`Draft cancellation for ${phone.name}`) })).toBeVisible();
     // the lanes chart marks the same send-by date (with the must-arrive-by date six days later, when
     // the two sit too close to tell apart they are one mark that names both)
-    await expect(
-      page.getByRole("button", { name: /^Send by · Thu 8 Oct, in 10 days(; Must arrive by · Wed 14 Oct, in 16 days)?\. FunkNetz Smart M/ }),
-    ).toBeVisible();
+    const mark = new RegExp(`^Send by · Thu 8 Oct, in 10 days(; Must arrive by · Wed 14 Oct, in 16 days)?\\. ${shownAs(phone.name).source}`);
+    await expect(page.getByRole("button", { name: mark })).toBeVisible();
   });
 
   test("Ask: a suggested question streams an answer whose citation opens the letter", async ({ page }) => {
@@ -82,12 +84,14 @@ test.describe("pages", () => {
   });
 
   test("Letters: a cancellation for the phone contract with PDF preview and checks", async ({ page }) => {
+    // the phone contract by what it is; what the composer and the letter show of it, from its name as read
+    const phone = await contractOf(page, "mobile");
     await open(page, "/letters");
     await page.getByRole("button", { name: "New letter" }).click();
     const composer = page.getByRole("dialog", { name: "New letter" });
     await composer.locator("label", { hasText: "Cancel a contract" }).click();
-    await composer.locator("label", { hasText: "FunkNetz Smart M" }).click();
-    await expect(composer.getByRole("radio", { name: /^FunkNetz Smart M/ })).toBeChecked();
+    await composer.locator("label", { hasText: shownAs(phone.name) }).click();
+    await expect(composer.getByRole("radio", { name: new RegExp(`^${shownAs(phone.name).source}`) })).toBeChecked();
     // the recipient's whole name and address, the address on a line of its own (never cut off)
     await expect(composer).toContainText("ToFMFunkNetz Mobil GmbHWellenweg 7, 12351 Beispielhausen");
 
@@ -105,7 +109,7 @@ test.describe("pages", () => {
     expect(file.headers()["content-type"]).toBe("application/pdf");
     expect((await file.body()).subarray(0, 5).toString()).toBe("%PDF-");
 
-    await expect(page.getByRole("textbox", { name: "Letter text (German)" })).toHaveValue(/kündige ich den Vertrag „FunkNetz Smart M“/);
+    await expect(page.getByRole("textbox", { name: "Letter text (German)" })).toHaveValue(shownAs(`kündige ich den Vertrag „${phone.name}“`));
     const checks = page.getByRole("region", { name: "Checks" });
     await expect(checks).toContainText(/checks passed/);
     await expect(checks.getByRole("listitem").first()).toBeVisible();

@@ -4,7 +4,8 @@
  * viewer has no scroll box of its own on phones and tablets (a swipe scrolled only the box).
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, letterId, open, setTour, shownAs, test } from "./helpers";
+import type { DocumentDetail } from "@/api/types";
+import { apiGet, expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -13,6 +14,20 @@ test.beforeEach(async ({ page }) => {
 /** Open the demo letter read from the sample `file` (never found by its title: the model writes it anew with each recording). */
 async function openLetter(page: Page, file: string) {
   await open(page, `/documents/${await letterId(page, file)}`);
+}
+
+/**
+ * A to-do the server set aside as history (already past when its letter was added) on some demo letter, found
+ * through the API: which letter has one depends on the recording. Fails when none has.
+ */
+async function historyItem(page: Page): Promise<{ docId: string; title: string }> {
+  for (const doc of await apiGet<{ id: string }[]>(page, "/api/documents")) {
+    const detail = await apiGet<DocumentDetail>(page, `/api/documents/${doc.id}`);
+    const aside = detail.set_aside.find((a) => a.reason === "history");
+    const item = aside && detail.items.find((i) => i.id === aside.item_id);
+    if (item) return { docId: doc.id, title: item.title };
+  }
+  throw new Error("no demo letter has a to-do that was already past when the letter was added (set aside as history)");
 }
 
 /** Words of `el` broken across two lines without a hyphen (a compound cut mid-syllable). */
@@ -67,7 +82,27 @@ test.describe("phone 320 px: the verdict", () => {
   });
 
   test("leads in English, with the letter's German below it", async ({ page }) => {
-    await openLetter(page, "10_rueckmeldung_sose_2027.pdf"); // the semester fee
+    // Since extraction prompt 11 the semester fee's to-do is read in English (title, action and consequence), and
+    // no demo to-do is read in German any more. So the fee is shown as an earlier recording read it, in the
+    // letter's German: the page's own answer is rewritten in the browser, the shared demo stays as it is.
+    const id = await letterId(page, "10_rueckmeldung_sose_2027.pdf"); // the semester fee
+    const fee = await letterItem(page, id, "payment");
+    const german = {
+      title: "Semesterbeitrag Sommersemester 2027 zahlen",
+      action: "Semesterbeitrag von 312,40 € rechtzeitig überweisen",
+      consequence: "Bei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben. Ohne fristgerechte Rückmeldung droht die Exmatrikulation.",
+    };
+    await page.route(
+      (url) => url.pathname === `/api/documents/${id}`,
+      async (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        const response = await route.fetch();
+        const detail = (await response.json()) as { items: { id: string }[] };
+        const items = detail.items.map((item) => (item.id === fee.id ? { ...item, ...german } : item));
+        await route.fulfill({ response, json: { ...detail, items } });
+      },
+    );
+    await open(page, `/documents/${id}`);
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/^Pay €312\.40 to /)).toBeVisible();
     await expect(verdict.getByText(/^The letter warns of a late fee/)).toBeVisible();
@@ -92,15 +127,25 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     await expect(todos.getByRole("heading", { level: 2 })).toContainText("0 open");
   });
 
-  test("an archived lease's deposit is 'Still open?', not '362 days overdue'", async ({ page }) => {
-    await openLetter(page, "03_mietvertrag.pdf");
+  // This was one test on the lease, whose deposit was due before the letter was added. Since prompt 11 the deposit
+  // has no due date, so it is no longer history: the "Still open?" half runs on whichever letter has a to-do the
+  // server set aside as history (with prompt 11, the electricity contract's meter reading), the lease keeps the
+  // Contract half.
+  test("a to-do already past when its letter was added is 'Still open?', not '362 days overdue'", async ({ page }) => {
+    const history = await historyItem(page);
+    await open(page, `/documents/${history.docId}`);
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
-    await expect(verdict.getByRole("list", { name: "Probably dealt with" })).toContainText("Still open? Security deposit");
-    // … and so does the list below; the lease you can cancel any month has no "decide by … tomorrow" (UI audit round 2)
+    await expect(verdict.getByRole("list", { name: "Probably dealt with" })).toContainText(shownAs(`Still open? ${history.title}`));
+    // … and so does the list below (UI audit round 2)
     const todos = page.getByRole("region", { name: /To-dos & dates/ });
     await expect(todos).not.toContainText("overdue");
     await expect(todos).toContainText("Already past when the letter was added");
+  });
+
+  test("the lease you can cancel any month has no 'decide by'", async ({ page }) => {
+    // (UI audit round 2: "decide by … tomorrow" on a lease)
+    await openLetter(page, "03_mietvertrag.pdf");
     const contract = page.getByRole("region", { name: "Contract" });
     await expect(contract).toContainText("Cancel any time");
     await expect(contract).not.toContainText(/decide by/i);

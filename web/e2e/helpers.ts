@@ -1,10 +1,11 @@
 /**
  * Shared steps for the e2e suite: talking to the demo API with the page's session, finding demo letters
- * by their sample's file name, the New-mail tray, waiting for a page to settle, the raw-enum guard and the
- * axe scan.
+ * by their sample's file name and demo contracts by their category, the New-mail tray, waiting for a page to
+ * settle, the raw-enum guard and the axe scan.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import type { Contract, ContractCategory } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
 
 /** `test` that also fails when the app throws an uncaught error in the browser. */
@@ -100,6 +101,24 @@ export async function letterItem(page: Page, id: string, kind: string): Promise<
   const { title, items } = await letterDetail(page, id);
   const found = items.filter((i) => i.kind === kind);
   expect(found.length, `one ${kind} to-do on “${title}” (it has ${items.map((i) => `${i.kind} “${i.title}”`).join(", ") || "none"})`).toBe(1);
+  return found[0]!;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Demo contracts: found by what they are, never by the name the model gave them
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * The one demo contract of `category` ("mobile", "insurance"…), as `GET /api/contracts` lists it. A contract's
+ * name is the model's and changes with a re-recording ("Stromliefervertrag" became "MusterStrom Flex" with
+ * prompt 11), so a test finds its contract by what it is and builds the text it expects from `name`
+ * ({@link shownAs}). Fails, naming the demo's contracts, unless exactly one contract is of that category —
+ * never another contract in its place.
+ */
+export async function contractOf(page: Page, category: ContractCategory): Promise<Contract> {
+  const all = await apiGet<Contract[]>(page, "/api/contracts");
+  const found = all.filter((c) => c.category === category);
+  expect(found.map((c) => c.name), `one ${category} contract in the demo (it has ${all.map((c) => `${c.category} “${c.name}”`).join(", ")})`).toHaveLength(1);
   return found[0]!;
 }
 
