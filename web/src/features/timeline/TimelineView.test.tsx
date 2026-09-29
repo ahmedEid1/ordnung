@@ -68,7 +68,7 @@ describe("Timeline page", () => {
     expect(within(list).getByRole("link", { name: /FunkNetz Allnet L: current term ends/ })).toHaveAttribute("href", "/contracts?contract=ctr_phone");
     // each row says what its date is, not only by the colour of its icon
     expect(within(list).getByRole("link", { name: /Pay the parking fine.*Payment due/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add to my calendar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add your dates to your calendar" })).toBeInTheDocument();
 
     assertNoRawEnumsInElement(container);
   });
@@ -257,7 +257,7 @@ describe("states", () => {
     expect(within(alert).getByRole("heading", { level: 2, name: "Couldn't load your timeline" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Your year ahead" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Every date" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add to my calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
     expect(screen.queryByText(/0 lanes|still empty|No dates yet/)).toBeNull();
 
     await user.click(within(alert).getByRole("button", { name: "Try again" }));
@@ -271,7 +271,7 @@ describe("states", () => {
     const lanesRegion = screen.getByRole("region", { name: "Your year ahead" });
     expect(lanesRegion).toHaveTextContent("June 2026 – September 2027");
     expect(lanesRegion).not.toHaveTextContent(/\d+ lanes?/);
-    expect(screen.queryByRole("button", { name: "Add to my calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
   });
 
   it("on a fresh install shows one empty state that asks for letters — no filters, counts or export", async () => {
@@ -287,7 +287,7 @@ describe("states", () => {
     expect(screen.queryByRole("region", { name: "Your year ahead" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Every date" })).toBeNull();
     expect(screen.queryByRole("combobox")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add to my calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
   });
 });
@@ -297,14 +297,14 @@ describe("calendar export", () => {
     const client = await seededClient();
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     renderWithProviders(<TimelineView />, { client, route: "/timeline" });
-    fireEvent.click(screen.getByRole("button", { name: "Add to my calendar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add your dates to your calendar" }));
     expect(click).toHaveBeenCalledTimes(1);
     let dialog = await screen.findByRole("dialog", { name: "Add your dates to your calendar" });
     expect(dialog).toHaveTextContent("is downloading");
     fireEvent.click(within(dialog).getByRole("button", { name: "Done" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    fireEvent.click(screen.getByRole("button", { name: "Add to my calendar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add your dates to your calendar" }));
     dialog = await screen.findByRole("dialog", { name: "Add your dates to your calendar" });
     expect(click).toHaveBeenCalledTimes(1);
     expect(dialog).toHaveTextContent("is in your Downloads");
@@ -317,7 +317,7 @@ describe("calendar export", () => {
     const client = await seededClient();
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     renderWithProviders(<TimelineView />, { client, route: "/timeline" });
-    fireEvent.click(screen.getByRole("button", { name: "Add to my calendar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add your dates to your calendar" }));
     const dialog = await screen.findByRole("dialog", { name: "Add your dates to your calendar" });
     const google = within(dialog).getByRole("link", { name: /calendar\.google\.com/ });
     expect(google).toHaveAttribute("href", expect.stringMatching(/^https:\/\/calendar\.google\.com\//));
@@ -342,6 +342,6 @@ describe("calendar export", () => {
     client.setQueryData(qk.timeline(from, to), letters);
     renderWithProviders(<TimelineView />, { client, route: "/timeline" });
     expect(screen.getByRole("region", { name: "Every date" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add to my calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
   });
 });

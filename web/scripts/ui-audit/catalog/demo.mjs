@@ -643,12 +643,12 @@ export async function demoCatalog({ api, server }) {
     id: "timeline-calendar-export",
     group: "timeline",
     route: "/timeline",
-    how: "open /timeline, “Add to my calendar” (the download happens; the “exported” POST is faked)",
+    how: "open /timeline, “Add your dates to your calendar” (the download happens; the “exported” POST is faked)",
     description: "Calendar export dialog with the per-app guide.",
     run: async (c) => {
       await fakeApi(c.page, "POST", /^\/api\/calendar\/exported$/, async () => ({ json: { ok: true } }));
       await c.goto("/timeline");
-      await c.click(main(c.page).getByRole("button", { name: "Add to my calendar" }));
+      await c.click(main(c.page).getByRole("button", { name: "Add your dates to your calendar" }));
       await c.visible(c.page.getByRole("dialog"));
     },
   });
@@ -661,7 +661,7 @@ export async function demoCatalog({ api, server }) {
     run: async (c) => {
       await fakeApi(c.page, "POST", /^\/api\/calendar\/exported$/, async () => ({ json: { ok: true } }));
       await c.goto("/timeline");
-      await c.click(main(c.page).getByRole("button", { name: "Add to my calendar" }));
+      await c.click(main(c.page).getByRole("button", { name: "Add your dates to your calendar" }));
       const radios = c.page.getByRole("dialog").getByRole("radiogroup").getByRole("radio");
       await c.click(radios.last());
     },

@@ -30,8 +30,8 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    cites any record, so "the deadline passed today [item:…]" and "the period ended today" in a paragraph of
    its own are left out and the note gives the record's own date; only in an answer that cites no record does
    today stand alone, and the note then says it is today's date and gives the records' own dates, so an
-   unqualified "checked" never rests on today (review round 4 of phase 2; the prompt's "Today's date needs no
-   citation" goes with its next version); a year that stands in no other value is
+   unqualified "checked" never rests on today (review round 4 of phase 2; the prompt says so since version
+   6); a year that stands in no other value is
    the cited record's only when it holds a date in that year; a sentence without
    citations of its own may state a value of a record the answer cites, and the check then adds that
    record's citation (never a scam record's, never several). A cited record's flagged amount and the
@@ -69,9 +69,11 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    left out, read with look-alike letters as Latin ones and across a soft line break.
 4. **Citations need a record part.** A cited id must appear in the record part of a tool result of the
    same turn and exist; an id only a letter's text names is stripped.
-5. **The prompt says what the check does** (`ask_system` version 5): a value only a letter holds is not
-   stated, each sentence and list item cites its own record, the record's legal statements keep their
-   hedges, and a `do_not_pay` demand is not to be paid until checked with the sender (ADR 0006). **A
+5. **The prompt says what the check does** (`ask_system` version 6): a value only a letter holds is not
+   stated, whatever words frame it; only a cited record's flagged amount and the person's own words stay
+   as quotes; today's date is checked like any other; each sentence and list item cites its own record,
+   the record's legal statements keep their hedges, and a `do_not_pay` demand is not to be paid until
+   checked with the sender (ADR 0006). **A
    benchmark measures it** (`python -m evals.ask`): questions with gold answers from the sample life's
    truth, injected letters, attack success with and without the check, and a CI gate on the replay.
    Replays (the benchmark's and `ordnung demo --check`) answer every recorded tool call again with the

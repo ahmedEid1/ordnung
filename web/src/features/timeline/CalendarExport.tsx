@@ -1,5 +1,5 @@
 /**
- * "Add to my calendar" — downloads every open date (with reminders) as `ordnung.ics`, records the
+ * "Add your dates to your calendar" — downloads every open date (with reminders) as `ordnung.ics`, records the
  * export (so the "new dates since your last calendar update" Idea resets) and shows a short guide
  * for Google, Apple and Outlook. The file downloads by itself on the first open only; after that
  * the dialog offers "Download again".
@@ -84,8 +84,9 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
 
   return (
     <>
-      {/* the button speaks for the person ("my"); what it opens says "your", as Settings and Today do. Ask's
-          prompt names this button (src/ordnung/llm/prompts/ask_system.md), so its label changes only with it */}
+      {/* one name for it everywhere: the button, the dialog it opens and Settings say "Add your dates to your
+          calendar". Ask's prompt names this button (src/ordnung/llm/prompts/ask_system.md), so its label
+          changes only with it (and a re-recording of Ask's answers) */}
       <Button
         variant={variant}
         size={size}
@@ -97,7 +98,7 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
           setOpen(true);
         }}
       >
-        Add to my calendar
+        Add your dates to your calendar
       </Button>
       <Dialog
         open={open}

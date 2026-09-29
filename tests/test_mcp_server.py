@@ -906,6 +906,29 @@ def test_a_payment_made_at_an_appointment_has_no_transfer_date(store: Store, ids
     assert LedgerTools(store, today=TODAY).explain_date(fee).record["send_by"] == "2026-10-13"
 
 
+def test_a_payment_its_words_say_is_made_on_site_has_no_transfer_date(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """UI audit R1-backend-8: Ask's record follows the app's views (``pays_on_site``): a fee paid at the
+    service desk or by card on site has no bank transfer's send-by date, with or without an appointment
+    that day — a letter read before the fix still has one stored."""
+    doc = ids["doc_permit"]
+    desk = add_item(
+        store, kind="payment", title="Pay the library fees", doc_id=doc, due_date="2026-10-02",
+        send_by="2026-10-01", amount=4.5, currency="EUR", direction="out",
+        action="Pay the 4,50 € at the service desk or the payment machine.",
+    )  # fmt: skip
+    transfer = add_item(
+        store, kind="payment", title="Pay the fine", doc_id=doc, due_date="2026-10-02", send_by="2026-10-01",
+        amount=30.0, currency="EUR", direction="out", action="Transfer 30,00 € to the Stadtkasse.",
+    )  # fmt: skip
+    tools = LedgerTools(store, today=TODAY)
+    rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
+    assert rows[desk]["send_by"] is None and rows[transfer]["send_by"] == "2026-10-01"
+    assert tools.explain_date(desk).record["send_by"] is None
+    assert tools.explain_date(transfer).record["send_by"] == "2026-10-01"
+
+
 def test_explain_date_keeps_an_unverified_contracts_steps_out_of_the_record(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:

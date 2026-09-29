@@ -1,4 +1,4 @@
-/** "Add to my calendar": download `calendar.ics` and the import guides per calendar app. */
+/** "Add your dates to your calendar": download `calendar.ics` and the import guides per calendar app. */
 import { api } from "@/api/endpoints";
 import { leadSpan } from "@/features/settings/logic";
 

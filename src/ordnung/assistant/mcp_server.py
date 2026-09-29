@@ -306,9 +306,7 @@ class LedgerTools:
             item = self.store.get_item(ref_id)
             if item is None:
                 return _not_found("item", ref_id)
-            in_person = (
-                item.kind == "payment" and bool(item.due_time) and paid_at_appointment(self.ledger(), item)
-            )
+            in_person = paid_at_appointment(self.ledger(), item)
             letter = self.store.get_document(item.doc_id) if item.doc_id else None
             return _explain_item(
                 item,
@@ -891,12 +889,16 @@ def _scam_signs(ledger: Ledger, item: Item) -> list[str]:
 
 
 def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
-    """A payment made in person at an appointment (:func:`ordnung.secretary.triggers.paid_at_appointment`):
-    its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
-    cancel the appointment by."""
+    """A payment made in person — its words say so (:func:`ordnung.payments.pays_on_site`, as the app's
+    views and the web read it: card or cash at the appointment, the desk, a machine), or it has a clock time
+    and its letter sets an appointment that day (:func:`ordnung.secretary.triggers.paid_at_appointment`).
+    Its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
+    cancel the appointment by. Letters read since UI audit R1-backend-8 store none for it; this covers those
+    read before."""
+    from ordnung.payments import pays_on_site
     from ordnung.secretary.triggers import paid_at_appointment as in_person
 
-    return in_person(item, ledger.items)
+    return pays_on_site(item) or in_person(item, ledger.items)
 
 
 AMOUNT_READ_BY_AI = (
@@ -928,7 +930,8 @@ SET_ASIDE_ATTACHED = (
 )
 TERMS_UNVERIFIED = (
     "The terms and cost were read by AI from a photo or could not be found in the letter, so they are "
-    "only in the letter text: give them as what the letter says."
+    "only in the letter text: give the cost as what the letter says; the terms' own dates are not "
+    "Ordnung's — give the record's dates and say the terms should be checked in the letter."
 )
 
 

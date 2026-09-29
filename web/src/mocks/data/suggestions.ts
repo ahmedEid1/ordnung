@@ -93,7 +93,7 @@ export const SUGGESTIONS: Suggestion[] = [
       { type: "item", id: "itm_abh_appt" },
       { type: "item", id: "itm_library_fee" },
     ],
-    action: { type: "none", draft_kind: null, target_type: "calendar", target_id: null, label: "Add to my calendar" },
+    action: { type: "none", draft_kind: null, target_type: "calendar", target_id: null, label: "Add to calendar" },
     created_at: ts("2026-09-26", "09:50"),
   }),
   idea({
