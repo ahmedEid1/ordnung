@@ -61,7 +61,7 @@ const JOBS = Math.max(1, Number(process.env.ORDNUNG_SWEEP_JOBS ?? 3) || 3);
 const CLIENT = { "X-Ordnung-Client": "web" };
 
 interface Demo {
-  docs: { id: string; title: string | null }[];
+  docs: { id: string; filename: string; title: string | null }[];
   draftId: string;
   parties: { id: string; name: string }[];
   contracts: { id: string; name: string }[];
@@ -287,7 +287,12 @@ test.beforeAll(async ({ browser }) => {
   await context.close();
 });
 
-const letter = (demo: Demo, title: RegExp) => demo.docs.find((d) => d.title && title.test(d.title)) ?? demo.docs[0]!;
+/** The demo letter read from the sample `file`: never found by its title, which the model writes anew with each recording. */
+function letter(demo: Demo, file: string): Demo["docs"][number] {
+  const doc = demo.docs.find((d) => d.filename === file);
+  if (!doc) throw new Error(`no demo letter from the sample ${file} (the Inbox has ${demo.docs.map((d) => d.filename).join(", ")})`);
+  return doc;
+}
 const phoneContract = (demo: Demo) => demo.contracts.find((c) => /FunkNetz/.test(c.name)) ?? demo.contracts[0]!;
 
 const MAIN_PAGES: SweepState[] = [
@@ -327,7 +332,7 @@ const ASK_LETTERS_TRACE: SweepState[] = [
   {
     name: "How it was read",
     enter: async (page, demo) => {
-      await open(page, `/documents/${letter(demo, /Payment Reminder|Mahnung/).id}?view=trace`);
+      await open(page, `/documents/${letter(demo, "15_mahnung_techmarkt.pdf").id}?view=trace`);
       await expect(page.getByRole("list", { name: "Steps of this reading" })).toBeVisible();
       await settle(page);
     },
@@ -395,7 +400,7 @@ const OVERLAYS: SweepState[] = [
   {
     name: "Pay panel with a GiroCode",
     enter: async (page, demo) => {
-      await open(page, `/documents/${letter(demo, /Heizkosten|Operating/).id}`);
+      await open(page, `/documents/${letter(demo, "13_nebenkostenabrechnung_2025.pdf").id}`);
       await page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ }).click();
       const panel = page.getByRole("dialog", { name: /^Pay/ });
       await expect(panel).toBeVisible();
@@ -409,7 +414,7 @@ const OVERLAYS: SweepState[] = [
   {
     name: "Why this date? with the rules",
     enter: async (page, demo) => {
-      await open(page, `/documents/${letter(demo, /Payment Reminder|Mahnung/).id}`);
+      await open(page, `/documents/${letter(demo, "15_mahnung_techmarkt.pdf").id}`);
       await page.getByRole("article").first().getByRole("button", { name: /Why this date\?/ }).first().click();
       const panel = page.getByRole("dialog", { name: /^Why this date\?/ });
       await panel.getByRole("button", { name: "Show the rules" }).click();
@@ -448,7 +453,7 @@ const OVERLAYS: SweepState[] = [
   {
     name: "Delete-letter confirmation",
     enter: async (page, demo) => {
-      await open(page, `/documents/${letter(demo, /FunkNetz/).id}`);
+      await open(page, `/documents/${letter(demo, "01_mobilfunkvertrag.pdf").id}`);
       await main(page).getByRole("button", { name: /^Delete$/ }).click();
       await expect(page.getByRole("alertdialog").or(page.getByRole("dialog")).first()).toBeVisible();
       await settle(page);

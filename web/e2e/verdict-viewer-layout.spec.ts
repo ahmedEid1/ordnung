@@ -4,14 +4,15 @@
  * viewer has no scroll box of its own on phones and tablets (a swipe scrolled only the box).
  */
 import type { Locator, Page } from "@playwright/test";
-import { documentId, expect, open, setTour, test } from "./helpers";
+import { expect, letterId, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
 });
 
-async function openLetter(page: Page, title: RegExp) {
-  await open(page, `/documents/${await documentId(page, title)}`);
+/** Open the demo letter read from the sample `file` (never found by its title: the model writes it anew with each recording). */
+async function openLetter(page: Page, file: string) {
+  await open(page, `/documents/${await letterId(page, file)}`);
 }
 
 /** Words of `el` broken across two lines without a hyphen (a compound cut mid-syllable). */
@@ -38,17 +39,35 @@ test.describe("phone 320 px: the verdict", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
   test("the headline never cuts a German compound mid-word and the page never scrolls sideways", async ({ page }) => {
-    for (const title of [/Immatrikulationsbescheinigung/, /Heizkostenabrechnung/, /Mahnung/]) {
-      await openLetter(page, title);
+    // Since extraction prompt 11 no demo title carries a long German compound, so each letter is shown with the
+    // title an earlier recording gave it, the letter's German term in brackets: the page's own answer is
+    // rewritten in the browser, the shared demo stays as it is.
+    for (const [file, title] of [
+      ["11_immatrikulationsbescheinigung_wise_2026.pdf", "Certificate of Enrolment (Immatrikulationsbescheinigung) for Winter Semester 2026/27"],
+      ["13_nebenkostenabrechnung_2025.pdf", "Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG"],
+      ["15_mahnung_techmarkt.pdf", "1st Payment Reminder (Mahnung) – Invoice TM-2026-0048213"],
+    ] as const) {
+      const id = await letterId(page, file);
+      await page.route(
+        (url) => url.pathname === `/api/documents/${id}`,
+        async (route) => {
+          if (route.request().method() !== "GET") return route.fallback();
+          const response = await route.fetch();
+          const detail = (await response.json()) as { document: object };
+          await route.fulfill({ response, json: { ...detail, document: { ...detail.document, title } } });
+        },
+      );
+      await open(page, `/documents/${id}`);
       const h1 = page.getByRole("article").first().getByRole("heading", { level: 1 });
-      expect(await brokenWords(h1), `${title}`).toEqual([]);
+      await expect(h1).toContainText(shownAs(title));
+      expect(await brokenWords(h1), title).toEqual([]);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `${title} scrolls sideways`).toBeLessThanOrEqual(0);
     }
   });
 
   test("leads in English, with the letter's German below it", async ({ page }) => {
-    await openLetter(page, /Re-registration for Summer Semester 2027/);
+    await openLetter(page, "10_rueckmeldung_sose_2027.pdf"); // the semester fee
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/^Pay €312\.40 to /)).toBeVisible();
     await expect(verdict.getByText(/^The letter warns of a late fee/)).toBeVisible();
@@ -60,7 +79,7 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("an invoice its payment reminder replaced sends you to the reminder — never Pay twice", async ({ page }) => {
-    await openLetter(page, /^TechMarkt Online invoice/);
+    await openLetter(page, "08_rechnung_techmarkt.pdf");
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText("Nothing to pay on this letter — a payment reminder replaced it.")).toBeVisible();
     await expect(verdict.getByRole("button", { name: /^Pay/ })).toHaveCount(0);
@@ -74,7 +93,7 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
   });
 
   test("an archived lease's deposit is 'Still open?', not '362 days overdue'", async ({ page }) => {
-    await openLetter(page, /Rental Lease Agreement/);
+    await openLetter(page, "03_mietvertrag.pdf");
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
     await expect(verdict.getByRole("list", { name: "Probably dealt with" })).toContainText("Still open? Security deposit");
@@ -88,7 +107,7 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
   });
 
   test("the pages are no scroll box of their own; the pager turns them", async ({ page }) => {
-    await openLetter(page, /Operating and Heating Cost Statement/);
+    await openLetter(page, "13_nebenkostenabrechnung_2025.pdf"); // two pages
     const pages = page.getByRole("region", { name: "Letter pages" });
     const images = pages.getByRole("group", { name: "Page images" });
     const box = await images.evaluate((el) => ({ overflowY: getComputedStyle(el).overflowY, scroll: el.scrollHeight - el.clientHeight }));
@@ -100,7 +119,7 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
   });
 
   test("a fact on a photo: the quote sits under the photo, Escape closes it, and 'Back to …' returns", async ({ page }) => {
-    await openLetter(page, /^Passport of/);
+    await openLetter(page, "18_reisepass.jpg"); // a photo
     const chip = page.getByRole("button", { name: /show “.*” on the page/ }).first();
     await chip.scrollIntoViewIfNeeded();
     const before = (await chip.boundingBox())!.y;
