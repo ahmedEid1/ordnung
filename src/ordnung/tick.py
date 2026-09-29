@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import ledger_lock
-from ordnung.ingest.plan import item_context
+from ordnung.ingest.plan import item_contexts
 from ordnung.llm.base import LLMError
 from ordnung.llm.runtime import LLMService
 from ordnung.models import CalendarSyncReport
@@ -166,7 +166,7 @@ class DailyTick:
     async def _new_day(self, today: date, previous: str | None) -> TickResult:
         store = self.ctx.store
         async with ledger_lock():  # the pipeline links and reconciles under the same lock
-            await asyncio.to_thread(roll_forward, store, today, item_context)
+            await asyncio.to_thread(roll_forward, store, today, item_contexts())
             run = await asyncio.to_thread(run_and_reconcile, store, today)
         store.set_meta(LAST_TICK_KEY, today.isoformat())
         self._publish("day.changed", date=today.isoformat(), previous=previous)

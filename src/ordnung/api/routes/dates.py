@@ -26,7 +26,7 @@ from ordnung.ingest.plan import (
     document_context,
     first_dated,
     for_item,
-    item_context,
+    item_contexts,
     kept_payment_note,
     kind_chosen,
     law_deadlines,
@@ -129,6 +129,7 @@ def recompute_document_items(
         chosen=kind_chosen(store, document),
     )
     changed: list[Item] = []
+    contexts = item_contexts()
     with store.tx():
         for item in store.list_items(doc_id=document.id):
             if not recomputable(item) or item.date_spec is None:
@@ -152,7 +153,7 @@ def recompute_document_items(
                 recomputed, item_ctx, postal_buffer_days=buffer, starts=starts, reasons=verified.reasons
             )
             recomputed = first or recomputed
-            replaced = replacement(store, item, item_ctx, item_context)  # point 9: never past its last month
+            replaced = replacement(store, item, item_ctx, contexts)  # point 9: never past its last month
             ends = replaced.starts if replaced is not None else None
             moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer, ends=ends) or recomputed
             if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date, item_ctx):
@@ -161,7 +162,7 @@ def recompute_document_items(
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
         contracts = [item.contract_id for item in store.list_items(doc_id=document.id)]
-        settle_rents(store, today, item_context, contract_ids=contracts)  # point 9, in the new context
+        settle_rents(store, today, contexts, contract_ids=contracts)  # point 9, in the new context
         changed.extend(
             _refresh_rule_items(store, document, ctx, today, buffer, create=refile_rules, pages=pages)
         )

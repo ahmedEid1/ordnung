@@ -190,31 +190,39 @@ def _lease(quote: str = RENT_QUOTE, when: dict[str, Any] | None = None) -> Lette
     )
 
 
-def _statement(quote: str = NEW_RENT_QUOTE, working_day: int | None = None) -> Letter:
-    """The landlord's operating-cost statement: new advance payments, so a new total rent from November."""
+def _statement(
+    quote: str = NEW_RENT_QUOTE,
+    working_day: int | None = None,
+    *,
+    title: str = "New monthly total rent €670",
+    amount: float = 670.0,
+    old_amount: float | None = 640.0,
+    starts: str = "2026-11-01",
+    when: dict[str, Any] | None = None,
+    marker: str = "Betriebskostenabrechnung 2025 Beispielweg 7",
+) -> Letter:
+    """The landlord's operating-cost statement: new advance payments, so a new total rent from November (or
+    what ``title``, ``amount``, ``old_amount`` and ``starts`` say instead, dated by ``when`` if given)."""
+    day = f"{starts[8:10]}.{starts[5:7]}.{starts[:4]}"
     return Letter(
-        marker="Betriebskostenabrechnung 2025 Beispielweg 7",
-        pages=(("Wohnbau Musterstadt eG", "SPECIMEN", "Betriebskostenabrechnung 2025 Beispielweg 7", quote),),
+        marker=marker,
+        pages=(("Wohnbau Musterstadt eG", "SPECIMEN", marker, quote),),
         payload={
             "kind": "utility_bill",  # as the demo's statement is filed
             "area": "home",
             "title": "Operating cost statement 2025",
             "sender": LANDLORD,
             "document_date": "2026-09-08",
-            "summary": "The advance payments rise, so the total rent is €670 from November.",
+            "summary": f"The advance payments rise, so the total rent is €{amount:.0f} from November.",
             "explanation": "Pay the new total rent from November.",
             "items": [
                 {
                     "kind": "payment",
-                    "title": "New monthly total rent €670",
+                    "title": title,
                     "action": "Transfer the new total rent from November",
-                    "date": {
-                        "type": "fixed",
-                        "date": "2026-11-01",
-                        "nature": "payment",
-                        "text": "ab dem 01.11.2026",
-                    },
-                    "amount": 670.0,
+                    "date": when
+                    or {"type": "fixed", "date": starts, "nature": "payment", "text": f"ab dem {day}"},
+                    "amount": amount,
                     "currency": "EUR",
                     "direction": "out",
                     "recurrence": {**MONTHLY, "working_day": working_day},
@@ -223,9 +231,9 @@ def _statement(quote: str = NEW_RENT_QUOTE, working_day: int | None = None) -> L
             ],
             "change": {
                 "type": "price_increase",
-                "effective_date": "2026-11-01",
-                "old_amount": 640.0,
-                "new_amount": 670.0,
+                "effective_date": starts,
+                "old_amount": old_amount,
+                "new_amount": amount,
                 "quote": quote,
             },
             "case_title": "Flat",
@@ -488,3 +496,186 @@ async def test_a_rent_on_the_same_day_of_every_month_passes_that_day_on(data_dir
         assert f"The lease's due day{KEEPS_DAY_STEP}Sun 1 Nov 2026 as the start" in _step_labels(new)
         december = await _patch(api, new["id"], status="done")
         assert december["due_date"] == "2026-12-15"
+
+
+# --------------------------------------------------------------------------------------------------
+# review of the rent replacement: what a later payment replaces, and what an Undo gives back
+# --------------------------------------------------------------------------------------------------
+
+PREPAYMENT_QUOTE = "Ihre monatliche Vorauszahlung beträgt ab dem 01.11.2026 150,00 EUR (bisher 120,00 EUR)."
+ADVANCE_QUOTE = (
+    "Ab dem 01.11.2026 zahlen Sie zusätzlich eine Heizkostenvorauszahlung von 30,00 EUR monatlich."
+)
+
+
+@pytest.mark.parametrize(
+    ("quote", "title", "amount", "old_amount"),
+    [
+        # § 560 Abs. 4 BGB: a statement that states only the new prepayment ("bisher 120,00 EUR")
+        (PREPAYMENT_QUOTE, "New monthly operating-cost prepayment €150", 150.0, 120.0),
+        # a landlord's letter about a heating advance, with no old amount
+        (ADVANCE_QUOTE, "Heating advance EUR 30", 30.0, None),
+    ],
+)
+async def test_a_payment_that_is_only_part_of_the_rent_runs_beside_it(
+    data_dir: Path, quote: str, title: str, amount: float, old_amount: float | None
+) -> None:
+    """A later monthly payment on the rent contract that doesn't restate the whole rent — its letter's old
+    amount isn't the rent's, or without one it is less than the rent — replaces nothing and keeps no due
+    day: the €640 rent is still owed from November, next to it."""
+    lease = _lease()
+    part = _statement(quote, title=title, amount=amount, old_amount=old_amount)
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, part)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, part)
+        assert new["contract_id"] == rent["contract_id"]
+        assert not any(KEEPS_DAY_STEP in label for label in _step_labels(new))
+        assert new["due_date"] != "2026-11-04"  # its own date, not the lease's day
+
+        paid = await _patch(api, rent["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-11-04")
+        assert not any("replaced by" in message for message in _log(api, rent["id"]))
+        november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
+        assert {r["id"] for r in november} == {rent["id"], new["id"]}
+
+
+async def test_a_rent_added_by_hand_starts_on_the_date_the_person_gives(data_dir: Path) -> None:
+    """A rent the person adds on the lease's contract, due Sun 1 Nov and every month: its schedule starts on
+    the date they gave (point 2), not on the lease's working day — so marked paid, it moves on to Tue 1 Dec,
+    and November is never asked for twice."""
+    lease = _lease()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease)) as api:
+        _, rent = await _read(api, lease)
+        response = await api.client.post(
+            "/api/items",
+            json={
+                "kind": "payment",
+                "title": "New rent EUR 700",
+                "direction": "out",
+                "amount": 700.0,
+                "due_date": "2026-11-01",
+                "recurrence": MONTHLY,
+                "contract_id": rent["contract_id"],
+            },
+        )
+        assert response.status_code == 201, response.text
+        added = response.json()
+        assert (added["due_date"], added["due_date_source"]) == ("2026-11-01", "manual")
+        paid = await _patch(api, added["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-12-01")
+
+
+async def test_an_undated_new_rent_dated_by_hand_stands_in_for_that_months_rent(data_dir: Path) -> None:
+    """The statement's new rent read without a date; the person dates it Sun 1 Nov. It keeps the lease's due
+    day, so their date stands in for November's rent (Wed 4 Nov, point 7): marked paid, it moves on to Thu 3
+    Dec — November is never asked for again."""
+    lease = _lease()
+    statement = _statement(when={"type": "none", "nature": "payment", "text": "monatlich"})
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        await _read(api, lease)
+        _, new = await _read(api, statement)
+        assert new["due_date"] is None
+        dated = await _patch(api, new["id"], due_date="2026-11-01")
+        assert (dated["due_date"], dated["due_date_source"]) == ("2026-11-01", "manual")
+        paid = await _patch(api, new["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-12-03")
+
+
+async def test_an_undone_payment_leaves_the_one_before_it_standing(data_dir: Path) -> None:
+    """October paid, November paid by mistake and undone: October still counts as paid. When the statement
+    comes, the lease rent closes at October — it is not asked for again."""
+    lease, statement = _lease(), _statement()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        _, rent = await _read(api, lease)
+        assert (await _patch(api, rent["id"], status="done"))["due_date"] == "2026-11-04"
+        assert (await _patch(api, rent["id"], status="done"))["due_date"] == "2026-12-03"
+        assert (await _patch(api, rent["id"], status="open"))["due_date"] == "2026-11-04"  # Undo
+        await _read(api, statement)
+        old = await _item(api, rent["id"])
+        assert (old["status"], old["due_date"]) == ("done", "2026-10-05")
+
+
+async def test_undoing_the_payment_that_agreed_an_increase_brings_the_old_rent_back(data_dir: Path) -> None:
+    """The new rent of a § 558 increase marked paid closes the old rent at November; "Undo" on that payment
+    makes the increase not agreed again, so the old rent is back where it stood — December, as November was
+    paid — and December has a reminder for the rent still owed."""
+    lease, increase = _lease(), _increase()
+    clock.set_today("2026-09-29")
+    async with api_for(data_dir, router=_router(lease, increase)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, increase)
+        await _patch(api, rent["id"], status="done")
+        assert (await _patch(api, rent["id"], status="done"))["due_date"] == "2026-12-03"
+        await _patch(api, new["id"], status="done")
+        assert (await _item(api, rent["id"]))["status"] == "done"
+
+        undone = await _patch(api, new["id"], status="open")  # the toast's "Undo"
+        assert (undone["status"], undone["due_date"]) == ("open", "2026-12-03")
+        old = await _item(api, rent["id"])
+        assert (old["status"], old["due_date"]) == ("open", "2026-12-03")
+        assert (
+            "Reopened “Monthly rent” (Thu 3 Dec 2026) — the payment of “New monthly rent €700” that ended it was "
+            "undone" in _log(api, rent["id"])
+        )
+        december = await _rents(api, **{"from": "2026-12-01", "to": "2026-12-31"})
+        assert {r["id"] for r in december} == {rent["id"], new["id"]}
+
+
+async def test_a_rent_on_the_last_day_of_the_month_passes_that_day_on(data_dir: Path) -> None:
+    """A lease rent due on the 31st (its first Sat 31 Oct): the new rent from November is due on the last day
+    of each month — Mon 30 Nov, then Thu 31 Dec, never the 30th for good."""
+    lease = _lease(
+        "Die Miete von 640,00 EUR ist ab dem 31.10.2026 jeweils zum Monatsletzten zu zahlen.",
+        {"type": "fixed", "date": "2026-10-31", "nature": "payment", "text": "ab dem 31.10.2026"},
+    )
+    statement = _statement()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        await _read(api, lease)
+        _, new = await _read(api, statement)
+        assert new["due_date"] == "2026-11-30"
+        december = await _patch(api, new["id"], status="done")
+        assert december["due_date"] == "2026-12-31"
+
+
+async def test_paying_a_long_tenancys_rent_stays_quick(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A lease and a statement's new rent every year: marking the rent paid works out each rent's context once
+    (it used to grow with about the fourth power of the number of rents: seconds for a ten-year tenancy)."""
+    from ordnung.ingest import plan
+
+    years = range(2026, 2032)
+    amounts = [640.0 + 30 * (n + 1) for n in range(len(years))]
+    statements = [
+        _statement(
+            f"Ihre Gesamtmiete beträgt ab dem 01.11.{year} somit {amount:.2f} EUR.",
+            title=f"New monthly total rent €{amount:.0f}",
+            amount=amount,
+            old_amount=amount - 30,
+            starts=f"{year}-11-01",
+            marker=f"Betriebskostenabrechnung {year - 1} Beispielweg 7",
+        )
+        for year, amount in zip(years, amounts, strict=True)
+    ]
+    lease = _lease()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, *statements)) as api:
+        _, rent = await _read(api, lease)
+        for statement in statements:
+            await _read(api, statement)
+        rents = 1 + len(statements)
+        calls: list[str] = []
+        own = plan.own_context
+
+        def counted(store: Any, item: Any, today: date) -> Any:
+            calls.append(item.id)
+            return own(store, item, today)
+
+        monkeypatch.setattr(plan, "own_context", counted)
+        await _patch(api, rent["id"], title="Monthly rent")
+        assert len(calls) <= 2 * rents, len(calls)

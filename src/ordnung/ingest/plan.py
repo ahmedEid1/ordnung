@@ -65,9 +65,11 @@ from ordnung.models import (
 from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
+    ItemContext,
     at_occurrence,
     first_scheduled,
     keeps_later_date,
+    remembered,
     roll_forward,
     rule_working_day,
     same_rule,
@@ -473,6 +475,19 @@ def item_context(store: Store, item: Item, today: date) -> RuleContext:
     to a rent contract belongs to a home's tenancy, ``RuleContext.rent``), and a rent that changes an
     earlier one keeps that one's due day (:func:`rent_context`)."""
     return rent_context(store, item, own_context(store, item, today))
+
+
+def item_contexts() -> ItemContext:
+    """:func:`item_context` for one pass over the ledger (a letter read, a to-do changed, a day's tick): each
+    to-do's context, and its own without the due day a rent keeps, worked out once — point 9 of
+    :mod:`ordnung.recurrence` compares every rent of a contract with the others
+    (:func:`~ordnung.recurrence.remembered`)."""
+    own = remembered(own_context)
+
+    def context(store: Store, item: Item, today: date) -> RuleContext:
+        return with_rent_due(store, item, own(store, item, today), own)
+
+    return remembered(context)
 
 
 def rent_context(store: Store, item: Item, ctx: RuleContext) -> RuleContext:
@@ -1327,9 +1342,10 @@ def write_plan(
         text=full_text,
     )
     if any(item.recurrence for item in items):  # in the letter's context, now that it is stored
-        roll_forward(store, today, item_context)
+        contexts = item_contexts()
+        roll_forward(store, today, contexts)
         # a later rent replaces the one it changes, and keeps its due day (ordnung.recurrence, point 9)
-        settle_rents(store, today, item_context, contract_ids=[item.contract_id for item in items])
+        settle_rents(store, today, contexts, contract_ids=[item.contract_id for item in items])
         items = [store.get_item(item.id) or item for item in items]
         step.set(rolled_forward=True)
     store.reindex_document(document.id)

@@ -553,7 +553,8 @@ def test_other_working_days_count_saturday(store: Store) -> None:
 
 def test_the_law_dates_a_monthly_rent_its_lease_leaves_undated(store: Store) -> None:
     """A lease's monthly rent read without a day is due by the law's third working day (§ 556b Abs. 1 BGB),
-    with a warning to check the lease, at most ``medium``."""
+    with a warning to check the lease — which may name an earlier day, so the law's can be too late —, at
+    most ``medium``."""
     rent = _rent(store)
     rule = schedule_rule(rent, RENT)
     assert rule is not None and rule.working_day == 3
@@ -561,6 +562,9 @@ def test_the_law_dates_a_monthly_rent_its_lease_leaves_undated(store: Store) -> 
     assert (october.due_date, october.send_by) == ("2026-10-05", "2026-10-02")
     receipt = october.computation
     assert receipt is not None and receipt.warnings[0] == LAW_DEFAULT_WARNING
+    assert "if it names an earlier day (such as the 1st), that day applies and this date is too late" in (
+        LAW_DEFAULT_WARNING
+    )
     assert receipt.confidence == "medium" and "bgb_556b" in receipt.rule_ids
     assert receipt.steps[1].label == "Rent is due by the 3rd working day of the month; Saturdays don't count"
     november = rolled(october, _on_lease(date(2026, 10, 6)), postal_buffer_days=BUFFER)

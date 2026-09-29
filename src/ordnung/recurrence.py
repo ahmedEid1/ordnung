@@ -58,20 +58,30 @@ limits, not bugs):
    rent contract are its to-dos linked to it that pay out every month (not dismissed: :func:`is_rent`); each
    starts in the month of the date the rules engine gives its DateSpec in its letter's context — a lease's
    own rent that names none before all others (:func:`series_start`; ties by when it was filed, then id). A
-   rent that starts in a later month (a rent increase's new rent only once owed: § 558b Abs. 1 BGB, once the
-   person marked a payment of it paid) ends every earlier one before that month: marking it done or rolling
-   it never moves it into or past it. Its last occurrence stays (never overdue, point 1); marked paid, it
-   closes, and the log says "Paid “Monthly rent” (Mon 5 Oct 2026) — replaced by “New monthly total rent
-   €670” from Nov 2026" ("Undo" reopens it there, point 4). One already in or past that month when the later
-   one is read or becomes owed (paid ahead, rolled on, or filed later) goes where this would have left it:
-   back to its last occurrence before that month, closed if the person marked that one paid, and the log
-   says so (:func:`settle_rents`; never the daily tick). The later rent keeps the due day of the one it
-   follows — its working day (its own or the law's, point 8) or its day of the month — unless its own reading
-   gives a working day: a letter that changes the rent changes the amount, not when rent is due, so its date
-   only names the month it starts in (as point 8's) and its receipt says so (:func:`rent_due`). Accepted
-   limits, where the rents run side by side as before: a rent not linked to a rent contract, two that start
-   in the same month, an undated one not from a lease; and a rent once closed stays closed when the one that
-   replaced it is dismissed or deleted later (the person sets it open again).
+   rent that starts in a later month and restates the whole of an earlier one — its letter's old amount is
+   that rent's ("bisher 640,00 €"), or its amount is at least that rent's (:meth:`_Rent.restates`) — (a rent
+   increase's new rent only once owed: § 558b Abs. 1 BGB, once the person marked a payment of it paid that
+   they haven't undone) ends that earlier one before that month: marking it done or rolling it never moves it
+   into or past it. A payment that is only part of the rent — a statement's new prepayment (§ 560 Abs. 4
+   BGB), a heating advance, a parking space, an instalment — runs beside it. Its last occurrence stays (never
+   overdue, point 1); marked paid, it closes, and the log says "Paid “Monthly rent” (Mon 5 Oct 2026) —
+   replaced by “New monthly total rent €670” from Nov 2026" ("Undo" reopens it there, point 4). One already
+   in or past that month when the later one is read or becomes owed (paid ahead, rolled on, or filed later)
+   goes where this would have left it: back to its last occurrence before that month, closed if the person
+   marked that one (or a later one) paid — the latest payment still standing: an "Undo" takes back the one
+   before it — and the log says so (:func:`settle_rents`; never the daily tick). "Undo" on the payment that
+   made an increase owed opens such a rent again after the occurrence last marked paid
+   (:func:`undo_replaced`). The later rent keeps the due day of the one it follows — its working day (its own
+   or the law's, point 8) or its day of the month, in every month (a kept 31st is each month's last day) —
+   unless its own reading gives a working day or the person added it by hand (its schedule starts on their
+   date, point 2): a letter that changes the rent changes the amount, not when rent is due, so its date only
+   names the month it starts in (as point 8's) and its receipt says so (:func:`rent_due`); a date the person
+   gives one undated so far stands in for its occurrence of that month (point 7, :func:`kept_occurrence`).
+   Accepted limits, where the rents run side by side as before: a rent not linked to a rent contract, two
+   that start in the same month, an undated one not from a lease, one whose amounts don't show that it
+   restates the earlier one (a letter that states only the new net rent, or a lower rent without the old
+   amount); and a rent once closed stays closed when the one that replaced it is dismissed or deleted later
+   (the person sets it open again).
 """
 
 from __future__ import annotations
@@ -86,6 +96,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.verify import grade_reading, regrade
 from ordnung.models import (
+    Activity,
     ComputationReceipt,
     ComputationStep,
     Contract,
@@ -110,7 +121,8 @@ RENT_WORKING_DAY = 3
 #: The warning on an occurrence the law's working day dates (point 8).
 LAW_DEFAULT_WARNING = (
     "The lease gives no day Ordnung could date; this is the law's default (3rd working day, Saturdays not "
-    "counted) — check your lease."
+    "counted) — check your lease: if it names an earlier day (such as the 1st), that day applies and this date "
+    "is too late."
 )
 #: The warning on a date set by hand later than the law's working day it replaces (point 8).
 LAW_REPLACED_WARNING = (
@@ -125,6 +137,8 @@ KEEPS_DAY_STEP = " applies; the letter names "
 
 #: Statuses whose recurring item moves on as days pass (point 3).
 ROLLING_STATUSES = ("open", "snoozed")
+#: The activity entries of a recurring item's payments: marked done (paid), and "Undo" (point 4).
+_PAYMENT_KINDS = ("item.done", "item.reopened")
 #: The item fields that say where its schedule stands (what points 3, 4 and 6 move or keep).
 SCHEDULE_FIELDS = ("due_date", "send_by", "computation", "due_date_source")
 #: The step of a date set by hand's receipt that names the occurrence it stands in for (point 7).
@@ -145,22 +159,23 @@ def _add_months(start: date, months: int, anchor_day: int) -> date:
     return date(year, month, min(anchor_day, calendar.monthrange(year, month)[1]))
 
 
-def occurrence(first: date, rule: Recurrence, n: int) -> date:
-    """The ``n``-th occurrence (0 = ``first``). Month steps keep the original day of the month, clipped
-    to shorter months (31 Jan → 28/29 Feb → 31 Mar)."""
+def occurrence(first: date, rule: Recurrence, n: int, anchor_day: int | None = None) -> date:
+    """The ``n``-th occurrence (0 = ``first``). Month steps keep the original day of the month (or
+    ``anchor_day``, a day a rent keeps from the rent before it: point 9), clipped to shorter months (31 Jan →
+    28/29 Feb → 31 Mar)."""
     step = max(1, rule.interval) * n
     if rule.unit == "days":
         return date.fromordinal(first.toordinal() + step)
     if rule.unit == "weeks":
         return date.fromordinal(first.toordinal() + 7 * step)
     months = step * (12 if rule.unit == "years" else 1)
-    return _add_months(first, months, first.day)
+    return _add_months(first, months, anchor_day or first.day)
 
 
-def _occurrences(first: date, rule: Recurrence, since: date) -> Iterator[date]:
+def _occurrences(first: date, rule: Recurrence, since: date, anchor_day: int | None = None) -> Iterator[date]:
     """The schedule's occurrences (as scheduled) from the first one on or after ``since``."""
     for n in range(_MAX_STEPS):
-        day = occurrence(first, rule, n)
+        day = occurrence(first, rule, n, anchor_day)
         if day >= since:
             yield day
 
@@ -289,6 +304,14 @@ def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
     return (start or ctx.today).replace(day=1)
 
 
+def _anchor_day(first: date, rule: Recurrence, ctx: RuleContext) -> int:
+    """The day of the month the schedule's months are dated by: the day a rent keeps from the rent before it
+    (point 9: a kept 31st stays the last day of every month, not the 30th its first month clipped it to),
+    else its first occurrence's (with a working day, the month's first: point 8)."""
+    kept = ctx.rent_due.day if ctx.rent_due is not None and rule.working_day is None else None
+    return kept or first.day
+
+
 def over_the_law(
     item: Item, due: str | None, receipt: ComputationReceipt | None
 ) -> ComputationReceipt | None:
@@ -313,6 +336,22 @@ def standing_in(receipt: ComputationReceipt, replaced: date) -> ComputationRecei
     """The receipt of a date set by hand, naming the occurrence it stands in for (point 7)."""
     step = ComputationStep(label=REPLACED_STEP, date=replaced.isoformat())
     return receipt.model_copy(update={"steps": [step, *receipt.steps]})
+
+
+def kept_occurrence(item: Item, ctx: RuleContext, *, postal_buffer_days: int) -> date | None:
+    """Point 9 for the date the person gives an undated rent that keeps an earlier rent's due day
+    (``ctx.rent_due``; ``item`` with that date and the schedule it starts, point 2): the date of its occurrence
+    scheduled in that date's month — the kept day, not the person's date, is where its months fall —, which
+    the person's date stands in for (point 7), so paid, it moves on past that month. ``None`` for any other
+    item."""
+    rule, first, day = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(item.due_date)
+    if ctx.rent_due is None or rule is None or first is None or day is None:
+        return None
+    month = day.replace(day=1)
+    scheduled = next(_occurrences(first, rule, month, _anchor_day(first, rule, ctx)), None)
+    if scheduled is None or (scheduled.year, scheduled.month) != (month.year, month.month):
+        return None
+    return _parse(_at(item, rule, first, scheduled, ctx, postal_buffer_days).due_date)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -467,7 +506,8 @@ def _following(
     if rule is None or first is None:
         return None
     # an occurrence scheduled earlier can be moved onto or past the day (a weekend, Easter, a working day)
-    for day in _occurrences(first, rule, on_or_after - timedelta(days=_lookback(rule))):
+    since = on_or_after - timedelta(days=_lookback(rule))
+    for day in _occurrences(first, rule, since, _anchor_day(first, rule, ctx)):
         moved = _at(item, rule, first, day, ctx, postal_buffer_days, reasons)
         due = _parse(moved.due_date)
         if due is not None and due >= on_or_after:
@@ -507,17 +547,18 @@ def at_occurrence(
     rule, first, day = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(due)
     if rule is None or first is None or day is None:
         return None
-    scheduled = _scheduled_by(first, rule, day)
+    scheduled = _scheduled_by(first, rule, day, _anchor_day(first, rule, ctx))
     if scheduled is None:
         return _moved(item, ctx, day, postal_buffer_days, reasons)
     return _at(item, rule, first, scheduled, ctx, postal_buffer_days, reasons)
 
 
-def _scheduled_by(first: date, rule: Recurrence, day: date) -> date | None:
+def _scheduled_by(first: date, rule: Recurrence, day: date, anchor_day: int) -> date | None:
     """The last occurrence scheduled on or before ``day`` (``None`` before the first): the one dated ``day``,
     as the engine only moves a date later (point 5)."""
     since = day - timedelta(days=_lookback(rule))
-    scheduled = list(itertools.takewhile(lambda planned: planned <= day, _occurrences(first, rule, since)))
+    occurrences = _occurrences(first, rule, since, anchor_day)
+    scheduled = list(itertools.takewhile(lambda planned: planned <= day, occurrences))
     return scheduled[-1] if scheduled else None
 
 
@@ -645,16 +686,30 @@ class Replacement:
 @dataclass(frozen=True)
 class _Rent:
     """A rent that takes part in point 9, in its own context, with the first day of the month it starts in
-    (``None``: a lease's own rent whose DateSpec gives no date, before all others)."""
+    (``None``: a lease's own rent whose DateSpec gives no date, before all others) and the amount its letter
+    says the change replaces (``replaces``: the change's old amount, "bisher 640,00 €"; ``None``: none)."""
 
     item: Item
     ctx: RuleContext
     start: date | None
+    replaces: float | None = None
 
     @property
     def order(self) -> tuple[date, str, str]:
         """Oldest first: by start, then by when it was filed, then by id."""
         return (self.start or date.min, self.item.created_at, self.item.id)
+
+    def restates(self, earlier: _Rent) -> bool:
+        """Whether this rent restates the whole of the rent ``earlier``, so it can replace it and keep its due
+        day: its letter's old amount is that rent's ("bisher 640,00 €"), or its amount is at least that rent's
+        — not a statement's new prepayment (§ 560 Abs. 4 BGB), a heating advance, a parking space's rent or
+        an instalment, which run beside it."""
+        new, old = self.item.amount, earlier.item.amount
+        if old is None:
+            return False
+        if self.replaces is not None and round(self.replaces, 2) == round(old, 2):
+            return True
+        return new is not None and new >= old
 
 
 def is_rent(item: Item, contract: Contract | None) -> bool:
@@ -689,7 +744,15 @@ def _rent_contract(store: Store, item: Item) -> Contract | None:
     return contract if contract is not None and contract.category == "rent" else None
 
 
-def _rent(item: Item, contract: Contract | None, ctx: RuleContext) -> _Rent | None:
+def _replaced_amount(store: Store, item: Item) -> float | None:
+    """The amount the letter of ``item`` says its change replaces (the change's old amount, "bisher 640,00
+    €"); ``None`` when it names none."""
+    extraction = store.get_extraction(item.doc_id) if item.doc_id else None
+    change = extraction.change if extraction is not None else None
+    return change.old_amount if change is not None else None
+
+
+def _rent(store: Store, item: Item, contract: Contract | None, ctx: RuleContext) -> _Rent | None:
     """``item`` as a rent that takes part in point 9 — one its DateSpec starts, or a lease's own rent —,
     ``None`` for any other to-do (an undated rent not from a lease is an accepted limit)."""
     if not is_rent(item, contract):
@@ -697,7 +760,7 @@ def _rent(item: Item, contract: Contract | None, ctx: RuleContext) -> _Rent | No
     start = series_start(item, ctx)
     if start is None and ctx.letter_kind != "rent_lease":
         return None
-    return _Rent(item, ctx, start)
+    return _Rent(item, ctx, start, _replaced_amount(store, item))
 
 
 def _other_rents(
@@ -706,7 +769,7 @@ def _other_rents(
     """The other rents of ``item``'s rent contract that take part in point 9, each in its own context
     (``context``), oldest first."""
     rents = [
-        _rent(other, contract, context(store, other, today))
+        _rent(store, other, contract, context(store, other, today))
         for other in store.list_items(contract_id=contract.id)
         if other.id != item.id and is_rent(other, contract)
     ]
@@ -719,28 +782,47 @@ def _earlier(start: date | None, later: date | None) -> bool:
     return later is not None and (start or date.min) < later
 
 
+def _standing(entries: Iterable[Activity]) -> Activity | None:
+    """The latest payment that still stands of an item's ``item.done`` and ``item.reopened`` entries (newest
+    first): each "Undo" (``item.reopened``) takes back the payment before it, so undoing a second payment
+    leaves the first one standing."""
+    undone = 0
+    for entry in entries:
+        if entry.kind == "item.reopened":
+            undone += 1
+        elif undone:
+            undone -= 1
+        else:
+            return entry
+    return None
+
+
+def _last_payment(store: Store, item: Item) -> Activity | None:
+    """The latest payment of ``item`` (marked done) that still stands (:func:`_standing`)."""
+    return _standing(store.activity_about("item", item.id, kinds=_PAYMENT_KINDS))
+
+
 def _owed(store: Store, rent: _Rent) -> bool:
     """Whether a later rent replaces the rents before it: always, but a rent increase's new rent only once
     the person agreed (§ 558b Abs. 1 BGB) — as far as Ordnung can tell, once they marked a payment of it paid
-    (paying it can count as agreeing; until then its receipt says the current rent stays due)."""
-    if rent.ctx.letter_kind != "rent_increase":
-        return True
-    entry = store.last_activity("item", rent.item.id, kinds=("item.done", "item.reopened"))
-    return entry is not None and entry.kind == "item.done"
+    that they haven't undone (paying it can count as agreeing; until then its receipt says the current rent
+    stays due)."""
+    return rent.ctx.letter_kind != "rent_increase" or _last_payment(store, rent.item) is not None
 
 
 def replacement(store: Store, item: Item, ctx: RuleContext, context: ItemContext) -> Replacement | None:
     """Point 9: the later rent that replaces the rent ``item`` (in its context ``ctx``), and the month it
-    starts in — the earliest a rent on its contract starts in after it, of the rents owed; ``None`` for a
-    rent nothing replaces and for any other to-do. ``context`` gives the other rents' contexts."""
+    starts in — the earliest a rent on its contract starts in after it, of the rents owed that restate the
+    whole of it (:meth:`_Rent.restates`); ``None`` for a rent nothing replaces and for any other to-do.
+    ``context`` gives the other rents' contexts."""
     contract = _rent_contract(store, item)
-    rent = _rent(item, contract, ctx)
+    rent = _rent(store, item, contract, ctx)
     if rent is None or contract is None:
         return None
     later = [
         other
         for other in _other_rents(store, item, contract, ctx.today, context)
-        if _earlier(rent.start, other.start) and _owed(store, other)
+        if _earlier(rent.start, other.start) and other.restates(rent) and _owed(store, other)
     ]
     first = min(later, key=lambda other: other.order) if later else None
     if first is None or first.start is None:
@@ -749,38 +831,53 @@ def replacement(store: Store, item: Item, ctx: RuleContext, context: ItemContext
 
 
 def rent_due(store: Store, item: Item, ctx: RuleContext, context: ItemContext) -> RentDue | None:
-    """Point 9: the due day the rent ``item`` (in its context ``ctx``) keeps from the rent it follows — the
-    one on its contract that starts last before it (of two, the one filed last) —: that rent's working day
-    (its own, the law's, or one it keeps itself), else its day of the month. ``None`` when its own reading
-    gives a working day, for a rent that follows none, and for any other to-do. ``context`` gives the other
-    rents' contexts (without the day they keep: :func:`with_rent_due` works that out)."""
-    if item.recurrence is None or item.recurrence.working_day is not None:
-        return None
+    """Point 9: the due day the rent ``item`` (in its context ``ctx``) keeps from the rent it follows — of the
+    rents on its contract it restates (:meth:`_Rent.restates`), the one that starts last before it (of two,
+    the one filed last) —: that rent's working day (its own, the law's, or one it keeps itself), else its day
+    of the month. ``None`` when its own reading gives a working day, for a rent added by hand (its schedule
+    starts on the date the person gave it, point 2), for a rent that follows none, and for any other to-do.
+    ``context`` gives the other rents' contexts (without the day they keep: :func:`_kept_day` works that
+    out)."""
     contract = _rent_contract(store, item)
-    rent = _rent(item, contract, ctx)
-    if rent is None or contract is None or rent.start is None:
+    rent = _rent(store, item, contract, ctx)
+    if rent is None or contract is None:
+        return None
+    return _kept_day(rent, _other_rents(store, item, contract, ctx.today, context))
+
+
+def _kept_day(rent: _Rent, rents: Sequence[_Rent]) -> RentDue | None:
+    """:func:`rent_due` of ``rent`` among the rents of its contract (``rents``, oldest first, each in its own
+    context): the due day of the rent it follows, which keeps one itself from the rent before it — worked out
+    down the same list, so each rent's context is asked for once."""
+    item = rent.item
+    rule = item.recurrence
+    if item.origin == "manual" or rent.start is None or rule is None or rule.working_day is not None:
         return None
     before = [
         other
-        for other in _other_rents(store, item, contract, ctx.today, context)
-        if _earlier(other.start, rent.start)
+        for other in rents
+        if other.item.id != item.id and _earlier(other.start, rent.start) and rent.restates(other)
     ]
-    return _due_day(store, before[-1], context) if before else None
+    if not before:
+        return None
+    return _due_day(before[-1], _kept_day(before[-1], rents))
 
 
-def _due_day(store: Store, rent: _Rent, context: ItemContext) -> RentDue | None:
-    """The due day of ``rent`` that a later rent keeps (point 9): its working day, else its day of the
-    month (``None`` if it has neither), and whose it is."""
+def _due_day(rent: _Rent, kept: RentDue | None) -> RentDue | None:
+    """The due day of ``rent`` that a later rent keeps (point 9), with the one it keeps itself (``kept``): its
+    working day, else its day of the month (``None`` if it has neither), and whose it is."""
     item = rent.item
-    ctx = with_rent_due(store, item, rent.ctx, context)
+    ctx = replace(rent.ctx, rent_due=kept)
     rule, first = schedule_rule(item, ctx), first_occurrence(item, ctx)
     lease = rent.ctx.letter_kind == "rent_lease"
     source = "the lease's due day" if lease else f"the due day of “{item.title}”"
     if rule is not None and rule.working_day is not None:
         own = item.recurrence is not None and item.recurrence.working_day is not None
-        by_law = not own and (ctx.rent_due is None or ctx.rent_due.by_law)
+        by_law = not own and (kept is None or kept.by_law)
         return RentDue(working_day=rule.working_day, by_law=by_law, source=source)
-    return RentDue(day=first.day, source=source) if first is not None else None
+    if rule is None or first is None:
+        return None
+    return RentDue(day=_anchor_day(first, rule, ctx), source=source)
 
 
 def with_rent_due(store: Store, item: Item, ctx: RuleContext, context: ItemContext) -> RuleContext:
@@ -790,13 +887,29 @@ def with_rent_due(store: Store, item: Item, ctx: RuleContext, context: ItemConte
     return ctx if due == ctx.rent_due else replace(ctx, rent_due=due)
 
 
+def remembered(context: ItemContext) -> ItemContext:
+    """``context``, working out each to-do's context once (by its id and the day) for one pass over the
+    ledger — a letter read, a to-do changed, a day's tick —, as point 9 compares every rent of a contract
+    with the others (asked for again each time, it grew with the fourth power of the rents: seconds for a
+    long tenancy). A pass changes no to-do's letter, words or contract, which its context depends on."""
+    known: dict[tuple[str, date], RuleContext] = {}
+
+    def remembering(store: Store, item: Item, today: date) -> RuleContext:
+        key = (item.id, today)
+        if key not in known:
+            known[key] = context(store, item, today)
+        return known[key]
+
+    return remembering
+
+
 def _scheduled(item: Item, ctx: RuleContext) -> date | None:
     """The day the occurrence the item stands for (its own, or the one a date set by hand replaced: point
     7) is scheduled on; ``None`` if undated."""
     rule, first, day = schedule_rule(item, ctx), first_occurrence(item, ctx), replaced_occurrence(item)
     if rule is None or first is None or day is None:
         return None
-    return _scheduled_by(first, rule, day)
+    return _scheduled_by(first, rule, day, _anchor_day(first, rule, ctx))
 
 
 def _last_before(
@@ -807,7 +920,7 @@ def _last_before(
     rule, first = schedule_rule(item, ctx), first_occurrence(item, ctx)
     if rule is None or first is None:
         return None
-    day = _add_months(month, -1, first.day if rule.working_day is None else 1)
+    day = _add_months(month, -1, _anchor_day(first, rule, ctx))
     return day, _at(item, rule, first, day, ctx, postal_buffer_days)
 
 
@@ -907,11 +1020,8 @@ def _left_at_last(store: Store, item: Item, scheduled: date, last: Item, replace
     never overdue)."""
     day = _parse(last.due_date)
     when = f" ({_day(day)})" if day is not None else ""
-    entry = store.last_activity("item", item.id, kinds=("item.done", "item.reopened"))
-    # the occurrence the last payment marked paid (the one a date set by hand stood in for: point 7)
-    marked = _parse(str(entry.data.get("occurrence") or entry.data.get("due_date") or "")) if entry else None
-    paid = entry is not None and entry.kind == "item.done" and marked is not None and marked >= scheduled
-    if paid:
+    marked = _marked(_last_payment(store, item))
+    if marked is not None and marked >= scheduled:
         message = f"“{item.title}” ends with the payment marked paid{when} — {replaced.describe()}"
         _close(store, item, last, replaced, message)
         return
@@ -923,6 +1033,50 @@ def _left_at_last(store: Store, item: Item, scheduled: date, last: Item, replace
         ref_id=item.id,
         data={"replaced_by": replaced.newer.id, "replaced_from": replaced.starts.isoformat()},
     )
+
+
+def _marked(entry: Activity | None) -> date | None:
+    """The occurrence a payment marked paid (the one a date set by hand stood in for: point 7)."""
+    return _parse(str(entry.data.get("occurrence") or entry.data.get("due_date") or "")) if entry else None
+
+
+def undo_replaced(store: Store, item: Item, context: ItemContext, today: date) -> int:
+    """Point 9 for the "Undo" of a payment of the rent ``item`` (:func:`undo_done` has just taken it back): a
+    rent that payment closed — it made a rent increase's new rent owed, so :func:`settle_rents` closed the rent
+    it replaces there (or the person then paid that one's last occurrence) — is open again when ``item`` no
+    longer replaces it, at the occurrence after the latest one marked paid (point 4), not before ``today``;
+    one another later rent ends before that stays closed. ``context`` gives each rent's context; returns
+    the number of rents opened again."""
+    entries = store.activity_about("item", item.id, kinds=_PAYMENT_KINDS)
+    undone = entries[1] if len(entries) > 1 and entries[0].kind == "item.reopened" else None
+    if undone is None or undone.kind != "item.done" or item.contract_id is None:
+        return 0
+    buffer = postal_buffer(store.get_profile())
+    opened = 0
+    for rent in store.list_items(contract_id=item.contract_id, status="done"):
+        payments = store.activity_about("item", rent.id, kinds=_PAYMENT_KINDS)
+        closed = payments[0] if payments else None
+        if closed is None or closed.kind != "item.done" or closed.id < undone.id:
+            continue
+        ctx = context(store, rent, today)
+        replaced = replacement(store, rent, ctx, context)
+        if closed.data.get("replaced_by") != item.id or (
+            replaced is not None and replaced.newer.id == item.id
+        ):
+            continue  # not closed by it, or still replaced by it (a payment of it that stands agreed it)
+        marked = [day for day in (_marked(closed), _marked(_standing(payments[1:]))) if day is not None]
+        onwards = max([today, *(day + timedelta(days=1) for day in marked)])
+        moved = _until(rent, ctx, onwards, buffer, replaced.starts if replaced is not None else None)
+        if moved is None or (due := _parse(moved.due_date)) is None:
+            continue
+        reopen = {"status": "open", "snoozed_until": None, "completed_at": None}
+        _write(store, moved.model_copy(update=reopen), (*SCHEDULE_FIELDS, *reopen))
+        message = (
+            f"Reopened “{rent.title}” ({_day(due)}) — the payment of “{item.title}” that ended it was undone"
+        )
+        store.log_activity("item.reopened", message, ref_type="item", ref_id=rent.id)
+        opened += 1
+    return opened
 
 
 # --------------------------------------------------------------------------------------------------
