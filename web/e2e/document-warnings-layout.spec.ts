@@ -5,7 +5,7 @@
  * under a passport, and a not-found page with its h1 and a way back.
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, letterId, open, openMail, setTour, test } from "./helpers";
+import { apiGet, expect, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -52,12 +52,35 @@ test.describe("phone 320 px", () => {
   });
 });
 
-test("the working-student contract says 'Please check' once per thing to check", async ({ page }) => {
-  await openLetter(page, "07_arbeitsvertrag_werkstudent.pdf");
-  // (the high-stakes spec may have re-filed it as a dismissal on the shared server: then its cards differ)
+interface CheckedLetter {
+  document: { warnings: string[] };
+  items: { title: string; status: string; evidence: { grounding: string; value_consistent: boolean }[] }[];
+}
+
+/** The reading's own count of the dates it couldn't confirm ("1 date could not be confirmed against the letter's text."). */
+const UNCONFIRMED_COUNT = /^\d+ dates? could not be confirmed against the letter/;
+
+// UI audit round 1 (document-c): "Please check" three times on one letter. Prompt 11 reads the working-student
+// contract with nothing left to check, so the letter is the residence permit's appointment: a to-do whose date
+// doesn't match the sentence it came from (a card of its own), a warning of the reading's own (the passport's
+// validity) and the reading's count of the dates it couldn't confirm, which that to-do's card already says —
+// two things to check, each said once.
+test("the residence-permit appointment says 'Please check' once per thing to check", async ({ page }) => {
+  const id = await letterId(page, "17_auslaenderbehoerde_termin.pdf");
+  const { document, items } = await apiGet<CheckedLetter>(page, `/api/documents/${id}`);
+  const toCheck = items.filter((i) => i.status === "open" && i.evidence.some((e) => e.grounding === "unverified" || !e.value_consistent));
+  const own = document.warnings.filter((w) => !UNCONFIRMED_COUNT.test(w));
+  expect(
+    { toCheck: toCheck.length, own: own.length, counted: document.warnings.some((w) => UNCONFIRMED_COUNT.test(w)) },
+    "the reading leaves one to-do, one warning of its own and its count of unconfirmed dates",
+  ).toEqual({ toCheck: 1, own: 1, counted: true });
+
+  await open(page, `/documents/${id}`);
   const warnings = page.getByRole("region", { name: "Warnings and things to check" });
   await expect(warnings).toBeVisible();
-  expect(await warnings.getByRole("heading", { level: 2, name: "Please check" }).count()).toBeLessThanOrEqual(1);
+  await expect(warnings.getByRole("heading", { level: 2, name: "Please check" })).toHaveCount(2);
+  await expect(warnings).toContainText(shownAs(toCheck[0]!.title));
+  await expect(warnings).toContainText(shownAs(own[0]!));
   await expect(page.getByRole("main").getByText(/could not be confirmed against the letter/)).toHaveCount(0);
 });
 
