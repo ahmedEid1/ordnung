@@ -918,13 +918,13 @@ def test_the_demo_numbers(demo_store: Store) -> None:
         "Marktlokation",
     }
     assert {n.kind for n in stadtwerke.their_numbers} == {"vat_id", "register", "creditor_id"}
-    cases = {c.party_name: sorted(r.value for r in c.references) for c in page.open_cases}
-    assert cases["Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)"] == [
-        "32.4-VW-2026-0184512",
-        "5126 0184 5122",
-    ]
-    assert cases["Stadt Musterstadt – Ausländerbehörde"] == ["32.2-AE-24-08815"]
-    assert "FunkNetz Mobil GmbH" not in cases  # a 2024 order number of a running contract is no open case
+    # keyed by the case numbers: how a reading names an office ("Stadt Musterstadt, Ordnungsamt") may differ
+    cases = {tuple(sorted(r.value for r in c.references)): c.party_name for c in page.open_cases}
+    assert cases[("32.4-VW-2026-0184512", "5126 0184 5122")].startswith("Stadt Musterstadt")  # the fine
+    assert cases[("32.2-AE-24-08815",)].startswith("Stadt Musterstadt")  # the residence permit
+    assert (
+        "FunkNetz Mobil GmbH" not in cases.values()
+    )  # a 2024 order number of a running contract is no open case
 
 
 # --------------------------------------------------------------------------------------------------
