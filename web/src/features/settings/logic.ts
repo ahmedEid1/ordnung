@@ -163,7 +163,7 @@ export function activityHref(a: Pick<Activity, "ref_type" | "ref_id">): string |
 
 /** What Ask's checks did to a run of answers, folded into one row of the activity log. */
 export interface AskChecks {
-  /** How many answers were checked (an answer can log up to three checks). */
+  /** How many answers were checked (an answer logs one entry; before, up to three — one per check). */
   answers: number;
   /** Each thing the checks did, in words ("Took out sentences or values …"), and to how many answers; newest first. */
   done: { what: string; answers: number }[];
@@ -183,10 +183,17 @@ const isAskCheck = (a: Pick<Activity, "kind" | "ref_type">) => a.ref_type === "c
 
 const ASK_CHECK_PREFIX = /^Checked an answer in Ask:\s*/;
 
+const capitalise = (what: string) => what.charAt(0).toUpperCase() + what.slice(1);
+
 /** "Checked an answer in Ask: took out …" → "Took out …" (the row says which answers). */
 export function askCheckWhat(message: string): string {
-  const what = message.replace(ASK_CHECK_PREFIX, "").trim();
-  return what.charAt(0).toUpperCase() + what.slice(1);
+  return capitalise(message.replace(ASK_CHECK_PREFIX, "").trim());
+}
+
+/** Each thing Ask's checks did to an answer: its entry's `data.done`, else (one entry per check, before) its message. */
+function askCheckWhats(a: Activity): string[] {
+  const done = a.data.done;
+  return Array.isArray(done) && done.length ? done.map((what) => capitalise(String(what))) : [askCheckWhat(a.message)];
 }
 
 /** "Checked 12 answers in Ask" / "Checked an answer in Ask" — the message of a folded row. */
@@ -196,8 +203,9 @@ export function askChecksMessage(answers: number): string {
 
 /**
  * Runs of the same entry (same kind, message and target) become one row with a count. A run of
- * Ask's checks becomes one row whatever each check did — they alternate within an answer (up to three
- * per answer), and would push the letters read and exports out of view.
+ * Ask's checks becomes one row whatever each check did — they would push the letters read and exports
+ * out of view; so does one answer's entry that says two or more things done. Databases from before
+ * hold one entry per check (up to three per answer, alternating): they fold the same way.
  */
 export function groupActivity(list: readonly Activity[]): ActivityRow[] {
   const rows: ActivityRow[] = [];
@@ -218,11 +226,11 @@ export function groupActivity(list: readonly Activity[]): ActivityRow[] {
   }
   const answer = (a: Activity) => a.ref_id ?? `#${a.id}`;
   for (const [row, run] of checks) {
-    if (run.length < 2) continue; // a single check: its own message says it all
+    const said = run.map((e) => [answer(e), askCheckWhats(e)] as const);
+    if (said.length < 2 && said[0]![1].length < 2) continue; // one thing done: its own message says it all
     const done = new Map<string, Set<string>>();
-    for (const e of run) {
-      const what = askCheckWhat(e.message);
-      done.set(what, (done.get(what) ?? new Set()).add(answer(e)));
+    for (const [by, whats] of said) {
+      for (const what of whats) done.set(what, (done.get(what) ?? new Set()).add(by));
     }
     row.askChecks = { answers: new Set(run.map(answer)).size, done: [...done].map(([what, answers]) => ({ what, answers: answers.size })) };
   }
