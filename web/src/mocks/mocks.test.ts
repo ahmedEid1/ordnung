@@ -6,6 +6,7 @@ import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type {
   Activity,
+  Contract,
   Dashboard,
   DocumentDetail,
   Draft,
@@ -23,6 +24,7 @@ import { TRAY_DOCUMENTS } from "./data/documents";
 import { BRIEF_TEXT, PROFILE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECK_LABELS } from "./data/drafts";
+import { CONTRACTS } from "./data/contracts";
 import { ITEMS } from "./data/items";
 
 const srv = () => createMockServer({ staticDemo: false, latency: 0 });
@@ -76,7 +78,11 @@ describe("mock dataset", () => {
     expect(dash.greeting_name).toBe("Sam");
     expect(dash.money.fixed_costs_monthly).toBeCloseTo(987, 2);
     expect(dash.attention.map((i) => i.id).slice(0, 2)).toEqual(["itm_parking", "itm_tm_dunning"]);
-    expect(dash.decisions.map((c) => c.id)).toContain("ctr_phone");
+    // like the API's `is_decision`: a term that locks in — never a contract you can end any month (the
+    // Deutschlandticket by the 10th, the job its contract lets Sam leave), however soon its send-by date
+    expect(dash.decisions.map((c) => c.id)).toEqual(["ctr_phone"]);
+    const rolling = s.db.state.contracts.filter((c) => c.id === "ctr_dticket" || c.id === "ctr_job");
+    expect(rolling.map((c) => c.computed?.send_by)).toEqual(["2026-10-05", "2026-09-28"]);
     expect(dash.suggestions.length).toBeGreaterThanOrEqual(5);
     // views must never carry raw enums in human text fields
     for (const a of dash.areas) expect(findRawEnums(`${a.label} ${a.headline}`)).toEqual([]);
@@ -470,5 +476,41 @@ describe("mock contracts", () => {
     expect(await patch({ cost_amount: 5.9 })).toBe(10);
     expect(await patch({ notice_value: 1, notice_unit: "months", notice_basis: "end_of_month" })).toBeNull();
     expect(await patch({ notice_value: null, notice_unit: null, notice_basis: null, notice_day: 10 })).toBe(10);
+  });
+
+  const patched = async (id: string, body: Record<string, unknown>) => {
+    const res = await srv().handle("PATCH", `/contracts/${id}`, new URLSearchParams(), body);
+    expect(res.ok).toBe(true);
+    return (await res.json()) as Contract;
+  };
+
+  it("like the rules engine: the Deutschlandticket's day of the month, corrected on its card", async () => {
+    const day15 = await patched("ctr_dticket", { notice_value: null, notice_unit: null, notice_basis: "end_of_month", notice_day: 15 });
+    expect(day15.computed).toMatchObject({ cancel_by: "2026-10-15", safe_date: "2026-10-15", send_by: "2026-10-09", earliest_exit: "2026-10-31", confidence: "high", warnings: [] });
+    expect(day15.computed!.summary).toBe("To leave on Sat 31 Oct 2026, your notice must arrive by Thu 15 Oct 2026 (the 15th of the month, as the contract says); send it by Fri 9 Oct.");
+    expect(day15.evidence.filter((e) => e.grounding === "user").map((e) => e.quote)).toEqual(["notice by the 15th of the month, to the end of that month"]);
+    // as the engine gives it for the demo's own terms (web/src/mocks/data/contracts.ts)
+    const again = await patched("ctr_dticket", { notice_value: null, notice_unit: null, notice_basis: "end_of_month", notice_day: 10 });
+    const ticket = CONTRACTS.find((c) => c.id === "ctr_dticket")!;
+    expect(again.computed).toMatchObject({ ...ticket.computed, steps: ticket.computed!.steps.map((st) => ({ label: st.label, date: st.date })) });
+    // the day cleared, a period instead: at most one month, from any day (§ 309 Nr. 9 BGB)
+    const month = await patched("ctr_dticket", { notice_value: 3, notice_unit: "months", notice_basis: "end_of_month" });
+    expect(month.notice_day).toBeNull();
+    expect(month.computed!.summary).toBe("You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.");
+  });
+
+  it("like the rules engine: a fixed-term job's early notice, ticked or not on its card", async () => {
+    const terms = { notice_value: 4, notice_unit: "weeks", notice_basis: null, notice_day: null };
+    const fixed = await patched("ctr_job", { ...terms, notice_before_end: false });
+    expect(fixed.computed).toMatchObject({ current_term_end: "2027-03-31", cancel_by: null, send_by: null, earliest_exit: "2027-03-31" });
+    expect(fixed.computed!.summary).toBe("This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed.");
+    expect(fixed.evidence.filter((e) => e.grounding === "user").map((e) => e.quote)).toEqual(["four weeks' notice to the 15th or the end of a month"]);
+    const early = await patched("ctr_job", { ...terms, notice_before_end: true });
+    const job = CONTRACTS.find((c) => c.id === "ctr_job")!;
+    expect(early.computed).toMatchObject({ ...job.computed, notes: job.computed!.notes, steps: job.computed!.steps.map((st) => ({ label: st.label, date: st.date })) });
+    // two weeks (the probation period's): at least four weeks before the end date (§ 622 Abs. 1 BGB)
+    const short = await patched("ctr_job", { ...terms, notice_value: 2, notice_before_end: true });
+    expect(short.computed).toMatchObject({ cancel_by: "2026-10-03", earliest_exit: "2026-10-31" });
+    expect(short.computed!.warnings).toEqual([expect.stringMatching(/^Before the fixed term's end we used at least four weeks' notice/)]);
   });
 });

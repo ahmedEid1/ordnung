@@ -141,12 +141,36 @@ export function noticeAssumed(c: Pick<Contract, "computed" | "status" | "evidenc
 }
 
 /**
- * The notice period can be entered or changed on the card: terms we couldn't work out, terms the
- * rules follow as written (no statutory rule), a period the rules assumed, or terms the person entered
- * (a typo stays correctable).
+ * Rules that read the contract's own day of the month for notice when its basis is the end of a month
+ * (`_notice_day` in `src/ordnung/rules/contracts.py`) — and a current account's, which follows its terms as
+ * written once they say the end of a month.
  */
-export function noticeEditable(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
-  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c));
+const NOTICE_DAY_REGIMES = new Set<string>(["bgb309_new", "bgb309_old", "tkg56", "as_written", "bgb675h"]);
+
+/** The contract's own day of the month for notice counts for it (with the end of a month as the basis). */
+export function noticeDayCounts(c: Pick<Contract, "computed">): boolean {
+  return NOTICE_DAY_REGIMES.has(c.computed?.regime ?? "as_written");
+}
+
+/**
+ * A fixed-term job, which its contract may let you leave earlier by ordinary notice (`notice_before_end`, read
+ * for a job only: `_ends_by_itself` in `src/ordnung/rules/contracts.py`).
+ */
+export function earlyNoticeCounts(c: Pick<Contract, "category" | "end_date">): boolean {
+  return c.category === "employment" && Boolean(c.end_date);
+}
+
+/**
+ * The notice terms can be entered or changed on the card: terms we couldn't work out, terms the rules
+ * follow as written (no statutory rule), a period the rules assumed, terms the person entered (a typo
+ * stays correctable) — and the terms a notice period can't say, which a misreading can get wrong: the
+ * contract's own day of the month the rules read, or whether a fixed-term job can be left earlier.
+ */
+export function noticeEditable(
+  c: Pick<Contract, "computed" | "status" | "evidence" | "category" | "end_date" | "notice_day" | "notice_basis" | "notice_value" | "notice_unit">,
+): boolean {
+  const byDay = noticeDayCounts(c) && noticeDayPhrase(c) !== null;
+  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c) || byDay || earlyNoticeCounts(c));
 }
 
 /**
@@ -231,7 +255,7 @@ export function noticePhrase(c: Pick<Contract, "notice_value" | "notice_unit">):
 const ORDINAL_SUFFIX: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
 
 /** "1st", "2nd", "3rd", "10th", "11th", "21st" (as `ordinal` in `src/ordnung/rules/explain.py`). */
-function ordinal(day: number): string {
+export function ordinal(day: number): string {
   const teen = day % 100 >= 11 && day % 100 <= 13;
   return `${day}${teen ? "th" : (ORDINAL_SUFFIX[day % 10] ?? "th")}`;
 }
@@ -332,9 +356,10 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
     default: {
       const basis = c.notice_basis ? copyFor(NOTICE_BASIS_COPY, c.notice_basis).label : null;
       // the person's own entry says so (the card then asks nothing more of it)
-      // (notice terms the person saves clear the day: the API's `_update`)
-      if (byDay) text = `As written in the contract: cancellable ${byDay}`;
-      else if (notice) text = `${noticeFromYou(c) ? "As you entered it" : "As written in the contract"}: ${notice}${basis ? ` ${basis}` : ""}`;
+      // (notice terms the person saves without a day clear it: the API's `_update`)
+      const whose = noticeFromYou(c) ? "As you entered it" : "As written in the contract";
+      if (byDay) text = `${whose}: cancellable ${byDay}`;
+      else if (notice) text = `${whose}: ${notice}${basis ? ` ${basis}` : ""}`;
       else text = firstSentence(c.computed?.summary)?.replace(/\.$/, "") ?? "As written in the contract — no special legal rule applies";
     }
   }

@@ -13,6 +13,7 @@ import type {
   ChatMessage,
   CitationRef,
   Contract,
+  ContractComputation,
   DataDeleted,
   DeleteResult,
   DesktopMode,
@@ -31,6 +32,7 @@ import type {
   LetterAdvice,
   ListedItem,
   MailOpenResult,
+  NoticeUnit,
   PageInfo,
   Profile,
   PartyDetail,
@@ -56,6 +58,7 @@ import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/ad
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
+import { ordinal } from "@/features/contracts/model";
 
 /** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
 const COURT_OBJECTION_RECIPIENT =
@@ -870,83 +873,235 @@ function workingDays(d: Date, n: number): Date {
 }
 
 /**
- * Like the rules engine for a contract that follows its own terms (`as_written`) once its notice
- * period is known: "at any time" counts the notice from when a letter posted today arrives (four
- * working days), "to the end of a month" finds the first month end whose deadline hasn't passed,
- * and "to the end of the term" needs a start date and term the mock's contracts don't have.
- * Contracts under a statutory rule keep their dates (the mock has no rules engine for those).
+ * The notice terms in words, as the API's `entered_notice` says them — null when they give no dates by
+ * themselves: a period with its basis (a job's without one runs to the 15th or the end of a month), or the
+ * day of the month notice must arrive by, with the period asked for too; a fixed-term job's early notice
+ * is named.
  */
+function enteredNotice(c: Contract): string | null {
+  const { notice_value: n, notice_unit: unit, notice_basis: basis, notice_day: day } = c;
+  const period = n != null && unit ? periodPhrase(n, unit) : null;
+  const job = c.category === "employment";
+  let words: string;
+  if (day && basis === "end_of_month") words = `${period ?? "notice"} by the ${ordinal(day)} of the month, to the end of that month`;
+  else if (period && basis) words = `${period} ${NOTICE_BASIS_COPY[basis].label}`;
+  else if (period && job) words = `${period} to the 15th or the end of a month`;
+  else return null;
+  return job && c.end_date && c.notice_before_end ? `${words}, also before the fixed term ends` : words;
+}
+
 /**
  * The API's `notice_evidence`: the contract's quotes with the notice terms the person entered as one
- * of their own (grounding `user`) when all three are set — replaced by the next correction, gone again
- * with an Undo back to none. The letter's quotes stay.
+ * of their own (grounding `user`) when they give dates by themselves — replaced by the next correction,
+ * gone again with an Undo back to none. The letter's quotes stay.
  */
 function noticeEvidence(c: Contract): Evidence[] {
   const kept = c.evidence.filter((e) => e.grounding !== "user");
-  const { notice_value: n, notice_unit: unit, notice_basis: basis } = c;
-  if (n == null || !unit || !basis) return kept;
-  const one = unit.replace(/s$/, "");
-  const quote = `${n === 1 ? `one ${one}'s` : `${n} ${unit}'`} notice ${NOTICE_BASIS_COPY[basis].label}`;
+  const quote = enteredNotice(c);
+  if (!quote) return kept;
   return [...kept, { doc_id: c.source_doc_id ?? "", page: null, quote, grounding: "user", value_consistent: true, score: 0, boxes: [] }];
 }
 
-function recomputeNotice(db: MockDb, c: Contract) {
-  if (!c.computed || c.computed.regime !== "as_written") return;
-  const day = (d: Date, year = true) => format(d, year ? "EEE d MMM yyyy" : "EEE d MMM");
-  const iso = (d: Date) => format(d, "yyyy-MM-dd");
-  const today = parseISO(db.today);
-  const general = "No special consumer rule applies that we know of, so we used the contract's own terms.";
-  const blank = { ...c.computed, current_term_end: null, cancel_by: null, send_by: null, safe_date: null, next_renewal: null, earliest_exit: null, confidence: "low" as const, steps: [] };
-  const unknown = (reason: string) => {
-    c.computed = { ...blank, summary: `We couldn't compute a cancellation date: ${reason[0]!.toLowerCase()}${reason.slice(1)}`, warnings: [general, reason] };
-  };
-  const n = c.notice_value;
-  const unit = c.notice_unit;
-  if (!n || !unit) return unknown("The contract's notice period is missing.");
-  const one = unit.replace(/s$/, "");
-  const period = n === 1 ? `one ${one}` : `${n} ${unit}`;
-  const phrase = n === 1 ? `one ${one}'s notice` : `${n} ${unit}' notice`;
-  const add = (d: Date, k: number) => (unit === "months" ? addMonths(d, k) : addDays(d, (unit === "weeks" ? 7 : 1) * k));
-  if (c.notice_basis === "any_time") {
-    const arrival = workingDays(today, 4);
-    const exit = add(arrival, n);
-    c.computed = {
-      ...blank,
-      earliest_exit: iso(exit),
-      summary: `You can cancel any time with ${phrase}: if your cancellation arrives by ${day(arrival)}, the contract ends on ${day(exit)}.`,
-      steps: [{ label: `If it arrives by ${day(arrival)}, the contract ends ${period} later, on ${day(exit)}`, date: iso(exit), rule_id: "bgb_188", citation: "§ 188 BGB" }],
-      rule_ids: ["bgb_188"],
-      warnings: [general],
-    };
-    return;
-  }
-  if (c.notice_basis !== "end_of_month") return unknown("We need the contract's start date and term to compute the deadline.");
-  // the latest day notice can arrive so that the period fits before the month's end
-  const latestReceipt = (end: Date) => {
-    let r = add(end, -n);
-    while (add(addDays(r, 1), n) <= end) r = addDays(r, 1);
-    return r;
-  };
-  let end = endOfMonth(today);
-  while (latestReceipt(end) < today) end = endOfMonth(addDays(end, 1));
-  const cancelBy = latestReceipt(end);
+const mockDay = (d: Date, year = true) => format(d, year ? "EEE d MMM yyyy" : "EEE d MMM");
+const mockIso = (d: Date) => format(d, "yyyy-MM-dd");
+
+/** `d` moved by `k` notice periods of `unit`. */
+function addNotice(d: Date, k: number, unit: NoticeUnit): Date {
+  return unit === "months" ? addMonths(d, k) : addDays(d, (unit === "weeks" ? 7 : 1) * k);
+}
+
+/** The latest day `n` `unit`s' notice can arrive so that the period fits before the end of `end`. */
+function latestReceipt(end: Date, n: number, unit: NoticeUnit): Date {
+  let r = addNotice(end, -n, unit);
+  while (addNotice(addDays(r, 1), n, unit) <= end) r = addDays(r, 1);
+  return r;
+}
+
+/** The safe date (the last working day on or before `cancelBy`) and when to post a letter: four working days before it, today at the latest. */
+function sendingDates(cancelBy: Date, today: Date): { safe: Date; sendBy: Date; late: boolean } {
   let safe = cancelBy;
   while (notWorkingDay(safe)) safe = addDays(safe, -1);
   const late = workingDays(safe, -4) < today;
-  const sendBy = late ? today : workingDays(safe, -4);
+  return { safe, sendBy: late ? today : workingDays(safe, -4), late };
+}
+
+/** A period in the engine's words (`fmt_period`): "one month", "four weeks", "10 days". */
+function fmtPeriod(n: number, unit: NoticeUnit): string {
+  const number = unit !== "days" && n >= 1 && n <= 6 ? ["one", "two", "three", "four", "five", "six"][n - 1] : String(n);
+  return `${number} ${n === 1 ? unit.replace(/s$/, "") : unit}`;
+}
+
+/** A notice period in the engine's words (`notice_phrase`): "one month's notice", "four weeks' notice". */
+const periodPhrase = (n: number, unit: NoticeUnit) => `${fmtPeriod(n, unit)}${n === 1 ? "'s" : "'"} notice`;
+
+/** The rule each regime the mock works dates out for applies first (`_REGIME_RULE`). */
+const REGIME_RULE: Record<string, string> = { as_written: "contract_as_written", bgb309_new: "bgb_309_9_new", tkg56: "tkg_56", employment622: "bgb_622" };
+
+/** Rules under which a consumer contract after its first term can be ended any day with at most one month's notice, or at a month's end by its own day of the month. */
+const MINIMUM_TERM_REGIMES = new Set<string>(["bgb309_new", "tkg56"]);
+
+/**
+ * Like the rules engine once the person entered the notice terms on a card, for the contracts whose card
+ * offers it: one that follows its own terms (`as_written`), a consumer contract whose first term is over
+ * (at most one month's notice, any day — `_plan_minimum_term`) and a fixed-term job ({@link recomputeJob}).
+ * "At any time" counts the notice from when a letter posted today arrives (four working days); "to the end
+ * of a month" finds the first month end whose deadline — the notice period's, or the contract's day of that
+ * month, whichever comes first (`DayOfMonth`) — hasn't passed; "to the end of the term" needs a start date
+ * and term the mock's contracts don't have. Other contracts keep their dates (the mock has no rules engine
+ * for those), and so does a first term still running.
+ */
+function recomputeNotice(db: MockDb, c: Contract) {
+  const regime = c.computed?.regime ?? "";
+  if (regime === "employment622") return recomputeJob(db, c);
+  const consumer = MINIMUM_TERM_REGIMES.has(regime);
+  if (!c.computed || (regime !== "as_written" && !consumer) || (consumer && (c.computed.current_term_end ?? "") >= db.today)) return;
+  const today = parseISO(db.today);
+  const byDay = c.notice_day && c.notice_basis === "end_of_month" ? c.notice_day : null;
+  let n = c.notice_value;
+  let unit = c.notice_unit;
+  let basis = c.notice_basis;
+  // a consumer contract: at most one month's notice, one month when none is given (assumed), counted from any
+  // day — unless the contract's day of the month decides
+  const assumed = consumer && !byDay && (!n || !unit);
+  if (consumer && (assumed || (n && unit && (unit === "months" ? n > 1 : unit === "weeks" ? n > 4 : n > 30)))) [n, unit] = [1, "months"];
+  if (consumer && !byDay) basis = "any_time";
+  const general = "No special consumer rule applies that we know of, so we used the contract's own terms.";
+  const warnings = assumed ? ["The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date."] : consumer ? [] : [general];
+  const blank: ContractComputation = {
+    ...c.computed,
+    current_term_end: null,
+    cancel_by: null,
+    send_by: null,
+    safe_date: null,
+    next_renewal: null,
+    earliest_exit: null,
+    confidence: assumed ? "medium" : consumer ? "high" : "low",
+    steps: [],
+    warnings,
+  };
+  const unknown = (reason: string) => {
+    c.computed = { ...blank, confidence: "low", summary: `We couldn't compute a cancellation date: ${reason[0]!.toLowerCase()}${reason.slice(1)}`, warnings: [...warnings, reason] };
+  };
+  if (!byDay && (!n || !unit)) return unknown("The contract's notice period is missing.");
+  if (basis === "any_time" && n && unit) {
+    const arrival = workingDays(today, 4);
+    const exit = addNotice(arrival, n, unit);
+    c.computed = {
+      ...blank,
+      earliest_exit: mockIso(exit),
+      summary: `You can cancel any time with ${periodPhrase(n, unit)}: if your cancellation arrives by ${mockDay(arrival)}, the contract ends on ${mockDay(exit)}.`,
+      steps: [{ label: `If it arrives by ${mockDay(arrival)}, the contract ends ${fmtPeriod(n, unit)} later, on ${mockDay(exit)}`, date: mockIso(exit), rule_id: "bgb_188", citation: "§ 188 BGB" }],
+      rule_ids: [REGIME_RULE[regime]!, "bgb_188"],
+    };
+    return;
+  }
+  if (basis !== "end_of_month") return unknown("We need the contract's start date and term to compute the deadline.");
+  // the notice period's deadline, or the contract's day of the month the contract ends in: the earlier one
+  const deadline = (end: Date) => {
+    const onDay = byDay ? new Date(end.getFullYear(), end.getMonth(), Math.min(byDay, end.getDate())) : null;
+    const byPeriod = n && unit ? latestReceipt(end, n, unit) : null;
+    return onDay && byPeriod ? (onDay < byPeriod ? onDay : byPeriod) : (onDay ?? byPeriod)!;
+  };
+  let end = endOfMonth(today);
+  while (deadline(end) < today) end = endOfMonth(addDays(end, 1));
+  const cancelBy = deadline(end);
+  const { safe, sendBy, late } = sendingDates(cancelBy, today);
+  // the engine's `DayOfMonth`: its text ("the 10th of the month", "10 days' notice by the 10th of the month") and phrase
+  const dayText = byDay ? `${n && unit ? `${periodPhrase(n, unit)} by ` : ""}the ${ordinal(byDay)} of the month` : null;
+  const notice = dayText ? (n && unit ? dayText : `notice by ${dayText}`) : periodPhrase(n!, unit!);
+  const steps: ContractComputation["steps"] = [
+    { label: `To end the contract on ${mockDay(end)} with ${notice}, it must arrive by ${mockDay(cancelBy)}`, date: mockIso(cancelBy), rule_id: byDay ? "contract_as_written" : "bgb_188", citation: byDay ? "The contract's own terms" : "§ 188 BGB" },
+  ];
+  if (mockIso(safe) !== mockIso(cancelBy)) steps.push({ label: `Safe date: make sure it arrives by ${mockDay(safe)}`, date: mockIso(safe), rule_id: "safe_date", citation: null });
+  steps.push({ label: `Post it by ${mockDay(sendBy)} to allow 4 business days for delivery`, date: mockIso(sendBy), rule_id: "postal_buffer", citation: null });
+  const detail = dayText ? ` (${dayText}, as the contract says)` : "";
   c.computed = {
     ...blank,
-    cancel_by: iso(cancelBy),
-    safe_date: iso(safe),
-    send_by: iso(sendBy),
-    earliest_exit: iso(end),
-    summary: `To leave on ${day(end)}, your notice must arrive by ${day(cancelBy)}${iso(sendBy) !== iso(cancelBy) ? `; send it by ${day(sendBy, false)}` : ""}.`,
-    steps: [
-      { label: `To end the contract on ${day(end)} with ${phrase}, it must arrive by ${day(cancelBy)}`, date: iso(cancelBy), rule_id: "bgb_188", citation: "§ 188 BGB" },
-      { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
-    ],
-    rule_ids: ["bgb_188", "postal_buffer"],
-    warnings: late ? [general, "The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today."] : [general],
+    cancel_by: mockIso(cancelBy),
+    safe_date: mockIso(safe),
+    send_by: mockIso(sendBy),
+    earliest_exit: mockIso(end),
+    summary: `To leave on ${mockDay(end)}, your notice must arrive by ${mockDay(cancelBy)}${detail}${mockIso(sendBy) !== mockIso(cancelBy) ? `; send it by ${mockDay(sendBy, false)}` : ""}.`,
+    steps,
+    rule_ids: [...new Set([REGIME_RULE[regime]!, ...steps.map((s) => s.rule_id!)])],
+    warnings: late ? [...warnings, "The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today."] : warnings,
+  };
+}
+
+/**
+ * Like the rules engine for a fixed-term job once the person entered its notice terms (`_ends_by_itself`,
+ * `_plan_employment`): it ends by itself on its end date unless its contract lets it be ended earlier by
+ * notice. Then it is planned like an open-ended job — at least four weeks' notice to the 15th or the end of
+ * a month (only the end of a month when the contract says so) — and still ends by itself on that date when
+ * the notice can't end it sooner. A job without an end date, or past it, keeps its dates.
+ */
+function recomputeJob(db: MockDb, c: Contract) {
+  if (!c.computed || !c.end_date || c.end_date < db.today) return;
+  const today = parseISO(db.today);
+  const end = parseISO(c.end_date);
+  const fixed = (label: string) => {
+    c.computed = {
+      ...c.computed!,
+      current_term_end: c.end_date,
+      cancel_by: null,
+      send_by: null,
+      safe_date: null,
+      next_renewal: null,
+      earliest_exit: c.end_date,
+      confidence: "high",
+      warnings: [],
+      summary: `This contract ends by itself on ${mockDay(end)} — no cancellation needed.`,
+      steps: [{ label, date: c.end_date, rule_id: "fixed_term", citation: "§ 620 Abs. 1 BGB; § 15 Abs. 1 TzBfG" }],
+      rule_ids: ["bgb_622", "fixed_term"],
+    };
+  };
+  if (!c.notice_before_end) return fixed(`Fixed term: it ends on ${mockDay(end)}`);
+  const warnings: string[] = [];
+  let n = c.notice_value ?? 4;
+  let unit: NoticeUnit = c.notice_unit ?? "weeks";
+  let basis = c.notice_basis;
+  if (!c.notice_value || !c.notice_unit) warnings.push("No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your contract or collective agreement for a longer one.");
+  // before the fixed term's end, § 622 Abs. 1 BGB at least: a shorter notice, or notice to any day, is usually the probation period's
+  const shorter = latestReceipt(end, n, unit) > latestReceipt(end, 4, "weeks");
+  if (shorter || basis === "any_time") {
+    warnings.push("Before the fixed term's end we used at least four weeks' notice to the 15th or the end of a month (§ 622 Abs. 1 BGB): a shorter notice, or notice to any day, is usually the probation period's (§ 622 Abs. 3 BGB), and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB).");
+    if (shorter) [n, unit] = [4, "weeks"];
+    basis = null;
+  }
+  const monthEndOnly = basis === "end_of_month";
+  const deadline = (d: Date) => latestReceipt(d, n, unit);
+  // the first 15th or end of a month (only an end, when the contract says so) whose deadline hasn't passed
+  const exit = ((): Date => {
+    for (let month = endOfMonth(today); ; month = endOfMonth(addDays(month, 1))) {
+      const days = monthEndOnly ? [month] : [new Date(month.getFullYear(), month.getMonth(), 15), month];
+      const reachable = days.find((d) => deadline(d) >= today);
+      if (reachable) return reachable;
+    }
+  })();
+  const cancelBy = deadline(exit);
+  if (exit >= end) return fixed(`Fixed term: notice can't end it sooner, so it ends on ${mockDay(end)}`);
+  const { safe, sendBy, late } = sendingDates(cancelBy, today);
+  if (late) warnings.push("The usual sending time has passed — hand the signed letter over in person (with a witness) or by messenger today.");
+  const steps: ContractComputation["steps"] = [
+    { label: `To end the contract on ${mockDay(exit)} with ${periodPhrase(n, unit)}, it must arrive by ${mockDay(cancelBy)}`, date: mockIso(cancelBy), rule_id: "bgb_188", citation: "§ 188 BGB" },
+    { label: `If you don't give notice, it ends by itself on ${mockDay(end)}`, date: c.end_date, rule_id: "fixed_term", citation: "§ 620 Abs. 1 BGB; § 15 Abs. 1 TzBfG" },
+  ];
+  if (mockIso(safe) !== mockIso(cancelBy)) steps.push({ label: `Safe date: make sure it arrives by ${mockDay(safe)}`, date: mockIso(safe), rule_id: "safe_date", citation: null });
+  steps.push({ label: `Post it by ${mockDay(sendBy)} to allow 4 business days for delivery`, date: mockIso(sendBy), rule_id: "postal_buffer", citation: null });
+  const send = mockIso(sendBy) !== mockIso(cancelBy) ? `; send it by ${mockDay(sendBy, false)}` : "";
+  c.computed = {
+    ...c.computed,
+    current_term_end: c.end_date,
+    cancel_by: mockIso(cancelBy),
+    send_by: mockIso(sendBy),
+    safe_date: mockIso(safe),
+    next_renewal: null,
+    earliest_exit: mockIso(exit),
+    confidence: warnings.some((w) => w.startsWith("No notice period")) ? "medium" : "high",
+    warnings,
+    summary: `To leave on ${mockDay(exit)}, your notice must arrive by ${mockDay(cancelBy)}${send}. If you don't give notice, it ends by itself on ${mockDay(end)}.`,
+    steps,
+    rule_ids: ["bgb_622", ...steps.map((s) => s.rule_id!)],
   };
 }
 
@@ -1418,12 +1573,14 @@ const routes: [string, string, Handler][] = [
     ({ db, params, body }) => {
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
       const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
-      // like the API: notice terms the person saves replace the letter's day of the month (an Undo sends it back)
-      const day = Object.keys(notice).length ? { notice_day: null, ...pick<Contract>(body, ["notice_day"]) } : {};
-      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, day, { updated_at: nowTs() });
+      // like the API: notice terms the person saves replace the letter's day of the month unless they give one
+      // (an Undo sends it back)
+      const day = { ...(Object.keys(notice).length ? { notice_day: null } : {}), ...pick<Contract>(body, ["notice_day"]) };
+      const terms = { ...notice, ...day, ...pick<Contract>(body, ["notice_before_end"]) };
+      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), terms, { updated_at: nowTs() });
       // like the API: the rules engine works the dates out again from the new terms, and the terms
       // the person entered are theirs ("confirmed by the person": the card stops asking to check them)
-      if (Object.keys(notice).length) {
+      if (Object.keys(terms).length) {
         recomputeNotice(db, c);
         c.evidence = noticeEvidence(c);
       }

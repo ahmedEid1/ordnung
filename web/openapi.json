@@ -6810,6 +6810,11 @@
             ],
             "title": "Notice Day"
           },
+          "notice_before_end": {
+            "type": "boolean",
+            "title": "Notice Before End",
+            "default": false
+          },
           "end_date": {
             "anyOf": [
               {
