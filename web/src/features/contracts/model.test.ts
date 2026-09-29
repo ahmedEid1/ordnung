@@ -241,7 +241,7 @@ describe("contracts-only lanes", () => {
     const phone: Contract = { ...byId("ctr_phone"), cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } };
     const [l] = contractLanes([phone], range, TODAY);
     expect(l!.bars.map((b) => b.kind)).toEqual(["contract", "contract"]);
-    expect(l!.markers).toEqual([{ date: phone.computed!.earliest_exit, label: "Ends (cancellation sent)", kind: "other" }]);
+    expect(l!.markers).toEqual([{ date: phone.computed!.earliest_exit, label: "Ends (cancellation sent)", kind: "other", ref: { type: "contract", id: "ctr_phone" } }]);
     expect(contractLaneNote(phone, TODAY)).toEqual({ text: "Cancellation sent", tone: "muted" });
   });
 
@@ -256,7 +256,7 @@ describe("contracts-only lanes", () => {
   it("marks fixed terms and the earliest possible end of open-ended contracts", () => {
     expect(lane("ctr_job").bars[0]).toMatchObject({ label: "Fixed term", end: "2027-03-31" });
     expect(lane("ctr_gym").bars[0]!.label).toBe("Cancellable any time");
-    expect(lane("ctr_gym").markers).toEqual([{ date: "2026-10-28", label: "Earliest end (if you cancel now)", kind: "other" }]);
+    expect(lane("ctr_gym").markers).toEqual([{ date: "2026-10-28", label: "Earliest end (if you cancel now)", kind: "other", ref: { type: "contract", id: "ctr_gym" } }]);
     expect(lane("ctr_bkk").bars[0]).toMatchObject({ label: "Open-ended", open_end: true });
     expect(lane("ctr_job").bars[0]!.open_end).toBeUndefined();
   });
@@ -290,7 +290,7 @@ describe("contracts-only lanes", () => {
       ["Cancellable any time", "2026-10-01", addDaysISO(range.to, 1)],
     ]);
     expect(l!.bars.flatMap((b) => b.markers).map((m) => m.kind)).not.toContain("expiry");
-    expect(l!.markers).toEqual([{ date: "2026-11-02", label: "Earliest end (if you cancel now)", kind: "other" }]);
+    expect(l!.markers).toEqual([{ date: "2026-11-02", label: "Earliest end (if you cancel now)", kind: "other", ref: { type: "contract", id: "ctr_power2" } }]);
     // under its name: when it could end at the earliest, not "Minimum term ends · in 2 days"
     expect(contractLaneNote(power, TODAY)).toEqual({ text: "Earliest end · 2 Nov", tone: "muted" });
 
@@ -363,5 +363,16 @@ describe("contracts-only lanes", () => {
     // send-by and must-arrive-by sit 6 days (15 px) apart: one mark that names both dates
     expect(ly.markers.map((m) => m.primary.marker.kind)).toEqual(["send_by", "other"]);
     expect(ly.markers[0]!.entries.map((e) => e.marker.kind)).toEqual(["send_by", "cancel_by"]);
+  });
+
+  it("lays out on the chart: the earliest end is the contract's own date, on its bar — not a row of its own", () => {
+    const scale = createTimeScale(range.from, range.to, 1200);
+    const ly = layoutLane(lane("ctr_gym"), scale, TODAY);
+    expect(ly.tracks).toBe(1);
+    expect(ly.rails).toEqual([]);
+    const end = ly.markers.find((m) => m.entries.some((e) => e.marker.label === "Earliest end (if you cancel now)"))!;
+    expect(end.track).toBe(ly.bars[0]!.track);
+    expect(end.x).toBeGreaterThan(ly.bars[0]!.x);
+    expect(end.x).toBeLessThan(ly.bars[0]!.x + ly.bars[0]!.width);
   });
 });

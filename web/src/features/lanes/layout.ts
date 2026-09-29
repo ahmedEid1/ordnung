@@ -1,6 +1,7 @@
 /**
- * Layout of one life lane: which bars share a track, where markers sit (and which ones merge),
- * where direct labels fit. Pure functions over a {@link TimeScale}; unit-tested in `layout.test.ts`.
+ * Layout of one life lane: which bars share a track, which track the lane's own markers get (never
+ * one where they would cover a bar), where markers sit (and which ones merge), where direct labels
+ * fit. Pure functions over a {@link TimeScale}; unit-tested in `layout.test.ts`.
  */
 import type { Lane, LaneBar, LaneBarStatus, MarkerKind, RefLink, TimelineMarker } from "@/api/types";
 import { formatDate } from "@/lib/format";
@@ -110,10 +111,62 @@ export interface Interval {
 }
 
 const overlaps = (a: Interval, b: Interval) => a.s <= b.e && b.s <= a.e;
+/** Pixel extents overlap when they share more than an edge. */
+const pxOverlaps = (a: Interval, b: Interval) => a.s < b.e && b.s < a.e;
+
+/** Half a marker's hit target: a marker takes up its centre ± this (px). */
+const HALF_HIT = LANE_METRICS.markerGap / 2;
+
+/**
+ * Whether a lane's own marker is a date of `bar`: of the very contract or to-do the bar stands for (the
+ * same `ref`), dated within it. It then rides on the bar like the bar's own markers ({@link packLane}).
+ */
+function ridesOn(m: TimelineMarker, bar: LaneBar): boolean {
+  const ref = refKey(m.ref);
+  if (!ref || !m.date || ref !== refKey(bar.ref)) return false;
+  const [first, last] = bar.start <= bar.end ? [bar.start, bar.end] : [bar.end, bar.start];
+  return first <= m.date && m.date <= last;
+}
+
+/**
+ * What a bar takes up on its track (px): the button as `BarMark` draws it (1 px in from each side of
+ * its box), widened to the hit targets of its markers — its own, and the lane's markers that ride on it
+ * ({@link ridesOn}): a marker at the bar's end reaches past it.
+ */
+function barFootprint(bar: LaneBar, box: BarBox, scale: TimeScale, riders: readonly TimelineMarker[]): Interval {
+  let s = box.x + 1;
+  let e = box.x + 1 + Math.max(3, box.width - 2);
+  for (const m of [...bar.markers, ...riders.filter((r) => ridesOn(r, bar))]) {
+    if (!m.date || !scale.contains(m.date)) continue;
+    const x = scale.mid(m.date);
+    s = Math.min(s, x - HALF_HIT);
+    e = Math.max(e, x + HALF_HIT);
+  }
+  return { s, e };
+}
+
+/** What a track already holds: each bar's days, its footprint (px), what it stands for, and whether it rides on another bar. */
+interface Slot {
+  days: Interval;
+  px: Interval;
+  ref: string | null;
+  overlay: boolean;
+}
+
+/**
+ * Whether a bar clashes with what a track already holds. Bars of the same contract or to-do only when
+ * their days overlap: a term and what follows it meet at the marker between them, on one row. Anything
+ * else as soon as the bars or their markers' hit targets would touch — never a mark of one thing drawn
+ * over another thing's bar. A bar riding on its host (a notice window) blocks by its footprint only.
+ */
+function clashes(o: Slot, c: Omit<Slot, "overlay">): boolean {
+  if (o.ref !== null && o.ref === c.ref) return !o.overlay && overlaps(o.days, c.days);
+  return pxOverlaps(o.px, c.px) || (!o.overlay && overlaps(o.days, c.days));
+}
 
 /**
  * Assign bars to tracks (rows inside a lane):
- * - term/validity/period bars go to the first track where they don't overlap another bar;
+ * - term/validity/period bars go to the first track where they clash with nothing ({@link clashes});
  * - a notice window rides on the track of the bar with the same `ref` that covers it (it is drawn
  *   hatched on top of that bar); one that no bar of its contract covers still goes on that
  *   contract's track when there is room, otherwise it gets a free track like any other bar.
@@ -121,63 +174,131 @@ const overlaps = (a: Interval, b: Interval) => a.s <= b.e && b.s <= a.e;
 export type PackedBar = Omit<PlacedBar, "labelMode" | "labelStart" | "labelMax" | "labelRoom" | "afterX">;
 
 export function packBars(bars: LaneBar[], scale: TimeScale): { placed: PackedBar[]; tracks: number } {
+  const { placed, rows } = packBarRows(bars, scale);
+  return { placed, tracks: rows.length };
+}
+
+/** {@link packBars}, with what each track holds; `riders`: the lane's own markers (some ride on bars). */
+function packBarRows(bars: LaneBar[], scale: TimeScale, riders: readonly TimelineMarker[] = []): { placed: PackedBar[]; rows: Slot[][] } {
   const visible = bars
     .map((bar, i) => ({ bar, i, box: barBox(bar, scale) }))
     .filter((b): b is { bar: LaneBar; i: number; box: BarBox } => b.box !== null);
   const base = visible.filter((b) => b.bar.kind !== "notice_window").sort((a, b) => a.bar.start.localeCompare(b.bar.start) || a.i - b.i);
   const windows = visible.filter((b) => b.bar.kind === "notice_window").sort((a, b) => a.bar.start.localeCompare(b.bar.start) || a.i - b.i);
 
-  const occupied: Interval[][] = [];
-  const overlays: Interval[][] = [];
+  const rows: Slot[][] = [];
   const hosts: { track: number; ref: string | null; iv: Interval }[] = [];
   const placed: PackedBar[] = [];
 
-  const interval = (bar: LaneBar): Interval => {
+  const slotOf = (bar: LaneBar, box: BarBox): Omit<Slot, "overlay"> => {
     const a = dayNumber(bar.start);
     const b = dayNumber(bar.end);
-    return { s: Math.min(a, b), e: Math.max(a, b) };
+    return { days: { s: Math.min(a, b), e: Math.max(a, b) }, px: barFootprint(bar, box, scale, riders), ref: refKey(bar.ref) };
   };
-  const freeTrack = (iv: Interval) => {
-    let t = occupied.findIndex((row) => !row.some((o) => overlaps(o, iv)));
+  const fits = (track: number, c: Omit<Slot, "overlay">) => !rows[track]!.some((o) => clashes(o, c));
+  const freeTrack = (c: Omit<Slot, "overlay">) => {
+    let t = rows.findIndex((_, track) => fits(track, c));
     if (t < 0) {
-      t = occupied.length;
-      occupied.push([]);
-      overlays.push([]);
+      t = rows.length;
+      rows.push([]);
     }
     return t;
   };
 
   for (const { bar, i, box } of base) {
-    const iv = interval(bar);
-    const track = freeTrack(iv);
-    occupied[track]!.push(iv);
-    hosts.push({ track, ref: refKey(bar.ref), iv });
+    const slot = slotOf(bar, box);
+    const track = freeTrack(slot);
+    rows[track]!.push({ ...slot, overlay: false });
+    hosts.push({ track, ref: slot.ref, iv: slot.days });
     placed.push({ key: `${bar.id}#${i}`, bar, track, overlay: false, ...box });
   }
 
   for (const { bar, i, box } of windows) {
-    const iv = interval(bar);
-    const ref = refKey(bar.ref);
+    const slot = slotOf(bar, box);
+    const { ref, days } = slot;
+    // on a term bar of its own contract that it overlaps, next to no other window there, and
+    // clear of every other thing's bar on that row
     const host = ref
-      ? hosts.find((h) => h.ref === ref && overlaps(h.iv, iv) && !overlays[h.track]!.some((o) => overlaps(o, iv)))
+      ? hosts.find(
+          (h) =>
+            h.ref === ref &&
+            overlaps(h.iv, days) &&
+            !rows[h.track]!.some((o) => (o.ref === ref ? o.overlay && overlaps(o.days, days) : clashes(o, slot))),
+        )
       : undefined;
     // a window after the drawn term (e.g. next year's) still stays on its own contract's row
-    const sameRow = !host && ref ? hosts.find((h) => h.ref === ref && !occupied[h.track]!.some((o) => overlaps(o, iv))) : undefined;
+    const sameRow = !host && ref ? hosts.find((h) => h.ref === ref && fits(h.track, slot)) : undefined;
     if (host) {
-      overlays[host.track]!.push(iv);
+      rows[host.track]!.push({ ...slot, overlay: true });
       placed.push({ key: `${bar.id}#${i}`, bar, track: host.track, overlay: true, ...box });
-    } else if (sameRow) {
-      occupied[sameRow.track]!.push(iv);
-      placed.push({ key: `${bar.id}#${i}`, bar, track: sameRow.track, overlay: false, ...box });
     } else {
-      const track = freeTrack(iv);
-      occupied[track]!.push(iv);
+      const track = sameRow ? sameRow.track : freeTrack(slot);
+      rows[track]!.push({ ...slot, overlay: false });
       placed.push({ key: `${bar.id}#${i}`, bar, track, overlay: false, ...box });
     }
   }
 
   placed.sort((a, b) => a.track - b.track || Number(a.overlay) - Number(b.overlay) || a.x - b.x);
-  return { placed, tracks: Math.max(occupied.length, 0) };
+  return { placed, rows };
+}
+
+export interface PackedLane {
+  placed: PackedBar[];
+  /** the track of each of the lane's own markers, by its index in `lane.markers` (0 for one not drawn) */
+  markerTracks: number[];
+  /** number of tracks: bars' rows and the rows their neighbouring markers needed */
+  tracks: number;
+}
+
+/**
+ * Tracks for a whole lane: its bars ({@link packBars}), then its own markers — the to-dos and
+ * payments of a life area, which stand for other things than its bars.
+ *
+ * - A marker of the very contract or to-do a bar stands for (the same `ref`), dated within that bar,
+ *   is that bar's date: it sits on the bar, like the bar's own markers (the earliest end of a
+ *   contract on the Contracts page).
+ * - Any other marker never lands on a bar: it goes to the first track where its 24 px hit target
+ *   touches no bar and no bar's marker, else to a new track below. So an appointment never covers
+ *   the permit bar it happens to fall on, and a to-do's mark never merges with a bar's date.
+ * - Markers closer than the marker gap merge into one mark ({@link placeMarkers}): they are placed
+ *   as one run, on one track, so a merged mark is never split over two rows.
+ * - A marker with no date, or one outside the range, isn't drawn and takes no room.
+ */
+export function packLane(lane: Pick<Lane, "bars" | "markers">, scale: TimeScale): PackedLane {
+  const { placed, rows } = packBarRows(lane.bars, scale, lane.markers);
+  // what each track holds, in px: its bars with their markers' hit targets (riders included)
+  const taken: Interval[][] = rows.map((row) => row.map((s) => s.px));
+  const markerTracks = lane.markers.map(() => 0);
+
+  const loose: { i: number; x: number }[] = [];
+  lane.markers.forEach((m, i) => {
+    if (!m.date || !scale.contains(m.date)) return;
+    // on its bar (the term bar rather than a notice window riding on it: the same row either way)
+    const own = placed.filter((p) => ridesOn(m, p.bar)).sort((a, b) => Number(a.overlay) - Number(b.overlay))[0];
+    if (own) markerTracks[i] = own.track;
+    else loose.push({ i, x: scale.mid(m.date) });
+  });
+
+  loose.sort((a, b) => a.x - b.x || a.i - b.i);
+  const runs: { i: number[]; first: number; last: number }[] = [];
+  for (const m of loose) {
+    const run = runs[runs.length - 1];
+    if (run && m.x - run.last < LANE_METRICS.markerGap) {
+      run.i.push(m.i);
+      run.last = m.x;
+    } else runs.push({ i: [m.i], first: m.x, last: m.x });
+  }
+  for (const run of runs) {
+    const iv = { s: run.first - HALF_HIT, e: run.last + HALF_HIT };
+    let t = taken.findIndex((row) => !row.some((o) => pxOverlaps(o, iv)));
+    if (t < 0) {
+      t = taken.length;
+      taken.push([]);
+    }
+    taken[t]!.push(iv);
+    for (const i of run.i) markerTracks[i] = t;
+  }
+  return { placed, markerTracks, tracks: taken.length };
 }
 
 /** The free stretches of `[lo, hi]` once the `blocked` intervals are taken out (left to right). */
@@ -285,17 +406,18 @@ function compareEntries(a: MarkerEntry, b: MarkerEntry): number {
 }
 
 /**
- * Put markers on their track (a bar's markers on the bar's track, lane markers on track 0) and
- * merge markers that would sit closer than `minGap` (24 px) into one mark: it is drawn at its most
- * important entry's date, and its tooltip and accessible name list every date. So markers never
- * cover each other and every mark keeps a full 24 px hit target.
+ * Put markers on their track (a bar's markers on the bar's track, lane markers on the track
+ * {@link packLane} gave them — track 0 when `laneTracks` is left out) and merge markers that would
+ * sit closer than `minGap` (24 px) into one mark: it is drawn at its most important entry's date, and
+ * its tooltip and accessible name list every date. So markers never cover each other and every mark
+ * keeps a full 24 px hit target.
  */
 export function placeMarkers(
   lane: Pick<Lane, "id" | "markers">,
   bars: Pick<PackedBar, "bar" | "track">[],
   scale: TimeScale,
   today: string,
-  minGap: number = LANE_METRICS.markerGap,
+  { laneTracks = [], minGap = LANE_METRICS.markerGap }: { laneTracks?: readonly number[]; minGap?: number } = {},
 ): PlacedMarker[] {
   const todayN = dayNumber(today);
   const raw: { entry: MarkerEntry; track: number; x: number }[] = [];
@@ -304,7 +426,7 @@ export function placeMarkers(
     raw.push({ entry: { marker, bar, past: dayNumber(marker.date) < todayN }, track, x: scale.mid(marker.date) });
   };
   for (const p of bars) for (const m of p.bar.markers) push(m, p.bar, p.track);
-  for (const m of lane.markers) push(m, null, 0);
+  lane.markers.forEach((m, i) => push(m, null, laneTracks[i] ?? 0));
 
   interface Group {
     items: typeof raw;
@@ -441,6 +563,8 @@ export interface LaneLayout {
   height: number;
   /** true when the lane has no bars (markers sit on a hairline rail) */
   rail: boolean;
+  /** tracks with no bar on them — markers only, drawn on a hairline rail (the lane's only track when it has no bars) */
+  rails: number[];
 }
 
 /** Full layout of one lane (tracks, markers, captions, heights). */
@@ -452,10 +576,11 @@ export function layoutLane(
 ): LaneLayout {
   const measure = opts.measure ?? approxTextWidth;
   const measureCaption = opts.measureCaption ?? measure;
-  const packed = packBars(lane.bars, scale);
-  const markers = placeMarkers(lane, packed.placed, scale, today);
+  const packed = packLane(lane, scale);
+  const markers = placeMarkers(lane, packed.placed, scale, today, { laneTracks: packed.markerTracks });
   const bars = placeBarLabels(packed.placed, scale, measure, markers);
   const tracks = Math.max(1, packed.tracks);
+  const rails = Array.from({ length: tracks }, (_, t) => t).filter((t) => !bars.some((b) => b.track === t));
   const captions = opts.captions === false ? [] : placeCaptions(markers, scale, today, measureCaption);
   const M = LANE_METRICS;
   const trackY: number[] = [];
@@ -466,7 +591,7 @@ export function layoutLane(
     if (captions.some((c) => c.track === t)) y += M.captionHeight;
   }
   const height = Math.max(opts.minHeight ?? 0, y - (M.trackHeight - M.barHeight) + M.padY);
-  return { lane, tracks, bars, markers, captions, trackY, height, rail: packed.tracks === 0 };
+  return { lane, tracks, bars, markers, captions, trackY, height, rail: bars.length === 0, rails };
 }
 
 // ------------------------------------------------------------------------------------------------

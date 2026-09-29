@@ -494,7 +494,6 @@ export function LanesChart({
                       );
                     const offset = compact ? COMPACT_HEADER : 0;
                     const height = ly.height + offset;
-                    const railY = (ly.trackY[0] ?? 0) + offset;
                     const common = (key: string) => ({
                       markKey: key,
                       row: rowOf.get(key) ?? 0,
@@ -542,7 +541,16 @@ export function LanesChart({
                               </div>
                             </div>
                           ) : null}
-                          {ly.rail ? <div aria-hidden className="absolute inset-x-0 h-px bg-line-strong" style={{ top: railY }} /> : null}
+                          {/* markers with no bar under them sit on a hairline rail: a lane's only track, or a row of its own */}
+                          {ly.rails.map((t) => (
+                            <div
+                              key={`rail:${t}`}
+                              aria-hidden
+                              data-testid="lanes-rail"
+                              className="absolute inset-x-0 h-px bg-line-strong"
+                              style={{ top: (ly.trackY[t] ?? 0) + offset }}
+                            />
+                          ))}
                           {ly.bars.map((b, bi) => {
                             const sel: LaneSelection = { lane, bar: b.bar, marker: null, ref: b.bar.ref, date: b.bar.end };
                             const key = `${lane.id}|${b.key}`;

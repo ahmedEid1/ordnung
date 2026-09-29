@@ -200,6 +200,7 @@ export function MarkerMark({
         type="button"
         data-mark-key={common.markKey}
         data-mark-row={common.row}
+        data-mark-date={placed.date}
         tabIndex={common.tabIndex}
         onFocus={() => common.onActivate(common.markKey)}
         onClick={onSelect}

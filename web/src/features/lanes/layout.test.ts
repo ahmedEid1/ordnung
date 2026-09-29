@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Lane, LaneBar, TimelineMarker } from "@/api/types";
+import type { MarkerEntry } from "./layout";
 import {
   LANE_METRICS,
   approxTextWidth,
@@ -9,12 +10,13 @@ import {
   markerCaption,
   nextOnLane,
   packBars,
+  packLane,
   placeBarLabels,
   placeCaptions,
   freeSegments,
   placeMarkers,
 } from "./layout";
-import { createTimeScale } from "./scale";
+import { addDaysISO, createTimeScale, dayNumber } from "./scale";
 import { refTarget } from "./refs";
 
 // 1 Jun 2026 – 30 Sep 2027 is 487 days; 974 px → exactly 2 px per day
@@ -113,6 +115,209 @@ describe("packBars (one row per contract)", () => {
     expect(by.window!.track).toBe(by["insurance-year"]!.track);
     expect(by.window!.track).not.toBe(by.power!.track);
   });
+
+  it("keeps the next thing's bar clear of a bar's end marker; a term and what follows it share the row", () => {
+    // two permits back to back: the first one's "Expires" mark (24 px wide) would cover the next one's start
+    const permits = packBars(
+      [
+        bar({ id: "old", kind: "validity", start: "2026-06-01", end: "2026-11-30", ref: { type: "item", id: "a" }, markers: [mk("2026-11-30", "Expires", "expiry")] }),
+        bar({ id: "new", kind: "validity", start: "2026-12-01", end: "2027-11-30", ref: { type: "item", id: "b" } }),
+      ],
+      scale,
+    );
+    expect(permits.placed.map((p) => [p.bar.id, p.track])).toEqual([
+      ["old", 0],
+      ["new", 1],
+    ]);
+    // one contract: its minimum term ends where "cancellable any time" begins — one row, the mark between them
+    const ref = { type: "contract", id: "ctr_phone" };
+    const phone = packBars(
+      [
+        bar({ id: "term", start: "2026-06-01", end: "2026-11-14", ref, markers: [mk("2026-11-14", "Minimum term ends", "other")] }),
+        bar({ id: "after", start: "2026-11-15", end: TO, ref, open_end: true }),
+      ],
+      scale,
+    );
+    expect(phone.tracks).toBe(1);
+  });
+});
+
+describe("packLane (the lane's own markers)", () => {
+  // the demo's Residence permit lane (prompt 11): the permit, and the extension appointment with its fee
+  // and the to-do "Cancel appointment if you cannot attend" dated on it
+  const permit = bar({
+    id: "permit",
+    label: "Residence permit",
+    kind: "validity",
+    status: "attention",
+    start: "2026-09-16",
+    end: "2026-11-30",
+    ref: { type: "item", id: "itm_permit" },
+    markers: [mk("2026-11-30", "Apply before this date (§ 81 Abs. 4 AufenthG)", "deadline"), mk("2026-11-30", "Expires", "expiry")],
+  });
+  const own = (date: string, label: string, kind: TimelineMarker["kind"], id: string): TimelineMarker => ({ ...mk(date, label, kind), ref: { type: "item", id } });
+  const residence = lane(
+    [permit],
+    [
+      own("2026-10-14", "Extension fee", "payment", "itm_fee"),
+      own("2026-10-14", "Residence permit extension appointment", "appointment", "itm_appt"),
+      own("2026-10-19", "Cancel appointment if you cannot attend", "deadline", "itm_cancel"),
+    ],
+    "residence",
+  );
+
+  it("never draws a to-do over another thing's bar: the appointment's dates get a row of their own", () => {
+    const packed = packLane(residence, scale);
+    expect(packed.placed.map((p) => p.track)).toEqual([0]);
+    expect(packed.markerTracks).toEqual([1, 1, 1]);
+    expect(packed.tracks).toBe(2);
+    const ly = layoutLane(residence, scale, TODAY);
+    expect(ly.tracks).toBe(2);
+    expect(ly.rails).toEqual([1]);
+    expect(ly.rail).toBe(false);
+    // the permit's button: nothing but its own "apply before / expires" mark on it, its centre free
+    const p = ly.bars[0]!;
+    const onBar = ly.markers.filter((m) => m.track === p.track && m.x + m.hitWidth / 2 > p.x && m.x - m.hitWidth / 2 < p.x + p.width);
+    expect(onBar.flatMap((m) => m.entries.map((e) => e.bar?.id))).toEqual(["permit", "permit"]);
+    const centre = p.x + p.width / 2;
+    expect(onBar.every((m) => Math.abs(m.x - centre) >= m.hitWidth / 2)).toBe(true);
+    // and with the to-dos off it, its label fits inside
+    expect(p.labelMode).toBe("inside");
+  });
+
+  it("keeps a lane's marker on a bar's row when it touches no bar there", () => {
+    const later = lane([permit], [own("2027-02-10", "Passport expires", "expiry", "itm_pass")]);
+    expect(packLane(later, scale)).toMatchObject({ markerTracks: [0], tracks: 1 });
+    expect(layoutLane(later, scale, TODAY).rails).toEqual([]);
+  });
+
+  it("keeps a lane's marker clear of a bar's own markers: never one mark of two things", () => {
+    // 3 Dec is 6 px after the permit's end mark — it would merge into it; 20 Dec is 40 px away
+    const near = packLane(lane([permit], [own("2026-12-03", "Pay the fee", "payment", "itm_x")]), scale);
+    expect(near.markerTracks).toEqual([1]);
+    const far = packLane(lane([permit], [own("2026-12-20", "Pay the fee", "payment", "itm_x")]), scale);
+    expect(far.markerTracks).toEqual([0]);
+  });
+
+  it("places markers that merge into one mark as one run, on one row", () => {
+    // 9 Oct lies on the bar; 19 Oct alone would fit after it, but the two are 20 px apart: one mark
+    const l = lane(
+      [bar({ id: "b", start: "2026-06-01", end: "2026-10-10" })],
+      [own("2026-10-09", "Appointment", "appointment", "itm_a"), own("2026-10-19", "Send the form", "deadline", "itm_b")],
+    );
+    const packed = packLane(l, scale);
+    expect(packed.markerTracks).toEqual([1, 1]);
+    const ms = placeMarkers(l, packed.placed, scale, TODAY, { laneTracks: packed.markerTracks });
+    expect(ms.filter((m) => m.track === 1).map((m) => m.entries.length)).toEqual([2]);
+  });
+
+  it("puts a marker of the very contract a bar stands for, dated on it, on that bar", () => {
+    const ref = { type: "contract", id: "ctr_gym" };
+    const gym = lane(
+      [bar({ id: "any", label: "Cancellable any time", start: "2026-06-01", end: TO, ref, open_end: true })],
+      [{ ...mk("2026-10-28", "Earliest end (if you cancel now)", "other"), ref }, own("2026-10-28", "Pay the gym", "payment", "itm_gym")],
+    );
+    // the contract's own date rides on it; a to-do of the same day stands for something else
+    expect(packLane(gym, scale).markerTracks).toEqual([0, 1]);
+  });
+
+  it("keeps the next thing's bar clear of a date riding on a bar's end", () => {
+    const ref = { type: "contract", id: "ctr_gym" };
+    const l = lane(
+      [
+        bar({ id: "gym", start: "2026-06-01", end: "2026-10-28", ref }),
+        bar({ id: "next", start: "2026-10-29", end: "2027-03-31", ref: { type: "item", id: "itm_next" } }),
+      ],
+      [{ ...mk("2026-10-28", "Earliest end (if you cancel now)", "other"), ref }],
+    );
+    const packed = packLane(l, scale);
+    const track = Object.fromEntries(packed.placed.map((p) => [p.bar.id, p.track]));
+    expect(track).toEqual({ gym: 0, next: 1 });
+    expect(packed.markerTracks).toEqual([0]);
+    // without the rider, the two bars meet on one row
+    expect(packBars(l.bars, scale).tracks).toBe(1);
+  });
+
+  it("gives a marker with no date, or one outside the range, no room", () => {
+    const l = lane([permit], [own("", "No date yet", "other", "itm_n"), own("2028-01-01", "Far away", "other", "itm_f")]);
+    expect(packLane(l, scale)).toMatchObject({ markerTracks: [0, 0], tracks: 1 });
+    expect(layoutLane(l, scale, TODAY).markers.flatMap((m) => m.entries.map((e) => e.marker.label))).not.toContain("No date yet");
+  });
+
+  it("gives a lane of markers only one rail track, as before", () => {
+    const packed = packLane(lane([], [own("2026-10-05", "Rent", "payment", "itm_r"), own("2027-03-01", "Rent", "payment", "itm_r2")]), scale);
+    expect(packed).toMatchObject({ placed: [], markerTracks: [0, 0], tracks: 1 });
+  });
+
+  it("never lets a mark cover another thing's bar, nor two bars overlap, whatever the kinds, at any width", () => {
+    // a small deterministic generator: bars of every kind (some of one contract), their markers, the lane's to-dos
+    let seed = 7;
+    const rand = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
+    const day = (lo: number, hi: number) => addDaysISO(FROM, Math.floor(lo + rand() * (hi - lo)));
+    const kinds: LaneBar["kind"][] = ["contract", "validity", "period", "notice_window", "event"];
+    const markerKinds: TimelineMarker["kind"][] = ["send_by", "deadline", "cancel_by", "expiry", "appointment", "payment", "renewal", "other"];
+    for (let n = 0; n < 300; n++) {
+      const refs = ["contract:a", "contract:b", "item:c", "item:d"];
+      const bars: LaneBar[] = [];
+      for (let b = 0; b < 1 + Math.floor(rand() * 5); b++) {
+        // often right after the bar before (back to back, as a permit and the next one), else anywhere
+        const prev = bars[bars.length - 1];
+        const start = prev && rand() < 0.5 ? addDaysISO(prev.end, 1 + Math.floor(rand() * 4)) : day(-60, 450);
+        const end = addDaysISO(start, Math.floor(rand() * 200));
+        const [type, id] = refs[Math.floor(rand() * refs.length)]!.split(":") as [string, string];
+        const inside = Array.from({ length: Math.floor(rand() * 3) }, () =>
+          mk(addDaysISO(start, Math.floor(rand() * (dayNumber(end) - dayNumber(start) + 1))), "Date", markerKinds[Math.floor(rand() * markerKinds.length)]!),
+        );
+        // most bars have a date at their end (expires, renews, must arrive by), some the day after (a renewal)
+        if (rand() < 0.6) inside.push(mk(rand() < 0.8 ? end : addDaysISO(end, 1), "End", markerKinds[Math.floor(rand() * markerKinds.length)]!));
+        bars.push(bar({ id: `b${b}`, start, end, kind: kinds[Math.floor(rand() * kinds.length)]!, ref: { type, id }, markers: inside }));
+      }
+      const loose = Array.from({ length: Math.floor(rand() * 6) }, (_, i): TimelineMarker => {
+        const kind = markerKinds[Math.floor(rand() * markerKinds.length)]!;
+        if (rand() < 0.2) return own("", "Undated", "other", `itm_u${i}`);
+        // some of them the very contract's or to-do's a bar stands for (on its bar when dated on it), often at its end
+        if (rand() < 0.3) {
+          const b = bars[Math.floor(rand() * bars.length)]!;
+          return { ...mk(rand() < 0.5 ? b.end : day(-10, 500), `Its date ${i}`, kind), ref: b.ref };
+        }
+        return own(day(-10, 500), `To-do ${i}`, kind, `itm_${i}`);
+      });
+      const l = lane(bars, loose);
+      for (const width of [320, 974, 4000]) {
+        const sc = createTimeScale(FROM, TO, width);
+        const ly = layoutLane(l, sc, TODAY);
+        const drawn = (p: (typeof ly.bars)[number]) => ({ s: p.x + 1, e: p.x + 1 + Math.max(3, p.width - 2) });
+        const key = (r: { type: string; id: string } | null | undefined) => (r ? `${r.type}:${r.id}` : null);
+        // a date of the bar itself, or of the contract or to-do it stands for
+        const belongs = (e: MarkerEntry, p: (typeof ly.bars)[number]) => {
+          const k = key(e.bar ? e.bar.ref : e.marker.ref);
+          return e.bar === p.bar || (k !== null && k === key(p.bar.ref));
+        };
+        for (const m of ly.markers) {
+          for (const p of ly.bars.filter((b) => b.track === m.track)) {
+            const d = drawn(p);
+            if (m.x + m.hitWidth / 2 <= d.s || m.x - m.hitWidth / 2 >= d.e) continue;
+            const foreign = m.entries.filter((e) => !belongs(e, p)).map((e) => e.marker.label);
+            expect(foreign, `lane ${n} @ ${width}px: drawn over ${p.bar.id} (${p.bar.start} – ${p.bar.end})`).toEqual([]);
+          }
+        }
+        // bars on one row: of one thing, their days never overlap (a notice window rides on its host); of two, not even their marks touch
+        for (const a of ly.bars) {
+          for (const b of ly.bars) {
+            if (a === b || a.track !== b.track || a.overlay || b.overlay || a.x > b.x) continue;
+            const same = a.bar.ref?.id === b.bar.ref?.id && a.bar.ref?.type === b.bar.ref?.type;
+            if (same) expect(a.bar.end < b.bar.start || b.bar.end < a.bar.start, `lane ${n} @ ${width}px: ${a.bar.id} and ${b.bar.id}`).toBe(true);
+            else expect(drawn(a).e <= drawn(b).s, `lane ${n} @ ${width}px: ${a.bar.id} and ${b.bar.id} overlap`).toBe(true);
+          }
+        }
+        // marks on one row keep their 24 px apart
+        for (const t of new Set(ly.markers.map((m) => m.track))) {
+          const xs = ly.markers.filter((m) => m.track === t).map((m) => m.x);
+          for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(LANE_METRICS.markerGap);
+        }
+      }
+    }
+  });
 });
 
 describe("placeMarkers", () => {
@@ -203,9 +408,17 @@ describe("labels", () => {
   });
 
   it("truncates in the widest free stretch (the tooltip carries the text) when no stretch between markers fits it", () => {
+    // the semester's own date on it (a lane's other dates get a row of their own: packLane)
     const l = lane([
-      bar({ id: "ws", label: "Winter semester 2026/27 at the University of Musterstadt", kind: "period", start: "2026-10-01", end: "2027-03-31" }),
-    ], [mk("2026-12-15", "Scholarship report", "deadline")]);
+      bar({
+        id: "ws",
+        label: "Winter semester 2026/27 at the University of Musterstadt",
+        kind: "period",
+        start: "2026-10-01",
+        end: "2027-03-31",
+        markers: [mk("2026-12-15", "Lectures pause", "other")],
+      }),
+    ]);
     const { placed } = packBars(l.bars, scale);
     const markers = placeMarkers(l, placed, scale, TODAY);
     const [p] = placeBarLabels(placed, scale, approxTextWidth, markers);

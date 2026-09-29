@@ -487,11 +487,12 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
         ref,
       });
     }
+    // the contract's own date (its `ref`): the chart draws it on the bar it falls on, not on a row of its own
     const exit = comp?.earliest_exit;
     if (c.status === "active" && exit && exit >= today && sent) {
-      markers.push(marker(exit, "Ends (cancellation sent)", "other"));
+      markers.push({ ...marker(exit, "Ends (cancellation sent)", "other"), ref });
     } else if (c.status === "active" && exit && exit >= today && exit !== termEnd && (!comp?.cancel_by || rolling)) {
-      markers.push(marker(exit, "Earliest end (if you cancel now)", "other"));
+      markers.push({ ...marker(exit, "Earliest end (if you cancel now)", "other"), ref });
     }
     return { id: c.id, label: c.name, area: c.area, bars, markers };
   });
