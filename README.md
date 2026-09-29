@@ -364,7 +364,7 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
 
 | | |
 |---|---|
-| Tests | 5,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,500+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
+| Tests | 5,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,400+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
 | CI gates | ruff, mypy, ESLint, `tsc`, both test suites, rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite, and a check that the committed web build matches its sources |
