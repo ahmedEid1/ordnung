@@ -695,7 +695,8 @@ def _pay(ledger: Ledger, agenda: Agenda, money: MoneySummary) -> WeekStep:
 def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
     """A letter to send: its send-by day, the day it must arrive by beside it; once the send-by day has
     passed but not the day to arrive by, act today — overdue only when that day has passed too, and
-    counted as overdue unless a to-do of the letter it answers carries that same day (it is counted)."""
+    counted as overdue unless a to-do of the letter it answers carries that same day and is counted
+    (:func:`counts_overdue`; it is counted there)."""
     today = ledger.today
     guidance = draft.send_guidance
     send = parse_day(guidance.send_by) if guidance else None
@@ -704,7 +705,8 @@ def _unsent_entry(ledger: Ledger, draft: Draft) -> WeekEntry:
     note = "Not sent yet — send it, then mark it as sent."
     if due is not None and due < today:
         carried = draft.doc_id is not None and any(
-            item.doc_id == draft.doc_id and item.due_date == due.isoformat() for item in pending_items(ledger)
+            item.doc_id == draft.doc_id and item.due_date == due.isoformat() and counts_overdue(item, today)
+            for item in pending_items(ledger)
         )
         return _draft_entry(
             ledger,

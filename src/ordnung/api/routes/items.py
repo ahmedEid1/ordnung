@@ -172,7 +172,16 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
     _check_links(store, fields)
     due = fields.pop("due_date")
     nature = date_nature(body.kind, None)
-    dates = manual_date_fields(store, due, today, nature=nature, party_id=body.party_id)
+    probe = Item.model_construct(**fields)  # judged by its words, as an edit is; never stored
+    dates = manual_date_fields(
+        store,
+        due,
+        today,
+        nature=nature,
+        party_id=body.party_id,
+        in_person=pays_on_site(probe),
+        collected=is_collected_or_incoming(probe),
+    )
     if due is not None and body.recurrence is not None:
         dates["date_spec"] = schedule_spec(due, nature)
     item = store.add_item(

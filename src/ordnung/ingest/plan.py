@@ -452,16 +452,17 @@ def document_context(store: Store, document: Document, today: date) -> RuleConte
 
 
 def item_context(store: Store, item: Item, today: date) -> RuleContext:
-    """The context of a to-do's dates: its letter's (:func:`document_context`, with :func:`for_item`),
-    else nationwide holidays in the person's country (a to-do added by hand); a to-do linked to a rent
-    contract belongs to a home's tenancy (``RuleContext.rent``) either way."""
+    """The context of a to-do's dates: its letter's (:func:`document_context`), else nationwide
+    holidays in the person's country (a to-do added by hand) — either way for this to-do
+    (:func:`for_item`: one paid in person, collected or coming in gets no send-by day, and one linked
+    to a rent contract belongs to a home's tenancy, ``RuleContext.rent``)."""
     document = store.get_document(item.doc_id) if item.doc_id else None
     found = document_context(store, document, today) if document is not None else None
     contract = store.get_contract(item.contract_id) if item.contract_id else None
     if found is not None and document is not None:
         note = rent_increase_note(document.kind, store.get_extraction(document.id))
         return for_item(found, item, note, contract)
-    return RuleContext(today=today, country=store.get_profile().country, rent=_rent_contract(contract))
+    return for_item(RuleContext(today=today, country=store.get_profile().country), item, None, contract)
 
 
 @dataclass(frozen=True)

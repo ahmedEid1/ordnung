@@ -130,6 +130,50 @@ describe("activity logic", () => {
     expect(askChecksMessage(12)).toBe("Checked 12 answers in Ask");
     expect(askCheckWhat("Checked an answer in Ask: showed values as quotes")).toBe("Showed values as quotes");
   });
+
+  it("folds one entry per answer (what its checks did in `data.done`) with the entries of one per check from before", () => {
+    const S = "took out sentences or values with dates, amounts or laws not in the records they cite";
+    const Q = "showed values only a letter or the person states as quotes";
+    const C = "took out 1 source it hadn't looked up";
+    const checked = (id: number, ref_id: string, done: string[]): Activity => ({
+      ...activity(id, "ask.checked", `Checked an answer in Ask: ${done.join("; ")}`, "chat", ref_id),
+      data: { thread_id: "thr_1", done },
+    });
+    const rows = groupActivity([
+      checked(9, "m4", [C, S]),
+      checked(8, "m3", [S, Q]),
+      activity(7, "ask.sentences_removed", `Checked an answer in Ask: ${S}`, "chat", "m2"),
+      activity(6, "ask.letter_quotes", `Checked an answer in Ask: ${Q}`, "chat", "m2"),
+      activity(5, "document.processed", "Read “Rent increase”", "document", "d1"),
+      checked(4, "m1", [S, Q]),
+      activity(3, "document.processed", "Read “Rent increase”", "document", "d1"),
+      checked(2, "m0", [Q]),
+    ]);
+    expect(rows.map((r) => [r.entry.id, r.count])).toEqual([
+      [9, 4],
+      [5, 1],
+      [4, 1],
+      [3, 1],
+      [2, 1],
+    ]);
+    expect(rows[0]!.askChecks).toEqual({
+      answers: 3,
+      done: [
+        { what: "Took out 1 source it hadn't looked up", answers: 1 },
+        { what: "Took out sentences or values with dates, amounts or laws not in the records they cite", answers: 3 },
+        { what: "Showed values only a letter or the person states as quotes", answers: 2 },
+      ],
+    });
+    // one answer's entry that says two things lists them behind the row, one that says one thing is its message
+    expect(rows[2]!.askChecks).toEqual({
+      answers: 1,
+      done: [
+        { what: "Took out sentences or values with dates, amounts or laws not in the records they cite", answers: 1 },
+        { what: "Showed values only a letter or the person states as quotes", answers: 1 },
+      ],
+    });
+    expect(rows[4]!.askChecks).toBeUndefined();
+  });
 });
 
 describe("How dates are computed", () => {

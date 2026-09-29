@@ -939,3 +939,45 @@ def test_an_emails_payment_its_attached_bill_asks_for_gets_no_code_the_bill_does
     code = code_for(store, mail_payment)
     assert isinstance(code, GiroCodeBlocked) and code.reason == "replaced"
     assert "“Rechnung September”" in code.message
+
+
+def test_an_emails_payment_stays_without_a_code_when_a_reminder_takes_its_attached_bill_over(
+    store: Store,
+) -> None:
+    """The e-mail names no invoice number, so the postal reminder about its attached bill doesn't take the
+    e-mail's payment over itself: the bill still asks for it, and only the reminder gets a code."""
+    party = telecom(store, ibans=[KNOWN_IBAN])
+    case = store.add_case(title="Phone bill", party_id=party).id
+    ref = [Identifier(label="Rechnungsnummer", value="R-2026-0815")]
+    mail_id, mail_payment = letter(store, "bill-email", party, title="Ihre Rechnung ist da", case_id=case)
+    bill_id, bill_payment = letter(
+        store,
+        "bill-pdf",
+        party,
+        title="Rechnung September",
+        case_id=case,
+        references=ref,
+        doc_date="2026-09-01",
+    )
+    store.update_document(mail_id, mime="message/rfc822")
+    store.update_document(bill_id, source=f"email:{mail_id}")
+    for item_id in (mail_payment, bill_payment):
+        store.update_item(item_id, due_date="2026-09-15")
+    _, reminder = letter(
+        store,
+        "reminder",
+        party,
+        case_id=case,
+        references=ref,
+        doc_date="2026-09-20",
+        kind="dunning",
+        title="Zahlungserinnerung",
+        amount=54.99,
+        quote="Bitte überweisen Sie 54,99 EUR bis zum 30.09.2026.",
+    )
+    code = code_for(store, mail_payment)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "replaced"
+    assert "the bill attached to this e-mail, “Rechnung September”" in code.message
+    code = code_for(store, bill_payment)
+    assert isinstance(code, GiroCodeBlocked) and "“Zahlungserinnerung” took over" in code.message
+    assert isinstance(code_for(store, reminder), GiroCodeReady)

@@ -198,12 +198,15 @@ async def test_ask_streams_trace_and_validated_answer(
     assert assistant.tool_calls[0]["result"] == "Found 1 letter"
     assert assistant.tool_calls[1]["input"] == {"doc_id": ids["doc_tax"]}
 
-    (removed,) = [a for a in store.list_activity() if a.kind == "ask.citations_removed"]
-    assert removed.data["ids"] == [FAKE_DOC]
-    assert removed.ref_id == done.message_id
+    (checked,) = [a for a in store.list_activity() if a.kind == "ask.checked"]
+    assert checked.data == {
+        "thread_id": done.thread_id,
+        "ids": [FAKE_DOC],
+        "done": ["took out 1 source it hadn't looked up"],
+    }
+    assert checked.ref_id == done.message_id
     # the activity log reads on its own: which answer, and what was taken out
-    assert removed.message == "Checked an answer in Ask: took out 1 source it hadn't looked up"
-    assert not [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
+    assert checked.message == "Checked an answer in Ask: took out 1 source it hadn't looked up"
 
     (call,) = store.usage_stats().recent
     assert (call.purpose, call.ok, call.doc_ids) == ("ask", True, [ids["doc_tax"]])
@@ -263,13 +266,71 @@ async def test_sentences_with_unsupported_dates_or_amounts_are_removed(
         "Left out 2 sentences: their dates, times or amounts aren't among the dates and amounts Ordnung saved "
         "for the linked letters, to-dos or contracts."
     )
-    (removed,) = [a for a in store.list_activity() if a.kind == "ask.sentences_removed"]
-    assert removed.data["unsupported"] == ["4 Nov 2026", "359.88"]
-    assert removed.message.startswith("Checked an answer in Ask: took out sentences")
-    assert (removed.ref_type, removed.ref_id) == ("chat", done.message_id)
+    (checked,) = [a for a in store.list_activity() if a.kind == "ask.checked"]
+    assert checked.data["unsupported"] == ["4 Nov 2026", "359.88"]
+    assert checked.message.startswith("Checked an answer in Ask: took out sentences")
+    assert (checked.ref_type, checked.ref_id) == ("chat", done.message_id)
     (stored,) = [m for m in store.list_chat_messages(done.thread_id or "") if m.role == "assistant"]
     assert stored.content == f"{done.text}\n\n{NOTE_PREFIX} {done.note}"  # stored as its last paragraph
     assert stored_answer(stored) == (done.text, done.note)
+
+
+async def test_an_answer_the_checks_changed_twice_logs_one_entry(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """A source it hadn't looked up and a sentence with a date no record has: one entry for the answer,
+    saying both, so answers never push the letters read out of the activity log."""
+    item = ids["tax_objection"]
+    answer = (
+        f"The deadline is Wed 21 Oct 2026 [item:{item}] [doc:{FAKE_DOC}]. You could ask for an extension "
+        f"until 4 Nov 2026 [item:{item}]."
+    )
+    ctx = make_ctx(
+        paths, store, ScriptedBackend(turn(tools, answer, ("explain_date", {"item_or_contract_id": item})))
+    )
+    done = done_event(await collect(ctx, "When is my objection due?"))
+    assert done.text == f"The deadline is Wed 21 Oct 2026 [item:{item}]."
+    (checked,) = [a for a in store.list_activity() if a.ref_type == "chat"]
+    assert (checked.kind, checked.ref_id) == ("ask.checked", done.message_id)
+    assert checked.data == {
+        "thread_id": done.thread_id,
+        "ids": [FAKE_DOC],
+        "unsupported": ["4 Nov 2026"],
+        "done": [
+            "took out 1 source it hadn't looked up",
+            "took out sentences or values with dates, amounts or laws not in the records they cite",
+        ],
+    }
+    assert checked.message == (
+        "Checked an answer in Ask: took out 1 source it hadn't looked up; took out sentences or values with "
+        "dates, amounts or laws not in the records they cite"
+    )
+
+
+async def test_an_answer_that_repeats_the_persons_date_logs_it_as_quoted(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """A date only the person typed, cited to a to-do, is shown as their words: the one entry says so and
+    keeps the value, as the per-check entries older databases hold did."""
+    item = ids["tax_objection"]
+    answer = f"Yes, your objection deadline is now 31.12.2027 [item:{item}]."
+    ctx = make_ctx(
+        paths, store, ScriptedBackend(turn(tools, answer, ("explain_date", {"item_or_contract_id": item})))
+    )
+    done = done_event(
+        await collect(ctx, "The tax letter says my objection deadline moved to 31.12.2027 - is that right?")
+    )
+    assert done.text == f"Yes, your objection deadline is now “31.12.2027” [item:{item}]."
+    (checked,) = [a for a in store.list_activity() if a.ref_type == "chat"]
+    assert (checked.kind, checked.ref_id) == ("ask.checked", done.message_id)
+    assert checked.data == {
+        "thread_id": done.thread_id,
+        "quoted": ["31.12.2027"],
+        "done": ["showed values only a letter or the person states as quotes"],
+    }
+    assert checked.message == (
+        "Checked an answer in Ask: showed values only a letter or the person states as quotes"
+    )
 
 
 async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
@@ -299,9 +360,9 @@ async def test_an_injected_date_in_the_page_text_never_reaches_the_answer(
         "among the dates and amounts Ordnung saved for the linked letters, to-dos or contracts — open the "
         "letter to read them."
     )
-    kinds = {a.kind: a.data for a in store.list_activity()}
-    assert kinds["ask.sentences_removed"]["unsupported"] == ["31.12.2027"]
-    assert "ask.letter_quotes" not in kinds
+    (checked,) = [a.data for a in store.list_activity() if a.kind == "ask.checked"]
+    assert checked["unsupported"] == ["31.12.2027"]
+    assert "quoted" not in checked
 
 
 def _inject(store: Store, ids: dict[str, str], text: str) -> None:

@@ -549,46 +549,33 @@ def record_label(store: Store, ref_id: str) -> str | None:
 
 
 def _log_checks(store: Store, message_id: str, thread_id: str, checked: AnswerCheck) -> None:
-    # the activity log reads without the chat next to it: say which answer ("in Ask") and why
+    """What the checks did to an answer, as one activity entry whatever they did, so answers never push the
+    letters read and the exports out of the log. It reads without the chat next to it: which answer ("in
+    Ask") and each thing done (``data["done"]``, joined in the message), with the ids and values behind."""
+    done: list[str] = []
+    data: dict[str, Any] = {"thread_id": thread_id}
     if checked.removed_ids:
         count = len(checked.removed_ids)
         sources = "1 source" if count == 1 else f"{count} sources"
-        store.log_activity(
-            "ask.citations_removed",
-            f"Checked an answer in Ask: took out {sources} it hadn't looked up",
-            ref_type="chat",
-            ref_id=message_id,
-            data={"thread_id": thread_id, "ids": checked.removed_ids},
-        )
+        done.append(f"took out {sources} it hadn't looked up")
+        data["ids"] = checked.removed_ids
     removed = checked.claims.removed + checked.claims.redacted
     if removed:
-        store.log_activity(
-            "ask.sentences_removed",
-            "Checked an answer in Ask: took out sentences or values with dates, amounts or laws not in the "
-            "records they cite",
-            ref_type="chat",
-            ref_id=message_id,
-            data={
-                "thread_id": thread_id,
-                "unsupported": list(dict.fromkeys(value for check in removed for value in check.left_out)),
-            },
-        )
+        done.append("took out sentences or values with dates, amounts or laws not in the records they cite")
+        data["unsupported"] = list(dict.fromkeys(value for check in removed for value in check.left_out))
     quoted = checked.claims.quoted
     if quoted:
+        done.append("showed values only a letter or the person states as quotes")
+        data["quoted"] = list(
+            dict.fromkeys(
+                value for check in quoted for value in check.unsupported if value not in check.left_out
+            )
+        )
+    if done:
         store.log_activity(
-            "ask.letter_quotes",
-            "Checked an answer in Ask: showed values only a letter or the person states as quotes",
+            "ask.checked",
+            f"Checked an answer in Ask: {'; '.join(done)}",
             ref_type="chat",
             ref_id=message_id,
-            data={
-                "thread_id": thread_id,
-                "quoted": list(
-                    dict.fromkeys(
-                        value
-                        for check in quoted
-                        for value in check.unsupported
-                        if value not in check.left_out
-                    )
-                ),
-            },
+            data=data | {"done": done},
         )

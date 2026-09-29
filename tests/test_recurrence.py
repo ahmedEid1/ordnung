@@ -377,6 +377,15 @@ def test_an_items_context_is_its_letters_else_nationwide(store: Store) -> None:
     assert item_context(store, by_hand, TODAY) == RuleContext(today=TODAY)
 
 
+def test_a_recurring_payment_added_by_hand_and_paid_on_site_rolls_without_a_send_by(store: Store) -> None:
+    """A to-do added by hand is dated for itself too (``for_item``): paid in cash at the counter, its
+    next occurrence has no transfer's send-by day."""
+    at_the_counter = _item(store, origin="manual", description="Pay in cash at the counter.")
+    assert item_context(store, at_the_counter, TODAY) == RuleContext(today=TODAY, in_person=True)
+    assert roll_forward(store, TODAY, item_context) == 1
+    assert _dates(store, at_the_counter.id)[:3] == ("open", "2026-10-15", None)
+
+
 # --------------------------------------------------------------------------------------------------
 # 6. reading the letter again never moves it backwards
 # --------------------------------------------------------------------------------------------------
