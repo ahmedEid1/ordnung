@@ -665,6 +665,13 @@ def _shift_rule_id(ctx: RuleContext, statute: str | None) -> str:
     return _SHIFT_RULE_BY_SCOPE[ctx.delivery_scope] if ctx.delivery_scope else "bgb_193"
 
 
+def _cite_authority(trace: Trace, ctx: RuleContext) -> None:
+    """An authority's date: its procedure law keeps an appointment and would move a weekend deadline
+    (§ 108 AO, § 31 VwVfG, § 26 SGB X) — not a court's (ZPO) nor a private sender's."""
+    if ctx.delivery_scope is not None and not ctx.court:
+        trace.use("authority_deadline")
+
+
 def _shift_applies(spec: DateSpec) -> bool:
     if spec.nature in ("notice", "appointment"):
         return False
@@ -689,7 +696,7 @@ def _compute_fixed(
         if region is None:
             check_regional_holidays(trace, [written], later=False)
     elif spec.nature == "appointment":
-        trace.use("authority_deadline")
+        _cite_authority(trace, ctx)
     elif spec.shift_rule == "next_business_day":
         due, steps = shift_to_business_day(written, region, _shift_rule_id(ctx, statute_rule(spec)))
         trace.extend(steps)
@@ -703,7 +710,7 @@ def _compute_fixed(
             f"payment or declaration deadline, it may legally move to {fmt_date(later)}; we keep the "
             "date as written to be safe."
         )
-        trace.use("authority_deadline")
+        _cite_authority(trace, ctx)
     send_by = (
         _send_by(trace, ctx, due, spec.nature, region, postal_buffer_days)
         if spec.nature in _SEND_BY_NATURES

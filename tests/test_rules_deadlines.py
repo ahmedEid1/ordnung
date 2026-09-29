@@ -842,6 +842,17 @@ def test_fixed_authority_deadline_shift_only_when_asked() -> None:
     )
     assert receipt.due_date == "2026-10-10"
     assert any("may legally move to Mon 12 Oct 2026" in w for w in receipt.warnings)
+    assert "authority_deadline" in receipt.rule_ids
+
+
+def test_a_private_senders_weekend_date_is_kept_without_citing_an_authoritys_law() -> None:
+    """A payment to a private sender due Sat 10 Oct 2026 stays as written with the same warning, but its
+    receipt cites no authority's procedure law (§ 108 AO, § 31 VwVfG, § 26 SGB X)."""
+    spec = DateSpec(type="fixed", date="2026-10-10", nature="payment")
+    receipt = compute_due(spec, ctx(region="NW"))
+    assert receipt.due_date == "2026-10-10"
+    assert any("may legally move to Mon 12 Oct 2026" in w for w in receipt.warnings)
+    assert "authority_deadline" not in receipt.rule_ids
 
 
 def test_fixed_shift_without_scope_and_region() -> None:
@@ -861,14 +872,18 @@ def test_fixed_date_expressly_not_shifted() -> None:
 
 
 def test_appointments_never_shift() -> None:
-    """authority: summons for Sat 10 Oct 2026 10:00 stays on Saturday."""
+    """authority: summons for Sat 10 Oct 2026 10:00 stays on Saturday. Its receipt cites the authority's
+    procedure law (Termine keep their day) only for an authority, never for a court or a private sender."""
     spec = DateSpec(
         type="fixed", date="2026-10-10", time="10:00", nature="appointment", shift_rule="next_business_day"
     )
     receipt = compute_due(spec, ctx(region="NW"))
     assert receipt.due_date == "2026-10-10"
     assert receipt.send_by is None
-    assert "authority_deadline" in receipt.rule_ids
+    assert "authority_deadline" not in receipt.rule_ids
+    assert "authority_deadline" in compute_due(spec, ctx(region="NW", delivery_scope="vwvfg")).rule_ids
+    court = compute_due(spec, ctx(region="NW", delivery_scope="vwvfg", court=True))
+    assert court.due_date == "2026-10-10" and "authority_deadline" not in court.rule_ids
 
 
 def test_fixed_other_nature_on_weekend_is_kept() -> None:

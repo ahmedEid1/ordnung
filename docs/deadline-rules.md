@@ -204,7 +204,10 @@ Which DateSpecs shift (`DateSpec.nature` and `shift_rule`):
 **Fixed dates** ("bis zum 10.10.2026") are used **as written**, and moved only when the DateSpec says
 `shift_rule == "next_business_day"`. Deadlines *set by an authority* do move by law (§ 108 Abs. 3
 AO; example: "Belege bis zum 10.10.2026" → Mon 12 Oct 2026); when the DateSpec doesn't say so, the
-receipt keeps the written (earlier) date and warns that it may legally be later.
+receipt keeps the written (earlier) date and warns that it may legally be later. The receipt cites
+`authority_deadline` (for that weekend date, or an appointment kept on its day) only when an authority
+set the date (a sender with a delivery scope, not a court): never for a court's date (ZPO) or a private
+sender's.
 
 **A cancellation for an end date** ("denken Sie daran, dieses rechtzeitig zum 31.03.2027 zu kündigen",
 "Kündigung zum 31.12.2026 möglich", "mit Wirkung zum …", "effective …") names the day the contract should
