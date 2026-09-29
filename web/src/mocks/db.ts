@@ -7,6 +7,7 @@ import type {
   Case,
   ChatMessage,
   Contract,
+  ContractComputation,
   Dashboard,
   Document,
   Draft,
@@ -78,6 +79,12 @@ function resolveDoc(d: Document): Document {
 }
 
 const daysFrom = (a: string, b: string) => differenceInCalendarDays(parseISO(a), parseISO(b));
+/**
+ * A real renewal decision, as the API's `is_decision` (`src/ordnung/secretary/triggers.py`): a cancellation
+ * deadline guarding a term that would otherwise continue. A contract you can end any month (the
+ * Deutschlandticket, a job its contract lets you leave earlier) has no next renewal, so it is none.
+ */
+const isDecision = (k: ContractComputation | null) => Boolean(k?.cancel_by && k.send_by && k.next_renewal);
 /** The day a recent letter is listed under: when it arrived, else its date, else when it was added. */
 const recentDay = (d: Document) => d.received_date ?? d.doc_date ?? d.created_at.slice(0, 10);
 const iso = (d: Date) => format(d, "yyyy-MM-dd");
@@ -289,10 +296,18 @@ export class MockDb {
     const upcoming = open
       .filter((i) => !attentionIds.has(i.id) && daysFrom(i.due_date ?? this.eff(i)!, today) <= 30)
       .sort((a, b) => (this.eff(a)! < this.eff(b)! ? -1 : 1));
-    // like the API: a contract whose cancellation was marked as sent is no decision any more
-    const decisions = this.state.contracts.filter(
-      (c) => c.status === "active" && c.computed?.send_by && daysFrom(c.computed.send_by, today) >= 0 && daysFrom(c.computed.send_by, today) <= 60 && !this.cancellationSent(c.id),
-    );
+    // like the API (`views._decisions`): real decisions whose send-by date is at most 60 days ahead, soonest
+    // first — not one whose cancellation was marked as sent
+    const decisions = this.state.contracts
+      .filter(
+        (c) =>
+          c.status === "active" &&
+          isDecision(c.computed) &&
+          daysFrom(c.computed!.send_by!, today) >= 0 &&
+          daysFrom(c.computed!.send_by!, today) <= 60 &&
+          !this.cancellationSent(c.id),
+      )
+      .sort((a, b) => a.computed!.send_by!.localeCompare(b.computed!.send_by!) || a.id.localeCompare(b.id));
     const in30 = iso(addDays(parseISO(today), 30));
     const payments = open.filter((i) => i.kind === "payment" && i.direction !== "in" && i.due_date && i.due_date <= in30).sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1));
     const byCat: Record<string, number> = {};

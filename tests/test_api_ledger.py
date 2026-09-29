@@ -139,10 +139,110 @@ async def test_the_persons_notice_terms_replace_the_letters_day_of_the_month(dat
         assert saved["computed"]["cancel_by"] == "2026-10-17"  # the person's two weeks alone
         undone = (await api.client.patch(url, json=before)).json()
         assert undone["notice_day"] == 10 and undone["computed"]["cancel_by"] == "2026-10-10"
-        assert [e["grounding"] for e in undone["evidence"]] == []
+        # a day gives dates by itself: saved on the card, as a period with its basis is, it is the person's
+        assert [e["quote"] for e in undone["evidence"] if e["grounding"] == "user"] == [
+            "notice by the 10th of the month, to the end of that month"
+        ]
         with_day = (await api.client.patch(url, json={**entered, "notice_day": 10})).json()
         assert with_day["notice_day"] == 10 and with_day["computed"]["cancel_by"] == "2026-10-10"
         assert (await api.client.patch(url, json={"notice_day": 32})).status_code == 422
+
+
+async def test_a_misread_day_of_the_month_is_corrected_on_the_card(data_dir: Path) -> None:
+    """The card's notice edit takes the contract's day of the month (the Deutschlandticket's "bis zum 10. eines
+    Monats zum Monatsende"): saved with the notice terms, a day alone, or with a period too — then both apply
+    and the earlier deadline decides. What the person entered is theirs (a quote confirmed by them); a day
+    cleared with nothing left to give dates leaves the rules' assumption, and no quote of theirs."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        letter = add_doc(store, "ticket", kind="contract", title="Deutschlandticket")
+        read = Evidence(doc_id=letter, quote="bis zum 10. eines Monats zum Monatsende", grounding="verified")
+        contract = store.add_contract(
+            name="Deutschlandticket",
+            category="transport",
+            concluded_date="2026-01-20",
+            start_date="2026-02-01",
+            notice_basis="end_of_month",
+            notice_day=10,
+            source_doc_id=letter,
+            evidence=[read],
+        )
+        url = f"/api/contracts/{contract.id}"
+        terms = {"notice_value": None, "notice_unit": None, "notice_basis": "end_of_month"}
+
+        def mine(answer: dict[str, Any]) -> list[str]:
+            return [e["quote"] for e in answer["evidence"] if e["grounding"] == "user"]
+
+        fixed = (await api.client.patch(url, json={**terms, "notice_day": 15})).json()
+        assert fixed["notice_day"] == 15
+        assert (fixed["computed"]["cancel_by"], fixed["computed"]["earliest_exit"]) == (
+            "2026-10-15",
+            "2026-10-31",
+        )
+        assert fixed["evidence"][0]["quote"] == read.quote
+        assert mine(fixed) == ["notice by the 15th of the month, to the end of that month"]
+
+        both = {**terms, "notice_value": 1, "notice_unit": "weeks", "notice_day": 10}
+        saved = (await api.client.patch(url, json=both)).json()
+        assert saved["computed"]["cancel_by"] == "2026-10-10"  # the day, earlier than the week's 24 Oct
+        assert mine(saved) == ["one week's notice by the 10th of the month, to the end of that month"]
+
+        only_day = (await api.client.patch(url, json={"notice_day": 12})).json()  # no notice terms: kept
+        assert (only_day["notice_value"], only_day["notice_day"]) == (1, 12)
+        assert mine(only_day) == ["one week's notice by the 12th of the month, to the end of that month"]
+
+        await api.client.patch(url, json={"notice_value": None, "notice_unit": None})
+        cleared = (await api.client.patch(url, json={"notice_day": None})).json()
+        assert cleared["notice_day"] is None and cleared["computed"]["cancel_by"] is None
+        # one month from arrival, as the rules assume when no notice terms are known
+        assert cleared["computed"]["earliest_exit"] == "2026-11-01"
+        assert mine(cleared) == [] and [e["quote"] for e in cleared["evidence"]] == [read.quote]
+        for bad in ({"notice_day": 0}, {"notice_day": 32}, {"notice_day": "the 10th"}):
+            assert (await api.client.patch(url, json=bad)).status_code == 422, bad
+
+
+async def test_a_fixed_term_jobs_early_notice_is_corrected_on_the_card(data_dir: Path) -> None:
+    """A fixed-term job ends by itself unless its contract lets it be ended earlier by notice
+    (``notice_before_end``): the card's checkbox sets it, the dates follow — to leave on Sat 31 Oct, notice
+    must arrive by Sat 3 Oct — and its Undo puts the fixed term back. A job's period needs no basis of its own
+    (to the 15th or the end of a month, § 622 Abs. 1 BGB)."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        employer = store.add_party(name="Muster Tech GmbH", kind="employer")
+        contract = store.add_contract(
+            name="Werkstudent",
+            category="employment",
+            party_id=employer.id,
+            start_date="2025-04-01",
+            end_date="2027-03-31",
+            notice_value=4,
+            notice_unit="weeks",
+            is_consumer=False,
+        )
+        url = f"/api/contracts/{contract.id}"
+        (listed,) = (await api.client.get("/api/contracts")).json()
+        assert (listed["computed"]["cancel_by"], listed["computed"]["earliest_exit"]) == (None, "2027-03-31")
+
+        before = {k: listed[k] for k in ("notice_value", "notice_unit", "notice_basis", "notice_day")}
+        early = (await api.client.patch(url, json={**before, "notice_before_end": True})).json()
+        assert early["notice_before_end"] is True
+        computed = early["computed"]
+        assert (computed["cancel_by"], computed["send_by"], computed["earliest_exit"]) == (
+            "2026-10-03",
+            "2026-09-28",
+            "2026-10-31",
+        )
+        assert computed["current_term_end"] == "2027-03-31"
+        assert early["evidence"][-1] == {
+            **early["evidence"][-1],
+            "grounding": "user",
+            "quote": "four weeks' notice to the 15th or the end of a month, also before the fixed term ends",
+        }
+
+        undone = (await api.client.patch(url, json={**before, "notice_before_end": False})).json()
+        assert undone["notice_before_end"] is False and undone["computed"]["cancel_by"] is None
+        assert undone["computed"]["summary"].startswith("This contract ends by itself on Wed 31 Mar 2027")
+        assert (await api.client.patch(url, json={"notice_before_end": None})).status_code == 422
 
 
 async def test_parties_threads_timeline_and_lanes(data_dir: Path) -> None:

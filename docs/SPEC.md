@@ -1455,14 +1455,17 @@ Two terms a notice period can't say (migration 0004): `notice_day`, the contract
 ("bis zum 10. eines Monats zum Ende dieses Monats"), read under `bgb309_new`, `tkg56`, `bgb309_old` and
 `as_written` when the basis is the end of a month — the cancellation must arrive by that day of the month
 the contract is to end in (the 29th–31st: a shorter month's last day), never moved off a weekend; a notice
-period read with it applies too, and the earlier deadline decides (notice terms the person saves replace
-the day); after a first term the law may instead let a cancellation end it one month after it arrives,
-which a hedged warning names when that is sooner. And `notice_before_end`, a fixed-term job whose contract
+period read with it applies too, and the earlier deadline decides (notice terms the person saves without
+a day replace it); after a first term the law may instead let a cancellation end it one month after it
+arrives, which a hedged warning names when that is sooner. And `notice_before_end`, a fixed-term job whose contract
 allows ordinary notice before its end date (§ 15 Abs. 4 TzBfG): while that notice (§ 622 BGB, at least
 four weeks to the 15th or the end of a month) ends it before the end date, the job has the notice's dates
 and otherwise ends by itself on its date (`current_term_end`); read for a job only. The card reads the
 first as "by the 10th of the month, to the month's end" and shows the job's notice date as a
-must-arrive-by date that locks nothing in.
+must-arrive-by date that locks nothing in. Both are read from the letter, so the card's notice edit
+corrects them (`ContractPatch.notice_day`, `notice_before_end`): "Must arrive by day __ of the month"
+where the rules read a day, and "Can be ended early by notice" for a job with an end date (whose notice
+may keep the law's basis, to the 15th or the end of a month).
 A contract carries the person's cancellation of it once it is marked as sent (`cancellation_sent`,
 worked out on read): it is then no decision any more — no "Decide by", no cancellation Idea, no send-by
 date in the calendar — and the card says it waits for the provider's confirmation.

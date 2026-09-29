@@ -838,9 +838,10 @@ Two terms a notice period can't say:
   contract is to end in (the 29th–31st: a shorter month's last day; a first term that ends before the day:
   the day of the month before), never moved off a weekend. A notice period read with it applies as well
   (limited as a period alone would be) and the earlier deadline decides — neither wins, since a misreading
-  can put either in the other's place (prompt 9 read this very clause as "10 days' notice"). Notice terms
-  the person saves on the card replace the day: the API clears it (an Undo puts it back). A first term
-  still running is left by the day of its last month, and an end date with a day needs notice (it never
+  can put either in the other's place (prompt 9 read this very clause as "10 days' notice"). The card's
+  notice edit corrects the day with the period ("Must arrive by day __ of the month"); notice terms the
+  person saves without one replace it: the API clears it (an Undo puts it back). A first term still
+  running is left by the day of its last month, and an end date with a day needs notice (it never
   "ends by itself"). The day asks for less than a month before the month's end. After a fixed first term,
   § 309 Nr. 9 BGB and § 56 Abs. 3 TKG may instead let a cancellation end the contract one month after it
   arrives (not settled for a contract open-ended from the start): the dates keep the contract's rule, and
@@ -858,7 +859,8 @@ Two terms a notice period can't say:
   4, 5 BGB), so the dates use at least four weeks to the 15th or the end of a month, with a warning. If
   that notice ends it before the end date, those are its dates and `current_term_end` is the end date it
   otherwise ends on by itself; if not, the end date decides, explained by the fixed term alone. Read for a
-  job only: a flat let's fixed term is § 575 BGB's question (above).
+  job only: a flat let's fixed term is § 575 BGB's question (above). A misreading either way is corrected
+  on the card's notice edit ("Can be ended early by notice").
 
 | Regime | Applies to | Rule |
 |---|---|---|

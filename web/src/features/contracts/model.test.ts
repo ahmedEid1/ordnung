@@ -146,6 +146,7 @@ describe("rules in plain words", () => {
     const ticket = byId("ctr_dticket");
     const written: Contract = {
       ...ticket,
+      notice_day: null,
       computed: { ...ticket.computed!, regime: "as_written", summary: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct." },
     };
     expect(ruleInWords(written, TODAY)).toEqual({
@@ -156,7 +157,8 @@ describe("rules in plain words", () => {
 
   it("reads the contract's own day of the month where the rules do: by the 10th, to the month's end (migration 0004)", () => {
     // the Deutschlandticket: "Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen"
-    const ticket: Contract = { ...byId("ctr_dticket"), notice_day: 10 };
+    const ticket: Contract = byId("ctr_dticket");
+    expect(ticket.notice_day).toBe(10);
     expect(noticeDayPhrase(ticket)).toBe("by the 10th of the month, to the month's end");
     expect(ruleInWords(ticket, TODAY)).toEqual({
       text: "Cancellable by the 10th of the month, to the month's end (consumer contract since March 2022)",
@@ -187,6 +189,9 @@ describe("rules in plain words", () => {
     expect(ruleInWords(withComp("as_written", { notice_value: 3, notice_unit: "months" }), TODAY).text).toBe(
       "As written in the contract: cancellable with 3 months' notice by the 10th of the month, to the month's end",
     );
+    // entered on the card, the day is the person's (the API's `entered_notice`)
+    const mine = { doc_id: "doc_dticket", page: null, quote: "notice by the 10th of the month, to the end of that month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
+    expect(ruleInWords(withComp("as_written", { evidence: [mine] }), TODAY).text).toBe("As you entered it: cancellable by the 10th of the month, to the month's end");
     const inFirstTerm = withComp("bgb309_new", { initial_term_months: 12 });
     inFirstTerm.computed = { ...inFirstTerm.computed!, current_term_end: "2027-01-31" };
     expect(ruleInWords(inFirstTerm, TODAY).text).toBe(
@@ -332,6 +337,17 @@ describe("contracts-only lanes", () => {
     expect(ruleInWords(entered, TODAY).text).toBe("As you entered it: 3 months' notice to the end of a month");
     // a statutory rule with sure dates: nothing to enter, nothing to check
     expect(noticeEditable(byId("ctr_phone"))).toBe(false);
+    // the terms a notice period can't say stay correctable, as a misreading can get them wrong (migration 0004): the
+    // contract's own day of the month where the rules read it, and a fixed-term job's early notice, either way
+    expect(noticeEditable(byId("ctr_dticket"))).toBe(true);
+    expect(noticeEditable({ ...byId("ctr_dticket"), notice_basis: "any_time" })).toBe(false);
+    const insurance = byId("ctr_liability");
+    expect(noticeEditable({ ...insurance, notice_day: 10, notice_basis: "end_of_month" })).toBe(false); // § 11 VVG reads no day
+    expect(noticeEditable(byId("ctr_job"))).toBe(true);
+    const endsByItself: Contract = { ...byId("ctr_job"), notice_before_end: false };
+    expect(noticeEditable(endsByItself)).toBe(true);
+    expect(noticeEditable({ ...byId("ctr_job"), end_date: null })).toBe(false);
+    expect(noticeEditable({ ...byId("ctr_dticket"), status: "cancelled" })).toBe(false);
     expect(pleaseCheckHint(byId("ctr_phone"))).toBeNull();
     expect(pleaseCheckHint({ ...byId("ctr_phone"), computed: { ...byId("ctr_phone").computed!, confidence: "low" } })).toBe(
       "Ordnung isn't sure of these dates — check them against the contract",

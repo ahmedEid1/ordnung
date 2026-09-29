@@ -39,11 +39,11 @@ Two terms a notice period can't say (policies in :func:`_notice_day`, :func:`_en
   It is read for ``bgb309_new``, ``tkg56``, ``bgb309_old`` and ``as_written`` when the basis is the end
   of a month. The deadline is that day of the month the contract is to end in (the 29th–31st: a shorter
   month's last day); a notice period the contract states too applies as well, and the earlier deadline
-  decides (the person's own notice terms replace the day: the API clears it when they are saved). The
-  day asks for less than a month before the month's end; after a first term the law may allow one month
-  from arrival instead, which a warning names when it would end the contract sooner. With an end date,
-  the day means the contract needs notice (:func:`_ends_by_itself`); a first term still running is left
-  by the day of its last month.
+  decides (the person's own notice terms replace the day: the API clears it when they are saved without
+  one). The day asks for less than a month before the month's end; after a first term the law may allow
+  one month from arrival instead, which a warning names when it would end the contract sooner. With an
+  end date, the day means the contract needs notice (:func:`_ends_by_itself`); a first term still running
+  is left by the day of its last month.
 * ``notice_before_end`` — a fixed-term job whose contract lets it be ended earlier by ordinary notice
   (§ 15 Abs. 4 TzBfG): while its end date is ahead, the job is planned like an open-ended one, with at
   least § 622 Abs. 1 BGB's notice, and ends by itself on that date if the notice can't end it sooner.
@@ -285,7 +285,8 @@ def _notice_day(terms: ContractTerms) -> DayOfMonth | None:
     """The contract's day of the month for notice, when its basis is the end of a month — with the notice
     period it states too, if any: both apply, so the earlier deadline decides. Neither wins over the other,
     since a misreading can put either in the other's place ("bis zum 10." read as 10 days' notice); the
-    person's own notice terms replace the day in the data instead (``api/routes/contracts.py``)."""
+    person's own notice terms replace the day in the data instead, unless they give one too
+    (``api/routes/contracts.py``)."""
     if terms.notice_day is None or terms.notice_basis != "end_of_month":
         return None
     return DayOfMonth(terms.notice_day, _written_notice(terms))
