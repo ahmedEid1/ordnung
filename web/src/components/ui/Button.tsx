@@ -34,7 +34,7 @@ const variants: Record<ButtonVariant, string> = {
   soft: cn("bg-accent-soft text-accent hover:bg-accent/15", inactiveFill),
   ghost: "text-muted hover:bg-surface-3/70 hover:text-ink",
   danger: cn(
-    "bg-danger text-white shadow-[0_1px_2px_rgb(0_0_0/0.14)] hover:bg-danger/90 dark:border dark:border-danger/40 dark:bg-danger-soft dark:text-danger-ink dark:hover:bg-danger/20",
+    "bg-danger text-white shadow-[0_1px_2px_rgb(0_0_0/0.14)] hover:bg-danger/90 dark:border dark:border-danger/40 dark:bg-danger-soft dark:text-danger-ink dark:hover:bg-danger-soft-hover",
     inactiveFill,
   ),
   // text-sized, but still a 24 px tall target (WCAG 2.5.8)
