@@ -702,9 +702,9 @@ def attachment_repeats(
     :func:`reminder_covers`).
 
     Pure: callers decide which letters count as the e-mail's attachments and which of their payments
-    count (live letters without scam signs; payments no payment reminder took over — so the reminder
-    e-mail itself never loses its to-do to the invoice it took over), so deleting the attachment brings
-    the e-mail's to-do back.
+    count (live letters without scam signs; payments the e-mail itself did not take over as a payment
+    reminder — so a reminder e-mail never loses its to-do to the invoice it took over), so deleting the
+    attachment brings the e-mail's to-do back.
     """
     if item.kind != "payment" or item.doc_id != email.id or attachment.id == email.id:
         return False

@@ -449,10 +449,11 @@ the same invoice number and amount — or no amount in the e-mail) keeps its to-
 takes it over on read (`link.attachment_repeats`, `Ledger.is_covered_by_attachment`: left out of
 Today, the totals and the Ideas, noted on the e-mail, set aside as `attached` on the party and in
 Ask's record) — deleting the bill brings it back. The bill counts as the e-mail's attachment also
-when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and only its
-payments no payment reminder took over count: a reminder e-mail with its invoice attached (or with
-the Mahnung PDF of the day before) takes the invoice's payment over as the later reminder and keeps
-its own — the two never set each other aside, so one payment to act on always stays. An e-mail nested too deeply
+when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and its payments
+count unless the e-mail itself took them over as a payment reminder: a reminder e-mail with its invoice
+attached (or with the Mahnung PDF of the day before) takes the invoice's payment over as the later
+reminder and keeps its own — the two never set each other aside; a bill a later reminder took over
+keeps the e-mail that repeats it set aside — so one payment to act on always stays. An e-mail nested too deeply
 for the parser is refused with a reason. An e-mail title is its subject and sender while it is private
 or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
 whose adding was stopped before its attachments adds them.

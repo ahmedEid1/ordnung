@@ -10,6 +10,7 @@ import base64
 import io
 import os
 from collections.abc import Iterator
+from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
@@ -29,11 +30,14 @@ from fixtures_llm import (
     fake_backend,
 )
 from helpers_docs import Line, make_pdf, photo
+from helpers_secretary import add_doc, add_item
 from ordnung import clock
+from ordnung.api.routes.common import item_aside
 from ordnung.api.routes.documents import document_detail
 from ordnung.api.routes.parties import get_party
 from ordnung.app_context import AppContext, build_context
 from ordnung.assistant.mcp_server import SET_ASIDE_ATTACHED, LedgerTools
+from ordnung.db.store import Store
 from ordnung.ingest import attachments as attachments_module
 from ordnung.ingest import held
 from ordnung.ingest.attachments import (
@@ -361,6 +365,102 @@ def test_a_different_amount_is_never_the_same_payment() -> None:
     reminder = item(mail, amount=54.99, currency="EUR", direction="out", due_date="2026-09-30")
     invoice_payment = item(invoice, amount=49.99, currency="EUR", direction="out", due_date="2026-09-15")
     assert not attachment_repeats(mail, reminder, invoice, [invoice_payment])
+
+
+def emailed_bill_and_its_reminder(store: Store, *, mahnung_attached: bool = False) -> dict[str, str]:
+    """An e-mail naming no invoice number that repeats its attached bill RE-4711 (49,99 EUR due 15 Sep),
+    and the payment reminder about the bill of 20 Sep (54,99 EUR with fees): by post, or attached to the
+    e-mail too. Returns the letters' ids by name; each one's payment is "Pay the <name>"."""
+    case = store.add_case(title="Phone bill").id
+    number = [Identifier(label="Rechnungsnummer", value="RE-4711")]
+    mail = add_doc(store, "mail", mime="message/rfc822", case_id=case, doc_date="2026-09-01")
+    bill = add_doc(
+        store,
+        "bill",
+        source=email_source(mail),
+        kind="invoice",
+        references=number,
+        case_id=case,
+        doc_date="2026-09-01",
+    )
+    reminder = add_doc(
+        store,
+        "reminder",
+        source=email_source(mail) if mahnung_attached else "upload",
+        kind="dunning",
+        references=number,
+        case_id=case,
+        doc_date="2026-09-20",
+    )
+    letters = {"mail": mail, "bill": bill, "reminder": reminder}
+    for name, doc_id in letters.items():
+        amount, due = (54.99, "2026-09-30") if name == "reminder" else (49.99, "2026-09-15")
+        add_item(
+            store,
+            kind="payment",
+            title=f"Pay the {name}",
+            doc_id=doc_id,
+            case_id=case,
+            amount=amount,
+            currency="EUR",
+            direction="out",
+            due_date=due,
+        )
+    return letters
+
+
+def asides(store: Store) -> tuple[list[str], dict[str, tuple[str, str | None]]]:
+    """The payments to act on (their titles) and why each other one is set aside (title → reason, by)."""
+    ledger = Ledger(store, date(2026, 9, 25))
+    payments = [item for item in ledger.items if item.kind == "payment"]
+    act_on = [item.title for item in ledger.actionable_items() if item.kind == "payment"]
+    documents = {item.doc_id: item.title for item in payments}
+    aside = {
+        item.title: (found.reason, documents.get(found.replaced_by))
+        for item in payments
+        if (found := item_aside(ledger, item)) is not None
+    }
+    return act_on, aside
+
+
+def test_an_email_stays_set_aside_when_a_reminder_takes_its_attached_bill_over(store: Store) -> None:
+    """The e-mail repeats its attached bill, and a later reminder takes the bill over: the e-mail's
+    payment stays set aside for the bill and the bill's for the reminder — only the reminder is paid.
+    The bill still counts for the e-mail because the e-mail is not the reminder that took it over."""
+    emailed_bill_and_its_reminder(store)
+    act_on, aside = asides(store)
+    assert act_on == ["Pay the reminder"]
+    assert aside == {
+        "Pay the mail": ("attached", "Pay the bill"),
+        "Pay the bill": ("replaced", "Pay the reminder"),
+    }
+
+
+def test_an_email_with_the_invoice_and_the_mahnung_attached_leaves_the_reminder_to_pay(
+    store: Store,
+) -> None:
+    """The e-mail repeats the invoice it brought, and the Mahnung it brought too takes the invoice over."""
+    emailed_bill_and_its_reminder(store, mahnung_attached=True)
+    act_on, aside = asides(store)
+    assert act_on == ["Pay the reminder"]
+    assert aside == {
+        "Pay the mail": ("attached", "Pay the bill"),
+        "Pay the bill": ("replaced", "Pay the reminder"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("trashed", "act_on"),
+    [("reminder", ["Pay the bill"]), ("bill", ["Pay the mail", "Pay the reminder"])],
+)
+def test_a_trashed_bill_or_reminder_brings_back_what_it_set_aside(
+    store: Store, trashed: str, act_on: list[str]
+) -> None:
+    """The reminder in the trash: the bill is the one to pay again, the e-mail stays set aside for it. The
+    bill in the trash: the e-mail's payment counts again (as SPEC says), next to the reminder — which the
+    e-mail, naming no invoice number, is not known to be about."""
+    store.trash_document(emailed_bill_and_its_reminder(store)[trashed])
+    assert sorted(asides(store)[0]) == act_on
 
 
 # --------------------------------------------------------------------------------------------------

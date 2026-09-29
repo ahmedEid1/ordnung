@@ -467,8 +467,9 @@ class Ledger:
         """An item that is never presented as something to do, whatever its status — on Today, in the
         weekly session, the calendar and its sync, the money figures: one of a letter with scam signs,
         an invoice payment a later payment reminder took over (the reminder is the one to act on), or an
-        e-mail's payment its attached bill repeats (the bill is the one to act on; it stays set aside
-        after the bill is paid, so nothing asks for the money twice)."""
+        e-mail's payment its attached bill repeats (the bill is the one to act on, or the reminder that
+        took the bill over; it stays set aside after the bill is paid, so nothing asks for the money
+        twice)."""
         return (
             self.is_suspicious_item(item)
             or self.is_superseded_by_reminder(item)
@@ -530,15 +531,18 @@ class Ledger:
         (cached; :func:`~ordnung.ingest.link.attachment_repeats`).
 
         Worked out on read: only attachments that are not in the trash and show no scam signs count
-        (:meth:`attachments_of`), whichever of the letters was read first. Only an attachment's payments
-        no payment reminder took over count: the one to act on must stay. So a reminder e-mail with its
-        invoice attached keeps its own to-do (it takes the invoice's over, :meth:`covering_reminders`),
-        and the two never set each other aside.
+        (:meth:`attachments_of`), whichever of the letters was read first. An attachment's payments the
+        e-mail itself took over as a payment reminder don't count: the one to act on must stay. So a
+        reminder e-mail with its invoice attached keeps its own to-do (it takes the invoice's over,
+        :meth:`covering_reminders`), and the two never set each other aside. A bill another reminder took
+        over still counts, so the e-mail that repeats it stays set aside and that reminder is the one
+        payment to act on.
         """
         if self._attached is None:
+            covering = self.covering_reminders()
             items_of: dict[str, list[Item]] = {}
             for item in self.items:
-                if item.doc_id and item.kind == "payment" and not self.is_superseded_by_reminder(item):
+                if item.doc_id and item.kind == "payment":
                     items_of.setdefault(item.doc_id, []).append(item)
             self._attached = {}
             for item in self.items:
@@ -546,7 +550,11 @@ class Ledger:
                 if email is None or item.kind != "payment" or not is_email(email):
                     continue
                 for attachment in self.attachments_of(email):
-                    if attachment_repeats(email, item, attachment, items_of.get(attachment.id, [])):
+                    payments = items_of.get(attachment.id, [])
+                    taker = covering.get(attachment.id)
+                    if taker is not None and taker.id == email.id:
+                        payments = [p for p in payments if not self.is_superseded_by_reminder(p)]
+                    if attachment_repeats(email, item, attachment, payments):
                         self._attached[item.id] = attachment
                         break
         return self._attached
