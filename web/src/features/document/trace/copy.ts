@@ -108,6 +108,7 @@ export const CONSISTENCY_REASON: Record<string, string> = {
   date_without_year: "the quote's date has no year",
   period_not_in_quote: "the quote doesn't state the period",
   amount_not_in_quote: "the quote doesn't state the amount",
+  working_day_not_in_quote: "the quote doesn't state the working day",
 };
 const reason = (code: unknown) => (typeof code === "string" ? (CONSISTENCY_REASON[code] ?? code.replace(/_/g, " ")) : "");
 

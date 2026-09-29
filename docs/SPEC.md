@@ -1381,7 +1381,9 @@ is dated in every month by counting working days from its first — Monday to Fr
 on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
 and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
 confidence level lower and with a warning to check the lease, until the person gives it a date. The
-extraction does not read a working day yet (`ExtractedRecurrence`).
+extraction schema carries the working day (`ExtractedItem.recurrence` is a `Recurrence`); one the
+item's quote doesn't name is graded like any value its quote doesn't state (`working_day_not_in_quote`,
+see **Verification**).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
@@ -1499,7 +1501,10 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 **Verification.** `spec_consistency`: numbers (digits and German/English number words), units
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
-English) → `low` confidence. Mismatch → "Please check". UI never says "verified"; it says
+English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
+quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
+working day", "3rd business day"; 1–10), else `working_day_not_in_quote`: the working day still dates
+the item, one confidence level lower with a note. Mismatch → "Please check". UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

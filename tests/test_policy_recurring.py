@@ -17,7 +17,7 @@ import pytest
 from fixtures_llm import APPOINTMENT_LETTER, INVOICE_LETTER, TAX_LETTER, TAX_PAYMENT_QUOTE, Letter
 from ordnung import clock
 from ordnung.db.store import Store
-from ordnung.ingest.verify import UNVERIFIED_NOTE
+from ordnung.ingest.verify import REASON_TEXT, UNVERIFIED_NOTE, WORKING_DAY_NOT_IN_QUOTE
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Recurrence
 from ordnung.recurrence import LAW_DEFAULT_WARNING, LAW_REPLACED_WARNING, rolled
@@ -260,11 +260,76 @@ async def test_the_leases_rent_is_dated_by_the_law_and_ticking_it_off_moves_it_o
         assert (await _item(api, rent["id"]))["due_date"] == "2026-12-03"
 
 
+def _read_with_working_day(letter: Letter, working_day: int) -> ApiRouter:
+    """A router whose reading of ``letter`` gives its monthly rent ``working_day`` (the extraction schema
+    carries ``recurrence.working_day``: "spätestens am dritten Werktag eines jeden Monats" is 3)."""
+    router = _with(letter)
+    router.payloads[letter.marker]["items"][0]["recurrence"] = {**MONTHLY, "working_day": working_day}
+    return router
+
+
+async def _live_in(api: Api, region: str) -> None:
+    chosen = await api.client.put("/api/profile", json={"region": region, "onboarded": True})
+    assert chosen.status_code == 200, chosen.text
+
+
+async def test_a_leases_working_day_read_from_the_letter_dates_every_month(data_dir: Path) -> None:
+    """The reading gives the rent's working day (``recurrence.working_day`` 3 for "spätestens am dritten
+    Werktag eines jeden Monats"), and it reaches the stored rent: on Mon 28 Sep 2026 in NW the rent is due by
+    the lease's own third working day, Saturdays not counted (point 8) — Mon 5 Oct (3 Oct is a holiday), at
+    ``high`` confidence and without the law's warning, since the quote names it. Ticking it off moves it to
+    Wed 4 Nov (point 4), and December's (Thu 3 Dec) follows as the days pass (point 3)."""
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_read_with_working_day(LEASE, 3)) as api:
+        await _live_in(api, "NW")
+        doc_id, rent = await _rent_of(api, LEASE)
+        assert rent["recurrence"] == {**MONTHLY, "working_day": 3}
+        assert (rent["due_date"], rent["send_by"], rent["due_date_source"]) == (
+            "2026-10-05",
+            "2026-10-02",
+            "computed",
+        )
+        receipt = rent["computation"]
+        assert (receipt["confidence"], receipt["warnings"]) == ("high", [])
+        assert "bgb_556b" in receipt["rule_ids"] and receipt["holiday_calendar"] == "Nordrhein-Westfalen"
+        assert receipt["summary"] == "Repeats every month on the 3rd working day; next on Mon 5 Oct 2026."
+        assert rent["evidence"][0]["value_consistent"]
+        document = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+        assert document["status"] == "processed"
+
+        paid = await _patch(api, rent["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-11-04")
+        assert paid["computation"]["confidence"] == "high"
+        await _tick(api, "2026-11-05")
+        assert (await _item(api, rent["id"]))["due_date"] == "2026-12-03"
+
+
+async def test_a_working_day_the_rents_quote_does_not_name_is_graded_lower(data_dir: Path) -> None:
+    """The reviewer's check: the reading gives the rent the third working day, but its sentence says "zum
+    Monatsende" (a misreading). The working day still dates the rent (Mon 5 Oct, point 8), but it is not
+    the letter's own: one confidence level lower (``medium``) with a note to check it, its value is not
+    consistent with its quote, so the letter is "Please check" — and so is every later month's rent."""
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_read_with_working_day(MONTH_END_LEASE, 3)) as api:
+        await _live_in(api, "NW")
+        doc_id, rent = await _rent_of(api, MONTH_END_LEASE)
+        assert (rent["recurrence"]["working_day"], rent["due_date"]) == (3, "2026-10-05")
+        note = REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]
+        assert (rent["computation"]["confidence"], rent["computation"]["warnings"]) == ("medium", [note])
+        assert not rent["evidence"][0]["value_consistent"]
+        document = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+        assert document["status"] == "needs_review"
+
+        paid = await _patch(api, rent["id"], status="done")
+        assert paid["due_date"] == "2026-11-04"
+        assert (paid["computation"]["confidence"], paid["computation"]["warnings"]) == ("medium", [note])
+
+
 async def test_a_rent_the_lease_dates_by_its_working_day_returns_to_it_after_a_date_set_by_hand(
     data_dir: Path,
 ) -> None:
-    """The rent has the lease's own working day (``Recurrence.working_day`` 3 — a reading gives none yet, so
-    it is set on the stored rent and the letter's dates are recomputed): the lease's day, so ``high`` and no
+    """The rent has the lease's own working day (``Recurrence.working_day`` 3, set on the stored rent of a
+    lease read without it, and the letter's dates are recomputed): the lease's day, so ``high`` and no
     warning. The person pays October's rent early and moves it to Wed 30 Sep by hand; once that has passed
     the next rent is November's, on its third working day (Wed 4 Nov, point 7), not the 30th of every month
     nor October's again."""

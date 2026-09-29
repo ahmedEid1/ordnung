@@ -13263,12 +13263,12 @@
                 "type": "null"
               }
             ],
-            "title": "Working Day"
+            "title": "Working Day",
+            "description": "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month"
           }
         },
         "type": "object",
-        "title": "Recurrence",
-        "description": "How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of\neach month it is due by (\"spätestens am dritten Werktag eines jeden Monats\" is 3), for a rule in months\nor years; Ordnung computes each month's date from it (ordnung.recurrence, point 8). A reading gives\nnone yet (:class:`ExtractedRecurrence`)."
+        "title": "Recurrence"
       },
       "Recurrence-Output": {
         "properties": {
@@ -13299,7 +13299,8 @@
                 "type": "null"
               }
             ],
-            "title": "Working Day"
+            "title": "Working Day",
+            "description": "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month"
           }
         },
         "type": "object",
@@ -13308,8 +13309,7 @@
           "unit",
           "working_day"
         ],
-        "title": "Recurrence",
-        "description": "How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of\neach month it is due by (\"spätestens am dritten Werktag eines jeden Monats\" is 3), for a rule in months\nor years; Ordnung computes each month's date from it (ordnung.recurrence, point 8). A reading gives\nnone yet (:class:`ExtractedRecurrence`)."
+        "title": "Recurrence"
       },
       "RefLink": {
         "properties": {

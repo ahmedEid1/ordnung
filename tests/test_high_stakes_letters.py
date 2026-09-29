@@ -1590,8 +1590,8 @@ async def test_a_rent_increases_new_rent_by_its_working_day_starts_when_the_law_
     data_dir: Path,
 ) -> None:
     """Review of recurrence.py point 8: the new rent of a request of 24 Sep "ab dem 01.11.2026", paid by the
-    3rd working day of each month (a reading gives no working day yet, so it is set on the stored to-do and
-    the letter's dates are recomputed). Its schedule starts in the month § 558b Abs. 1 BGB allows (Thu 3 Dec,
+    3rd working day of each month (set on the stored to-do of a request read without it, and the letter's
+    dates are recomputed). Its schedule starts in the month § 558b Abs. 1 BGB allows (Thu 3 Dec,
     not Wed 4 Nov), and dated by its working day it keeps the note that it is only owed once the person
     agrees: Ask still lists it to decide on before paying."""
     from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
