@@ -45,6 +45,9 @@ class ContractPatch(BaseModel):
     notice_value: int | None = Field(default=None, ge=0, le=1000)
     notice_unit: NoticeUnit | None = None
     notice_basis: NoticeBasis | None = None
+    #: The contract's day of the month for notice: cleared when notice terms are saved without it (an Undo
+    #: puts it back with them).
+    notice_day: int | None = Field(default=None, ge=1, le=31)
     end_date: IsoDate | None = None
     is_basic_supply: bool | None = None
     cost_amount: float | None = None
@@ -80,6 +83,10 @@ def notice_evidence(contract: Contract) -> list[Evidence]:
 def _update(store: Store, contract_id: str, patch: ContractPatch, today: date) -> Contract:
     require(store.get_contract(contract_id), NOT_FOUND)
     changes = patch.model_dump(exclude_unset=True)
+    if _NOTICE_FIELDS & changes.keys():
+        # the person's notice terms replace the letter's day of the month: the rules apply both where both
+        # are read (``rules.contracts._notice_day``), so only the data can let the person's entry decide
+        changes.setdefault("notice_day", None)
     if changes.get("party_id") is not None:
         require(store.get_party(changes["party_id"]), "Unknown person or organisation.")
     if changes.get("case_id") is not None:

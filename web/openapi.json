@@ -6780,6 +6780,19 @@
             ],
             "title": "Notice Basis"
           },
+          "notice_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 31.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Day"
+          },
           "end_date": {
             "anyOf": [
               {

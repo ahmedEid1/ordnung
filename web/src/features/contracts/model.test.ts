@@ -128,9 +128,9 @@ describe("rules in plain words", () => {
     expect(ruleInWords(byId("ctr_rent"), TODAY).text).toMatch(/^Open-ended: notice given by the 3rd working day/);
     expect(ruleInWords(byId("ctr_liability"), TODAY).text).toBe("Renews every insurance year; cancel with 3 months' notice before the insurance year ends");
     // a fixed-term job ends by itself; leaving earlier by notice needs a clause that allows it (§ 15 Abs. 4
-    // TzBfG, `notice_before_end`): then the notice the contract names, or the statutory one — without the
-    // clause no notice is promised, whatever period the letter names
-    expect(ruleInWords(byId("ctr_job"), TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: 4 weeks' notice");
+    // TzBfG, `notice_before_end`): then the notice the contract names (at least the statutory one), or the
+    // statutory one — without the clause no notice is promised, whatever period the letter names
+    expect(ruleInWords(byId("ctr_job"), TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: 4 weeks' notice, at least the legal minimum");
     expect(ruleInWords({ ...byId("ctr_job"), notice_value: null, notice_unit: null }, TODAY).text).toBe(
       "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice",
     );
@@ -165,8 +165,16 @@ describe("rules in plain words", () => {
     expect([1, 2, 3, 11, 21, 22, 23, 31].map((d) => noticeDayPhrase({ ...ticket, notice_day: d })!.split(" ")[2])).toEqual([
       "1st", "2nd", "3rd", "11th", "21st", "22nd", "23rd", "31st",
     ]);
-    // a stated notice period wins (also one the person entered), and another basis is no month-end rule
-    expect(noticeDayPhrase({ ...ticket, notice_value: 1, notice_unit: "months" })).toBeNull();
+    // a notice period read with it applies too (the person's own terms clear the day), and another basis is no
+    // month-end rule
+    expect(noticeDayPhrase({ ...ticket, notice_value: 10, notice_unit: "days" })).toBe("with 10 days' notice by the 10th of the month, to the month's end");
+    expect(ruleInWords({ ...ticket, notice_value: 10, notice_unit: "days" }, TODAY).text).toBe(
+      "Cancellable with 10 days' notice by the 10th of the month, to the month's end (consumer contract since March 2022)",
+    );
+    // limited to a month, as the rules limit it after the first term
+    expect(ruleInWords({ ...ticket, notice_value: 3, notice_unit: "months" }, TODAY).text).toBe(
+      "Cancellable with 1 month's notice by the 10th of the month, to the month's end (consumer contract since March 2022)",
+    );
     expect(noticeDayPhrase({ ...ticket, notice_basis: "any_time" })).toBeNull();
     const withComp = (regime: ContractRegime, extra: Partial<Contract> = {}): Contract => ({
       ...ticket,
@@ -176,6 +184,9 @@ describe("rules in plain words", () => {
     expect(ruleInWords(withComp("bgb309_old"), TODAY).text).toBe("Cancellable by the 10th of the month, to the month's end (consumer contract from before March 2022)");
     expect(ruleInWords(withComp("tkg56"), TODAY).text).toBe("Cancellable by the 10th of the month, to the month's end (phone & internet contract after its minimum term)");
     expect(ruleInWords(withComp("as_written"), TODAY).text).toBe("As written in the contract: cancellable by the 10th of the month, to the month's end");
+    expect(ruleInWords(withComp("as_written", { notice_value: 3, notice_unit: "months" }), TODAY).text).toBe(
+      "As written in the contract: cancellable with 3 months' notice by the 10th of the month, to the month's end",
+    );
     const inFirstTerm = withComp("bgb309_new", { initial_term_months: 12 });
     inFirstTerm.computed = { ...inFirstTerm.computed!, current_term_end: "2027-01-31" };
     expect(ruleInWords(inFirstTerm, TODAY).text).toBe(

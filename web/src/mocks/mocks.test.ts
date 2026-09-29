@@ -456,3 +456,19 @@ describe("the mock's clock (walkthrough of phase 2)", () => {
     expect(item.created_at.slice(0, 10)).toBe(today);
   });
 });
+
+describe("mock contracts", () => {
+  it("like the API: notice terms the person saves clear the letter's day of the month, and an Undo puts it back", async () => {
+    const s = srv();
+    const bank = s.db.state.contracts.find((c) => c.id === "ctr_bank")!;
+    bank.notice_day = 10;
+    const patch = async (body: Record<string, unknown>) => {
+      const res = await s.handle("PATCH", "/contracts/ctr_bank", new URLSearchParams(), body);
+      expect(res.ok).toBe(true);
+      return ((await res.json()) as { notice_day: number | null }).notice_day;
+    };
+    expect(await patch({ cost_amount: 5.9 })).toBe(10);
+    expect(await patch({ notice_value: 1, notice_unit: "months", notice_basis: "end_of_month" })).toBeNull();
+    expect(await patch({ notice_value: null, notice_unit: null, notice_basis: null, notice_day: 10 })).toBe(10);
+  });
+});

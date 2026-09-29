@@ -411,12 +411,13 @@ describe("Contracts page — adding a notice period by hand", () => {
     expect(within(saved).queryByRole("form")).toBeNull();
     await waitFor(() => expect(change).toHaveFocus());
 
-    // Undo puts the old (missing) terms back, and the button that is back takes the focus
+    // Undo puts the old (missing) terms back — with the letter's day of the month, which saving cleared — and the
+    // button that is back takes the focus
     const undo = screen.getByRole("button", { name: /^Undo/ });
     act(() => undo.focus());
     fireEvent.click(undo);
     const again = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Add notice period/ });
-    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null });
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null, notice_day: null });
     await waitFor(() => expect(again).toHaveFocus());
     expect(bank.evidence.some((e) => e.grounding === "user")).toBe(false);
     expect(within(card("Musterbank Girokonto")).getByText("Please check")).toBeInTheDocument();

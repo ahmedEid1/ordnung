@@ -1178,13 +1178,16 @@ def _explain_contract(contract: Contract, comp: ContractComputation, *, today: d
         letters.add(contract.id, steps=[step.get("label") for step in computation.pop("steps", [])])
     record: dict[str, Any] = {**_contract_ref(contract, letters), "computation": computation}
     rules = _rules(comp.rule_ids, comp.steps)
-    if summary := fixed_term_summary(comp, today=today, active=contract.status == "active"):
+    active = contract.status == "active"
+    if summary := fixed_term_summary(comp, today=today, active=active):
         computation["summary"] = summary  # never "no cancellation needed" for a job or flat let
-        record["if_not_cancelled"] = continuation(contract, comp, today=today)
         if comp.regime == "rent573c":  # the catalog's "Fixed-term contracts"
             for rule in rules:
                 if rule["id"] == "fixed_term":
                     rule["note"] = FLAT_LET_FIXED_TERM
+    # also for a job its notice can end sooner (the engine's summary kept): the caveats, the job-seeking advice
+    if summary or (active and "fixed_term" in comp.rule_ids and comp.regime in ("employment622", "rent573c")):
+        record["if_not_cancelled"] = continuation(contract, comp, today=today)
     record |= {"rules": rules, "disclaimer": _disclaimer()}
     _terms_into(record, contract, letters)
     return ToolAnswer(record, letters.by_id)

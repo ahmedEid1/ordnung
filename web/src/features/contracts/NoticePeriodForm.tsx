@@ -66,7 +66,8 @@ export function NoticePeriodForm({
     setErrors(next);
     if (next.value) return valueRef.current?.focus();
     if (next.basis || !basis) return basisRef.current?.focus();
-    const before = { notice_value: c.notice_value, notice_unit: c.notice_unit, notice_basis: c.notice_basis };
+    // with the letter's day of the month, which saving notice terms clears (the API's `_update`)
+    const before = { notice_value: c.notice_value, notice_unit: c.notice_unit, notice_basis: c.notice_basis, notice_day: c.notice_day };
     // The call's promise, not mutate's callbacks: those never come once this form has gone, and the
     // refreshed contract (dates known now) or the toast's Undo can come after it has.
     update.mutateAsync({ id: c.id, patch: { notice_value: Number(value.trim()), notice_unit: unit, notice_basis: basis } }).then(

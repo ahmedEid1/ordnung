@@ -113,6 +113,38 @@ async def test_a_notice_period_the_person_enters_is_recorded_as_theirs(data_dir:
         assert [e["grounding"] for e in undone["evidence"]] == ["verified"]
 
 
+async def test_the_persons_notice_terms_replace_the_letters_day_of_the_month(data_dir: Path) -> None:
+    """Review of migration 0004: the rules apply a notice period and the contract's day of the month together
+    (the earlier deadline decides), so the person's entry decides through the data: saving notice terms clears
+    the day, and the Undo, which sends it back with the old terms, restores it."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        letter = add_doc(store, "line", kind="contract", title="Business line")
+        contract = store.add_contract(
+            name="Business line",
+            category="internet",
+            is_consumer=False,
+            source_doc_id=letter,
+            notice_basis="end_of_month",
+            notice_day=10,
+        )
+        url = f"/api/contracts/{contract.id}"
+        costs = (await api.client.patch(url, json={"cost_amount": 49.0})).json()  # not about the notice
+        assert costs["notice_day"] == 10 and costs["computed"]["cancel_by"] == "2026-10-10"
+
+        before = {k: costs[k] for k in ("notice_value", "notice_unit", "notice_basis", "notice_day")}
+        entered = {"notice_value": 2, "notice_unit": "weeks", "notice_basis": "end_of_month"}
+        saved = (await api.client.patch(url, json=entered)).json()
+        assert saved["notice_day"] is None
+        assert saved["computed"]["cancel_by"] == "2026-10-17"  # the person's two weeks alone
+        undone = (await api.client.patch(url, json=before)).json()
+        assert undone["notice_day"] == 10 and undone["computed"]["cancel_by"] == "2026-10-10"
+        assert [e["grounding"] for e in undone["evidence"]] == []
+        with_day = (await api.client.patch(url, json={**entered, "notice_day": 10})).json()
+        assert with_day["notice_day"] == 10 and with_day["computed"]["cancel_by"] == "2026-10-10"
+        assert (await api.client.patch(url, json={"notice_day": 32})).status_code == 422
+
+
 async def test_parties_threads_timeline_and_lanes(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await _letter(api, TAX_LETTER.pdf())

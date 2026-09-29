@@ -815,7 +815,8 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "The contract's own terms",
         "When no special consumer rule applies, Ordnung uses the term and notice period written in the "
         "contract. Under the consumer rules it also uses a contract's own deadline for the end of a month, "
-        "such as the 10th of that month: it asks less notice than they allow.",
+        "such as the 10th of that month for its end; where the law lets a later cancellation end the contract "
+        "one month after it arrives, a warning says so.",
         None,
         None,
     ),

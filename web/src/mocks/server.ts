@@ -1418,7 +1418,9 @@ const routes: [string, string, Handler][] = [
     ({ db, params, body }) => {
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
       const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
-      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, { updated_at: nowTs() });
+      // like the API: notice terms the person saves replace the letter's day of the month (an Undo sends it back)
+      const day = Object.keys(notice).length ? { notice_day: null, ...pick<Contract>(body, ["notice_day"]) } : {};
+      Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), notice, day, { updated_at: nowTs() });
       // like the API: the rules engine works the dates out again from the new terms, and the terms
       // the person entered are theirs ("confirmed by the person": the card stops asking to check them)
       if (Object.keys(notice).length) {

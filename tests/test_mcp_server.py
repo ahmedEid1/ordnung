@@ -887,6 +887,7 @@ def test_a_fixed_term_job_its_contract_lets_you_leave_early_keeps_the_notice_dat
     assert row["notice_before_end"] is True and row["notice_day"] is None  # the terms it was computed from
     explained = tools.explain_date(ids["job"]).record
     assert explained["computation"]["summary"] == dates["summary"]
+    assert explained["if_not_cancelled"] == row["if_not_cancelled"]  # the § 38 SGB III advice too
 
 
 def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[str, str]) -> None:

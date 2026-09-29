@@ -2507,6 +2507,8 @@ export interface components {
             notice_unit?: ("days" | "weeks" | "months") | null;
             /** Notice Basis */
             notice_basis?: ("end_of_term" | "any_time" | "end_of_month") | null;
+            /** Notice Day */
+            notice_day?: number | null;
             /** End Date */
             end_date?: string | null;
             /** Is Basic Supply */

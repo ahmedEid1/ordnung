@@ -379,9 +379,9 @@ class ContractTerms(_Model):
     """The rule-relevant part of a contract (input of ``rules.contracts.compute_contract``).
 
     ``notice_day``: a cancellation must arrive by this day of a month to end the contract at the end of
-    that month (read with ``notice_basis`` "end_of_month" and no notice period). ``notice_before_end``: a
-    contract with an end date whose own clause lets it be ended earlier by ordinary notice (read for a
-    job, § 15 Abs. 4 TzBfG). The rules engine's docstrings hold the policies."""
+    that month (read with ``notice_basis`` "end_of_month"; a notice period stated too applies as well).
+    ``notice_before_end``: a contract with an end date whose own clause lets it be ended earlier by
+    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). The rules engine's docstrings hold the policies."""
 
     category: ContractCategory = "other"
     party_kind: str | None = None

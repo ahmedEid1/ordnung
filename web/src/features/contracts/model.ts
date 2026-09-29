@@ -239,11 +239,15 @@ function ordinal(day: number): string {
 /**
  * The contract's own month-end rule — "by the 10th of the month, to the month's end" — when the rules
  * read it (`notice_day`; `_notice_day` in `src/ordnung/rules/contracts.py`): its notice basis is the
- * end of a month and it states no notice period (a stated one wins). Null otherwise.
+ * end of a month. A notice period it states too applies as well ("with 10 days' notice by the 10th …"):
+ * `notice`, that period as the rules count it. Null otherwise.
  */
-export function noticeDayPhrase(c: Pick<Contract, "notice_day" | "notice_basis" | "notice_value" | "notice_unit">): string | null {
-  if (!c.notice_day || c.notice_basis !== "end_of_month" || noticePhrase(c)) return null;
-  return `by the ${ordinal(c.notice_day)} of the month, to the month's end`;
+export function noticeDayPhrase(
+  c: Pick<Contract, "notice_day" | "notice_basis" | "notice_value" | "notice_unit">,
+  notice: string | null = noticePhrase(c),
+): string | null {
+  if (!c.notice_day || c.notice_basis !== "end_of_month") return null;
+  return `${notice ? `with ${notice} ` : ""}by the ${ordinal(c.notice_day)} of the month, to the month's end`;
 }
 
 function noticeMonths(c: Pick<Contract, "notice_value" | "notice_unit">): number | null {
@@ -277,8 +281,9 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
   const until = termEnd ? formatDate(termEnd, { style: "day", today }) : "";
   const notice = noticePhrase(c);
   const shortNotice = (noticeMonths(c) ?? 1) < 1 && notice ? notice : "1 month's notice";
-  // the contract's own "by the 10th of the month, to the month's end", where the rules read it
-  const byDay = noticeDayPhrase(c);
+  // the contract's own "by the 10th of the month, to the month's end", where the rules read it — with its
+  // notice period too, limited to a month where the consumer rules limit it after the first term
+  const byDay = noticeDayPhrase(c, regime === "bgb309_new" || regime === "tkg56" ? notice && shortNotice : notice);
   let text: string;
   switch (regime) {
     case "bgb309_new": {
@@ -315,8 +320,9 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
     case "employment622":
       // a fixed-term job can only be ended early by notice if its contract allows it (§ 15 Abs. 4 TzBfG,
       // `notice_before_end`): name the notice only then
+      // (then at least the statutory notice: `_plan_employment` in `src/ordnung/rules/contracts.py`)
       text = c.end_date
-        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${c.notice_before_end ? `. To leave earlier: ${notice ?? "the statutory notice"}` : ", no notice needed"}`
+        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${c.notice_before_end ? `. To leave earlier: ${notice ? `${notice}, at least the legal minimum` : "the statutory notice"}` : ", no notice needed"}`
         : `Employment: ${notice ?? "the statutory notice"}, at least the legal minimum`;
       break;
     case "bgb675h":
@@ -326,8 +332,9 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
     default: {
       const basis = c.notice_basis ? copyFor(NOTICE_BASIS_COPY, c.notice_basis).label : null;
       // the person's own entry says so (the card then asks nothing more of it)
-      if (notice) text = `${noticeFromYou(c) ? "As you entered it" : "As written in the contract"}: ${notice}${basis ? ` ${basis}` : ""}`;
-      else if (byDay) text = `As written in the contract: cancellable ${byDay}`;
+      // (notice terms the person saves clear the day: the API's `_update`)
+      if (byDay) text = `As written in the contract: cancellable ${byDay}`;
+      else if (notice) text = `${noticeFromYou(c) ? "As you entered it" : "As written in the contract"}: ${notice}${basis ? ` ${basis}` : ""}`;
       else text = firstSentence(c.computed?.summary)?.replace(/\.$/, "") ?? "As written in the contract — no special legal rule applies";
     }
   }

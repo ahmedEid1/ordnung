@@ -32,23 +32,28 @@ if nobody cancels in time; ``None`` means nothing locks you in.
 extraction prompt's convention): such a contract never ends by itself and, after its first term, can
 be ended any day with its notice period.
 
-Two terms a notice period can't say (policies in :func:`_notice_day` and :func:`_ends_by_itself`):
+Two terms a notice period can't say (policies in :func:`_notice_day`, :func:`_ends_by_itself` and
+:func:`_plan_employment`):
 
 * ``notice_day`` — the contract's own month-end rule, "by the 10th of a month, to the end of that month".
   It is read for ``bgb309_new``, ``tkg56``, ``bgb309_old`` and ``as_written`` when the basis is the end
-  of a month and no notice period is stated; a stated period (also one the person entered) wins. The
-  deadline is that day of the month the contract is to end in (the 29th–31st: a shorter month's last
-  day). It asks less than a month's notice, so no statutory cap shortens it; after a first term the law
-  may allow one month from arrival instead, which a warning names when it would end the contract sooner.
+  of a month. The deadline is that day of the month the contract is to end in (the 29th–31st: a shorter
+  month's last day); a notice period the contract states too applies as well, and the earlier deadline
+  decides (the person's own notice terms replace the day: the API clears it when they are saved). The
+  day asks for less than a month before the month's end; after a first term the law may allow one month
+  from arrival instead, which a warning names when it would end the contract sooner. With an end date,
+  the day means the contract needs notice (:func:`_ends_by_itself`); a first term still running is left
+  by the day of its last month.
 * ``notice_before_end`` — a fixed-term job whose contract lets it be ended earlier by ordinary notice
-  (§ 15 Abs. 4 TzBfG): while its end date is ahead, the job is planned like an open-ended one and ends by
-  itself on that date if the notice can't end it sooner. Read for a job only.
+  (§ 15 Abs. 4 TzBfG): while its end date is ahead, the job is planned like an open-ended one, with at
+  least § 622 Abs. 1 BGB's notice, and ends by itself on that date if the notice can't end it sooner.
+  Read for a job only.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Final, Literal
 
@@ -166,23 +171,33 @@ FOUR_WEEKS: Final = Notice(4, "weeks")
 @dataclass(frozen=True)
 class DayOfMonth:
     """A contract's own month-end rule (``ContractTerms.notice_day``): a cancellation that arrives by ``day``
-    of a month ends the contract at the end of that month ("bis zum 10. eines Monats zum Monatsende")."""
+    of a month ends the contract at the end of that month ("bis zum 10. eines Monats zum Monatsende"). A
+    notice period the contract states too (``notice``, as the regime limits it) applies as well: the earlier
+    deadline decides."""
 
     day: int
+    notice: Notice | None = None
+
+    @property
+    def text(self) -> str:
+        """``the 10th of the month``; with a notice period too, ``10 days' notice by the 10th of the month``"""
+        by_day = f"the {ordinal(self.day)} of the month"
+        return f"{self.notice.phrase} by {by_day}" if self.notice else by_day
 
     @property
     def phrase(self) -> str:
-        """``notice by the 10th of the month``"""
-        return f"notice by the {ordinal(self.day)} of the month"
+        """``notice by the 10th of the month``, ``10 days' notice by the 10th of the month``"""
+        return self.text if self.notice else f"notice by {self.text}"
 
     def deadline(self, end: date) -> date:
         """Last day notice can arrive for the contract to end at the end of ``end``: ``day`` of ``end``'s month,
-        or of the month before when ``end`` comes first (the 29th–31st: a shorter month's last day)."""
+        or of the month before when ``end`` comes first (the 29th–31st: a shorter month's last day) — or the
+        notice period's deadline, when that comes first."""
         on = end.replace(day=min(self.day, days_in_month(end.year, end.month)))
-        if on <= end:
-            return on
-        before = end_of_month(end.year, end.month - 1)
-        return before.replace(day=min(self.day, before.day))
+        if on > end:
+            before = end_of_month(end.year, end.month - 1)
+            on = before.replace(day=min(self.day, before.day))
+        return min(on, self.notice.deadline(end)) if self.notice else on
 
 
 @dataclass
@@ -267,11 +282,13 @@ def _written_notice(terms: ContractTerms) -> Notice | None:
 
 
 def _notice_day(terms: ContractTerms) -> DayOfMonth | None:
-    """The contract's day of the month for notice, when the terms rest on it: its basis is the end of a
-    month and it states no notice period (a stated one — also one the person entered — wins)."""
-    if terms.notice_day is None or terms.notice_basis != "end_of_month" or _written_notice(terms) is not None:
+    """The contract's day of the month for notice, when its basis is the end of a month — with the notice
+    period it states too, if any: both apply, so the earlier deadline decides. Neither wins over the other,
+    since a misreading can put either in the other's place ("bis zum 10." read as 10 days' notice); the
+    person's own notice terms replace the day in the data instead (``api/routes/contracts.py``)."""
+    if terms.notice_day is None or terms.notice_basis != "end_of_month":
         return None
-    return DayOfMonth(terms.notice_day)
+    return DayOfMonth(terms.notice_day, _written_notice(terms))
 
 
 def _shorter(a: Notice, b: Notice, reference: date) -> Notice:
@@ -408,11 +425,7 @@ def _plan_month_ends(trace: Trace, inp: _Inputs, notice: Notice | DayOfMonth) ->
 
     exit_day, deadline = _first_reachable(candidates(), inp.today)
     _deadline_step(trace, exit_day, notice, deadline)
-    detail = (
-        f"the {ordinal(notice.day)} of the month, as the contract says"
-        if isinstance(notice, DayOfMonth)
-        else None
-    )
+    detail = f"{notice.text}, as the contract says" if isinstance(notice, DayOfMonth) else None
     return _Plan("exit", earliest_exit=exit_day, cancel_by=deadline, detail=detail)
 
 
@@ -473,9 +486,10 @@ def _plan_first_term(
 
 
 def _plan_month_day(trace: Trace, inp: _Inputs, day: DayOfMonth, rule_id: str) -> _Plan:
-    """``bgb309_new`` and ``tkg56`` after the first term (or without one): the contract's own day of the month.
+    """``bgb309_new`` and ``tkg56`` after the first term (or without one): the contract's own day of the month
+    (with its notice period too, limited to one month).
 
-    It asks less than a month's notice before the month's end, so it stands. Where the contract continued
+    It asks for less than a month before the month's end, so its dates stand. Where the contract continued
     after a fixed first term, the law may instead let a cancellation end it one month after it arrives — not
     settled for a contract open-ended from the start — so the dates keep the contract's own rule, and a
     hedged warning names the end one month after arrival when that would come sooner."""
@@ -507,24 +521,22 @@ def _plan_minimum_term(trace: Trace, inp: _Inputs, regime: ContractRegime) -> _P
         trace.soft(_MISSING_NOTICE)
 
     def after(running: date | None) -> _Plan:
-        if day is not None:  # a month whose day is still ahead ends after the first term: its day has passed
-            return _plan_month_day(trace, inp, day, rule_id)
-        notice = (
-            _limit(trace, written, ONE_MONTH, inp.today, rule_id, term_end_day=False)
-            if written
-            else ONE_MONTH
+        limited = (
+            _limit(trace, written, ONE_MONTH, inp.today, rule_id, term_end_day=False) if written else None
         )
-        return _plan_open(trace, inp, notice, minimum_term_end=running)
+        if day is not None:  # a month whose day is still ahead ends after the first term: its day has passed
+            return _plan_month_day(trace, inp, replace(day, notice=limited), rule_id)
+        return _plan_open(trace, inp, limited or ONE_MONTH, minimum_term_end=running)
 
     first_end = _initial_end(trace, inp, 24)
     if first_end is None and inp.terms.initial_term_months:
         return _unknown(trace, "We need the start date to tell whether the minimum term is over.")
     if first_end is None or first_end < inp.today:
         return after(None)
+    limited = _limit(trace, written, cap, first_end, cap_rule, term_end_day=True) if written else None
     if day is not None:
-        return _plan_first_term(trace, inp, first_end, day, after)
-    notice = _limit(trace, written, cap, first_end, cap_rule, term_end_day=True) if written else cap
-    return _plan_first_term(trace, inp, first_end, notice, after)
+        return _plan_first_term(trace, inp, first_end, replace(day, notice=limited), after)
+    return _plan_first_term(trace, inp, first_end, limited or cap, after)
 
 
 def _renewing_notice(trace: Trace, inp: _Inputs, regime: ContractRegime, reference: date) -> Notice | None:
@@ -582,13 +594,25 @@ def _plan_payment_account(trace: Trace, inp: _Inputs) -> _Plan:
     return _Plan("open", earliest_exit=inp.arrival, arrival=inp.arrival, notice=NO_NOTICE)
 
 
+def _plan_renewing_by_day(trace: Trace, inp: _Inputs, regime: ContractRegime, day: DayOfMonth) -> _Plan:
+    """``bgb309_old`` and ``as_written`` by the contract's own day of the month (with its notice period too, as
+    the regime limits it): at a month's end, once a first term still running has ended."""
+    if day.notice is not None:
+        day = replace(day, notice=_renewing_notice(trace, inp, regime, inp.today))
+    first_end = _initial_end(trace, inp, 24 if regime == "bgb309_old" else None)
+    if first_end is None or first_end < inp.today:
+        return _plan_month_ends(trace, inp, day)
+    # once the first term's deadline has passed, the next month end whose deadline is ahead lies beyond it
+    return _plan_first_term(trace, inp, first_end, day, lambda _: _plan_month_ends(trace, inp, day))
+
+
 def _plan_renewing(trace: Trace, inp: _Inputs, regime: ContractRegime) -> _Plan:
     """``bgb309_old``, ``vvg11`` and ``as_written``: fixed terms that renew."""
     terms = inp.terms
     if terms.notice_basis in ("any_time", "end_of_month") and regime != "vvg11":
         day = _notice_day(terms)
         if day is not None:
-            return _plan_month_ends(trace, inp, day)
+            return _plan_renewing_by_day(trace, inp, regime, day)
         notice = _renewing_notice(trace, inp, regime, inp.today)
         if notice is None:
             return _unknown(trace, "The contract's notice period is missing.")
@@ -709,7 +733,12 @@ def _plan_rent(trace: Trace, inp: _Inputs) -> _Plan:
 
 
 def _plan_employment(trace: Trace, inp: _Inputs) -> _Plan:
-    """``employment622``: four weeks to the 15th or the end of a month, or the written period."""
+    """``employment622``: four weeks to the 15th or the end of a month, or the written period.
+
+    Before a fixed term's end (``notice_before_end``, :func:`_ends_by_itself`), § 622 Abs. 1 BGB is the floor:
+    a notice period shorter than four weeks, or notice to any day, is usually the probation period's (§ 622
+    Abs. 3 BGB), and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB). So the notice is then at
+    least four weeks, to the 15th or the end of a month (only the end of a month when the contract says so)."""
     notice = _written_notice(inp.terms)
     if notice is None:
         trace.soft(
@@ -717,9 +746,19 @@ def _plan_employment(trace: Trace, inp: _Inputs) -> _Plan:
             "or collective agreement for a longer one."
         )
         notice = FOUR_WEEKS
-    if inp.terms.notice_basis == "any_time":
+    basis = inp.terms.notice_basis
+    if inp.end is not None:  # before a fixed term's end: § 622 Abs. 1 BGB at least
+        shorter = notice.deadline(inp.end) > FOUR_WEEKS.deadline(inp.end)
+        if shorter or basis == "any_time":
+            trace.warnings.append(
+                "Before the fixed term's end we used at least four weeks' notice to the 15th or the end of a "
+                "month (§ 622 Abs. 1 BGB): a shorter notice, or notice to any day, is usually the probation "
+                "period's (§ 622 Abs. 3 BGB), and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB)."
+            )
+            notice, basis = (FOUR_WEEKS if shorter else notice), None
+    if basis == "any_time":
         return _plan_open(trace, inp, notice)
-    if inp.terms.notice_basis == "end_of_month":
+    if basis == "end_of_month":
         return _plan_month_ends(trace, inp, notice)
 
     def candidates() -> Iterator[tuple[date, date]]:
@@ -870,7 +909,8 @@ def _without_implausible_numbers(trace: Trace, terms: ContractTerms) -> Contract
 
 
 def _ends_by_itself(terms: ContractTerms, regime: ContractRegime, *, past: bool) -> bool:
-    """A contract with an end date ends by itself unless its terms say it renews or needs notice.
+    """A contract with an end date ends by itself unless its terms say it renews or needs notice (a notice
+    period, or a day of the month for it: :func:`_notice_day`).
 
     A flat let always does here (the summary says it may still need notice). A job does too — a notice
     period alone never says otherwise (§ 15 Abs. 1 TzBfG) — unless its contract lets it be ended earlier
@@ -881,7 +921,7 @@ def _ends_by_itself(terms: ContractTerms, regime: ContractRegime, *, past: bool)
         return True
     if regime == "employment622":
         return past or not terms.notice_before_end
-    return terms.renewal_term_months is None and terms.notice_value is None
+    return terms.renewal_term_months is None and terms.notice_value is None and _notice_day(terms) is None
 
 
 def compute_contract(
@@ -978,15 +1018,23 @@ def _compute_contract(
         end=end,
         origin=contract_origin(terms),
     )
-    plan = _plan_regime(trace, inp, regime)
-    if regime == "employment622" and end is not None:  # notice_before_end (:func:`_ends_by_itself`)
-        if plan.earliest_exit is None or plan.earliest_exit >= end:
+    fixed_end = end if regime == "employment622" else None  # notice_before_end (:func:`_ends_by_itself`)
+    if fixed_end is not None:
+        # would the notice end it sooner? (asked on a scratch trace: if not, only the fixed term explains it)
+        sooner = _plan_regime(Trace(), inp, regime).earliest_exit
+        if sooner is None or sooner >= fixed_end:
             trace.step(
-                f"Fixed term: notice can't end it sooner, so it ends on {fmt_date(end)}", end, "fixed_term"
+                f"Fixed term: notice can't end it sooner, so it ends on {fmt_date(fixed_end)}",
+                fixed_end,
+                "fixed_term",
             )
-            return result(contract_fixed_end_sentence(end, past=False, regime=regime))
-        trace.step(f"If you don't give notice, it ends by itself on {fmt_date(end)}", end, "fixed_term")
-        plan.fixed_end = end
+            return result(contract_fixed_end_sentence(fixed_end, past=False, regime=regime))
+    plan = _plan_regime(trace, inp, regime)
+    if fixed_end is not None:
+        trace.step(
+            f"If you don't give notice, it ends by itself on {fmt_date(fixed_end)}", fixed_end, "fixed_term"
+        )
+        plan.fixed_end = fixed_end
     if plan.cancel_by is None:
         return result(_summary(plan, None), plan)
     safe = calendar_de.previous_business_day(plan.cancel_by, region)
