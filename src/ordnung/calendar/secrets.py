@@ -32,7 +32,7 @@ from typing import Any, Protocol
 
 SERVICE = "Ordnung calendar sync"
 KEYRING_REQUIREMENT = "keyring>=25"
-SOURCE = "git+https://github.com/ahmedEid1/new-project"
+SOURCE = "git+https://github.com/ahmedEid1/ordnung"
 #: the priority of a real password store (the OS ones are 4.9–5; plain-text files 0.5, null -1)
 MIN_PRIORITY = 1.0
 _REFUSED_MODULES = ("keyring.backends.null", "keyring.backends.fail", "keyrings.alt")
