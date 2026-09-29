@@ -66,8 +66,9 @@ signs shows that value: reading a letter fills the record's empty fields before 
 letter imitating a known sender could put its own phone number next to your customer numbers. A *case reference* is listed while its thread (else its letter) has an open
 or snoozed one-off to-do (putting it off does not close the case) — the thread's own or one of its
 letters' (a to-do added to a letter of the thread keeps it open): a recurring payment keeps a contract
-going, not a case, so an old order number drops out. Its next step is the earliest (on the same day a
-deadline or appointment before its fee or paperwork); a fee paid at the appointment
+going, not a case, so an old order number drops out. Its next step is the earliest of the person's own
+to-dos (on the same day a deadline or appointment before its fee or paperwork), money coming in only
+when nothing else is open; a fee paid at the appointment
 (:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day, never on a transfer day
 (``at_appointment``), and money coming in keeps its ``direction``: it is expected on its day, never
 overdue. Within an organisation the same number (compared without spaces and marks) is one
@@ -887,7 +888,12 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
             continue
         nxt = min(
             found,
-            key=lambda ref: (_first_day(ref.due_date, ref.send_by), _KIND_RANK.get(ref.kind, 9), ref.id),
+            key=lambda ref: (
+                ref.kind == "payment" and ref.direction == "in",  # nothing for the person to do
+                _first_day(ref.due_date, ref.send_by),
+                _KIND_RANK.get(ref.kind, 9),
+                ref.id,
+            ),
         )
         case = None if by_doc else data.cases.get(wanted)
         letters = _newest_first(

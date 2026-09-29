@@ -719,6 +719,7 @@ class _NumberRows:
                 "due_date": nxt.due_date,
                 "send_by": nxt.send_by,
                 "at_appointment": nxt.at_appointment or None,
+                "direction": "in" if nxt.direction == "in" else None,
                 "needs_check": nxt.needs_check or None,
             }
             if nxt
