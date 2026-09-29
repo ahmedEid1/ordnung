@@ -1848,6 +1848,10 @@ class CaseItemRef(_Model):
     needs_check: bool = Field(
         default=False, description="Its date or amount is not confirmed against the letter (compare it)"
     )
+    direction: Literal["out", "in"] | None = Field(
+        default=None,
+        description="A payment's direction: money coming in is expected on its day, never overdue",
+    )
 
 
 class OpenCase(_Model):

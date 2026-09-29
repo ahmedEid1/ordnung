@@ -69,7 +69,8 @@ letters' (a to-do added to a letter of the thread keeps it open): a recurring pa
 going, not a case, so an old order number drops out. Its next step is the earliest (on the same day a
 deadline or appointment before its fee or paperwork); a fee paid at the appointment
 (:func:`~ordnung.secretary.triggers.paid_at_appointment`) counts on its day, never on a transfer day
-(``at_appointment``). Within an organisation the same number (compared without spaces and marks) is one
+(``at_appointment``), and money coming in keeps its ``direction``: it is expected on its day, never
+overdue. Within an organisation the same number (compared without spaces and marks) is one
 entry; the latest letter's label wins.
 
 **Check digits** (:func:`check_number`), where a public algorithm exists: the Steuer-ID (§ 139b AO; the
@@ -853,6 +854,7 @@ def _next_item(data: NumbersInput, item: Item) -> CaseItemRef:
         send_by=None if in_person else item.send_by,
         at_appointment=in_person,
         needs_check=unconfirmed_reason(item) is not None,
+        direction=item.direction,
     )
 
 

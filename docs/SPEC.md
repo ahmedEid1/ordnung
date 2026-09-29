@@ -1157,8 +1157,9 @@ Pages:
    announced; the check-digit badge explains itself in a tooltip; each number links to the letter it
    came from (on a call sheet or case card when that is not the card's last letter); a date or next
    step not confirmed against the letter says to compare it. An open case's next step reads its day as
-   the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
-   *act today* with the due date once its send-by day has passed, overdue counted from its due date.
+   the weekly session does: *expected* for money coming in (never overdue), *on* for an appointment and
+   a fee paid at it, else *by* the day to act, *act today* with the due date once its send-by day has
+   passed, overdue counted from its due date.
    **Weekly review** (`/week`, from Today; one name on Today, the page, its ending and its messages) —
    the weekly session as a stepper (step list beside the step on wide pages, dots on phones with a name
    under each, over two lines when they don't fit on one — ticks only on the steps looked at; `?step=`),

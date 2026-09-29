@@ -2274,6 +2274,11 @@ export interface components {
              * @default false
              */
             needs_check: boolean;
+            /**
+             * Direction
+             * @description A payment's direction: money coming in is expected on its day, never overdue
+             */
+            direction: ("out" | "in") | null;
         };
         /**
          * CitationRef

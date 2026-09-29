@@ -13,6 +13,7 @@ import { mailtoUrl, websiteUrl } from "@/features/party/timeline";
 import { WebsiteLink } from "@/features/party/WebsiteLink";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { glueText } from "@/lib/format";
+import { isIncomingMoney } from "@/lib/payments";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { NumberRow, Sep } from "./NumberRow";
@@ -109,17 +110,19 @@ const OVERDUE_KINDS = new Set<CaseStep["kind"]>(["deadline", "payment", "task"])
 
 /**
  * The day a case's next step shows, by the weekly session's rule (`secretary/week.py`, "The day on a
- * row"): an appointment — and a fee paid at it — *on* its day; else *by* the day to act (the send-by day
- * when it comes first); once that day has passed but the due date has not, *act today* with the due
- * date; once the due date has passed, *overdue*, counted from the due date.
+ * row"): money coming in is *expected* on its day, never overdue; an appointment — and a fee paid at it —
+ * *on* its day; else *by* the day to act (the send-by day when it comes first); once that day has passed
+ * but the due date has not, *act today* with the due date; once the due date has passed, *overdue*,
+ * counted from the due date.
  */
 export type NextWhen =
-  | { kind: "on" | "by" | "past"; date: string }
+  | { kind: "on" | "by" | "past" | "expected"; date: string }
   | { kind: "act_today"; due: string | null }
   | { kind: "overdue"; due: string };
 
-export function nextStepWhen(item: Pick<CaseStep, "kind" | "due_date" | "send_by" | "at_appointment">, today: string): NextWhen | null {
+export function nextStepWhen(item: Pick<CaseStep, "kind" | "due_date" | "send_by" | "at_appointment" | "direction">, today: string): NextWhen | null {
   const { due_date: due, send_by: send } = item;
+  if (isIncomingMoney(item)) return due ? { kind: "expected", date: due } : null;
   if (item.kind === "appointment" || item.kind === "reminder" || item.at_appointment) return due ? { kind: "on", date: due } : null;
   if (due && due < today) return OVERDUE_KINDS.has(item.kind) ? { kind: "overdue", due } : { kind: "past", date: due };
   if (send && send < today) return { kind: "act_today", due };
@@ -158,7 +161,7 @@ function NextDay({ when }: { when: NextWhen }) {
   }
 }
 
-/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day; "Act today — due …" once the day to act passed; overdue from the due date). */
+/** "Next: Pay the fine · by Thu 1 Oct" (a fee paid at the appointment: on its day; money coming in: expected on its day; "Act today — due …" once the day to act passed; overdue from the due date). */
 function NextStep({ item }: { item: CaseStep }) {
   const today = useTodayISO();
   const when = nextStepWhen(item, today);
