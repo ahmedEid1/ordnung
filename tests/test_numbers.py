@@ -867,13 +867,10 @@ def test_the_demo_numbers(demo_store: Store) -> None:
     page = my_numbers(demo_store, TODAY)
     about = {n.kind: (n.label, n.value, n.check, n.party_name) for n in page.about_you}
     assert about == {
-        # A known defect of the sample life, pinned until the demo is re-recorded: scripts/samplelife/
-        # persona.py prints numbers whose check digits fail (as a misread would). The fix is the
-        # integrator's — give the persona 57 216 480 354, 65 140300 R 005 and R482019379 (the static
-        # demo's numbers), re-render the samples and re-record the fixtures, then pin "ok" here.
-        "tax_id": ("Steuer-ID", "57 216 480 393", "fails", "Muster Tech GmbH"),
-        "social_insurance": ("SV-Nummer", "65 140300 R 004", "fails", "Muster Tech GmbH"),
-        "health_insurance": ("Versicherten-Nr.", "R482019375", "fails", "Muster BKK"),
+        # Sam's own numbers pass their check digits (scripts/samplelife/persona.py, the static demo's too)
+        "tax_id": ("Steuer-ID", "57 216 480 354", "ok", "Muster Tech GmbH"),
+        "social_insurance": ("SV-Nummer", "65 140300 R 005", "ok", "Muster Tech GmbH"),
+        "health_insurance": ("Versicherten-Nr.", "R482019379", "ok", "Muster BKK"),
         "student": ("Matrikelnummer", "4711123", "none", "Hochschule Musterstadt"),
         "broadcasting_fee": ("Beitragsnummer", "512 345 678", "none", "Beitragsservice Musterstadt"),
     }
@@ -981,3 +978,26 @@ def test_a_scam_letters_phone_never_shows_on_the_real_organisations_call_sheet(s
     (sheet,) = [s for s in _numbers(store).organisations if s.party_id == party]
     assert sheet.phone == "+49 30 999 000 111" and sheet.email is None
     assert scam
+
+
+def test_the_newest_letter_never_depends_on_the_time_of_day(store: Store) -> None:
+    """``ordnung demo --check`` failed on a recorded get_my_numbers result: the enrolment certificate and the
+    re-registration letter share their date and arrival day, and which of them was "newest" (whose label and
+    letter a number shows) followed the second each was added. Days decide, then the id — never a time."""
+    from ordnung.numbers import _newest_first
+
+    first = store.get_document(_letter(store, "enrolment", doc_date="2026-09-01", received_date="2026-09-03"))
+    second = store.get_document(
+        _letter(store, "re-registration", doc_date="2026-09-01", received_date="2026-09-03")
+    )
+    newer = store.get_document(_letter(store, "later", doc_date="2026-09-02"))
+    assert first is not None and second is not None and newer is not None
+    early = {"created_at": "2026-09-28T00:20:32Z"}
+    late = {"created_at": "2026-09-28T00:20:33Z"}
+    one = _newest_first([first.model_copy(update=early), second.model_copy(update=late), newer])
+    other = _newest_first([first.model_copy(update=late), second.model_copy(update=early), newer])
+    assert [doc.id for doc in one] == [doc.id for doc in other]
+    assert one[0].id == newer.id
+    # a later arrival of the same date is newer, whatever time either was added
+    arrived = second.model_copy(update={"received_date": "2026-09-04", **early})
+    assert _newest_first([first.model_copy(update=late), arrived])[0].id == second.id

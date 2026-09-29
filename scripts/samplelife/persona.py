@@ -21,9 +21,13 @@ BIRTH_DATE = "2000-03-14"
 BIRTH_PLACE = "Examplia City"
 NATIONALITY_DE = "examplianisch"
 MATRIKEL = "4711123"
-STEUER_ID = "57 216 480 393"
-KVNR = "R482019375"
-RV_NUMMER = "65 140300 R 004"
+# Sam's own numbers pass their check digits (as a real person's do; My numbers checks them): the Steuer-ID
+# per § 139b AO and the BZSt's specification, the Krankenversichertennummer per § 290 SGB V, the
+# Rentenversicherungsnummer per § 147 SGB VI and § 2 VKVV (its middle part is the birth date, its letter
+# the initial of the birth name). The static demo's mock letters use the same numbers.
+STEUER_ID = "57 216 480 354"
+KVNR = "R482019379"
+RV_NUMMER = "65 140300 R 005"
 PERSONALNUMMER = "10482"
 SIMULATED_TODAY = "2026-09-28"
 

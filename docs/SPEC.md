@@ -54,7 +54,7 @@ SPECIMEN.
 5. **Contracts** with lanes chart (notice windows, send-by markers), fixed costs per month.
 6. **Ask** with a visible tool trace, answers shown once checked, validated citations.
 7. **Letters**: cancellation / objection / general reply → bilingual draft → DIN 5008 PDF → "how to send".
-8. `.ics` export with alarms ("Add to my calendar"), onboarding wizard, Settings incl. privacy & AI usage.
+8. `.ics` export with alarms ("Add your dates to your calendar"), onboarding wizard, Settings incl. privacy & AI usage.
 9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
 10. CI green: backend, frontend, e2e (Playwright over demo mode incl. axe checks), `demo --check`.
 
@@ -209,6 +209,10 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   any time with ≤ 1 month notice (§ 309 Nr. 9 BGB); telecom § 56 TKG similar; older contracts use
   their written renewal terms; tenant rent § 573c BGB (3rd business day rule); special cancellation
   rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows.
+- **payments** get a send-by day one business day before the due date for a bank transfer (§ 675s
+  Abs. 1 BGB) — none when their words say they are paid in person, by card or cash at the appointment,
+  the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` when a letter is read
+  or a date is set by hand; UI audit R1-backend-8).
 - Every result has steps with rule ids + citations and a one-sentence plain explanation
   (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
@@ -380,7 +384,11 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    thread into a case by reference numbers/party; link contract changes and cancellation
    confirmations to contracts; dunning ↔ invoice supersession (a reminder takes over a bill's one-off
    payments, never its recurring ones); upsert items by `slot_key`
-   (`sha1(kind|normalised quote)`), never overwriting `user_modified` rows; reconcile triggers.
+   (`sha1(kind|normalised quote)`), never overwriting `user_modified` rows; reconcile triggers. The
+   letter's warnings are stored as the page shows them: the count of dates that couldn't be confirmed
+   without a "Please check:" before it (the page's heading says it), and the model's sentences about the
+   payment IBAN's check digits squared with Ordnung's own check (`square_iban_claims`: a claim the check
+   contradicts is dropped, a failing IBAN is said once in Ordnung's words; UI audit R1-backend-7).
 7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
@@ -574,8 +582,8 @@ HTML and without remote images.
 `assistant/support.py`, the measurement `python -m evals.ask`, [evals-ask](evals-ask.md)).
 
 - **Two channels.** Every tool result has Ordnung's record (`<ordnung_record>`: ids, types, statuses,
-  due and send-by dates — none for a payment made at an appointment, whose send-by date would be a bank
-  transfer's —, a to-do's time only as a clock time, rules-engine contract dates, letter dates,
+  due and send-by dates — none for a payment made in person (at an appointment, by card or cash on site,
+  as the app's views read it), whose send-by date would be a bank transfer's —, a to-do's time only as a clock time, rules-engine contract dates, letter dates,
   amounts and terms with verified or person-given evidence, totals of verified amounts, code-written
   receipts and notes) and the letters' text by record id (`<untrusted_document>`: titles, summaries,
   names, quotes, warnings, payment details, page text, and amounts or terms read by AI from a photo or
@@ -681,11 +689,14 @@ HTML and without remote images.
   label) — what was checked, not every claim. A checked answer is stored with the label (alone when
   nothing changed), so an answer stored before this check is never shown as checked; a model sentence
   that starts like the note — also with look-alike letters or across a soft line break — is left out.
-- **The prompt** (`ask_system` version 5) says what the check does: a value only a letter holds is not
-  stated (it would be shown as "[… only in the letter]"), each sentence and list item cites its own
-  record, the record's legal statements keep their hedges, German answers use "Sie", and a `do_not_pay`
-  demand is not to be paid until checked with the sender. Every demo and benchmark answer was recorded
-  with it.
+- **The prompt** (`ask_system` version 6) says what the check does: a value only a letter holds is not
+  stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
+  record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
+  term dates are left out, its cost stays), today's date is checked like any other date, each sentence
+  and list item cites its own record, the record's legal statements keep their hedges, German answers
+  use "Sie", and a `do_not_pay` demand is not to be paid until checked with the sender. It names every
+  ledger tool (`get_my_numbers` too) and the app's buttons by their labels ("Add your dates to your
+  calendar"). Every demo and benchmark answer was recorded with it.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
@@ -1232,7 +1243,10 @@ Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind),
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
-metrics from recorded outputs with thresholds.
+metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
+change to them waits for a new benchmark run: known limitation (UI audit R1-backend-6), a reading's
+action, consequence and key-fact labels can stay in the letter's German and number formats, and its
+explanation doesn't qualify "nothing to react to" when the rules engine computes a decision window.
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and

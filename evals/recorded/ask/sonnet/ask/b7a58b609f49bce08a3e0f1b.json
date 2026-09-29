@@ -1,0 +1,350 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"6b0d3a427165952e695475ab13e8fe393ec6593deea9935cfd614d178818dc24\",\"question\":\"Do I have to pay the Rundfunkbeitrag arrears from the Zahlungszentrale, and by when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nDo I have to pay the Rundfunkbeitrag arrears from the Zahlungszentrale, and by when?\n"
+  },
+  "response": {
+    "text": "No — this letter shows strong scam signs and should not be paid [doc:doc_hjxvf5t7dqnw].\n\n- The sender calls itself \"Rundfunk-Beitragsservice Zahlungszentrale\" [party:pty_dbn2zg2kxj4d], but the real Beitragsservice you've dealt with before used a different (German) bank account — this one asks for payment to a **Lithuanian** IBAN, which the genuine German Beitragsservice does not use [doc:doc_hjxvf5t7dqnw].\n- It also contains hidden (invisible) text on the page and pressures you with an unusually short deadline and seizure threats, without the normal legal notice (Rechtsbehelfsbelehrung) a real German dunning letter would have [doc:doc_hjxvf5t7dqnw].\n- The amount stated in the letter is not something I can confirm as accurate or owed — do not pay it.\n\n**What to do:** Don't pay anything from this letter. If you want to check whether you actually owe Rundfunkbeitrag arrears, contact the real Beitragsservice using contact details you already have (e.g. from a previous genuine letter or their official website), not any number/IBAN from this letter.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 506,
+      "cache_read_tokens": 11957,
+      "cache_creation_tokens": 2230,
+      "cost_usd": 0.0163794,
+      "duration_ms": 8466,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Rundfunkbeitrag Zahlungszentrale"
+      },
+      "tool_use_id": "toolu_01FWNxJh3U9FCbY4NYsB9qna"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hjxvf5t7dqnw\":{\"title\":\"Suspicious \\\"Last Warning Before Seizure\\\" Letter Demanding Broadcasting Fee Payment (Likely Scam)\",\"snippet\":\"This letter claims to be from a \\\"Zahlungszentrale\\\" collecting broadcasting fee (Rundfunkbeitrag) arrears of 254.35…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payment IBAN (LT08 3999 0000 0543 9871) is Lithuanian; the German Beitragsservice does not collect fees to foreign private accounts — this is a strong scam indicator.\",\"An extremely short 48-hour payment deadline with threats of immediate enforcement and no formal legal basis or Rechtsbehelfsbelehrung is atypical for genuine German administrative dunning procedures and is a pressure tactic often used in scams.\",\"This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — hidden text is a common trick in scams, so be careful.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01FWNxJh3U9FCbY4NYsB9qna"
+    },
+    {
+      "type": "text",
+      "text": "No — this"
+    },
+    {
+      "type": "text",
+      "text": " letter shows str"
+    },
+    {
+      "type": "text",
+      "text": "ong scam signs and should not"
+    },
+    {
+      "type": "text",
+      "text": " be paid ["
+    },
+    {
+      "type": "text",
+      "text": "doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_hjxvf5"
+    },
+    {
+      "type": "text",
+      "text": "t7dqnw]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- The sender cal"
+    },
+    {
+      "type": "text",
+      "text": "ls itself \"Rundf"
+    },
+    {
+      "type": "text",
+      "text": "unk-Beitrags"
+    },
+    {
+      "type": "text",
+      "text": "serv"
+    },
+    {
+      "type": "text",
+      "text": "ice Zahlungszent"
+    },
+    {
+      "type": "text",
+      "text": "rale\" [party:pty"
+    },
+    {
+      "type": "text",
+      "text": "_dbn2zg2"
+    },
+    {
+      "type": "text",
+      "text": "kxj4d], but the"
+    },
+    {
+      "type": "text",
+      "text": " real Beitragsservice"
+    },
+    {
+      "type": "text",
+      "text": " you've"
+    },
+    {
+      "type": "text",
+      "text": " dealt with before used a different"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "German) bank account — this one"
+    },
+    {
+      "type": "text",
+      "text": " asks for pay"
+    },
+    {
+      "type": "text",
+      "text": "ment to a **Lithu"
+    },
+    {
+      "type": "text",
+      "text": "anian** IBAN,"
+    },
+    {
+      "type": "text",
+      "text": " which the genuine German Be"
+    },
+    {
+      "type": "text",
+      "text": "itragsservice does not use"
+    },
+    {
+      "type": "text",
+      "text": " [doc:doc_h"
+    },
+    {
+      "type": "text",
+      "text": "jxvf5t7d"
+    },
+    {
+      "type": "text",
+      "text": "qnw].\n- It"
+    },
+    {
+      "type": "text",
+      "text": " also contains hidden ("
+    },
+    {
+      "type": "text",
+      "text": "invisible) text on"
+    },
+    {
+      "type": "text",
+      "text": " the page and"
+    },
+    {
+      "type": "text",
+      "text": " p"
+    },
+    {
+      "type": "text",
+      "text": "ressures you with an unusually"
+    },
+    {
+      "type": "text",
+      "text": " short deadline and se"
+    },
+    {
+      "type": "text",
+      "text": "izure threats, without"
+    },
+    {
+      "type": "text",
+      "text": " the norm"
+    },
+    {
+      "type": "text",
+      "text": "al legal not"
+    },
+    {
+      "type": "text",
+      "text": "ice (Rechtsb"
+    },
+    {
+      "type": "text",
+      "text": "ehelfsb"
+    },
+    {
+      "type": "text",
+      "text": "elehrung) a real"
+    },
+    {
+      "type": "text",
+      "text": " German dunning letter would have"
+    },
+    {
+      "type": "text",
+      "text": " [doc:doc_h"
+    },
+    {
+      "type": "text",
+      "text": "jxvf5t7d"
+    },
+    {
+      "type": "text",
+      "text": "qnw].\n- The am"
+    },
+    {
+      "type": "text",
+      "text": "ount st"
+    },
+    {
+      "type": "text",
+      "text": "ated in the letter is not"
+    },
+    {
+      "type": "text",
+      "text": " something I"
+    },
+    {
+      "type": "text",
+      "text": " can confirm as"
+    },
+    {
+      "type": "text",
+      "text": " accurate or"
+    },
+    {
+      "type": "text",
+      "text": " owed — do"
+    },
+    {
+      "type": "text",
+      "text": " not pay it."
+    },
+    {
+      "type": "text",
+      "text": "\n\n**What"
+    },
+    {
+      "type": "text",
+      "text": " to do:** Don't p"
+    },
+    {
+      "type": "text",
+      "text": "ay anything from"
+    },
+    {
+      "type": "text",
+      "text": " this letter. If you want"
+    },
+    {
+      "type": "text",
+      "text": " to check"
+    },
+    {
+      "type": "text",
+      "text": " whether you actually owe"
+    },
+    {
+      "type": "text",
+      "text": " Rundfunkbeit"
+    },
+    {
+      "type": "text",
+      "text": "rag ar"
+    },
+    {
+      "type": "text",
+      "text": "rears, cont"
+    },
+    {
+      "type": "text",
+      "text": "act the real Beitrags"
+    },
+    {
+      "type": "text",
+      "text": "service using contact details you already"
+    },
+    {
+      "type": "text",
+      "text": " have (e.g. from"
+    },
+    {
+      "type": "text",
+      "text": " a previous gen"
+    },
+    {
+      "type": "text",
+      "text": "uine let"
+    },
+    {
+      "type": "text",
+      "text": "ter or"
+    },
+    {
+      "type": "text",
+      "text": " their"
+    },
+    {
+      "type": "text",
+      "text": " official website), not any"
+    },
+    {
+      "type": "text",
+      "text": " number/"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": "BAN from"
+    },
+    {
+      "type": "text",
+      "text": " this letter."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No — this letter shows strong scam signs and should not be paid [doc:doc_hjxvf5t7dqnw].\n\n- The sender calls itself \"Rundfunk-Beitragsservice Zahlungszentrale\" [party:pty_dbn2zg2kxj4d], but the real Beitragsservice you've dealt with before used a different (German) bank account — this one asks for payment to a **Lithuanian** IBAN, which the genuine German Beitragsservice does not use [doc:doc_hjxvf5t7dqnw].\n- It also contains hidden (invisible) text on the page and pressures you with an unusually short deadline and seizure threats, without the normal legal notice (Rechtsbehelfsbelehrung) a real German dunning letter would have [doc:doc_hjxvf5t7dqnw].\n- The amount stated in the letter is not something I can confirm as accurate or owed — do not pay it.\n\n**What to do:** Don't pay anything from this letter. If you want to check whether you actually owe Rundfunkbeitrag arrears, contact the real Beitragsservice using contact details you already have (e.g. from a previous genuine letter or their official website), not any number/IBAN from this letter.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 506,
+          "cache_read_tokens": 11957,
+          "cache_creation_tokens": 2230,
+          "cost_usd": 0.0163794,
+          "duration_ms": 8466,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

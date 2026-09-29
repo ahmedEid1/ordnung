@@ -1,0 +1,264 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2aadb4092dbc1eb33446f958a68304e8dcf6f7cd8dd9ef8a69500e0080f3437f\",\"question\":\"When is my appointment with Dr. Müller?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen is my appointment with Dr. Müller?\n"
+  },
+  "response": {
+    "text": "I couldn't find any appointment with a \"Dr. Müller\" in your records. Your upcoming appointments are with:\n\n- Zahnarztpraxis Dr. Anna Beispiel (dental check-up), Thu 8 Oct 2026, 09:15 [item:itm_sncxha9wbsxc]\n- Stadt Musterstadt – Ausländerbehörde (residence permit extension), Wed 14 Oct 2026, 10:30 [item:itm_64wce6sh2rpp]\n- Global Talent Scholarship Foundation (Autumn Meeting, Berlin), Sat 7 Nov 2026 [item:itm_espa58t15ncg]\n\nNone of these is with a \"Dr. Müller.\" If you have a letter from Dr. Müller that isn't showing up, could you double-check the name or let me know more details (e.g., what it's about)?",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 446,
+      "cache_read_tokens": 11936,
+      "cache_creation_tokens": 2577,
+      "cost_usd": 0.0171632,
+      "duration_ms": 5579,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Dr. Müller"
+      },
+      "tool_use_id": "toolu_01XNwho7F86X5cXLWsoGHTYg"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "status": "open"
+      },
+      "tool_use_id": "toolu_016c9UUVrFoeikUPEvC9jemt"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_7jmdemeegmw0\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental appointment: check-up + professional teeth cleaning (PZR)\",\"action\":\"Arrive 10 minutes early, bring your health insurance card (Gesundheitskarte), and cancel at least 24 hours in advance if you cannot attend.\",\"location\":\"Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Appointment at Ausländerbehörde for residence permit extension\",\"action\":\"Bring the required original documents (passport, enrolment certificate, proof of financing, health insurance proof, biometric photo, rental contract) and pay the €100 fee by girocard on site.\",\"location\":\"Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14, 12345 Musterstadt\"},\"pty_7jmdemeegmw0\":{\"name\":\"Stadt Musterstadt – Ausländerbehörde\"},\"itm_espa58t15ncg\":{\"title\":\"Autumn Meeting in Berlin\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_016c9UUVrFoeikUPEvC9jemt"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01XNwho7F86X5cXLWsoGHTYg"
+    },
+    {
+      "type": "text",
+      "text": "I cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find any appointment"
+    },
+    {
+      "type": "text",
+      "text": " with a \"Dr."
+    },
+    {
+      "type": "text",
+      "text": " Müller\" in your records."
+    },
+    {
+      "type": "text",
+      "text": " Your up"
+    },
+    {
+      "type": "text",
+      "text": "coming appointments are with"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- Z"
+    },
+    {
+      "type": "text",
+      "text": "ahnarztpraxis"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Anna"
+    },
+    {
+      "type": "text",
+      "text": " Beispiel (dental check"
+    },
+    {
+      "type": "text",
+      "text": "-up),"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026,"
+    },
+    {
+      "type": "text",
+      "text": " 09:15 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_sncxha9"
+    },
+    {
+      "type": "text",
+      "text": "wbsxc]\n-"
+    },
+    {
+      "type": "text",
+      "text": " Stadt Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt – Ausländer"
+    },
+    {
+      "type": "text",
+      "text": "behörde (residence perm"
+    },
+    {
+      "type": "text",
+      "text": "it extension), Wed "
+    },
+    {
+      "type": "text",
+      "text": "14 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": ", 10:30 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_64wce6"
+    },
+    {
+      "type": "text",
+      "text": "sh2rpp]"
+    },
+    {
+      "type": "text",
+      "text": "\n-"
+    },
+    {
+      "type": "text",
+      "text": " Global Talent Scholar"
+    },
+    {
+      "type": "text",
+      "text": "ship Foundation ("
+    },
+    {
+      "type": "text",
+      "text": "Autumn Meeting"
+    },
+    {
+      "type": "text",
+      "text": ", Berlin), S"
+    },
+    {
+      "type": "text",
+      "text": "at 7 Nov "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_espa58t15nc"
+    },
+    {
+      "type": "text",
+      "text": "g]\n\nNone of these is with"
+    },
+    {
+      "type": "text",
+      "text": " a \"Dr. Mü"
+    },
+    {
+      "type": "text",
+      "text": "ller.\" If you have"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " letter from"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Müller that"
+    },
+    {
+      "type": "text",
+      "text": " isn't show"
+    },
+    {
+      "type": "text",
+      "text": "ing up,"
+    },
+    {
+      "type": "text",
+      "text": " could you double-check the name or"
+    },
+    {
+      "type": "text",
+      "text": " let me know more"
+    },
+    {
+      "type": "text",
+      "text": " details (e.g., what"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": "'s about)?"
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any appointment with a \"Dr. Müller\" in your records. Your upcoming appointments are with:\n\n- Zahnarztpraxis Dr. Anna Beispiel (dental check-up), Thu 8 Oct 2026, 09:15 [item:itm_sncxha9wbsxc]\n- Stadt Musterstadt – Ausländerbehörde (residence permit extension), Wed 14 Oct 2026, 10:30 [item:itm_64wce6sh2rpp]\n- Global Talent Scholarship Foundation (Autumn Meeting, Berlin), Sat 7 Nov 2026 [item:itm_espa58t15ncg]\n\nNone of these is with a \"Dr. Müller.\" If you have a letter from Dr. Müller that isn't showing up, could you double-check the name or let me know more details (e.g., what it's about)?",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 446,
+          "cache_read_tokens": 11936,
+          "cache_creation_tokens": 2577,
+          "cost_usd": 0.0171632,
+          "duration_ms": 5579,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

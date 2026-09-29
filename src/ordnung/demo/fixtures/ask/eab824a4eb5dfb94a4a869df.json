@@ -1,0 +1,355 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"8c7179ffa403dcd09a65768beb7cb5695f2d87a7ab20b4946965b6716101ef68\",\"question\":\"When does my residence permit expire, and what should I do before then?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen does my residence permit expire, and what should I do before then?\n"
+  },
+  "response": {
+    "text": "Your residence permit (Aufenthaltserlaubnis) expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf].\n\nWhat to do before then:\n\n- **Apply for the extension before it expires.** If you do, your current permit is treated as still valid while the immigration office decides (§ 81 Abs. 4 S. 1–2 AufenthG — this doesn't apply to a Schengen visa) [item:itm_p0k64jp7r8bf].\n- **Ask the Ausländerbehörde for a Fiktionsbescheinigung** when you apply, as proof that you may continue staying/working while the decision is pending [item:itm_p0k64jp7r8bf].\n- **Check your passport validity too** — a residence permit usually only runs as long as your passport is valid, and Ordnung has your passport expiry flagged for renewal as well [item:itm_86khkd0zfcse]. Passport renewal can take months, so it's worth starting early if it's close to expiry.\n\nSince this involves an immigration deadline, if you're unsure about the process or timing, it's worth getting advice (e.g. from your university's international office or a Beratungsstelle) rather than relying solely on this.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 627,
+      "cache_read_tokens": 20513,
+      "cache_creation_tokens": 4043,
+      "cost_usd": 0.0265566,
+      "duration_ms": 10577,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_01ByCKTwPVJh811i4itHMp1q"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_86khkd0zfcse\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n6\"}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n2\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"health_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n5\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n6\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hkgxvjmpcfd5\":{\"title\":\"Payslip August 2026 – Muster Tech GmbH\",\"numbers\":{\"n1\":{\"label\":\"Steuer-ID\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Muster BKK: Increase in Monthly Health and Long-Term Care Insurance Contribution\",\"numbers\":{\"n3\":{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester Documents & Re-registration for Summer Semester 2027 – Hochschule Musterstadt\",\"numbers\":{\"n4\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment demand for Oct–Dec 2026\",\"numbers\":{\"n5\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Passport of Sam Rivera\",\"numbers\":{\"n6\":{\"label\":\"Passport No.\",\"value\":\"X1234567\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01ByCKTwPVJh811i4itHMp1q"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__explain_date",
+      "input": {
+        "item_or_contract_id": "itm_p0k64jp7r8bf"
+      },
+      "tool_use_id": "toolu_01PfVvD6fCu9E9VDKXxfAEDH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"due_date\":\"2026-11-30\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"how\":\"The date is written in the letter.\",\"grounding\":[\"verified\"],\"receipt\":{\"due_date\":\"2026-11-30\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"summary\":\"The date given is Mon 30 Nov 2026.\",\"steps\":[{\"label\":\"The date given is Mon 30 Nov 2026\",\"date\":\"2026-11-30\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"}],\"confidence\":\"high\"},\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"}],\"disclaimer\":\"Based on the law as of 2026-09-25. Not legal advice. Not reviewed by a lawyer.\"}\n</ordnung_record>\n<untrusted_document>\n{\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"as_written\":\"bis zum 30.11.2026\",\"evidence\":[{\"doc_id\":\"doc_d9hwr1mp3bsj\",\"page\":1,\"quote\":\"Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig.\"}]}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PfVvD6fCu9E9VDKXxfAEDH"
+    },
+    {
+      "type": "text",
+      "text": "Your residence permit ("
+    },
+    {
+      "type": "text",
+      "text": "Aufenthaltser"
+    },
+    {
+      "type": "text",
+      "text": "laubnis) expires"
+    },
+    {
+      "type": "text",
+      "text": " Mon 30 Nov"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_p0k64"
+    },
+    {
+      "type": "text",
+      "text": "jp7r8bf]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nWhat to do before then:"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Apply for"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " extension before it expires.**"
+    },
+    {
+      "type": "text",
+      "text": " If you do,"
+    },
+    {
+      "type": "text",
+      "text": " your current"
+    },
+    {
+      "type": "text",
+      "text": " permit is"
+    },
+    {
+      "type": "text",
+      "text": " treated as still valid while"
+    },
+    {
+      "type": "text",
+      "text": " the imm"
+    },
+    {
+      "type": "text",
+      "text": "igration office decides (§"
+    },
+    {
+      "type": "text",
+      "text": " 81 Abs. "
+    },
+    {
+      "type": "text",
+      "text": "4 S"
+    },
+    {
+      "type": "text",
+      "text": ". 1–2 Auf"
+    },
+    {
+      "type": "text",
+      "text": "enthG —"
+    },
+    {
+      "type": "text",
+      "text": " this doesn't apply to"
+    },
+    {
+      "type": "text",
+      "text": " a Schengen visa)"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_p0"
+    },
+    {
+      "type": "text",
+      "text": "k64jp7r8b"
+    },
+    {
+      "type": "text",
+      "text": "f].\n- **Ask"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " Ausländerbehörde"
+    },
+    {
+      "type": "text",
+      "text": " for a Fiktions"
+    },
+    {
+      "type": "text",
+      "text": "bescheinigung** when"
+    },
+    {
+      "type": "text",
+      "text": " you apply, as"
+    },
+    {
+      "type": "text",
+      "text": " proof that"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " may"
+    },
+    {
+      "type": "text",
+      "text": " continue sta"
+    },
+    {
+      "type": "text",
+      "text": "ying/working while the decision is"
+    },
+    {
+      "type": "text",
+      "text": " pending [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "p0k64jp7r"
+    },
+    {
+      "type": "text",
+      "text": "8bf].\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Check your passport valid"
+    },
+    {
+      "type": "text",
+      "text": "ity too**"
+    },
+    {
+      "type": "text",
+      "text": " — a residence permit usually"
+    },
+    {
+      "type": "text",
+      "text": " only runs as long as your pass"
+    },
+    {
+      "type": "text",
+      "text": "port is valid, and "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung has"
+    },
+    {
+      "type": "text",
+      "text": " your passport exp"
+    },
+    {
+      "type": "text",
+      "text": "iry fl"
+    },
+    {
+      "type": "text",
+      "text": "agged for"
+    },
+    {
+      "type": "text",
+      "text": " ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal as well [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_86khkd0z"
+    },
+    {
+      "type": "text",
+      "text": "fcse]"
+    },
+    {
+      "type": "text",
+      "text": ". Passport renewal can"
+    },
+    {
+      "type": "text",
+      "text": " take months, so it's worth"
+    },
+    {
+      "type": "text",
+      "text": " starting early"
+    },
+    {
+      "type": "text",
+      "text": " if it's close to"
+    },
+    {
+      "type": "text",
+      "text": " expiry"
+    },
+    {
+      "type": "text",
+      "text": ".\n\nSince this invol"
+    },
+    {
+      "type": "text",
+      "text": "ves an"
+    },
+    {
+      "type": "text",
+      "text": " immigration de"
+    },
+    {
+      "type": "text",
+      "text": "adline, if you're un"
+    },
+    {
+      "type": "text",
+      "text": "sure about the process"
+    },
+    {
+      "type": "text",
+      "text": " or timing, it's wor"
+    },
+    {
+      "type": "text",
+      "text": "th getting advice ("
+    },
+    {
+      "type": "text",
+      "text": "e.g. from your"
+    },
+    {
+      "type": "text",
+      "text": " university's international office or a"
+    },
+    {
+      "type": "text",
+      "text": " Be"
+    },
+    {
+      "type": "text",
+      "text": "ratungsstelle) r"
+    },
+    {
+      "type": "text",
+      "text": "ather than relying solely on this"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your residence permit (Aufenthaltserlaubnis) expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf].\n\nWhat to do before then:\n\n- **Apply for the extension before it expires.** If you do, your current permit is treated as still valid while the immigration office decides (§ 81 Abs. 4 S. 1–2 AufenthG — this doesn't apply to a Schengen visa) [item:itm_p0k64jp7r8bf].\n- **Ask the Ausländerbehörde for a Fiktionsbescheinigung** when you apply, as proof that you may continue staying/working while the decision is pending [item:itm_p0k64jp7r8bf].\n- **Check your passport validity too** — a residence permit usually only runs as long as your passport is valid, and Ordnung has your passport expiry flagged for renewal as well [item:itm_86khkd0zfcse]. Passport renewal can take months, so it's worth starting early if it's close to expiry.\n\nSince this involves an immigration deadline, if you're unsure about the process or timing, it's worth getting advice (e.g. from your university's international office or a Beratungsstelle) rather than relying solely on this.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 627,
+          "cache_read_tokens": 20513,
+          "cache_creation_tokens": 4043,
+          "cost_usd": 0.0265566,
+          "duration_ms": 10577,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

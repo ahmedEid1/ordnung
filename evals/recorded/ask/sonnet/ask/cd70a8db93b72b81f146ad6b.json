@@ -1,0 +1,210 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"b5c1dcc23f2f5bdb35bcd4ae181657a9ca7667d619a24774bed05ec4396ae35c\",\"question\":\"Until when do I have to pay the semester fee for the summer semester 2027?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nUntil when do I have to pay the semester fee for the summer semester 2027?\n"
+  },
+  "response": {
+    "text": "The semester fee for summer semester 2027 is due by **Fri 15 Jan 2027**, with amount 312.40 € [item:itm_85xesrap412m].\n\n- It should be sent by Thu 14 Jan 2027 to arrive in time [item:itm_85xesrap412m].\n- From Hochschule Musterstadt [party:pty_fhp8fzemmzvt].\n- The letter notes a late fee and possible de-registration risk if payment or re-registration is missed — worth double-checking the terms in the letter itself [doc:doc_nba3k0ka85q0].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 402,
+      "cache_read_tokens": 11941,
+      "cache_creation_tokens": 2380,
+      "cost_usd": 0.015936199999999998,
+      "duration_ms": 6483,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag"
+      },
+      "tool_use_id": "toolu_012Cgek69qfbeeFfcJgcGtat"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester Documents & Re-registration for Summer Semester 2027 – Hochschule Musterstadt\",\"snippet\":\"…Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_012Cgek69qfbeeFfcJgcGtat"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "payment",
+        "status": "all",
+        "from_date": "2027-01-01",
+        "to_date": "2027-12-31"
+      },
+      "tool_use_id": "toolu_013WrjmURRixh4Qq8NQmW3gS"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"amount\":312.4,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_85xesrap412m\":{\"title\":\"Semesterbeitrag Sommersemester 2027 zahlen\",\"action\":\"Semesterbeitrag von 312,40 € rechtzeitig überweisen\",\"consequence\":\"Bei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben. Ohne fristgerechte Rückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_013WrjmURRixh4Qq8NQmW3gS"
+    },
+    {
+      "type": "text",
+      "text": "The"
+    },
+    {
+      "type": "text",
+      "text": " semester fee for summer sem"
+    },
+    {
+      "type": "text",
+      "text": "ester 2027 is due by"
+    },
+    {
+      "type": "text",
+      "text": " **Fri 15 "
+    },
+    {
+      "type": "text",
+      "text": "Jan 2027**"
+    },
+    {
+      "type": "text",
+      "text": ", with amount "
+    },
+    {
+      "type": "text",
+      "text": "312.40 € [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_85xesrap"
+    },
+    {
+      "type": "text",
+      "text": "412m].\n\n- It should be"
+    },
+    {
+      "type": "text",
+      "text": " sent by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 14 Jan"
+    },
+    {
+      "type": "text",
+      "text": " 2027 to ar"
+    },
+    {
+      "type": "text",
+      "text": "rive in time [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_85xesrap412"
+    },
+    {
+      "type": "text",
+      "text": "m].\n- From"
+    },
+    {
+      "type": "text",
+      "text": " Hochschule Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [party:pty_"
+    },
+    {
+      "type": "text",
+      "text": "fhp8fzemm"
+    },
+    {
+      "type": "text",
+      "text": "zvt]."
+    },
+    {
+      "type": "text",
+      "text": "\n- The letter notes a late"
+    },
+    {
+      "type": "text",
+      "text": " fee and"
+    },
+    {
+      "type": "text",
+      "text": " possible de"
+    },
+    {
+      "type": "text",
+      "text": "-registration ris"
+    },
+    {
+      "type": "text",
+      "text": "k if pay"
+    },
+    {
+      "type": "text",
+      "text": "ment or"
+    },
+    {
+      "type": "text",
+      "text": " re-registration is"
+    },
+    {
+      "type": "text",
+      "text": " miss"
+    },
+    {
+      "type": "text",
+      "text": "ed — wor"
+    },
+    {
+      "type": "text",
+      "text": "th double-checking the terms"
+    },
+    {
+      "type": "text",
+      "text": " in the letter it"
+    },
+    {
+      "type": "text",
+      "text": "self [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_nba3k0"
+    },
+    {
+      "type": "text",
+      "text": "ka85q0]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The semester fee for summer semester 2027 is due by **Fri 15 Jan 2027**, with amount 312.40 € [item:itm_85xesrap412m].\n\n- It should be sent by Thu 14 Jan 2027 to arrive in time [item:itm_85xesrap412m].\n- From Hochschule Musterstadt [party:pty_fhp8fzemmzvt].\n- The letter notes a late fee and possible de-registration risk if payment or re-registration is missed — worth double-checking the terms in the letter itself [doc:doc_nba3k0ka85q0].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 402,
+          "cache_read_tokens": 11941,
+          "cache_creation_tokens": 2380,
+          "cost_usd": 0.015936199999999998,
+          "duration_ms": 6483,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,212 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2aadb4092dbc1eb33446f958a68304e8dcf6f7cd8dd9ef8a69500e0080f3437f\",\"question\":\"What is the deadline to object to my child benefit (Kindergeld) notice?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhat is the deadline to object to my child benefit (Kindergeld) notice?\n"
+  },
+  "response": {
+    "text": "I couldn't find any letter, to-do, or contract about a Kindergeld (child benefit) notice in your records — a search for \"Kindergeld,\" \"child benefit,\" and \"Familienkasse\" returned no results.\n\n- If you have a paper notice, there's no deadline stored for it in Ordnung yet.\n- You could add it (e.g. via \"Add document\" or a new to-do) so Ordnung can calculate and track the objection deadline for you.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 362,
+      "cache_read_tokens": 18802,
+      "cache_creation_tokens": 1923,
+      "cost_usd": 0.015084400000000001,
+      "duration_ms": 7688,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kindergeld"
+      },
+      "tool_use_id": "toolu_01UmLN2fyFnGguFTwUkTZjXS"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01UmLN2fyFnGguFTwUkTZjXS"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "child benefit"
+      },
+      "tool_use_id": "toolu_01BxJ1dmUr9SywNxB5uQyUa9"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01BxJ1dmUr9SywNxB5uQyUa9"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Familienkasse"
+      },
+      "tool_use_id": "toolu_01GvGdU7YcywL95dQC9rkHvg"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01GvGdU7YcywL95dQC9rkHvg"
+    },
+    {
+      "type": "text",
+      "text": "I cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find any let"
+    },
+    {
+      "type": "text",
+      "text": "ter,"
+    },
+    {
+      "type": "text",
+      "text": " to-do, or contract about"
+    },
+    {
+      "type": "text",
+      "text": " a Kindergeld ("
+    },
+    {
+      "type": "text",
+      "text": "child benefit) notice in"
+    },
+    {
+      "type": "text",
+      "text": " your records —"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " search for \"Kinderge"
+    },
+    {
+      "type": "text",
+      "text": "ld,\" \"child benefit,\""
+    },
+    {
+      "type": "text",
+      "text": " and \"Familienkasse"
+    },
+    {
+      "type": "text",
+      "text": "\" retur"
+    },
+    {
+      "type": "text",
+      "text": "ned no results"
+    },
+    {
+      "type": "text",
+      "text": ".\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " If you have a pa"
+    },
+    {
+      "type": "text",
+      "text": "per notice, there"
+    },
+    {
+      "type": "text",
+      "text": "'s"
+    },
+    {
+      "type": "text",
+      "text": " no de"
+    },
+    {
+      "type": "text",
+      "text": "adline stored for it in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung yet."
+    },
+    {
+      "type": "text",
+      "text": "\n- You could add it"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "e.g."
+    },
+    {
+      "type": "text",
+      "text": " via"
+    },
+    {
+      "type": "text",
+      "text": " \"Add"
+    },
+    {
+      "type": "text",
+      "text": " document\" or a"
+    },
+    {
+      "type": "text",
+      "text": " new"
+    },
+    {
+      "type": "text",
+      "text": " to-do) so Ord"
+    },
+    {
+      "type": "text",
+      "text": "nung can calculate and"
+    },
+    {
+      "type": "text",
+      "text": " track the objection deadline for"
+    },
+    {
+      "type": "text",
+      "text": " you."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any letter, to-do, or contract about a Kindergeld (child benefit) notice in your records — a search for \"Kindergeld,\" \"child benefit,\" and \"Familienkasse\" returned no results.\n\n- If you have a paper notice, there's no deadline stored for it in Ordnung yet.\n- You could add it (e.g. via \"Add document\" or a new to-do) so Ordnung can calculate and track the objection deadline for you.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 362,
+          "cache_read_tokens": 18802,
+          "cache_creation_tokens": 1923,
+          "cost_usd": 0.015084400000000001,
+          "duration_ms": 7688,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

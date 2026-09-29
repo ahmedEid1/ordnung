@@ -309,6 +309,12 @@ make e2e         # Playwright over the demo
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call.
+- Some of what Claude reads from a letter stays in the letter's words: a to-do's action and consequence
+  and a key fact's label can come out in German ("Semesterbeitrag … überweisen", "Fällig am"), with the
+  letter's own number formats ("94.99 EUR", "03.09.2026"), and a letter's explanation doesn't mention a
+  decision window Ordnung computed. The fix is in the extraction prompt, which also runs the published
+  extraction benchmark's Ordnung condition; it waits for the next benchmark run, so the published
+  numbers stay those of the prompt the app uses.
 - The benchmark letters are synthetic. Real post is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends
   dates to your own calendar) and no mobile app.

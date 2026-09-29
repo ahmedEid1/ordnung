@@ -1,0 +1,172 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2aadb4092dbc1eb33446f958a68304e8dcf6f7cd8dd9ef8a69500e0080f3437f\",\"question\":\"When do I have to pay the dog tax (Hundesteuer)?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to pay the dog tax (Hundesteuer)?\n"
+  },
+  "response": {
+    "text": "I couldn't find any record about a dog tax (Hundesteuer) in your letters, to-dos, or contracts. It may not be in your Ordnung records yet — if you have a letter about it, you could check whether it's been added, or look at the paper letter directly for the payment date.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 291,
+      "cache_read_tokens": 18798,
+      "cache_creation_tokens": 1910,
+      "cost_usd": 0.0143216,
+      "duration_ms": 7647,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_01ASWZyWPfcTehbqFqYSryqa"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01ASWZyWPfcTehbqFqYSryqa"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog tax"
+      },
+      "tool_use_id": "toolu_012XnKg8QQc7iYrLkQ31Zk5A"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_012XnKg8QQc7iYrLkQ31Zk5A"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hund"
+      },
+      "tool_use_id": "toolu_013AZ8aT4DLSduJ4uogL5jz4"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_013AZ8aT4DLSduJ4uogL5jz4"
+    },
+    {
+      "type": "text",
+      "text": "I cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find any record about"
+    },
+    {
+      "type": "text",
+      "text": " a dog tax (H"
+    },
+    {
+      "type": "text",
+      "text": "undesteuer) in your"
+    },
+    {
+      "type": "text",
+      "text": " letters,"
+    },
+    {
+      "type": "text",
+      "text": " to-dos, or"
+    },
+    {
+      "type": "text",
+      "text": " contracts. It"
+    },
+    {
+      "type": "text",
+      "text": " may not be in your"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung records yet —"
+    },
+    {
+      "type": "text",
+      "text": " if you have a letter about"
+    },
+    {
+      "type": "text",
+      "text": " it, you"
+    },
+    {
+      "type": "text",
+      "text": " could"
+    },
+    {
+      "type": "text",
+      "text": " check"
+    },
+    {
+      "type": "text",
+      "text": " wh"
+    },
+    {
+      "type": "text",
+      "text": "ether it's been added"
+    },
+    {
+      "type": "text",
+      "text": ", or look"
+    },
+    {
+      "type": "text",
+      "text": " at"
+    },
+    {
+      "type": "text",
+      "text": " the paper let"
+    },
+    {
+      "type": "text",
+      "text": "ter directly for"
+    },
+    {
+      "type": "text",
+      "text": " the pay"
+    },
+    {
+      "type": "text",
+      "text": "ment date."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any record about a dog tax (Hundesteuer) in your letters, to-dos, or contracts. It may not be in your Ordnung records yet — if you have a letter about it, you could check whether it's been added, or look at the paper letter directly for the payment date.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 291,
+          "cache_read_tokens": 18798,
+          "cache_creation_tokens": 1910,
+          "cost_usd": 0.0143216,
+          "duration_ms": 7647,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -950,15 +950,16 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
         for sentence in answer.removed:
             assert not sentence.supported, (name, sentence.text)
     finals = "\n".join(answer.text for _, _, answer in checked)
-    assert "Wed 14 Oct 2026, 10:30" in finals  # "Room 2.14" is no amount
+    assert "Wed 14 Oct 2026 at 10:30" in finals  # the appointment and the fee paid at it keep their time
     assert "30 Nov 2026" in finals
     removed = sorted((name[:10], s.reason) for name, _, answer in checked for s in answer.removed)
     # review round 3: the one removal (a lead line dated by the CLI's own clock, as money_summary gave
     # no today) is gone with the re-recording, and "§ 81 Abs. 4 AufenthG" — a law Ordnung's own Ideas
     # state — is known, so no correct sentence is left out. Review round 4: one lead line goes — "(28 Sep –
     # 26 Oct 2026)" is today's date, which no record it cites holds, and a range end the model worked out
-    # itself (the prompt forbids both); the payments it leads keep their dates
-    assert removed == [("d4ed6ba701", "value")]
+    # itself (the prompt forbids both); the payments it leads keep their dates. The final re-recording (prompt
+    # version 6) left no sentence to remove
+    assert removed == []
     # final review 3: the residence-permit answers were recorded again and none names § 81 Abs. 4
     # AufenthG any more; it is still a law Ordnung's own Ideas state, so a sentence naming it stays
     known = TurnEvidence.from_results([], today=TODAY, catalog=known_laws())

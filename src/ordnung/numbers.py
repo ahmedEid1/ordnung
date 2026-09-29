@@ -738,7 +738,14 @@ def _day_of(doc: Document) -> str:
 
 
 def _newest_first(documents: Iterable[Document]) -> list[Document]:
-    return sorted(documents, key=lambda doc: (_day_of(doc), doc.created_at, doc.id), reverse=True)
+    """Newest letter first: by its date, then the day it arrived, then the day it was added, then its id.
+    A time of day is never compared: two letters of the same day added in the same minute came out in
+    either order, so a rebuilt demo (``ordnung demo --check``) could read another letter's label."""
+    return sorted(
+        documents,
+        key=lambda doc: (_day_of(doc), doc.received_date or "", doc.created_at[:10], doc.id),
+        reverse=True,
+    )
 
 
 def _sightings(data: NumbersInput) -> list[Sighting]:

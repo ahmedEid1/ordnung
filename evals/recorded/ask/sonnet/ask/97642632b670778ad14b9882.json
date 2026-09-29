@@ -1,0 +1,172 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2aadb4092dbc1eb33446f958a68304e8dcf6f7cd8dd9ef8a69500e0080f3437f\",\"question\":\"When does my Netflix subscription renew, and how much does it cost?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen does my Netflix subscription renew, and how much does it cost?\n"
+  },
+  "response": {
+    "text": "I couldn't find any Netflix contract or letter in your records — nothing in your contracts (active, cancelled, or ended) and no matching documents in a search for \"Netflix\". So I don't have a renewal date or cost for it in Ordnung.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 296,
+      "cache_read_tokens": 24091,
+      "cache_creation_tokens": 12523,
+      "cost_usd": 0.057882199999999995,
+      "duration_ms": 13811,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_contracts",
+      "input": {
+        "status": "active"
+      },
+      "tool_use_id": "toolu_01VRNYPbDWaBxdbhymm5uYAt"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"contracts\":[{\"id\":\"ctr_jgb50bejm6jd\",\"category\":\"employment\",\"status\":\"active\",\"party_id\":\"pty_h9easqrf81w1\",\"dates\":{\"regime\":\"employment622\",\"current_term_end\":\"2027-03-31\",\"confidence\":\"high\",\"earliest_exit\":\"2027-03-31\",\"summary\":\"This job's fixed term ends on Wed 31 Mar 2027: it ends then by itself, with no notice (§ 15 Abs. 1 TzBfG) — see if_not_cancelled for ending it earlier, for registering as job-seeking and for what makes it open-ended.\",\"notes\":[\"Notice of employment needs a hand-signed letter; email is not valid (§ 623 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"Its fixed term ends on Wed 31 Mar 2027. A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier by ordinary notice needs a notice clause in the contract or a collective agreement (§ 15 Abs. 4 TzBfG) — many have one, for example after the probation period; without one it can still end earlier by a written agreement with the employer (§ 623 BGB), or for a serious reason by notice without a notice period (§ 626 BGB). If you may claim unemployment benefit afterwards, register as job-seeking with the Agentur für Arbeit at least 3 months before it ends, or within 3 days of learning the end date if that is later (§ 38 Abs. 1 SGB III); registering late can block the benefit for a week (§ 159 Abs. 6 SGB III). If you keep working after that with the employer's knowledge and the employer does not object without delay, it continues with no fixed term (§ 15 Abs. 6 TzBfG).\",\"source_doc_id\":\"doc_q6fqvndrg5rr\",\"concluded_date\":\"2026-03-20\",\"start_date\":\"2026-04-01\",\"initial_term_months\":12,\"notice_basis\":\"any_time\",\"end_date\":\"2027-03-31\",\"is_consumer\":true},{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"status\":\"active\",\"party_id\":\"pty_wmevpbzhrm3e\",\"dates\":{\"regime\":\"bgb309_new\",\"confidence\":\"medium\",\"warnings\":[\"The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date.\"],\"earliest_exit\":\"2026-11-02\",\"summary\":\"You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_vy5abr6ejqnb\",\"concluded_date\":\"2025-12-10\",\"start_date\":\"2026-01-01\",\"renewal_term_months\":0,\"notice_basis\":\"end_of_month\",\"is_consumer\":true,\"cost\":{\"amount\":63.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":63.0}},{\"id\":\"ctr_15banyk4pc92\",\"category\":\"gym\",\"status\":\"active\",\"party_id\":\"pty_evgj0fa49fwt\",\"dates\":{\"regime\":\"bgb309_new\",\"confidence\":\"high\",\"earliest_exit\":\"2026-11-02\",\"summary\":\"You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_wc0nyn4ykedf\",\"concluded_date\":\"2025-01-02\",\"start_date\":\"2025-01-15\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"any_time\",\"is_consumer\":true,\"cost\":{\"amount\":29.9,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":29.9}},{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"dates\":{\"regime\":\"tkg56\",\"current_term_end\":\"2026-11-14\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"safe_date\":\"2026-10-14\",\"confidence\":\"high\",\"next_renewal\":\"2026-11-15\",\"earliest_exit\":\"2026-11-14\",\"summary\":\"To leave when the term ends on Sat 14 Nov 2026, your cancellation must arrive by Wed 14 Oct 2026 — send it by Thu 8 Oct; otherwise it continues.\",\"notes\":[\"After the minimum term you can cancel any day with one month's notice, at no cost (§ 56 Abs. 3, 4 TKG).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_wtjskffj1vfq\",\"concluded_date\":\"2024-11-11\",\"start_date\":\"2024-11-15\",\"initial_term_months\":24,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"is_consumer\":true,\"cost\":{\"amount\":34.99,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":34.99}},{\"id\":\"ctr_611d1sk7v1cr\",\"category\":\"bank\",\"status\":\"active\",\"party_id\":\"pty_ejzv2rmp31km\",\"dates\":{\"regime\":\"as_written\",\"confidence\":\"low\",\"warnings\":[\"No special consumer rule applies that we know of, so we used the contract's own terms.\",\"The contract's notice period is missing.\"],\"summary\":\"We couldn't compute a cancellation date: the contract's notice period is missing.\",\"notes\":[\"These dates follow the contract's own terms — please check them against the contract.\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_0b2t88kqsf2n\",\"notice_basis\":\"any_time\",\"is_consumer\":true,\"cost\":{\"amount\":4.9,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":4.9}},{\"id\":\"ctr_cn37n9vr2a9b\",\"category\":\"insurance\",\"status\":\"active\",\"party_id\":\"pty_eatxsexnt9s3\",\"dates\":{\"regime\":\"sgbv175\",\"cancel_by\":\"2026-09-30\",\"send_by\":\"2026-09-28\",\"safe_date\":\"2026-09-30\",\"confidence\":\"medium\",\"warnings\":[\"The membership start wasn't found; the 12-month minimum membership may still apply.\",\"The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today.\"],\"earliest_exit\":\"2026-11-30\",\"summary\":\"To leave on Mon 30 Nov 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.\",\"notes\":[\"Switching insurer? Just join the new one: its notice to your current insurer replaces your own cancellation (§ 175 Abs. 2, 4 SGB V).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_9t9tmrv1ypba\",\"is_consumer\":true,\"cost\":{\"amount\":156.55,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":156.55}},{\"id\":\"ctr_y2hc77av3ps4\",\"category\":\"rent\",\"status\":\"active\",\"party_id\":\"pty_4by2mq3ac4sk\",\"dates\":{\"regime\":\"rent573c\",\"cancel_by\":\"2026-10-05\",\"send_by\":\"2026-09-29\",\"safe_date\":\"2026-10-05\",\"confidence\":\"high\",\"warnings\":[\"A tenant's notice period can't be longer than the law's (§ 573c Abs. 4 BGB), so we used the statutory one. Check your lease for an agreed minimum term (Kündigungsverzicht).\"],\"earliest_exit\":\"2026-12-31\",\"summary\":\"To leave on Thu 31 Dec 2026, your notice must arrive by Mon 5 Oct 2026 (the 3rd working day of October); send it by Tue 29 Sep.\",\"notes\":[\"Notice on a flat needs a hand-signed letter; email or fax is not valid (§ 568 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_drnw4v8g9856\",\"concluded_date\":\"2025-09-15\",\"start_date\":\"2025-10-01\",\"renewal_term_months\":0,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_month\",\"is_consumer\":true,\"cost\":{\"amount\":640.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":640.0}},{\"id\":\"ctr_w97tm6xhn7zw\",\"category\":\"insurance\",\"status\":\"active\",\"party_id\":\"pty_re9nde1xqtfn\",\"dates\":{\"regime\":\"vvg11\",\"current_term_end\":\"2026-11-30\",\"cancel_by\":\"2027-08-31\",\"send_by\":\"2027-08-25\",\"safe_date\":\"2027-08-31\",\"confidence\":\"high\",\"next_renewal\":\"2026-12-01\",\"earliest_exit\":\"2027-11-30\",\"summary\":\"The deadline for the current term (Mon 31 Aug 2026) has passed, so it renews on Tue 1 Dec 2026; to leave when the term ends on Tue 30 Nov 2027, your cancellation must arrive by Tue 31 Aug 2027 — send it by Wed 25 Aug; otherwise it renews.\",\"notes\":[\"Insurance renews for at most a year at a time; notice must be 1–3 months before the insurance year ends (§ 11 VVG).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It renews for 12 months unless it is cancelled in time.\",\"source_doc_id\":\"doc_tszxajp80vd5\",\"start_date\":\"2023-12-01\",\"initial_term_months\":12,\"renewal_term_months\":12,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"is_consumer\":true,\"cost\":{\"amount\":59.9,\"currency\":\"EUR\",\"interval\":\"yearly\",\"monthly\":4.99}},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"status\":\"active\",\"party_id\":\"pty_fh8cf155ffm3\",\"dates\":{\"regime\":\"bgb309_new\",\"current_term_end\":\"2026-09-30\",\"confidence\":\"high\",\"warnings\":[\"Some providers count the notice only from the end of the minimum term; then the contract would end on Sun 1 Nov 2026.\"],\"next_renewal\":\"2026-10-01\",\"earliest_exit\":\"2026-11-02\",\"summary\":\"After the minimum term (until Wed 30 Sep 2026) you can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\",\"For electricity and gas contracts these consumer rules apply where the terms are worse than basic supply (§ 310 Abs. 2 BGB) — minimum terms and renewals usually are. District heating is different (AVBFernwärmeV: up to 9 months' notice): if this is heating, check the contract.\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_245408s5e3ga\",\"concluded_date\":\"2025-09-16\",\"start_date\":\"2025-10-01\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"end_date\":\"2026-09-30\",\"is_consumer\":true,\"cost\":{\"amount\":48.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":48.0}}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_jgb50bejm6jd\":{\"customer_number\":\"10482\",\"name\":\"Befristeter Arbeitsvertrag für Werkstudierende\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"ctr_cmeadtk38mac\":{\"customer_number\":\"DT-2025-3304719\",\"name\":\"Deutschlandticket Abonnement\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"ctr_15banyk4pc92\":{\"customer_number\":\"FW-10457\",\"name\":\"FitWell Flex 12 (Studenten) Gym Membership\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"ctr_fyt9k994t9q2\":{\"customer_number\":\"FN-88213407\",\"name\":\"FunkNetz Smart M\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_611d1sk7v1cr\":{\"customer_number\":\"7004 1128\",\"name\":\"Girokonto Klassik\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"ctr_cn37n9vr2a9b\":{\"customer_number\":\"R482019379\",\"name\":\"Kranken- und Pflegeversicherung bei der Muster BKK\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"ctr_y2hc77av3ps4\":{\"customer_number\":\"MV-2025-0412\",\"name\":\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"ctr_w97tm6xhn7zw\":{\"customer_number\":\"K 2231 0917\",\"name\":\"Privat-Haftpflichtversicherung (Tarif Basis Single)\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"ctr_bbzemyapzvm5\":{\"customer_number\":\"2004711\",\"name\":\"Stromliefervertrag MusterStrom Flex\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01VRNYPbDWaBxdbhymm5uYAt"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Netflix"
+      },
+      "tool_use_id": "toolu_016j3KgYqd5Vk1Ck8cNXPVUb"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_016j3KgYqd5Vk1Ck8cNXPVUb"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_contracts",
+      "input": {
+        "status": "all"
+      },
+      "tool_use_id": "toolu_01Nntavmu9xxLESHYCpbHEkn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"contracts\":[{\"id\":\"ctr_jgb50bejm6jd\",\"category\":\"employment\",\"status\":\"active\",\"party_id\":\"pty_h9easqrf81w1\",\"dates\":{\"regime\":\"employment622\",\"current_term_end\":\"2027-03-31\",\"confidence\":\"high\",\"earliest_exit\":\"2027-03-31\",\"summary\":\"This job's fixed term ends on Wed 31 Mar 2027: it ends then by itself, with no notice (§ 15 Abs. 1 TzBfG) — see if_not_cancelled for ending it earlier, for registering as job-seeking and for what makes it open-ended.\",\"notes\":[\"Notice of employment needs a hand-signed letter; email is not valid (§ 623 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"Its fixed term ends on Wed 31 Mar 2027. A fixed-term job ends then by itself, with no notice (§ 15 Abs. 1 TzBfG). Ending it earlier by ordinary notice needs a notice clause in the contract or a collective agreement (§ 15 Abs. 4 TzBfG) — many have one, for example after the probation period; without one it can still end earlier by a written agreement with the employer (§ 623 BGB), or for a serious reason by notice without a notice period (§ 626 BGB). If you may claim unemployment benefit afterwards, register as job-seeking with the Agentur für Arbeit at least 3 months before it ends, or within 3 days of learning the end date if that is later (§ 38 Abs. 1 SGB III); registering late can block the benefit for a week (§ 159 Abs. 6 SGB III). If you keep working after that with the employer's knowledge and the employer does not object without delay, it continues with no fixed term (§ 15 Abs. 6 TzBfG).\",\"source_doc_id\":\"doc_q6fqvndrg5rr\",\"concluded_date\":\"2026-03-20\",\"start_date\":\"2026-04-01\",\"initial_term_months\":12,\"notice_basis\":\"any_time\",\"end_date\":\"2027-03-31\",\"is_consumer\":true},{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"status\":\"active\",\"party_id\":\"pty_wmevpbzhrm3e\",\"dates\":{\"regime\":\"bgb309_new\",\"confidence\":\"medium\",\"warnings\":[\"The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date.\"],\"earliest_exit\":\"2026-11-02\",\"summary\":\"You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_vy5abr6ejqnb\",\"concluded_date\":\"2025-12-10\",\"start_date\":\"2026-01-01\",\"renewal_term_months\":0,\"notice_basis\":\"end_of_month\",\"is_consumer\":true,\"cost\":{\"amount\":63.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":63.0}},{\"id\":\"ctr_15banyk4pc92\",\"category\":\"gym\",\"status\":\"active\",\"party_id\":\"pty_evgj0fa49fwt\",\"dates\":{\"regime\":\"bgb309_new\",\"confidence\":\"high\",\"earliest_exit\":\"2026-11-02\",\"summary\":\"You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_wc0nyn4ykedf\",\"concluded_date\":\"2025-01-02\",\"start_date\":\"2025-01-15\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"any_time\",\"is_consumer\":true,\"cost\":{\"amount\":29.9,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":29.9}},{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"dates\":{\"regime\":\"tkg56\",\"current_term_end\":\"2026-11-14\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"safe_date\":\"2026-10-14\",\"confidence\":\"high\",\"next_renewal\":\"2026-11-15\",\"earliest_exit\":\"2026-11-14\",\"summary\":\"To leave when the term ends on Sat 14 Nov 2026, your cancellation must arrive by Wed 14 Oct 2026 — send it by Thu 8 Oct; otherwise it continues.\",\"notes\":[\"After the minimum term you can cancel any day with one month's notice, at no cost (§ 56 Abs. 3, 4 TKG).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_wtjskffj1vfq\",\"concluded_date\":\"2024-11-11\",\"start_date\":\"2024-11-15\",\"initial_term_months\":24,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"is_consumer\":true,\"cost\":{\"amount\":34.99,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":34.99}},{\"id\":\"ctr_611d1sk7v1cr\",\"category\":\"bank\",\"status\":\"active\",\"party_id\":\"pty_ejzv2rmp31km\",\"dates\":{\"regime\":\"as_written\",\"confidence\":\"low\",\"warnings\":[\"No special consumer rule applies that we know of, so we used the contract's own terms.\",\"The contract's notice period is missing.\"],\"summary\":\"We couldn't compute a cancellation date: the contract's notice period is missing.\",\"notes\":[\"These dates follow the contract's own terms — please check them against the contract.\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_0b2t88kqsf2n\",\"notice_basis\":\"any_time\",\"is_consumer\":true,\"cost\":{\"amount\":4.9,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":4.9}},{\"id\":\"ctr_cn37n9vr2a9b\",\"category\":\"insurance\",\"status\":\"active\",\"party_id\":\"pty_eatxsexnt9s3\",\"dates\":{\"regime\":\"sgbv175\",\"cancel_by\":\"2026-09-30\",\"send_by\":\"2026-09-28\",\"safe_date\":\"2026-09-30\",\"confidence\":\"medium\",\"warnings\":[\"The membership start wasn't found; the 12-month minimum membership may still apply.\",\"The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today.\"],\"earliest_exit\":\"2026-11-30\",\"summary\":\"To leave on Mon 30 Nov 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.\",\"notes\":[\"Switching insurer? Just join the new one: its notice to your current insurer replaces your own cancellation (§ 175 Abs. 2, 4 SGB V).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_9t9tmrv1ypba\",\"is_consumer\":true,\"cost\":{\"amount\":156.55,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":156.55}},{\"id\":\"ctr_y2hc77av3ps4\",\"category\":\"rent\",\"status\":\"active\",\"party_id\":\"pty_4by2mq3ac4sk\",\"dates\":{\"regime\":\"rent573c\",\"cancel_by\":\"2026-10-05\",\"send_by\":\"2026-09-29\",\"safe_date\":\"2026-10-05\",\"confidence\":\"high\",\"warnings\":[\"A tenant's notice period can't be longer than the law's (§ 573c Abs. 4 BGB), so we used the statutory one. Check your lease for an agreed minimum term (Kündigungsverzicht).\"],\"earliest_exit\":\"2026-12-31\",\"summary\":\"To leave on Thu 31 Dec 2026, your notice must arrive by Mon 5 Oct 2026 (the 3rd working day of October); send it by Tue 29 Sep.\",\"notes\":[\"Notice on a flat needs a hand-signed letter; email or fax is not valid (§ 568 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_drnw4v8g9856\",\"concluded_date\":\"2025-09-15\",\"start_date\":\"2025-10-01\",\"renewal_term_months\":0,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_month\",\"is_consumer\":true,\"cost\":{\"amount\":640.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":640.0}},{\"id\":\"ctr_w97tm6xhn7zw\",\"category\":\"insurance\",\"status\":\"active\",\"party_id\":\"pty_re9nde1xqtfn\",\"dates\":{\"regime\":\"vvg11\",\"current_term_end\":\"2026-11-30\",\"cancel_by\":\"2027-08-31\",\"send_by\":\"2027-08-25\",\"safe_date\":\"2027-08-31\",\"confidence\":\"high\",\"next_renewal\":\"2026-12-01\",\"earliest_exit\":\"2027-11-30\",\"summary\":\"The deadline for the current term (Mon 31 Aug 2026) has passed, so it renews on Tue 1 Dec 2026; to leave when the term ends on Tue 30 Nov 2027, your cancellation must arrive by Tue 31 Aug 2027 — send it by Wed 25 Aug; otherwise it renews.\",\"notes\":[\"Insurance renews for at most a year at a time; notice must be 1–3 months before the insurance year ends (§ 11 VVG).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\"]},\"if_not_cancelled\":\"It renews for 12 months unless it is cancelled in time.\",\"source_doc_id\":\"doc_tszxajp80vd5\",\"start_date\":\"2023-12-01\",\"initial_term_months\":12,\"renewal_term_months\":12,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"is_consumer\":true,\"cost\":{\"amount\":59.9,\"currency\":\"EUR\",\"interval\":\"yearly\",\"monthly\":4.99}},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"status\":\"active\",\"party_id\":\"pty_fh8cf155ffm3\",\"dates\":{\"regime\":\"bgb309_new\",\"current_term_end\":\"2026-09-30\",\"confidence\":\"high\",\"warnings\":[\"Some providers count the notice only from the end of the minimum term; then the contract would end on Sun 1 Nov 2026.\"],\"next_renewal\":\"2026-10-01\",\"earliest_exit\":\"2026-11-02\",\"summary\":\"After the minimum term (until Wed 30 Sep 2026) you can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.\",\"notes\":[\"After the first term the contract only continues indefinitely, and you can then cancel any day with at most one month's notice (§ 309 Nr. 9 BGB).\",\"Cancellations count when they arrive, not when they are sent (§ 130 BGB).\",\"For electricity and gas contracts these consumer rules apply where the terms are worse than basic supply (§ 310 Abs. 2 BGB) — minimum terms and renewals usually are. District heating is different (AVBFernwärmeV: up to 9 months' notice): if this is heating, check the contract.\"]},\"if_not_cancelled\":\"It continues with no fixed term and can then be cancelled at any time with its notice period.\",\"source_doc_id\":\"doc_245408s5e3ga\",\"concluded_date\":\"2025-09-16\",\"start_date\":\"2025-10-01\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"end_date\":\"2026-09-30\",\"is_consumer\":true,\"cost\":{\"amount\":48.0,\"currency\":\"EUR\",\"interval\":\"monthly\",\"monthly\":48.0}}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_jgb50bejm6jd\":{\"customer_number\":\"10482\",\"name\":\"Befristeter Arbeitsvertrag für Werkstudierende\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"ctr_cmeadtk38mac\":{\"customer_number\":\"DT-2025-3304719\",\"name\":\"Deutschlandticket Abonnement\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"ctr_15banyk4pc92\":{\"customer_number\":\"FW-10457\",\"name\":\"FitWell Flex 12 (Studenten) Gym Membership\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"ctr_fyt9k994t9q2\":{\"customer_number\":\"FN-88213407\",\"name\":\"FunkNetz Smart M\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_611d1sk7v1cr\":{\"customer_number\":\"7004 1128\",\"name\":\"Girokonto Klassik\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"ctr_cn37n9vr2a9b\":{\"customer_number\":\"R482019379\",\"name\":\"Kranken- und Pflegeversicherung bei der Muster BKK\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"ctr_y2hc77av3ps4\":{\"customer_number\":\"MV-2025-0412\",\"name\":\"Mietvertrag Wohnung 05-2-03, Beispielweg 5\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"ctr_w97tm6xhn7zw\":{\"customer_number\":\"K 2231 0917\",\"name\":\"Privat-Haftpflichtversicherung (Tarif Basis Single)\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"ctr_bbzemyapzvm5\":{\"customer_number\":\"2004711\",\"name\":\"Stromliefervertrag MusterStrom Flex\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Nntavmu9xxLESHYCpbHEkn"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find any"
+    },
+    {
+      "type": "text",
+      "text": " Netflix contract or"
+    },
+    {
+      "type": "text",
+      "text": " letter in your"
+    },
+    {
+      "type": "text",
+      "text": " records —"
+    },
+    {
+      "type": "text",
+      "text": " nothing in your"
+    },
+    {
+      "type": "text",
+      "text": " contracts ("
+    },
+    {
+      "type": "text",
+      "text": "active,"
+    },
+    {
+      "type": "text",
+      "text": " c"
+    },
+    {
+      "type": "text",
+      "text": "ancelled, or ended)"
+    },
+    {
+      "type": "text",
+      "text": " and"
+    },
+    {
+      "type": "text",
+      "text": " no mat"
+    },
+    {
+      "type": "text",
+      "text": "ching documents in"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " search for"
+    },
+    {
+      "type": "text",
+      "text": " \"Netflix\"."
+    },
+    {
+      "type": "text",
+      "text": " So"
+    },
+    {
+      "type": "text",
+      "text": " I don't have a ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal date or cost for it"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any Netflix contract or letter in your records — nothing in your contracts (active, cancelled, or ended) and no matching documents in a search for \"Netflix\". So I don't have a renewal date or cost for it in Ordnung.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 296,
+          "cache_read_tokens": 24091,
+          "cache_creation_tokens": 12523,
+          "cost_usd": 0.057882199999999995,
+          "duration_ms": 13811,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

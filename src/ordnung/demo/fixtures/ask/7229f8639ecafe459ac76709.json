@@ -1,0 +1,280 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "6+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"9adb3c1bb34fb455c23107cb31b697dd038fca97ab1711c0ed713f57309cd430\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are the deadlines due in October:\n\n- **Return overdue library items** to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0], due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Fees rise if not returned, and the account can be blocked once fees reach a certain amount — check the letter [doc:doc_5c5axexztnw6] for details.\n- **Objection (Widerspruch) deadline** against a contribution assessment from Muster BKK [party:pty_eatxsexnt9s3], due Wed 14 Oct 2026, and it should be sent by Thu 8 Oct 2026 to arrive in time [item:itm_tj3z83ve4hfg]. Note: even if you object, the assessed contribution must still be paid in the meantime, per the letter [doc:doc_9t9tmrv1ypba].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 564,
+      "cache_read_tokens": 11932,
+      "cache_creation_tokens": 2287,
+      "cost_usd": 0.0171824,
+      "duration_ms": 9229,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "deadline",
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31"
+      },
+      "tool_use_id": "toolu_01K9D74Kv8kMoeXbZxj7NH9m"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"contract_id\":\"ctr_cn37n9vr2a9b\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return the two overdue items (Einführung in die Statistik mit R; Deutsch im Alltag B2 – Übungsbuch) to the library, e.g. via the return box or service desk.\",\"consequence\":\"Fees increase by 0,50 € per item per opening day after the deadline, and the account is blocked for further loans once fees reach 10,00 €.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Objection (Widerspruch) period against contribution assessment\",\"action\":\"File a written or electronic objection (Widerspruch) with Muster BKK if you disagree with the contribution assessment.\",\"consequence\":\"The objection does not have suspensive effect; the contribution must still be paid at the assessed amount in the meantime.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01K9D74Kv8kMoeXbZxj7NH9m"
+    },
+    {
+      "type": "text",
+      "text": "Here are the"
+    },
+    {
+      "type": "text",
+      "text": " deadlines due"
+    },
+    {
+      "type": "text",
+      "text": " in October:"
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Return overdue library items"
+    },
+    {
+      "type": "text",
+      "text": "** to Stadtbib"
+    },
+    {
+      "type": "text",
+      "text": "liothek Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t ["
+    },
+    {
+      "type": "text",
+      "text": "party:pty_d2"
+    },
+    {
+      "type": "text",
+      "text": "ymm5s3htd0"
+    },
+    {
+      "type": "text",
+      "text": "], due Fri 2 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026 ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_ghq"
+    },
+    {
+      "type": "text",
+      "text": "58jjdz149]."
+    },
+    {
+      "type": "text",
+      "text": " F"
+    },
+    {
+      "type": "text",
+      "text": "ees r"
+    },
+    {
+      "type": "text",
+      "text": "ise if not returned,"
+    },
+    {
+      "type": "text",
+      "text": " and the account can"
+    },
+    {
+      "type": "text",
+      "text": " be blocked once fees re"
+    },
+    {
+      "type": "text",
+      "text": "ach a"
+    },
+    {
+      "type": "text",
+      "text": " cert"
+    },
+    {
+      "type": "text",
+      "text": "ain am"
+    },
+    {
+      "type": "text",
+      "text": "ount —"
+    },
+    {
+      "type": "text",
+      "text": " check"
+    },
+    {
+      "type": "text",
+      "text": " the letter ["
+    },
+    {
+      "type": "text",
+      "text": "doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_5c5axex"
+    },
+    {
+      "type": "text",
+      "text": "ztnw6] for details"
+    },
+    {
+      "type": "text",
+      "text": ".\n- **Objection ("
+    },
+    {
+      "type": "text",
+      "text": "Widerspruch) de"
+    },
+    {
+      "type": "text",
+      "text": "adline** against a"
+    },
+    {
+      "type": "text",
+      "text": " contribution assessment from"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK [party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_eatxs"
+    },
+    {
+      "type": "text",
+      "text": "exnt9s3], due"
+    },
+    {
+      "type": "text",
+      "text": " Wed 14 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026,"
+    },
+    {
+      "type": "text",
+      "text": " and"
+    },
+    {
+      "type": "text",
+      "text": " it should be sent by Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 to"
+    },
+    {
+      "type": "text",
+      "text": " arrive in"
+    },
+    {
+      "type": "text",
+      "text": " time [item:itm_t"
+    },
+    {
+      "type": "text",
+      "text": "j3z83ve4h"
+    },
+    {
+      "type": "text",
+      "text": "fg]. Note:"
+    },
+    {
+      "type": "text",
+      "text": " even if"
+    },
+    {
+      "type": "text",
+      "text": " you object, the ass"
+    },
+    {
+      "type": "text",
+      "text": "essed contribution must"
+    },
+    {
+      "type": "text",
+      "text": " still be paid in the meant"
+    },
+    {
+      "type": "text",
+      "text": "ime,"
+    },
+    {
+      "type": "text",
+      "text": " per the letter ["
+    },
+    {
+      "type": "text",
+      "text": "doc:doc_9t"
+    },
+    {
+      "type": "text",
+      "text": "9tmrv1yp"
+    },
+    {
+      "type": "text",
+      "text": "ba]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are the deadlines due in October:\n\n- **Return overdue library items** to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0], due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Fees rise if not returned, and the account can be blocked once fees reach a certain amount — check the letter [doc:doc_5c5axexztnw6] for details.\n- **Objection (Widerspruch) deadline** against a contribution assessment from Muster BKK [party:pty_eatxsexnt9s3], due Wed 14 Oct 2026, and it should be sent by Thu 8 Oct 2026 to arrive in time [item:itm_tj3z83ve4hfg]. Note: even if you object, the assessed contribution must still be paid in the meantime, per the letter [doc:doc_9t9tmrv1ypba].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 564,
+          "cache_read_tokens": 11932,
+          "cache_creation_tokens": 2287,
+          "cost_usd": 0.0171824,
+          "duration_ms": 9229,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

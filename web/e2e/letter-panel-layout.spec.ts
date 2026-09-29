@@ -67,7 +67,7 @@ test.describe("phone 320 px: the letter panel", () => {
   });
 
   test("the contract card keeps its name and price inside the card", async ({ page }) => {
-    await openLetter(page, /Health Insurance Contribution/);
+    await openLetter(page, /Health and Long-Term Care Insurance Contribution/);
     const card = page.getByRole("region", { name: "Contract" }).locator(".card").first();
     const box = (await card.boundingBox())!;
     const inside = await card.evaluate((el) => {

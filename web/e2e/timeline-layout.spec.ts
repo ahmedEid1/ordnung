@@ -95,12 +95,12 @@ test("a lane marker highlights its own row, not another bill of the same day", a
   // objection deadline a day earlier), while the electricity instalment is due the same day in Home
   await open(page, "/timeline?type=payment", "Timeline");
   await lanes(page)
-    .getByRole("button", { name: /Monthly health & nursing care insurance contribution/ })
+    .getByRole("button", { name: /Monthly health and long-term care insurance contribution/ })
     .first()
     .click();
   const row = list(page).locator("li[data-entry-id]").filter({ has: page.locator("[class*='bg-marker']") });
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText("Monthly health & nursing care insurance contribution");
+  await expect(row).toContainText("Monthly health and long-term care insurance contribution");
 });
 
 test("the area filter judges each mark by its own area: Getting around shows its contract and its payments in its own lane", async ({ page }) => {

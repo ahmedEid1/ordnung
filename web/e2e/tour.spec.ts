@@ -58,9 +58,9 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
 
   // ---- the evidence: the sentence the deadline comes from, highlighted -------------------
   const todos = page.getByRole("region", { name: /^To-dos & dates/ });
-  const objection = todos.getByRole("listitem").filter({ hasText: "Objection deadline (Einspruchsfrist)" });
+  const objection = todos.getByRole("listitem").filter({ hasText: "File objection (Einspruch) if you disagree with the assessment" });
   await expect(objection.locator("time", { hasText: "Wed 21 Oct" })).toBeVisible();
-  await objection.getByRole("button", { name: /show “Objection deadline \(Einspruchsfrist\)” on the page/ }).click();
+  await objection.getByRole("button", { name: /show “File objection \(Einspruch\) if you disagree with the assessment” on the page/ }).click();
   const evidence = page.getByRole("region", { name: "Letter pages" }).getByTestId("evidence-quote");
   await expect(evidence).toBeVisible();
   // a phone photo has no text layer: the quote is shown highlighted, labelled as read by AI

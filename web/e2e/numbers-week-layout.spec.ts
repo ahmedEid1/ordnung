@@ -56,7 +56,7 @@ for (const width of [320, 390, 768, 1280, 1920]) {
     const box = await show.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(24);
     await show.click();
-    await expect(page.getByRole("main").getByText("57 216 480 393")).toBeVisible();
+    await expect(page.getByRole("main").getByText("57 216 480 354")).toBeVisible();
     expect(await outOfBounds(page)).toEqual([]);
 
     await open(page, "/numbers?tab=organisations", "My numbers");
