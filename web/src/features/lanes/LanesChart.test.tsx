@@ -4,6 +4,7 @@ import type { Lane } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { renderWithProviders } from "@/test/render";
 import { LanesChart, labelColumnWidth } from "./LanesChart";
+import { LANE_METRICS } from "./layout";
 
 const TODAY = "2026-09-28";
 const RANGE = { from: "2026-06-01", to: "2027-09-30" };
@@ -200,6 +201,49 @@ describe("LanesChart", () => {
     expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Contract b\./);
     fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
     expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Contract c\./);
+  });
+
+  it("draws a lane's to-dos that fall on a bar on a rail row of their own, reached with ↓ (the demo's appointment over the permit)", () => {
+    const item = (id: string) => ({ type: "item", id });
+    const lanes: Lane[] = [
+      {
+        id: "residence",
+        label: "Residence permit",
+        area: "residence",
+        bars: [
+          {
+            id: "permit",
+            label: "Residence permit",
+            start: "2026-09-16",
+            end: "2026-11-30",
+            kind: "validity",
+            status: "attention",
+            markers: [{ date: "2026-11-30", label: "Expires", kind: "expiry", ref: item("itm_permit") }],
+            ref: item("itm_permit"),
+          },
+        ],
+        markers: [
+          { date: "2026-10-14", label: "Residence permit extension appointment", kind: "appointment", ref: item("itm_appt") },
+          { date: "2026-10-19", label: "Cancel appointment if you cannot attend", kind: "deadline", ref: item("itm_cancel") },
+        ],
+      },
+    ];
+    renderChart({ lanes });
+    const permit = screen.getByRole("button", { name: /^Residence permit\./ });
+    const todo = screen.getByRole("button", { name: /^Cancel appointment if you cannot attend · Mon 19 Oct, in 21 days; Residence permit extension appointment/ });
+    // its own row: below the bar, on a hairline rail — never on the permit's button
+    expect(todo.getAttribute("data-mark-row")).toBe("1");
+    expect(permit.getAttribute("data-mark-row")).toBe("0");
+    // (a mark's `top` is its centre, its 24 px target reaches 12 px up; a bar's `top` is its top edge)
+    expect(parseFloat(todo.style.top) - 12).toBeGreaterThanOrEqual(parseFloat(permit.style.top) + LANE_METRICS.barHeight);
+    const rails = screen.getAllByTestId("lanes-rail");
+    expect(rails).toHaveLength(1);
+    expect(rails[0]!.style.top).toBe(todo.style.top);
+    // each mark says which day it stands for (its most important date): a stable anchor for the page's tests
+    expect(todo.getAttribute("data-mark-date")).toBe("2026-10-19");
+    permit.focus();
+    fireEvent.keyDown(permit, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(todo);
   });
 
   it("never gives an open-ended bar an end date", () => {
