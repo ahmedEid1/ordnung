@@ -42,6 +42,7 @@ from ordnung.ingest.verify import (
     parse_amounts,
     parse_dates,
     spec_consistency,
+    working_day_consistency,
 )
 from ordnung.models import (
     DOCUMENT_KINDS,
@@ -59,7 +60,6 @@ from ordnung.models import (
     LetterKind,
     Party,
     PaymentDetails,
-    Recurrence,
     Remedy,
 )
 from ordnung.payments import is_collected_or_incoming, pays_on_site
@@ -69,6 +69,7 @@ from ordnung.recurrence import (
     first_scheduled,
     keeps_later_date,
     roll_forward,
+    rule_working_day,
     same_rule,
     same_schedule,
 )
@@ -145,8 +146,9 @@ class VerifiedItem:
 
     @property
     def dated(self) -> bool:
-        """Whether the item describes a date (fixed or relative)."""
-        return self.item.date.type != "none"
+        """Whether the item describes a date: fixed or relative, or the working day its recurrence dates
+        each month by (:func:`~ordnung.recurrence.rule_working_day`, point 8)."""
+        return self.item.date.type != "none" or rule_working_day(self.item.recurrence) is not None
 
     @property
     def needs_check(self) -> bool:
@@ -212,11 +214,22 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
 
 
 def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tuple[str, ...]:
-    """Why the item's quote doesn't state its DateSpec or amount — values written elsewhere in the
-    letter excepted (the same grading when a letter is read and when its dates are recomputed)."""
-    if item.date.type == "none" and item.amount is None:
-        return ()
-    _, found = spec_consistency(item.quote, item.date, item.amount)
+    """Why the item's quote doesn't state its DateSpec, amount or working day — a date or amount written
+    elsewhere in the letter excepted (the same grading when a letter is read and when its dates are
+    recomputed).
+
+    A working day (``recurrence.working_day``) counts only when the quote names that ordinal
+    (:func:`~ordnung.ingest.verify.working_day_consistency`); otherwise the reason is
+    ``WORKING_DAY_NOT_IN_QUOTE``, and as with every reason the item's evidence is not
+    ``value_consistent`` (the to-do is "Please check" and never shown as confirmed by the letter) and
+    its receipt is one confidence level lower, with the reason's note (:func:`~ordnung.ingest.verify.
+    grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
+    working day still dates the to-do (:mod:`ordnung.recurrence`, point 8)."""
+    found: list[str] = []
+    if item.date.type != "none" or item.amount is not None:
+        found = spec_consistency(item.quote, item.date, item.amount)[1]
+    working_day = item.recurrence.working_day if item.recurrence is not None else None
+    found += working_day_consistency(item.quote, working_day)
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 
@@ -861,11 +874,6 @@ def filed_kind(reading: DocumentExtraction, corrected: dict[str, Any]) -> Letter
     return kind
 
 
-def _rule(item: ExtractedItem) -> Recurrence | None:
-    """The rule a reading gives its to-do, as the ledger keeps it (a reading gives no working day yet)."""
-    return None if item.recurrence is None else Recurrence.model_validate(item.recurrence.model_dump())
-
-
 def _item_fields(
     verified: VerifiedItem,
     computed: ComputedDate,
@@ -887,7 +895,7 @@ def _item_fields(
         "amount": item.amount,
         "currency": item.currency,
         "direction": item.direction,
-        "recurrence": _rule(item),
+        "recurrence": item.recurrence,
         "priority": item.priority,
         "area": extraction.area,
         "party_id": links.party.id if links.party else None,
@@ -921,9 +929,9 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
         return True
     if same_amount and item.amount != new.amount:
         return False
-    if same_schedule(item, _rule(new), new.date):
+    if same_schedule(item, new.recurrence, new.date):
         return True
-    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, _rule(new))
+    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, new.recurrence)
 
 
 def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
@@ -1005,7 +1013,7 @@ def write_items(
             item_ctx = for_item(ctx, new, note, links.contract)
             action: facts.PlanAction = "created" if existing is None else "updated"
             if existing is not None and keeps_later_date(
-                existing, _rule(new), new.date, result.due_date, item_ctx
+                existing, new.recurrence, new.date, result.due_date, item_ctx
             ):
                 reading = existing.model_copy(update=fields)
                 kept = at_occurrence(

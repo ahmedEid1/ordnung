@@ -4669,13 +4669,7 @@ export interface components {
              */
             cost_usd: number;
         };
-        /**
-         * Recurrence
-         * @description How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
-         *     each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3), for a rule in months
-         *     or years; Ordnung computes each month's date from it (ordnung.recurrence, point 8). A reading gives
-         *     none yet (:class:`ExtractedRecurrence`).
-         */
+        /** Recurrence */
         "Recurrence-Input": {
             /**
              * Interval
@@ -4688,16 +4682,13 @@ export interface components {
              * @enum {string}
              */
             unit?: "days" | "weeks" | "months" | "years";
-            /** Working Day */
+            /**
+             * Working Day
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             */
             working_day?: number | null;
         };
-        /**
-         * Recurrence
-         * @description How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
-         *     each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3), for a rule in months
-         *     or years; Ordnung computes each month's date from it (ordnung.recurrence, point 8). A reading gives
-         *     none yet (:class:`ExtractedRecurrence`).
-         */
+        /** Recurrence */
         "Recurrence-Output": {
             /**
              * Interval
@@ -4710,7 +4701,10 @@ export interface components {
              * @enum {string}
              */
             unit: "days" | "weeks" | "months" | "years";
-            /** Working Day */
+            /**
+             * Working Day
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             */
             working_day: number | null;
         };
         /** RefLink */

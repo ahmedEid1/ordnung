@@ -50,7 +50,10 @@ limits, not bugs):
    confidence level lower (``medium`` at most) and with a warning to check the lease — until the person
    gives it a date, which replaces the law's for every month (point 2; a later one says so on its
    receipt: :func:`over_the_law`). The same schedule read with the working day the law gave it is the
-   same schedule (point 6). A rule in days or weeks has no working day.
+   same schedule (point 6). A rule in days or weeks has no working day. A working day the reading gives
+   dates the item even when the item's quote doesn't name it, but then one confidence level lower, with
+   a note to check it, and the item is "Please check" (``WORKING_DAY_NOT_IN_QUOTE``:
+   :func:`~ordnung.ingest.plan.consistency_reasons`).
 """
 
 from __future__ import annotations
@@ -164,6 +167,12 @@ def _steps(rule: Recurrence) -> tuple[int, str, int | None]:
     if rule.unit == "weeks":
         return 7 * interval, "days", None
     return interval, rule.unit, rule.working_day if rule.unit == "months" else None
+
+
+def rule_working_day(rule: Recurrence | None) -> int | None:
+    """The working day a rule dates its months by (point 8): its own in months or years, none in days or
+    weeks (and none without a rule)."""
+    return None if rule is None else _steps(rule)[2]
 
 
 def same_rule(first: Recurrence | None, second: Recurrence | None) -> bool:

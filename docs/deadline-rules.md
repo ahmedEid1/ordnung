@@ -881,7 +881,8 @@ expressly left open whether the period extends to Monday when the 3rd Werktag it
 **Paying rent** (`bgb_556b`, § 556b Abs. 1 BGB) is a different rule: rent is due in advance, at the
 latest by the 3rd working day of each month, and here Saturday does **not** count (BGH
 VIII ZR 129/09). A monthly payment due by a working day ("spätestens am dritten Werktag eines jeden
-Monats": `Recurrence.working_day`, which the extraction does not read yet) is dated in every month by
+Monats": `Recurrence.working_day`, which the extraction schema carries — one the item's quote doesn't
+name is graded one confidence level lower and marked "Please check") is dated in every month by
 counting that many working days from the month's first — Monday to Friday without holidays for rent
 (a payment on a lease or under a rent contract), *Werktage* otherwise — so the rent runs Mon 5 Oct
 (3 Oct is a holiday), Wed 4 Nov, Thu 3 Dec 2026 and Tue 7 Apr 2026 after Easter, never on the day of
