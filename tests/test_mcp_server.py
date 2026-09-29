@@ -344,7 +344,7 @@ def test_of_two_price_increases_the_contract_gives_the_window_that_closes_first(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
     """Each price letter gives its own window; the contract (its row, its deadlines, its receipt) the one
-    that closes first — the safe side."""
+    that closes first — the safe side —, and its deadlines in a range the first that closes in it."""
     later = add_doc(
         store,
         "power-2",
@@ -367,8 +367,94 @@ def test_of_two_price_increases_the_contract_gives_the_window_that_closes_first(
     first = _contract_rows(tools)[ids["power"]]["special_cancellation"]
     assert (first["doc_id"], first["cancel_by"]) == (ids["doc_power"], "2026-10-31")
     assert tools.explain_date(ids["power"]).record["special_cancellation"]["doc_id"] == ids["doc_power"]
+    # a range that holds only the later window's days gives that one: it is a deadline of its own
     november = tools.list_items(kind="deadline", from_date="2026-11-01", to_date="2026-11-30").record
-    assert november.get("contract_deadlines") is None  # the first window closes in October
+    (power,) = november["contract_deadlines"]
+    assert (power["id"], power["special_cancellation"]["doc_id"]) == (ids["power"], later)
+    assert power["special_cancellation"]["cancel_by"] == "2026-11-30"
+    # the timeline gives every letter's
+    days = tools.timeline("2026-10-01", "2026-11-30").record["entries"]
+    cancel_by = [
+        (row["date"], row["doc_id"]) for row in days if row["type"] == "special_cancellation_cancel_by"
+    ]
+    assert cancel_by == [("2026-10-31", ids["doc_power"]), ("2026-11-30", later)]
+
+
+def test_the_timeline_gives_a_price_increase_windows_days(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review finding: the timeline listed the phone contract's deadline in October but not the electricity
+    price increase's special window (post by 26 Oct, must arrive by 31 Oct), the earliest one — the app
+    shows it as an Idea, not on its timeline. Ask's timeline gives the window's days, as the contract's and
+    the price letter's."""
+    october = tools.timeline("2026-10-01", "2026-10-31")
+    rows = [row for row in october.record["entries"] if row["type"].startswith("special_cancellation")]
+    assert rows == [
+        {
+            "date": day,
+            "type": f"special_cancellation_{deadline}",
+            "status": "active",
+            "ref_type": "contract",
+            "id": ids["power"],
+            "doc_id": ids["doc_power"],
+            "past": None,
+            "needs_check": True,  # the seeded letter has no page text
+        }
+        for day, deadline in (("2026-10-26", "send_by"), ("2026-10-31", "cancel_by"))
+    ]
+    dates = [row["date"] for row in october.record["entries"]]
+    assert dates == sorted(dates)
+    assert october.letters[ids["power"]]["titles"][-1].endswith("(price increase) must arrive")
+    evidence = TurnEvidence.from_results([render_result(october)], today=TODAY)
+    for cited in (f"contract:{ids['power']}", f"doc:{ids['doc_power']}"):
+        answer = f"Your special cancellation must arrive by Sat 31 Oct 2026 [{cited}]."
+        assert check_answer(answer, evidence, citable=evidence.seen_ids).text == answer
+    # only the days in the range; none once the cancellation was sent
+    (late,) = [
+        row
+        for row in tools.timeline("2026-10-27", "2026-11-30").record["entries"]
+        if row["id"] == ids["power"]
+    ]
+    assert (late["date"], late["type"]) == ("2026-10-31", "special_cancellation_cancel_by")
+    store.add_draft(
+        kind="cancellation", contract_id=ids["power"], status="sent", sent_at="2026-09-28T09:00:00Z"
+    )
+    entries = tools.timeline("2026-10-01", "2026-10-31").record["entries"]
+    assert not any(row["type"].startswith("special_cancellation") for row in entries)
+
+
+def test_a_window_counted_from_the_letters_date_needs_it_written(
+    tools: LedgerTools, store: Store, ids: dict[str, str]
+) -> None:
+    """Review finding: a phone contract's window (§ 57 TKG: three months from being told) counts from the
+    letter's own date as the model read it, so a misread letter date moves its last day — later than the
+    law allows when read too late. The window is to be checked unless the letter's text writes that date
+    as well as the effective date."""
+    letter = add_doc(
+        store,
+        "phone-price",
+        kind="price_increase",
+        title="FunkNetz price change",
+        doc_date="2026-09-15",
+        party_id=ids["funknetz"],
+        extraction=DocumentExtraction.model_validate(
+            {
+                "kind": "price_increase",
+                "title": "FunkNetz price change",
+                "summary": "",
+                "explanation": "",
+                "change": {"type": "price_increase", "effective_date": "2026-11-01"},
+            }
+        ),
+    )
+    store.set_pages(letter, [_page(1, "Ab dem 01.11.2026 kostet Ihr Tarif 34,99 € im Monat.")])
+    window = tools.get_document(letter).record["special_cancellation"]
+    assert (window["contract_id"], window["cancel_by"]) == (ids["phone"], "2026-12-15")
+    assert window["needs_check"] is True  # the effective date is written, the letter's date is not
+    store.set_pages(
+        letter, [_page(1, "Musterstadt, 15.09.2026\nAb dem 01.11.2026 kostet Ihr Tarif 34,99 € im Monat.")]
+    )
+    assert tools.get_document(letter).record["special_cancellation"]["needs_check"] is None
 
 
 def test_an_invoice_payment_a_reminder_took_over_is_set_aside(store: Store) -> None:
@@ -404,6 +490,12 @@ def test_an_invoice_payment_a_reminder_took_over_is_set_aside(store: Store) -> N
     assert in_letter[invoice_payment]["set_aside_by"] == reminder
     (sender,) = tools.get_party(party.id).record["parties"]
     assert {found["id"]: found for found in sender["open_items"]}[invoice_payment]["set_aside_by"] == reminder
+    entries = {found["id"]: found for found in tools.timeline("2026-09-01", "2026-09-30").record["entries"]}
+    assert (entries[invoice_payment]["set_aside"], entries[invoice_payment]["set_aside_by"]) == (
+        SET_ASIDE_REPLACED,
+        reminder,
+    )
+    assert "set_aside" not in entries[reminder_payment]
     assert not re.search(r"\d", SET_ASIDE_REPLACED)  # the answer check never reads a value from the note
     for status in ("done", "dismissed"):  # never "pay as the reminder says" on an invoice paid or dropped
         store.update_item(invoice_payment, status=status)

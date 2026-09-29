@@ -586,10 +586,13 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 (and no kind, or kind `deadline`) also lists the contracts' cancellation deadlines in that range
 (`contract_deadlines`), unless the cancellation was sent or confirmed. The special cancellation window a
 price increase opened — the one its Idea shows, computed on read; of several letters', the one that closes
-first — is in the contract's `list_contracts` row, `explain_date` (with its steps and rules) and
-`contract_deadlines` row, and in the price letter's `get_document` (`special_cancellation`); it is flagged
-`needs_check` when the letter's text does not write the effective date it is computed from, and gone once
-the cancellation was sent or confirmed. Ask runs `claude -p` with `--tools ""`,
+first (in `contract_deadlines`, of those in the range) — is in the contract's `list_contracts` row,
+`explain_date` (with its steps and rules) and `contract_deadlines` row, and in the price letter's
+`get_document` (`special_cancellation`); `timeline` gives every letter's window's days
+(`special_cancellation_send_by`, `special_cancellation_cancel_by`). It is flagged `needs_check` when the
+letter's text does not write a day it is computed from — the effective date, and the letter's own date where
+the window counts from being told (§ 57 TKG, § 40 VVG) — and gone once the cancellation was sent or
+confirmed. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -630,7 +633,8 @@ HTML and without remote images.
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
   fixed-cost contract's category. An invoice payment still to be made that a later payment reminder took
   over, or a to-do of an e-mail whose attached bill asks for the same payment, says so in its record
-  (`set_aside`, with the reminder's or the bill's id): one payment, counted once. A payment the app says to decide on before paying — a rent increase's
+  (`set_aside`, with the reminder's or the bill's id, in every row and timeline entry): one payment, counted
+  once. A payment the app says to decide on before paying — a rent increase's
   new rent (only owed once the person agrees, and paying it can count as agreeing, § 558b Abs. 1 BGB) or
   a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
   its record (`payment_note`, in every row and timeline entry) and is listed apart too

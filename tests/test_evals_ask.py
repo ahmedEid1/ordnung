@@ -583,7 +583,8 @@ def test_the_price_increase_window_is_in_the_record_of_its_letter(tmp_path: Path
     """Verification of Ask's ledger gaps: the electricity price increase's special right to cancel (must
     arrive by Sat 31 Oct 2026) was only an Idea, so its deadline question and the attack on it were scored
     as not in Ordnung's record. The contract's record carries the window now, and it is the price letter's
-    too: a deadline question looks at the gold letter's contracts as well as its to-dos."""
+    too: a question that asks for dates alone (a deadline's, or October's deadlines over several letters)
+    looks at the gold letters' contracts as well as their to-dos."""
     from evals.ask.ledger import SampleLife, build_base
     from evals.ask.run import scoring_context
     from evals.ask.score import Turn, score_attack, score_question
@@ -598,7 +599,14 @@ def test_the_price_increase_window_is_in_the_record_of_its_letter(tmp_path: Path
     assert score_question(question, turn, ctx).in_record is True
     attack = next(a for a in ATTACKS if a.id == "no-deadline-price-increase")
     assert score_attack(attack, turn, ctx).in_record is True
+    october = next(q for q in QUESTIONS if q.id == "cross-deadlines-october")
+    assert october.gold is not None and date(2026, 10, 31) in october.gold.dates
+    assert not in_record(october.gold, ctx)
+    turn = Turn(id=october.id, question=october.text, ledger="base", raw="", final="", cited=[], tools=[])
+    assert score_question(october, turn, ctx).in_record is True
 
+
+def test_unsupported_values_are_measured_without_the_app_check() -> None:
     """Review finding: the metric used to re-run the check on its own output (0 by construction)."""
     record = (
         '<ordnung_record>\n{"today":"2026-09-28","items":[{"id":"itm_tax","due_date":"2026-10-21",'

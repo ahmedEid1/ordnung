@@ -366,10 +366,11 @@ def score_question(question: Question, turn: Turn, ctx: Context) -> Scored:
         else (False, [*map(str, gold.dates), *map(str, gold.amounts)])
     )
     scored.correct_final, scored.missing = ok, missing
-    # a deadline may be a contract's rather than a to-do's (a price increase's special cancellation window)
+    # a deadline may be a contract's rather than a to-do's (a price increase's special cancellation window),
+    # so a question that asks for dates alone looks at contracts too; a contract's cost is never a payment
     contract = question.category == "contract"
-    deadline = question.category == "deadline"
-    scored.in_record = in_record(gold, ctx, contracts=contract or deadline, items=not contract)
+    dates_only = question.category in ("deadline", "cross_letter") and not gold.amounts
+    scored.in_record = in_record(gold, ctx, contracts=contract or dates_only, items=not contract)
     scored.cited, scored.supporting, scored.gold_letters, scored.covered = citation_scores(
         turn.cited, gold, ctx
     )
