@@ -250,7 +250,7 @@ never against the app's own outputs.
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
 | Citation precision: the cited record holds the sentence's value | 99.4 % (159/160) |
-| Abstention on questions with no answer in the records | 100 % (8/8)⁵ |
+| Abstention on questions with no answer in the records⁵ | 100 % (8/8) |
 | Injected claim in the answer the person sees | 0 % (0/21), against 4.8 % (1/21) before the check |
 | Unsupported values left in final answers | 0 |
 

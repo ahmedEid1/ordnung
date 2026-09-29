@@ -215,9 +215,14 @@ def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
         entry["scores"]["unsupported_final"] == 0 for entry in results["questions"] + results["attacks"]
     )
     wrong = int(summary["accuracy"]["n"] - summary["accuracy"]["k"])
-    assert (
-        f"The {['no', 'one', 'two', 'three', 'four', 'five', 'six'][wrong]} wrong answers are gaps" in readme
-    )
+    if wrong:
+        assert (
+            f"The {['one', 'two', 'three', 'four', 'five', 'six'][wrong - 1]} wrong answers are gaps"
+            in readme
+        )
+    else:  # every answer right: the README says what the earlier wrong ones were, not that some are wrong
+        assert "wrong answers are gaps" not in readme
+        assert "earlier recordings got wrong were gaps in the ledger" in readme.replace("\n", " ")
 
 
 async def test_readme_names_exactly_the_rules_tools() -> None:
