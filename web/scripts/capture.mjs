@@ -22,6 +22,7 @@ import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
+import { shownAs } from "./ui-audit/steps.mjs";
 
 const { values: opts } = parseArgs({
   options: {
@@ -39,8 +40,12 @@ const CLIENT = { "X-Ordnung-Client": "web" };
 const FINANZAMT = "Finanzamt Musterstadt";
 const PHONE_QUESTION = "When does my phone contract end, and by when do I have to cancel it?";
 const MONEY_QUESTION = "What do I have to pay in the next four weeks?";
-const TAX_TITLE = /Income Tax Assessment 2025/;
-const STATEMENT_TITLE = /Operating and Heating Cost Statement/;
+/**
+ * The operating-cost statement, by its sample's file name: a letter's title is the model's and changes with
+ * every recording of the demo, so letters are found by their files (a New-mail letter by its tray sender)
+ * and titles read from the API.
+ */
+const STATEMENT_FILE = "13_nebenkostenabrechnung_2025.pdf";
 /** An Einschreiben number with a correct check digit (the e2e suite's). */
 const TRACKING = "RT 123 456 785 DE";
 /** The mock world's court payment order (web/src/mocks/data/documents.ts), opened by `?mock=full`. */
@@ -181,9 +186,18 @@ async function apiGet(context, path) {
   return res.json();
 }
 
-async function documentIdFor(context, title) {
+/** The id of the demo letter read from the sample `file` ("13_nebenkostenabrechnung_2025.pdf"). */
+async function letterIdFor(context, file) {
   const docs = await apiGet(context, "/api/documents");
-  return docs.find((d) => d.title && title.test(d.title))?.id;
+  const doc = docs.find((d) => d.filename === file);
+  if (!doc) throw new Error(`no demo letter from the sample ${file} (the Inbox has ${docs.map((d) => d.filename).join(", ")})`);
+  return doc.id;
+}
+
+/** The verdict card of the letter `id`, named by the letter's title as read (from the API). */
+async function verdictOf(page, id) {
+  const { document } = await apiGet(page.context(), `/api/documents/${id}`);
+  return page.getByRole("article", { name: shownAs(document.title ?? document.filename) });
 }
 
 /** The New-mail letter from `sender`, read if it wasn't yet (in the page, as a person would): its letter id. */
@@ -205,12 +219,15 @@ async function readMail(page, sender) {
   return new URL(page.url()).pathname.split("/").pop();
 }
 
-/** The tax assessment's objection to-do: its "show it on the page" button. */
-function objectionEvidence(page) {
+/** The tax assessment's objection to-do (its one deadline, titled by the model: from the API): its "show it on the page" button. */
+async function objectionEvidence(page, taxId) {
+  const { items } = await apiGet(page.context(), `/api/documents/${taxId}`);
+  const deadline = items.find((i) => i.kind === "deadline");
+  if (!deadline) throw new Error(`the tax assessment has no deadline (its to-dos: ${items.map((i) => i.title).join(", ")})`);
   return page
     .getByRole("region", { name: /^To-dos & dates/ })
     .getByRole("listitem")
-    .filter({ hasText: /objection/i })
+    .filter({ hasText: shownAs(deadline.title) })
     .first()
     .getByRole("button", { name: /on the page$/ })
     .first();
@@ -380,6 +397,7 @@ async function tour(page) {
   await caption(page, "Claude reads it. Code checks every fact and computes the dates.");
   await click(page, letter.getByRole("button", { name: "Let Ordnung read it" }));
   await page.waitForURL(/\/documents\/doc_/, { timeout: 60_000 });
+  const taxId = new URL(page.url()).pathname.split("/").pop();
   await settle(page, 900);
 
   mark("the letter");
@@ -388,12 +406,12 @@ async function tour(page) {
   await page.waitForTimeout(2400);
 
   await caption(page, "Every fact points to the sentence it came from.");
-  await click(page, objectionEvidence(page));
+  await click(page, await objectionEvidence(page, taxId));
   await page.waitForTimeout(2800);
 
   mark("why this date");
   await caption(page, "“Why this date?” Each step with its rule, computed by tested code, not guessed.");
-  const verdict = page.getByRole("article", { name: TAX_TITLE });
+  const verdict = await verdictOf(page, taxId);
   await click(page, verdict.getByRole("button", { name: "Why this date?" }));
   const receipt = page.getByRole("dialog", { name: "Why this date?" });
   await receipt.waitFor();
@@ -415,7 +433,7 @@ async function tour(page) {
 
   const gifEnd = seconds();
   mark("pay by scan");
-  const statement = await documentIdFor(page.context(), STATEMENT_TITLE);
+  const statement = await letterIdFor(page.context(), STATEMENT_FILE);
   await reload(`${BASE}/documents/${statement}?mock=0`, () => page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }));
   await caption(page, "A bill to pay by transfer: scan the GiroCode with your banking app. Nothing is paid for you.");
   await click(page, page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }));
@@ -468,8 +486,8 @@ async function tour(page) {
   await page.waitForTimeout(3400);
 
   mark("how it was read");
-  const tax = await documentIdFor(page.context(), TAX_TITLE);
-  await load(`${BASE}/documents/${tax}?view=trace`, "How it was read: what Claude was asked, and what code checked and decided.");
+  // the tax assessment read at the start of the video
+  await load(`${BASE}/documents/${taxId}?view=trace`, "How it was read: what Claude was asked, and what code checked and decided.");
   await settle(page, 600);
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   await click(page, steps.getByRole("button", { name: /^Claude reads the letter/ }).first());
@@ -526,7 +544,7 @@ async function screenshots(browser) {
   const taxId = await readMail(page, FINANZAMT);
   await page.goto(`${BASE}/documents/${taxId}`);
   await settle(page);
-  await objectionEvidence(page).click();
+  await (await objectionEvidence(page, taxId)).click();
   await page.waitForTimeout(900);
   // the highlight stays on the page image; the letter's verdict card goes back to the top
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -534,7 +552,7 @@ async function screenshots(browser) {
   await shot(page, "document");
   // "Why this date?" as a close-up, in a window tall enough for every rule step
   await page.setViewportSize({ width: 1440, height: 1500 });
-  await page.getByRole("article", { name: TAX_TITLE }).getByRole("button", { name: "Why this date?" }).click();
+  await (await verdictOf(page, taxId)).getByRole("button", { name: "Why this date?" }).click();
   const receipt = page.getByRole("dialog", { name: "Why this date?" });
   await receipt.getByRole("button", { name: "Show the rules" }).click();
   await page.waitForTimeout(700);
@@ -555,7 +573,7 @@ async function screenshots(browser) {
   await shot(page, "trace");
 
   // the Pay panel's GiroCode (a bill read from a PDF: no comparison with the paper letter needed)
-  const statementId = await documentIdFor(context, STATEMENT_TITLE);
+  const statementId = await letterIdFor(context, STATEMENT_FILE);
   await page.goto(`${BASE}/documents/${statementId}`);
   await settle(page);
   await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €/ }).click();

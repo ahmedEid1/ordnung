@@ -7,7 +7,7 @@
  * its own area; and the filters never float the switch between two rows of menus.
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, open, setTour, test } from "./helpers";
+import { expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -94,13 +94,12 @@ test("a lane marker highlights its own row, not another bill of the same day", a
   // payments only: the health contribution stands alone in its Health lane (unfiltered, it merges with the
   // objection deadline a day earlier), while the electricity instalment is due the same day in Home
   await open(page, "/timeline?type=payment", "Timeline");
-  await lanes(page)
-    .getByRole("button", { name: /Monthly health and long-term care insurance contribution/ })
-    .first()
-    .click();
+  // the contribution notice's payment, by its letter's file: its to-do's title is the model's, read from the API
+  const contribution = shownAs((await letterItem(page, await letterId(page, "14_krankenkasse_beitragsbescheid.pdf"), "payment")).title);
+  await lanes(page).getByRole("button", { name: contribution }).first().click();
   const row = list(page).locator("li[data-entry-id]").filter({ has: page.locator("[class*='bg-marker']") });
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText("Monthly health and long-term care insurance contribution");
+  await expect(row).toContainText(contribution);
 });
 
 test("the area filter judges each mark by its own area: Getting around shows its contract and its payments in its own lane", async ({ page }) => {
