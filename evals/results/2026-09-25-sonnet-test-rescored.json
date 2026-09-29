@@ -53,7 +53,7 @@
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
   "commit": "5c3e35b",
-  "commit_note": "a commit from before the history was squashed; a replay on any later commit gives the same numbers",
+  "commit_note": "a commit from before the history was squashed; a replay on a commit whose extraction prompt is version 8 gives the same numbers — from version 9 on, a replay scores the recordings of the prompt the app uses then (the “Prompt now” row)",
   "note": "The held-out run exposed a gap in Ordnung itself rather than in the model's reading: its sender categories had no place for social-benefit agencies, so a job centre, the pension insurance or the Familienkasse was filed as a plain *authority*, and the engine applied general administrative law (§ 41 VwVfG, with a Land's older 3-day rule) instead of social law (§ 37 SGB X). All five of Ordnung's reading errors above are this case. The engine now also reads the sender's name and the remedy notice (a Sozialgericht or the SGB means social law; an *Einspruch* to the Familienkasse is tax law): `scope_for_party_kind` in `src/ordnung/rules/delivery.py`, with tests. The one error left is deliberate: that letter prints a posting day two days after its own date, and Ordnung counts from the letter's date (the earliest plausible start), telling the person why.",
   "metrics_commit": "b3f0688",
   "added_conditions": {

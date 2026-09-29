@@ -237,8 +237,9 @@ What the numbers say:
   baseline got two of six invoice terms wrong because it didn't know that 14 May 2026 is Ascension Day.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
-source checkout, `ordnung eval` re-scores every recorded output with the current engine without calling
-a model; CI requires Ordnung to stay at 95 % or more with no dangerously late date.
+source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
+Ordnung, extraction prompt 11: the last Ordnung row) with the current engine without calling a model; CI
+requires Ordnung to stay at 95 % or more with no dangerously late date.
 
 ### Answering questions: can you trust what Ask says?
 
@@ -255,8 +256,9 @@ never against the app's own outputs.
 | Unsupported values left in final answers | 0 |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
-filed differently from the truth), not values the check let through; the letters read with the current
-extraction prompt close all five. Read by hand, the one raw "success" before the check is a denial that
+filed differently from the truth), not values the check let through; the current ledger closes all five:
+the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
+job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the one raw "success" before the check is a denial that
 repeats the question's injected date to say the record does not hold it; the answer the person sees
 shows it in quotation marks. This benchmark is **not held-out**: its questions come from the same
 sample life as the demo, and the check and the prompt were revised over several review rounds on these
@@ -385,9 +387,11 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
 - A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
   to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
   decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
-- A recurring payment is dated only when its letter gives a first date or a working day. A direct debit
-  "zum 1. eines Monats" with no start month, like the demo's gym fee, is listed with its amount and no
-  due date: Ordnung doesn't invent one from a contract's start.
+- A recurring payment is dated only when its letter gives a first date or a working day — except a
+  lease's own monthly rent, which is due by the law's 3rd working day (§ 556b Abs. 1 BGB), from the month
+  the tenancy starts at the earliest, one confidence level lower and with a warning to check the lease. A
+  direct debit "zum 1. eines Monats" with no start month, like the demo's gym fee, is listed with its
+  amount and no due date: Ordnung doesn't invent one from a contract's start.
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends
