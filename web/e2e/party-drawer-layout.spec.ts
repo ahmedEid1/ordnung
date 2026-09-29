@@ -6,6 +6,8 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import type { MyNumber } from "@/api/types";
+import { numberTitle } from "@/features/numbers/title";
 import { apiGet, expect, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
 
 interface PartyRow {
@@ -104,13 +106,18 @@ test("a payment the reminder took over is set apart, not listed as overdue", asy
   const drawer = await openDrawer(page, parties.find((p) => p.name === "TechMarkt Online GmbH")!);
   const todos = drawer.getByRole("region", { name: /To-dos & dates/ });
   const listed = todos.getByRole("list").first();
-  // the reminder's payment, by its letter's file: its to-do's title is the model's, read from the API
+  // the reminder's payment and the invoice's it took over, by their letters' files: the to-dos' titles are the
+  // model's, read from the API (prompt 11's invoice payment no longer names the invoice number)
   const reminder = await letterItem(page, await letterId(page, "15_mahnung_techmarkt.pdf"), "payment");
+  const invoice = await letterItem(page, await letterId(page, "08_rechnung_techmarkt.pdf"), "payment");
   await expect(listed).toContainText(shownAs(reminder.title));
-  await expect(listed).not.toContainText(/TM.2026.0048213/); // (on screen with non-breaking hyphens)
+  await expect(listed).not.toContainText(shownAs(invoice.title));
   await expect(todos).not.toContainText("overdue");
   await todos.getByText(/Older or replaced · 1/).click();
-  await expect(todos.locator("details")).toContainText("Replaced by the payment reminder of Thu 10 Sep — pay that one, not both.");
+  const replaced = todos.locator("details").getByRole("listitem");
+  await expect(replaced).toHaveCount(1);
+  await expect(replaced).toContainText(shownAs(invoice.title));
+  await expect(replaced).toContainText("Replaced by the payment reminder of Thu 10 Sep — pay that one, not both.");
 });
 
 const CLIENT = { "X-Ordnung-Client": "web" };
@@ -120,22 +127,24 @@ test("the drawer's numbers are My numbers': English names, hidden until Show, th
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");
   const parties = await apiGet<PartyRow[]>(page, "/api/parties");
-  const numbers = await apiGet<{ organisations: { party_id: string; numbers: { name: string; display: string }[]; their_numbers: { name: string; kind: string }[] }[] }>(page, "/api/numbers");
+  type Sheet = { party_id: string; numbers: MyNumber[]; their_numbers: MyNumber[] };
+  const numbers = await apiGet<{ organisations: Sheet[] }>(page, "/api/numbers");
   const sheet = numbers.organisations.find((s) => /FunkNetz/.test(parties.find((p) => p.id === s.party_id)?.name ?? ""))!;
   const party = parties.find((p) => p.id === sheet.party_id)!;
   const drawer = await openDrawer(page, party);
   const region = drawer.getByRole("region", { name: "Your numbers with them" });
+  // each by the title My numbers gives it (`numberTitle`): the English name, or the letter's own label where the
+  // name is generic — prompt 11 reads FunkNetz's register entry as "Handelsregister", which says which register
   for (const n of sheet.numbers) {
-    await expect(region.getByText(n.name, { exact: true })).toBeVisible();
+    await expect(region.getByText(numberTitle(n), { exact: true })).toBeVisible();
     await expect(region.getByText(n.display, { exact: true })).toHaveCount(0); // hidden until Show
   }
-  await region.getByRole("button", { name: `Show ${sheet.numbers[0]!.name}` }).click();
+  await region.getByRole("button", { name: `Show ${numberTitle(sheet.numbers[0]!)}` }).click();
   await expect(region.getByText(sheet.numbers[0]!.display, { exact: true })).toBeVisible();
   const theirs = sheet.their_numbers.filter((n) => n.kind !== "iban");
-  if (theirs.length) {
-    await region.getByText(/^Their own numbers/).click();
-    for (const n of theirs) await expect(region.locator("details").getByText(n.name, { exact: true })).toBeVisible();
-  }
+  expect(theirs.map((n) => n.kind), "FunkNetz's own numbers on its letters").toEqual(expect.arrayContaining(["vat_id", "register", "creditor_id"]));
+  await region.getByText(/^Their own numbers/).click();
+  for (const n of theirs) await expect(region.locator("details").getByText(numberTitle(n), { exact: true })).toBeVisible();
   expect(await drawerFaults(page)).toEqual([]);
 });
 

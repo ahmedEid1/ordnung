@@ -17,7 +17,8 @@ import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
 import { CARD_GRID, NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
 import { CallSheetCard, OpenCaseCard, nextStepWhen } from "./cards";
-import { NumberRow, numberTitle, printedLabel } from "./NumberRow";
+import { NumberRow } from "./NumberRow";
+import { numberTitle, printedLabel } from "./title";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -64,6 +65,19 @@ describe("masking", () => {
     expect(printedLabel(n)).toBe("Steuerliche Identifikationsnummer");
     expect(printedLabel({ kind: "tax_id", name: "Tax ID (Steuer-ID)", label: "Steuer-ID" })).toBeNull();
     expect(numberTitle({ kind: "other", name: "Your number", label: "Scholarship ID" })).toBe("Scholarship ID");
+    // which register it is says more than "Company register" — and the label, being the title, isn't printed twice
+    const register = { kind: "register", name: "Company register", label: "Handelsregister" } as const;
+    expect(numberTitle(register)).toBe("Handelsregister");
+    expect(printedLabel(register)).toBeNull();
+  });
+
+  it("a row is headed by that title: a register entry by the letter's label", () => {
+    const theirs = MOCK_NUMBERS.organisations.flatMap((s) => s.their_numbers)[0]!;
+    const register = { ...theirs, kind: "register", name: "Company register", label: "Handelsregister", value: "HRB 20417", display: "HRB 20417", copy_value: "HRB 20417" } as const;
+    renderWithProviders(<NumberRow number={register} masked={false} showLetter={false} />);
+    expect(screen.getByText("Handelsregister")).toBeInTheDocument();
+    expect(screen.queryByText("Company register")).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy Handelsregister" })).toBeInTheDocument();
   });
 
   it("wraps a long German label after its slashes and marks it German, never mid-word first", () => {
