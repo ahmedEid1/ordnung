@@ -469,7 +469,7 @@ build from before a renumbering) is refused with the reason, never migrated on a
 | Traces | The tracer's keys, ids and layouts; the span tree of a text letter and a photo letter through the pipeline; the repair link and outcomes; that no letter text reaches a span; delete-means-delete; the API, the comparison, `ordnung trace` and the OTLP export; migration 0003 on an empty database and the demo's |
 | CLI subprocess layer | A fake `claude` executable replaying captured CLI outputs (errors, timeouts, huge lines) |
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |
-| Web app | Vitest units + Playwright tour over demo mode with axe accessibility checks |
+| Web app | Vitest units; Playwright over the real demo (tour, pages, layout guards) with axe accessibility checks in light and dark mode, and a layout sweep of every page and key state at 320–1920 px (`web/e2e/layout-sweep.spec.ts`) with the UI audit's probes (`make ui-audit` runs the full audit: screenshots of every state at five widths in both themes) |
 | Model quality | The benchmark in [evals](evals.md), recomputed deterministically in CI from recorded outputs |
 | MCP tools and install | In-memory MCP client and a real stdio handshake (`python -m ordnung mcp --rules-only`); config merge, backup and refusal in temporary home folders |
 | Ask | Unit tests of the two channels and the claim policy (incl. injected dates and ids), and the Ask benchmark in [evals-ask](evals-ask.md), replayed in CI with gates |

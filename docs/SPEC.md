@@ -103,9 +103,9 @@ src/ordnung/
   api/ (app.py, security.py, deps.py, routes/*.py)
   web/dist/                                                     # built SPA (generated)
 web/            React + TS + Vite + Tailwind v4 source
-scripts/        make_sample_life.py (+ scan simulation), capture_assets.py
+scripts/        make_sample_life.py (+ scan simulation), capture.sh (README assets; web/scripts/capture.mjs), gen_mock_*.py
 evals/          dataset manifest, runner, results/*.json
-docs/           SPEC, architecture, deadline-rules, privacy, evals, decisions/ (ADRs), limitations
+docs/           SPEC, architecture, deadline-rules, privacy, evals, evals-ask, decisions/ (ADRs), assets/ (README pictures)
 tests/          pytest (+ tests/bin/claude fake CLI)
 ```
 
@@ -1271,13 +1271,19 @@ fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo -
 tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.
 
 ## 19. Docs & README contract
-README: problem-first hero ("Drop in a German tax assessment. Get the exact objection deadline, the
-sentence it came from highlighted, and the legal calculation."), GIF of the golden path, headline
-numbers table, Mermaid diagram with trust boundaries, "Try in 60 s — zero tokens" (`uvx ordnung
-demo` / `pip install` + `ordnung demo`), features, how it works, privacy, design decisions,
-limitations, how it was built (Claude Code as pair programmer; correctness via tests, legal worked
-examples, evals), disclaimer. `docs/`: architecture, deadline-rules (with citations), privacy
-(data-flow table), evals, decisions/ADRs, limitations.
+README, for a first-time user and a hiring manager: what Ordnung is in one problem-first paragraph, the
+GIF of the golden path (the first part of the tour video), "Try in 60 s — zero tokens" (`pipx install` +
+`ordnung demo`), a feature tour in screenshots, "the model reads, code computes" (a recorded `DateSpec`
+and its receipt), the trust design (grounding levels, two channels and claim-level citations, letters as
+data, humble automation, reproducibility), both benchmarks with their numbers stated as held-out or not,
+privacy, install and run (incl. `ordnung mcp install` and autostart), architecture (Mermaid diagram with
+trust boundaries), quality (tests, coverage, UI audit and layout sweep, CI gates, review), limitations,
+links to the docs, how it was built (Claude Code as pair programmer; correctness via tests, legal worked
+examples, evals), disclaimer. Its numeric claims are checked by `tests/test_docs_claims.py`. Screenshots,
+the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`) on
+a fresh demo; the court order comes from the mock data (`?mock=full`), since the recorded demo has
+none, and the README says so. `docs/`: architecture, deadline-rules (with citations), privacy
+(data-flow table), evals, evals-ask, decisions/ADRs.
 
 ## 20. Changes from v1 (review outcomes)
 Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR, party tie-break, 4 letter kinds,
