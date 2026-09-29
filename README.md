@@ -198,6 +198,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung** | 89.3 % [78.9–96.7] | **0 %** | yes |
 | **Ordnung**, after fixing the gap that run found² | 98.2 % [94.5–100] | **0 %** | no |
 | LLM + rules tool, with the fixed engine³ | 100 % [91.8–100] | 0 % | no |
+| **Ordnung**, with the extraction prompt the app uses now⁴ | 96.4 % [91.2–100] | **0 %** | no |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -208,6 +209,9 @@ is no longer held-out.
 the third recording of this condition on the test split (the first scored 98.2 %, the second 100 %;
 after each, a review revised the tool interface, and the last version was checked on the dev split,
 where it scored 96 %, before the test split was recorded again).
+⁴ Extraction prompt version 9 (labels and actions in the person's language, the letter's high-stakes
+kind), recorded once on the test split after a check on the dev split (96 %). Its one new miss is a
+phone photo whose date came out two days early: on the safe side.
 
 What the numbers say:
 
@@ -374,12 +378,9 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
   before extraction prompt version 9 names no kind and is classified by code alone. You can change a
   letter's kind on its page
   ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md) lists the accepted misses).
-- Some of what Claude reads from a letter stays in the letter's words: a to-do's action and consequence
-  and a key fact's label can come out in German ("Semesterbeitrag … überweisen", "Fällig am"), with the
-  letter's own number formats ("94.99 EUR", "03.09.2026"), and a letter's explanation doesn't mention a
-  decision window Ordnung computed. The fix is in the extraction prompt, which also runs the published
-  extraction benchmark's Ordnung condition; it waits for the next benchmark run, so the published
-  numbers stay those of the prompt the app uses.
+- A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
+  to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
+  decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends

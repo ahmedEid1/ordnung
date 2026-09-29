@@ -1265,9 +1265,11 @@ sender/reference/amount accuracy, item recall/precision, evidence grounding rate
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
-change to them waits for a new benchmark run: known limitation (UI audit R1-backend-6), a reading's
-action, consequence and key-fact labels can stay in the letter's German and number formats, and its
-explanation doesn't qualify "nothing to react to" when the rules engine computes a decision window.
+change to them is recorded again on the benchmark: version 9 (labels, actions and consequences in the
+person's language, dates and amounts written as that language writes them, an explanation that names a
+decision window the rules engine computes, and the letter's high-stakes kind; UI audit R1-backend-6, ADR
+0010) was checked on the dev split and run once on the test split, shown in `docs/evals.md` beside the
+published run ("The prompt the app uses now").
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
