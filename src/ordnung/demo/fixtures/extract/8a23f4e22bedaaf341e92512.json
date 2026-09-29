@@ -1,0 +1,164 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "11.7.1",
+    "cache_key": "{\"doc\":\"566d1428cd6f88e109aa8c2132f6c1c804b8cd4ec4f3cf9969dcd17220c617ff\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_asph8a6ddy4e"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"title\":\"Electricity price increase from 1 November 2026\",\"case_title\":\"Stadtwerke MusterStrom Flex price increase\",\"area\":\"home\",\"language\":\"de\",\"document_date\":\"2026-09-24\",\"recipient_name\":\"Sam Rivera\",\"summary\":\"Stadtwerke Musterstadt GmbH announces higher electricity prices for the MusterStrom Flex tariff from 1 November 2026. Yearly costs rise from €577.08 to €647.28 and the monthly advance payment from €48.00 to €54.00 from 15 November 2026.\",\"explanation\":\"Your electricity supplier is raising its prices: the usage price goes from 32.90 to 36.40 ct/kWh and the base fee from €11.90 to €13.90 per month. Your monthly advance payment (Abschlag) rises to €54.00 from 15 November 2026. You have a special right to cancel (Sonderkündigungsrecht) without a notice period, effective when the change takes effect. The cancellation must reach the supplier in text form before the change takes effect. The app shows until when. You can stay, or compare tariffs and switch. Check your bank standing order or direct debit for the new amount.\",\"sender\":{\"name\":\"Stadtwerke Musterstadt GmbH\",\"kind\":\"utility\",\"address\":\"Energieplatz 1, 12345 Musterstadt\",\"phone\":\"0123 5550-100\",\"website\":\"www.stadtwerke-musterstadt.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE400123982\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE28ZZZ00000401239\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 4711\"}]},\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"400123987\"},{\"label\":\"Kundennummer\",\"value\":\"2004711\"},{\"label\":\"Zählernummer\",\"value\":\"1EMH0012345678\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE400123982\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE28ZZZ00000401239\"}],\"contract\":{\"name\":\"MusterStrom Flex\",\"category\":\"energy\",\"is_consumer\":true,\"is_basic_supply\":false,\"customer_number\":\"2004711\",\"cost_amount\":54,\"cost_interval\":\"monthly\",\"notice_before_end\":false,\"quotes\":[\"Daher passen wir die Preise für Ihren Tarif MusterStrom Flex zum 01.11.2026 wie folgt an:\"]},\"change\":{\"type\":\"price_increase\",\"effective_date\":\"2026-11-01\",\"old_amount\":577.08,\"new_amount\":647.28,\"cost_interval\":\"yearly\",\"unit_price_old\":\"Arbeitspreis 32,90 ct/kWh; Grundpreis 11,90 €/Monat (brutto)\",\"unit_price_new\":\"Arbeitspreis 36,40 ct/kWh; Grundpreis 13,90 €/Monat (brutto)\",\"quote\":\"Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €\"},\"items\":[{\"kind\":\"payment\",\"title\":\"New monthly advance payment\",\"action\":\"Make sure the monthly advance payment (Abschlag) of €54.00 is paid from 15 November 2026 and adjust any standing order.\",\"consequence\":null,\"amount\":54,\"currency\":\"EUR\",\"direction\":\"out\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-15\",\"nature\":\"payment\",\"shift_rule\":\"auto\",\"text\":\"ab dem 15.11.2026\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\"},\"priority\":\"normal\",\"quote\":\"Ihren monatlichen Abschlag passen wir deshalb ab dem 15.11.2026 von 48,00 € auf 54,00 € an.\"}],\"key_facts\":[{\"label\":\"Usage price new (Arbeitspreis)\",\"value\":\"36,40 ct/kWh\",\"quote\":\"Arbeitspreis   32,90 ct/kWh   36,40 ct/kWh\"},{\"label\":\"Base fee new (Grundpreis)\",\"value\":\"13,90 €/Monat\",\"quote\":\"Grundpreis   11,90 €/Monat   13,90 €/Monat\"},{\"label\":\"Yearly cost increase\",\"value\":\"70,20 € pro Jahr\",\"quote\":\"Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €\\nbrutto, also um 70,20 € pro Jahr.\"},{\"label\":\"Annual consumption\",\"value\":\"1.320 kWh\",\"quote\":\"Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €\"},{\"label\":\"Special cancellation right (Sonderkündigungsrecht)\",\"value\":\"Without notice period, in text form, must arrive before 1 November 2026\",\"quote\":\"Die Kündigung muss uns vor dem Wirksamwerden der Preisänderung zugehen.\"}],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"urgency\":\"high\",\"warnings\":[],\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "price_increase",
+      "title": "Electricity price increase from 1 November 2026",
+      "case_title": "Stadtwerke MusterStrom Flex price increase",
+      "area": "home",
+      "language": "de",
+      "document_date": "2026-09-24",
+      "recipient_name": "Sam Rivera",
+      "summary": "Stadtwerke Musterstadt GmbH announces higher electricity prices for the MusterStrom Flex tariff from 1 November 2026. Yearly costs rise from €577.08 to €647.28 and the monthly advance payment from €48.00 to €54.00 from 15 November 2026.",
+      "explanation": "Your electricity supplier is raising its prices: the usage price goes from 32.90 to 36.40 ct/kWh and the base fee from €11.90 to €13.90 per month. Your monthly advance payment (Abschlag) rises to €54.00 from 15 November 2026. You have a special right to cancel (Sonderkündigungsrecht) without a notice period, effective when the change takes effect. The cancellation must reach the supplier in text form before the change takes effect. The app shows until when. You can stay, or compare tariffs and switch. Check your bank standing order or direct debit for the new amount.",
+      "sender": {
+        "name": "Stadtwerke Musterstadt GmbH",
+        "kind": "utility",
+        "address": "Energieplatz 1, 12345 Musterstadt",
+        "phone": "0123 5550-100",
+        "website": "www.stadtwerke-musterstadt.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE400123982"
+          },
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE28ZZZ00000401239"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Musterstadt HRB 4711"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "400123987"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "2004711"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1EMH0012345678"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE400123982"
+        },
+        {
+          "label": "Gläubiger-ID",
+          "value": "DE28ZZZ00000401239"
+        }
+      ],
+      "contract": {
+        "name": "MusterStrom Flex",
+        "category": "energy",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "customer_number": "2004711",
+        "cost_amount": 54,
+        "cost_interval": "monthly",
+        "notice_before_end": false,
+        "quotes": [
+          "Daher passen wir die Preise für Ihren Tarif MusterStrom Flex zum 01.11.2026 wie folgt an:"
+        ]
+      },
+      "change": {
+        "type": "price_increase",
+        "effective_date": "2026-11-01",
+        "old_amount": 577.08,
+        "new_amount": 647.28,
+        "cost_interval": "yearly",
+        "unit_price_old": "Arbeitspreis 32,90 ct/kWh; Grundpreis 11,90 €/Monat (brutto)",
+        "unit_price_new": "Arbeitspreis 36,40 ct/kWh; Grundpreis 13,90 €/Monat (brutto)",
+        "quote": "Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €"
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "New monthly advance payment",
+          "action": "Make sure the monthly advance payment (Abschlag) of €54.00 is paid from 15 November 2026 and adjust any standing order.",
+          "consequence": null,
+          "amount": 54,
+          "currency": "EUR",
+          "direction": "out",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-15",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "text": "ab dem 15.11.2026"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months"
+          },
+          "priority": "normal",
+          "quote": "Ihren monatlichen Abschlag passen wir deshalb ab dem 15.11.2026 von 48,00 € auf 54,00 € an."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Usage price new (Arbeitspreis)",
+          "value": "36,40 ct/kWh",
+          "quote": "Arbeitspreis   32,90 ct/kWh   36,40 ct/kWh"
+        },
+        {
+          "label": "Base fee new (Grundpreis)",
+          "value": "13,90 €/Monat",
+          "quote": "Grundpreis   11,90 €/Monat   13,90 €/Monat"
+        },
+        {
+          "label": "Yearly cost increase",
+          "value": "70,20 € pro Jahr",
+          "quote": "Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €\nbrutto, also um 70,20 € pro Jahr."
+        },
+        {
+          "label": "Annual consumption",
+          "value": "1.320 kWh",
+          "quote": "Bei Ihrem Jahresverbrauch von 1.320 kWh steigen Ihre jährlichen Kosten von 577,08 € auf 647,28 €"
+        },
+        {
+          "label": "Special cancellation right (Sonderkündigungsrecht)",
+          "value": "Without notice period, in text form, must arrive before 1 November 2026",
+          "quote": "Die Kündigung muss uns vor dem Wirksamwerden der Preisänderung zugehen."
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "urgency": "high",
+      "warnings": [],
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2155,
+      "cache_read_tokens": 8372,
+      "cache_creation_tokens": 3115,
+      "cost_usd": 0.0356884,
+      "duration_ms": 11618,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

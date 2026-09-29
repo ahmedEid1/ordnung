@@ -1,0 +1,695 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"43ca3a4b8a40e9e477dd5e6fe355e7fbb0a23a17032ac0fb61e5250e4a42b663\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are the deadlines in October 2026, soonest first. Payments and appointments are in the second list.\n\n**Deadlines**\n- Return the overdue library items, due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Fees keep growing until then. You can also renew online if the items aren't reserved.\n- Optional objection to the Muster BKK contribution notice, due Wed 14 Oct 2026, with send-by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. After that date the notice becomes final. An objection does not suspend payment.\n- Cancel the appointment at the Ausländerbehörde if you can't attend, due Mon 19 Oct 2026, with send-by Tue 13 Oct 2026 [item:itm_jr5r71kc1r78].\n- Cancel the FunkNetz Smart M mobile contract, which must arrive by Wed 14 Oct 2026, with send-by Thu 8 Oct 2026 [contract:ctr_fyt9k994t9q2]. The current term ends on Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2].\n- Special cancellation of the MusterStrom Flex electricity contract because of a price rise on 1 Nov 2026 [contract:ctr_bbzemyapzvm5]. The cancellation must arrive by Sat 31 Oct 2026, and the send-by date is Mon 26 Oct 2026 [contract:ctr_bbzemyapzvm5]. Then the new price never applies.\n\n**Payments and appointments in October**\n- Parking warning fee, due Fri 2 Oct 2026: 30.00 € [item:itm_31yxpwg03cdb]. The amount was read by AI from a scan, so please check it against the paper letter.\n- Monthly rent, due Mon 5 Oct 2026: 640.00 € [item:itm_b1b5643x7qy7].\n- Dental check-up at 09:15 on Thu 8 Oct 2026 [item:itm_tt8cexs1k1tw].\n- Additional operating costs, due Fri 9 Oct 2026: 184.30 € [item:itm_dmaw27qvv18n].\n- Residence permit extension appointment at 10:30 on Wed 14 Oct 2026 [item:itm_64wce6sh2rpp]. The 100.00 € fee is due the same day, by girocard [item:itm_wj2v05avgk1m].\n- Electricity advance payment by direct debit, due Thu 15 Oct 2026: 48.00 € [item:itm_kttk9625293w].\n- Health and care insurance contribution by direct debit, due Thu 15 Oct 2026: 156.55 € [item:itm_00sbt9f3e0pe].\n\nThe library return and the parking fee are both due on 2 Oct, and their send-by dates come first. You can mark items done or draft letters in Ordnung.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1084,
+      "cache_read_tokens": 11995,
+      "cache_creation_tokens": 4685,
+      "cost_usd": 0.031987,
+      "duration_ms": 9914,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31"
+      },
+      "tool_use_id": "toolu_011vHqsq5J6Yjt3FtNG39wGg"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-09-28\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"leisure\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_cfpx42mmhb49\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-05\",\"send_by\":\"2026-10-02\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"},{\"id\":\"itm_tt8cexs1k1tw\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_kttk9625293w\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"amount\":156.55,\"currency\":\"EUR\"},{\"id\":\"itm_jr5r71kc1r78\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-19\",\"send_by\":\"2026-10-13\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"contract_deadlines\":[{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"current_term_end\":\"2026-11-14\",\"confidence\":\"high\"},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"status\":\"active\",\"party_id\":\"pty_fh8cf155ffm3\",\"special_cancellation\":{\"doc_id\":\"doc_asph8a6ddy4e\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"effective_date\":\"2026-11-01\",\"cancel_by\":\"2026-10-31\",\"send_by\":\"2026-10-26\",\"safe_date\":\"2026-10-30\",\"confidence\":\"high\",\"summary\":\"The price goes up on Sun 1 Nov 2026: cancel without notice so it arrives by Sat 31 Oct 2026, and the new price never applies.\"}}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return both overdue items to the library (service desk or return box), or renew online if not reserved.\",\"consequence\":\"Fees increase by €0.50 per item per opening day, and the account is blocked for loans at €10.00.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay parking warning fee\",\"action\":\"Transfer €30.00 to the Stadtkasse Musterstadt, quoting the Kassenzeichen as the reference.\",\"consequence\":\"A fine proceeding (Bußgeldverfahren) is started, with additional fees and expenses of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_cfpx42mmhb49\":{\"name\":\"Stadt Musterstadt, Ordnungsamt\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent\",\"action\":\"Pay the total rent (Gesamtmiete) so it arrives by the third working day of each month\",\"consequence\":\"Payment counts only when the money is received by the landlord.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_tt8cexs1k1tw\":{\"title\":\"Dental check-up and professional cleaning (PZR)\",\"action\":\"Attend the appointment, arriving 10 minutes early and bringing your health insurance card (Gesundheitskarte).\",\"location\":\"Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_dmaw27qvv18n\":{\"title\":\"Pay additional operating costs\",\"action\":\"Transfer €184.30 to the landlord's account with reference MV-2025-0412 NK 2025.\"},\"itm_64wce6sh2rpp\":{\"title\":\"Residence permit extension appointment\",\"action\":\"Attend with all listed original documents, and pay the €100 fee by girocard (no cash).\",\"consequence\":\"Not stated; the permit expires on 30 November 2026 unless an extension is applied for before then.\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Objection to contribution notice (optional)\",\"action\":\"If you disagree, file an objection (Widerspruch) in writing, electronically or in person at Muster BKK.\",\"consequence\":\"After the deadline the notice becomes final. An objection does not suspend payment.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_wj2v05avgk1m\":{\"title\":\"Extension fee\",\"action\":\"Pay the fee on site by girocard at the appointment.\"},\"itm_kttk9625293w\":{\"title\":\"Monthly electricity advance payment\",\"action\":\"Ensure the account has enough funds; the amount is collected by SEPA direct debit.\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Monthly health and care insurance contribution\",\"action\":\"Keep enough money in your account for the direct debit of the new monthly contribution.\"},\"itm_jr5r71kc1r78\":{\"title\":\"Cancel appointment if you cannot attend\",\"action\":\"Cancel the appointment at least three working days before it if you can't attend.\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"ctr_bbzemyapzvm5\":{\"name\":\"MusterStrom Flex\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_011vHqsq5J6Yjt3FtNG39wGg"
+    },
+    {
+      "type": "text",
+      "text": "Here"
+    },
+    {
+      "type": "text",
+      "text": " are the deadlines in October"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "2026,"
+    },
+    {
+      "type": "text",
+      "text": " soonest first. Payments"
+    },
+    {
+      "type": "text",
+      "text": " and appointments are"
+    },
+    {
+      "type": "text",
+      "text": " in the second"
+    },
+    {
+      "type": "text",
+      "text": " list"
+    },
+    {
+      "type": "text",
+      "text": ".\n\n**Deadlines"
+    },
+    {
+      "type": "text",
+      "text": "**\n- Return the"
+    },
+    {
+      "type": "text",
+      "text": " overdue library items,"
+    },
+    {
+      "type": "text",
+      "text": " due Fri 2 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026 [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_ghq58"
+    },
+    {
+      "type": "text",
+      "text": "jjdz149]."
+    },
+    {
+      "type": "text",
+      "text": " Fees ke"
+    },
+    {
+      "type": "text",
+      "text": "ep grow"
+    },
+    {
+      "type": "text",
+      "text": "ing until"
+    },
+    {
+      "type": "text",
+      "text": " then"
+    },
+    {
+      "type": "text",
+      "text": ". You can also"
+    },
+    {
+      "type": "text",
+      "text": " renew online if"
+    },
+    {
+      "type": "text",
+      "text": " the items a"
+    },
+    {
+      "type": "text",
+      "text": "ren't reserved.\n-"
+    },
+    {
+      "type": "text",
+      "text": " Opt"
+    },
+    {
+      "type": "text",
+      "text": "ional objection to the"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK contrib"
+    },
+    {
+      "type": "text",
+      "text": "ution notice, due Wed"
+    },
+    {
+      "type": "text",
+      "text": " 14 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026,"
+    },
+    {
+      "type": "text",
+      "text": " with send-by Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_tj3z83ve"
+    },
+    {
+      "type": "text",
+      "text": "4hfg]. After that"
+    },
+    {
+      "type": "text",
+      "text": " date the notice becomes final"
+    },
+    {
+      "type": "text",
+      "text": ". An objection does not susp"
+    },
+    {
+      "type": "text",
+      "text": "end payment.\n- C"
+    },
+    {
+      "type": "text",
+      "text": "ancel the app"
+    },
+    {
+      "type": "text",
+      "text": "ointment at"
+    },
+    {
+      "type": "text",
+      "text": " the Ausländerbeh"
+    },
+    {
+      "type": "text",
+      "text": "örde if you can't attend"
+    },
+    {
+      "type": "text",
+      "text": ", due M"
+    },
+    {
+      "type": "text",
+      "text": "on 19 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026, with send-by"
+    },
+    {
+      "type": "text",
+      "text": " Tue 13 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_jr5r71k"
+    },
+    {
+      "type": "text",
+      "text": "c1r78].\n-"
+    },
+    {
+      "type": "text",
+      "text": " Cancel the FunkN"
+    },
+    {
+      "type": "text",
+      "text": "etz Smart M mob"
+    },
+    {
+      "type": "text",
+      "text": "ile contract, which"
+    },
+    {
+      "type": "text",
+      "text": " must arrive by Wed"
+    },
+    {
+      "type": "text",
+      "text": " 14 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026, with send-by Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [contract:"
+    },
+    {
+      "type": "text",
+      "text": "ctr_fyt9k"
+    },
+    {
+      "type": "text",
+      "text": "994t9q2]. The"
+    },
+    {
+      "type": "text",
+      "text": " current term ends on S"
+    },
+    {
+      "type": "text",
+      "text": "at 14 Nov "
+    },
+    {
+      "type": "text",
+      "text": "2026 [contract:"
+    },
+    {
+      "type": "text",
+      "text": "ctr_fyt9k"
+    },
+    {
+      "type": "text",
+      "text": "994t9q2].\n-"
+    },
+    {
+      "type": "text",
+      "text": " Special cancellation of"
+    },
+    {
+      "type": "text",
+      "text": " the MusterStrom"
+    },
+    {
+      "type": "text",
+      "text": " Flex electricity contract because"
+    },
+    {
+      "type": "text",
+      "text": " of a price r"
+    },
+    {
+      "type": "text",
+      "text": "ise on"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "1 Nov 2026"
+    },
+    {
+      "type": "text",
+      "text": " [contract:ctr"
+    },
+    {
+      "type": "text",
+      "text": "_bbzemyapz"
+    },
+    {
+      "type": "text",
+      "text": "vm5]. The canc"
+    },
+    {
+      "type": "text",
+      "text": "ellation must arrive by"
+    },
+    {
+      "type": "text",
+      "text": " Sat 31 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026, and"
+    },
+    {
+      "type": "text",
+      "text": " the send"
+    },
+    {
+      "type": "text",
+      "text": "-by date is M"
+    },
+    {
+      "type": "text",
+      "text": "on 26 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [contract:"
+    },
+    {
+      "type": "text",
+      "text": "ctr_bbzemy"
+    },
+    {
+      "type": "text",
+      "text": "apzvm5]."
+    },
+    {
+      "type": "text",
+      "text": " Then"
+    },
+    {
+      "type": "text",
+      "text": " the new price never applies."
+    },
+    {
+      "type": "text",
+      "text": "\n\n**Payments and appoint"
+    },
+    {
+      "type": "text",
+      "text": "ments in"
+    },
+    {
+      "type": "text",
+      "text": " October**\n- Parking war"
+    },
+    {
+      "type": "text",
+      "text": "ning fee, due Fri"
+    },
+    {
+      "type": "text",
+      "text": " 2 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026: 30.00 €"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_31y"
+    },
+    {
+      "type": "text",
+      "text": "xpwg03cdb"
+    },
+    {
+      "type": "text",
+      "text": "]. The"
+    },
+    {
+      "type": "text",
+      "text": " amount was read by"
+    },
+    {
+      "type": "text",
+      "text": " AI from a sc"
+    },
+    {
+      "type": "text",
+      "text": "an, so please check it against the"
+    },
+    {
+      "type": "text",
+      "text": " paper letter.\n-"
+    },
+    {
+      "type": "text",
+      "text": " Monthly rent, due"
+    },
+    {
+      "type": "text",
+      "text": " Mon 5 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026: 640.00"
+    },
+    {
+      "type": "text",
+      "text": " € [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "b1b5643x7q"
+    },
+    {
+      "type": "text",
+      "text": "y7]."
+    },
+    {
+      "type": "text",
+      "text": "\n- D"
+    },
+    {
+      "type": "text",
+      "text": "ental check-up at "
+    },
+    {
+      "type": "text",
+      "text": "09"
+    },
+    {
+      "type": "text",
+      "text": ":15 on Thu "
+    },
+    {
+      "type": "text",
+      "text": "8 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_t"
+    },
+    {
+      "type": "text",
+      "text": "t8cexs1k1"
+    },
+    {
+      "type": "text",
+      "text": "tw].\n- Additional"
+    },
+    {
+      "type": "text",
+      "text": " operating costs, due F"
+    },
+    {
+      "type": "text",
+      "text": "ri 9 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026: 184.30 "
+    },
+    {
+      "type": "text",
+      "text": "€ [item:itm_d"
+    },
+    {
+      "type": "text",
+      "text": "maw27qvv18"
+    },
+    {
+      "type": "text",
+      "text": "n].\n- Residence perm"
+    },
+    {
+      "type": "text",
+      "text": "it extension appointment at "
+    },
+    {
+      "type": "text",
+      "text": "10:30 on Wed"
+    },
+    {
+      "type": "text",
+      "text": " 14 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026 [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "64wce6sh2r"
+    },
+    {
+      "type": "text",
+      "text": "pp]. The"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "100."
+    },
+    {
+      "type": "text",
+      "text": "00 € fee is due the"
+    },
+    {
+      "type": "text",
+      "text": " same day, by girocard ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_wj2"
+    },
+    {
+      "type": "text",
+      "text": "v05avgk1m]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Electricity advance"
+    },
+    {
+      "type": "text",
+      "text": " payment by"
+    },
+    {
+      "type": "text",
+      "text": " dire"
+    },
+    {
+      "type": "text",
+      "text": "ct debit, due Th"
+    },
+    {
+      "type": "text",
+      "text": "u 15 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026: 48.00 "
+    },
+    {
+      "type": "text",
+      "text": "€ [item:itm_k"
+    },
+    {
+      "type": "text",
+      "text": "ttk9625293w]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Health and care insurance"
+    },
+    {
+      "type": "text",
+      "text": " contribution by"
+    },
+    {
+      "type": "text",
+      "text": " direct debit, due Th"
+    },
+    {
+      "type": "text",
+      "text": "u 15 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026: 156.55 "
+    },
+    {
+      "type": "text",
+      "text": "€ [item:itm_00"
+    },
+    {
+      "type": "text",
+      "text": "sbt9f3e0"
+    },
+    {
+      "type": "text",
+      "text": "pe].\n\nThe library return"
+    },
+    {
+      "type": "text",
+      "text": " and the parking fee are both"
+    },
+    {
+      "type": "text",
+      "text": " due on"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct, and their"
+    },
+    {
+      "type": "text",
+      "text": " send-by dates come"
+    },
+    {
+      "type": "text",
+      "text": " first"
+    },
+    {
+      "type": "text",
+      "text": ". You"
+    },
+    {
+      "type": "text",
+      "text": " can m"
+    },
+    {
+      "type": "text",
+      "text": "ark items"
+    },
+    {
+      "type": "text",
+      "text": " done or"
+    },
+    {
+      "type": "text",
+      "text": " dra"
+    },
+    {
+      "type": "text",
+      "text": "ft let"
+    },
+    {
+      "type": "text",
+      "text": "ters in Ordnung."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are the deadlines in October 2026, soonest first. Payments and appointments are in the second list.\n\n**Deadlines**\n- Return the overdue library items, due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Fees keep growing until then. You can also renew online if the items aren't reserved.\n- Optional objection to the Muster BKK contribution notice, due Wed 14 Oct 2026, with send-by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. After that date the notice becomes final. An objection does not suspend payment.\n- Cancel the appointment at the Ausländerbehörde if you can't attend, due Mon 19 Oct 2026, with send-by Tue 13 Oct 2026 [item:itm_jr5r71kc1r78].\n- Cancel the FunkNetz Smart M mobile contract, which must arrive by Wed 14 Oct 2026, with send-by Thu 8 Oct 2026 [contract:ctr_fyt9k994t9q2]. The current term ends on Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2].\n- Special cancellation of the MusterStrom Flex electricity contract because of a price rise on 1 Nov 2026 [contract:ctr_bbzemyapzvm5]. The cancellation must arrive by Sat 31 Oct 2026, and the send-by date is Mon 26 Oct 2026 [contract:ctr_bbzemyapzvm5]. Then the new price never applies.\n\n**Payments and appointments in October**\n- Parking warning fee, due Fri 2 Oct 2026: 30.00 € [item:itm_31yxpwg03cdb]. The amount was read by AI from a scan, so please check it against the paper letter.\n- Monthly rent, due Mon 5 Oct 2026: 640.00 € [item:itm_b1b5643x7qy7].\n- Dental check-up at 09:15 on Thu 8 Oct 2026 [item:itm_tt8cexs1k1tw].\n- Additional operating costs, due Fri 9 Oct 2026: 184.30 € [item:itm_dmaw27qvv18n].\n- Residence permit extension appointment at 10:30 on Wed 14 Oct 2026 [item:itm_64wce6sh2rpp]. The 100.00 € fee is due the same day, by girocard [item:itm_wj2v05avgk1m].\n- Electricity advance payment by direct debit, due Thu 15 Oct 2026: 48.00 € [item:itm_kttk9625293w].\n- Health and care insurance contribution by direct debit, due Thu 15 Oct 2026: 156.55 € [item:itm_00sbt9f3e0pe].\n\nThe library return and the parking fee are both due on 2 Oct, and their send-by dates come first. You can mark items done or draft letters in Ordnung.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 1084,
+          "cache_read_tokens": 11995,
+          "cache_creation_tokens": 4685,
+          "cost_usd": 0.031987,
+          "duration_ms": 9914,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

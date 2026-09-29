@@ -1,0 +1,619 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"96b9de598682753d62cf0769c65a499621918fbf6cb78ff4d5a5f89b575dadf9\",\"question\":\"When does my residence permit expire, and what should I do before then?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_d9hwr1mp3bsj"
+    ],
+    "prompt_head": "The person asks:\nWhen does my residence permit expire, and what should I do before then?\n"
+  },
+  "response": {
+    "text": "Your residence permit (study permit) expires on Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. To keep your stay going, apply for the extension before that date.\n\n**What to do**\n- **Go to your appointment.** The Ausländerbehörde has booked you for Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp]. It's at Musterplatz 1, 2nd floor, room 2.14.\n- **Pay the fee.** It costs 100.00 € and is due on 14 Oct 2026 [item:itm_wj2v05avgk1m]. You pay on site by girocard, because cash isn't accepted.\n- **Bring these originals:**\n  - your valid passport\n  - your enrolment certificate for winter semester 2026/27\n  - proof of funds\n  - proof of health insurance\n  - a biometric photo\n  - your tenancy contract or landlord confirmation\n- **Cancel if you can't attend.** The letter asks for at least three working days' notice. Ordnung has a send-by date of Tue 13 Oct 2026 for this [item:itm_jr5r71kc1r78].\n- **Check your passport.** It expires on Wed 10 Feb 2027 [item:itm_cw9j6w5ppdvs]. The letter says a permit generally can't be issued beyond your passport's validity. Ask the office whether this affects your extension, and consider renewing the passport soon. Ordnung marks that passport date as needing a check, so compare it with the passport itself.\n\n**If you apply in time:** your permit usually counts as still valid until the office decides (§ 81 Abs. 4 AufenthG). Ask for a Fiktionsbescheinigung. Without a timely application, the permit lapses.\n\nFor residence matters, get advice if you're unsure.\n\nOrdnung has a \"Mark done\" option for these to-dos and an \"Add your dates to your calendar\" option. I can't do either for you. The letter is at [doc:doc_d9hwr1mp3bsj].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 932,
+      "cache_read_tokens": 22069,
+      "cache_creation_tokens": 7856,
+      "cost_usd": 0.0451698,
+      "duration_ms": 11462,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_018szEaZRrNTg3tDB9agerUt"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "expiry"
+      },
+      "tool_use_id": "toolu_01J2FAFFdQSgcki8gaatp2JA"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Aufenthaltstitel"
+      },
+      "tool_use_id": "toolu_01LVsFUVp29RAdLbMeJkzM87"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_cw9j6w5ppdvs\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_vzbesvvpzk54\",\"doc_id\":\"doc_1dgp8tp2ga0c\"},{\"id\":\"itm_kg752bcvvsyc\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-03-31\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"work\",\"party_id\":\"pty_h9easqrf81w1\",\"doc_id\":\"doc_q6fqvndrg5rr\",\"contract_id\":\"ctr_jgb50bejm6jd\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit expires\",\"action\":\"Apply for the extension before this date.\",\"consequence\":\"Without a timely application, the permit lapses.\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_cw9j6w5ppdvs\":{\"title\":\"Passport expires\",\"action\":\"Apply for a new passport before it expires.\",\"consequence\":\"You cannot use the passport for travel or identification after expiry, which may affect your residence permit.\"},\"pty_vzbesvvpzk54\":{\"name\":\"Ministry of Interior, Republic of Examplia\"},\"itm_kg752bcvvsyc\":{\"title\":\"Fixed-term employment ends\",\"action\":\"Plan for the end of the job; no notice is needed.\",\"consequence\":\"The employment ends automatically.\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01J2FAFFdQSgcki8gaatp2JA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_1dgp8tp2ga0c\",\"kind\":\"identity_document\",\"date\":\"2017-02-11\",\"party_id\":\"pty_vzbesvvpzk54\"},{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"party_id\":\"pty_46nd7njtwctz\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_1dgp8tp2ga0c\":{\"title\":\"Passport of Sam Rivera (expires 10 February 2027)\",\"snippet\":\"…Check whether your residence permit (Aufenthaltstitel) needs an updated passport, and ask the immigration office (Ausländerbehörde…\"},\"pty_vzbesvvpzk54\":{\"name\":\"Ministry of Interior, Republic of Examplia\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Residence permit expiring – appointment to apply for extension\",\"snippet\":\"…Ein Aufenthaltstitel kann grundsätzlich nicht über die Gültigkeitsdauer Ihres Reisepasses hinaus erteilt werden; bitte prüfen Sie…\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LVsFUVp29RAdLbMeJkzM87"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\",\"n6\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_cw9j6w5ppdvs\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"health_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n5\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n6\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_vzbesvvpzk54\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income tax assessment 2025 – refund of €312.45\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"Payslip August 2026 – Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Health and care insurance contribution notice from 1 October 2026\",\"numbers\":{\"n4\":{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester fee for summer semester 2027\",\"numbers\":{\"n5\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Broadcasting fee payment request, Oct–Dec 2026\",\"numbers\":{\"n6\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Passport of Sam Rivera (expires 10 February 2027)\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"X1234567\"}}},\"pty_vzbesvvpzk54\":{\"name\":\"Ministry of Interior, Republic of Examplia\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_018szEaZRrNTg3tDB9agerUt"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_d9hwr1mp3bsj"
+      },
+      "tool_use_id": "toolu_01NXyewvZoBD8ysMYWuhExkq"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"residence_permit\",\"date\":\"2026-09-16\",\"status\":\"please check\",\"direction\":\"incoming\",\"received_date\":\"2026-09-18\",\"party_id\":\"pty_46nd7njtwctz\",\"case_id\":\"cas_4301wbts7tb6\",\"urgency\":\"high\",\"pages\":1,\"items\":[{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_jr5r71kc1r78\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-19\",\"send_by\":\"2026-10-13\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_64wce6sh2rpp\":{\"title\":\"Residence permit extension appointment\",\"action\":\"Attend with all listed original documents, and pay the €100 fee by girocard (no cash).\",\"consequence\":\"Not stated; the permit expires on 30 November 2026 unless an extension is applied for before then.\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_wj2v05avgk1m\":{\"title\":\"Extension fee\",\"action\":\"Pay the fee on site by girocard at the appointment.\"},\"itm_jr5r71kc1r78\":{\"title\":\"Cancel appointment if you cannot attend\",\"action\":\"Cancel the appointment at least three working days before it if you can't attend.\"},\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit expires\",\"action\":\"Apply for the extension before this date.\",\"consequence\":\"Without a timely application, the permit lapses.\"},\"doc_d9hwr1mp3bsj\":{\"language\":\"German\",\"title\":\"Residence permit expiring – appointment to apply for extension\",\"summary\":\"The Musterstadt Immigration Office (Ausländerbehörde) wrote on 16 September 2026 that your student residence permit is valid until 30 November 2026. It has reserved an appointment for you on 14 October 2026 at 10:30 to apply for an extension.\",\"explanation\":\"Your residence permit for study expires on 30 November 2026. If you want to stay longer, you must apply for an extension before it expires. The office has booked an appointment for you and lists the original documents to bring, including your passport, enrolment certificate, proof of funds, health insurance proof, photo, tenancy proof and the €100 fee by card only. If you apply before expiry, your permit continues to count until the office decides. Check that your passport is valid long enough. If you can't attend, cancel at least three working days before.\",\"key_facts\":[{\"label\":\"Permit valid until (gültig bis)\",\"value\":\"30.11.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Appointment (Termin)\",\"value\":\"14.10.2026, 10:30 Uhr\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Fee (Gebühr)\",\"value\":\"100,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Effect of timely application (Fortgeltung)\",\"value\":\"Permit continues until decision (§ 81 Abs. 4 AufenthG)\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Passport validity limit\",\"value\":\"Permit generally cannot exceed passport validity\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\"}],\"warnings\":[\"Check that your passport is valid long enough, as the permit generally can't be issued beyond passport validity.\",\"1 date could not be confirmed against the letter's text.\"],\"text\":\"=== Page 1 ===\\nStadt Musterstadt   Amt für Migration und Integration\\nAusländerbehörde\\nDer Oberbürgermeister\\n\\nAktenzeichen\\n32.2-AE-24-08815\\nStadt Musterstadt · Ausländerbehörde · Musterplatz 1 · 12345 Musterstadt   Auskunft erteilt\\nFrau Kaya, Zimmer 2.14\\nHerrn   Telefon\\nSam Rivera   0123 400-3214\\nBeispielweg 5   E-Mail\\nabh@musterstadt.example\\n12345 Musterstadt\\nDatum\\n16.09.2026\\n\\nAblauf Ihrer Aufenthaltserlaubnis am 30.11.2026 – Einladung zur Vorsprache\\n\\nSehr geehrter Herr Rivera,\\n\\nIhre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes\\n(AufenthG) ist bis zum 30.11.2026 gültig. Wenn Sie Ihren Aufenthalt über diesen Zeitpunkt hinaus\\nfortsetzen möchten, müssen Sie vor Ablauf der Gültigkeit die Verlängerung beantragen. Für die\\nAntragstellung haben wir für Sie folgenden Termin reserviert:\\n\\nIhr Termin\\n\\nTermin: Mittwoch, 14.10.2026, 10:30 Uhr\\nOrt: Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\\n\\nBitte bringen Sie zu dem Termin folgende Unterlagen im Original mit:\\n• Ihren gültigen Reisepass\\n• die aktuelle Immatrikulationsbescheinigung für das Wintersemester 2026/27\\n• einen Nachweis über die Sicherung des Lebensunterhalts (Finanzierungsnachweis), z. B. Sperrkonto,\\nStipendienzusage oder Arbeitsvertrag mit den letzten drei Gehaltsabrechnungen\\n• einen Nachweis über ausreichenden Krankenversicherungsschutz\\n• ein aktuelles biometrisches Lichtbild (35 × 45 mm)\\n• Ihren Mietvertrag oder eine Wohnungsgeberbestätigung\\n• die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)\\n\\nWird der Antrag auf Verlängerung vor Ablauf der Aufenthaltserlaubnis gestellt, gilt diese bis zur\\nEntscheidung der Ausländerbehörde als fortbestehend (§ 81 Abs. 4 AufenthG). Ein Aufenthaltstitel\\nkann grundsätzlich nicht über die Gültigkeitsdauer Ihres Reisepasses hinaus erteilt werden; bitte\\nprüfen Sie daher rechtzeitig Ihren Pass.\\n\\nKönnen Sie den Termin nicht wahrnehmen, sagen Sie ihn bitte spätestens drei Werktage vorher ab.\\n\\nMit freundlichen Grüßen\\nIm Auftrag\\n\\nKaya\\n\\nStadt Musterstadt   Barrierefreier Zugang   Stadtkasse Musterstadt\\nMusterplatz 1 · 12345 Musterstadt   Eingang Rathausgasse   Sparkasse Musterstadt\\nwww.musterstadt.example   Bus/Tram: Haltestelle Rathaus   IBAN DE51 1234 5600 0000 1000 17\\nBIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01NXyewvZoBD8ysMYWuhExkq"
+    },
+    {
+      "type": "text",
+      "text": "Your resid"
+    },
+    {
+      "type": "text",
+      "text": "ence permit (study perm"
+    },
+    {
+      "type": "text",
+      "text": "it) expires on"
+    },
+    {
+      "type": "text",
+      "text": " Mon 30 N"
+    },
+    {
+      "type": "text",
+      "text": "ov 2026 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_p0k64j"
+    },
+    {
+      "type": "text",
+      "text": "p7r8bf]."
+    },
+    {
+      "type": "text",
+      "text": " To ke"
+    },
+    {
+      "type": "text",
+      "text": "ep your"
+    },
+    {
+      "type": "text",
+      "text": " stay going"
+    },
+    {
+      "type": "text",
+      "text": ", ap"
+    },
+    {
+      "type": "text",
+      "text": "ply for the"
+    },
+    {
+      "type": "text",
+      "text": " extension before that date.\n\n**"
+    },
+    {
+      "type": "text",
+      "text": "What to do**"
+    },
+    {
+      "type": "text",
+      "text": "\n- **Go"
+    },
+    {
+      "type": "text",
+      "text": " to your"
+    },
+    {
+      "type": "text",
+      "text": " appointment.** The "
+    },
+    {
+      "type": "text",
+      "text": "Ausländerbehörde has"
+    },
+    {
+      "type": "text",
+      "text": " booked you"
+    },
+    {
+      "type": "text",
+      "text": " for Wed 14 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026 at "
+    },
+    {
+      "type": "text",
+      "text": "10:30 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_64wce6sh"
+    },
+    {
+      "type": "text",
+      "text": "2rpp]. It's"
+    },
+    {
+      "type": "text",
+      "text": " at Musterplatz "
+    },
+    {
+      "type": "text",
+      "text": "1, 2n"
+    },
+    {
+      "type": "text",
+      "text": "d floor, room"
+    },
+    {
+      "type": "text",
+      "text": " 2.14.\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Pay the fee.**"
+    },
+    {
+      "type": "text",
+      "text": " It"
+    },
+    {
+      "type": "text",
+      "text": " cost"
+    },
+    {
+      "type": "text",
+      "text": "s 100."
+    },
+    {
+      "type": "text",
+      "text": "00 € and is due on "
+    },
+    {
+      "type": "text",
+      "text": "14 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_w"
+    },
+    {
+      "type": "text",
+      "text": "j2v05avgk1"
+    },
+    {
+      "type": "text",
+      "text": "m]. You pay on"
+    },
+    {
+      "type": "text",
+      "text": " site by girocard,"
+    },
+    {
+      "type": "text",
+      "text": " because"
+    },
+    {
+      "type": "text",
+      "text": " cash isn't acc"
+    },
+    {
+      "type": "text",
+      "text": "epted.\n- **B"
+    },
+    {
+      "type": "text",
+      "text": "ring these"
+    },
+    {
+      "type": "text",
+      "text": " origin"
+    },
+    {
+      "type": "text",
+      "text": "als:"
+    },
+    {
+      "type": "text",
+      "text": "**\n  - your"
+    },
+    {
+      "type": "text",
+      "text": " valid passport\n  - your"
+    },
+    {
+      "type": "text",
+      "text": " enrolment certificate for"
+    },
+    {
+      "type": "text",
+      "text": " win"
+    },
+    {
+      "type": "text",
+      "text": "ter semester 2026/27"
+    },
+    {
+      "type": "text",
+      "text": "\n  - proof of funds"
+    },
+    {
+      "type": "text",
+      "text": "\n  - proof of health insur"
+    },
+    {
+      "type": "text",
+      "text": "ance\n  - a biometric"
+    },
+    {
+      "type": "text",
+      "text": " photo"
+    },
+    {
+      "type": "text",
+      "text": "\n  - your"
+    },
+    {
+      "type": "text",
+      "text": " tenancy contract or land"
+    },
+    {
+      "type": "text",
+      "text": "lord confirmation\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Cancel if you can"
+    },
+    {
+      "type": "text",
+      "text": "'t attend.** The"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter as"
+    },
+    {
+      "type": "text",
+      "text": "ks for at"
+    },
+    {
+      "type": "text",
+      "text": " least three working days'"
+    },
+    {
+      "type": "text",
+      "text": " notice."
+    },
+    {
+      "type": "text",
+      "text": " Ordnung has"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " send-by date of Tue"
+    },
+    {
+      "type": "text",
+      "text": " 13 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026 for"
+    },
+    {
+      "type": "text",
+      "text": " this [item:itm_j"
+    },
+    {
+      "type": "text",
+      "text": "r5r71kc1r"
+    },
+    {
+      "type": "text",
+      "text": "78].\n- **Check your"
+    },
+    {
+      "type": "text",
+      "text": " passport.** It"
+    },
+    {
+      "type": "text",
+      "text": " expires on"
+    },
+    {
+      "type": "text",
+      "text": " W"
+    },
+    {
+      "type": "text",
+      "text": "ed 10 Feb "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_cw9j6w5"
+    },
+    {
+      "type": "text",
+      "text": "ppdvs]. The"
+    },
+    {
+      "type": "text",
+      "text": " letter says a perm"
+    },
+    {
+      "type": "text",
+      "text": "it gener"
+    },
+    {
+      "type": "text",
+      "text": "ally can"
+    },
+    {
+      "type": "text",
+      "text": "'t be issued beyond your"
+    },
+    {
+      "type": "text",
+      "text": " passport's validity."
+    },
+    {
+      "type": "text",
+      "text": " Ask"
+    },
+    {
+      "type": "text",
+      "text": " the office"
+    },
+    {
+      "type": "text",
+      "text": " wh"
+    },
+    {
+      "type": "text",
+      "text": "ether this"
+    },
+    {
+      "type": "text",
+      "text": " aff"
+    },
+    {
+      "type": "text",
+      "text": "ects your"
+    },
+    {
+      "type": "text",
+      "text": " extension, and consider renew"
+    },
+    {
+      "type": "text",
+      "text": "ing the"
+    },
+    {
+      "type": "text",
+      "text": " passport soon."
+    },
+    {
+      "type": "text",
+      "text": " Ordnung mar"
+    },
+    {
+      "type": "text",
+      "text": "ks that"
+    },
+    {
+      "type": "text",
+      "text": " passport date as needing a"
+    },
+    {
+      "type": "text",
+      "text": " check, so comp"
+    },
+    {
+      "type": "text",
+      "text": "are it with the pass"
+    },
+    {
+      "type": "text",
+      "text": "port itself.\n\n**If"
+    },
+    {
+      "type": "text",
+      "text": " you apply in"
+    },
+    {
+      "type": "text",
+      "text": " time:"
+    },
+    {
+      "type": "text",
+      "text": "** your"
+    },
+    {
+      "type": "text",
+      "text": " permit us"
+    },
+    {
+      "type": "text",
+      "text": "ually coun"
+    },
+    {
+      "type": "text",
+      "text": "ts as still valid until the office"
+    },
+    {
+      "type": "text",
+      "text": " decides (§ 81 "
+    },
+    {
+      "type": "text",
+      "text": "Abs. 4 A"
+    },
+    {
+      "type": "text",
+      "text": "ufenthG). Ask"
+    },
+    {
+      "type": "text",
+      "text": " for a Fiktions"
+    },
+    {
+      "type": "text",
+      "text": "bescheinigung."
+    },
+    {
+      "type": "text",
+      "text": " Without a timely application, the perm"
+    },
+    {
+      "type": "text",
+      "text": "it lapses."
+    },
+    {
+      "type": "text",
+      "text": "\n\nFor residence matters, get"
+    },
+    {
+      "type": "text",
+      "text": " advice if you're"
+    },
+    {
+      "type": "text",
+      "text": " unsure."
+    },
+    {
+      "type": "text",
+      "text": "\n\nOrdnung has"
+    },
+    {
+      "type": "text",
+      "text": " a \"Mark done\" option"
+    },
+    {
+      "type": "text",
+      "text": " for these to"
+    },
+    {
+      "type": "text",
+      "text": "-dos and"
+    },
+    {
+      "type": "text",
+      "text": " an \"Add your dates to"
+    },
+    {
+      "type": "text",
+      "text": " your calendar\" option."
+    },
+    {
+      "type": "text",
+      "text": " I can't do"
+    },
+    {
+      "type": "text",
+      "text": " either for"
+    },
+    {
+      "type": "text",
+      "text": " you."
+    },
+    {
+      "type": "text",
+      "text": " The"
+    },
+    {
+      "type": "text",
+      "text": " letter is"
+    },
+    {
+      "type": "text",
+      "text": " at"
+    },
+    {
+      "type": "text",
+      "text": " [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_d9hwr1"
+    },
+    {
+      "type": "text",
+      "text": "mp3bsj]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your residence permit (study permit) expires on Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. To keep your stay going, apply for the extension before that date.\n\n**What to do**\n- **Go to your appointment.** The Ausländerbehörde has booked you for Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp]. It's at Musterplatz 1, 2nd floor, room 2.14.\n- **Pay the fee.** It costs 100.00 € and is due on 14 Oct 2026 [item:itm_wj2v05avgk1m]. You pay on site by girocard, because cash isn't accepted.\n- **Bring these originals:**\n  - your valid passport\n  - your enrolment certificate for winter semester 2026/27\n  - proof of funds\n  - proof of health insurance\n  - a biometric photo\n  - your tenancy contract or landlord confirmation\n- **Cancel if you can't attend.** The letter asks for at least three working days' notice. Ordnung has a send-by date of Tue 13 Oct 2026 for this [item:itm_jr5r71kc1r78].\n- **Check your passport.** It expires on Wed 10 Feb 2027 [item:itm_cw9j6w5ppdvs]. The letter says a permit generally can't be issued beyond your passport's validity. Ask the office whether this affects your extension, and consider renewing the passport soon. Ordnung marks that passport date as needing a check, so compare it with the passport itself.\n\n**If you apply in time:** your permit usually counts as still valid until the office decides (§ 81 Abs. 4 AufenthG). Ask for a Fiktionsbescheinigung. Without a timely application, the permit lapses.\n\nFor residence matters, get advice if you're unsure.\n\nOrdnung has a \"Mark done\" option for these to-dos and an \"Add your dates to your calendar\" option. I can't do either for you. The letter is at [doc:doc_d9hwr1mp3bsj].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 932,
+          "cache_read_tokens": 22069,
+          "cache_creation_tokens": 7856,
+          "cost_usd": 0.0451698,
+          "duration_ms": 11462,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

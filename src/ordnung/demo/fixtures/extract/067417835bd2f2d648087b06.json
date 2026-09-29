@@ -1,0 +1,144 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "11.7.1",
+    "cache_key": "{\"doc\":\"0d5ac924da7891fb9e2c1f63448d881ac4c5b7346ee867f62b0b659518d57df5\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_1ndcj96tf28z"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)\n- Hochschule Musterstadt (university)\n- Muster BKK"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"title\":\"First payment reminder from TechMarkt Online – €94.99 due by 30 September 2026\",\"summary\":\"TechMarkt Online GmbH sent a first reminder (1. Mahnung) for unpaid invoice TM-2026-0048213 dated 20 August 2026. The total is €94.99 (€89.99 plus a €5.00 reminder fee), to be paid by 30 September 2026.\",\"explanation\":\"The retailer says it did not receive payment for an invoice that was due on 3 September 2026. It now asks for €94.99, which includes a €5.00 reminder fee (Mahngebühr), by 30 September 2026. If you already paid, you can ignore the letter. If not, pay soon, because the deadline is very close. Otherwise the claim will go to a debt collection agency (Inkassodienstleister), which causes further costs. If you think the claim or the fee is wrong, contact the company in writing. Check that the IBAN matches earlier invoices before paying.\",\"case_title\":\"TechMarkt Online reminder TM-2026-0048213\",\"area\":\"money\",\"urgency\":\"critical\",\"language\":\"de\",\"document_date\":\"2026-09-10\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"TechMarkt Online GmbH\",\"kind\":\"retailer\",\"address\":\"Handelsstraße 88, 12353 Beispielburg\",\"email\":\"kundenservice@techmarkt-online.example\",\"phone\":\"0123 6655440\",\"website\":\"www.techmarkt-online.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielburg HRB 48213\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"}]},\"references\":[{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"},{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielburg HRB 48213\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay reminder total to TechMarkt Online\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-09-30\",\"text\":\"bis spätestens 30.09.2026\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"quote\":\"Bitte überweisen Sie den Gesamtbetrag von 94,99 € bis spätestens 30.09.2026 auf unser\",\"amount\":94.99,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Transfer €94.99 to TechMarkt Online GmbH using the invoice number as the payment reference.\",\"consequence\":\"The claim will be handed to a debt collection agency (Inkassodienstleister), causing further costs.\",\"priority\":\"critical\"}],\"key_facts\":[{\"label\":\"Open invoice amount (offener Betrag)\",\"value\":\"89,99 €\",\"quote\":\"TM-2026-0048213   20.08.2026   03.09.2026   89,99 €\"},{\"label\":\"Reminder fee (Mahngebühr)\",\"value\":\"5,00 €\",\"quote\":\"Mahngebühr   5,00 €\"},{\"label\":\"Total (Gesamtbetrag)\",\"value\":\"94,99 €\",\"quote\":\"Gesamtbetrag   94,99 €\"},{\"label\":\"Original due date (fällig am)\",\"value\":\"03.09.2026\",\"quote\":\"Die Zahlung war am 03.09.2026 fällig.\"},{\"label\":\"Invoice date (Rechnungsdatum)\",\"value\":\"20.08.2026\",\"quote\":\"TM-2026-0048213   20.08.2026   03.09.2026   89,99 €\"}],\"payment\":{\"iban\":\"DE70123478000048213000\",\"payee\":\"TechMarkt Online GmbH\",\"reference\":\"TM-2026-0048213\"},\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"warnings\":[\"The IBAN was not checked for validity here; compare it with the IBAN on the original invoice before paying.\"]}",
+    "data": {
+      "kind": "dunning",
+      "title": "First payment reminder from TechMarkt Online – €94.99 due by 30 September 2026",
+      "summary": "TechMarkt Online GmbH sent a first reminder (1. Mahnung) for unpaid invoice TM-2026-0048213 dated 20 August 2026. The total is €94.99 (€89.99 plus a €5.00 reminder fee), to be paid by 30 September 2026.",
+      "explanation": "The retailer says it did not receive payment for an invoice that was due on 3 September 2026. It now asks for €94.99, which includes a €5.00 reminder fee (Mahngebühr), by 30 September 2026. If you already paid, you can ignore the letter. If not, pay soon, because the deadline is very close. Otherwise the claim will go to a debt collection agency (Inkassodienstleister), which causes further costs. If you think the claim or the fee is wrong, contact the company in writing. Check that the IBAN matches earlier invoices before paying.",
+      "case_title": "TechMarkt Online reminder TM-2026-0048213",
+      "area": "money",
+      "urgency": "critical",
+      "language": "de",
+      "document_date": "2026-09-10",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "TechMarkt Online GmbH",
+        "kind": "retailer",
+        "address": "Handelsstraße 88, 12353 Beispielburg",
+        "email": "kundenservice@techmarkt-online.example",
+        "phone": "0123 6655440",
+        "website": "www.techmarkt-online.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE482133778"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Beispielburg HRB 48213"
+          },
+          {
+            "label": "Steuernummer",
+            "value": "212/5812/0048"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "K-7719034"
+        },
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "TM-2026-0048213"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE482133778"
+        },
+        {
+          "label": "Handelsregister",
+          "value": "Amtsgericht Beispielburg HRB 48213"
+        },
+        {
+          "label": "Steuernummer",
+          "value": "212/5812/0048"
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay reminder total to TechMarkt Online",
+          "date": {
+            "type": "fixed",
+            "date": "2026-09-30",
+            "text": "bis spätestens 30.09.2026",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "quote": "Bitte überweisen Sie den Gesamtbetrag von 94,99 € bis spätestens 30.09.2026 auf unser",
+          "amount": 94.99,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Transfer €94.99 to TechMarkt Online GmbH using the invoice number as the payment reference.",
+          "consequence": "The claim will be handed to a debt collection agency (Inkassodienstleister), causing further costs.",
+          "priority": "critical"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Open invoice amount (offener Betrag)",
+          "value": "89,99 €",
+          "quote": "TM-2026-0048213   20.08.2026   03.09.2026   89,99 €"
+        },
+        {
+          "label": "Reminder fee (Mahngebühr)",
+          "value": "5,00 €",
+          "quote": "Mahngebühr   5,00 €"
+        },
+        {
+          "label": "Total (Gesamtbetrag)",
+          "value": "94,99 €",
+          "quote": "Gesamtbetrag   94,99 €"
+        },
+        {
+          "label": "Original due date (fällig am)",
+          "value": "03.09.2026",
+          "quote": "Die Zahlung war am 03.09.2026 fällig."
+        },
+        {
+          "label": "Invoice date (Rechnungsdatum)",
+          "value": "20.08.2026",
+          "quote": "TM-2026-0048213   20.08.2026   03.09.2026   89,99 €"
+        }
+      ],
+      "payment": {
+        "iban": "DE70123478000048213000",
+        "payee": "TechMarkt Online GmbH",
+        "reference": "TM-2026-0048213"
+      },
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "warnings": [
+        "The IBAN was not checked for validity here; compare it with the IBAN on the original invoice before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1715,
+      "cache_read_tokens": 8372,
+      "cache_creation_tokens": 2402,
+      "cost_usd": 0.0284364,
+      "duration_ms": 9786,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
