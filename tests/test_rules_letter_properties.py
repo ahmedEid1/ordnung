@@ -292,3 +292,18 @@ def test_only_a_court_makes_a_court_order(name: str, title: str) -> None:
         ],
     )
     assert routing.classify_letter(extraction) not in ("court_payment_order", "enforcement_order")
+
+
+@given(not_courts, st.sampled_from(["court_payment_order", "enforcement_order"]))
+def test_the_court_order_the_model_names_needs_a_sender_that_may_be_a_court(name: str, named: str) -> None:
+    """ADR 0010 point 5: the kind the model names is checked — a sender read as a company whose name names
+    no court (a debt collector, a bailiff, a court cashier) never makes the model's court order one."""
+    extraction = DocumentExtraction(
+        kind="dunning",
+        title="Letzte Mahnung",
+        summary="",
+        explanation="",
+        sender=ExtractedParty(name=name or "Inkasso", kind="company"),
+        high_stakes_kind=named,
+    )
+    assert routing.classify_letter(extraction) is None

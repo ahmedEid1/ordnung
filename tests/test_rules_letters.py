@@ -955,6 +955,201 @@ def test_the_reading_text_covers_quotes_facts_remedy_and_change() -> None:
     assert routing.classify_letter(extraction) == "court_payment_order"
 
 
+# ------------------------------------------------ the kind the model names (extraction prompt version 9)
+
+
+def naming(extraction: DocumentExtraction, kind: str | None) -> DocumentExtraction:
+    """``extraction`` as a reading of extraction prompt version 9 whose model names ``kind``."""
+    return DocumentExtraction.model_validate({**extraction.model_dump(), "high_stakes_kind": kind})
+
+
+#: A court named only in English, which code doesn't recognise by name (an accepted miss of ADR 0010).
+ENGLISH_COURT = ExtractedParty(name="Local Court of Hagen, Central Dunning Court", kind="authority")
+EMPLOYER = ExtractedParty(name="Café Kranz", kind="employer")
+
+
+@pytest.mark.parametrize(
+    ("extraction", "kind"),
+    [
+        (
+            reading(title="Court payment order", sender=ENGLISH_COURT, remedy=WIDERSPRUCH),
+            "court_payment_order",
+        ),
+        # a court order whose reading has no remedy and no objection date
+        (reading(title="Vollstreckungsbescheid", sender=COURT), "enforcement_order"),
+        # a reading without a sender, and a court's full name read as a company
+        (reading(title="Mahnbescheid", remedy=WIDERSPRUCH), "court_payment_order"),
+        (
+            reading(title="Mahnbescheid", sender=ExtractedParty(name="Amtsgericht Hagen", kind="company")),
+            "court_payment_order",
+        ),
+        # terminations the reading doesn't record, or whose contract says nothing
+        (reading(kind="employment", title="Termination of your employment", sender=EMPLOYER), "dismissal"),
+        (
+            reading(
+                kind="rent_lease", title="Notice", contract=ExtractedContract(name="Lease", category="rent")
+            ),
+            "landlord_notice",
+        ),
+        (_termination(kind="contract", contract=ExtractedContract(name="Vertrag")), "landlord_notice"),
+        # a consent request the reading doesn't quote in German
+        (_increase("Please agree to the new rent of 880 EUR from 1 January."), "rent_increase"),
+    ],
+)
+def test_the_kind_the_model_names_is_filed_when_code_reads_none(
+    extraction: DocumentExtraction, kind: str
+) -> None:
+    """ADR 0010 point 5: the model names the letter's kind itself, and code files it when its own policy
+    reads none and nothing in the reading rules it out — the misses ADR 0010 had accepted (a court named only
+    in English, an order read without its remedy, a termination the reading doesn't record). A reading that
+    names no kind (every reading before prompt version 9) keeps code's result."""
+    assert routing.classify_letter(extraction) is None
+    assert routing.classify_letter(naming(extraction, None)) is None
+    assert routing.classify_letter(naming(extraction, kind)) == kind
+    assert routing.letter_kind(naming(extraction, kind)) == kind
+
+
+def test_the_kind_code_reads_stands_when_the_model_names_the_same() -> None:
+    order = reading(title="Mahnbescheid", sender=COURT, remedy=WIDERSPRUCH)
+    assert routing.classify_letter(naming(order, "court_payment_order")) == "court_payment_order"
+    notice = _termination(kind="rent_lease")
+    assert routing.classify_letter(naming(notice, "landlord_notice")) == "landlord_notice"
+
+
+@pytest.mark.parametrize(
+    ("extraction", "named", "kind"),
+    [
+        (
+            reading(title="Vollstreckungsbescheid", sender=COURT, remedy=EINSPRUCH),
+            "court_payment_order",
+            "enforcement_order",
+        ),
+        # an employer ending the lease of a company flat
+        (
+            _termination(
+                contract=ExtractedContract(name="Werkmietwohnung", category="rent"), sender=EMPLOYER
+            ),
+            "dismissal",
+            "landlord_notice",
+        ),
+        (_increase("Wir bitten um Ihre Zustimmung zur Mieterhöhung."), "landlord_notice", "rent_increase"),
+        (_termination(kind="rent_lease"), "operating_costs", "landlord_notice"),
+    ],
+)
+def test_when_code_and_the_model_name_different_kinds_codes_is_filed(
+    extraction: DocumentExtraction, named: str, kind: str
+) -> None:
+    """Code's kind is the structured decision the review rounds checked: it wins a disagreement."""
+    assert routing.classify_letter(extraction) == kind
+    assert routing.classify_letter(naming(extraction, named)) == kind
+
+
+@pytest.mark.parametrize("named", ["court_payment_order", "enforcement_order"])
+@pytest.mark.parametrize(
+    "sender",
+    [
+        ExtractedParty(name="Inkasso Nord GmbH", kind="company"),  # a debt collector threatening an order
+        ExtractedParty(name="LG Electronics Deutschland GmbH", kind="retailer"),
+        ExtractedParty(name="OLG Immobilien", kind="landlord"),
+        ExtractedParty(name="Gerichtsvollzieher bei dem Amtsgericht Frankfurt am Main", kind="authority"),
+        ExtractedParty(name="Gerichtskasse Hamm", kind="authority"),
+    ],
+)
+def test_the_models_court_order_is_vetoed_when_the_sender_is_clearly_no_court(
+    sender: ExtractedParty, named: str
+) -> None:
+    letter = reading(
+        kind="dunning",
+        title="Letzte Mahnung",
+        sender=sender,
+        items=[item("Andernfalls beantragen wir beim Amtsgericht einen Mahnbescheid.")],
+        remedy=WIDERSPRUCH,
+    )
+    assert routing.classify_letter(naming(letter, named)) is None
+    assert routing.letter_kind(naming(letter, named)) == "dunning"
+
+
+@pytest.mark.parametrize("named", ["court_payment_order", "enforcement_order"])
+@pytest.mark.parametrize(
+    "court", [ExtractedParty(name="Amtsgericht Wedding", kind="authority"), ENGLISH_COURT]
+)
+def test_the_models_court_order_is_vetoed_for_a_european_order_for_payment(
+    court: ExtractedParty, named: str
+) -> None:
+    remedy = Remedy(type="einspruch", quote="Einspruch", period_text="binnen 30 Tagen (Art. 16 EuMahnVO)")
+    order = reading(title="European order for payment", sender=court, remedy=remedy)
+    assert routing.classify_letter(naming(order, named)) is None
+
+
+@pytest.mark.parametrize(
+    ("extraction", "named"),
+    [
+        (
+            _termination(
+                kind="employment", contract=ExtractedContract(name="Jobticket", category="transport")
+            ),
+            "dismissal",
+        ),
+        (
+            reading(kind="employment", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
+            "dismissal",
+        ),
+        (
+            reading(kind="rent_lease", contract=ExtractedContract(name="Fitnessstudio", category="gym")),
+            "landlord_notice",
+        ),
+        (
+            reading(sender=EMPLOYER, contract=ExtractedContract(name="Werkmietwohnung", category="rent")),
+            "dismissal",
+        ),
+        (
+            reading(
+                kind="employment", contract=ExtractedContract(name="Arbeitsvertrag", category="employment")
+            ),
+            "landlord_notice",
+        ),
+    ],
+)
+def test_the_models_termination_is_vetoed_by_a_contract_of_another_category(
+    extraction: DocumentExtraction, named: str
+) -> None:
+    """The contract the reading names decides first, as for code's own kind: a job ticket or a gym ends
+    neither a job nor a tenancy, a tenancy no job and a job no tenancy."""
+    assert routing.classify_letter(naming(extraction, named)) is None
+
+
+@pytest.mark.parametrize(
+    ("quote", "title"),
+    [
+        ("Die Staffelmiete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Rent increase"),
+        ("Die Miete erhöht sich zum 01.01.2027 auf 820,00 EUR.", "Index rent adjustment"),
+        ("Anpassung der Betriebskostenvorauszahlung ab 01.01.2027 auf 250,00 EUR.", "Rent increase"),
+        ("Die Miete steigt ab 01.01.2027 um 80,00 EUR.", "Rent increase after modernisation"),
+        ("Die Miete steigt zum 01.01.2027; Ihrer Zustimmung bedarf es nicht.", "Rent increase"),
+    ],
+)
+def test_the_models_rent_increase_is_vetoed_when_it_needs_no_consent(quote: str, title: str) -> None:
+    increase = naming(_increase(quote, title=title), "rent_increase")
+    assert routing.classify_letter(increase) is None
+    assert routing.letter_kind(increase) == "rent_lease"
+
+
+def test_the_models_operating_cost_statement_is_recognised_on_read_and_never_filed() -> None:
+    landlord = ExtractedParty(name="Wohnbau Muster GmbH", kind="landlord")
+    # a reading whose words code doesn't recognise as a statement
+    statement = reading(kind="rent_lease", title="Annual utility cost settlement 2025", sender=landlord)
+    assert not routing.names_statement(statement)
+    named = naming(statement, "operating_costs")
+    assert routing.names_statement(named)
+    assert routing.classify_letter(named) is None  # its dates don't depend on its kind
+    assert routing.letter_kind(named) == "rent_lease"
+    # the vetoes of code's own recognition: a reminder, a utility or a public body
+    assert not routing.names_statement(named.model_copy(update={"kind": "dunning"}))
+    for kind in ("utility", "authority"):
+        sender = ExtractedParty(name="Stadtwerke Musterstadt", kind=kind)
+        assert not routing.names_statement(named.model_copy(update={"sender": sender}))
+
+
 def _notice(quote: str, *, end: str | None = None, **kw: Any) -> DocumentExtraction:
     """A landlord's notice dated 20 Sep 2026 whose termination reads ``quote``."""
     change = ExtractedChange(type="termination_by_provider", effective_date=end, quote=quote)

@@ -494,9 +494,10 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
 def is_statement(kind: str | None, extraction: DocumentExtraction | None, *, chosen: bool = False) -> bool:
     """Whether a letter is an operating-cost statement: filed as one, or — as its dates don't depend on its
     kind — recognised from its reading when it isn't filed as another high-stakes kind or as a reminder
-    (:func:`~ordnung.rules.routing.names_statement`: only the statement itself, never a reminder about
-    an old statement's back-payment), and the person didn't choose its kind (``chosen``: a letter they filed
-    as a utility bill is one — review round 2 of phase 2: the recognition overrode their choice)."""
+    (:func:`~ordnung.rules.routing.names_statement`: the model names it one, ``operating_costs``, or the
+    reading names one; only the statement itself, never a reminder about an old statement's back-payment),
+    and the person didn't choose its kind (``chosen``: a letter they filed as a utility bill is one — review
+    round 2 of phase 2: the recognition overrode their choice)."""
     if kind == "operating_costs":
         return True
     return (
@@ -781,11 +782,11 @@ def corrections(
 
     The kind is a correction only when the person chose it (``chosen_kind``, from the
     :data:`KIND_CHOSEN` activity entry) or when it is none of the kinds code may have filed: not the
-    kind code files the reading as, not the model's own kind and not a high-stakes kind (which only code
-    or the person's choice assigns). A letter filed by an older Ordnung under the model's kind (a
-    Mahnbescheid as ``dunning``) therefore gets its high-stakes kind when it is read again, one an older
-    Ordnung filed as a court order that the policy no longer recognises gets the model's kind back, and
-    a kind the person picked on the letter's page — even the model's own — is kept.
+    kind code files the reading as, not the model's own kind and not a high-stakes kind (which only code,
+    checking the one the model names, or the person's choice assigns). A letter filed by an older Ordnung
+    under the model's kind (a Mahnbescheid as ``dunning``) therefore gets its high-stakes kind when it is
+    read again, one an older Ordnung filed as a court order that the policy no longer recognises gets the
+    model's kind back, and a kind the person picked on the letter's page — even the model's own — is kept.
     """
     if previous is None:
         return {}
@@ -806,8 +807,8 @@ def corrections(
 def with_corrections(extraction: DocumentExtraction, corrected: dict[str, Any]) -> DocumentExtraction:
     """The reading with the person's corrections applied (what dates, links and the letter use).
 
-    The reading keeps the model's vocabulary: a kind only code assigns stays out of it (see
-    :func:`filed_kind`).
+    The reading keeps the model's vocabulary: a high-stakes kind, which only code or the person's choice
+    files, stays out of its ``kind`` (see :func:`filed_kind`).
     """
     update = {
         CORRECTABLE_FIELDS[name]: value

@@ -45,9 +45,11 @@ DocumentKind = Literal[
     "other",
 ]
 DOCUMENT_KINDS: tuple[str, ...] = DocumentKind.__args__  # type: ignore[attr-defined]
-#: Letters whose deadlines the rules engine handles specially. Only code assigns these kinds, from
-#: the model's reading (:mod:`ordnung.rules.routing`), so the extraction schema and the benchmark keep
-#: the model's own vocabulary (:data:`DocumentKind`) and its recorded answers stay valid.
+#: Letters whose deadlines the rules engine handles specially. They are not a :data:`DocumentKind`: the
+#: model names one in a field of its own (``DocumentExtraction.high_stakes_kind``, extraction prompt
+#: version 9), and code files a letter under one from the reading, checking the kind the model names
+#: against it (:mod:`ordnung.rules.routing`, ADR 0010); answers recorded before version 9 name none and
+#: are filed as before.
 HighStakesKind = Literal[
     "court_payment_order",
     "enforcement_order",

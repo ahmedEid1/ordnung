@@ -148,7 +148,7 @@ working-day periods; consumer contract law (§ 309 BGB, § 56 TKG, § 11 VVG, el
 rent, employment); fines; and the rare letters that are costly to miss: a court payment order
 (*Mahnbescheid*) or enforcement order, a dismissal (court action in three weeks, registering as
 job-seeking), a landlord's notice or rent increase, a late operating-cost statement and a consumer's
-withdrawal. The extraction prompt has no field for those kinds: code assigns them from the reading
+withdrawal. Claude names those kinds and code checks its answer against the rest of the reading
 ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md)). In doubt, the engine picks the
 earliest plausible date. Every rule is documented with its source in
 [docs/deadline-rules.md](docs/deadline-rules.md).
@@ -368,8 +368,11 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call.
-- High-stakes kinds are recognised by code from Claude's reading, partly from its German wording, until
-  the extraction prompt can name them itself; you can change a letter's kind on its page
+- High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
+  its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
+  reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
+  before extraction prompt version 9 names no kind and is classified by code alone. You can change a
+  letter's kind on its page
   ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md) lists the accepted misses).
 - Some of what Claude reads from a letter stays in the letter's words: a to-do's action and consequence
   and a key fact's label can come out in German ("Semesterbeitrag … überweisen", "Fällig am"), with the

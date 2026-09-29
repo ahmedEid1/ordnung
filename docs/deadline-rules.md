@@ -358,18 +358,32 @@ Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the 
 ## 7. High-stakes letters
 
 Some letters are rare but catastrophic when missed, and several of them never state their most
-important deadline. The extraction prompt is unchanged (its recorded answers stay valid), so Ordnung
-recognises these letters **in code** from the model's ordinary reading (`rules/routing.py`, a short
-written policy per ADR 0007, and ADR 0010 for why code assigns these kinds) and files them under their own kind:
+important deadline. Ordnung files these letters under their own kind **in code** (`rules/routing.py`, a
+short written policy per ADR 0007, and ADR 0010 for why code assigns these kinds). Since extraction prompt
+version 9 the model names the kind itself (`high_stakes_kind`); code weighs that against the kind it
+reads from the rest of the reading (the table below):
 
-| Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
+- the model names none (every reading recorded before version 9): code's kind, as before;
+- code reads a kind: code's, whether the model names the same one or another;
+- only the model names one: the model's, unless the reading rules it out — a court order whose sender is
+  clearly no court (read as a company, a landlord, a bank … under a name that names no court, or a bailiff
+  or a court cashier) or that is a European order for payment; a dismissal or landlord's notice whose
+  contract is of another category (a gym, a job ticket; a tenancy for a dismissal, a job for a landlord's
+  notice); a rent increase of a kind that needs no consent (the vetoes in its row). The model's
+  `operating_costs` is never filed: it makes a statement one on read, with the vetoes in its row.
+
+A veto only takes the model's kind away when the reading says the letter is something else, so a court
+named only in English, a court order read without its remedy or a termination the reading doesn't record
+is filed under the kind the model names. The kind the person chose on the letter's page wins over both.
+
+| Kind | Code reads it when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
 | `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht*, *Verfassungsgerichtshof* — or abbreviates one before a place of a word or two, *AG Hagen*, *SG Berlin*, *VG Minden* — a federal court's needs no place, *BGH*, *BSG* —, from a sender read as an authority (or of no particular kind; a club "SG …" or "VG Wort" read so counts as a court, the safe side) — a recipient typed into a template letter, whose kind is unknown, only by the court's full name; never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the notice has a notice period (or gives one in the alternative): two months before its stated end — or before the earliest end the law allows (`bgb_573c_landlord`) when the stated end is too early for it or a notice in the alternative names none | tenants' association |
 | `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, prepayments, §§ 557a, 557b, 559, 560 BGB; a modernisation only when the increase's own quote doesn't ask for consent) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert", "nach der Modernisierung des Bades … zuzustimmen") never veto it | `bgb_558b` | decide on the consent | rent cap check |
-| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
+| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period (or the model names it one), isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
 **Which court order a court's letter is.** A court writes many letters that name an order: to the
 claimant (the other side objected, the order was served, a cost invoice, a request to fix the
@@ -392,15 +406,17 @@ and vetoed genuine orders whose reading said "you have not objected" or "served 
 
 *Limitation:* a later letter whose reading nevertheless gives the person an objection date (or a
 remedy), and whose title names the order, is filed as that order — the safe side for a two-week
-*Notfrist*. The person changes the kind on the letter's page. The next extraction prompt should let the
-model name the order itself (a `letter_kind` field with these kinds); the recorded prompt stays as it
-is until then.
+*Notfrist*. The person changes the kind on the letter's page. A court order these signals don't
+recognise — a court named only in English, a reading with no remedy and no objection date — is filed
+under the kind the model names (above); only a sender that is clearly no court, or a European order for
+payment, takes that kind away.
 
 A debt collector threatening a Mahnbescheid is not a court, so its letter stays a payment reminder;
 text in the model's own advice (`explanation`, `warnings`) never classifies a letter. A court order
 about an invoice takes over its payment like a reminder does, so the invoice isn't shown to pay twice.
-A letter the policy misses (or gets wrong) keeps the model's kind; the person can set the kind on the
-letter's page ("What kind of letter is this?"), and its dates and to-dos are recomputed at once. A kind
+A letter the policy misses gets the kind the model names, else keeps the model's ordinary kind; the
+person can set the kind on the letter's page ("What kind of letter is this?") whenever it is wrong, and
+its dates and to-dos are recomputed at once. A kind
 the person chose is kept when the letter is read again; a kind Ordnung chose is not, so a letter filed
 before Ordnung knew these kinds gets its high-stakes kind the next time it is read.
 
