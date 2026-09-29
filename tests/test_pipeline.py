@@ -279,7 +279,7 @@ async def test_unfound_quote_puts_the_document_in_please_check(ctx: AppContext, 
     objection = items_by_kind(ctx, document.id)["deadline"]
     assert objection.grounding == "unverified"
     assert objection.computation is not None and objection.computation.confidence != "high"
-    assert any(warning.startswith("Please check") for warning in document.warnings)
+    assert "1 date could not be confirmed against the letter's text." in document.warnings
 
 
 async def test_hidden_text_stays_out_of_the_prompt_and_raises_a_warning(

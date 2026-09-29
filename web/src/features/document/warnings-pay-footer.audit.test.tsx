@@ -59,6 +59,12 @@ describe("Please check (R1-document-c-1)", () => {
     const { container } = renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc })} />, { client: client() });
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("drops the count as letters are read now, without the 'Please check:' before it (R1-backend-7)", () => {
+    const doc = makeDoc({ warnings: ["1 date could not be confirmed against the letter's text."] });
+    const { container } = renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc })} />, { client: client() });
+    expect(container).toBeEmptyDOMElement();
+  });
 });
 
 describe("IBAN checksum claims (R1-document-c-2)", () => {

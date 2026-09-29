@@ -20,6 +20,7 @@ quote and per to-do, :mod:`ordnung.trace.facts`); without one they record nothin
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
@@ -59,6 +60,7 @@ from ordnung.models import (
     PaymentDetails,
     Remedy,
 )
+from ordnung.payments import pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
     at_occurrence,
@@ -90,7 +92,7 @@ from ordnung.rules.routing import (
     objection_dated,
     objection_excluded,
 )
-from ordnung.secretary.scam import iban_from_page, iban_valid, normalize_iban
+from ordnung.secretary.scam import iban_from_page, iban_valid, invalid_iban_message, normalize_iban
 from ordnung.trace import facts
 from ordnung.trace.spans import NO_SPAN, Span
 
@@ -313,7 +315,8 @@ def _verification_warnings(verification: Verification) -> list[str]:
     unchecked = sum(verified.needs_check for verified in verification.items)
     if unchecked:
         dates = "1 date" if unchecked == 1 else f"{unchecked} dates"
-        warnings.append(f"Please check: {dates} could not be confirmed against the letter's text.")
+        # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
+        warnings.append(f"{dates.capitalize()} could not be confirmed against the letter's text.")
     if verification.remedy_evidence and verification.remedy_evidence.grounding == "unverified":
         warnings.append(
             "We couldn't find the instructions on how to object (Rechtsbehelfsbelehrung) in the letter — please check them."
@@ -581,7 +584,10 @@ def rent_increase_note(kind: str | None, extraction: DocumentExtraction | None) 
 def for_item(ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | None) -> RuleContext:
     """The context a to-do's date is computed in: a rent increase's current rent (:meth:`PaymentNote.
     is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB,
-    review round 2 of phase 2) — it is computed like a payment on any other letter."""
+    review round 2 of phase 2) — it is computed like a payment on any other letter. A payment made in person
+    (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day (UI audit R1-backend-8)."""
+    if pays_on_site(item):
+        ctx = replace(ctx, in_person=True)
     if note is not None and note.rule_id == "bgb_558b" and item.kind == "payment" and note.is_current(item):
         return replace(ctx, letter_kind=None)
     return ctx
@@ -677,6 +683,49 @@ class PlanResult:
 
     document: Document
     items: list[Item]
+
+
+#: A sentence about an IBAN's check digits ("does not pass the standard IBAN checksum").
+_IBAN_CHECK_CLAIM = re.compile(
+    r"\biban\b.*(?:check ?sum|check digits?|prüfsumme|prüfziffer|mod(?:ulo)?[ -]?97)"
+    r"|(?:check ?sum|check digits?|prüfsumme|prüfziffer).*\biban\b",
+    re.I | re.S,
+)
+#: Words that make such a sentence a claim that the check fails.
+_NEGATIVE = re.compile(
+    r"n't\b|\b(?:not|fails?|failed|failing|invalid|wrong|incorrect|ungültig|falsch|nicht)\b", re.I
+)
+#: Where a warning's sentences end: a full stop, then a capital letter or an opening quote or bracket.
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ„“\"(])")
+
+
+def square_iban_claims(warnings: Sequence[str], payment: PaymentDetails | None) -> list[str]:
+    """The model's warnings with its claims about the payment IBAN's check digits squared with Ordnung's
+    own check (``payment.iban_valid``, ISO 13616; ADR 0002: code checks digits, the model reads).
+
+    Policy (UI audit R1-backend-7: "does not pass the standard IBAN checksum" was stored for a valid IBAN):
+    a sentence that speaks of an IBAN's checksum or check digits is dropped when the check contradicts it —
+    it says the check fails and the IBAN passes, or the IBAN fails —; a warning left without sentences is
+    dropped. When the IBAN fails, Ordnung says so in its own words, once (:func:`invalid_iban_message`, as
+    the payment check does). Without an IBAN there is nothing to check, and the warnings stay as read. The
+    web squares warnings stored before this the same way (``squareIbanClaims``).
+    """
+    if payment is None or not payment.iban or payment.iban_valid is None:
+        return list(warnings)
+    valid = payment.iban_valid
+    kept: list[str] = []
+    dropped = False
+    for warning in warnings:
+        sentences = _SENTENCE_BREAK.split(warning.strip())
+        left = [
+            s for s in sentences if not (_IBAN_CHECK_CLAIM.search(s) and (not valid or _NEGATIVE.search(s)))
+        ]
+        dropped = dropped or len(left) < len(sentences)
+        if left:
+            kept.append(" ".join(left))
+    if dropped and not valid:
+        kept.append(invalid_iban_message(payment.iban))
+    return kept
 
 
 def payment_details(payment: PaymentDetails | None, page_text: str = "") -> PaymentDetails | None:
@@ -1147,6 +1196,7 @@ def write_plan(
     step.set(status=status, needs_check=sum(needs_check(item) for item in items))
     stamp = now_iso()
     doc_date = parse_date(extraction.document_date)
+    payment = payment_details(extraction.payment, full_text)
     updated = store.update_document(
         document.id,
         kind=kind or letter_kind(extraction),
@@ -1162,11 +1212,11 @@ def write_plan(
         text_mode=text_mode,
         key_facts=verification.key_facts,
         references=extraction.references,
-        warnings=unique([*extraction.warnings, *warnings]),
+        warnings=unique([*square_iban_claims(extraction.warnings, payment), *warnings]),
         tax_relevant=extraction.tax_relevant,
         tax_note=extraction.tax_note,
         remedy=extraction.remedy,
-        payment=payment_details(extraction.payment, full_text),
+        payment=payment,
         hidden_text=hidden_text,
         status=status,
         error=None,

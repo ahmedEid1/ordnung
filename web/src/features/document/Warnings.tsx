@@ -46,11 +46,12 @@ const isHiddenTextWarning = (w: string) =>
 export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i;
 
 /**
- * The reading's own count of dates it couldn't confirm ("Please check: 1 date could not be confirmed against the
- * letter's text."): each of those to-dos has its own "Please check" card, which says it — and once they are
- * confirmed, the count is out of date (UI audit round 1: "Please check" three times on one letter).
+ * The reading's own count of dates it couldn't confirm ("1 date could not be confirmed against the letter's
+ * text."; letters read before UI audit R1-backend-7 say "Please check: 1 date …"): each of those to-dos has its
+ * own "Please check" card, which says it — and once they are confirmed, the count is out of date (UI audit
+ * round 1: "Please check" three times on one letter).
  */
-const UNCONFIRMED_DATES = /^please check:\s*\d+\s+dates?\s+could not be confirmed/i;
+const UNCONFIRMED_DATES = /^(?:please check:\s*)?\d+\s+dates?\s+could not be confirmed/i;
 
 /** A claim about an IBAN's checksum ("does not pass the standard IBAN checksum"). */
 const IBAN_CHECK_CLAIM =
@@ -66,7 +67,9 @@ const sentences = (w: string) => w.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„“"(])/)
 /**
  * The reading's claims about the IBAN's checksum, squared with Ordnung's own check (`payment.iban_valid`): a
  * failure the check doesn't confirm is dropped (UI audit round 1: "IBAN … does not pass the standard IBAN
- * checksum" on a valid IBAN), a confirmed one is said in Ordnung's words, once. Without a check, as read.
+ * checksum" on a valid IBAN), a confirmed one is said in Ordnung's words, once. Without a check, as read. Since
+ * R1-backend-7 the backend squares them when it reads a letter (`square_iban_claims` in
+ * `src/ordnung/ingest/plan.py`); this keeps letters read before that right.
  */
 export function squareIbanClaims(warnings: string[], ibanValid: boolean | null | undefined): string[] {
   if (ibanValid == null) return warnings;

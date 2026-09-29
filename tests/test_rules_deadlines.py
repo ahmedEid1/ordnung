@@ -738,6 +738,23 @@ def test_fixed_date_as_written() -> None:
     assert receipt.summary == "The date given is Thu 15 Oct 2026."
 
 
+def test_a_payment_made_in_person_gets_no_send_by() -> None:
+    """UI audit R1-backend-8: the residence permit's fee, paid by girocard at the appointment, carried a bank
+    transfer's send-by day (§ 675s BGB). Paid in person, the due day is the day."""
+    spec = DateSpec(type="fixed", date="2026-10-14", time="10:30", nature="payment")
+    receipt = compute_due(spec, replace(ctx(region="NW"), in_person=True))
+    assert (receipt.due_date, receipt.send_by) == ("2026-10-14", None)
+    assert "bgb_675s" not in receipt.rule_ids
+    assert receipt.summary == "The date given is Wed 14 Oct 2026."
+    # a period counted to a payment made in person has no transfer day either
+    relative = notice_spec(nature="payment")
+    counted = compute_due(relative, replace(ctx(region="NW", document_date="2026-09-15"), in_person=True))
+    assert counted.due_date is not None and counted.send_by is None
+    # a deadline to declare something keeps its posting day: only the transfer's is left out
+    letter = DateSpec(type="fixed", date="2026-10-14", nature="declaration")
+    assert compute_due(letter, replace(ctx(region="NW"), in_person=True)).send_by is not None
+
+
 def test_fixed_authority_deadline_shift_only_when_asked() -> None:
     """authority: 'Belege bis zum 10.10.2026' → Mon 12 Oct 2026 (§ 108 Abs. 3 AO)."""
     spec = DateSpec(type="fixed", date="2026-10-10", nature="declaration", shift_rule="next_business_day")

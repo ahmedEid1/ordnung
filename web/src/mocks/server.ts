@@ -933,7 +933,7 @@ function recomputeNotice(db: MockDb, c: Contract) {
       { label: `Send by ${day(sendBy)} to allow 4 business days for a letter to arrive`, date: iso(sendBy), rule_id: "postal_buffer", citation: null },
     ],
     rule_ids: ["bgb_188", "postal_buffer"],
-    warnings: late ? [general, "The usual sending time has passed — use the fastest channel allowed (online button, e-mail, fax or in person) today."] : [general],
+    warnings: late ? [general, "The usual sending time has passed — use the fastest channel allowed (online button, email, fax or in person) today."] : [general],
   };
 }
 

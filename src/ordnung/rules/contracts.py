@@ -102,10 +102,10 @@ _REGIME_NOTE: dict[ContractRegime, str] = {
     "year ends (§ 11 VVG).",
     "sgbv175": "Switching insurer? Just join the new one: its notice to your current insurer replaces your "
     "own cancellation (§ 175 Abs. 2, 4 SGB V).",
-    "stromgvv20": "Text form (e.g. e-mail) is enough; you need a new supplier from the end date "
+    "stromgvv20": "Text form (e.g. email) is enough; you need a new supplier from the end date "
     "(§ 20 StromGVV/GasGVV).",
-    "rent573c": "Notice on a flat needs a hand-signed letter; e-mail or fax is not valid (§ 568 BGB).",
-    "employment622": "Notice of employment needs a hand-signed letter; e-mail is not valid (§ 623 BGB).",
+    "rent573c": "Notice on a flat needs a hand-signed letter; email or fax is not valid (§ 568 BGB).",
+    "employment622": "Notice of employment needs a hand-signed letter; email is not valid (§ 623 BGB).",
     "as_written": "These dates follow the contract's own terms — please check them against the contract.",
 }
 
@@ -743,7 +743,7 @@ def compute_contract(
     """Cancellation deadline, send-by date and earliest exit for a contract (relative to ``ctx.today``).
 
     ``channel`` is how the person plans to cancel: a letter must be posted ``postal_buffer_days``
-    business days before the safe date; e-mail, fax, portal or in person must arrive on a business
+    business days before the safe date; email, fax, portal or in person must arrive on a business
     day (the safe date); an online cancellation button counts the moment it is pressed (§ 312k BGB),
     so it works up to ``cancel_by`` itself. Rent and employment notices always need a signed letter.
     ``ctx.region`` is the holiday region of the other party (``None`` → nationwide holidays only).
@@ -836,7 +836,7 @@ def _compute_contract(
     fastest = (
         "hand the signed letter over in person (with a witness) or by messenger"
         if regime in ("rent573c", "employment622")
-        else "use the fastest channel allowed (online button, e-mail, fax or in person)"
+        else "use the fastest channel allowed (online button, email, fax or in person)"
     )
     send_by = _send_by(
         trace, plan.cancel_by, safe, channel, region, postal_buffer_days, today=ctx.today, late_advice=fastest

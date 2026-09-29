@@ -25,6 +25,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context
 from ordnung.models import Area, Item, ItemKind, ItemStatus, ListedItem, Priority, Recurrence
+from ordnung.payments import pays_on_site
 from ordnung.recurrence import mark_done, replaced_occurrence, roll_item, same_rule, standing_in, undo_done
 from ordnung.secretary.triggers import postal_buffer
 
@@ -250,6 +251,7 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
             nature=nature,
             party_id=item.party_id,
             previous=item.computation,
+            in_person=pays_on_site(item.model_copy(update=fields)),
         )
         replaced = replaced_occurrence(item)
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:

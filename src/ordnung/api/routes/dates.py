@@ -201,13 +201,22 @@ def date_nature(kind: str, spec: DateSpec | None) -> DateNature:
 
 
 def manual_receipt(
-    store: Store, due: str, today: date, *, nature: DateNature, party_id: str | None
+    store: Store,
+    due: str,
+    today: date,
+    *,
+    nature: DateNature,
+    party_id: str | None,
+    in_person: bool = False,
 ) -> ComputationReceipt:
-    """Receipt for a date the person set: the date as given plus the engine's send-by date."""
+    """Receipt for a date the person set: the date as given plus the engine's send-by date (none for a
+    payment made in person, ``in_person``: :func:`~ordnung.payments.pays_on_site`)."""
     spec = DateSpec(type="fixed", date=due, nature=nature, shift_rule="none", text=MANUAL_SUMMARY)
     party = store.get_party(party_id) if party_id else None
     profile = store.get_profile()
-    ctx = RuleContext(today=today, country=profile.country, region=party.region if party else None)
+    ctx = RuleContext(
+        today=today, country=profile.country, region=party.region if party else None, in_person=in_person
+    )
     receipt = compute_due(spec, ctx, postal_buffer_days=postal_buffer(profile))
     return receipt.model_copy(update={"summary": MANUAL_SUMMARY, "confidence": "high"})
 
@@ -226,10 +235,12 @@ def manual_date_fields(
     nature: DateNature,
     party_id: str | None,
     previous: ComputationReceipt | None = None,
+    in_person: bool = False,
 ) -> dict[str, Any]:
     """Item fields for a due date set (or cleared) by the person. A payment note the ``previous`` receipt
     carried (a rent increase's new rent, a late statement's back-payment) stays: a date set by hand never
-    makes such a payment owed (:func:`~ordnung.ingest.plan.kept_payment_note`)."""
+    makes such a payment owed (:func:`~ordnung.ingest.plan.kept_payment_note`). A payment made in person
+    (``in_person``) gets no send-by date (:func:`manual_receipt`)."""
     if due is None:
         return {
             "due_date": None,
@@ -237,7 +248,9 @@ def manual_date_fields(
             "computation": kept_payment_note(previous, None),
             "due_date_source": "none",
         }
-    receipt = kept_payment_note(previous, manual_receipt(store, due, today, nature=nature, party_id=party_id))
+    receipt = kept_payment_note(
+        previous, manual_receipt(store, due, today, nature=nature, party_id=party_id, in_person=in_person)
+    )
     return {
         "due_date": due,
         "send_by": receipt.send_by if receipt else None,

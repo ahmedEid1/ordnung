@@ -45,7 +45,7 @@ from __future__ import annotations
 
 import re
 
-from ordnung.models import Item
+from ordnung.models import ExtractedItem, Item
 
 #: A direct debit in a to-do's words or a letter's sentence (German and English wording).
 DEBIT_WORDS = re.compile(
@@ -116,9 +116,14 @@ def debit_failed(text: str) -> bool:
     return any(_clause_failed(clause) for clause in _clauses(text))
 
 
-def is_direct_debit(item: Item) -> bool:
+def _description(item: Item | ExtractedItem) -> str | None:
+    """A stored to-do's description (a reading's to-do has none yet)."""
+    return item.description if isinstance(item, Item) else None
+
+
+def is_direct_debit(item: Item | ExtractedItem) -> bool:
     """The sender collects this payment itself (SEPA direct debit): nothing to transfer (policy)."""
-    parts = [part for part in (item.title, item.action, item.description) if part]
+    parts = [part for part in (item.title, item.action, _description(item)) if part]
     return (
         any(DEBIT_WORDS.search(part) for part in parts)
         and not any(debit_failed(part) for part in parts)
@@ -141,12 +146,14 @@ _ON_SITE_WORDS = re.compile(
 )
 
 
-def pays_on_site(item: Item) -> bool:
+def pays_on_site(item: Item | ExtractedItem) -> bool:
     """A payment made in person (card or cash at the appointment, the desk, a machine), not by bank
-    transfer: its "send by" — a transfer's day (§ 675s BGB) — means nothing, the due day is the day."""
+    transfer: its "send by" — a transfer's day (§ 675s BGB) — means nothing, the due day is the day. A
+    to-do as read (``ExtractedItem``) is judged by the same words, so its dates are computed without a
+    send-by day (``RuleContext.in_person``)."""
     if item.kind != "payment" or item.direction == "in" or is_direct_debit(item):
         return False
-    how = " ".join(part for part in (item.action, item.description) if part)
+    how = " ".join(part for part in (item.action, _description(item)) if part)
     return bool(_ON_SITE_WORDS.search(how)) and not _TRANSFER_WORDS.search(item.action or "")
 
 

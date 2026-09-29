@@ -14,6 +14,7 @@ from ordnung.ingest.plan import (
     activity_message,
     compute_item,
     end_date_grounding,
+    for_item,
     grade_receipt,
     needs_check,
     payment_details,
@@ -22,6 +23,7 @@ from ordnung.ingest.plan import (
     rule_context,
     slot_key,
     slot_keys,
+    square_iban_claims,
     verify_extraction,
     write_items,
 )
@@ -39,6 +41,7 @@ from ordnung.models import (
     Remedy,
 )
 from ordnung.rules import RuleContext
+from ordnung.secretary.scam import invalid_iban_message
 
 PAGE_TEXT = (
     "Musterstadt, 15.09.2026\n"
@@ -127,7 +130,8 @@ def test_unfound_or_inconsistent_dated_items_need_review() -> None:
     result = verify_extraction("doc_x", extraction([missing]), [TEXT_PAGE])
     assert result.items[0].evidence.grounding == "unverified"
     assert result.needs_review
-    assert result.warnings == ["Please check: 1 date could not be confirmed against the letter's text."]
+    # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
+    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
 
 
 def test_undated_items_never_need_review() -> None:
@@ -192,6 +196,22 @@ def test_compute_item_sources() -> None:
         verified_item(item("Bitte zahlen Sie 49,99 EUR", kind="task")), ctx, postal_buffer_days=4
     )
     assert undated == ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
+
+
+def test_a_payment_made_in_person_is_stored_without_a_send_by_day() -> None:
+    """UI audit R1-backend-8: the residence permit's 100 € fee, paid by girocard at the appointment, was
+    stored with a bank transfer's send-by day ("transfer by 13 Oct"). Its words say it is paid on site
+    (``pays_on_site``), so its date is computed without one; a transfer keeps its day."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    on_site = PAYMENT.model_copy(
+        update={"action": "Pay the €100 fee on site at the appointment by girocard."}
+    )
+    computed = compute_item(verified_item(on_site), for_item(ctx, on_site, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
+    assert computed.receipt is not None and "bgb_675s" not in computed.receipt.rule_ids
+    transfer = PAYMENT.model_copy(update={"action": "Transfer 49,99 EUR to the account below."})
+    kept = compute_item(verified_item(transfer), for_item(ctx, transfer, None), postal_buffer_days=4)
+    assert (kept.due_date, kept.send_by) == ("2026-10-15", "2026-10-14")
 
 
 def test_rule_context_from_party_and_document(store: Store) -> None:
@@ -532,6 +552,50 @@ def test_a_misread_iban_is_taken_from_the_page() -> None:
     # an unrelated IBAN on the page is never swapped in
     other = payment_details(PaymentDetails(iban="DE05123456000044556660"), "IBAN DE89 3704 0044 0532 0130 00")
     assert other is not None and other.iban == "DE05123456000044556660" and not other.iban_valid
+
+
+#: The demo fitness contract's reading (UI audit R1-backend-7): a false checksum claim about a valid IBAN.
+FALSE_CLAIM = (
+    "The studio's stated bank account IBAN (DE05 1234 6700 0029 9001 50) does not pass the standard IBAN "
+    "checksum, and several details in this document (names, addresses) look like generic placeholder/sample "
+    "data, so verify the account before relying on it."
+)
+VALID = PaymentDetails(iban="DE89370400440532013000", iban_valid=True)
+BROKEN = PaymentDetails(iban="DE89370400440532013001", iban_valid=False)
+
+
+def test_a_checksum_claim_the_check_contradicts_is_not_stored() -> None:
+    """R1-backend-7: code checks the IBAN's digits (ADR 0002); the model's claim about them is squared with
+    that check when the letter is read, sentence by sentence."""
+    assert square_iban_claims([FALSE_CLAIM, "Payment is due monthly."], VALID) == ["Payment is due monthly."]
+    mixed = "The IBAN fails its checksum. The contract renews automatically."
+    assert square_iban_claims([mixed], VALID) == ["The contract renews automatically."]
+    # a claim that agrees with the check stays, in German too
+    agrees = "The IBAN's check digits are valid, but the payee differs from the sender."
+    assert square_iban_claims([agrees], VALID) == [agrees]
+    german = "Die Prüfziffer der IBAN ist ungültig."
+    assert square_iban_claims([german], VALID) == []
+    # warnings about something else are kept as read
+    other = "The IBAN belongs to a bank in Lithuania, not Germany."
+    assert square_iban_claims([other], VALID) == [other]
+
+
+def test_a_failing_iban_is_said_in_ordnungs_words_once() -> None:
+    claims = ["The IBAN does not pass its checksum.", "IBAN checksum wrong — maybe a typo. Pay soon."]
+    squared = square_iban_claims(claims, BROKEN)
+    assert squared[0] == "Pay soon."
+    assert squared[1:] == [invalid_iban_message(BROKEN.iban or "")]
+    assert "valid" in squared[1] and "IBAN" in squared[1]
+    # a positive claim about a failing IBAN is wrong too
+    assert square_iban_claims(["The IBAN's checksum is fine."], BROKEN) == [
+        invalid_iban_message("DE89370400440532013001")
+    ]
+
+
+def test_without_an_iban_the_warnings_stay_as_read() -> None:
+    assert square_iban_claims([FALSE_CLAIM], None) == [FALSE_CLAIM]
+    assert square_iban_claims([FALSE_CLAIM], PaymentDetails(iban=None)) == [FALSE_CLAIM]
+    assert square_iban_claims([FALSE_CLAIM], PaymentDetails(iban="DE89370400440532013000")) == [FALSE_CLAIM]
 
 
 # --------------------------------------------------------------------------------------------------

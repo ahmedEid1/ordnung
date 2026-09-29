@@ -56,6 +56,22 @@ async def test_manual_due_date_is_marked_and_survives_reprocess(data_dir: Path) 
         assert cleared["due_date"] is None and cleared["due_date_source"] == "none"
 
 
+async def test_a_date_set_by_hand_for_a_payment_made_in_person_has_no_send_by(data_dir: Path) -> None:
+    """UI audit R1-backend-8: a fee paid at the desk (or by card at the appointment) is paid on the day, so a
+    date the person sets for it gets no bank transfer's send-by day — nor when they say so in the same edit."""
+    async with api_for(data_dir) as api:
+        payment = _by_kind(await _items_of(api, TAX_LETTER.pdf()), "payment")
+        url = f"/api/items/{payment['id']}"
+        on_site = {"due_date": "2026-10-30", "description": "Pay the fee in cash at the service desk."}
+        item = (await api.client.patch(url, json=on_site)).json()
+        assert (item["due_date"], item["send_by"]) == ("2026-10-30", None)
+        again = (await api.client.patch(url, json={"due_date": "2026-11-02"})).json()
+        assert (again["due_date"], again["send_by"]) == ("2026-11-02", None)
+        by_transfer = {"due_date": "2026-11-03", "description": "Pay it to the tax office's account."}
+        moved = (await api.client.patch(url, json=by_transfer)).json()
+        assert moved["send_by"] is not None and moved["send_by"] < "2026-11-03"
+
+
 async def test_status_changes_are_explicit(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         payment = _by_kind(await _items_of(api, TAX_LETTER.pdf()), "payment")

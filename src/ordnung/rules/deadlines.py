@@ -220,6 +220,9 @@ class RuleContext:
     ``ends_on_arrival``: the termination is one without notice period (a dismissal *fristlos*,
     :func:`ordnung.rules.routing.notice_without_period`), so the job ends when it arrives; an end the reading
     gives is that of a notice given in the alternative, which § 38 Abs. 1 SGB III doesn't count from.
+    ``in_person``: the payment is made in person — by card or in cash at the appointment, the desk or a
+    machine (:func:`ordnung.payments.pays_on_site`) —, so it gets no send-by date: a bank transfer's day
+    (§ 675s BGB) means nothing there, the due day is the day (UI audit R1-backend-8).
     """
 
     today: date
@@ -240,6 +243,7 @@ class RuleContext:
     social_court: bool = False
     end_date_grounding: Literal["quote", "letter", "none"] = "quote"
     ends_on_arrival: bool = False
+    in_person: bool = False
 
 
 @dataclass
@@ -587,6 +591,8 @@ def _send_by(
     trace: Trace, ctx: RuleContext, due: date, nature: str, region: str | None, postal_buffer_days: int
 ) -> date | None:
     if nature == "payment":
+        if ctx.in_person:  # paid on the day, at the desk or the appointment: nothing to transfer ahead
+            return None
         return plan_send_by(
             trace,
             ctx.today,
