@@ -419,6 +419,48 @@ def test_reading_again_never_brings_back_a_day_the_person_cleared(store: Store) 
     assert "the 10th" not in again.computed.summary
 
 
+def test_reading_again_never_brings_back_a_term_the_person_cleared_alone(store: Store) -> None:
+    """The misread day was the only notice term the person changed: they cleared it on the card (the basis,
+    the end of a month, stays; no quote of theirs, as a basis alone gives no dates). Reading the letter again
+    doesn't put the 10th back — nor a job's early notice they unticked, when its contract names no period."""
+    document = add_doc(store)
+    terms = {"name": "Deutschlandticket", "category": "transport", "concluded_date": "2025-12-10"}
+    read_day = extraction(
+        contract=terms | {"start_date": "2026-01-01", "notice_basis": "end_of_month", "notice_day": 10}
+    )
+    job_document = add_doc(store, "b")
+    job_terms = {"name": "Werkstudent", "category": "employment", "start_date": "2025-04-01"}
+    read_job = extraction(contract=job_terms | {"end_date": "2027-03-31", "notice_before_end": True})
+
+    def read(data: Any, letter: Document) -> Contract:
+        contract = upsert_contract(
+            store,
+            document=letter,
+            extraction=data,
+            party=None,
+            case=None,
+            evidence=[],
+            rule_ctx=RuleContext(today=date(2026, 9, 28), region="NW"),
+            postal_buffer_days=4,
+        )
+        assert contract is not None
+        return contract
+
+    contract = read(read_day, document)
+    store.update_document(document.id, extraction=read_day)
+    cleared = store.update_contract(contract.id, notice_day=None)
+    store.update_contract(contract.id, evidence=notice_evidence(cleared))
+    again = read(read_day, document)
+    assert (again.notice_basis, again.notice_day) == ("end_of_month", None)
+    assert again.computed is not None and again.computed.cancel_by != "2026-10-10"
+
+    job = read(read_job, job_document)
+    store.update_document(job_document.id, extraction=read_job)
+    unticked = store.update_contract(job.id, notice_before_end=False)
+    store.update_contract(job.id, evidence=notice_evidence(unticked))
+    assert read(read_job, job_document).notice_before_end is False
+
+
 def test_change_links_to_the_only_active_contract_without_touching_it(store: Store) -> None:
     party = store.add_party(name="Muster Energie", kind="utility")
     contract = store.add_contract(name="Power", category="energy", party_id=party.id, cost_amount=80.0)

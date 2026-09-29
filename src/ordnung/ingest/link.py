@@ -517,9 +517,19 @@ def _unedited(existing: Contract, values: dict[str, Any], previous: dict[str, An
     """The fields to write: empty ones, and — when the last extraction is known — those the person
     has not changed since (their value still equals what was extracted before). Notice terms the person
     entered on the card (their quote, with a term of theirs still set) are theirs as a whole: a term
-    they left empty or cleared there — a misread day of the month — is not filled from the letter."""
+    they left empty or cleared there — a misread day of the month — is not filled from the letter. So are
+    terms they only cleared (a term the last extraction gave is empty now: only the card empties one, as
+    reading again stores what it wrote) — the misread day that was their only change, which leaves no
+    quote of theirs when what is left gives no dates, or a job's early notice unticked."""
     entered = any(e.grounding == "user" for e in existing.evidence) and any(
         getattr(existing, name) not in (None, False) for name in _NOTICE_TERMS
+    )
+    entered = entered or (
+        previous is not None
+        and any(
+            getattr(existing, name) in (None, False) and previous.get(name) not in (None, False)
+            for name in _NOTICE_TERMS
+        )
     )
     return {
         name: value
