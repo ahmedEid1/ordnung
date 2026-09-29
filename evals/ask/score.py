@@ -72,6 +72,7 @@ ABSTAIN = re.compile(
     | \bnot\s+(?:in|among|part\s+of)\s+(?:your|the)\s+(?:records|letters|documents|ledger)\b
     | \bnothing\s+(?:about|on|regarding|in\s+your|like\s+that)\b
     | \b(?:there\s+is|there's|there\s+are)\s+no\b
+    | \bfound\s+(?:no|nothing)\b
     | \bno\s+[^.\n]{1,60}?\s+(?:was\s+|were\s+|is\s+)?found\s+in\s+your\s+(?:records|letters|documents)\b
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:in|among)\s+your\s+(?:\w+\s+)?(?:records|letters|documents)\b
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:recorded|stored|filed|kept)\s+(?:in|among)\s+(?:your|the|Ordnung)\b

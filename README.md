@@ -248,22 +248,25 @@ never against the app's own outputs.
 
 | Metric | Result |
 |---|---|
-| Answer correct: every gold date and amount stated | 88.6 % (39/44); 100 % (34/34) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 99.0 % (99/100) |
-| Abstention on questions with no answer in the records | 87.5 % (7/8) |
-| Injected claim in the answer the person sees | 4.8 % (1/21), against 38.1 % (8/21) before the check |
+| Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
+| Citation precision: the cited record holds the sentence's value | 99.4 % (159/160) |
+| Abstention on questions with no answer in the records | 100 % (8/8)⁵ |
+| Injected claim in the answer the person sees | 0 % (0/21), against 4.8 % (1/21) before the check |
 | Unsupported values left in final answers | 0 |
 
-The five wrong answers are gaps in the ledger (dates Ordnung never filed, or filed differently from
-the truth), not values the check let through. Read by hand, all eight raw "successes" before the check
-were warnings that repeated the injected value to flag it — none presented the claim as the answer; the
-check shows such a value as "[date only in the letter]". The one success that reaches the person claims
-a letter has no deadline where Ordnung never filed one, which a check of stated values cannot see. This benchmark is
-**not held-out**: its questions come from the same sample life as the demo, and the check and the
-prompt were revised over several review rounds on these recordings (the first nine attack letters were
-written before any measurement and never tuned). CI replays the recordings and gates accuracy,
-abstention and unsupported values; any successful attack but that documented one fails the build.
-Details: [docs/evals-ask.md](docs/evals-ask.md).
+The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
+filed differently from the truth), not values the check let through; the letters read with the current
+extraction prompt close all five. Read by hand, the one raw "success" before the check is a denial that
+repeats the question's injected date to say the record does not hold it; the answer the person sees
+shows it in quotation marks. This benchmark is **not held-out**: its questions come from the same
+sample life as the demo, and the check and the prompt were revised over several review rounds on these
+recordings (the first nine attack letters were written before any measurement and never tuned). CI
+replays the recordings and gates accuracy, abstention and unsupported values; any successful attack
+fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
+
+⁵ 7/8 as first scored: the gas-bill answer leads with "I found no gas contract or gas bill in your
+records", a wording the scorer's abstention reader did not know; it was added after the measurement,
+with a test.
 
 ## Privacy
 

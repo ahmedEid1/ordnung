@@ -1,0 +1,420 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"19791abdd7bd5cc13589d586b70ad27cdedf331948e80e2f480f1b6e14919119\",\"question\":\"Can I still object to the Muster BKK contribution notice, and by when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nCan I still object to the Muster BKK contribution notice, and by when?\n"
+  },
+  "response": {
+    "text": "Yes, you can still object. The objection deadline is Wed 14 Oct 2026 [item:itm_tj3z83ve4hfg].\n\n- **Send-by date:** To be safe, post it by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. That leaves time for the letter to arrive.\n- **How the deadline was worked out:** The notice is dated Thu 10 Sep 2026 [doc:doc_9t9tmrv1ypba]. Under the social-law rule (§ 37 Abs. 2 SGB X), a letter counts as delivered on the 4th day after posting, which is Mon 14 Sep 2026. The objection period is one month from then [item:itm_tj3z83ve4hfg]. Ordnung rates its confidence in this calculation as high.\n- **How to object:** File the objection (Widerspruch) with Muster BKK. You can do it in writing, electronically or in person.\n- **If you miss it:** The notice becomes final after the deadline.\n- **Payment:** An objection does not suspend payment. The monthly contribution of 156.55 € is due Thu 15 Oct 2026 [item:itm_00sbt9f3e0pe].\n\nThis is not legal advice. If the case is complicated, consider getting advice before you object.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 630,
+      "cache_read_tokens": 29148,
+      "cache_creation_tokens": 13636,
+      "cost_usd": 0.0666856,
+      "duration_ms": 10212,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Muster BKK Beitragsbescheid"
+      },
+      "tool_use_id": "toolu_01Hdqb77FRUKumPv1CDTA8V6"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "status": "all"
+      },
+      "tool_use_id": "toolu_012YDYKJSZxb1vbzgZ6eczdJ"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ccq7933hsa2p\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2025-10-05\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\"},{\"id\":\"itm_fja1b4mc8j0m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-03\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_jcbakmxv29p8\",\"set_aside\":\"Not a payment of its own: a later payment reminder (set_aside_by) took this invoice's payment over and asks for what is to be paid now, which may add fees — pay once, as the reminder says; never add the two up.\",\"set_aside_by\":\"doc_1ndcj96tf28z\",\"amount\":89.99,\"currency\":\"EUR\"},{\"id\":\"itm_bfvgt8ybg96k\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-09-28\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"leisure\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_cfpx42mmhb49\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-05\",\"send_by\":\"2026-10-02\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"},{\"id\":\"itm_tt8cexs1k1tw\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_kttk9625293w\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"amount\":156.55,\"currency\":\"EUR\"},{\"id\":\"itm_jr5r71kc1r78\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-19\",\"send_by\":\"2026-10-13\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"},{\"id\":\"itm_9dvnqv1acvka\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-04\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":670.0,\"currency\":\"EUR\"},{\"id\":\"itm_jc3tjtjvhz0z\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_xna048xewpad\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-15\",\"send_by\":\"2026-11-12\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"money\",\"party_id\":\"pty_r9kabd06mafy\",\"doc_id\":\"doc_f9b3481wq2bf\",\"amount\":55.08,\"currency\":\"EUR\"},{\"id\":\"itm_v3m35j0h5pwv\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-15\",\"send_by\":\"2026-11-12\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_asph8a6ddy4e\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":54.0,\"currency\":\"EUR\"},{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_9qzfwbhh5m74\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"money\",\"party_id\":\"pty_ejzv2rmp31km\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"contract_id\":\"ctr_611d1sk7v1cr\"},{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"amount\":312.4,\"currency\":\"EUR\"},{\"id\":\"itm_cw9j6w5ppdvs\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_vzbesvvpzk54\",\"doc_id\":\"doc_1dgp8tp2ga0c\"},{\"id\":\"itm_kmesye299nyc\",\"kind\":\"task\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"},{\"id\":\"itm_kg752bcvvsyc\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-03-31\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"work\",\"party_id\":\"pty_h9easqrf81w1\",\"doc_id\":\"doc_q6fqvndrg5rr\",\"contract_id\":\"ctr_jgb50bejm6jd\"},{\"id\":\"itm_rc1nagh2qjnc\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\"},{\"id\":\"itm_vvav55ez87p2\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_4q7m6qzy2ya8\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true},{\"id\":\"itm_fx2sjzsca7b6\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_4q7m6qzy2ya8\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true,\"amount\":254.35,\"currency\":\"EUR\"},{\"id\":\"itm_9pe1yez2k9k9\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"leisure\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\"},{\"id\":\"itm_1g9pensp7qn1\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"work\",\"party_id\":\"pty_h9easqrf81w1\",\"doc_id\":\"doc_q6fqvndrg5rr\",\"contract_id\":\"ctr_jgb50bejm6jd\"},{\"id\":\"itm_4ttv43gepnwt\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"amount\":450.0,\"currency\":\"EUR\"},{\"id\":\"itm_gmymk62nzs8x\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_00sz6dwxn5ch\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"leisure\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_v19vhmndxqbw\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_cfpx42mmhb49\",\"doc_id\":\"doc_qyh8m6fzk4w9\"},{\"id\":\"itm_9fz2wmpj1ppe\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"leisure\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_61wt30mrhybv\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":1560.0,\"currency\":\"EUR\"},{\"id\":\"itm_2s90qr4prp13\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"},{\"id\":\"itm_mnvt9rapwzba\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"in\",\"priority\":\"low\",\"area\":\"work\",\"party_id\":\"pty_h9easqrf81w1\",\"doc_id\":\"doc_q6fqvndrg5rr\",\"contract_id\":\"ctr_jgb50bejm6jd\"},{\"id\":\"itm_jbacbkerxwtz\",\"kind\":\"task\",\"status\":\"open\",\"priority\":\"low\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ccq7933hsa2p\":{\"title\":\"Report meter reading at delivery start\",\"action\":\"Submit the meter reading at delivery start online or with the enclosed card.\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_fja1b4mc8j0m\":{\"title\":\"Pay TechMarkt Online invoice\",\"action\":\"Transfer €89.99 to TechMarkt Online GmbH with the invoice number as reference, if not already paid.\",\"consequence\":\"Not stated in the letter; the goods remain the seller's property until fully paid.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_bfvgt8ybg96k\":{\"title\":\"Pay reminder total to TechMarkt Online\",\"action\":\"Transfer €94.99 to TechMarkt Online GmbH using the invoice number as the payment reference.\",\"consequence\":\"The claim will be handed to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"itm_ghq58jjdz149\":{\"title\":\"Return overdue library items\",\"action\":\"Return both overdue items to the library (service desk or return box), or renew online if not reserved.\",\"consequence\":\"Fees increase by €0.50 per item per opening day, and the account is blocked for loans at €10.00.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay parking warning fee\",\"action\":\"Transfer €30.00 to the Stadtkasse Musterstadt, quoting the Kassenzeichen as the reference.\",\"consequence\":\"A fine proceeding (Bußgeldverfahren) is started, with additional fees and expenses of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_cfpx42mmhb49\":{\"name\":\"Stadt Musterstadt, Ordnungsamt\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent\",\"action\":\"Pay the total rent (Gesamtmiete) so it arrives by the third working day of each month\",\"consequence\":\"Payment counts only when the money is received by the landlord.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_tt8cexs1k1tw\":{\"title\":\"Dental check-up and professional cleaning (PZR)\",\"action\":\"Attend the appointment, arriving 10 minutes early and bringing your health insurance card (Gesundheitskarte).\",\"location\":\"Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_dmaw27qvv18n\":{\"title\":\"Pay additional operating costs\",\"action\":\"Transfer €184.30 to the landlord's account with reference MV-2025-0412 NK 2025.\"},\"itm_64wce6sh2rpp\":{\"title\":\"Residence permit extension appointment\",\"action\":\"Attend with all listed original documents, and pay the €100 fee by girocard (no cash).\",\"consequence\":\"Not stated; the permit expires on 30 November 2026 unless an extension is applied for before then.\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Objection to contribution notice (optional)\",\"action\":\"If you disagree, file an objection (Widerspruch) in writing, electronically or in person at Muster BKK.\",\"consequence\":\"After the deadline the notice becomes final. An objection does not suspend payment.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_wj2v05avgk1m\":{\"title\":\"Extension fee\",\"action\":\"Pay the fee on site by girocard at the appointment.\"},\"itm_kttk9625293w\":{\"title\":\"Monthly electricity advance payment\",\"action\":\"Ensure the account has enough funds; the amount is collected by SEPA direct debit.\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Monthly health and care insurance contribution\",\"action\":\"Keep enough money in your account for the direct debit of the new monthly contribution.\"},\"itm_jr5r71kc1r78\":{\"title\":\"Cancel appointment if you cannot attend\",\"action\":\"Cancel the appointment at least three working days before it if you can't attend.\"},\"itm_mtehckcf6q7a\":{\"title\":\"Objection deadline (Einspruch)\",\"action\":\"File an objection (Einspruch) with the tax office if you disagree with the assessment.\",\"consequence\":\"After the deadline the assessment becomes final and can hardly be changed.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"itm_9dvnqv1acvka\":{\"title\":\"New monthly total rent €670\",\"action\":\"Adjust your standing order to the new total rent unless you use direct debit.\"},\"itm_jc3tjtjvhz0z\":{\"title\":\"Autumn Meeting in Berlin\",\"action\":\"Watch for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_xna048xewpad\":{\"title\":\"Pay broadcasting fee Oct–Dec 2026\",\"action\":\"Transfer €55.08 to Beitragsservice Musterstadt, using only the contribution number as the reference.\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"itm_v3m35j0h5pwv\":{\"title\":\"New monthly advance payment\",\"action\":\"Make sure the monthly advance payment (Abschlag) of €54.00 is paid from 15 November 2026 and adjust any standing order.\"},\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit expires\",\"action\":\"Apply for the extension before this date.\",\"consequence\":\"Without a timely application, the permit lapses.\"},\"itm_9qzfwbhh5m74\":{\"title\":\"Give consent to the new account fee\",\"action\":\"Decide whether to consent to the fee increase, via online banking (Postfach › Zustimmungen) or the signed reply form.\",\"consequence\":\"Without consent the bank reserves the right to terminate the account with two months' notice.\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"itm_93jvwb6nxzhe\":{\"title\":\"Annual premium direct debit\",\"action\":\"Make sure your account is covered for the direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit the progress report (max. two pages), countersigned by your academic supervisor, through the scholarship portal.\"},\"itm_85xesrap412m\":{\"title\":\"Pay semester fee for summer semester 2027\",\"action\":\"Transfer €312.40 to the university's account with the reference 4711123 SoSe 2027 so it arrives by the deadline.\",\"consequence\":\"A late fee of €15.00 applies, and without timely re-registration you risk exmatriculation (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_cw9j6w5ppdvs\":{\"title\":\"Passport expires\",\"action\":\"Apply for a new passport before it expires.\",\"consequence\":\"You cannot use the passport for travel or identification after expiry, which may affect your residence permit.\"},\"pty_vzbesvvpzk54\":{\"name\":\"Ministry of Interior, Republic of Examplia\"},\"itm_kmesye299nyc\":{\"title\":\"Cancel Deutschlandticket subscription if you have one\",\"action\":\"If you have a Deutschlandticket subscription, cancel it to end on 31 March 2027, since the semester ticket will be included.\"},\"itm_kg752bcvvsyc\":{\"title\":\"Fixed-term employment ends\",\"action\":\"Plan for the end of the job; no notice is needed.\",\"consequence\":\"The employment ends automatically.\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"itm_rc1nagh2qjnc\":{\"title\":\"Object to the statement (Einwendungen)\",\"action\":\"Check the statement and notify the landlord of any objections by the deadline shown.\",\"consequence\":\"Later objections may no longer be considered.\"},\"itm_vvav55ez87p2\":{\"title\":\"Verify the demand before paying\",\"action\":\"Check with the official Beitragsservice (using contact details from earlier genuine letters, not this one) whether you owe any arrears. Do not pay to the IBAN in this letter until confirmed.\",\"consequence\":\"The letter threatens seizure of account and wages, but this is unverified and may be a scam.\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale (RBS)” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_4q7m6qzy2ya8\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\"},\"itm_fx2sjzsca7b6\":{\"title\":\"Claimed arrears (unverified)\",\"action\":\"Do not pay until the claim is verified as genuine.\",\"consequence\":\"The letter says enforcement (Zwangsvollstreckung) with further costs of at least €180 would follow.\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale (RBS)” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"itm_9pe1yez2k9k9\":{\"title\":\"Show enrolment certificate each semester\",\"action\":\"Show a valid enrolment certificate (Immatrikulationsbescheinigung) to the studio at the start of each semester.\",\"consequence\":\"The student tariff requires it, so the discount may otherwise be lost.\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_1g9pensp7qn1\":{\"title\":\"Submit enrolment certificate each semester\",\"action\":\"Give your employer a current enrolment certificate (Immatrikulationsbescheinigung) at the start of every semester, and report any end or break in your studies immediately.\"},\"itm_4ttv43gepnwt\":{\"title\":\"Monthly scholarship stipend\",\"action\":\"Check that the stipend arrives each month.\"},\"itm_gmymk62nzs8x\":{\"title\":\"Upload enrolment certificate each semester\",\"action\":\"Upload your certificate of enrolment to the scholarship portal each semester.\"},\"itm_00sz6dwxn5ch\":{\"title\":\"Report changes to the foundation\",\"action\":\"Notify the foundation of any change of address, bank details or study status within two weeks of the change.\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay overdue fees\",\"action\":\"Pay the €4.50 fees when returning the items, at the service desk or payment machine.\"},\"itm_v19vhmndxqbw\":{\"title\":\"Optional: return hearing form if you disagree\",\"action\":\"If you disagree or want to comment, use the enclosed hearing form (Anhörungsbogen) instead of paying.\",\"consequence\":\"No statutory deadline is stated; without payment a fine proceeding may begin.\"},\"itm_9fz2wmpj1ppe\":{\"title\":\"Tax refund\",\"action\":\"Check that the refund arrives in your account at Musterbank eG.\",\"amount\":312.45,\"currency\":\"EUR\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym fee\",\"action\":\"Make sure your account has enough funds for the direct debit on the 1st of each month.\"},\"itm_61wt30mrhybv\":{\"title\":\"Rent deposit (Kaution)\",\"action\":\"Pay the deposit of €1,560.00, optionally in three equal monthly instalments of €520.00 with the first rent payments\"},\"itm_2s90qr4prp13\":{\"title\":\"Monthly Deutschlandticket fee\",\"action\":\"Keep enough funds in your account for the direct debit at the start of each month.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_mnvt9rapwzba\":{\"title\":\"Monthly salary\",\"action\":\"Check that your salary of €16.50 gross per hour arrives on the last bank working day of each month.\"},\"itm_jbacbkerxwtz\":{\"title\":\"Cancel at least 24 hours in advance if you can't attend\",\"action\":\"If you can't make the appointment, cancel it at least 24 hours beforehand.\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_012YDYKJSZxb1vbzgZ6eczdJ"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"social_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9t9tmrv1ypba\":{\"title\":\"Health and care insurance contribution notice from 1 October 2026\",\"snippet\":\"Muster BKK Die Betriebskrankenkasse für Musterstadt Versicherten-Nr. R482019379 Unser Zeichen BZ-S/2026/0917 Muster…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Hdqb77FRUKumPv1CDTA8V6"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__explain_date",
+      "input": {
+        "item_or_contract_id": "itm_tj3z83ve4hfg"
+      },
+      "tool_use_id": "toolu_01Gd7otfdNFJvNZDwHcQv1xb"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"how\":\"Computed by Ordnung's date rules from what the letter says (see the receipt).\",\"grounding\":[\"verified\"],\"receipt\":{\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"summary\":\"Letter dated Thu 10 Sep 2026 counts as delivered on Mon 14 Sep; one month later is Wed 14 Oct 2026.\",\"steps\":[{\"label\":\"Posting day: Thu 10 Sep 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-09-10\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 14 Sep 2026\",\"date\":\"2026-09-14\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"It arrived on Sat 12 Sep 2026, earlier than that — this does not change the date\",\"date\":\"2026-09-12\",\"rule_id\":\"early_receipt\",\"citation\":\"BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22\"},{\"label\":\"Counting starts the day after Mon 14 Sep 2026\",\"date\":\"2026-09-14\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 14 Oct 2026\",\"date\":\"2026-10-14\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 14 Oct 2026 is a working day, so it stays\",\"date\":\"2026-10-14\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Thu 8 Oct 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-10-08\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"confidence\":\"high\"},\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"id\":\"early_receipt\",\"title\":\"Arriving early changes nothing\",\"citation\":\"BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"disclaimer\":\"Based on the law as of 2026-09-25. Not legal advice. Not reviewed by a lawyer.\"}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Objection to contribution notice (optional)\",\"as_written\":\"innerhalb eines Monats nach Bekanntgabe\",\"evidence\":[{\"doc_id\":\"doc_9t9tmrv1ypba\",\"page\":1,\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"}]}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Gd7otfdNFJvNZDwHcQv1xb"
+    },
+    {
+      "type": "text",
+      "text": "Yes, you can still object"
+    },
+    {
+      "type": "text",
+      "text": ". The objection deadline is"
+    },
+    {
+      "type": "text",
+      "text": " Wed 14 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_tj3z83"
+    },
+    {
+      "type": "text",
+      "text": "ve4hfg]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Send"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "by date:** To"
+    },
+    {
+      "type": "text",
+      "text": " be"
+    },
+    {
+      "type": "text",
+      "text": " saf"
+    },
+    {
+      "type": "text",
+      "text": "e, post it by Thu"
+    },
+    {
+      "type": "text",
+      "text": " 8 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026 [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "tj3z83ve4"
+    },
+    {
+      "type": "text",
+      "text": "hfg]. That"
+    },
+    {
+      "type": "text",
+      "text": " leaves time"
+    },
+    {
+      "type": "text",
+      "text": " for the"
+    },
+    {
+      "type": "text",
+      "text": " letter to arrive."
+    },
+    {
+      "type": "text",
+      "text": "\n- **How the deadline was"
+    },
+    {
+      "type": "text",
+      "text": " wor"
+    },
+    {
+      "type": "text",
+      "text": "ked out:** The not"
+    },
+    {
+      "type": "text",
+      "text": "ice is dated Thu "
+    },
+    {
+      "type": "text",
+      "text": "10 Sep 2026"
+    },
+    {
+      "type": "text",
+      "text": " [doc:doc_"
+    },
+    {
+      "type": "text",
+      "text": "9t9tmrv1"
+    },
+    {
+      "type": "text",
+      "text": "ypba]."
+    },
+    {
+      "type": "text",
+      "text": " Under the"
+    },
+    {
+      "type": "text",
+      "text": " social"
+    },
+    {
+      "type": "text",
+      "text": "-law rule ("
+    },
+    {
+      "type": "text",
+      "text": "§ 37 Abs"
+    },
+    {
+      "type": "text",
+      "text": ". 2 SGB X"
+    },
+    {
+      "type": "text",
+      "text": "),"
+    },
+    {
+      "type": "text",
+      "text": " a letter counts as deliv"
+    },
+    {
+      "type": "text",
+      "text": "ered on the 4th day after"
+    },
+    {
+      "type": "text",
+      "text": " posting, which is Mon"
+    },
+    {
+      "type": "text",
+      "text": " 14 Sep 2"
+    },
+    {
+      "type": "text",
+      "text": "026. The obj"
+    },
+    {
+      "type": "text",
+      "text": "ection period is one month from"
+    },
+    {
+      "type": "text",
+      "text": " then"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_tj3"
+    },
+    {
+      "type": "text",
+      "text": "z83ve4hfg"
+    },
+    {
+      "type": "text",
+      "text": "]. Ordnung r"
+    },
+    {
+      "type": "text",
+      "text": "ates its"
+    },
+    {
+      "type": "text",
+      "text": " confidence in"
+    },
+    {
+      "type": "text",
+      "text": " this calculation as high."
+    },
+    {
+      "type": "text",
+      "text": "\n- **How to object"
+    },
+    {
+      "type": "text",
+      "text": ":** File"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " objection ("
+    },
+    {
+      "type": "text",
+      "text": "Widerspruch) with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK."
+    },
+    {
+      "type": "text",
+      "text": " You"
+    },
+    {
+      "type": "text",
+      "text": " can do it in writing, elect"
+    },
+    {
+      "type": "text",
+      "text": "ronically or in person."
+    },
+    {
+      "type": "text",
+      "text": "\n- **If"
+    },
+    {
+      "type": "text",
+      "text": " you mi"
+    },
+    {
+      "type": "text",
+      "text": "ss it"
+    },
+    {
+      "type": "text",
+      "text": ":** The"
+    },
+    {
+      "type": "text",
+      "text": " notice becomes final after"
+    },
+    {
+      "type": "text",
+      "text": " the deadline."
+    },
+    {
+      "type": "text",
+      "text": "\n- **Payment:**"
+    },
+    {
+      "type": "text",
+      "text": " An objection does not suspend"
+    },
+    {
+      "type": "text",
+      "text": " pay"
+    },
+    {
+      "type": "text",
+      "text": "ment. The mon"
+    },
+    {
+      "type": "text",
+      "text": "thly contribution of"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "156.55 € is"
+    },
+    {
+      "type": "text",
+      "text": " due"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 15 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_00sbt9f3"
+    },
+    {
+      "type": "text",
+      "text": "e0pe].\n\nThis is"
+    },
+    {
+      "type": "text",
+      "text": " not legal advice. If"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " case"
+    },
+    {
+      "type": "text",
+      "text": " is compl"
+    },
+    {
+      "type": "text",
+      "text": "icated, cons"
+    },
+    {
+      "type": "text",
+      "text": "ider getting advice before"
+    },
+    {
+      "type": "text",
+      "text": " you object."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Yes, you can still object. The objection deadline is Wed 14 Oct 2026 [item:itm_tj3z83ve4hfg].\n\n- **Send-by date:** To be safe, post it by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. That leaves time for the letter to arrive.\n- **How the deadline was worked out:** The notice is dated Thu 10 Sep 2026 [doc:doc_9t9tmrv1ypba]. Under the social-law rule (§ 37 Abs. 2 SGB X), a letter counts as delivered on the 4th day after posting, which is Mon 14 Sep 2026. The objection period is one month from then [item:itm_tj3z83ve4hfg]. Ordnung rates its confidence in this calculation as high.\n- **How to object:** File the objection (Widerspruch) with Muster BKK. You can do it in writing, electronically or in person.\n- **If you miss it:** The notice becomes final after the deadline.\n- **Payment:** An objection does not suspend payment. The monthly contribution of 156.55 € is due Thu 15 Oct 2026 [item:itm_00sbt9f3e0pe].\n\nThis is not legal advice. If the case is complicated, consider getting advice before you object.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 630,
+          "cache_read_tokens": 29148,
+          "cache_creation_tokens": 13636,
+          "cost_usd": 0.0666856,
+          "duration_ms": 10212,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

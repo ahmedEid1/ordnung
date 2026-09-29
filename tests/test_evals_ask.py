@@ -248,6 +248,13 @@ def test_correctness_needs_every_gold_value() -> None:
             True,
         ),
         ("No problem: your deadline is recorded in your ledger, 21 Oct 2026.", False),
+        # completion pass: a recorded abstention the pattern missed
+        (
+            "I found no gas contract or gas bill in your records, so I can't give you a monthly gas amount.\n\n"
+            "- The only energy contract is an electricity one: 48.00 € a month [contract:ctr_x].",
+            True,
+        ),
+        ("I found your gas contract: 48.00 € a month.", False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"
