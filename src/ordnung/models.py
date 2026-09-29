@@ -992,6 +992,9 @@ class ExtractedChange(_Model):
 
 class DocumentExtraction(_Model):
     kind: DocumentKind
+    #: the model's own answer (extraction prompt version 9, ADR 0010); code checks it
+    #: (:func:`ordnung.rules.routing.classify_letter`). Readings recorded before have none.
+    high_stakes_kind: HighStakesKind | None = None
     area: Area = "other"
     title: str
     language: str = "de"
