@@ -380,6 +380,45 @@ def test_reprocessing_keeps_the_notice_terms_the_person_entered_as_theirs(store:
     assert [e.grounding for e in read(stated, [letter]).evidence] == ["verified"]
 
 
+def test_reading_again_never_brings_back_a_day_the_person_cleared(store: Store) -> None:
+    """The Deutschlandticket's day of the month, misread and replaced on the card by a notice period (saving
+    the period clears the day): reading the letter again keeps the person's terms as a whole, and doesn't put
+    the letter's day back beside their period, where the earlier deadline would decide."""
+    document = add_doc(store)
+    terms = {"name": "Deutschlandticket", "category": "transport", "concluded_date": "2025-12-10"}
+    read_day = extraction(
+        contract=terms | {"start_date": "2026-01-01", "notice_basis": "end_of_month", "notice_day": 10}
+    )
+
+    def read(data: Any) -> Contract:
+        contract = upsert_contract(
+            store,
+            document=document,
+            extraction=data,
+            party=None,
+            case=None,
+            evidence=[],
+            rule_ctx=RuleContext(today=date(2026, 9, 28), region="NW"),
+            postal_buffer_days=4,
+        )
+        assert contract is not None
+        return contract
+
+    contract = read(read_day)
+    store.update_document(document.id, extraction=read_day)
+    entered = store.update_contract(
+        contract.id, notice_value=1, notice_unit="months", notice_basis="end_of_month", notice_day=None
+    )
+    store.update_contract(contract.id, evidence=notice_evidence(entered))
+
+    again = read(read_day)
+    assert (again.notice_value, again.notice_unit, again.notice_day) == (1, "months", None)
+    assert [e.grounding for e in again.evidence] == ["user"]
+    # the person's month decides (any time, at most a month: § 309 Nr. 9 BGB), not the letter's 10th
+    assert again.computed is not None and again.computed.cancel_by != "2026-10-10"
+    assert "the 10th" not in again.computed.summary
+
+
 def test_change_links_to_the_only_active_contract_without_touching_it(store: Store) -> None:
     party = store.add_party(name="Muster Energie", kind="utility")
     contract = store.add_contract(name="Power", category="energy", party_id=party.id, cost_amount=80.0)

@@ -509,14 +509,26 @@ def _contract_values(extraction: DocumentExtraction | None) -> dict[str, Any] | 
     return values
 
 
+#: The notice terms, which the person enters on the contract's card together (``_entered_terms``).
+_NOTICE_TERMS = frozenset({"notice_value", "notice_unit", "notice_basis", "notice_day", "notice_before_end"})
+
+
 def _unedited(existing: Contract, values: dict[str, Any], previous: dict[str, Any] | None) -> dict[str, Any]:
     """The fields to write: empty ones, and — when the last extraction is known — those the person
-    has not changed since (their value still equals what was extracted before)."""
+    has not changed since (their value still equals what was extracted before). Notice terms the person
+    entered on the card (their quote, with a term of theirs still set) are theirs as a whole: a term
+    they left empty or cleared there — a misread day of the month — is not filled from the letter."""
+    entered = any(e.grounding == "user" for e in existing.evidence) and any(
+        getattr(existing, name) not in (None, False) for name in _NOTICE_TERMS
+    )
     return {
         name: value
         for name, value in values.items()
-        if getattr(existing, name) is None
-        or (previous is not None and getattr(existing, name) == previous.get(name))
+        if not (entered and name in _NOTICE_TERMS)
+        and (
+            getattr(existing, name) is None
+            or (previous is not None and getattr(existing, name) == previous.get(name))
+        )
     }
 
 
