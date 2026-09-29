@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ahmedEid1/new-project/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/new-project/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python 3.11–3.13" src="https://img.shields.io/badge/python-3.11%E2%80%933.13-3776ab">
   <img alt="Local-first" src="https://img.shields.io/badge/data-stays%20on%20your%20computer-0f6e66">
   <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b">
@@ -54,7 +54,7 @@ Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopen
 run, so it needs **no Claude account and uses no tokens**.
 
 ```bash
-pipx install git+https://github.com/ahmedEid1/new-project   # or: uv tool install git+https://github.com/ahmedEid1/new-project
+pipx install git+https://github.com/ahmedEid1/ordnung   # or: uv tool install git+https://github.com/ahmedEid1/ordnung
 ordnung demo                                             # opens http://127.0.0.1:8765 with a guided tour
 ```
 
@@ -281,7 +281,7 @@ You need Python 3.11+ and, to read your own letters, the
 subscription (or an API key). Ordnung calls it in headless mode; there is nothing else to configure.
 
 ```bash
-pipx install git+https://github.com/ahmedEid1/new-project   # the built web app is included
+pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
 ordnung doctor                  # checks Claude, the search index, fonts and your data folder
 ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung add ~/Downloads/*.pdf   # or drag files into the app

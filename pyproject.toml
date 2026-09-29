@@ -70,8 +70,8 @@ eval = [
 ordnung = "ordnung.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/ahmedEid1/new-project"
-Documentation = "https://github.com/ahmedEid1/new-project/tree/main/docs"
+Homepage = "https://github.com/ahmedEid1/ordnung"
+Documentation = "https://github.com/ahmedEid1/ordnung/tree/main/docs"
 
 [build-system]
 requires = ["hatchling>=1.25"]
