@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6e68172d8788b6dc266b32eedb297dd02b575605b61b00c66caeca593e97abc3\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-02-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-F2"
+    ],
+    "prompt_head": "Today is Sunday, 2027-02-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume"
+  },
+  "response": {
+    "text": "{\"amounts\":[5496,661],\"contract\":null,\"document_date\":\"2027-02-22\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.\",\"computation\":\"Letter dated Monday 22.02.2027, sent by post. Assuming the posting date equals the letter date, the deemed-delivery day under §122 Abs.2 Nr.1 AO is the 4th day after posting: 22.02.2027 + 4 days = 26.02.2027 (Friday), which is not a weekend/holiday, so Bekanntgabe = 26.02.2027. The one-month Einspruchsfrist (§355 Abs.1 AO) begins with the end of that day, and per §108 Abs.1 AO i.V.m. §188 Abs.2 BGB ends on the day of the following month bearing the same number: 26.03.2027. That day, 26.03.2027, is Karfreitag (Good Friday), a public holiday in Sachsen-Anhalt; the following days are also non-business (27.03 Sa, 28.03 So/Easter Sunday, 29.03 Ostermontag - a holiday), so per §108 Abs.3 AO the deadline moves to the next business day, Tuesday 30.03.2027.\",\"due_date\":\"2027-03-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Expected tax refund payout\",\"quote\":\"Die Auszahlung erfolgt auf das bei uns hinterlegte Girokonto.\",\"computation\":\"The letter states the refund of 661,00 € will be paid to the stored bank account but gives no specific date or deadline for the payout, so no exact due date can be computed; only the fact of the refund and its amount are certain.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":661}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"102/148/05527\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterstedt\",\"warnings\":[\"The exact date the letter was posted (Aufgabe zur Post) is not printed separately; the computation assumes it equals the letter's date (22.02.2027), which affects the deemed-delivery date and thus the Einspruch deadline.\",\"No specific payout date is given for the 661,00 € refund, so its timing cannot be verified from this letter alone.\"]}",
+    "data": {
+      "amounts": [
+        5496,
+        661
+      ],
+      "contract": null,
+      "document_date": "2027-02-22",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.",
+          "computation": "Letter dated Monday 22.02.2027, sent by post. Assuming the posting date equals the letter date, the deemed-delivery day under §122 Abs.2 Nr.1 AO is the 4th day after posting: 22.02.2027 + 4 days = 26.02.2027 (Friday), which is not a weekend/holiday, so Bekanntgabe = 26.02.2027. The one-month Einspruchsfrist (§355 Abs.1 AO) begins with the end of that day, and per §108 Abs.1 AO i.V.m. §188 Abs.2 BGB ends on the day of the following month bearing the same number: 26.03.2027. That day, 26.03.2027, is Karfreitag (Good Friday), a public holiday in Sachsen-Anhalt; the following days are also non-business (27.03 Sa, 28.03 So/Easter Sunday, 29.03 Ostermontag - a holiday), so per §108 Abs.3 AO the deadline moves to the next business day, Tuesday 30.03.2027.",
+          "due_date": "2027-03-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Expected tax refund payout",
+          "quote": "Die Auszahlung erfolgt auf das bei uns hinterlegte Girokonto.",
+          "computation": "The letter states the refund of 661,00 € will be paid to the stored bank account but gives no specific date or deadline for the payout, so no exact due date can be computed; only the fact of the refund and its amount are certain.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 661
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "102/148/05527"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterstedt",
+      "warnings": [
+        "The exact date the letter was posted (Aufgabe zur Post) is not printed separately; the computation assumes it equals the letter's date (22.02.2027), which affects the deemed-delivery date and thus the Einspruch deadline.",
+        "No specific payout date is given for the 661,00 € refund, so its timing cannot be verified from this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3986,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2402,
+      "cost_usd": 0.05009639999999999,
+      "duration_ms": 35126,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

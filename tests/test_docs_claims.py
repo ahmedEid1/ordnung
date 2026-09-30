@@ -186,6 +186,11 @@ def test_readme_extraction_benchmark_numbers_match_the_results() -> None:
     assert split in readme
 
 
+def _words(n: int) -> str:
+    """A small count as README writes it ("two late dates")."""
+    return ("no", "one", "two", "three", "four", "five", "six")[n] if n <= 6 else str(n)
+
+
 def _latest_holdout() -> dict[str, Any]:
     """The newest holdout results file (by its own generated_at): the one README's held-out row must match."""
     runs = [_results(path.name) for path in (ROOT / "evals" / "results").glob("*-holdout.json")]
@@ -218,6 +223,16 @@ def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
     ) in readme
     exact = int(held["due_date_accuracy"]["k"])
     assert f"Ordnung got {exact} of {int(late['n'])} right" in readme
+    # the baselines on the same letters, in the bullet's own words
+    baselines = {name: holdout["metrics"][name] for name in ("llm_rules_text", "llm_rules_tool", "llm_only")}
+    text, tool, only = (int(m["due_date_accuracy"]["k"]) for m in baselines.values())
+    assert baselines["llm_rules_text"]["dangerous_late_rate"]["k"] == 0 and tool == int(late["n"])
+    assert f"the rules-text prompt also scored {text} of 56, with no\n  late date" in readme
+    assert f"the agent with the calculator all {tool} again" in readme
+    assert (
+        f"the model alone {only} of 56 with {_words(int(baselines['llm_only']['dangerous_late_rate']['k']))} late"
+        in readme
+    )
     scores = [
         int(_results(name)["metrics"]["ordnung"]["due_date_accuracy"]["k"])
         for name in (

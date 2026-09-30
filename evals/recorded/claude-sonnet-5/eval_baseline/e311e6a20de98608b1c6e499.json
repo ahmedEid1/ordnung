@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9599aedc493aca085f948737e113ecc4f9af66c688cc7a8841e51b5dbdad152c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E3"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-01-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Beispielstadt\",\"document_date\":\"2026-12-31\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/233/15084\"}],\"amounts\":[212.4],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against amended 2025 income tax assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter dated Thursday 31.12.2026, sent by simple letter (einfacher Brief). Per the letter's own Bekanntgabefiktion (current §122 Abs.2 Nr.1 AO, 4-day rule after the 2025 postal-law amendment): 'Als bekannt gegeben gilt ein mit einfachem Brief versandter Bescheid am vierten Tag nach der Aufgabe zur Post'. Counting 4 days from the posting date 31.12.2026 (day of posting not counted, §108 AO/§187 BGB) gives deemed delivery (Bekanntgabe) on Monday 04.01.2027 (not a weekend or NRW public holiday, so no shift needed). The one-month Einspruchsfrist (§355 AO, §188 Abs.2 BGB) then runs from that day and ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 04.02.2027 (a Thursday, not a weekend/holiday, so it stands).\",\"due_date\":\"2027-02-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Beispielstadt",
+      "document_date": "2026-12-31",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/233/15084"
+        }
+      ],
+      "amounts": [
+        212.4
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against amended 2025 income tax assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter dated Thursday 31.12.2026, sent by simple letter (einfacher Brief). Per the letter's own Bekanntgabefiktion (current §122 Abs.2 Nr.1 AO, 4-day rule after the 2025 postal-law amendment): 'Als bekannt gegeben gilt ein mit einfachem Brief versandter Bescheid am vierten Tag nach der Aufgabe zur Post'. Counting 4 days from the posting date 31.12.2026 (day of posting not counted, §108 AO/§187 BGB) gives deemed delivery (Bekanntgabe) on Monday 04.01.2027 (not a weekend or NRW public holiday, so no shift needed). The one-month Einspruchsfrist (§355 AO, §188 Abs.2 BGB) then runs from that day and ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 04.02.2027 (a Thursday, not a weekend/holiday, so it stands).",
+          "due_date": "2027-02-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3867,
+      "cache_read_tokens": 8313,
+      "cache_creation_tokens": 5254,
+      "cost_usd": 0.0613566,
+      "duration_ms": 35256,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

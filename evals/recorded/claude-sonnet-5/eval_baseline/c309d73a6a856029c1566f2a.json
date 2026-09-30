@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4c1b8e449aa78f44072236abbe71c7f34143d958f6855e8e397bad43b8192328\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[4806],\"contract\":null,\"document_date\":\"2027-01-25\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against loss carryforward assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter dated 25.01.2027 (Monday), sent by ordinary mail (einfacher Brief), so Aufgabe zur Post is assumed to be the same day, 25.01.2027. Per the delivery fiction stated in the letter (and the current version of §122 Abs. 2 AO), the notice is deemed delivered (Bekanntgabe) on the 4th day after posting: 25.01.2027 + 4 days = 29.01.2027 (Friday) - not a Saturday/Sunday/holiday, so Bekanntgabe stands on 29.01.2027. Per §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB, the one-month Einspruch period begins the day after Bekanntgabe (30.01.2027) and, per §188 Abs. 2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day itself (29.01.2027), i.e. 29.02.2027. Since 2027 is not a leap year, February only has 28 days, so per §188 Abs. 3 BGB the period ends on the last day of February, 28.02.2027 (a Sunday). Because the last day of the period falls on a Sunday, per §108 Abs. 3 AO the deadline moves to the next working day: Monday, 01.03.2027 (not a NRW public holiday).\",\"due_date\":\"2027-03-01\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterbergen\",\"warnings\":[\"The exact date the notice was actually posted (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the letter's date (25.01.2027), which is the standard assumption but could shift the deemed-delivery and thus the Einspruch deadline by a day or two if the actual mailing date differed.\"]}",
+    "data": {
+      "amounts": [
+        4806
+      ],
+      "contract": null,
+      "document_date": "2027-01-25",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against loss carryforward assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter dated 25.01.2027 (Monday), sent by ordinary mail (einfacher Brief), so Aufgabe zur Post is assumed to be the same day, 25.01.2027. Per the delivery fiction stated in the letter (and the current version of §122 Abs. 2 AO), the notice is deemed delivered (Bekanntgabe) on the 4th day after posting: 25.01.2027 + 4 days = 29.01.2027 (Friday) - not a Saturday/Sunday/holiday, so Bekanntgabe stands on 29.01.2027. Per §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB, the one-month Einspruch period begins the day after Bekanntgabe (30.01.2027) and, per §188 Abs. 2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day itself (29.01.2027), i.e. 29.02.2027. Since 2027 is not a leap year, February only has 28 days, so per §188 Abs. 3 BGB the period ends on the last day of February, 28.02.2027 (a Sunday). Because the last day of the period falls on a Sunday, per §108 Abs. 3 AO the deadline moves to the next working day: Monday, 01.03.2027 (not a NRW public holiday).",
+          "due_date": "2027-03-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterbergen",
+      "warnings": [
+        "The exact date the notice was actually posted (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the letter's date (25.01.2027), which is the standard assumption but could shift the deemed-delivery and thus the Einspruch deadline by a day or two if the actual mailing date differed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4179,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2043,
+      "cost_usd": 0.0505904,
+      "duration_ms": 38079,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

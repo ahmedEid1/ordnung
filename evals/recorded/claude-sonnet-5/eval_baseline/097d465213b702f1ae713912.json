@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e34dca86dfd568c567a1a62694a24c57c1527b2f2d72f2422eddf07fda3ae488\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2025-05-16\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-F1"
+    ],
+    "prompt_head": "Today is Friday, 2025-05-16 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielbrück, Veranlagungsstelle Arbeitnehmer\",\"document_date\":\"2025-05-12\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/251/08813\"}],\"amounts\":[10702,9866,836],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay income tax back-payment for 2024\",\"quote\":\"Zahlungstermin: 12.06.2025\",\"computation\":\"The letter states the payment date explicitly as 12.06.2025 (a Thursday, no weekend/holiday adjustment needed), so no calculation is required beyond reading the stated date.\",\"due_date\":\"2025-06-12\",\"confidence\":\"high\",\"amount\":836},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.\",\"computation\":\"Letter was 'Zur Post gegeben am 14.05.2025' (Wednesday). Per § 122 Abs. 2 Nr. 1 AO (current 4-day fiction), deemed delivery = posting day + 4 days = 18.05.2025 (Sunday). Since that falls on a Sunday, § 108 Abs. 3 AO shifts deemed delivery to the next business day: Monday 19.05.2025. The one-month Einspruch period begins with the expiry of that day (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. starts 20.05.2025, and under § 188 Abs. 2 BGB ends on the day of the following month bearing the same number as the starting reference day: 19.06.2025 (Thursday). 19.06.2025 is Fronleichnam, a statutory public holiday in Saarland, so per § 108 Abs. 3 AO the deadline moves to the next business day: Friday 20.06.2025.\",\"due_date\":\"2025-06-20\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielbrück, Veranlagungsstelle Arbeitnehmer",
+      "document_date": "2025-05-12",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/251/08813"
+        }
+      ],
+      "amounts": [
+        10702,
+        9866,
+        836
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay income tax back-payment for 2024",
+          "quote": "Zahlungstermin: 12.06.2025",
+          "computation": "The letter states the payment date explicitly as 12.06.2025 (a Thursday, no weekend/holiday adjustment needed), so no calculation is required beyond reading the stated date.",
+          "due_date": "2025-06-12",
+          "confidence": "high",
+          "amount": 836
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.",
+          "computation": "Letter was 'Zur Post gegeben am 14.05.2025' (Wednesday). Per § 122 Abs. 2 Nr. 1 AO (current 4-day fiction), deemed delivery = posting day + 4 days = 18.05.2025 (Sunday). Since that falls on a Sunday, § 108 Abs. 3 AO shifts deemed delivery to the next business day: Monday 19.05.2025. The one-month Einspruch period begins with the expiry of that day (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. starts 20.05.2025, and under § 188 Abs. 2 BGB ends on the day of the following month bearing the same number as the starting reference day: 19.06.2025 (Thursday). 19.06.2025 is Fronleichnam, a statutory public holiday in Saarland, so per § 108 Abs. 3 AO the deadline moves to the next business day: Friday 20.06.2025.",
+          "due_date": "2025-06-20",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4370,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2480,
+      "cost_usd": 0.05424839999999999,
+      "duration_ms": 37910,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

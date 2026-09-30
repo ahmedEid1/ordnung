@@ -6,7 +6,7 @@
 > (a phone photo repeats the items of the PDF it was made from).
 > LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
 > Ordnung was run again on 2026-09-30 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
-> Ordnung was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
+> Every condition was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -62,13 +62,26 @@ F, with new senders, wording, layout, dates and amounts) and of the same adversa
 recorded once with frozen prompts.** These are the benchmark's held-out numbers; elsewhere on this
 page, “the held-out run” is the first recording on the test split.
 
-> Run on 2026-09-30 from recorded outputs (replay), model `claude-sonnet-5-5` (the published run used `claude-sonnet-5`), commit `e147618`:
+> Run on 2026-09-30 from live model calls, model `claude-sonnet-5`, commit `2463764`:
 > 63 letters (11 phone photos, 12 adversarial),
 > 56 required items with a known date.
+
+The holdout split was recorded twice on 30 September, once per model, with nothing changed between the two recordings but the model: first on Sonnet 5.5 (Ordnung alone: 53 of 56, two late, one early; `evals/results/2026-09-30-sonnet-holdout.json`), then, when the account lost access to Sonnet 5.5 the same day, on Sonnet 5 (`claude-sonnet-5`, the pinned id the app uses now) with every condition. This section shows the Sonnet 5 run; Ordnung's three misses are the same three letters in both. Recording cost $14.57 (API-equivalent): Ordnung $4.92, LLM only $3.13, LLM + rules text $2.95, LLM + rules tool $3.57.
 
 | Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Published run, test split |
 |---|---|---|---|---|---|---|
 | **Ordnung** | 94.6 % [88.5–100.0] | 53/56 | 3.6 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
+| **LLM only** | 82.1 % [70.5–92.2] | 46/56 | 3.6 % | 14.3 % | 0.0 % | 82.1 % [70.9–91.7] |
+| **LLM + rules text** | 94.6 % [88.3–100.0] | 53/56 | 0.0 % | 5.4 % | 0.0 % | 92.9 % [83.9–100.0] |
+| **LLM + rules tool** | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
+
+Paired differences on the holdout letters:
+
+- Ordnung − LLM only: accuracy +12.5 pp [+0.0, +25.9], dangerous-late rate +0.0 pp [-7.4, +7.0].
+- Ordnung − LLM + rules text: accuracy +0.0 pp [-9.4, +8.9], dangerous-late rate +3.6 pp [+0.0, +9.4].
+- Ordnung − LLM + rules tool: accuracy -5.4 pp [-12.2, +0.0], dangerous-late rate +3.6 pp [+0.0, +9.4].
+- LLM + rules tool − LLM only: accuracy +17.9 pp [+8.2, +29.2], dangerous-late rate -3.6 pp [-9.4, +0.0].
+- LLM + rules tool − LLM + rules text: accuracy +5.4 pp [+0.0, +12.2], dangerous-late rate +0.0 pp [+0.0, +0.0].
 
 Ordnung got 3 dated item(s) of the holdout split wrong; from the failure gallery:
 
@@ -380,7 +393,7 @@ condition's.
 ```bash
 python -m evals.run --split test --model claude-sonnet-5          # recompute from recorded outputs (no tokens)
 python -m evals.run --live --split test --model claude-sonnet-5   # call the model and record new outputs
-python -m evals.run --split holdout --model claude-sonnet-5-5       # the held-out run, from its recorded outputs
+python -m evals.run --split holdout --model claude-sonnet-5       # the held-out run, from its recorded outputs
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
 

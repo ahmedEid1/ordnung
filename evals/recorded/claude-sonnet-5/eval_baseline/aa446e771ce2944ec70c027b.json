@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1463abc61019cced79daf5dc2fd6ed5a2b95d5c27ec36f0433b29514647adfa4\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E1"
+    ],
+    "prompt_head": "Today is Saturday, 2024-12-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Beispielstadt\",\"document_date\":\"2024-12-10\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/233/15084\"}],\"amounts\":[3284,3911,627],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against 2023 income tax assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter is dated 10.12.2024 (Tuesday) and sent as simple letter ('einfacher Brief'). Per §122 Abs. 2 Nr. 1 AO, a letter sent by ordinary mail is deemed delivered (Bekanntgabe) on the third day after posting, assumed here to be the document date. 10.12.2024 + 3 days = 13.12.2024 (Friday), which is a business day (not a Saturday, Sunday or NW public holiday), so the Bekanntgabe-fiction date stands at 13.12.2024. The one-month Einspruch period under §355 AO is computed per §§187 Abs. 1, 188 Abs. 2 BGB (via §108 AO): the day of the event (13.12.2024) is excluded, and the period ends on the day of the following month bearing the same number, i.e. 13.01.2025. 13.01.2025 is a Monday, not a Saturday, Sunday or public holiday, so no extension under §193 BGB applies. Final deadline: 13.01.2025.\",\"due_date\":\"2025-01-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The exact posting date is not stated separately from the document date; the deadline calculation assumes the letter was posted on 10.12.2024, the printed document date — if actual posting occurred later, the Einspruch deadline would shift accordingly.\",\"The 627,00 € refund will reportedly be transferred automatically by the tax office to the account on file; no due date is given for this in the letter and the recipient should verify their bank details are current with the Finanzamt.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Beispielstadt",
+      "document_date": "2024-12-10",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/233/15084"
+        }
+      ],
+      "amounts": [
+        3284,
+        3911,
+        627
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against 2023 income tax assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter is dated 10.12.2024 (Tuesday) and sent as simple letter ('einfacher Brief'). Per §122 Abs. 2 Nr. 1 AO, a letter sent by ordinary mail is deemed delivered (Bekanntgabe) on the third day after posting, assumed here to be the document date. 10.12.2024 + 3 days = 13.12.2024 (Friday), which is a business day (not a Saturday, Sunday or NW public holiday), so the Bekanntgabe-fiction date stands at 13.12.2024. The one-month Einspruch period under §355 AO is computed per §§187 Abs. 1, 188 Abs. 2 BGB (via §108 AO): the day of the event (13.12.2024) is excluded, and the period ends on the day of the following month bearing the same number, i.e. 13.01.2025. 13.01.2025 is a Monday, not a Saturday, Sunday or public holiday, so no extension under §193 BGB applies. Final deadline: 13.01.2025.",
+          "due_date": "2025-01-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The exact posting date is not stated separately from the document date; the deadline calculation assumes the letter was posted on 10.12.2024, the printed document date — if actual posting occurred later, the Einspruch deadline would shift accordingly.",
+        "The 627,00 € refund will reportedly be transferred automatically by the tax office to the account on file; no due date is given for this in the letter and the recipient should verify their bank details are current with the Finanzamt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3613,
+      "cache_read_tokens": 8286,
+      "cache_creation_tokens": 4695,
+      "cost_usd": 0.056575200000000006,
+      "duration_ms": 31511,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

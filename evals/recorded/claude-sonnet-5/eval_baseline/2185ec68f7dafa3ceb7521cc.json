@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"ca42718b796fa5c47f9642a908b8497efeb15b7ae590668749bbfc4a80e93e48\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-F1"
+    ],
+    "prompt_head": "Today is Monday, 2026-08-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterbergen\",\"document_date\":\"2026-08-27\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"912A507733\"}],\"amounts\":[1318.2],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against benefit cancellation\",\"quote\":\"Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Agentur für Arbeit Musterbergen, Bahnhofstraße 12, 35037 Musterbergen).\",\"computation\":\"Letter is dated (posted) 27.08.2026 (Thursday), a Bundesagentur für Arbeit decision governed by SGB X (a social-law body). Per the letter's own clause and § 37 Abs. 2 SGB X, a posted notice is deemed delivered on the 4th day after posting: counting from 27.08 (day of posting, not counted) gives 28.08 (day1), 29.08 (day2), 30.08 (day3), 31.08.2026 (day4, Monday). For social-law bodies the deemed-delivery day does not move even onto a weekend/holiday, but 31.08.2026 is already a working day (Monday), so Bekanntgabe = 31.08.2026. The one-month Widerspruch period (§ 84 SGG / § 37 SGB X, counted per §§ 187, 188 BGB) starts the next day (01.09.2026) and ends on the day of the following month numerically matching the event day (31); September has only 30 days, so per § 188 Abs. 2 BGB the period ends on the last day of that month: 30.09.2026 (Wednesday, not a holiday in NRW), so no further shift under § 26 Abs. 3 SGB X / § 193 BGB is needed.\",\"due_date\":\"2026-09-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Final unemployment benefit payment for August 2026\",\"quote\":\"Für den August 2026 zahlen wir Ihnen noch 1.318,20 €.\",\"computation\":\"The letter states the amount to be paid for August 2026 but gives no specific payment date; unemployment benefits are typically transferred automatically shortly after the decision, so no exact due date can be determined from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1318.2}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter does not state an exact payment date for the final August 2026 benefit amount of 1.318,20 €, so that item's due date could not be determined and was left null.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterbergen",
+      "document_date": "2026-08-27",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "912A507733"
+        }
+      ],
+      "amounts": [
+        1318.2
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against benefit cancellation",
+          "quote": "Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Agentur für Arbeit Musterbergen, Bahnhofstraße 12, 35037 Musterbergen).",
+          "computation": "Letter is dated (posted) 27.08.2026 (Thursday), a Bundesagentur für Arbeit decision governed by SGB X (a social-law body). Per the letter's own clause and § 37 Abs. 2 SGB X, a posted notice is deemed delivered on the 4th day after posting: counting from 27.08 (day of posting, not counted) gives 28.08 (day1), 29.08 (day2), 30.08 (day3), 31.08.2026 (day4, Monday). For social-law bodies the deemed-delivery day does not move even onto a weekend/holiday, but 31.08.2026 is already a working day (Monday), so Bekanntgabe = 31.08.2026. The one-month Widerspruch period (§ 84 SGG / § 37 SGB X, counted per §§ 187, 188 BGB) starts the next day (01.09.2026) and ends on the day of the following month numerically matching the event day (31); September has only 30 days, so per § 188 Abs. 2 BGB the period ends on the last day of that month: 30.09.2026 (Wednesday, not a holiday in NRW), so no further shift under § 26 Abs. 3 SGB X / § 193 BGB is needed.",
+          "due_date": "2026-09-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Final unemployment benefit payment for August 2026",
+          "quote": "Für den August 2026 zahlen wir Ihnen noch 1.318,20 €.",
+          "computation": "The letter states the amount to be paid for August 2026 but gives no specific payment date; unemployment benefits are typically transferred automatically shortly after the decision, so no exact due date can be determined from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1318.2
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not state an exact payment date for the final August 2026 benefit amount of 1.318,20 €, so that item's due date could not be determined and was left null."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3155,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2079,
+      "cost_usd": 0.040976,
+      "duration_ms": 29087,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"015f48c0752027604fe8300803fdac697e9317d3dd9693728c581088c3ca1518\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-06-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-E2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-06-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Beispielstadt\",\"document_date\":\"2026-06-15\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/233/15084\"},{\"label\":\"Steuer-ID\",\"value\":\"38 115 604 272\"}],\"amounts\":[3978,428],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab Bekanntgabe.\",\"computation\":\"Bescheiddatum (date of the notice) = Monday 2026-06-15. The letter itself states the delivery fiction: 'Wird der Bescheid mit einfachem Brief versandt, gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (§122 Abs.2 Nr.1 AO, current 4-day rule). Counting from the posting date 2026-06-15: day 1 = 2026-06-16 (Tue), day 2 = 06-17 (Wed), day 3 = 06-18 (Thu), day 4 = 06-19 (Fri). 2026-06-19 is a Friday, not a weekend/holiday, so deemed Bekanntgabe (notification) = 2026-06-19. The one-month Einspruch period (§355 Abs.1 AO) begins the day after Bekanntgabe (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB), i.e. 2026-06-20, and ends one month later on the day bearing the same number as the day of Bekanntgabe (§188 Abs.2 BGB), i.e. 2026-07-19. That day, 2026-07-19, is a Sunday, so under §108 Abs.3 AO the deadline shifts to the next working day: Monday 2026-07-20, which is not a public holiday in NRW. Final deadline: 2026-07-20.\",\"due_date\":\"2026-07-20\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Beispielstadt",
+      "document_date": "2026-06-15",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/233/15084"
+        },
+        {
+          "label": "Steuer-ID",
+          "value": "38 115 604 272"
+        }
+      ],
+      "amounts": [
+        3978,
+        428
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab Bekanntgabe.",
+          "computation": "Bescheiddatum (date of the notice) = Monday 2026-06-15. The letter itself states the delivery fiction: 'Wird der Bescheid mit einfachem Brief versandt, gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' (§122 Abs.2 Nr.1 AO, current 4-day rule). Counting from the posting date 2026-06-15: day 1 = 2026-06-16 (Tue), day 2 = 06-17 (Wed), day 3 = 06-18 (Thu), day 4 = 06-19 (Fri). 2026-06-19 is a Friday, not a weekend/holiday, so deemed Bekanntgabe (notification) = 2026-06-19. The one-month Einspruch period (§355 Abs.1 AO) begins the day after Bekanntgabe (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB), i.e. 2026-06-20, and ends one month later on the day bearing the same number as the day of Bekanntgabe (§188 Abs.2 BGB), i.e. 2026-07-19. That day, 2026-07-19, is a Sunday, so under §108 Abs.3 AO the deadline shifts to the next working day: Monday 2026-07-20, which is not a public holiday in NRW. Final deadline: 2026-07-20.",
+          "due_date": "2026-07-20",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3143,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2506,
+      "cost_usd": 0.04208239999999999,
+      "duration_ms": 30905,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

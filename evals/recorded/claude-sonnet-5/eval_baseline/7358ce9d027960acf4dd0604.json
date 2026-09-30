@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8b70d96aa40b0d79175f616fd8204348c1bc65274ab9610d2acdd3a85a29880f\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-F2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-11-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrus"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Landesamt für Soziales Beispielmünde – Elterngeldstelle\",\"document_date\":\"2026-11-16\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"EG-26-3318-MV\"}],\"amounts\":[1412.35],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Elterngeld decision\",\"quote\":\"Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.\",\"computation\":\"Letter dated 16.11.2026 (Monday). Under § 37 Abs. 2 SGB X, a letter sent by post is deemed delivered (bekannt gegeben) on the third day after it was handed to the post, i.e. 16.11.2026 + 3 days = 19.11.2026 (Thursday, not a holiday) → Bekanntgabe = 19.11.2026. Per § 26 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the one-month Widerspruch period starts the day after Bekanntgabe (20.11.2026) and ends one month later on the day with the same number as the Bekanntgabe date, i.e. 19.12.2026. That date is a Saturday; under § 193 BGB the deadline moves to the next business day. 20.12.2026 is a Sunday, so the deadline moves to Monday 21.12.2026, which is not a public holiday in Mecklenburg-Vorpommern.\",\"due_date\":\"2026-12-21\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Report any change in income during Elterngeld payment period\",\"quote\":\"Ändert sich Ihr Einkommen während des Bezugs, teilen Sie uns das bitte unverzüglich mit.\",\"computation\":\"This is an ongoing obligation to report ('unverzüglich' = without undue delay) triggered by a future event (an income change), not a fixed calendar deadline; the letter gives no specific date by which this must happen.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"Sender and account details (e.g. 'Beispielmünde', 'Landeszentralbank Muster') appear to be placeholder/sample text rather than a real authority — verify the actual office and IBAN before relying on this letter.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Landesamt für Soziales Beispielmünde – Elterngeldstelle",
+      "document_date": "2026-11-16",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "EG-26-3318-MV"
+        }
+      ],
+      "amounts": [
+        1412.35
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Elterngeld decision",
+          "quote": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.",
+          "computation": "Letter dated 16.11.2026 (Monday). Under § 37 Abs. 2 SGB X, a letter sent by post is deemed delivered (bekannt gegeben) on the third day after it was handed to the post, i.e. 16.11.2026 + 3 days = 19.11.2026 (Thursday, not a holiday) → Bekanntgabe = 19.11.2026. Per § 26 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the one-month Widerspruch period starts the day after Bekanntgabe (20.11.2026) and ends one month later on the day with the same number as the Bekanntgabe date, i.e. 19.12.2026. That date is a Saturday; under § 193 BGB the deadline moves to the next business day. 20.12.2026 is a Sunday, so the deadline moves to Monday 21.12.2026, which is not a public holiday in Mecklenburg-Vorpommern.",
+          "due_date": "2026-12-21",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Report any change in income during Elterngeld payment period",
+          "quote": "Ändert sich Ihr Einkommen während des Bezugs, teilen Sie uns das bitte unverzüglich mit.",
+          "computation": "This is an ongoing obligation to report ('unverzüglich' = without undue delay) triggered by a future event (an income change), not a fixed calendar deadline; the letter gives no specific date by which this must happen.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "Sender and account details (e.g. 'Beispielmünde', 'Landeszentralbank Muster') appear to be placeholder/sample text rather than a real authority — verify the actual office and IBAN before relying on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2704,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2190,
+      "cost_usd": 0.0364284,
+      "duration_ms": 24864,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

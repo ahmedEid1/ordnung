@@ -218,11 +218,13 @@ test split was recorded for each of them (54, 53, 54 and 54 of 56, on Sonnet 5.5
 more on Sonnet 5 when the account lost access to 5.5 (55 of 56, the run this row shows): iteration on
 it. The one miss is early, on the safe side.
 ⁵ 63 new letters (11 photos, 12 adversarial; 56 dated obligations), written after prompt version 11 and
-before any recording on them, recorded once with prompt 12. The two late dates are two adversarial
-letters that print conflicting due dates: the reading took the later date with high confidence and no
-warning of the conflict (the test split's two letters of that class were read right). The third miss is
-a tax notice that prints a posting day after its own date: Ordnung counts from the letter's date on
-purpose (early).
+before any recording on them, recorded with prompt 12 once on Sonnet 5.5 (Ordnung alone) and once on
+Sonnet 5 with every condition, when the account lost access to 5.5 the same day and nothing else had
+changed: the row shows the Sonnet 5 run, with the same three misses as the first. The two late dates
+are two adversarial letters that print conflicting due dates: the reading took the later date with high
+confidence and no warning of the conflict (the test split's two letters of that class were read right).
+The third miss is a tax notice that prints a posting day after its own date: Ordnung counts from the
+letter's date on purpose (early).
 
 What the numbers say:
 
@@ -249,7 +251,9 @@ What the numbers say:
   version 11, before any recording on them), Ordnung got 53 of 56 right. Both late dates are adversarial
   letters that print two conflicting due dates: the reading took the later one with high confidence and
   no warning of the conflict, where the test split's two letters of that class were read right — a trap
-  the test split did not show.
+  the test split did not show. On the same letters the rules-text prompt also scored 53 of 56, with no
+  late date, the agent with the calculator all 56 again, and the model alone 46 of 56 with two late
+  dates.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for

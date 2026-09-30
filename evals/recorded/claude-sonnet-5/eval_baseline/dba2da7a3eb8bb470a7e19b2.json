@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8b70d96aa40b0d79175f616fd8204348c1bc65274ab9610d2acdd3a85a29880f\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2026-11-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-F2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-11-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrus"
+  },
+  "response": {
+    "text": "{\"amounts\":[1412.35],\"contract\":null,\"document_date\":\"2026-11-16\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against Elterngeld decision\",\"quote\":\"Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.\",\"computation\":\"The letter is dated Monday 16.11.2026 and no separate 'zur Post gegeben' date is stated, so posting day = 16.11.2026. The Landesamt für Soziales is a social-law body (§ 37 Abs. 2 SGB X), so the 4-day delivery fiction (posting on/after 1 Jan 2025) applies without the tax-office weekend/holiday shift: 16.11.2026 + 4 days = Friday 20.11.2026 = deemed delivery day. The one-month Widerspruch period (§ 84 SGG / § 26 SGB X, counted per §§ 187 Abs. 1, 188 Abs. 2 BGB) does not count the delivery day itself; the period ends one month later on the day bearing the same number: 20.12.2026. That day is a Sunday, so under § 26 Abs. 3 SGB X / § 193 BGB the deadline moves to the next working day, Monday 21.12.2026 (not a public holiday in MV).\",\"due_date\":\"2026-12-21\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Report any change in income during benefit period\",\"quote\":\"Ändert sich Ihr Einkommen während des Bezugs, teilen Sie uns das bitte unverzüglich mit.\",\"computation\":\"The letter requires reporting 'unverzüglich' (without undue delay) if income changes during the benefit period, but this is an open-ended ongoing duty tied to a future, presently unknown event (an income change), not a fixed calendar deadline. No exact due date can be computed from the letter.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"EG-26-3318-MV\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Landesamt für Soziales Beispielmünde – Elterngeldstelle\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        1412.35
+      ],
+      "contract": null,
+      "document_date": "2026-11-16",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against Elterngeld decision",
+          "quote": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.",
+          "computation": "The letter is dated Monday 16.11.2026 and no separate 'zur Post gegeben' date is stated, so posting day = 16.11.2026. The Landesamt für Soziales is a social-law body (§ 37 Abs. 2 SGB X), so the 4-day delivery fiction (posting on/after 1 Jan 2025) applies without the tax-office weekend/holiday shift: 16.11.2026 + 4 days = Friday 20.11.2026 = deemed delivery day. The one-month Widerspruch period (§ 84 SGG / § 26 SGB X, counted per §§ 187 Abs. 1, 188 Abs. 2 BGB) does not count the delivery day itself; the period ends one month later on the day bearing the same number: 20.12.2026. That day is a Sunday, so under § 26 Abs. 3 SGB X / § 193 BGB the deadline moves to the next working day, Monday 21.12.2026 (not a public holiday in MV).",
+          "due_date": "2026-12-21",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Report any change in income during benefit period",
+          "quote": "Ändert sich Ihr Einkommen während des Bezugs, teilen Sie uns das bitte unverzüglich mit.",
+          "computation": "The letter requires reporting 'unverzüglich' (without undue delay) if income changes during the benefit period, but this is an open-ended ongoing duty tied to a future, presently unknown event (an income change), not a fixed calendar deadline. No exact due date can be computed from the letter.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "EG-26-3318-MV"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Landesamt für Soziales Beispielmünde – Elterngeldstelle",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4562,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2190,
+      "cost_usd": 0.05549,
+      "duration_ms": 40652,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

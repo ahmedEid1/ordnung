@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b081c1e2aa5f2c3ec3974fe85ba992d22eb92ec7cfc50c8ba96079dcc202fd02\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-07-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-E1"
+    ],
+    "prompt_head": "Today is Friday, 2026-07-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterweiler\",\"document_date\":\"2026-07-28\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"40/118/27706\"},{\"label\":\"Steuer-ID\",\"value\":\"71 403 928 516\"}],\"amounts\":[669],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab\\nBekanntgabe.\",\"computation\":\"Bescheiddatum (posting date) = Tuesday 2026-07-28. Letter states: 'Wird der Bescheid mit einfachem Brief versandt, gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' → 28.07 + 4 calendar days = Saturday 2026-08-01. For Finanzamt/tax offices, if the 4th day falls on a weekend or holiday, delivery (Bekanntgabe) moves to the next working day (§108 Abs.3 AO) → Monday 2026-08-03. One-month Einspruch period runs from the day after delivery (§187 Abs.1 BGB / §108 Abs.1 AO) and ends on the day in the following month with the same number as the delivery day (§188 Abs.2 BGB): 2026-08-03 + 1 month = 2026-09-03 (Thursday). This day is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no further shift applies (§108 Abs.3 AO).\",\"due_date\":\"2026-09-03\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterweiler",
+      "document_date": "2026-07-28",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "40/118/27706"
+        },
+        {
+          "label": "Steuer-ID",
+          "value": "71 403 928 516"
+        }
+      ],
+      "amounts": [
+        669
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab\nBekanntgabe.",
+          "computation": "Bescheiddatum (posting date) = Tuesday 2026-07-28. Letter states: 'Wird der Bescheid mit einfachem Brief versandt, gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' → 28.07 + 4 calendar days = Saturday 2026-08-01. For Finanzamt/tax offices, if the 4th day falls on a weekend or holiday, delivery (Bekanntgabe) moves to the next working day (§108 Abs.3 AO) → Monday 2026-08-03. One-month Einspruch period runs from the day after delivery (§187 Abs.1 BGB / §108 Abs.1 AO) and ends on the day in the following month with the same number as the delivery day (§188 Abs.2 BGB): 2026-08-03 + 1 month = 2026-09-03 (Thursday). This day is not a Saturday, Sunday or public holiday in Rheinland-Pfalz, so no further shift applies (§108 Abs.3 AO).",
+          "due_date": "2026-09-03",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2000,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2524,
+      "cost_usd": 0.031206,
+      "duration_ms": 18885,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

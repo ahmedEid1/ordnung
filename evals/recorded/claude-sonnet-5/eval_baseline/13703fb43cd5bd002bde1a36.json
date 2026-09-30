@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1463abc61019cced79daf5dc2fd6ed5a2b95d5c27ec36f0433b29514647adfa4\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E1"
+    ],
+    "prompt_head": "Today is Saturday, 2024-12-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Beispielstadt\",\"document_date\":\"2024-12-10\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/233/15084\"}],\"amounts\":[3284,3911,627],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against 2023 income tax assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter dated (posting day) Tue 10.12.2024. The letter's own remedy instruction states the 3-day fiction ('am dritten Tag nach der Aufgabe zur Post'), which is the correct rule since posting is on or before 31.12.2024 (PostModG). Counting 3 calendar days from the posting day (day of posting not counted): 11.12 (Wed) =1, 12.12 (Thu) =2, 13.12 (Fri) =3 -> deemed delivery (Bekanntgabe) = Fri 13.12.2024. This is a Finanzamt, so if this day fell on a weekend/holiday it would move to the next working day (§108 Abs.3 AO), but 13.12.2024 is a Friday, a working day, so no shift. The one-month Einspruch period (§355 Abs.1 AO, counted per §187 Abs.1, §188 Abs.2 BGB) starts the day after delivery and ends on the day of the following month bearing the same number as the delivery day: 13.01.2025. That date is a Tuesday, not a weekend or holiday, so no further shift applies (§108 Abs.3 AO / §193 BGB not needed).\",\"due_date\":\"2025-01-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter sets a refund of 627,00 € to be transferred without stating a payment date, so no due date could be determined for that item and it was omitted from the items list.\",\"There is a date inconsistency in the conversation context between different stated 'today' values (2024-12-14 vs 2026-09-30); the deadline above is computed purely from the letter's own posting date (10.12.2024) and is unaffected by which 'today' is used, but the person should verify whether the one-month Einspruch deadline (13.01.2025) has already passed relative to the actual current date.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Beispielstadt",
+      "document_date": "2024-12-10",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/233/15084"
+        }
+      ],
+      "amounts": [
+        3284,
+        3911,
+        627
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against 2023 income tax assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter dated (posting day) Tue 10.12.2024. The letter's own remedy instruction states the 3-day fiction ('am dritten Tag nach der Aufgabe zur Post'), which is the correct rule since posting is on or before 31.12.2024 (PostModG). Counting 3 calendar days from the posting day (day of posting not counted): 11.12 (Wed) =1, 12.12 (Thu) =2, 13.12 (Fri) =3 -> deemed delivery (Bekanntgabe) = Fri 13.12.2024. This is a Finanzamt, so if this day fell on a weekend/holiday it would move to the next working day (§108 Abs.3 AO), but 13.12.2024 is a Friday, a working day, so no shift. The one-month Einspruch period (§355 Abs.1 AO, counted per §187 Abs.1, §188 Abs.2 BGB) starts the day after delivery and ends on the day of the following month bearing the same number as the delivery day: 13.01.2025. That date is a Tuesday, not a weekend or holiday, so no further shift applies (§108 Abs.3 AO / §193 BGB not needed).",
+          "due_date": "2025-01-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter sets a refund of 627,00 € to be transferred without stating a payment date, so no due date could be determined for that item and it was omitted from the items list.",
+        "There is a date inconsistency in the conversation context between different stated 'today' values (2024-12-14 vs 2026-09-30); the deadline above is computed purely from the letter's own posting date (10.12.2024) and is unaffected by which 'today' is used, but the person should verify whether the one-month Einspruch deadline (13.01.2025) has already passed relative to the actual current date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3622,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2044,
+      "cost_usd": 0.04550599999999999,
+      "duration_ms": 34834,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
