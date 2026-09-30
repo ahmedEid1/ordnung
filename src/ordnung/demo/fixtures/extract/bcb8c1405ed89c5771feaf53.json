@@ -1,0 +1,141 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"8cbbb797476debc36595b65be482a75a934a1ebec1a122d81d0ca05ed0a8050d\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"area\":\"home\",\"case_title\":\"Suspicious \\\"Final Reminder\\\" Letter Demanding Broadcasting Fee Payment (Likely Scam)\",\"kind\":\"dunning\",\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"summary\":\"A letter from a \\\"Rundfunk-Beitragsservice Zahlungszentrale\\\" claims Sam Rivera owes €254.35 in broadcasting fee (Rundfunkbeitrag) arrears, surcharges and processing fees, and demands payment within 48 hours of receipt to a Lithuanian bank account, threatening immediate enforcement (account/wage garnishment) otherwise.\",\"explanation\":\"This letter shows several strong signs of being a scam: it asks for payment to a foreign (Lithuanian) account for a German public fee, gives only 48 hours, threatens enforcement without any further notice, tells you not to contact the address you already know, and offers no legal remedy information at all — none of this matches how the real Beitragsservice operates. Do not pay this account. Instead, contact your known/official Beitragsservice (or Beitragsservice Musterstadt) directly through channels you already trust to check whether any arrears genuinely exist, and consider reporting this letter as attempted fraud. Do not click any links or reply to the email address printed in the letter.\",\"language\":\"de\",\"document_date\":\"2026-09-26\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\",\"kind\":\"other\",\"address\":\"Rundfunk Zahlungszentrale, Postfach 4 41 10, 12399 Musterstadt\",\"email\":\"zahlung@rundfunk-beitragservice.example\",\"phone\":null,\"website\":null,\"identifiers\":[{\"label\":\"Beitrags-Nr.\",\"value\":\"623 918 044\"},{\"label\":\"Vorgangs-Nr.\",\"value\":\"ZZ-2026/88419-B\"}]},\"references\":[{\"label\":\"Beitrags-Nr.\",\"value\":\"623 918 044\"},{\"label\":\"Vorgangs-Nr.\",\"value\":\"ZZ-2026/88419-B\"}],\"key_facts\":[{\"label\":\"Total amount claimed as overdue (GESAMT OFFEN)\",\"value\":\"254,35 EUR\",\"quote\":\"GESAMT OFFEN   254,35 EUR\"},{\"label\":\"Payment deadline stated\",\"value\":\"innerhalb von 48 Stunden nach Erhalt\",\"quote\":\"Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48 Stunden nach Erhalt dieses Schreibens auf das unten angegebene Konto zu überweisen.\"},{\"label\":\"Threatened additional enforcement costs\",\"value\":\"mindestens 180,00 EUR\",\"quote\":\"Andernfalls wird ohne weitere Ankündigung die Zwangsvollstreckung (Kontopfändung, Lohnpfändung) gegen Sie eingeleitet und es entstehen weitere Kosten von mindestens 180,00 EUR!!\"}],\"payment\":{\"iban\":\"LT083999000005439871\",\"iban_valid\":true,\"payee\":\"RBS Zahlungszentrale / Beitragsinkasso UAB\",\"reference\":\"623918044-ZZ\"},\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"items\":[{\"kind\":\"payment\",\"title\":\"Alleged broadcasting fee arrears payment demand (likely scam)\",\"action\":\"Do not pay yet: verify this claim directly with the official/known Beitragsservice through channels you already trust before sending any money.\",\"consequence\":\"The letter claims enforcement (bank or wage garnishment) will start without further notice if payment is not received in time.\",\"amount\":254.35,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"critical\",\"date\":{\"type\":\"relative\",\"nature\":\"payment\",\"anchor\":\"receipt\",\"anchor_date\":null,\"amount\":2,\"unit\":\"days\",\"text\":\"innerhalb von 48 Stunden nach Erhalt dieses Schreibens\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null,\"date\":null,\"time\":null},\"quote\":\"Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48 Stunden nach Erhalt dieses Schreibens auf das unten angegebene Konto zu überweisen.\",\"location\":null,\"recurrence\":null}],\"contract\":null,\"change\":null,\"high_stakes_kind\":null,\"urgency\":\"critical\",\"tax_relevant\":false,\"tax_note\":null,\"transcript\":null,\"warnings\":[\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"The letter demands payment within only 48 hours and threatens immediate enforcement without any further notice, an unusual and pressuring tactic real German authorities do not normally use.\",\"It explicitly tells the recipient not to write to the address known for the Beitragsservice and to use only a generic email address, which is inconsistent with genuine official correspondence.\",\"The sender name (\\\"Zahlungszentrale\\\"/\\\"Beitragsinkasso UAB\\\") does not match the known official Beitragsservice contact and includes no Rechtsbehelfsbelehrung (legal remedy notice), which real German dunning letters from public bodies normally include.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\"]}",
+    "data": {
+      "area": "home",
+      "case_title": "Suspicious \"Final Reminder\" Letter Demanding Broadcasting Fee Payment (Likely Scam)",
+      "kind": "dunning",
+      "title": "Letter claiming to be from a \"Zahlungszentrale\" demanding €254.35 within 48 hours for broadcasting fee arrears",
+      "summary": "A letter from a \"Rundfunk-Beitragsservice Zahlungszentrale\" claims Sam Rivera owes €254.35 in broadcasting fee (Rundfunkbeitrag) arrears, surcharges and processing fees, and demands payment within 48 hours of receipt to a Lithuanian bank account, threatening immediate enforcement (account/wage garnishment) otherwise.",
+      "explanation": "This letter shows several strong signs of being a scam: it asks for payment to a foreign (Lithuanian) account for a German public fee, gives only 48 hours, threatens enforcement without any further notice, tells you not to contact the address you already know, and offers no legal remedy information at all — none of this matches how the real Beitragsservice operates. Do not pay this account. Instead, contact your known/official Beitragsservice (or Beitragsservice Musterstadt) directly through channels you already trust to check whether any arrears genuinely exist, and consider reporting this letter as attempted fraud. Do not click any links or reply to the email address printed in the letter.",
+      "language": "de",
+      "document_date": "2026-09-26",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Rundfunk-Beitragsservice Zahlungszentrale",
+        "kind": "other",
+        "address": "Rundfunk Zahlungszentrale, Postfach 4 41 10, 12399 Musterstadt",
+        "email": "zahlung@rundfunk-beitragservice.example",
+        "phone": null,
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Beitrags-Nr.",
+            "value": "623 918 044"
+          },
+          {
+            "label": "Vorgangs-Nr.",
+            "value": "ZZ-2026/88419-B"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Beitrags-Nr.",
+          "value": "623 918 044"
+        },
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "ZZ-2026/88419-B"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total amount claimed as overdue (GESAMT OFFEN)",
+          "value": "254,35 EUR",
+          "quote": "GESAMT OFFEN   254,35 EUR"
+        },
+        {
+          "label": "Payment deadline stated",
+          "value": "innerhalb von 48 Stunden nach Erhalt",
+          "quote": "Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48 Stunden nach Erhalt dieses Schreibens auf das unten angegebene Konto zu überweisen."
+        },
+        {
+          "label": "Threatened additional enforcement costs",
+          "value": "mindestens 180,00 EUR",
+          "quote": "Andernfalls wird ohne weitere Ankündigung die Zwangsvollstreckung (Kontopfändung, Lohnpfändung) gegen Sie eingeleitet und es entstehen weitere Kosten von mindestens 180,00 EUR!!"
+        }
+      ],
+      "payment": {
+        "iban": "LT083999000005439871",
+        "iban_valid": true,
+        "payee": "RBS Zahlungszentrale / Beitragsinkasso UAB",
+        "reference": "623918044-ZZ"
+      },
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Alleged broadcasting fee arrears payment demand (likely scam)",
+          "action": "Do not pay yet: verify this claim directly with the official/known Beitragsservice through channels you already trust before sending any money.",
+          "consequence": "The letter claims enforcement (bank or wage garnishment) will start without further notice if payment is not received in time.",
+          "amount": 254.35,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "critical",
+          "date": {
+            "type": "relative",
+            "nature": "payment",
+            "anchor": "receipt",
+            "anchor_date": null,
+            "amount": 2,
+            "unit": "days",
+            "text": "innerhalb von 48 Stunden nach Erhalt dieses Schreibens",
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null,
+            "date": null,
+            "time": null
+          },
+          "quote": "Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48 Stunden nach Erhalt dieses Schreibens auf das unten angegebene Konto zu überweisen.",
+          "location": null,
+          "recurrence": null
+        }
+      ],
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null,
+      "urgency": "critical",
+      "tax_relevant": false,
+      "tax_note": null,
+      "transcript": null,
+      "warnings": [
+        "The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.",
+        "The letter demands payment within only 48 hours and threatens immediate enforcement without any further notice, an unusual and pressuring tactic real German authorities do not normally use.",
+        "It explicitly tells the recipient not to write to the address known for the Beitragsservice and to use only a generic email address, which is inconsistent with genuine official correspondence.",
+        "The sender name (\"Zahlungszentrale\"/\"Beitragsinkasso UAB\") does not match the known official Beitragsservice contact and includes no Rechtsbehelfsbelehrung (legal remedy notice), which real German dunning letters from public bodies normally include.",
+        "This document should be verified as potentially fraudulent before taking any action or making any payment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6783,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2692,
+      "cost_usd": 0.08039260000000001,
+      "duration_ms": 59077,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
