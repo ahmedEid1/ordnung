@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"64df879ee5e61b888f8362c97feecc3bd6fce6b9a0eb2302ef63991472c44dda\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> "
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-04-02\",\"items\":[{\"kind\":\"task\",\"title\":\"Stop short-term/holiday rental and resume permanent residential use\",\"quote\":\"Wir geben Ihnen daher auf, die Vermietung an wechselnde Gäste zu beenden und die Wohnung wieder zum dauerhaften Wohnen zu nutzen oder zu vermieten.\",\"computation\":\"The order does not state a specific calendar date or period by which the change of use must be completed; it appears to take effect upon receipt of the order. No deadline can be computed from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Anordnung\",\"quote\":\"Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.\",\"computation\":\"Letter dated Thursday 2026-04-02, sent by ordinary post. Under §41(2) sentence 1 VwVfG (applicable in Hamburg via HmbVwVfG), a letter mailed domestically is deemed delivered (Bekanntgabe) on the 3rd day after mailing: 02.04.2026 + 3 days = 05.04.2026, a Sunday. Under §41(2) sentence 2 VwVfG, if that 3rd day falls on a Saturday, Sunday or public holiday, the next business day counts as the Bekanntgabe date, i.e. Monday 06.04.2026. The one-month period runs per §31 HmbVwVfG in conjunction with §§187(1), 188(2) BGB: the day of Bekanntgabe is not counted (period starts 07.04.2026); it ends on the day of the following month bearing the same number as the Bekanntgabe day (06.05.2026), a Wednesday and not a Hamburg public holiday, so no further shift applies. Deadline for receipt of the Widerspruch by the authority: 2026-05-06.\",\"due_date\":\"2026-05-06\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS 22/2026-0187\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Freie und Hansestadt Hamburg – Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz\",\"warnings\":[\"The order to stop the holiday-let use and return the flat to permanent residential use has no explicit deadline in the letter; it appears to apply immediately upon receipt, so the recipient should not assume any grace period beyond the Widerspruch deadline.\",\"The letter warns that non-compliance can lead to a Zwangsgeld (coercive fine), but no amount or further deadline for compliance is specified — this should be clarified with the authority (Herr Petersen, Raum 3.12) if in doubt.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-04-02",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Stop short-term/holiday rental and resume permanent residential use",
+          "quote": "Wir geben Ihnen daher auf, die Vermietung an wechselnde Gäste zu beenden und die Wohnung wieder zum dauerhaften Wohnen zu nutzen oder zu vermieten.",
+          "computation": "The order does not state a specific calendar date or period by which the change of use must be completed; it appears to take effect upon receipt of the order. No deadline can be computed from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Anordnung",
+          "quote": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.",
+          "computation": "Letter dated Thursday 2026-04-02, sent by ordinary post. Under §41(2) sentence 1 VwVfG (applicable in Hamburg via HmbVwVfG), a letter mailed domestically is deemed delivered (Bekanntgabe) on the 3rd day after mailing: 02.04.2026 + 3 days = 05.04.2026, a Sunday. Under §41(2) sentence 2 VwVfG, if that 3rd day falls on a Saturday, Sunday or public holiday, the next business day counts as the Bekanntgabe date, i.e. Monday 06.04.2026. The one-month period runs per §31 HmbVwVfG in conjunction with §§187(1), 188(2) BGB: the day of Bekanntgabe is not counted (period starts 07.04.2026); it ends on the day of the following month bearing the same number as the Bekanntgabe day (06.05.2026), a Wednesday and not a Hamburg public holiday, so no further shift applies. Deadline for receipt of the Widerspruch by the authority: 2026-05-06.",
+          "due_date": "2026-05-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS 22/2026-0187"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Freie und Hansestadt Hamburg – Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz",
+      "warnings": [
+        "The order to stop the holiday-let use and return the flat to permanent residential use has no explicit deadline in the letter; it appears to apply immediately upon receipt, so the recipient should not assume any grace period beyond the Widerspruch deadline.",
+        "The letter warns that non-compliance can lead to a Zwangsgeld (coercive fine), but no amount or further deadline for compliance is specified — this should be clarified with the authority (Herr Petersen, Raum 3.12) if in doubt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3598,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2225,
+      "cost_usd": 0.04550839999999999,
+      "duration_ms": 34224,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

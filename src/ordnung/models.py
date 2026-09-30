@@ -870,9 +870,9 @@ class Profile(_Model):
 
 
 class ModelSettings(_Model):
-    """A request's own model per purpose. It keys the cache and the recordings (an alias, so they
-    survive a change of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
-    (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`)."""
+    """A request's own model per purpose. It keys the recordings (an alias, so they survive a change
+    of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
+    (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`), and the cache is keyed by that one."""
 
     transcribe: str = "sonnet"
     extract: str = "sonnet"

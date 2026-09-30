@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2884b2ce50c8d8d92831f279a5900a6d498935e3ae43fcfad731f95edef1dc47\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":{\"current_term_end\":\"2027-06-30\",\"cancel_by\":null},\"document_date\":\"2027-04-16\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Respond to offer of permanent contract extension\",\"quote\":\"Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.\",\"computation\":\"Letter dated Friday 16.04.2027. Period is set 'ab Datum dieses Schreibens' (from the letter's date), so under § 187 Abs. 1 BGB the day of the letter itself is not counted; counting starts 17.04.2027. Werktage are defined in the letter as Monday–Saturday excluding public holidays. Counting 6 such Werktage: Day 1 = Sat 17.04.2027; Sunday 18.04.2027 is excluded (not a Werktag); Day 2 = Mon 19.04.2027; Day 3 = Tue 20.04.2027; Day 4 = Wed 21.04.2027; Day 5 = Thu 22.04.2027; Day 6 = Fri 23.04.2027. No public holidays fall in this window (Easter Monday 2027 is 29.03.2027, already past; Labour Day 01.05.2027 is later). The 6th Werktag itself is a working day, so no further weekend/holiday shift under § 193 BGB is needed.\",\"due_date\":\"2027-04-23\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"employment\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"P-2291\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispiel Pflegeheim am Park gGmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": {
+        "current_term_end": "2027-06-30",
+        "cancel_by": null
+      },
+      "document_date": "2027-04-16",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Respond to offer of permanent contract extension",
+          "quote": "Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.",
+          "computation": "Letter dated Friday 16.04.2027. Period is set 'ab Datum dieses Schreibens' (from the letter's date), so under § 187 Abs. 1 BGB the day of the letter itself is not counted; counting starts 17.04.2027. Werktage are defined in the letter as Monday–Saturday excluding public holidays. Counting 6 such Werktage: Day 1 = Sat 17.04.2027; Sunday 18.04.2027 is excluded (not a Werktag); Day 2 = Mon 19.04.2027; Day 3 = Tue 20.04.2027; Day 4 = Wed 21.04.2027; Day 5 = Thu 22.04.2027; Day 6 = Fri 23.04.2027. No public holidays fall in this window (Easter Monday 2027 is 29.03.2027, already past; Labour Day 01.05.2027 is later). The 6th Werktag itself is a working day, so no further weekend/holiday shift under § 193 BGB is needed.",
+          "due_date": "2027-04-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "employment",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "P-2291"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispiel Pflegeheim am Park gGmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3170,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1986,
+      "cost_usd": 0.040754,
+      "duration_ms": 27657,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

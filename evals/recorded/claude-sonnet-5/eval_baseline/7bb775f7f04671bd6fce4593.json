@@ -1,0 +1,98 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"6afe0b8883d507ef8a86242924aad21bb830bc4240a37b87f05d81f60bc33d45\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Wohnungsbaugenossenschaft Beispielbau eG\",\"document_date\":\"2026-12-16\",\"references\":[{\"label\":\"Nutzungsvertrag\",\"value\":\"NV-15-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Window replacement appointment\",\"quote\":\"Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.\",\"computation\":\"Date and start time are printed explicitly in the letter (12.01.2027, 7:30 Uhr); no counting rule needed.\",\"due_date\":\"2027-01-12\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Confirm whether the appointment can be kept\",\"quote\":\"Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.\",\"computation\":\"Sender is a private housing cooperative, not a public authority, so no statutory deemed-delivery rule applies; the letter itself sets the anchor as the letter's own date, 16.12.2026 (Wednesday). Under §187 Abs.1 BGB the day of the triggering event is not counted, so counting starts 17.12.2026 (Thu). Counting 10 Werktage (Mon-Sat, excluding statutory holidays, per the letter's own definition): 17.12=1, 18.12=2, 19.12=3, 20.12 (Sun) skipped, 21.12=4, 22.12=5, 23.12=6, 24.12=7, 25.12 (Erster Weihnachtstag, holiday) skipped, 26.12 (Zweiter Weihnachtstag, holiday) skipped, 27.12 (Sun) skipped, 28.12=8, 29.12=9, 30.12=10. The 10th Werktag is Wednesday 30.12.2026, which is itself a working day, so no further shift under §193 BGB is needed.\",\"due_date\":\"2026-12-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Wohnungsbaugenossenschaft Beispielbau eG",
+      "document_date": "2026-12-16",
+      "references": [
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV-15-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Window replacement appointment",
+          "quote": "Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.",
+          "computation": "Date and start time are printed explicitly in the letter (12.01.2027, 7:30 Uhr); no counting rule needed.",
+          "due_date": "2027-01-12",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Confirm whether the appointment can be kept",
+          "quote": "Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.",
+          "computation": "Sender is a private housing cooperative, not a public authority, so no statutory deemed-delivery rule applies; the letter itself sets the anchor as the letter's own date, 16.12.2026 (Wednesday). Under §187 Abs.1 BGB the day of the triggering event is not counted, so counting starts 17.12.2026 (Thu). Counting 10 Werktage (Mon-Sat, excluding statutory holidays, per the letter's own definition): 17.12=1, 18.12=2, 19.12=3, 20.12 (Sun) skipped, 21.12=4, 22.12=5, 23.12=6, 24.12=7, 25.12 (Erster Weihnachtstag, holiday) skipped, 26.12 (Zweiter Weihnachtstag, holiday) skipped, 27.12 (Sun) skipped, 28.12=8, 29.12=9, 30.12=10. The 10th Werktag is Wednesday 30.12.2026, which is itself a working day, so no further shift under §193 BGB is needed.",
+          "due_date": "2026-12-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3334,
+      "cache_read_tokens": 15157,
+      "cache_creation_tokens": 5501,
+      "cost_usd": 0.0583834,
+      "duration_ms": 29467,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 10,
+            "unit": "werktage",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-12-16",
+            "nature": "declaration",
+            "shift_rule": "auto",
+            "legal_basis": "§187 BGB (Fristbeginn), Nutzungsvertrag Rückmeldung",
+            "text": "Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit"
+          }
+        },
+        "result": "{\"due_date\":\"2026-12-30\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-12-23\",\"summary\":\"10 working days (Mon–Sat) after Wed 16 Dec 2026 is Wed 30 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 16 Dec 2026\",\"date\":\"2026-12-16\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"10 working days (Mon–Sat) later: Wed 30 Dec 2026\",\"date\":\"2026-12-30\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"},{\"label\":\"Wed 30 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-30\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Wed 23 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-23\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-12-17\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "NW"
+        },
+        "result": "{\"year\":2027,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-05-27\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-11-01\",\"weekday\":\"Monday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

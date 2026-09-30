@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2884b2ce50c8d8d92831f279a5900a6d498935e3ae43fcfad731f95edef1dc47\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Pflegeheim am Park gGmbH\",\"document_date\":\"2027-04-16\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"P-2291\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply to offer of permanent contract extension\",\"quote\":\"Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.\",\"computation\":\"The letter is dated 16.04.2027 and the 6-Werktage period runs 'ab Datum dieses Schreibens' (from the date of the letter), counting Monday-Saturday and excluding public holidays, as the letter itself defines. Counting 6 such Werktage forward from 16.04.2027 (the start day itself not counted): 17.04. (Sat, day 1), 18.04. is a Sunday and is skipped, 19.04. (Mon, day 2), 20.04. (Tue, day 3), 21.04. (Wed, day 4), 22.04. (Thu, day 5), 23.04. (Fri, day 6). No NW public holiday falls in this window. So the 6th Werktag is Friday, 23.04.2027.\",\"due_date\":\"2027-04-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter sets a short employer-imposed reply deadline (6 Werktage) rather than a statutory one; because it is a private employer's letter (not an authority), no deemed-delivery rule applies and the period is taken to start on the letter's own date as the letter states, but if the letter was actually received later than 16.04.2027, the employee should check whether the employer intends the period to run from receipt instead.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Pflegeheim am Park gGmbH",
+      "document_date": "2027-04-16",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "P-2291"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply to offer of permanent contract extension",
+          "quote": "Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.",
+          "computation": "The letter is dated 16.04.2027 and the 6-Werktage period runs 'ab Datum dieses Schreibens' (from the date of the letter), counting Monday-Saturday and excluding public holidays, as the letter itself defines. Counting 6 such Werktage forward from 16.04.2027 (the start day itself not counted): 17.04. (Sat, day 1), 18.04. is a Sunday and is skipped, 19.04. (Mon, day 2), 20.04. (Tue, day 3), 21.04. (Wed, day 4), 22.04. (Thu, day 5), 23.04. (Fri, day 6). No NW public holiday falls in this window. So the 6th Werktag is Friday, 23.04.2027.",
+          "due_date": "2027-04-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter sets a short employer-imposed reply deadline (6 Werktage) rather than a statutory one; because it is a private employer's letter (not an authority), no deemed-delivery rule applies and the period is taken to start on the letter's own date as the letter states, but if the letter was actually received later than 16.04.2027, the employee should check whether the employer intends the period to run from receipt instead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1474,
+      "cache_read_tokens": 15100,
+      "cache_creation_tokens": 2795,
+      "cost_usd": 0.028948,
+      "duration_ms": 15253,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2027-04-16",
+          "days": 6,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2027-04-16\",\"days\":6,\"day_type\":\"werktage\",\"date\":\"2027-04-23\",\"weekday\":\"Friday\",\"skipped\":[{\"date\":\"2027-04-18\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

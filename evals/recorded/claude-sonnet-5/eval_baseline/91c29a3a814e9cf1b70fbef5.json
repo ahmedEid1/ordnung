@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"93ea6f007b4da58c660b5bad86687ebfb9372dfbe58268193be01b8ed9571332\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-price_increase-F1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-04-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Kabel & Web GmbH\",\"document_date\":\"2027-04-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KW-88-104577\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New monthly base price takes effect\",\"quote\":\"zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.\",\"computation\":\"Date printed in the letter as the effective date of the price change: 01.06.2027. Used as written, no counting required.\",\"due_date\":\"2027-06-01\",\"confidence\":\"high\",\"amount\":37.99},{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase (§ 57 Abs. 1 TKG)\",\"quote\":\"dürfen Sie den Vertrag nach § 57 Abs. 1 TKG außerordentlich kündigen – ohne Kosten und ohne Frist, innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.\",\"computation\":\"This is a private company letter, not an authority notice, so the statutory Bekanntgabefiktion for authorities does not formally apply and the actual date of receipt (Zugang) governs. The letter gives no separate posting date, so, as an estimate for ordinary German postal delivery, receipt is assumed 4 calendar days after the letter date (19.04.2027 + 4 = 23.04.2027, a Saturday). This is an assumption, not a legal fiction, and is flagged in warnings. Under §187 Abs. 1 BGB the day of receipt itself is not counted; the 3-month period (§188 Abs. 2 BGB) ends on the day in the third following month bearing the same number as the day of receipt: 23.04.2027 + 3 months = 23.07.2027 (a Saturday). Since this falls on a Saturday, under §193 BGB the period ends on the next business day: Monday 26.07.2027. No public holiday (NRW or Sachsen) falls between 24.07.2027 and 26.07.2027, so only the Saturday causes the shift.\",\"due_date\":\"2027-07-26\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact date the letter was actually received (Zugang) by the customer is not stated; the three-month special-termination deadline was computed assuming a typical postal delivery time of 4 calendar days after the letter's date (19.04.2027), which is an estimate, not a certainty — the true deadline could be a few days earlier or later depending on when the letter actually arrived.\",\"Sender and recipient details in this letter (names, addresses, IBAN) appear to be placeholder/example data (e.g. 'Beispiel', 'Musterleipzig', 'Musterbergen'), consistent with a template letter; the person should verify all identifying details against their real provider correspondence before relying on this analysis.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Kabel & Web GmbH",
+      "document_date": "2027-04-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KW-88-104577"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New monthly base price takes effect",
+          "quote": "zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.",
+          "computation": "Date printed in the letter as the effective date of the price change: 01.06.2027. Used as written, no counting required.",
+          "due_date": "2027-06-01",
+          "confidence": "high",
+          "amount": 37.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase (§ 57 Abs. 1 TKG)",
+          "quote": "dürfen Sie den Vertrag nach § 57 Abs. 1 TKG außerordentlich kündigen – ohne Kosten und ohne Frist, innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.",
+          "computation": "This is a private company letter, not an authority notice, so the statutory Bekanntgabefiktion for authorities does not formally apply and the actual date of receipt (Zugang) governs. The letter gives no separate posting date, so, as an estimate for ordinary German postal delivery, receipt is assumed 4 calendar days after the letter date (19.04.2027 + 4 = 23.04.2027, a Saturday). This is an assumption, not a legal fiction, and is flagged in warnings. Under §187 Abs. 1 BGB the day of receipt itself is not counted; the 3-month period (§188 Abs. 2 BGB) ends on the day in the third following month bearing the same number as the day of receipt: 23.04.2027 + 3 months = 23.07.2027 (a Saturday). Since this falls on a Saturday, under §193 BGB the period ends on the next business day: Monday 26.07.2027. No public holiday (NRW or Sachsen) falls between 24.07.2027 and 26.07.2027, so only the Saturday causes the shift.",
+          "due_date": "2027-07-26",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was actually received (Zugang) by the customer is not stated; the three-month special-termination deadline was computed assuming a typical postal delivery time of 4 calendar days after the letter's date (19.04.2027), which is an estimate, not a certainty — the true deadline could be a few days earlier or later depending on when the letter actually arrived.",
+        "Sender and recipient details in this letter (names, addresses, IBAN) appear to be placeholder/example data (e.g. 'Beispiel', 'Musterleipzig', 'Musterbergen'), consistent with a template letter; the person should verify all identifying details against their real provider correspondence before relying on this analysis."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 10406,
+      "cache_read_tokens": 13101,
+      "cache_creation_tokens": 11018,
+      "cost_usd": 0.1507602,
+      "duration_ms": 103582,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

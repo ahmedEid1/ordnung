@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"93ea6f007b4da58c660b5bad86687ebfb9372dfbe58268193be01b8ed9571332\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-price_increase-F1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-04-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Kabel & Web GmbH\",\"document_date\":\"2027-04-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KW-88-104577\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New monthly base price takes effect\",\"quote\":\"zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.\",\"computation\":\"The letter states the increase takes effect on a fixed calendar date, 01.06.2027; no counting is needed.\",\"due_date\":\"2027-06-01\",\"confidence\":\"high\",\"amount\":37.99},{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase (§ 57 Abs. 1 TKG)\",\"quote\":\"dürfen Sie den Vertrag nach § 57 Abs. 1 TKG außerordentlich kündigen – ohne Kosten und ohne Frist, innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.\",\"computation\":\"This is a company letter, so no statutory deemed-delivery fiction (like §122 AO) applies; the period runs from actual receipt (Zugang). The exact delivery day is not stated, so the letter's own date, 19.04.2027 (a Monday), is used as the earliest plausible start (assuming same-day or very fast delivery). Under §187 Abs.1 BGB the day of receipt is not counted; the 3-month period (§188 Abs.2 BGB) then ends on 19.07.2027, a Monday (no weekend/holiday shift needed). If the letter actually arrived later than 19.04.2027, the 3-month deadline moves back by the same number of days.\",\"due_date\":\"2027-07-19\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The 3-month special-termination deadline is calculated from the letter's printed date (19.04.2027) because the actual day the letter reached the customer (Zugang) is not stated; if it arrived later, the true deadline is correspondingly later.\",\"This is a routine price-increase notice from a known type of provider (cable/TV/internet) with a standard §57 TKG special termination clause; no signs of phishing or scam were found, but the customer should still verify the sender and contract details independently before acting.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Kabel & Web GmbH",
+      "document_date": "2027-04-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KW-88-104577"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New monthly base price takes effect",
+          "quote": "zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.",
+          "computation": "The letter states the increase takes effect on a fixed calendar date, 01.06.2027; no counting is needed.",
+          "due_date": "2027-06-01",
+          "confidence": "high",
+          "amount": 37.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase (§ 57 Abs. 1 TKG)",
+          "quote": "dürfen Sie den Vertrag nach § 57 Abs. 1 TKG außerordentlich kündigen – ohne Kosten und ohne Frist, innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.",
+          "computation": "This is a company letter, so no statutory deemed-delivery fiction (like §122 AO) applies; the period runs from actual receipt (Zugang). The exact delivery day is not stated, so the letter's own date, 19.04.2027 (a Monday), is used as the earliest plausible start (assuming same-day or very fast delivery). Under §187 Abs.1 BGB the day of receipt is not counted; the 3-month period (§188 Abs.2 BGB) then ends on 19.07.2027, a Monday (no weekend/holiday shift needed). If the letter actually arrived later than 19.04.2027, the 3-month deadline moves back by the same number of days.",
+          "due_date": "2027-07-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The 3-month special-termination deadline is calculated from the letter's printed date (19.04.2027) because the actual day the letter reached the customer (Zugang) is not stated; if it arrived later, the true deadline is correspondingly later.",
+        "This is a routine price-increase notice from a known type of provider (cable/TV/internet) with a standard §57 TKG special termination clause; no signs of phishing or scam were found, but the customer should still verify the sender and contract details independently before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4390,
+      "cache_read_tokens": 26432,
+      "cache_creation_tokens": 6771,
+      "cost_usd": 0.0762824,
+      "duration_ms": 41056,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": "2027-04-19",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 57 Abs. 1 TKG",
+            "text": "dürfen Sie den Vertrag nach § 57 Abs. 1 TKG außerordentlich kündigen – ohne Kosten und ohne Frist, innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist."
+          },
+          "document_date": "2027-04-19",
+          "sender_kind": "company",
+          "sender_name": "Beispiel Kabel & Web GmbH",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-07-19\",\"weekday\":\"Monday\",\"send_by\":\"2027-07-13\",\"safe_date\":\"2027-07-19\",\"summary\":\"Three months after delivery on Mon 19 Apr 2027 (as stated on the letter) is Mon 19 Jul 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 19 Apr 2027\",\"date\":\"2027-04-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Mon 19 Jul 2027\",\"date\":\"2027-07-19\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Tue 13 Jul 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-07-13\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-04-22\",\"letter_date\":\"2027-04-19\",\"received_date\":\"2027-04-19\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

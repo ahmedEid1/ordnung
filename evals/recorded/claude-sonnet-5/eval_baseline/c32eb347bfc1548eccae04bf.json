@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a76a67a0095537f3ef549ce52825f8dfc6e53041a42e2fcefd82cc230284b4e6\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2027-04-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Beispielsee\",\"document_date\":\"2027-04-23\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"08154//0042731\"},{\"label\":\"Kundennummer\",\"value\":\"731D882405\"}],\"amounts\":[1087.6],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit payslips for February–April 2027\",\"quote\":\"Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.\",\"computation\":\"The letter states an explicit calendar date: bis 14.05.2027. 14 May 2027 is a Friday, a normal working day, so no weekend/holiday adjustment is needed. The due date is used as written.\",\"due_date\":\"2027-05-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the provisional benefit decision\",\"quote\":\"Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.\",\"computation\":\"The Jobcenter is a social-law body (§ 37 Abs. 2 SGB X applies, like other social-law authorities), so the deemed-delivery day of a posted letter is the 4th calendar day after posting and does NOT move even if it falls on a weekend or holiday. The letter is dated 23.04.2027 (Friday) with no separate 'zur Post gegeben' date, so posting day = 23.04.2027. 4th day after: 24, 25, 26, 27 April → delivered 27.04.2027 (Tuesday). The one-month Widerspruch period (§ 84 SGG / § 26 SGB X with §§ 187, 188 BGB) starts the next day and ends on the day with the same number one month later: 27.05.2027 (Thursday), which is a normal working day in Bayern, so the deadline does not shift further. Final deadline: 27.05.2027.\",\"due_date\":\"2027-05-27\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Beispielsee",
+      "document_date": "2027-04-23",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "08154//0042731"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "731D882405"
+        }
+      ],
+      "amounts": [
+        1087.6
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit payslips for February–April 2027",
+          "quote": "Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.",
+          "computation": "The letter states an explicit calendar date: bis 14.05.2027. 14 May 2027 is a Friday, a normal working day, so no weekend/holiday adjustment is needed. The due date is used as written.",
+          "due_date": "2027-05-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the provisional benefit decision",
+          "quote": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.",
+          "computation": "The Jobcenter is a social-law body (§ 37 Abs. 2 SGB X applies, like other social-law authorities), so the deemed-delivery day of a posted letter is the 4th calendar day after posting and does NOT move even if it falls on a weekend or holiday. The letter is dated 23.04.2027 (Friday) with no separate 'zur Post gegeben' date, so posting day = 23.04.2027. 4th day after: 24, 25, 26, 27 April → delivered 27.04.2027 (Tuesday). The one-month Widerspruch period (§ 84 SGG / § 26 SGB X with §§ 187, 188 BGB) starts the next day and ends on the day with the same number one month later: 27.05.2027 (Thursday), which is a normal working day in Bayern, so the deadline does not shift further. Final deadline: 27.05.2027.",
+          "due_date": "2027-05-27",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3733,
+      "cache_read_tokens": 13243,
+      "cache_creation_tokens": 4975,
+      "cost_usd": 0.0598866,
+      "duration_ms": 30537,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

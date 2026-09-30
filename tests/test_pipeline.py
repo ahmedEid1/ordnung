@@ -241,6 +241,32 @@ async def test_second_read_uses_the_cache(ctx: AppContext) -> None:
     assert ctx.store.usage_stats().cache_hits == 1
 
 
+async def test_a_new_model_choice_is_a_new_call_not_a_cache_hit(data_dir: Path, router: Router) -> None:
+    """The cache is keyed by the model the backend runs a call on (Settings → Claude, an environment
+    pin), not by the request's alias: a letter read again after the choice changed is read anew."""
+
+    class Chosen(FakeBackend):
+        choice = "claude-sonnet-5"
+
+        def model_for(self, req: object) -> str:
+            return self.choice
+
+    backend = Chosen(router)
+    ctx = build_context(data_dir, backend_obj=backend)
+    try:
+        document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+        await ctx.worker.run_until_idle()
+        await ingest_document(ctx, document.id)
+        assert len(backend.calls) == 1 and ctx.store.usage_stats().cache_hits == 1
+        backend.choice = "claude-opus-5-5"
+        await ingest_document(ctx, document.id)
+        assert len(backend.calls) == 2 and ctx.store.usage_stats().cache_hits == 1
+        await ingest_document(ctx, document.id)  # the new model's reading is cached in turn
+        assert len(backend.calls) == 2 and ctx.store.usage_stats().cache_hits == 2
+    finally:
+        ctx.close()
+
+
 async def test_private_documents_never_reach_a_model(ctx: AppContext) -> None:
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", private=True)
     await ctx.worker.run_until_idle()

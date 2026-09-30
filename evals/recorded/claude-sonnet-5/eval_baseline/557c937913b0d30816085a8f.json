@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"692338e6ab28ac1ccfd9e8e0f1b8b148f79ca8076937f5e6199872ff1e2341dd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Krankenversicherung a.G.\",\"document_date\":\"2025-09-30\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"BKV 7710 448 2\"},{\"label\":\"Leistungsfall\",\"value\":\"LF-25-093317\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit OP report and physiotherapy prescription\",\"quote\":\"Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;\",\"computation\":\"Letter is dated 30.09.2025 (Tuesday). The insurer defines Arbeitstage as Monday-Friday excluding statutory public holidays, and the deadline is the 7th such day after the letter date (the letter date itself is not counted, per the insurer's own counting method). Counting forward from 01.10.2025: Wed 01.10 (1), Thu 02.10 (2), Fri 03.10 is Tag der Deutschen Einheit - skipped (national holiday), Sat 04.10 and Sun 05.10 skipped (weekend), Mon 06.10 (3), Tue 07.10 (4), Wed 08.10 (5), Thu 09.10 (6), Fri 10.10 (7). So the 7th business day is Friday, 10.10.2025.\",\"due_date\":\"2025-10-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"If the OP-Bericht and physiotherapy prescription are not received by the insurer within the stated 7 working days, the letter states the insurer will reimburse only the already-substantiated items, not the full claim - worth submitting promptly or requesting an extension if more time is needed.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Krankenversicherung a.G.",
+      "document_date": "2025-09-30",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "BKV 7710 448 2"
+        },
+        {
+          "label": "Leistungsfall",
+          "value": "LF-25-093317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit OP report and physiotherapy prescription",
+          "quote": "Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;",
+          "computation": "Letter is dated 30.09.2025 (Tuesday). The insurer defines Arbeitstage as Monday-Friday excluding statutory public holidays, and the deadline is the 7th such day after the letter date (the letter date itself is not counted, per the insurer's own counting method). Counting forward from 01.10.2025: Wed 01.10 (1), Thu 02.10 (2), Fri 03.10 is Tag der Deutschen Einheit - skipped (national holiday), Sat 04.10 and Sun 05.10 skipped (weekend), Mon 06.10 (3), Tue 07.10 (4), Wed 08.10 (5), Thu 09.10 (6), Fri 10.10 (7). So the 7th business day is Friday, 10.10.2025.",
+          "due_date": "2025-10-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "If the OP-Bericht and physiotherapy prescription are not received by the insurer within the stated 7 working days, the letter states the insurer will reimburse only the already-substantiated items, not the full claim - worth submitting promptly or requesting an extension if more time is needed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1753,
+      "cache_read_tokens": 15068,
+      "cache_creation_tokens": 2927,
+      "cost_usd": 0.0322596,
+      "duration_ms": 15863,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2025-09-30",
+          "days": 7,
+          "day_type": "business_days",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2025-09-30\",\"days\":7,\"day_type\":\"business_days\",\"date\":\"2025-10-10\",\"weekday\":\"Friday\",\"skipped\":[{\"date\":\"2025-10-03\",\"weekday\":\"Friday\",\"reason\":\"Tag der Deutschen Einheit\"},{\"date\":\"2025-10-04\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2025-10-05\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Business days: Monday to Friday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"346d331cc425cdad6d1e0f46bdf0cdabc2aa601e120c6716240e6c4eaac99ed1\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-09-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Nordmuster, Fachdienst Naturschutz\",\"document_date\":\"2025-09-01\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.3-LSG-2025-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of exemption\",\"quote\":\"Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.\",\"computation\":\"Letter is dated (and, per its own Rechtsbehelfsbelehrung, posted) 01.09.2025, a Monday. The Kreis is a general administrative authority (not a Finanzamt), so under Landesverwaltungsverfahrensrecht the letter is deemed delivered on the 4th day after posting, counting calendar days from 01.09.2025 (not counted itself): 02.09. (1), 03.09. (2), 04.09. (3), 05.09. (4) -> deemed delivery Friday 05.09.2025. For a general authority this deemed-delivery day is not shifted even if it fell on a weekend/holiday. The one-month Widerspruch period (Sec. 70 VwGO) then runs from 05.09.2025 under Sec. 187(1), 188(2) BGB: the day of delivery is not counted, and the period ends on the day in the following month bearing the same number, i.e. 05.10.2025. That date is a Sunday, so under Sec. 31(3) VwVfG SH the deadline moves to the next working day, Monday 06.10.2025 (no intervening public holiday in Schleswig-Holstein).\",\"due_date\":\"2025-10-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Nordmuster, Fachdienst Naturschutz",
+      "document_date": "2025-09-01",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.3-LSG-2025-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of exemption",
+          "quote": "Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.",
+          "computation": "Letter is dated (and, per its own Rechtsbehelfsbelehrung, posted) 01.09.2025, a Monday. The Kreis is a general administrative authority (not a Finanzamt), so under Landesverwaltungsverfahrensrecht the letter is deemed delivered on the 4th day after posting, counting calendar days from 01.09.2025 (not counted itself): 02.09. (1), 03.09. (2), 04.09. (3), 05.09. (4) -> deemed delivery Friday 05.09.2025. For a general authority this deemed-delivery day is not shifted even if it fell on a weekend/holiday. The one-month Widerspruch period (Sec. 70 VwGO) then runs from 05.09.2025 under Sec. 187(1), 188(2) BGB: the day of delivery is not counted, and the period ends on the day in the following month bearing the same number, i.e. 05.10.2025. That date is a Sunday, so under Sec. 31(3) VwVfG SH the deadline moves to the next working day, Monday 06.10.2025 (no intervening public holiday in Schleswig-Holstein).",
+          "due_date": "2025-10-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 5733,
+      "cache_read_tokens": 35792,
+      "cache_creation_tokens": 6997,
+      "cost_usd": 0.0924924,
+      "duration_ms": 52254,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

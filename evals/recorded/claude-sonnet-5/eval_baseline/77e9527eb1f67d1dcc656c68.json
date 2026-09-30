@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"64df879ee5e61b888f8362c97feecc3bd6fce6b9a0eb2302ef63991472c44dda\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> "
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz\",\"document_date\":\"2026-04-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS 22/2026-0187\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Wohnraumschutz order\",\"quote\":\"Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.\",\"computation\":\"Letter dated and posted 2026-04-02 (Thursday) by a general Land authority (Bezirksamt), not the tax office, so the 4-day delivery fiction (§41 Abs. 2 HmbVwVfG in line with §122 Abs.2 Nr.1 AO analogue, PostModG rule effective in HH since 1 Jan 2025) applies without weekend/holiday adjustment of the delivery day itself. Counting 4 calendar days from 2026-04-02: 04-03 (1), 04-04 (2), 04-05 (3), 04-06 (4) -> deemed delivered Monday 2026-04-06. The one-month Widerspruch period (§70 VwGO/analogous Land law) runs from the day after delivery (§187 Abs.1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 2026-05-06 (Wednesday). This is not a Saturday, Sunday, or Hamburg public holiday, so no further shift under §193 BGB is needed. The Widerspruch must reach the Bezirksamt by this date.\",\"due_date\":\"2026-05-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter mentions a possible Zwangsgeld (coercive fine) for non-compliance but states no amount or due date for it, so no separate payment item could be created; the person should watch for a follow-up notice.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz",
+      "document_date": "2026-04-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS 22/2026-0187"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Wohnraumschutz order",
+          "quote": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.",
+          "computation": "Letter dated and posted 2026-04-02 (Thursday) by a general Land authority (Bezirksamt), not the tax office, so the 4-day delivery fiction (§41 Abs. 2 HmbVwVfG in line with §122 Abs.2 Nr.1 AO analogue, PostModG rule effective in HH since 1 Jan 2025) applies without weekend/holiday adjustment of the delivery day itself. Counting 4 calendar days from 2026-04-02: 04-03 (1), 04-04 (2), 04-05 (3), 04-06 (4) -> deemed delivered Monday 2026-04-06. The one-month Widerspruch period (§70 VwGO/analogous Land law) runs from the day after delivery (§187 Abs.1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§188 Abs.2 BGB): 2026-05-06 (Wednesday). This is not a Saturday, Sunday, or Hamburg public holiday, so no further shift under §193 BGB is needed. The Widerspruch must reach the Bezirksamt by this date.",
+          "due_date": "2026-05-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter mentions a possible Zwangsgeld (coercive fine) for non-compliance but states no amount or due date for it, so no separate payment item could be created; the person should watch for a follow-up notice."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1900,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2223,
+      "cost_usd": 0.029002,
+      "duration_ms": 18675,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

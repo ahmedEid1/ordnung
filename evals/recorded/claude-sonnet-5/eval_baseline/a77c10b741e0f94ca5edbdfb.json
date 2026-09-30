@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6afe0b8883d507ef8a86242924aad21bb830bc4240a37b87f05d81f60bc33d45\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Wohnungsbaugenossenschaft Beispielbau eG\",\"document_date\":\"2026-12-16\",\"references\":[{\"label\":\"Nutzungsvertrag-Nr.\",\"value\":\"NV-15-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Window replacement work at the apartment\",\"quote\":\"Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.\",\"computation\":\"The letter states the calendar date printed for the works directly: 12.01.2027, starting 7:30. Appointments keep their stated date; no counting or weekend/holiday adjustment applies.\",\"due_date\":\"2027-01-12\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Confirm whether the appointment can be kept\",\"quote\":\"Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.\",\"computation\":\"Start event is the letter's own date (Briefdatum), 16.12.2026 (Wednesday); per §187 Abs. 1 BGB the day of the triggering event is not counted, so counting starts 17.12.2026. The letter defines Werktage itself as Monday–Saturday excluding statutory public holidays (24 and 31 Dec count as working days per the standard rule). Counting the 10 qualifying Werktage: 17.12 (Thu, 1), 18.12 (Fri, 2), 19.12 (Sat, 3), 20.12 (Sun, skipped, not a Werktag), 21.12 (Mon, 4), 22.12 (Tue, 5), 23.12 (Wed, 6), 24.12 (Thu, 7 — working day), 25.12 (Fri, Christmas Day, holiday, skipped), 26.12 (Sat, 2nd Christmas Day, holiday, skipped), 27.12 (Sun, skipped), 28.12 (Mon, 8), 29.12 (Tue, 9), 30.12 (Wed, 10). The 10th qualifying Werktag is 30.12.2026, which is itself a working day, so no further shift is needed.\",\"due_date\":\"2026-12-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Wohnungsbaugenossenschaft Beispielbau eG",
+      "document_date": "2026-12-16",
+      "references": [
+        {
+          "label": "Nutzungsvertrag-Nr.",
+          "value": "NV-15-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Window replacement work at the apartment",
+          "quote": "Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.",
+          "computation": "The letter states the calendar date printed for the works directly: 12.01.2027, starting 7:30. Appointments keep their stated date; no counting or weekend/holiday adjustment applies.",
+          "due_date": "2027-01-12",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Confirm whether the appointment can be kept",
+          "quote": "Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.",
+          "computation": "Start event is the letter's own date (Briefdatum), 16.12.2026 (Wednesday); per §187 Abs. 1 BGB the day of the triggering event is not counted, so counting starts 17.12.2026. The letter defines Werktage itself as Monday–Saturday excluding statutory public holidays (24 and 31 Dec count as working days per the standard rule). Counting the 10 qualifying Werktage: 17.12 (Thu, 1), 18.12 (Fri, 2), 19.12 (Sat, 3), 20.12 (Sun, skipped, not a Werktag), 21.12 (Mon, 4), 22.12 (Tue, 5), 23.12 (Wed, 6), 24.12 (Thu, 7 — working day), 25.12 (Fri, Christmas Day, holiday, skipped), 26.12 (Sat, 2nd Christmas Day, holiday, skipped), 27.12 (Sun, skipped), 28.12 (Mon, 8), 29.12 (Tue, 9), 30.12 (Wed, 10). The 10th qualifying Werktag is 30.12.2026, which is itself a working day, so no further shift is needed.",
+          "due_date": "2026-12-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5675,
+      "cache_read_tokens": 13098,
+      "cache_creation_tokens": 6606,
+      "cost_usd": 0.0858016,
+      "duration_ms": 49681,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

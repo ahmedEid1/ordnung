@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"692338e6ab28ac1ccfd9e8e0f1b8b148f79ca8076937f5e6199872ff1e2341dd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Krankenversicherung a.G.\",\"document_date\":\"2025-09-30\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"BKV 7710 448 2\"},{\"label\":\"Leistungsfall\",\"value\":\"LF-25-093317\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit OP report and physiotherapy prescription\",\"quote\":\"Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;\",\"computation\":\"Briefdatum (letter date) is Tuesday 30.09.2025. The letter defines 'Arbeitstage' as Monday to Friday excluding statutory public holidays, and counts 'nach dem Briefdatum' (after the letter date), so counting starts the day after, i.e. Wednesday 01.10.2025 = workday 1. Workday 2 = Thu 02.10.2025. Friday 03.10.2025 is Tag der Deutschen Einheit, a nationwide public holiday, so it is skipped and not counted; Sat 04.10. and Sun 05.10. are also skipped as non-workdays. Workday 3 = Mon 06.10.2025, workday 4 = Tue 07.10.2025, workday 5 = Wed 08.10.2025, workday 6 = Thu 09.10.2025, workday 7 = Fri 10.10.2025. This 7th workday, 10.10.2025, is not itself a Saturday/Sunday/holiday, so no further shift is needed.\",\"due_date\":\"2025-10-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states that if the documents are not submitted in time, only the already-documented positions will be reimbursed, which is a financial consequence the recipient should note but is not itself an objection deadline or payment demand.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Krankenversicherung a.G.",
+      "document_date": "2025-09-30",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "BKV 7710 448 2"
+        },
+        {
+          "label": "Leistungsfall",
+          "value": "LF-25-093317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit OP report and physiotherapy prescription",
+          "quote": "Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;",
+          "computation": "Briefdatum (letter date) is Tuesday 30.09.2025. The letter defines 'Arbeitstage' as Monday to Friday excluding statutory public holidays, and counts 'nach dem Briefdatum' (after the letter date), so counting starts the day after, i.e. Wednesday 01.10.2025 = workday 1. Workday 2 = Thu 02.10.2025. Friday 03.10.2025 is Tag der Deutschen Einheit, a nationwide public holiday, so it is skipped and not counted; Sat 04.10. and Sun 05.10. are also skipped as non-workdays. Workday 3 = Mon 06.10.2025, workday 4 = Tue 07.10.2025, workday 5 = Wed 08.10.2025, workday 6 = Thu 09.10.2025, workday 7 = Fri 10.10.2025. This 7th workday, 10.10.2025, is not itself a Saturday/Sunday/holiday, so no further shift is needed.",
+          "due_date": "2025-10-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states that if the documents are not submitted in time, only the already-documented positions will be reimbursed, which is a financial consequence the recipient should note but is not itself an objection deadline or payment demand."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1777,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1952,
+      "cost_usd": 0.0262064,
+      "duration_ms": 13983,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

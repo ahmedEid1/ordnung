@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8df9169a0636025c2905ee7d019129bffb557b6468594614a905d00fcffe3e2a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-price_increase-E1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-06-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"amounts\":[28.9,32.4,11.5,12.9,64,71],\"contract\":null,\"document_date\":\"2025-06-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase\",\"quote\":\"Wenn Sie mit der Anpassung nicht einverstanden sind, können Sie Ihren Liefervertrag fristlos auf den Tag kündigen, an dem die neuen Preise gelten (§ 41 Abs. 5 EnWG).\",\"computation\":\"The special statutory termination right under § 41 Abs. 5 EnWG allows the customer to terminate the contract with effect from the day the price increase takes effect (01.08.2025), without the usual notice period. For the termination to take effect on that date (i.e. so the contract ends before the higher prices apply), the termination notice must reach the supplier before the new prices become effective. The new prices start 01.08.2025, so the last day the cancellation may still reach the supplier to end the contract at the old price on the day before the increase is 31.07.2025 (the day preceding the effective date of the new prices). No specific calendar deadline is stated in the letter itself; this is derived from the effective date of the price change (01.08.2025) minus one day.\",\"due_date\":\"2025-07-31\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"price_increase\",\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"BS-5190-3327\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielstrom GmbH\",\"warnings\":[\"The letter itself does not state an explicit calendar deadline for sending the special termination notice; the 2025-07-31 due date is inferred from the 01.08.2025 effective date of the price increase and should be double-checked, e.g. by contacting the supplier to confirm the exact cut-off for the cancellation to take effect before the new prices apply.\",\"A later system message claimed 'today' is 2026-09-30, contradicting the explicit instruction to use 2025-06-24 as today's date for this letter; the earlier, more specific instruction was followed and the later date was disregarded as untrusted/conflicting context.\"]}",
+    "data": {
+      "amounts": [
+        28.9,
+        32.4,
+        11.5,
+        12.9,
+        64,
+        71
+      ],
+      "contract": null,
+      "document_date": "2025-06-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase",
+          "quote": "Wenn Sie mit der Anpassung nicht einverstanden sind, können Sie Ihren Liefervertrag fristlos auf den Tag kündigen, an dem die neuen Preise gelten (§ 41 Abs. 5 EnWG).",
+          "computation": "The special statutory termination right under § 41 Abs. 5 EnWG allows the customer to terminate the contract with effect from the day the price increase takes effect (01.08.2025), without the usual notice period. For the termination to take effect on that date (i.e. so the contract ends before the higher prices apply), the termination notice must reach the supplier before the new prices become effective. The new prices start 01.08.2025, so the last day the cancellation may still reach the supplier to end the contract at the old price on the day before the increase is 31.07.2025 (the day preceding the effective date of the new prices). No specific calendar deadline is stated in the letter itself; this is derived from the effective date of the price change (01.08.2025) minus one day.",
+          "due_date": "2025-07-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "price_increase",
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "BS-5190-3327"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielstrom GmbH",
+      "warnings": [
+        "The letter itself does not state an explicit calendar deadline for sending the special termination notice; the 2025-07-31 due date is inferred from the 01.08.2025 effective date of the price increase and should be double-checked, e.g. by contacting the supplier to confirm the exact cut-off for the cancellation to take effect before the new prices apply.",
+        "A later system message claimed 'today' is 2026-09-30, contradicting the explicit instruction to use 2025-06-24 as today's date for this letter; the earlier, more specific instruction was followed and the later date was disregarded as untrusted/conflicting context."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2970,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2013,
+      "cost_usd": 0.0383804,
+      "duration_ms": 27874,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

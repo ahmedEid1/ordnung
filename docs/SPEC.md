@@ -140,7 +140,8 @@ Key additions in v2 (to implement in models.py):
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
   `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
 - `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude); the
-  per-purpose `AppSettings.models` aliases only key the cache and the recordings (§ 7).
+  per-purpose `AppSettings.models` aliases only key the recordings; the cache is keyed by the model
+  a call runs on, so a new choice is a new call (§ 7).
 - `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
   (an e-mail's attachments and what became of each) and `DocumentDetail.email` (the e-mail a letter
   came attached to); `FolderStatus`, `FolderPickup` (`GET /api/folder`).
@@ -371,8 +372,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   `AppSettings.model` (Settings → Claude; `claude-sonnet-5` by default — a pinned id, an alias moves
   with releases; an id or alias as Claude Code takes it: no spaces, not starting with a dash, so a
   Bedrock or Vertex id and `sonnet[1m]` pass; read when the call is made, so a save counts from the
-  next call) > the request's own model (`settings.models.<purpose>`, an alias that keys the cache
-  and the recordings; the doctor probe's `haiku` when no caller names the chosen model). The usage
+  next call) > the request's own model (`settings.models.<purpose>`, an alias that keys the
+  recordings; the doctor probe's `haiku` when no caller names the chosen model). The cache is keyed
+  by the model the call runs on: a letter read again after a new choice is read anew. The usage
   log and the trace name the model that answered (`modelUsage`), else the one the call named. The
   demo's settings are the defaults, so it records with the default model. `health` names the pin
   (`model_pinned`) so Settings → Claude can say the saved model waits while the variable is set.

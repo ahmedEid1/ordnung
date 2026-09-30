@@ -270,7 +270,8 @@ def test_the_live_backend_runs_on_the_model_saved_in_settings(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A model saved under Settings → Claude counts from the next call, without a restart; the
-    request's own alias (``settings.models``) still keys the cache and the recordings."""
+    request's own alias (``settings.models``) still keys the recordings (the service's cache is keyed
+    by the model that runs: ``tests/test_pipeline.py``)."""
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     ctx = build_context(data_dir, backend="claude")
     try:
@@ -281,7 +282,7 @@ def test_the_live_backend_runs_on_the_model_saved_in_settings(
         key = request_key(request)
         ctx.store.save_settings(ctx.settings.model_copy(update={"model": "claude-opus-5-5"}))
         assert backend.model_for(request) == "claude-opus-5-5"
-        assert request_key(request) == key  # the recordings and the cache are keyed by the alias
+        assert request_key(request) == key  # the recordings are keyed by the alias
     finally:
         ctx.close()
 
