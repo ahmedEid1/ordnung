@@ -1204,7 +1204,8 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     assert "Every condition" not in alone_page.split("\n\n")[1]
     assert "| **Ordnung** |" in alone_section and "| **LLM only** |" not in alone_section
     assert "Paired differences" not in alone_section and "`holdout-tax_assessment-F1`" in alone_section
-    assert "> Run on 2026-09-25 from " in alone_section and ", model `sonnet`, commit `" in alone_section
+    assert "> Run on 2026-09-25 from " in alone_section
+    assert f", model `{eval_run.DEFAULT_MODEL}`, commit `" in alone_section
     # only one complete run on the holdout split with Ordnung in it qualifies
     not_holdout = {**holdout, "meta": {**holdout["meta"], "split": "test"}}
     filtered = {**holdout, "meta": {**holdout["meta"], "partial": True}}
