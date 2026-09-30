@@ -1598,13 +1598,18 @@ quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day
 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
 working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
 likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
-"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): two
+"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): three
 or more dates on that day a whole number of the recurrence's intervals apart ("fällig jeweils am 10.03.,
-10.06., 10.09. und 10.12." every 3 months), a date without a year for a recurrence of a year or more
-("Hauptfälligkeit 01.12. eines jeden Jahres"), or a date that wording makes recur ("jeweils am …",
-"jährlich zum …", "each year on …" for a yearly one, "every quarter on …"); never a date that starts the
-schedule ("ab dem 01.11.2026", "from 1 November 2026", "beginning …"), a single date on its own or a
-period's dates ("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
+10.06., 10.09. und 10.12." every 3 months, also with dashes between them), or two such dates one list joins
+after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen"); a date without a
+year beside due wording for a recurrence of a year or more ("Hauptfälligkeit 01.12.", "zum 01.12. fällig");
+or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines jeden Jahres", "each year on
+…" for a yearly one, "every quarter on …", "every three months on …"). Never a date that starts the schedule
+("ab dem 01.11.2026", "from 1 November 2026", "beginning …", "beginnt am", "Versicherungsbeginn:",
+"erstmals", "die erste Rate …", "first payment on …"), one that dates a letter or an invoice or ends
+something ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am", "Vertragsende"), a clause number that
+reads like a date ("Ziffer 1.3.", "Nr. 1.1.", "§ 2.1."), a single date on its own or a period's two dates
+("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
 
 A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
 letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",

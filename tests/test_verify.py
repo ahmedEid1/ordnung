@@ -825,6 +825,8 @@ QUARTERLY_DATES = (
         ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
         ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
         ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, {10}),  # another date's day aside
+        # … a list with dashes between three or more dates
+        ("Vorauszahlungen fällig: 10.03.2026 – 10.06.2026 – 10.09.2026 – 10.12.2026", QUARTERLY, {10}),
         # a date without a year, for a rule of a year or more
         ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
         ("The annual fee is due on 1 December.", YEARLY, {1}),
@@ -836,6 +838,7 @@ QUARTERLY_DATES = (
         ("Der Beitrag ist jeweils am 15.11.2026 fällig.", QUARTERLY, {15}),
         ("The premium is debited each year on 1 December 2026.", YEARLY, {1}),
         ("The fee is due every quarter on 15 November 2026.", QUARTERLY, {15}),
+        ("The fee is due every three months on 15 November 2026.", QUARTERLY, {15}),
         ("Die Prämie ist am 01.12.2026 eines jeden Jahres fällig.", YEARLY, {1}),
         ("The premium is due on 1 December 2026 of each year.", YEARLY, {1}),
         # a single dated start is never the recurring day, not even with a schedule's wording beside it
@@ -847,10 +850,50 @@ QUARTERLY_DATES = (
         ("Payable every month starting on 1 November 2026.", MONTHLY, set()),
         ("Der Beitrag wird mit Wirkung zum 01.11.2026 monatlich abgebucht.", MONTHLY, set()),
         ("Die Beiträge sind vom 01.11.2026 an monatlich zu zahlen.", MONTHLY, set()),
+        # … however the start is worded, and though it has no year or yearly wording follows
+        ("Ihr Vertrag beginnt am 01.11., der Jahresbeitrag beträgt 120,00 €.", YEARLY, set()),
+        ("Versicherungsbeginn: 1. November; Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Vertragsbeginn 01.11. / Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Versicherungsbeginn 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+        ("Beginn: 01.11.2026, Beitrag jeweils monatlich", MONTHLY, set()),
+        ("Der Jahresbeitrag ist erstmals am 01.11. fällig.", YEARLY, set()),
+        ("Der Beitrag ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY, set()),
+        ("Der Beitrag ist erstmalig zum 01.11. fällig.", YEARLY, set()),
+        ("Der Beitrag ist zum ersten Mal am 01.11. fällig.", YEARLY, set()),
+        ("Die erste Rate ist am 01.11. fällig.", YEARLY, set()),
+        ("The first payment is due on 1 November.", YEARLY, set()),
+        ("Your cover starts on 1 November; the annual premium is due then.", YEARLY, set()),
+        ("Start 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+        ("Cover begins 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
         # … nor does a start date make a schedule with another date
         ("Ab dem 01.11.2026 zahlen Sie monatlich, erstmals am 01.12.2026.", MONTHLY, set()),
         # a single date on its own
         ("Der Betrag von 55,08 € ist fällig am 15.11.2026.", QUARTERLY, set()),
+        ("Please return each form by 1 November 2026.", MONTHLY, set()),
+        ("Each payment is due by 1 November 2026.", MONTHLY, set()),
+        # … beside the date of a letter or an invoice, or a contract's start and end
+        ("Rechnungsdatum 15.10.2026, Monatsbeitrag 20,00 € fällig am 15.11.2026.", MONTHLY, set()),
+        ("Rechnung vom 15.10.2026: Der Betrag ist am 15.11.2026 fällig.", MONTHLY, set()),
+        ("Datum: 01.10.2026. Der Beitrag von 20,00 € ist am 01.11.2026 fällig.", MONTHLY, set()),
+        ("Stand 01.11.2026, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", MONTHLY, set()),
+        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", QUARTERLY, set()),
+        ("Beginn 01.11.2026, Ende 01.11.2027, Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Mietbeginn 01.11.2026, Mindestmietdauer bis 01.11.2027, Miete 670 € monatlich", MONTHLY, set()),
+        ("Stand 01.09.2026, Vertragsende 01.11.2027, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+        ("Das Versicherungsjahr endet am 01.12. eines jeden Jahres.", YEARLY, set()),
+        # … or one other date: two dates are a schedule only as a list after schedule or due wording
+        ("Lieferung am 15.10.2026 und 15.11.2026.", MONTHLY, set()),
+        ("Die Rate ist am 15.10.2026 eingegangen; die nächste ist am 15.11.2026 fällig.", MONTHLY, set()),
+        # a clause or section number reads like a date without a year, and is none
+        ("Gemäß Ziffer 1.3. der AVB wird der Jahresbeitrag ab dem 01.11.2026 fällig.", YEARLY, set()),
+        ("Zahlbar gemäß Nr. 1.1. AVB.", YEARLY, set()),
+        ("Die Beitragszahlung richtet sich nach Abschnitt 1.4. der Bedingungen.", YEARLY, set()),
+        ("Fällig gemäß § 1.2. und § 1.5. der Bedingungen.", QUARTERLY, set()),
+        ("Tarif 1.1. jährlich 120,00 €", YEARLY, set()),
+        ("Die Raten richten sich nach Ziffer 1.3., 1.6. und 1.9. der Bedingungen.", QUARTERLY, set()),
+        # a date without a year and no due wording beside it
+        ("Ihre Unterlagen erhalten Sie am 01.12. mit dem Jahresbeitrag.", YEARLY, set()),
         # … also written twice
         ("Der Betrag ist am 15.11.2026 und erneut am 15.11.2026 fällig.", QUARTERLY, set()),
         # dates on different days
@@ -869,6 +912,7 @@ QUARTERLY_DATES = (
         ("Versicherungsjahr 01.12. – 30.11.", YEARLY, set()),
         ("Beitragszeitraum vom 01.01.2026 bis 31.12.2026", YEARLY, set()),
         ("Coverage 1 December 2026 to 1 December 2027", YEARLY, set()),
+        ("Laufzeit 10.03.2026 – 10.06.2026", QUARTERLY, set()),  # two dashed dates are a period
         # an ambiguous date, a rule in weeks, no rule
         ("Die Raten sind am 03/05/2026 und 03/08/2026 fällig.", QUARTERLY, set()),
         (QUARTERLY_DATES, Recurrence(interval=13, unit="weeks"), set()),
@@ -996,6 +1040,23 @@ def test_a_due_day_stated_as_a_schedule_of_dates_is_found_for_its_recurrence() -
     # the letter states two different days (the 15th as a schedule, the 1st in words): which one is it?
     assert payment_day_sentence([quarterly], first, "", QUARTERLY) is None
     assert payment_day_sentence([quarterly], first, "", None) == TICKET_DEBIT
+
+
+def test_a_due_day_a_schedule_states_with_month_names_is_found() -> None:
+    """A schedule's dates are read before month-name dates are left out of a payment sentence: "am 1.
+    Dezember 2026 und 1. Dezember 2027" states the 1st for a yearly recurrence, and no day without one."""
+    sentence = "Beitrag fällig am 1. Dezember 2026 und 1. Dezember 2027."
+    assert payment_days_stated(sentence, YEARLY) == [(sentence, {("day_of_month", 1)})]
+    assert payment_days_stated(sentence) == []
+
+
+def test_a_quote_stating_another_day_as_a_schedule_rules_out_the_letters_day() -> None:
+    """The to-do's own quote stating another day as a schedule of its recurrence (the 15th, three months
+    apart) rules out the letter's one day (the 1st, "zum Monatsanfang")."""
+    first: DueDay = ("day_of_month", 1)
+    quote = "Quartalsbeitrag 48,00 € fällig am 15.02.2027, 15.05.2027 und 15.08.2027."
+    assert payment_day_sentence([TICKET_LETTER], first, quote, QUARTERLY) is None
+    assert payment_day_sentence([TICKET_LETTER], first, quote) == TICKET_DEBIT
 
 
 def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> None:

@@ -574,9 +574,14 @@ def days_of_month_named(text: str, rule: Recurrence | None = None) -> set[int]:
 
 _ON_THE = r"\s+(?:(?:am|zum|bis|on|by)\s+)?(?:(?:dem|den|the)\s+)?$"
 # Wording that makes the date right after it recur ("fällig jeweils am 15.11.2026", "every quarter on 15
-# November 2026") …
+# November 2026", "every three months on …"; never "each form by …") …
 _RECURS_FROM = re.compile(
-    rf"(?:\bjeweils|\b(?:each|every)\s+(?!years?\b)(?:[^\W\d_]+\s+){{0,2}}?(?:on|by)){_ON_THE}", re.IGNORECASE
+    rf"""(?:\bjeweils
+          |\b(?:each|every)\s+
+             (?:(?:calendar|billing|payment|instal+ment|other|two|three|four|six|\d{{1,2}})\s+)?
+             (?:months?|quarters?|weeks?|periods?|half[\s-]years?)\s+(?:on|by))
+        {_ON_THE}""",
+    re.IGNORECASE | re.VERBOSE,
 )
 # … or recur every year, before it ("jährlich zum 01.12.2026", "each year on 1 December 2026") or after it
 # ("01.12.2026 eines jeden Jahres", "1 December 2026 of each year").
@@ -590,35 +595,83 @@ _YEARLY_UNTIL = re.compile(
        |\s*(?:all)?j(?:ä|ae)hrlich\b""",
     re.IGNORECASE | re.VERBOSE,
 )
-# A date the schedule starts from, never its day ("ab dem 01.11.2026", "from 1 November 2026", "beginning 1
-# November 2026", "mit Wirkung zum 01.11.2026").
-_STARTS_FROM = re.compile(
-    r"""(?:\bab|\bvom|\bseit|\bbeginnend(?:\s+(?:mit|am|ab))?|\bmit\s+wirkung\s+(?:zum|vom|ab)
-         |\bfrom|\bstarting(?:\s+(?:on|from))?|\bbeginning(?:\s+(?:on|from))?|\bcommencing(?:\s+(?:on|from))?
-         |\bas\s+(?:of|from)|\beffective(?:\s+(?:on|from))?|\bwith\s+effect\s+from)
-       \s+(?:(?:dem|den|the)\s+)?$""",
+# Due wording right before a date ("Hauptfälligkeit 01.12.", "zahlbar zum 01.12.", "due on 1 December") or
+# right after it ("zum 01.12. fällig"): what a date without a year needs to be a yearly due day.
+_DUE_BEFORE = re.compile(
+    r"""(?:f(?:ä|ae)llig(?:keit)?|zahlbar|zu\s+zahlen|abgebucht|eingezogen
+         |\bdue|\bpayable|\bdebited|\bcollected)
+        \s*:?\s+(?:(?:jeweils|immer|stets|spätestens|am|zum|bis|on|by|the|dem|den)\s+){0,3}$""",
     re.IGNORECASE | re.VERBOSE,
 )
-# Between the two dates of a period ("Versicherungsjahr 01.12. – 30.11.", "vom 01.01.2026 bis 31.12.2026").
-_UNTIL = re.compile(r"\s*(?:-|bis(?:\s+(?:zum|einschlie(?:ß|ss)lich))?|to|until|through)\s*", re.IGNORECASE)
+_DUE_AFTER = re.compile(
+    r"\s+(?:[^\W\d_]+\s+)?(?:f(?:ä|ae)llig|zahlbar|zu\s+zahlen|abgebucht|eingezogen|due|payable)\b",
+    re.IGNORECASE,
+)
+# The words a marker below may have between it and its date ("erstmals jeweils am", "Beginn: den").
+_THEN = r"\s*:?\s+(?:(?:jeweils|am|zum|ab|mit|vom|on|from|the|dem|den)\s+){0,3}$"
+# A date the schedule starts from, never its day ("ab dem 01.11.2026", "from 1 November 2026", "beginning 1
+# November 2026", "mit Wirkung zum 01.11.2026", "Der Vertrag beginnt am 01.11.", "Versicherungsbeginn:
+# 01.11.2026", "erstmals am 01.12.2026", "die erste Rate ist am 01.12.2026", "first payment on …").
+_STARTS_FROM = re.compile(
+    rf"""(?:\bab|\bvom|\bseit|\bbeginnend|\bmit\s+wirkung\s+(?:zum|vom|ab)
+         |\bbeginn(?:t|en)?|\bbegann|[^\W\d_]+beginn|\berstmal(?:s|ig)|\bzum\s+ersten\s+mal
+         |\b(?:erste[mnrs]?|first)(?:\s+[^\W\d_]+){{0,3}}
+         |\bfrom|\bstart(?:s|ed|ing)?|\bbegin(?:s|ning)?|\bcommenc(?:es|ed|ing)|\bas\s+(?:of|from)
+         |\beffective(?:\s+date)?|\bwith\s+effect\s+(?:from|on)|\bstart\s+date)
+       {_THEN}""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# A date that dates a letter, an invoice or a state, or ends something — no due day ("Rechnungsdatum
+# 15.10.2026", "Schreiben vom 01.10.2026", "Stand 01.11.2026", "endet am 01.11.2028", "Vertragsende 01.11.").
+_NOT_DUE = re.compile(
+    rf"""(?:\b(?!f(?:ä|ae)lligkeits|zahlungs|abbuchungs|buchungs|einzugs|lastschrift|termin)[^\W\d_]*datum
+         |\bdatiert|\bstand|\bschreiben|\brechnung|\bbrief
+         |\bende[nt]?|\bendete|[^\W\d_]+ende|\bablauf|\bbis\s+(?:zum\s+)?ende
+         |\b(?:letter|invoice|issue|document)\s+date|\bdated|\bletter|\bas\s+at
+         |\bends?|\bending|\bexpir(?:es|y|ing)|\bvalid\s+(?:until|to|through))
+       {_THEN}""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# A clause or section number, which reads like a date without a year ("Ziffer 1.3.", "Nr. 1.1.", "§ 2.1.").
+_CLAUSE = re.compile(
+    r"""(?:§|\b(?:ziffer|ziff|nr|nummer|no|abschnitt|abschn|abs|absatz|punkt|pkt|klausel|tarif|artikel|art
+        |kapitel|anlage|position|pos|section|sec|clause|item|chapter|paragraph|para|version))\.?\s*$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# Between the two dates of a period ("Versicherungsjahr 01.12. – 30.11.", "vom 01.01.2026 bis 31.12.2026"); a
+# dash joins a period's two dates only, three or more dates a dash joins are a list.
+_UNTIL = re.compile(r"\s*(?:bis(?:\s+(?:zum|einschlie(?:ß|ss)lich))?|to|until|through)\s*", re.IGNORECASE)
+_DASH = re.compile(r"\s*-\s*")
+# Between two dates of one list ("10.03., 10.06., 10.09. und 10.12.", "am 01.12.2026 und am 01.12.2027").
+_LISTED = re.compile(r"\s*(?:(?:[,;/&-]|und|and|sowie)\s*)+(?:(?:am|zum|on|the|dem|den)\s+)*", re.IGNORECASE)
+# Wording a list of two dates needs before it to be a schedule ("Die Raten sind am …", "Abbuchung am …").
+_SCHEDULE_WORDS = re.compile(
+    r"""f(?:ä|ae)llig|zahlbar|zu\s+zahlen|zahlung|termin|\b(?:teil|monats|quartals|jahres)?rat(?:e|en)\b
+        |abbuch|abgebucht|eingezogen|lastschrift|abschl(?:a|ä|ae)g
+        |\bdue\b|payable|\binstal+ments?\b|\bpayments?\b|\bdebit""",
+    re.IGNORECASE | re.VERBOSE,
+)
 
 
 def schedule_days_named(text: str, rule: Recurrence | None) -> set[int]:
     """The days of the month ``text`` states as the schedule of a recurrence every ``rule.interval`` months
     or years (none for a rule in days or weeks, or without one):
 
-    * the day of two or more of its dates that fit the rule's interval — a whole number of intervals
+    * the day of three or more of its dates that fit the rule's interval — a whole number of intervals
       apart ("fällig jeweils am 10.03., 10.06., 10.09. und 10.12." every 3 months → 10; a year's dates
-      without a year by their month);
-    * the day of a date without a year for a rule of a year or more ("Hauptfälligkeit 01.12. eines jeden
-      Jahres", "jährlich zum 01.12." every year → 1);
+      without a year by their month) — or of two such dates one list joins after schedule or due wording
+      ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen", "Abbuchung am 01.12.2026 und am 01.12.2027");
+    * the day of a date without a year for a rule of a year or more, with due wording beside it
+      ("Hauptfälligkeit 01.12.", "Der Jahresbeitrag ist zum 01.12. fällig", "due on 1 December");
     * the day of a date that wording makes recur ("jeweils am 15.11.2026", "every quarter on 15 November
       2026"), every year for a rule of a year or more ("jährlich zum 01.12.2026", "each year on 1 December
       2026", "01.12.2026 eines jeden Jahres").
 
     A date the schedule starts from counts for none ("ab dem 01.11.2026", "from 1 November 2026", "beginning
-    1 November 2026"): a single start date is never the recurring day. Nor does a date on its own
-    ("fällig am 15.11.2026"), an ambiguous one (03/05/2026) or one that begins or ends a period
+    1 November 2026", "beginnt am", "Versicherungsbeginn", "erstmals", "first … on"): a single start date is
+    never the recurring day. Nor does a date on its own ("fällig am 15.11.2026"), an ambiguous one
+    (03/05/2026), one that dates a letter or an invoice or ends something ("Rechnungsdatum", "Stand", "endet
+    am", "Vertragsende"), a clause number ("Ziffer 1.3.") or one that begins or ends a period
     ("Versicherungsjahr 01.12. – 30.11.")."""
     months = _interval_months(rule)
     if months is None:
@@ -626,16 +679,13 @@ def schedule_days_named(text: str, rule: Recurrence | None) -> set[int]:
     plain = fold_punctuation(text)
     placed = date_spans(plain)
     spans = sorted({(start, end) for start, end, _ in placed})
-    period = {
-        edge
-        for first, second in itertools.pairwise(spans)
-        if _UNTIL.fullmatch(plain, first[1], second[0])
-        for edge in (first, second)
-    }
+    no_dates = _period_edges(plain, spans) | _clause_numbers(plain, spans)
     dates = [
         (start, end, mention)
         for start, end, mention in placed
-        if not mention.ambiguous and (start, end) not in period and not _STARTS_FROM.search(plain, 0, start)
+        if not mention.ambiguous
+        and (start, end) not in no_dates
+        and not any(marker.search(plain, 0, start) for marker in (_STARTS_FROM, _NOT_DUE))
     ]
     yearly = months % 12 == 0
     named = {
@@ -645,16 +695,67 @@ def schedule_days_named(text: str, rule: Recurrence | None) -> set[int]:
         or (
             yearly
             and (
-                mention.year is None
+                (
+                    mention.year is None
+                    and (_DUE_BEFORE.search(plain, 0, start) or _DUE_AFTER.match(plain, end))
+                )
                 or _YEARLY_FROM.search(plain, 0, start)
                 or _YEARLY_UNTIL.match(plain, end)
             )
         )
     }
+    lists: list[list[tuple[int, DateMention]]] = []
+    last_end = -1
+    for start, end, mention in sorted(dates, key=lambda placed_date: placed_date[0]):
+        if lists and _LISTED.fullmatch(plain, last_end, start):
+            lists[-1].append((start, mention))
+        else:
+            lists.append([(start, mention)])
+        last_end = end
     for day in {mention.day for _, _, mention in dates} - named:
-        if _fits_interval([mention for _, _, mention in dates if mention.day == day], months):
+        steps = _interval_steps([mention for _, _, mention in dates if mention.day == day], months)
+        listed = any(
+            len(_interval_steps([mention for _, mention in group if mention.day == day], months)) >= 2
+            and _SCHEDULE_WORDS.search(plain, 0, group[0][0])
+            for group in lists
+        )
+        if len(steps) >= 3 or (len(steps) == 2 and listed):
             named.add(day)
     return named
+
+
+def _period_edges(plain: str, spans: Sequence[tuple[int, int]]) -> set[tuple[int, int]]:
+    """The spans of ``spans`` (dates in ``plain``, in order) that begin or end a period: two dates *bis*,
+    *to* or *until* joins ("vom 01.01.2026 bis 31.12.2026"), or exactly two a dash joins ("01.12. – 30.11.";
+    a chain of three or more dashed dates is a list, "10.03.2026 – 10.06.2026 – 10.09.2026")."""
+    pairs = list(itertools.pairwise(spans))
+    dashed = [bool(_DASH.fullmatch(plain, first[1], second[0])) for first, second in pairs]
+    return {
+        edge
+        for index, (first, second) in enumerate(pairs)
+        if _UNTIL.fullmatch(plain, first[1], second[0])
+        or (
+            dashed[index]
+            and not (index > 0 and dashed[index - 1])
+            and not (index + 1 < len(pairs) and dashed[index + 1])
+        )
+        for edge in (first, second)
+    }
+
+
+def _clause_numbers(plain: str, spans: Sequence[tuple[int, int]]) -> set[tuple[int, int]]:
+    """The spans of ``spans`` (dates in ``plain``, in order) that are clause or section numbers: after a
+    clause word ("Ziffer 1.3.", "§ 2.1."), and the ones a list joins to it ("Ziffer 1.3., 1.6. und 1.9.")."""
+    clauses: set[tuple[int, int]] = set()
+    for index, span in enumerate(spans):
+        joined = (
+            index > 0
+            and spans[index - 1] in clauses
+            and _LISTED.fullmatch(plain, spans[index - 1][1], span[0])
+        )
+        if joined or _CLAUSE.search(plain, 0, span[0]):
+            clauses.add(span)
+    return clauses
 
 
 def _interval_months(rule: Recurrence | None) -> int | None:
@@ -664,17 +765,19 @@ def _interval_months(rule: Recurrence | None) -> int | None:
     return max(1, rule.interval) * (12 if rule.unit == "years" else 1)
 
 
-def _fits_interval(mentions: Sequence[DateMention], months: int) -> bool:
-    """Whether two or more different dates are each a whole number of ``months`` after the one before: by
-    year and month, or — when one has no year — by month alone ("10.03., 10.06., 10.09. und 10.12.")."""
+def _interval_steps(mentions: Sequence[DateMention], months: int) -> list[int]:
+    """The different months of ``mentions`` (by year and month, or — when one has no year — by month
+    alone: "10.03., 10.06., 10.09. und 10.12."), when each is a whole number of ``months`` after the one
+    before; else none."""
     if any(mention.year is None for mention in mentions):
         steps = sorted({mention.month for mention in mentions})
     else:
         steps = sorted(
             {mention.year * 12 + mention.month for mention in mentions if mention.year is not None}
         )
-    gaps = [later - earlier for earlier, later in itertools.pairwise(steps)]
-    return bool(gaps) and all(gap % months == 0 for gap in gaps)
+    if all((later - earlier) % months == 0 for earlier, later in itertools.pairwise(steps)):
+        return steps
+    return []
 
 
 # --------------------------------------------------------------------------------------------------

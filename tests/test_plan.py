@@ -369,23 +369,66 @@ def test_a_day_the_letter_states_as_a_schedule_of_dates_is_confirmed() -> None:
         assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check
 
 
+MONTHLY_ON_1ST = Recurrence(day_of_month=1)
+YEARLY_ON_1ST = Recurrence(interval=1, unit="years", day_of_month=1)
+
+
 @pytest.mark.parametrize(
-    "quote",
+    ("quote", "rule"),
     [
-        "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € monatlich.",
-        "Your new monthly rent of 670.00 EUR is payable from 1 November 2026.",
-        "Die Miete von 670,00 € ist ab dem 01.11.2026 monatlich zu zahlen, erstmals am 01.12.2026.",
+        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € monatlich.", MONTHLY_ON_1ST),
+        ("Your new monthly rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY_ON_1ST),
+        (
+            "Die Miete von 670,00 € ist ab dem 01.11.2026 monatlich zu zahlen, erstmals am 01.12.2026.",
+            MONTHLY_ON_1ST,
+        ),
+        # beside a clause number, which reads like a date without a year
+        (
+            "Gemäß Ziffer 1.3. der AVB ist der Jahresbeitrag von 670,00 € ab dem 01.11.2026 fällig.",
+            YEARLY_ON_1ST,
+        ),
+        # a start in other words, with yearly wording after it or a recurring one before it
+        ("Versicherungsbeginn 01.11.2026 jährlich 670,00 EUR", YEARLY_ON_1ST),
+        ("Der Beitrag von 670,00 € ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY_ON_1ST),
+        # beside the contract's end, or the invoice's date, on the same day of the month
+        (
+            "Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich 670,00 €.",
+            MONTHLY_ON_1ST,
+        ),
+        ("Rechnungsdatum 01.10.2026, Monatsbeitrag 670,00 € fällig am 01.11.2026.", MONTHLY_ON_1ST),
+        # a one-off deadline in "each … by" wording
+        ("Please return each form by 1 November 2026; the monthly fee is 670.00 EUR.", MONTHLY_ON_1ST),
     ],
 )
-def test_a_single_start_date_is_never_the_recurring_day(quote: str) -> None:
+def test_a_single_start_date_is_never_the_recurring_day(quote: str, rule: Recurrence) -> None:
     """A day of the month read from the date a schedule starts on (the extraction prompt forbids it) stays
-    unconfirmed ("Please check"), even beside another date on that day."""
+    unconfirmed ("Please check"), even beside another date on that day or a clause number."""
     reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
-        update={"recurrence": Recurrence(day_of_month=1)}
+        update={"recurrence": rule}
     )
     result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)])
     [verified] = result.items
     assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check and result.needs_review
+
+
+@pytest.mark.parametrize(
+    "stated",
+    [
+        "Die Beitragszahlung richtet sich nach Ziffer 1.4. der Allgemeinen Bedingungen.",
+        "Versicherungsbeginn 01.11. / Jahresbeitrag 670,00 €",
+    ],
+)
+def test_a_start_date_or_clause_number_elsewhere_is_no_due_day(stated: str) -> None:
+    """A yearly premium's day read from its start date is not confirmed by another payment sentence of the
+    letter citing a clause number or giving the start without a year: no day evidence, "Please check"."""
+    quote = "Der Jahresbeitrag beträgt ab dem 01.11.2026 670,00 €."
+    reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
+        update={"recurrence": YEARLY_ON_1ST}
+    )
+    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote, stated)])
+    [verified] = result.items
+    assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.day_evidence is None
+    assert verified.needs_check and result.needs_review
 
 
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
