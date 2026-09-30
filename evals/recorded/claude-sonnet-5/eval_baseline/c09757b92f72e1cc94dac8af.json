@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7e615cc5f1683809c13c30cbd69646e8ffe6821a68e6f301bea4caa61f130177\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-F1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Example Liberal Arts College, Office of Global Education\",\"document_date\":\"2025-04-03\",\"references\":[{\"label\":\"Student ID\",\"value\":\"ELAC-25-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed enrollment confirmation for Fall 2025 exchange\",\"quote\":\"To hold your place, your signed enrollment confirmation must reach our office by\\nApril 29, 2025.\",\"computation\":\"The letter states an explicit calendar deadline: the signed enrollment confirmation must reach the college's office by April 29, 2025. This is a fixed date given directly in the letter (not a period to be calculated), so no statutory delivery-fiction or day-counting rules apply. April 29, 2025 is a Tuesday, not a weekend or a German public holiday, so no shift is needed. Note also that the deadline is set by a US institution, not a German authority, so German rules on delivery of administrative notices (§§ 187 ff. BGB and its public-law counterparts) do not govern this date in any case.\",\"due_date\":\"2025-04-29\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter is from a US college (Massachusetts), not a German authority, so German statutory delivery and deadline-counting rules do not apply to it; the April 29, 2025 date is simply the deadline as stated by the sender.\",\"If your place is not confirmed by the stated deadline, the letter says it will be offered to a waitlisted student — double-check the confirmation method and any required signature/format expected by the Office of Global Education before that date.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Example Liberal Arts College, Office of Global Education",
+      "document_date": "2025-04-03",
+      "references": [
+        {
+          "label": "Student ID",
+          "value": "ELAC-25-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed enrollment confirmation for Fall 2025 exchange",
+          "quote": "To hold your place, your signed enrollment confirmation must reach our office by\nApril 29, 2025.",
+          "computation": "The letter states an explicit calendar deadline: the signed enrollment confirmation must reach the college's office by April 29, 2025. This is a fixed date given directly in the letter (not a period to be calculated), so no statutory delivery-fiction or day-counting rules apply. April 29, 2025 is a Tuesday, not a weekend or a German public holiday, so no shift is needed. Note also that the deadline is set by a US institution, not a German authority, so German rules on delivery of administrative notices (§§ 187 ff. BGB and its public-law counterparts) do not govern this date in any case.",
+          "due_date": "2025-04-29",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter is from a US college (Massachusetts), not a German authority, so German statutory delivery and deadline-counting rules do not apply to it; the April 29, 2025 date is simply the deadline as stated by the sender.",
+        "If your place is not confirmed by the stated deadline, the letter says it will be offered to a waitlisted student — double-check the confirmation method and any required signature/format expected by the Office of Global Education before that date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 967,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1748,
+      "cost_usd": 0.0172904,
+      "duration_ms": 9235,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

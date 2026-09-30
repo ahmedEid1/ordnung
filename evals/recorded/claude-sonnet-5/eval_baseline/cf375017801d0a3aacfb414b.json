@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"66558d0cff6b709e7189c044842a3f9ba40a34d879dba31805f69e58d9a657db\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2025-10-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-C1"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielheide – Bußgeldstelle Verkehrsordnungswidrigkeiten\",\"document_date\":\"2025-10-13\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-OWi-25-064411\"},{\"label\":\"Kennzeichen\",\"value\":\"BH-AM 204\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift beim Landkreis Beispielheide eingelegt werden.\",\"computation\":\"The attached Zustellungsurkunde (page 2) documents actual formal delivery on 17.10.2025 (Friday), which controls over any postal-fiction rule. Per §187(1) BGB the day of the event (17.10.2025) is not counted; the two-week period (§67 OWiG i.V.m. §188(2) BGB) ends on the day two weeks later bearing the same designation as the event day, i.e. Friday 31.10.2025. However, 31.10.2025 (Reformationstag) is a statutory public holiday in Niedersachsen. Under §193 BGB the period is extended to the next business day. Saturday 01.11. and Sunday 02.11. are non-business days, so the deadline moves to Monday 03.11.2025.\",\"due_date\":\"2025-11-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine (Gesamtbetrag) once the notice is final\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.\",\"computation\":\"This payment obligation only arises if no Einspruch is filed within the objection period (see previous item), which ends 03.11.2025; the Bescheid then becomes rechtskräftig (final) the following day, 04.11.2025 (Tuesday). Applying §187(1)/§188(2) BGB again for the 'two weeks after' payment term: the day of finality (04.11.2025) is not counted, and the period ends two weeks later on the day with the same designation, i.e. Tuesday 18.11.2025, which is not a weekend day or Niedersachsen public holiday, so no shift under §193 BGB applies.\",\"due_date\":\"2025-11-18\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (18.11.2025) is conditional: it only applies if no Einspruch is filed by 03.11.2025; if an Einspruch is lodged, the fine is not due and the matter proceeds to court, so this date should be disregarded in that case.\",\"The delivery date used for calculating the Einspruch deadline is taken from the attached Zustellungsurkunde scan (17.10.2025) rather than the letter's own date (13.10.2025); double-check that this delivery date on the envelope is accurate.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielheide – Bußgeldstelle Verkehrsordnungswidrigkeiten",
+      "document_date": "2025-10-13",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.2-OWi-25-064411"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "BH-AM 204"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift beim Landkreis Beispielheide eingelegt werden.",
+          "computation": "The attached Zustellungsurkunde (page 2) documents actual formal delivery on 17.10.2025 (Friday), which controls over any postal-fiction rule. Per §187(1) BGB the day of the event (17.10.2025) is not counted; the two-week period (§67 OWiG i.V.m. §188(2) BGB) ends on the day two weeks later bearing the same designation as the event day, i.e. Friday 31.10.2025. However, 31.10.2025 (Reformationstag) is a statutory public holiday in Niedersachsen. Under §193 BGB the period is extended to the next business day. Saturday 01.11. and Sunday 02.11. are non-business days, so the deadline moves to Monday 03.11.2025.",
+          "due_date": "2025-11-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine (Gesamtbetrag) once the notice is final",
+          "quote": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.",
+          "computation": "This payment obligation only arises if no Einspruch is filed within the objection period (see previous item), which ends 03.11.2025; the Bescheid then becomes rechtskräftig (final) the following day, 04.11.2025 (Tuesday). Applying §187(1)/§188(2) BGB again for the 'two weeks after' payment term: the day of finality (04.11.2025) is not counted, and the period ends two weeks later on the day with the same designation, i.e. Tuesday 18.11.2025, which is not a weekend day or Niedersachsen public holiday, so no shift under §193 BGB applies.",
+          "due_date": "2025-11-18",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (18.11.2025) is conditional: it only applies if no Einspruch is filed by 03.11.2025; if an Einspruch is lodged, the fine is not due and the matter proceeds to court, so this date should be disregarded in that case.",
+        "The delivery date used for calculating the Einspruch deadline is taken from the attached Zustellungsurkunde scan (17.10.2025) rather than the letter's own date (13.10.2025); double-check that this delivery date on the envelope is accurate."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4529,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2745,
+      "cost_usd": 0.05689839999999999,
+      "duration_ms": 42638,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

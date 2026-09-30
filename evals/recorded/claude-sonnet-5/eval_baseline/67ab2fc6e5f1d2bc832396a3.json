@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b66a8dcd337e8970c721bba24c3e9f6592c990e35d42a96cbb4fe9f0b2caafac\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-02-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2026-01-27\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against sick-pay refusal\",\"quote\":\"Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Muster BKK erhoben werden.\",\"computation\":\"Letter dated Tue 27.01.2026, sent by ordinary post by a social-insurance body. Under § 37 Abs. 2 SGB X (as also stated in the letter itself: 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'), it counts as delivered on the 4th day after posting: 27.01.2026 + 4 days = 31.01.2026 (a Saturday; for this deemed-delivery rule the day itself is not shifted). The one-month Widerspruch period of § 84 Abs. 1 SGG starts the next day (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X): 01.02.2026, and ends one month later under § 188 Abs. 2/3 BGB on 28.02.2026, a Saturday. Under § 26 Abs. 3 SGB X the deadline shifts to the next business day: Monday 02.03.2026.\",\"due_date\":\"2026-03-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states sick pay (Krankengeld) is paid only from 22.01.2026 instead of 12.01.2026 because the incapacity notice arrived late (§ 49 Abs. 1 Nr. 5 SGB V); if the person believes it was reported on time or the delay was not their fault, this is the point to dispute within the Widerspruch deadline.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2026-01-27",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against sick-pay refusal",
+          "quote": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Muster BKK erhoben werden.",
+          "computation": "Letter dated Tue 27.01.2026, sent by ordinary post by a social-insurance body. Under § 37 Abs. 2 SGB X (as also stated in the letter itself: 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'), it counts as delivered on the 4th day after posting: 27.01.2026 + 4 days = 31.01.2026 (a Saturday; for this deemed-delivery rule the day itself is not shifted). The one-month Widerspruch period of § 84 Abs. 1 SGG starts the next day (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X): 01.02.2026, and ends one month later under § 188 Abs. 2/3 BGB on 28.02.2026, a Saturday. Under § 26 Abs. 3 SGB X the deadline shifts to the next business day: Monday 02.03.2026.",
+          "due_date": "2026-03-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states sick pay (Krankengeld) is paid only from 22.01.2026 instead of 12.01.2026 because the incapacity notice arrived late (§ 49 Abs. 1 Nr. 5 SGB V); if the person believes it was reported on time or the delay was not their fault, this is the point to dispute within the Widerspruch deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1999,
+      "cache_read_tokens": 15130,
+      "cache_creation_tokens": 5076,
+      "cost_usd": 0.043328,
+      "duration_ms": 21008,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-01-27",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 84 SGG, § 37 Abs. 2 SGB X",
+            "text": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Muster BKK erhoben werden."
+          },
+          "document_date": "2026-01-27",
+          "sender_kind": "health_insurer",
+          "sender_name": "Muster BKK",
+          "remedy_type": "widerspruch",
+          "recipient_region": "NW",
+          "region": "NW",
+          "today": "2026-02-02"
+        },
+        "result": "{\"due_date\":\"2026-03-02\",\"weekday\":\"Monday\",\"send_by\":\"2026-02-24\",\"summary\":\"Letter dated Tue 27 Jan 2026 counts as delivered on Sat 31 Jan (this day does not move for this kind of letter); one month later is Sat 28 Feb 2026, a Saturday, so the deadline moves to Mon 2 Mar 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Tue 27 Jan 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-01-27\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 31 Jan 2026\",\"date\":\"2026-01-31\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"For social-law letters this day does not move, even though it is a Saturday\",\"date\":\"2026-01-31\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Sat 31 Jan 2026\",\"date\":\"2026-01-31\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Sat 28 Feb 2026\",\"date\":\"2026-02-28\",\"rule_id\":\"bgb_188_3\",\"citation\":\"§ 188 Abs. 3 BGB\"},{\"label\":\"Sat 28 Feb 2026 is a Saturday, so the deadline moves to Mon 2 Mar 2026\",\"date\":\"2026-03-02\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Tue 24 Feb 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-02-24\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188_3\",\"title\":\"Shorter months\",\"citation\":\"§ 188 Abs. 3 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-02-02\",\"letter_date\":\"2026-01-27\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

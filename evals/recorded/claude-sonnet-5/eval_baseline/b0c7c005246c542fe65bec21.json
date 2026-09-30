@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8dcbefb8410e88825c8be84764391d4ef557b01cadc79662fad501ec931bd89f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-03-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2026-03-12\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Muster BKK, Beispielweg 1, 34117 Neu-Musterdorf, zu erheben.\",\"computation\":\"The letter is printed as dated 12.03.2026 (Thursday), which is taken as the date of posting ('Aufgabe zur Post'). Note: the letter internally states 'mit Bescheid vom 16.03.2026' — a date later than the letter's own printed date, which is a contradiction (a cover letter cannot precede the decision it transmits). Per the rule to use the earliest plausible reading, the printed letter date (12.03.2026) is used as the mailing date. Under § 37 Abs. 2 SGB X, a written administrative act sent by post is deemed notified (Bekanntgabe) on the third day after posting: 12.03.2026 + 3 days = 15.03.2026, which is a Sunday. Since § 37 Abs. 2 Satz 2 SGB X shifts this to the next business day when the third day falls on a Saturday, Sunday or public holiday, Bekanntgabe occurs on Monday, 16.03.2026 (this coincidentally matches the 'Bescheid vom 16.03.2026' date mentioned in the text, suggesting that date may actually refer to the fictional notification/effective date rather than the issuance date — another sign of internal inconsistency). The one-month Widerspruch period runs from this Bekanntgabe day as the triggering event (§ 187 Abs. 1 BGB, day of event not counted for start) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number: 16.04.2026. This falls on a Thursday, not a weekend or NRW public holiday, so no further shift applies. Due to the internal date contradiction, an alternative reading (treating 16.03.2026 itself as the posting date) would instead yield a deadline of 20.04.2026; the earlier date (16.04.2026) is used per the rule to prefer the earliest plausible date when a letter contradicts itself.\",\"due_date\":\"2026-04-16\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter is printed/dated 12.03.2026 but its body refers to 'Bescheid vom 16.03.2026' — a date after the letter's own date, which is an internal contradiction; the Widerspruch deadline was computed conservatively (earliest plausible date) but should be double-checked against the actual date the decision was received.\",\"No amounts are involved; this is a rejection of a benefit (Haushaltshilfe), not a payment demand.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2026-03-12",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Muster BKK, Beispielweg 1, 34117 Neu-Musterdorf, zu erheben.",
+          "computation": "The letter is printed as dated 12.03.2026 (Thursday), which is taken as the date of posting ('Aufgabe zur Post'). Note: the letter internally states 'mit Bescheid vom 16.03.2026' — a date later than the letter's own printed date, which is a contradiction (a cover letter cannot precede the decision it transmits). Per the rule to use the earliest plausible reading, the printed letter date (12.03.2026) is used as the mailing date. Under § 37 Abs. 2 SGB X, a written administrative act sent by post is deemed notified (Bekanntgabe) on the third day after posting: 12.03.2026 + 3 days = 15.03.2026, which is a Sunday. Since § 37 Abs. 2 Satz 2 SGB X shifts this to the next business day when the third day falls on a Saturday, Sunday or public holiday, Bekanntgabe occurs on Monday, 16.03.2026 (this coincidentally matches the 'Bescheid vom 16.03.2026' date mentioned in the text, suggesting that date may actually refer to the fictional notification/effective date rather than the issuance date — another sign of internal inconsistency). The one-month Widerspruch period runs from this Bekanntgabe day as the triggering event (§ 187 Abs. 1 BGB, day of event not counted for start) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number: 16.04.2026. This falls on a Thursday, not a weekend or NRW public holiday, so no further shift applies. Due to the internal date contradiction, an alternative reading (treating 16.03.2026 itself as the posting date) would instead yield a deadline of 20.04.2026; the earlier date (16.04.2026) is used per the rule to prefer the earliest plausible date when a letter contradicts itself.",
+          "due_date": "2026-04-16",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter is printed/dated 12.03.2026 but its body refers to 'Bescheid vom 16.03.2026' — a date after the letter's own date, which is an internal contradiction; the Widerspruch deadline was computed conservatively (earliest plausible date) but should be double-checked against the actual date the decision was received.",
+        "No amounts are involved; this is a rejection of a benefit (Haushaltshilfe), not a payment demand."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7409,
+      "cache_read_tokens": 8309,
+      "cache_creation_tokens": 8328,
+      "cost_usd": 0.1090718,
+      "duration_ms": 73342,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

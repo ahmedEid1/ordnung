@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d1458e8efbafb8ccd5553cb0e29d5c6499dd4e94e7f93c8b4cc27d8bcd0265bc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-C1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-04-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract_change\",\"sender_name\":\"Beispiel Logistik GmbH\",\"document_date\":\"2026-04-28\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"40718\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed mobile-work agreement to HR\",\"quote\":\"Wir bitten Sie, die unterschriebene Zusatzvereinbarung innerhalb von 10 Werktagen (Mo–Sa, ohne Feiertage) nach dem Datum dieses Schreibens an die Personalabteilung zurückzusenden.\",\"computation\":\"This is a private (employer) deadline, not an authority notice, so no Bekanntgabefiktion applies; the letter's own date is the start of the period. Period start: letter date 28.04.2026 (Tuesday). Under §187 Abs.1 BGB the day of the triggering event (28.04.2026) is not counted, so counting begins 29.04.2026. 'Werktage (Mo–Sa, ohne Feiertage)' = Monday to Saturday, excluding public holidays; Sundays and holidays are skipped and not counted. Counting workdays from 29.04.2026: 29.04 (Wed)=1, 30.04 (Thu)=2, 01.05 (Fri) = Tag der Arbeit, nationwide holiday, skipped, 02.05 (Sat)=3, 03.05 (Sun) skipped, 04.05 (Mon)=4, 05.05 (Tue)=5, 06.05 (Wed)=6, 07.05 (Thu)=7, 08.05 (Fri)=8, 09.05 (Sat)=9, 10.05 (Sun) skipped, 11.05 (Mon)=10. The 10th Werktag is Monday 11.05.2026. As this already falls on a working day (Monday, not a Sunday/holiday), no further shift under §193 BGB is needed.\",\"due_date\":\"2026-05-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of mobile working arrangement\",\"quote\":\"wie besprochen erhalten Sie anbei die Zusatzvereinbarung über mobiles Arbeiten (bis zu zwei Tage pro Woche) ab dem 01.06.2026.\",\"computation\":\"The letter states the mobile-working arrangement (up to two days per week) takes effect 'ab dem 01.06.2026' — this is a fixed calendar date given directly in the letter, used as written.\",\"due_date\":\"2026-06-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "contract_change",
+      "sender_name": "Beispiel Logistik GmbH",
+      "document_date": "2026-04-28",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "40718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed mobile-work agreement to HR",
+          "quote": "Wir bitten Sie, die unterschriebene Zusatzvereinbarung innerhalb von 10 Werktagen (Mo–Sa, ohne Feiertage) nach dem Datum dieses Schreibens an die Personalabteilung zurückzusenden.",
+          "computation": "This is a private (employer) deadline, not an authority notice, so no Bekanntgabefiktion applies; the letter's own date is the start of the period. Period start: letter date 28.04.2026 (Tuesday). Under §187 Abs.1 BGB the day of the triggering event (28.04.2026) is not counted, so counting begins 29.04.2026. 'Werktage (Mo–Sa, ohne Feiertage)' = Monday to Saturday, excluding public holidays; Sundays and holidays are skipped and not counted. Counting workdays from 29.04.2026: 29.04 (Wed)=1, 30.04 (Thu)=2, 01.05 (Fri) = Tag der Arbeit, nationwide holiday, skipped, 02.05 (Sat)=3, 03.05 (Sun) skipped, 04.05 (Mon)=4, 05.05 (Tue)=5, 06.05 (Wed)=6, 07.05 (Thu)=7, 08.05 (Fri)=8, 09.05 (Sat)=9, 10.05 (Sun) skipped, 11.05 (Mon)=10. The 10th Werktag is Monday 11.05.2026. As this already falls on a working day (Monday, not a Sunday/holiday), no further shift under §193 BGB is needed.",
+          "due_date": "2026-05-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of mobile working arrangement",
+          "quote": "wie besprochen erhalten Sie anbei die Zusatzvereinbarung über mobiles Arbeiten (bis zu zwei Tage pro Woche) ab dem 01.06.2026.",
+          "computation": "The letter states the mobile-working arrangement (up to two days per week) takes effect 'ab dem 01.06.2026' — this is a fixed calendar date given directly in the letter, used as written.",
+          "due_date": "2026-06-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2950,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1892,
+      "cost_usd": 0.038178,
+      "duration_ms": 25773,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

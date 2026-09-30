@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1092a26eab918b1200c6c177d65eae45ecdb5889ea23490db232382a92ae89a4\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-08-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-08-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[794.5],\"contract\":null,\"document_date\":\"2025-08-05\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay course invoice\",\"quote\":\"Payment is due within 14 days from the invoice date; please quote your student number with the transfer.\",\"computation\":\"Invoice date is 5 August 2025. The period is expressed as '14 days from the invoice date', which is an event-based deadline under § 187 Abs. 1 BGB: the day of the event (5 August) is not counted, so the period starts 6 August 2025. Counting 14 days forward (§ 188 Abs. 1 BGB) lands on 19 August 2025. 19 August 2025 is a Tuesday and not a public holiday in Nordrhein-Westfalen, so no shift under § 193 BGB is needed. Due date: 19 August 2025.\",\"due_date\":\"2025-08-19\",\"confidence\":\"high\",\"amount\":794.5}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"BLA-25-0812\"},{\"label\":\"Student no.\",\"value\":\"S-7731\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispiel Language Academy GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        794.5
+      ],
+      "contract": null,
+      "document_date": "2025-08-05",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay course invoice",
+          "quote": "Payment is due within 14 days from the invoice date; please quote your student number with the transfer.",
+          "computation": "Invoice date is 5 August 2025. The period is expressed as '14 days from the invoice date', which is an event-based deadline under § 187 Abs. 1 BGB: the day of the event (5 August) is not counted, so the period starts 6 August 2025. Counting 14 days forward (§ 188 Abs. 1 BGB) lands on 19 August 2025. 19 August 2025 is a Tuesday and not a public holiday in Nordrhein-Westfalen, so no shift under § 193 BGB is needed. Due date: 19 August 2025.",
+          "due_date": "2025-08-19",
+          "confidence": "high",
+          "amount": 794.5
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "BLA-25-0812"
+        },
+        {
+          "label": "Student no.",
+          "value": "S-7731"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispiel Language Academy GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1111,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1865,
+      "cost_usd": 0.0191984,
+      "duration_ms": 9523,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c514f1ea0d39a5215bd5afbaaac08de0f20791000e83df7835fa4c8204c4048a\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-08-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-E1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-08-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Verbandsgemeindeverwaltung Musterweiler – Standesamt\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Vorgangs-Nr.\",\"value\":\"STA-2026-0417\"}],\"amounts\":[80],\"items\":[{\"kind\":\"appointment\",\"title\":\"Marriage registration appointment (Anmeldung der Eheschließung)\",\"quote\":\"für Sie und Ihren Partner haben wir folgenden Termin zur Anmeldung der Eheschließung reserviert: Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.\",\"computation\":\"The letter states a fixed calendar appointment with date and time: Tuesday, 01.09.2026, 10:15. Appointments keep their stated date/time and are not subject to delivery-fiction or period-counting rules.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Fee for registering the marriage (80,00 €)\",\"quote\":\"Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.\",\"computation\":\"The fee is explicitly payable on site ('vor Ort') at the time of the appointment, so it is due on the same date as the appointment: 01.09.2026.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":80}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Verbandsgemeindeverwaltung Musterweiler – Standesamt",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "STA-2026-0417"
+        }
+      ],
+      "amounts": [
+        80
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Marriage registration appointment (Anmeldung der Eheschließung)",
+          "quote": "für Sie und Ihren Partner haben wir folgenden Termin zur Anmeldung der Eheschließung reserviert: Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.",
+          "computation": "The letter states a fixed calendar appointment with date and time: Tuesday, 01.09.2026, 10:15. Appointments keep their stated date/time and are not subject to delivery-fiction or period-counting rules.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Fee for registering the marriage (80,00 €)",
+          "quote": "Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.",
+          "computation": "The fee is explicitly payable on site ('vor Ort') at the time of the appointment, so it is due on the same date as the appointment: 01.09.2026.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": 80
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2064,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1994,
+      "cost_usd": 0.029726,
+      "duration_ms": 18506,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

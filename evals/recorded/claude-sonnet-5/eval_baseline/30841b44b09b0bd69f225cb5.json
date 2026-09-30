@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"45a10eae156eae050518a11baddedb7f1e760aac0c24d82bdaa7e19ad453d956\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-D2"
+    ],
+    "prompt_head": "Today is Monday, 2024-12-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Allgemeine Musterkasse\",\"document_date\":\"2024-12-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"A204518872\"}],\"amounts\":[748.2],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Zuzahlungsbefreiung 2025\",\"quote\":\"Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.\",\"computation\":\"Letter dated 20.12.2024 (Friday), sent by ordinary post ('Ein mit einfacher Post übermittelter Bescheid gilt am dritten Tag nach der Aufgabe zur Post als bekannt gegeben.'). Bekanntgabe (deemed delivery) = 20.12.2024 + 3 days = 23.12.2024 (Monday; not a Sunday/holiday, so the fiction stands, § 37 Abs. 2 SGB X analog). Widerspruchsfrist = 1 month starting the day after Bekanntgabe (§ 187 Abs. 1 BGB): begins 24.12.2024. Under § 188 Abs. 2 BGB a one-month period ends with the expiry of the day of the last month bearing the same number as the day of the triggering event (the Bekanntgabe day, 23.12.2024) → 23.01.2025. 23.01.2025 is a Thursday, not a Saturday/Sunday/public holiday in NRW, so no extension under § 193 BGB applies. Final deadline: 23.01.2025.\",\"due_date\":\"2025-01-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Allgemeine Musterkasse",
+      "document_date": "2024-12-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "A204518872"
+        }
+      ],
+      "amounts": [
+        748.2
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Zuzahlungsbefreiung 2025",
+          "quote": "Widerspruch gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Allgemeinen Musterkasse erhoben werden.",
+          "computation": "Letter dated 20.12.2024 (Friday), sent by ordinary post ('Ein mit einfacher Post übermittelter Bescheid gilt am dritten Tag nach der Aufgabe zur Post als bekannt gegeben.'). Bekanntgabe (deemed delivery) = 20.12.2024 + 3 days = 23.12.2024 (Monday; not a Sunday/holiday, so the fiction stands, § 37 Abs. 2 SGB X analog). Widerspruchsfrist = 1 month starting the day after Bekanntgabe (§ 187 Abs. 1 BGB): begins 24.12.2024. Under § 188 Abs. 2 BGB a one-month period ends with the expiry of the day of the last month bearing the same number as the day of the triggering event (the Bekanntgabe day, 23.12.2024) → 23.01.2025. 23.01.2025 is a Thursday, not a Saturday/Sunday/public holiday in NRW, so no extension under § 193 BGB applies. Final deadline: 23.01.2025.",
+          "due_date": "2025-01-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2400,
+      "cache_read_tokens": 8260,
+      "cache_creation_tokens": 3673,
+      "cost_usd": 0.040352,
+      "duration_ms": 22137,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"78bd8e00f42d6f51e815c96a754b7ef506890d2d542e336f69f40c5946868606\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-relative_business_days-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hausverwaltung Muster & Partner\",\"document_date\":\"2025-12-22\",\"references\":[{\"label\":\"Mieter-Nr.\",\"value\":\"0877-03\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Confirm which appointment date works for meter reading / smoke detector service\",\"quote\":\"Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach Briefdatum mit, an welchem der vorgeschlagenen Termine der Zugang zu Ihrer Wohnung möglich ist.\",\"computation\":\"Letter date (Briefdatum) is Monday 22.12.2025. The period is 'nach Briefdatum' (after the letter date), so under the general rule for periods that start with an event (analogous to §187(1) BGB), the day of the letter itself is not counted; counting of the 7 Arbeitstage (Mon–Fri, excluding public holidays in NW) starts on 23.12.2025. Walking day by day: Tue 23.12 (day 1), Wed 24.12 (day 2, Christmas Eve is not a statutory holiday in NW so it counts), Thu 25.12 and Fri 26.12 are the 1st/2nd Christmas Day holidays in NW (skipped), Sat 27.12 and Sun 28.12 are weekend (skipped), Mon 29.12 (day 3), Tue 30.12 (day 4), Wed 31.12 (day 5, New Year's Eve is not a statutory holiday so it counts), Thu 01.01.2026 is New Year's Day, a holiday in NW (skipped), Fri 02.01.2026 (day 6), Sat 03.01 and Sun 04.01 weekend (skipped), Mon 05.01.2026 (day 7). The 7th working day is therefore Monday 05.01.2026, which is the last day the tenant's reply must reach the management.\",\"due_date\":\"2026-01-05\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hausverwaltung Muster & Partner",
+      "document_date": "2025-12-22",
+      "references": [
+        {
+          "label": "Mieter-Nr.",
+          "value": "0877-03"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Confirm which appointment date works for meter reading / smoke detector service",
+          "quote": "Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach Briefdatum mit, an welchem der vorgeschlagenen Termine der Zugang zu Ihrer Wohnung möglich ist.",
+          "computation": "Letter date (Briefdatum) is Monday 22.12.2025. The period is 'nach Briefdatum' (after the letter date), so under the general rule for periods that start with an event (analogous to §187(1) BGB), the day of the letter itself is not counted; counting of the 7 Arbeitstage (Mon–Fri, excluding public holidays in NW) starts on 23.12.2025. Walking day by day: Tue 23.12 (day 1), Wed 24.12 (day 2, Christmas Eve is not a statutory holiday in NW so it counts), Thu 25.12 and Fri 26.12 are the 1st/2nd Christmas Day holidays in NW (skipped), Sat 27.12 and Sun 28.12 are weekend (skipped), Mon 29.12 (day 3), Tue 30.12 (day 4), Wed 31.12 (day 5, New Year's Eve is not a statutory holiday so it counts), Thu 01.01.2026 is New Year's Day, a holiday in NW (skipped), Fri 02.01.2026 (day 6), Sat 03.01 and Sun 04.01 weekend (skipped), Mon 05.01.2026 (day 7). The 7th working day is therefore Monday 05.01.2026, which is the last day the tenant's reply must reach the management.",
+          "due_date": "2026-01-05",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3051,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1971,
+      "cost_usd": 0.0390224,
+      "duration_ms": 27870,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

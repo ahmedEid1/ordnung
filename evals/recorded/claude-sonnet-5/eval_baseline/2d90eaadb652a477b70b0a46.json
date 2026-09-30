@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6a12ce144dccdd4269cc6d60517bebfb0778daf7fe8870461666118f15fd3381\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-C2"
+    ],
+    "prompt_head": "Today is Friday, 2025-12-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Muster Bank AG\",\"document_date\":\"2025-12-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"7712 0045 88\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit ID copy and self-disclosure form\",\"quote\":\"Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.\",\"computation\":\"This is a private (bank) deadline, counted per §§ 187, 188 BGB from the letter's own date, 18.12.2025 (Thursday), which is not counted itself. Werktage here are defined by the letter as Monday-Saturday, excluding public holidays (24 and 31 December count as working days per the standard rule). Counting forward: 19.12 (Fri, day1), 20.12 (Sat, day2), 21.12 (Sun, skip), 22.12 (Mon, day3), 23.12 (Tue, day4), 24.12 (Wed, day5, working day), 25.12 (Thu, Christmas Day, holiday, skip), 26.12 (Fri, 2nd Christmas Day, holiday, skip), 27.12 (Sat, day6), 28.12 (Sun, skip), 29.12 (Mon, day7), 30.12 (Tue, day8). The 8th Werktag is Tuesday 30.12.2025, which is itself a working day, so no weekend/holiday extension applies.\",\"due_date\":\"2025-12-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Muster Bank AG",
+      "document_date": "2025-12-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "7712 0045 88"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit ID copy and self-disclosure form",
+          "quote": "Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.",
+          "computation": "This is a private (bank) deadline, counted per §§ 187, 188 BGB from the letter's own date, 18.12.2025 (Thursday), which is not counted itself. Werktage here are defined by the letter as Monday-Saturday, excluding public holidays (24 and 31 December count as working days per the standard rule). Counting forward: 19.12 (Fri, day1), 20.12 (Sat, day2), 21.12 (Sun, skip), 22.12 (Mon, day3), 23.12 (Tue, day4), 24.12 (Wed, day5, working day), 25.12 (Thu, Christmas Day, holiday, skip), 26.12 (Fri, 2nd Christmas Day, holiday, skip), 27.12 (Sat, day6), 28.12 (Sun, skip), 29.12 (Mon, day7), 30.12 (Tue, day8). The 8th Werktag is Tuesday 30.12.2025, which is itself a working day, so no weekend/holiday extension applies.",
+          "due_date": "2025-12-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2080,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1920,
+      "cost_usd": 0.029589999999999998,
+      "duration_ms": 18756,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

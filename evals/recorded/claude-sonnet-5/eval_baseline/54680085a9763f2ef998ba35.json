@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7b5e09a1c5167a759dbcd3c6803fc630c4876900569d6d8958410fec370696df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-11-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Paketzentrum Musterstadt – Zollabwicklung\",\"document_date\":\"2026-11-05\",\"references\":[{\"label\":\"Sendungsnummer\",\"value\":\"DE 4471 2290 5518\"}],\"amounts\":[38.9],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'import duties' to release parcel (suspected scam)\",\"quote\":\"Überweisen Sie 38,90 € bis 09.11.2026.\",\"computation\":\"The letter states a fixed calendar date, not a period to count. As printed: pay by 09.11.2026. This date is only 4 calendar days after the letter's own date (05.11.2026), an unusually short and pressuring deadline typical of parcel/customs scam letters.\",\"due_date\":\"2026-11-09\",\"confidence\":\"high\",\"amount\":38.9}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a parcel/customs scam: German customs (Zoll) never collects import VAT or duties via bank transfer to a named private company — it is handled through the carrier (e.g. DHL, Deutsche Post) or the official Zollamt/Bundeskasse, never 'Intl. Parcel Clearing Ltd.'\",\"The payment IBAN (DE96 7001 0080 0661 2345 67) belongs to 'Intl. Parcel Clearing Ltd.', a private company whose name does not match the sender 'Paketzentrum Musterstadt – Zollabwicklung' — a classic mismatch between sender and payee.\",\"The sender's email domain 'clearance-mail.example' is a placeholder/example domain, not a real registered company or postal-service domain — this strongly suggests a fake sender.\",\"The letter insists on contact 'ausschließlich per WhatsApp' and gives no verifiable company registration, postal tracking link, or official customs reference — legitimate German customs and parcel services do not restrict contact to WhatsApp only.\",\"The very short 4-day payment deadline combined with a threat to destroy or return the goods is a pressure tactic commonly used in scam letters to prevent the recipient from checking the claim.\",\"Do not pay this invoice or share any personal/banking details; verify any real parcel via the actual carrier's official tracking and the official Zoll (customs) website before taking any action.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Paketzentrum Musterstadt – Zollabwicklung",
+      "document_date": "2026-11-05",
+      "references": [
+        {
+          "label": "Sendungsnummer",
+          "value": "DE 4471 2290 5518"
+        }
+      ],
+      "amounts": [
+        38.9
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'import duties' to release parcel (suspected scam)",
+          "quote": "Überweisen Sie 38,90 € bis 09.11.2026.",
+          "computation": "The letter states a fixed calendar date, not a period to count. As printed: pay by 09.11.2026. This date is only 4 calendar days after the letter's own date (05.11.2026), an unusually short and pressuring deadline typical of parcel/customs scam letters.",
+          "due_date": "2026-11-09",
+          "confidence": "high",
+          "amount": 38.9
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a parcel/customs scam: German customs (Zoll) never collects import VAT or duties via bank transfer to a named private company — it is handled through the carrier (e.g. DHL, Deutsche Post) or the official Zollamt/Bundeskasse, never 'Intl. Parcel Clearing Ltd.'",
+        "The payment IBAN (DE96 7001 0080 0661 2345 67) belongs to 'Intl. Parcel Clearing Ltd.', a private company whose name does not match the sender 'Paketzentrum Musterstadt – Zollabwicklung' — a classic mismatch between sender and payee.",
+        "The sender's email domain 'clearance-mail.example' is a placeholder/example domain, not a real registered company or postal-service domain — this strongly suggests a fake sender.",
+        "The letter insists on contact 'ausschließlich per WhatsApp' and gives no verifiable company registration, postal tracking link, or official customs reference — legitimate German customs and parcel services do not restrict contact to WhatsApp only.",
+        "The very short 4-day payment deadline combined with a threat to destroy or return the goods is a pressure tactic commonly used in scam letters to prevent the recipient from checking the claim.",
+        "Do not pay this invoice or share any personal/banking details; verify any real parcel via the actual carrier's official tracking and the official Zoll (customs) website before taking any action."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2995,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2038,
+      "cost_usd": 0.039212,
+      "duration_ms": 29669,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f474718d3532d58dcf09d9d60bb9bb1a629395e4978abbe2e60569d441469e20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-contract_confirmation-E1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-03-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispiel Glasfaser GmbH\",\"document_date\":\"2025-03-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BG-220-4471\"},{\"label\":\"Auftragsnummer\",\"value\":\"A-25-031977\"}],\"amounts\":[39.95],\"items\":[{\"kind\":\"milestone\",\"title\":\"Fiber connection provision / installation\",\"quote\":\"Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.\",\"computation\":\"The letter states the provision (Bereitstellung) date explicitly as 08.04.2025; the technician will contact the customer beforehand to arrange the exact appointment time.\",\"due_date\":\"2025-04-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-04-08\",\"cancel_by\":\"2026-03-09\"},\"warnings\":[\"Contract-term calculation: the minimum term is '12 Monate ab Bereitstellung' (provision 08.04.2025); under §§187(1), 188(2) BGB the day of provision is not counted and the term ends with expiry of the calendar anniversary, i.e. 08.04.2026, so the current_term_end shown is 2026-04-08.\",\"The one-month notice deadline to cancel at expiry of the minimum term would fall on 08.03.2026, which is a Sunday; per §193 BGB the deadline shifts to the next business day, Monday 09.03.2026 — this is reflected in cancel_by.\",\"The letter does not mention a statutory right of withdrawal (Widerrufsrecht), which normally applies for distance/online orders in Germany; check the order confirmation email or customer account for a separate Widerrufsbelehrung and its 14-day deadline.\",\"The AGB and Leistungsbeschreibung referenced as part of the contract are not attached but only available in the online customer account — worth downloading and keeping a copy.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispiel Glasfaser GmbH",
+      "document_date": "2025-03-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BG-220-4471"
+        },
+        {
+          "label": "Auftragsnummer",
+          "value": "A-25-031977"
+        }
+      ],
+      "amounts": [
+        39.95
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Fiber connection provision / installation",
+          "quote": "Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.",
+          "computation": "The letter states the provision (Bereitstellung) date explicitly as 08.04.2025; the technician will contact the customer beforehand to arrange the exact appointment time.",
+          "due_date": "2025-04-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-04-08",
+        "cancel_by": "2026-03-09"
+      },
+      "warnings": [
+        "Contract-term calculation: the minimum term is '12 Monate ab Bereitstellung' (provision 08.04.2025); under §§187(1), 188(2) BGB the day of provision is not counted and the term ends with expiry of the calendar anniversary, i.e. 08.04.2026, so the current_term_end shown is 2026-04-08.",
+        "The one-month notice deadline to cancel at expiry of the minimum term would fall on 08.03.2026, which is a Sunday; per §193 BGB the deadline shifts to the next business day, Monday 09.03.2026 — this is reflected in cancel_by.",
+        "The letter does not mention a statutory right of withdrawal (Widerrufsrecht), which normally applies for distance/online orders in Germany; check the order confirmation email or customer account for a separate Widerrufsbelehrung and its 14-day deadline.",
+        "The AGB and Leistungsbeschreibung referenced as part of the contract are not attached but only available in the online customer account — worth downloading and keeping a copy."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6782,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2145,
+      "cost_usd": 0.0770284,
+      "duration_ms": 64384,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

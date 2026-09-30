@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5e941738b0f8f28779e4efd6c72a258e8f8a1189451f1c59afaf86bdb2e560a8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-F1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-05-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"TSV Beispielstadt 1898 e.V.\",\"document_date\":\"2027-05-21\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"M-1898-2207\"}],\"amounts\":[180,3,183],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding membership fee and dunning cost\",\"quote\":\"Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.\",\"computation\":\"The letter states an explicit calendar due date, not a period to be counted: payment is requested 'bis einschließlich 4. Juni 2027', i.e. inclusive of that day. June 4, 2027 is a Friday, not a weekend or NW public holiday, so no shift is needed under §193 BGB. Due date is therefore June 4, 2027 as printed.\",\"due_date\":\"2027-06-04\",\"confidence\":\"high\",\"amount\":183}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "TSV Beispielstadt 1898 e.V.",
+      "document_date": "2027-05-21",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "M-1898-2207"
+        }
+      ],
+      "amounts": [
+        180,
+        3,
+        183
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding membership fee and dunning cost",
+          "quote": "Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.",
+          "computation": "The letter states an explicit calendar due date, not a period to be counted: payment is requested 'bis einschließlich 4. Juni 2027', i.e. inclusive of that day. June 4, 2027 is a Friday, not a weekend or NW public holiday, so no shift is needed under §193 BGB. Due date is therefore June 4, 2027 as printed.",
+          "due_date": "2027-06-04",
+          "confidence": "high",
+          "amount": 183
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1191,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2100,
+      "cost_usd": 0.020938400000000003,
+      "duration_ms": 10812,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

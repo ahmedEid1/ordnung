@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c514f1ea0d39a5215bd5afbaaac08de0f20791000e83df7835fa4c8204c4048a\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-08-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-E1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-08-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Verbandsgemeindeverwaltung Musterweiler – Standesamt\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Vorgangs-Nr.\",\"value\":\"STA-2026-0417\"}],\"amounts\":[80],\"items\":[{\"kind\":\"appointment\",\"title\":\"Appointment to register marriage (Anmeldung der Eheschließung)\",\"quote\":\"für Sie und Ihren Partner haben wir folgenden Termin zur Anmeldung der Eheschließung reserviert: Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.\",\"computation\":\"The letter states the appointment date and time explicitly: Tuesday, 01.09.2026, 10:15. 01.09.2026 is indeed a Tuesday, and it is not a public holiday in Rheinland-Pfalz, so the appointment stands as stated. No period calculation is needed since a fixed calendar date/time is given.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay registration fee for marriage announcement (in person)\",\"quote\":\"Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.\",\"computation\":\"The fee is explicitly to be paid on site ('vor Ort') at the appointment, so it falls due on the same date as the appointment, 01.09.2026, by cash or card.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":80}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The appointment date stated in the letter (01.09.2026) falls before today's date (2026-09-30) as instructed for this session, so this confirmed appointment appears to already be in the past — please verify with the Standesamt whether it was kept, rescheduled, or needs a new booking.\",\"There is a conflict in the instructions about 'today's date' (2026-08-09 was mentioned initially, but a later reminder set it to 2026-09-30); the due dates above are the calendar dates stated in the letter itself and are unaffected by which 'today' is used, but the assessment of whether the appointment is still upcoming depends on this.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Verbandsgemeindeverwaltung Musterweiler – Standesamt",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "STA-2026-0417"
+        }
+      ],
+      "amounts": [
+        80
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appointment to register marriage (Anmeldung der Eheschließung)",
+          "quote": "für Sie und Ihren Partner haben wir folgenden Termin zur Anmeldung der Eheschließung reserviert: Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.",
+          "computation": "The letter states the appointment date and time explicitly: Tuesday, 01.09.2026, 10:15. 01.09.2026 is indeed a Tuesday, and it is not a public holiday in Rheinland-Pfalz, so the appointment stands as stated. No period calculation is needed since a fixed calendar date/time is given.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay registration fee for marriage announcement (in person)",
+          "quote": "Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.",
+          "computation": "The fee is explicitly to be paid on site ('vor Ort') at the appointment, so it falls due on the same date as the appointment, 01.09.2026, by cash or card.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": 80
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The appointment date stated in the letter (01.09.2026) falls before today's date (2026-09-30) as instructed for this session, so this confirmed appointment appears to already be in the past — please verify with the Standesamt whether it was kept, rescheduled, or needs a new booking.",
+        "There is a conflict in the instructions about 'today's date' (2026-08-09 was mentioned initially, but a later reminder set it to 2026-09-30); the due dates above are the calendar dates stated in the letter itself and are unaffected by which 'today' is used, but the assessment of whether the appointment is still upcoming depends on this."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1941,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1996,
+      "cost_usd": 0.028022400000000003,
+      "duration_ms": 16837,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

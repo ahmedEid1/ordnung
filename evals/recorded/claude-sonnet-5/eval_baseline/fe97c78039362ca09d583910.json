@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3472ff240f1944063c6a2bbcc13f441350d2bc81a1ce91a127ec9ed8f4bd2e7b\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-05-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-C2"
+    ],
+    "prompt_head": "Today is Monday, 2026-05-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterbek, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes\",\"document_date\":\"2026-04-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"MR 23/BS-2026-0691\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against tree-felling refusal\",\"quote\":\"Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Bezirksamt Musterbek, Musterbeker Markt 4, 22297 Hamburg, erhoben werden.\",\"computation\":\"Letter dated Thursday 30.04.2026, sent by post; deemed delivered on the 3rd day after posting per § 41 Abs. 2 VwVfG (in conjunction with HmbVwVfG). Counting 3 days after 30.04.2026 (i.e. 01.05., 02.05., 03.05.2026) lands on Sunday 03.05.2026. Since § 31 Abs. 3 VwVfG applies analogously to this fiction period and the 3rd day falls on a Sunday, delivery is deemed to occur on the next working day, Monday 04.05.2026 (01.05.2026 being the Tag der Arbeit holiday does not shift this further as it falls before the 3rd-day count, and 02.-03.05. are Sat/Sun). One-month Widerspruch period runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of Bekanntgabe: 04.06.2026 (Thursday). This day is not a Saturday, Sunday or Hamburg public holiday, so no further shift applies.\",\"due_date\":\"2026-06-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterbek, Freie und Hansestadt Hamburg – Fachamt Management des öffentlichen Raumes",
+      "document_date": "2026-04-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "MR 23/BS-2026-0691"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against tree-felling refusal",
+          "quote": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Bezirksamt Musterbek, Musterbeker Markt 4, 22297 Hamburg, erhoben werden.",
+          "computation": "Letter dated Thursday 30.04.2026, sent by post; deemed delivered on the 3rd day after posting per § 41 Abs. 2 VwVfG (in conjunction with HmbVwVfG). Counting 3 days after 30.04.2026 (i.e. 01.05., 02.05., 03.05.2026) lands on Sunday 03.05.2026. Since § 31 Abs. 3 VwVfG applies analogously to this fiction period and the 3rd day falls on a Sunday, delivery is deemed to occur on the next working day, Monday 04.05.2026 (01.05.2026 being the Tag der Arbeit holiday does not shift this further as it falls before the 3rd-day count, and 02.-03.05. are Sat/Sun). One-month Widerspruch period runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same number as the day of Bekanntgabe: 04.06.2026 (Thursday). This day is not a Saturday, Sunday or Hamburg public holiday, so no further shift applies.",
+          "due_date": "2026-06-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3148,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2130,
+      "cost_usd": 0.040628399999999995,
+      "duration_ms": 31539,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"c0446fd52a4cf077781be192d661ab60610d09bbaf4d11ce4ec062346985b7f1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-07-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterstadt, Der Oberbürgermeister · Ordnungsamt\",\"document_date\":null,\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.4-SN-2026-0311\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Klage against rejection of Sondernutzungserlaubnis\",\"quote\":\"Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.\",\"computation\":\"The one-month Klage period runs from 'Bekanntgabe des Bescheids' (deemed delivery of this authority letter, normally the letter's posting date plus the statutory delivery-fiction days under §41 VwVfG NRW, then §§187,188,193 BGB counting with weekend/holiday shift). However, the letter as provided carries no printed date (no 'Datum' field), so the start of the delivery-fiction period cannot be fixed. Running compute_deadline without a document_date confirms no date can be derived. The due date is therefore left open; once the actual date on the original letter or its envelope/postmark is known, the one-month period would be counted from Bekanntgabe (received date + fiction) to the same day-number in the following month, shifted to the next business day if that falls on a weekend or NRW public holiday.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter has no printed date (no 'Datum' field is shown), so the one-month Klage deadline running from 'Bekanntgabe des Bescheids' cannot be computed exactly — check the original letter or its envelope postmark for the actual date/delivery day and count one month from that Bekanntgabe date, shifting to the next business day if it lands on a weekend or NRW holiday.\",\"The letter states 'ein Vorverfahren entfällt', so no Widerspruch is possible — only direct Klage to the Verwaltungsgericht Musterstadt, as stated in the Rechtsbehelfsbelehrung.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt, Der Oberbürgermeister · Ordnungsamt",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.4-SN-2026-0311"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Klage against rejection of Sondernutzungserlaubnis",
+          "quote": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.",
+          "computation": "The one-month Klage period runs from 'Bekanntgabe des Bescheids' (deemed delivery of this authority letter, normally the letter's posting date plus the statutory delivery-fiction days under §41 VwVfG NRW, then §§187,188,193 BGB counting with weekend/holiday shift). However, the letter as provided carries no printed date (no 'Datum' field), so the start of the delivery-fiction period cannot be fixed. Running compute_deadline without a document_date confirms no date can be derived. The due date is therefore left open; once the actual date on the original letter or its envelope/postmark is known, the one-month period would be counted from Bekanntgabe (received date + fiction) to the same day-number in the following month, shifted to the next business day if that falls on a weekend or NRW public holiday.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date (no 'Datum' field is shown), so the one-month Klage deadline running from 'Bekanntgabe des Bescheids' cannot be computed exactly — check the original letter or its envelope postmark for the actual date/delivery day and count one month from that Bekanntgabe date, shifting to the next business day if it lands on a weekend or NRW holiday.",
+        "The letter states 'ein Vorverfahren entfällt', so no Widerspruch is possible — only direct Klage to the Verwaltungsgericht Musterstadt, as stated in the Rechtsbehelfsbelehrung."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3235,
+      "cache_read_tokens": 15249,
+      "cache_creation_tokens": 4469,
+      "cost_usd": 0.053283800000000006,
+      "duration_ms": 36369,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 74 VwGO",
+            "text": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden."
+          },
+          "document_date": null,
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterstadt · Ordnungsamt",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":null,\"summary\":\"No date could be computed: the start date is missing.\",\"confidence\":\"low\",\"warnings\":[\"The letter's date is missing, so this date can't be computed.\"],\"steps\":[],\"rules\":[],\"assumed\":{\"today\":\"2026-07-21\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass document_date: the date printed on the letter, which the period counts from.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

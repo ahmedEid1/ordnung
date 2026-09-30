@@ -1,0 +1,104 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a1522b149e33b993216c4f618e1ac4aed19618fbd7691c5d4f83fa061e478943\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-municipal_decision-A1"
+    ],
+    "prompt_head": "Today is Monday, 2025-05-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterstadt, Der Oberbürgermeister · Ordnungsamt\",\"document_date\":\"2025-05-15\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.1-HU-2025-0417\"}],\"amounts\":[250],\"items\":[{\"kind\":\"task\",\"title\":\"Keep dog on a leash (max. 2 m) outside enclosed property\",\"quote\":\"ordne ich hiermit gemäß § 14 Abs. 1 OBG NRW an, dass Ihr Hund außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.\",\"computation\":\"The order takes effect \\\"ab sofort\\\" (immediately) as of the letter's date, 15.05.2025. This is an ongoing duty with no stated end date, so the due date given here is the day compliance must start, not a final day; the obligation continues until the order is lifted or successfully challenged.\",\"due_date\":\"2025-05-15\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) with the Verwaltungsgericht Musterstadt\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt, Justizzentrum, Gerichtsstraße 5, 44135 Musterstadt, erhoben werden.\",\"computation\":\"Letter dated Thu 15.05.2025, posted by an authority → deemed delivered on the 4th day after posting (§ 41 Abs. 2 VwVfG NRW): Mon 19.05.2025. Under § 187 Abs. 1 BGB the one-month period (§ 74 VwGO) starts the next day and would end Thu 19.06.2025 (§ 188 Abs. 1 BGB), but that day is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 20.06.2025 (§ 31 Abs. 3 VwVfG i.V.m. § 57 Abs. 2 VwGO, § 222 Abs. 2 ZPO).\",\"due_date\":\"2025-06-20\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter threatens a coercive fine (Zwangsgeld) of 250,00 € only if the leashing order is violated in the future — this is not a payment currently due, and no invoice or bank details for it are given.\",\"The Rechtsbehelfsbelehrung states \\\"Ein Widerspruchsverfahren findet nicht statt\\\" — only a Klage (lawsuit) to the Verwaltungsgericht is available, not a Widerspruch.\",\"The deemed-delivery date (19.05.2025) and thus the Klage deadline (20.06.2025) is an assumption based on the letter's printed date; if the person can show a later actual delivery date, the deadline could be later — confirm the envelope postmark if in doubt.\",\"This is a deadline for filing a court action (Klage); get advice from a Verbraucherzentrale or a lawyer well before the deadline, as this tool cannot draft or file the lawsuit.\",\"The IBAN printed in the footer (DE70 4405 0199 0001 0001 00) is well-formed and matches a German Sparkasse, but no payment is currently demanded in this letter, so there is no need to use it now.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt, Der Oberbürgermeister · Ordnungsamt",
+      "document_date": "2025-05-15",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.1-HU-2025-0417"
+        }
+      ],
+      "amounts": [
+        250
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Keep dog on a leash (max. 2 m) outside enclosed property",
+          "quote": "ordne ich hiermit gemäß § 14 Abs. 1 OBG NRW an, dass Ihr Hund außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.",
+          "computation": "The order takes effect \"ab sofort\" (immediately) as of the letter's date, 15.05.2025. This is an ongoing duty with no stated end date, so the due date given here is the day compliance must start, not a final day; the obligation continues until the order is lifted or successfully challenged.",
+          "due_date": "2025-05-15",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) with the Verwaltungsgericht Musterstadt",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt, Justizzentrum, Gerichtsstraße 5, 44135 Musterstadt, erhoben werden.",
+          "computation": "Letter dated Thu 15.05.2025, posted by an authority → deemed delivered on the 4th day after posting (§ 41 Abs. 2 VwVfG NRW): Mon 19.05.2025. Under § 187 Abs. 1 BGB the one-month period (§ 74 VwGO) starts the next day and would end Thu 19.06.2025 (§ 188 Abs. 1 BGB), but that day is Fronleichnam, a public holiday in NRW, so the deadline shifts to the next business day, Fri 20.06.2025 (§ 31 Abs. 3 VwVfG i.V.m. § 57 Abs. 2 VwGO, § 222 Abs. 2 ZPO).",
+          "due_date": "2025-06-20",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter threatens a coercive fine (Zwangsgeld) of 250,00 € only if the leashing order is violated in the future — this is not a payment currently due, and no invoice or bank details for it are given.",
+        "The Rechtsbehelfsbelehrung states \"Ein Widerspruchsverfahren findet nicht statt\" — only a Klage (lawsuit) to the Verwaltungsgericht is available, not a Widerspruch.",
+        "The deemed-delivery date (19.05.2025) and thus the Klage deadline (20.06.2025) is an assumption based on the letter's printed date; if the person can show a later actual delivery date, the deadline could be later — confirm the envelope postmark if in doubt.",
+        "This is a deadline for filing a court action (Klage); get advice from a Verbraucherzentrale or a lawyer well before the deadline, as this tool cannot draft or file the lawsuit.",
+        "The IBAN printed in the footer (DE70 4405 0199 0001 0001 00) is well-formed and matches a German Sparkasse, but no payment is currently demanded in this letter, so there is no need to use it now."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3725,
+      "cache_read_tokens": 15411,
+      "cache_creation_tokens": 5963,
+      "cost_usd": 0.0641922,
+      "duration_ms": 39601,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 74 VwGO, § 41 VwVfG NRW",
+            "text": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt ... erhoben werden."
+          },
+          "document_date": "2025-05-15",
+          "today": "2025-05-19",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterstadt, Ordnungsamt",
+          "remedy_type": "klage",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2025-06-20\",\"weekday\":\"Friday\",\"send_by\":\"2025-06-13\",\"summary\":\"Letter dated Thu 15 May 2025 counts as delivered on Mon 19 May; one month later is Thu 19 Jun 2025, a public holiday, Fronleichnam, so the deadline moves to Fri 20 Jun 2025.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — get advice (e.g. a Verbraucherzentrale or a lawyer) well before this date.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Thu 15 May 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-05-15\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 19 May 2025\",\"date\":\"2025-05-19\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 19 May 2025\",\"date\":\"2025-05-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 19 Jun 2025\",\"date\":\"2025-06-19\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 19 Jun 2025 is a public holiday, Fronleichnam, so the deadline moves to Fri 20 Jun 2025\",\"date\":\"2025-06-20\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Fri 13 Jun 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-06-13\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"klage_1_month\",\"title\":\"Court action (Klage): one month\",\"citation\":\"§ 74 VwGO; § 47 FGO; § 87 SGG\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__74.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-05-19\",\"letter_date\":\"2025-05-15\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE70 4405 0199 0001 0001 00"
+        },
+        "result": "{\"iban\":\"DE70 4405 0199 0001 0001 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"44050199\"},\"account_number\":\"0001000100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

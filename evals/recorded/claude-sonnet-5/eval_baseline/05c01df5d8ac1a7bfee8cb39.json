@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"68996b176d59ad24bfb2b63a598d2eec5431c99ea5d8011483818354b8a11e78\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-12-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhafen\",\"document_date\":\"2025-12-22\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"075/104/33871\"}],\"amounts\":[420],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the prepayment assessment\",\"quote\":\"Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Document dated Mon 22.12.2025, assumed also the day of Aufgabe zur Post (no other date given). The letter states Bekanntgabe fiction as the 4th day after posting; the statutory rule under §122 Abs.2 Nr.1 AO is actually the 3rd day (the letter's wording deviates from the law - flagged in warnings). Both readings land on the same calendar date here: 3rd day = 25.12.2025 (1. Weihnachtsfeiertag, NW holiday) -> forwarded to next business day; 4th day = 26.12.2025 (2. Weihnachtsfeiertag, NW holiday) -> also forwarded to next business day. Skipping 25.12 (holiday), 26.12 (holiday), 27.12 (Sat), 28.12 (Sun), the next business day is Mon 29.12.2025, so Bekanntgabe is fixed on 29.12.2025 under either reading. The one-month Einspruchsfrist begins the day after (§108 Abs.1 AO / §187 Abs.1 BGB), i.e. 30.12.2025, and per §188 Abs.2 BGB ends on the day of the following month numerically matching the Bekanntgabe day (29), i.e. 29.01.2026. 29.01.2026 is a Thursday and not a public holiday in NW, so no further shift applies.\",\"due_date\":\"2026-01-29\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Q1 2026 income tax prepayment\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.03.2026. This falls on a Tuesday, not a weekend or NW public holiday, so the date stands as written.\",\"due_date\":\"2026-03-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"Q2 2026 income tax prepayment\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.06.2026. This falls on a Wednesday, not a weekend or NW public holiday, so the date stands as written.\",\"due_date\":\"2026-06-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"Q3 2026 income tax prepayment\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.09.2026. This falls on a Thursday, not a weekend or NW public holiday, so the date stands as written.\",\"due_date\":\"2026-09-10\",\"confidence\":\"high\",\"amount\":420},{\"kind\":\"payment\",\"title\":\"Q4 2026 income tax prepayment\",\"quote\":\"Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).\",\"computation\":\"Fixed calendar due date stated in the letter: 10.12.2026. This falls on a Thursday, not a weekend or NW public holiday, so the date stands as written.\",\"due_date\":\"2026-12-10\",\"confidence\":\"high\",\"amount\":420}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The Rechtsbehelfsbelehrung states the postal delivery fiction as the 'vierten Tag' (4th day) after posting, but the current legal standard under §122 Abs.2 Nr.1 AO is the 3rd day; in this specific case both readings happen to produce the same Bekanntgabe date (29.12.2025) due to the intervening Christmas holidays, but this discrepancy in wording should be noted and verified against the actual postmark/delivery date if known.\",\"The date of Aufgabe zur Post (handover to the postal service) was assumed to be the same as the document date (22.12.2025) because no separate posting date is stated; if the letter was actually posted later, the Bekanntgabe date and the Einspruch deadline would shift accordingly.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhafen",
+      "document_date": "2025-12-22",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "075/104/33871"
+        }
+      ],
+      "amounts": [
+        420
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the prepayment assessment",
+          "quote": "Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behörde schriftlich oder elektronisch einzulegen.",
+          "computation": "Document dated Mon 22.12.2025, assumed also the day of Aufgabe zur Post (no other date given). The letter states Bekanntgabe fiction as the 4th day after posting; the statutory rule under §122 Abs.2 Nr.1 AO is actually the 3rd day (the letter's wording deviates from the law - flagged in warnings). Both readings land on the same calendar date here: 3rd day = 25.12.2025 (1. Weihnachtsfeiertag, NW holiday) -> forwarded to next business day; 4th day = 26.12.2025 (2. Weihnachtsfeiertag, NW holiday) -> also forwarded to next business day. Skipping 25.12 (holiday), 26.12 (holiday), 27.12 (Sat), 28.12 (Sun), the next business day is Mon 29.12.2025, so Bekanntgabe is fixed on 29.12.2025 under either reading. The one-month Einspruchsfrist begins the day after (§108 Abs.1 AO / §187 Abs.1 BGB), i.e. 30.12.2025, and per §188 Abs.2 BGB ends on the day of the following month numerically matching the Bekanntgabe day (29), i.e. 29.01.2026. 29.01.2026 is a Thursday and not a public holiday in NW, so no further shift applies.",
+          "due_date": "2026-01-29",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Q1 2026 income tax prepayment",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.03.2026. This falls on a Tuesday, not a weekend or NW public holiday, so the date stands as written.",
+          "due_date": "2026-03-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "Q2 2026 income tax prepayment",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.06.2026. This falls on a Wednesday, not a weekend or NW public holiday, so the date stands as written.",
+          "due_date": "2026-06-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "Q3 2026 income tax prepayment",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.09.2026. This falls on a Thursday, not a weekend or NW public holiday, so the date stands as written.",
+          "due_date": "2026-09-10",
+          "confidence": "high",
+          "amount": 420
+        },
+        {
+          "kind": "payment",
+          "title": "Q4 2026 income tax prepayment",
+          "quote": "Die Vorauszahlungen zur Einkommensteuer werden ab dem Kalenderjahr 2026 auf vierteljährlich 420,00 € festgesetzt (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.).",
+          "computation": "Fixed calendar due date stated in the letter: 10.12.2026. This falls on a Thursday, not a weekend or NW public holiday, so the date stands as written.",
+          "due_date": "2026-12-10",
+          "confidence": "high",
+          "amount": 420
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The Rechtsbehelfsbelehrung states the postal delivery fiction as the 'vierten Tag' (4th day) after posting, but the current legal standard under §122 Abs.2 Nr.1 AO is the 3rd day; in this specific case both readings happen to produce the same Bekanntgabe date (29.12.2025) due to the intervening Christmas holidays, but this discrepancy in wording should be noted and verified against the actual postmark/delivery date if known.",
+        "The date of Aufgabe zur Post (handover to the postal service) was assumed to be the same as the document date (22.12.2025) because no separate posting date is stated; if the letter was actually posted later, the Bekanntgabe date and the Einspruch deadline would shift accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6670,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1981,
+      "cost_usd": 0.0752524,
+      "duration_ms": 65899,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

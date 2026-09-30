@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"31460712e7ac4a18827c60470539b7715f9ddf8a2b4108b351fbb3c99f9bc5f3\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2025-12-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-fine_bussgeld-C2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-12-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Polizei Berlin (Muster) – Bußgeldstelle\",\"document_date\":\"2025-12-08\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi 5114/25-VK\"},{\"label\":\"Kennzeichen\",\"value\":\"B-NM 2291\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.\",\"computation\":\"The attached Zustellungsurkunde (page 2) records the actual formal delivery date as 11.12.2025 (a Thursday) — for a documented Zustellungsurkunde (§ 182 ZPO) this actual date governs, not the 3-day fiction for ordinary mail. Per § 187 Abs. 1 BGB the day of delivery itself is not counted; the period starts 12.12.2025. For a period expressed in weeks, § 188 Abs. 2 BGB provides that it ends with the day of the last week that, by name, corresponds to the day of the triggering event (Thursday) — i.e. Thursday 25.12.2025, exactly two weeks after 11.12.2025. 25.12.2025 (1. Weihnachtsfeiertag) and 26.12.2025 (2. Weihnachtsfeiertag) are public holidays in Berlin, and 27.–28.12.2025 fall on the weekend, so under § 193 BGB the deadline moves to the next business day, Monday 29.12.2025.\",\"due_date\":\"2025-12-29\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and costs (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.\",\"computation\":\"This due date is contingent on no Einspruch being filed. The Einspruch period ends 29.12.2025 (see previous item); assuming no appeal is lodged, the Bescheid becomes rechtskräftig upon expiry of that day, i.e. on 30.12.2025 (a Tuesday). Applying the same §§ 187 Abs. 1, 188 Abs. 2 BGB weeks-counting rule as above (period starts the day after the triggering event, ends two weeks later on the day matching the weekday of the event), the two-week payment period runs from 31.12.2025 and ends on Tuesday 13.01.2026. That date is not a Saturday, Sunday or Berlin public holiday, so no § 193 BGB shift applies.\",\"due_date\":\"2026-01-13\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The Einspruch deadline (29.12.2025) was computed from the formal Zustellungsurkunde's recorded delivery date of 11.12.2025 rather than the letter's own date (08.12.2025); double-check this delivery date against the original envelope/Urkunde.\",\"The payment due date (13.01.2026) is only valid if no Einspruch is filed within the deadline; if an Einspruch is lodged, the Bescheid does not become rechtskräftig and this payment deadline does not apply.\",\"Sender and letterhead are explicitly labelled '(Muster)' / 'fiktive Musterbehörde', indicating this is a template/sample document rather than a genuine authority letter — verify the sender's identity and the IBAN independently before making any payment.\",\"Before paying, verify the recipient bank details (IBAN DE07 1005 0000 0000 9900 07) directly with the Bußgeldstelle via an independently looked-up phone number, as a precaution against payment-redirection fraud.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Polizei Berlin (Muster) – Bußgeldstelle",
+      "document_date": "2025-12-08",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi 5114/25-VK"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "B-NM 2291"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Er muss binnen zwei Wochen ab der Zustellung schriftlich oder zur Niederschrift bei der Polizei Berlin (Muster) – Bußgeldstelle eingelegt werden.",
+          "computation": "The attached Zustellungsurkunde (page 2) records the actual formal delivery date as 11.12.2025 (a Thursday) — for a documented Zustellungsurkunde (§ 182 ZPO) this actual date governs, not the 3-day fiction for ordinary mail. Per § 187 Abs. 1 BGB the day of delivery itself is not counted; the period starts 12.12.2025. For a period expressed in weeks, § 188 Abs. 2 BGB provides that it ends with the day of the last week that, by name, corresponds to the day of the triggering event (Thursday) — i.e. Thursday 25.12.2025, exactly two weeks after 11.12.2025. 25.12.2025 (1. Weihnachtsfeiertag) and 26.12.2025 (2. Weihnachtsfeiertag) are public holidays in Berlin, and 27.–28.12.2025 fall on the weekend, so under § 193 BGB the deadline moves to the next business day, Monday 29.12.2025.",
+          "due_date": "2025-12-29",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and costs (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen, nachdem der Bescheid rechtskräftig geworden ist, fällig; geben Sie bei der Überweisung bitte das Aktenzeichen an.",
+          "computation": "This due date is contingent on no Einspruch being filed. The Einspruch period ends 29.12.2025 (see previous item); assuming no appeal is lodged, the Bescheid becomes rechtskräftig upon expiry of that day, i.e. on 30.12.2025 (a Tuesday). Applying the same §§ 187 Abs. 1, 188 Abs. 2 BGB weeks-counting rule as above (period starts the day after the triggering event, ends two weeks later on the day matching the weekday of the event), the two-week payment period runs from 31.12.2025 and ends on Tuesday 13.01.2026. That date is not a Saturday, Sunday or Berlin public holiday, so no § 193 BGB shift applies.",
+          "due_date": "2026-01-13",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The Einspruch deadline (29.12.2025) was computed from the formal Zustellungsurkunde's recorded delivery date of 11.12.2025 rather than the letter's own date (08.12.2025); double-check this delivery date against the original envelope/Urkunde.",
+        "The payment due date (13.01.2026) is only valid if no Einspruch is filed within the deadline; if an Einspruch is lodged, the Bescheid does not become rechtskräftig and this payment deadline does not apply.",
+        "Sender and letterhead are explicitly labelled '(Muster)' / 'fiktive Musterbehörde', indicating this is a template/sample document rather than a genuine authority letter — verify the sender's identity and the IBAN independently before making any payment.",
+        "Before paying, verify the recipient bank details (IBAN DE07 1005 0000 0000 9900 07) directly with the Bußgeldstelle via an independently looked-up phone number, as a precaution against payment-redirection fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6540,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2805,
+      "cost_usd": 0.0772484,
+      "duration_ms": 62085,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

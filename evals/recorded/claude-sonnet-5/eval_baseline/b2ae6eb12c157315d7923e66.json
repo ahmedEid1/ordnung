@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a2b535dd8a4ef0edb6458bb6e5fc55dfc0edba7e40c3731cdb0bfed26a28263a\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2026-04-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-appointment-C2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-04-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Jobcenter Musterlingen\",\"document_date\":\"2026-04-08\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"04701//0081542\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Meeting at Jobcenter (Meldeaufforderung)\",\"quote\":\"bitte kommen Sie am Mittwoch, 22.04.2026 um 08:15 Uhr in das Jobcenter Musterlingen, Raum 1.18, zu Frau Petzold.\",\"computation\":\"The letter states a fixed calendar date and time for the appointment: Wednesday, 22.04.2026, 08:15. No period to count and no delivery-deemed-date calculation is needed, as the date is explicit rather than expressed as a time period after receipt. Today is 2026-04-14 (Tuesday), so the appointment on 2026-04-22 (Wednesday) is 8 days ahead, consistent with the weekday printed.\",\"due_date\":\"2026-04-22\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter contains a Rechtsfolgenbelehrung (legal-consequence notice) warning that a 10% reduction of the Regelbedarf for one month may follow if the appointment is missed without good cause (§ 32 SGB II); this is a warning of a possible future sanction, not an amount already payable, so it was not listed under amounts.\",\"No Rechtsbehelfsbelehrung (appeal-rights instruction) is included in this letter, so remedy_type is set to none; general Widerspruch rules under SGB X could still apply if the person wishes to object to the invitation itself, but no specific deadline is stated in the letter.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Jobcenter Musterlingen",
+      "document_date": "2026-04-08",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "04701//0081542"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Meeting at Jobcenter (Meldeaufforderung)",
+          "quote": "bitte kommen Sie am Mittwoch, 22.04.2026 um 08:15 Uhr in das Jobcenter Musterlingen, Raum 1.18, zu Frau Petzold.",
+          "computation": "The letter states a fixed calendar date and time for the appointment: Wednesday, 22.04.2026, 08:15. No period to count and no delivery-deemed-date calculation is needed, as the date is explicit rather than expressed as a time period after receipt. Today is 2026-04-14 (Tuesday), so the appointment on 2026-04-22 (Wednesday) is 8 days ahead, consistent with the weekday printed.",
+          "due_date": "2026-04-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter contains a Rechtsfolgenbelehrung (legal-consequence notice) warning that a 10% reduction of the Regelbedarf for one month may follow if the appointment is missed without good cause (§ 32 SGB II); this is a warning of a possible future sanction, not an amount already payable, so it was not listed under amounts.",
+        "No Rechtsbehelfsbelehrung (appeal-rights instruction) is included in this letter, so remedy_type is set to none; general Widerspruch rules under SGB X could still apply if the person wishes to object to the invitation itself, but no specific deadline is stated in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2541,
+      "cache_read_tokens": 15159,
+      "cache_creation_tokens": 3737,
+      "cost_usd": 0.0433978,
+      "duration_ms": 24992,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

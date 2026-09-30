@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7b5e09a1c5167a759dbcd3c6803fc630c4876900569d6d8958410fec370696df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-11-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Paketzentrum Musterstadt – Zollabwicklung\",\"document_date\":\"2026-11-05\",\"references\":[{\"label\":\"Sendungsnummer\",\"value\":\"DE 4471 2290 5518\"}],\"amounts\":[21.4,17.5,38.9],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay claimed import duties to release parcel\",\"quote\":\"Überweisen Sie 38,90 € bis 09.11.2026.\",\"computation\":\"The letter states a fixed calendar date for payment: 09.11.2026. This is a demand from a private company, not a German authority, so no statutory deemed-delivery rule applies — the printed date stands as written. 09.11.2026 falls on a Monday, no weekend/holiday shift needed. Verified with the deadline tool (fixed date, nature=payment): due_date 2026-11-09.\",\"due_date\":\"2026-11-09\",\"confidence\":\"high\",\"amount\":38.9}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a parcel/customs phishing scam: the payee, 'Intl. Parcel Clearing Ltd.', has no relation to German customs — real German import VAT (Einfuhrumsatzsteuer) is collected only by the Zoll (Hauptzollamt), never by a private 'Paketzentrum' company via bank transfer.\",\"The given IBAN (DE96 7001 0080 0661 2345 67) fails its own checksum validation and is very likely fake or mistyped — do not send money to it, and ideally do not pay at all.\",\"Contact is restricted to a WhatsApp mobile number only, and the email domain 'clearance-mail.example' is not a genuine corporate or governmental domain — both are typical scam/phishing indicators.\",\"The letter uses classic pressure tactics: a very short deadline (4 days from the letter's date) plus a threat to destroy or return the goods if payment is not received in time.\",\"The recipient's postal code (37073, in the Göttingen/Niedersachsen area) does not match the Nordrhein-Westfalen region stated for this person — worth double-checking that this letter is even addressed to the right person.\",\"Recommendation: do not pay or reply via the WhatsApp number or email given; instead verify any real parcel/customs charge directly through the shipping carrier's official tracking page or the Zoll's official channels.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Paketzentrum Musterstadt – Zollabwicklung",
+      "document_date": "2026-11-05",
+      "references": [
+        {
+          "label": "Sendungsnummer",
+          "value": "DE 4471 2290 5518"
+        }
+      ],
+      "amounts": [
+        21.4,
+        17.5,
+        38.9
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay claimed import duties to release parcel",
+          "quote": "Überweisen Sie 38,90 € bis 09.11.2026.",
+          "computation": "The letter states a fixed calendar date for payment: 09.11.2026. This is a demand from a private company, not a German authority, so no statutory deemed-delivery rule applies — the printed date stands as written. 09.11.2026 falls on a Monday, no weekend/holiday shift needed. Verified with the deadline tool (fixed date, nature=payment): due_date 2026-11-09.",
+          "due_date": "2026-11-09",
+          "confidence": "high",
+          "amount": 38.9
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a parcel/customs phishing scam: the payee, 'Intl. Parcel Clearing Ltd.', has no relation to German customs — real German import VAT (Einfuhrumsatzsteuer) is collected only by the Zoll (Hauptzollamt), never by a private 'Paketzentrum' company via bank transfer.",
+        "The given IBAN (DE96 7001 0080 0661 2345 67) fails its own checksum validation and is very likely fake or mistyped — do not send money to it, and ideally do not pay at all.",
+        "Contact is restricted to a WhatsApp mobile number only, and the email domain 'clearance-mail.example' is not a genuine corporate or governmental domain — both are typical scam/phishing indicators.",
+        "The letter uses classic pressure tactics: a very short deadline (4 days from the letter's date) plus a threat to destroy or return the goods if payment is not received in time.",
+        "The recipient's postal code (37073, in the Göttingen/Niedersachsen area) does not match the Nordrhein-Westfalen region stated for this person — worth double-checking that this letter is even addressed to the right person.",
+        "Recommendation: do not pay or reply via the WhatsApp number or email given; instead verify any real parcel/customs charge directly through the shipping carrier's official tracking page or the Zoll's official channels."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 4321,
+      "cache_read_tokens": 35890,
+      "cache_creation_tokens": 6627,
+      "cost_usd": 0.07691200000000001,
+      "duration_ms": 40863,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE96 7001 0080 0661 2345 67"
+        },
+        "result": "{\"iban\":\"DE96 7001 0080 0661 2345 67\",\"valid\":false,\"problems\":[\"The check digits do not match: a character is wrong, missing or swapped.\"],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":false,\"note\":\"It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-11-05",
+          "sender_kind": "company",
+          "sender_name": "Paketzentrum Musterstadt – Zollabwicklung",
+          "recipient_region": "NW",
+          "spec": {
+            "type": "fixed",
+            "date": "2026-11-09",
+            "nature": "payment",
+            "text": "Überweisen Sie 38,90 € bis 09.11.2026.",
+            "shift_rule": "none"
+          }
+        },
+        "result": "{\"due_date\":\"2026-11-09\",\"weekday\":\"Monday\",\"send_by\":\"2026-11-07\",\"summary\":\"The date given is Mon 9 Nov 2026.\",\"confidence\":\"high\",\"warnings\":[\"The usual sending time has passed — send it today, by the fastest channel allowed (online, fax or in person).\"],\"steps\":[{\"label\":\"The date given is Mon 9 Nov 2026\",\"date\":\"2026-11-09\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Sat 7 Nov 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-11-07\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-07\",\"letter_date\":\"2026-11-05\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6a12ce144dccdd4269cc6d60517bebfb0778daf7fe8870461666118f15fd3381\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-C2"
+    ],
+    "prompt_head": "Today is Friday, 2025-12-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Muster Bank AG\",\"document_date\":\"2025-12-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"7712 0045 88\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit ID copy and self-disclosure form (KYC update)\",\"quote\":\"Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.\",\"computation\":\"The letter is dated Thursday 18.12.2025 and states the period runs after the date of this letter, so counting starts on 19.12.2025. Werktage are defined by the letter as Monday-Saturday excluding public holidays. Counting only Mon-Sat, skipping Sundays and NW public holidays (25.12.2025 Christmas Day, 26.12.2025 2nd Christmas Day): Werktag 1 = Fri 19.12; Werktag 2 = Sat 20.12; Sun 21.12 skipped; Werktag 3 = Mon 22.12; Werktag 4 = Tue 23.12; Werktag 5 = Wed 24.12; Thu 25.12 and Fri 26.12 are holidays, skipped; Werktag 6 = Sat 27.12; Sun 28.12 skipped; Werktag 7 = Mon 29.12; Werktag 8 = Tue 30.12.2025. Thus the 8th Werktag, and last day to submit the documents, is 30.12.2025.\",\"due_date\":\"2025-12-30\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter threatens to block the securities account for purchases if the identity document copy and self-disclosure form are not submitted in time; requests for ID copies under time pressure and threat of account restriction are a pattern also used in phishing scams, so verify this request is genuine (e.g. by calling the bank via the phone number on your bank card or a previously known number) before sending any ID copy or personal data.\",\"Sender name, address (Musterfurt) and IBAN in the letterhead appear to be generic placeholder/template values rather than a specific real institution's details; confirm the sender's actual identity and official contact details before responding.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Muster Bank AG",
+      "document_date": "2025-12-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "7712 0045 88"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit ID copy and self-disclosure form (KYC update)",
+          "quote": "Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.",
+          "computation": "The letter is dated Thursday 18.12.2025 and states the period runs after the date of this letter, so counting starts on 19.12.2025. Werktage are defined by the letter as Monday-Saturday excluding public holidays. Counting only Mon-Sat, skipping Sundays and NW public holidays (25.12.2025 Christmas Day, 26.12.2025 2nd Christmas Day): Werktag 1 = Fri 19.12; Werktag 2 = Sat 20.12; Sun 21.12 skipped; Werktag 3 = Mon 22.12; Werktag 4 = Tue 23.12; Werktag 5 = Wed 24.12; Thu 25.12 and Fri 26.12 are holidays, skipped; Werktag 6 = Sat 27.12; Sun 28.12 skipped; Werktag 7 = Mon 29.12; Werktag 8 = Tue 30.12.2025. Thus the 8th Werktag, and last day to submit the documents, is 30.12.2025.",
+          "due_date": "2025-12-30",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter threatens to block the securities account for purchases if the identity document copy and self-disclosure form are not submitted in time; requests for ID copies under time pressure and threat of account restriction are a pattern also used in phishing scams, so verify this request is genuine (e.g. by calling the bank via the phone number on your bank card or a previously known number) before sending any ID copy or personal data.",
+        "Sender name, address (Musterfurt) and IBAN in the letterhead appear to be generic placeholder/template values rather than a specific real institution's details; confirm the sender's actual identity and official contact details before responding."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 6452,
+      "cache_read_tokens": 24696,
+      "cache_creation_tokens": 7319,
+      "cost_usd": 0.09875120000000001,
+      "duration_ms": 59251,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

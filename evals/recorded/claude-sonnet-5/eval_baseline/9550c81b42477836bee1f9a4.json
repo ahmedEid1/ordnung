@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1b11f8e7033820ef420ffd19e76f118ceef9693dcf78d8df1edf826308f9cf02\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-02-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-F1"
+    ],
+    "prompt_head": "Today is Monday, 2025-02-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"cancellation_confirmation\",\"sender_name\":\"Beispiel Immobilienverwaltung GmbH\",\"document_date\":\"2025-02-19\",\"references\":[{\"label\":\"Mietvertrag-Nr.\",\"value\":\"MV-3317-08\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Apartment handover (Wohnungsabnahme) inspection\",\"quote\":\"Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.\",\"computation\":\"The letter proposes a fixed calendar date and time for the handover appointment: Saturday, 15 March 2025, 09:30. Appointments keep the stated date; it is not moved even though it falls on a Saturday.\",\"due_date\":\"2025-03-15\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of tenancy (lease termination date)\",\"quote\":\"wir bestätigen den Eingang Ihrer Kündigung vom 20.12.2024 zum 31.03.2025.\",\"computation\":\"The landlord confirms the tenant's own notice of termination (dated 20.12.2024) ending the tenancy on the calendar date stated in that notice: 31 March 2025. This date is taken as given and not recalculated.\",\"due_date\":\"2025-03-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "cancellation_confirmation",
+      "sender_name": "Beispiel Immobilienverwaltung GmbH",
+      "document_date": "2025-02-19",
+      "references": [
+        {
+          "label": "Mietvertrag-Nr.",
+          "value": "MV-3317-08"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Apartment handover (Wohnungsabnahme) inspection",
+          "quote": "Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.",
+          "computation": "The letter proposes a fixed calendar date and time for the handover appointment: Saturday, 15 March 2025, 09:30. Appointments keep the stated date; it is not moved even though it falls on a Saturday.",
+          "due_date": "2025-03-15",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of tenancy (lease termination date)",
+          "quote": "wir bestätigen den Eingang Ihrer Kündigung vom 20.12.2024 zum 31.03.2025.",
+          "computation": "The landlord confirms the tenant's own notice of termination (dated 20.12.2024) ending the tenancy on the calendar date stated in that notice: 31 March 2025. This date is taken as given and not recalculated.",
+          "due_date": "2025-03-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2654,
+      "cache_read_tokens": 13104,
+      "cache_creation_tokens": 3976,
+      "cost_usd": 0.045072799999999996,
+      "duration_ms": 23805,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

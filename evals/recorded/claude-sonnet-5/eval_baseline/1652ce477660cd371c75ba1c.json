@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"12d1e7989d55b3df4d26306bfe57376d2a222c8cfb169eefd42df834d7e7dcaf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Muster Abrechnungszentrum für Zahnärzte GmbH\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"ZA-26-118503\"},{\"label\":\"Patientennummer\",\"value\":\"40931\"}],\"amounts\":[412.8,5,417.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding dental invoice (2nd reminder)\",\"quote\":\"Wir erwarten Ihre Zahlung bis 21.08.2026.\",\"computation\":\"The letter is a private company's second reminder (2. Mahnung), not an authority letter, so no statutory deemed-delivery or §187-193 BGB counting rule applies. It states a fixed calendar date: 'bis 21.08.2026'. This is taken as the due date as printed.\",\"due_date\":\"2026-08-21\",\"confidence\":\"high\",\"amount\":417.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private billing agency's second reminder (2. Mahnung), not a court or authority order; the payment deadline of 2026-08-21 has already passed as of today (2026-09-30), so late/penalty consequences (e.g. a third reminder, collection agency or Mahnbescheid) may already have started — the person should check for later correspondence.\",\"The letter invites objections to be resolved by phone only ('rufen Sie uns bitte an') rather than in writing; for a record, any dispute about the invoice amount should ideally be confirmed in writing/email as well.\",\"The IBAN printed (DE84 3705 0198 0005 5571 00) is a validly formatted German IBAN, but its ownership cannot be verified from the letter alone; confirm it matches prior correspondence from this billing office before paying.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Muster Abrechnungszentrum für Zahnärzte GmbH",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "ZA-26-118503"
+        },
+        {
+          "label": "Patientennummer",
+          "value": "40931"
+        }
+      ],
+      "amounts": [
+        412.8,
+        5,
+        417.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding dental invoice (2nd reminder)",
+          "quote": "Wir erwarten Ihre Zahlung bis 21.08.2026.",
+          "computation": "The letter is a private company's second reminder (2. Mahnung), not an authority letter, so no statutory deemed-delivery or §187-193 BGB counting rule applies. It states a fixed calendar date: 'bis 21.08.2026'. This is taken as the due date as printed.",
+          "due_date": "2026-08-21",
+          "confidence": "high",
+          "amount": 417.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private billing agency's second reminder (2. Mahnung), not a court or authority order; the payment deadline of 2026-08-21 has already passed as of today (2026-09-30), so late/penalty consequences (e.g. a third reminder, collection agency or Mahnbescheid) may already have started — the person should check for later correspondence.",
+        "The letter invites objections to be resolved by phone only ('rufen Sie uns bitte an') rather than in writing; for a record, any dispute about the invoice amount should ideally be confirmed in writing/email as well.",
+        "The IBAN printed (DE84 3705 0198 0005 5571 00) is a validly formatted German IBAN, but its ownership cannot be verified from the letter alone; confirm it matches prior correspondence from this billing office before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1664,
+      "cache_read_tokens": 15188,
+      "cache_creation_tokens": 3125,
+      "cost_usd": 0.0321856,
+      "duration_ms": 17636,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE84 3705 0198 0005 5571 00"
+        },
+        "result": "{\"iban\":\"DE84 3705 0198 0005 5571 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005557100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

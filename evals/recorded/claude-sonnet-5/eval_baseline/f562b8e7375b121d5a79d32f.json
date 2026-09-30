@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4fbfed962277190f6b9c44ca56d07cccda56e3d59c46fc2da8a5671b69d9a9a5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-dunning_fixed-B1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-06-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Muster Verlag GmbH\",\"document_date\":\"2025-06-13\",\"references\":[{\"label\":\"Abo-Nummer\",\"value\":\"AB-5541078\"}],\"amounts\":[59.4,2.5,61.9],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding subscription fee plus reminder fee\",\"quote\":\"Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte Konto.\",\"computation\":\"The letter states an explicit calendar due date: 30 June 2025. This is a private company (not a public authority), so no statutory delivery-fiction period applies; the printed date is taken as given. 30 June 2025 is a Monday, so no weekend/holiday shift is needed.\",\"due_date\":\"2025-06-30\",\"confidence\":\"high\",\"amount\":61.9}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-05-31\",\"cancel_by\":null},\"warnings\":[\"The letter does not state a cancellation deadline for the annual subscription; only the current term end (31.05.2026) can be derived from the stated Bezugszeitraum.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Muster Verlag GmbH",
+      "document_date": "2025-06-13",
+      "references": [
+        {
+          "label": "Abo-Nummer",
+          "value": "AB-5541078"
+        }
+      ],
+      "amounts": [
+        59.4,
+        2.5,
+        61.9
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding subscription fee plus reminder fee",
+          "quote": "Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte Konto.",
+          "computation": "The letter states an explicit calendar due date: 30 June 2025. This is a private company (not a public authority), so no statutory delivery-fiction period applies; the printed date is taken as given. 30 June 2025 is a Monday, so no weekend/holiday shift is needed.",
+          "due_date": "2025-06-30",
+          "confidence": "high",
+          "amount": 61.9
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-05-31",
+        "cancel_by": null
+      },
+      "warnings": [
+        "The letter does not state a cancellation deadline for the annual subscription; only the current term end (31.05.2026) can be derived from the stated Bezugszeitraum."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1101,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1943,
+      "cost_usd": 0.0194104,
+      "duration_ms": 11432,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

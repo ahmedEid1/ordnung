@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8dcbefb8410e88825c8be84764391d4ef557b01cadc79662fad501ec931bd89f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-03-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2026-03-12\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Muster BKK, Beispielweg 1, 34117 Neu-Musterdorf, zu erheben.\",\"computation\":\"Letter is dated 12.03.2026 (Thursday). For social-insurance letters sent by ordinary post, § 37 Abs. 2 SGB X deems delivery on the 4th day after posting, i.e. 16.03.2026 (Monday) — this coincides with the 'Bescheid vom 16.03.2026' mentioned in the body text, so the two dates in the letter are consistent once the deemed-delivery rule is applied. Under § 26 Abs. 1 SGB X / § 187 Abs. 1 BGB the day of delivery (16.03.) is not counted; the one-month period (§ 84 Abs. 1 SGG) runs from 17.03.2026 and ends on the day in the following month with the same number, i.e. 16.04.2026 (Thursday, § 188 Abs. 2 BGB). 16.04.2026 is a normal working day in NW, so no weekend/holiday shift applies. Deadline: 16.04.2026.\",\"due_date\":\"2026-04-16\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letterhead is dated 12.03.2026 but the letter's own text refers to 'Bescheid vom 16.03.2026' — a later date than the letter itself; this is an internal inconsistency, though it happens to match the statutory 4-day deemed-delivery date, so it does not change the computed Widerspruch deadline of 16.04.2026.\",\"The letter rejects household help (Haushaltshilfe) entirely because no child under 12 lives in the household and the statutes (Satzung) provide no extended benefit — check the insurer's Satzung yourself in case broader entitlements exist that were overlooked.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2026-03-12",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Muster BKK, Beispielweg 1, 34117 Neu-Musterdorf, zu erheben.",
+          "computation": "Letter is dated 12.03.2026 (Thursday). For social-insurance letters sent by ordinary post, § 37 Abs. 2 SGB X deems delivery on the 4th day after posting, i.e. 16.03.2026 (Monday) — this coincides with the 'Bescheid vom 16.03.2026' mentioned in the body text, so the two dates in the letter are consistent once the deemed-delivery rule is applied. Under § 26 Abs. 1 SGB X / § 187 Abs. 1 BGB the day of delivery (16.03.) is not counted; the one-month period (§ 84 Abs. 1 SGG) runs from 17.03.2026 and ends on the day in the following month with the same number, i.e. 16.04.2026 (Thursday, § 188 Abs. 2 BGB). 16.04.2026 is a normal working day in NW, so no weekend/holiday shift applies. Deadline: 16.04.2026.",
+          "due_date": "2026-04-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letterhead is dated 12.03.2026 but the letter's own text refers to 'Bescheid vom 16.03.2026' — a later date than the letter itself; this is an internal inconsistency, though it happens to match the statutory 4-day deemed-delivery date, so it does not change the computed Widerspruch deadline of 16.04.2026.",
+        "The letter rejects household help (Haushaltshilfe) entirely because no child under 12 lives in the household and the statutes (Satzung) provide no extended benefit — check the insurer's Satzung yourself in case broader entitlements exist that were overlooked."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4202,
+      "cache_read_tokens": 27733,
+      "cache_creation_tokens": 7425,
+      "cost_usd": 0.0772786,
+      "duration_ms": 42065,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-03-12",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 84 SGG, § 37 SGB X",
+            "text": "Die Frist dafür beträgt einen Monat ab Bekanntgabe"
+          },
+          "document_date": "2026-03-12",
+          "sender_kind": "health_insurer",
+          "sender_name": "Muster BKK",
+          "remedy_type": "widerspruch",
+          "recipient_region": "NW",
+          "region": "NW",
+          "today": "2026-03-18"
+        },
+        "result": "{\"due_date\":\"2026-04-16\",\"weekday\":\"Thursday\",\"send_by\":\"2026-04-10\",\"summary\":\"Letter dated Thu 12 Mar 2026 counts as delivered on Mon 16 Mar; one month later is Thu 16 Apr 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Thu 12 Mar 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-03-12\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 16 Mar 2026\",\"date\":\"2026-03-16\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Mon 16 Mar 2026\",\"date\":\"2026-03-16\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 16 Apr 2026\",\"date\":\"2026-04-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 16 Apr 2026 is a working day, so it stays\",\"date\":\"2026-04-16\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 10 Apr 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-04-10\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-03-18\",\"letter_date\":\"2026-03-12\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

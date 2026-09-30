@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a397544346d70197f31b35f4b51ce8b37a1007ef487153a0004d221dde05c4c3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-11-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-social_decision-C1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-11-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Familienkasse Muster-Mitte\",\"document_date\":\"2025-11-21\",\"references\":[{\"label\":\"Kinderzuschlag-Nr.\",\"value\":\"215KZ508814\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Kinderzuschlag rejection\",\"quote\":\"Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Familienkasse Muster-Mitte, Postfach 44 01, 34002 Neu-Musterdorf, zu erheben.\",\"computation\":\"Letter dated Friday 21.11.2025, posted that day. Familienkasse deciding on Kinderzuschlag is a social-law body (§ 37 Abs. 2 SGB X), so the 4-day delivery fiction applies without the tax-law weekend/holiday shift: 21.11.2025 + 4 days = Tuesday 25.11.2025 (delivery day). The one-month Widerspruchsfrist starts the day after delivery (§ 26 Abs. 1 SGB X, § 187 Abs. 1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 25.12.2025. That day is Christmas Day (nationwide holiday); 26.12.2025 is also a nationwide holiday (2nd Christmas Day); 27.12 (Sat) and 28.12 (Sun) follow. Per § 26 Abs. 3 SGB X the period end moves to the next working day: Monday 29.12.2025.\",\"due_date\":\"2025-12-29\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Familienkasse Muster-Mitte",
+      "document_date": "2025-11-21",
+      "references": [
+        {
+          "label": "Kinderzuschlag-Nr.",
+          "value": "215KZ508814"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Kinderzuschlag rejection",
+          "quote": "Die Frist dafür beträgt einen Monat ab Bekanntgabe; der Widerspruch ist schriftlich, elektronisch oder zur Niederschrift bei der Familienkasse Muster-Mitte, Postfach 44 01, 34002 Neu-Musterdorf, zu erheben.",
+          "computation": "Letter dated Friday 21.11.2025, posted that day. Familienkasse deciding on Kinderzuschlag is a social-law body (§ 37 Abs. 2 SGB X), so the 4-day delivery fiction applies without the tax-law weekend/holiday shift: 21.11.2025 + 4 days = Tuesday 25.11.2025 (delivery day). The one-month Widerspruchsfrist starts the day after delivery (§ 26 Abs. 1 SGB X, § 187 Abs. 1 BGB) and ends on the day in the following month bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 25.12.2025. That day is Christmas Day (nationwide holiday); 26.12.2025 is also a nationwide holiday (2nd Christmas Day); 27.12 (Sat) and 28.12 (Sun) follow. Per § 26 Abs. 3 SGB X the period end moves to the next working day: Monday 29.12.2025.",
+          "due_date": "2025-12-29",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3973,
+      "cache_read_tokens": 13165,
+      "cache_creation_tokens": 5261,
+      "cost_usd": 0.063415,
+      "duration_ms": 36950,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

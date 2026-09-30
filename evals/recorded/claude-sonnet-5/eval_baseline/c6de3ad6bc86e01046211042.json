@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"54cb3caa1f6674024c11f195330ed7b5ccd345156e9c2f0b58565ce2b2c7d06c\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-03-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-D1"
+    ],
+    "prompt_head": "Today is Friday, 2026-03-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_doc"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielheim – Baurechtsamt\",\"document_date\":\"2026-03-02\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BRA 63-0214/2026\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Bauvorbescheid\",\"quote\":\"Rechtsbehelf: Widerspruch. Frist: ein Monat ab Bekanntgabe dieses Bescheids.\",\"computation\":\"Letter is dated Monday 02.03.2026 and sent by ordinary mail from a German authority. Under § 41 Abs. 2 LVwVfG BW, a letter sent by post is deemed delivered (Bekanntgabe) on the third day after posting, i.e. Thursday 05.03.2026 (no indication it arrived later). The one-month Widerspruchsfrist runs from this Bekanntgabe (§ 187 Abs. 1 BGB: the day of the triggering event, 05.03.2026, is not counted). Per § 188 Abs. 2 BGB, a one-month period ends on the day of the following month bearing the same date as the triggering event, i.e. 05.04.2026. However, 05.04.2026 is a Sunday (in fact Easter Sunday). Per § 193 BGB, if the last day of a period falls on a Sunday, holiday or Saturday, the period ends on the next working day. The following day, 06.04.2026 (Ostermontag/Easter Monday), is also a statutory public holiday in Baden-Württemberg, so the deadline moves to the next working day, Tuesday 07.04.2026.\",\"due_date\":\"2026-04-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states that a separate fee notice (Gebührenbescheid) will follow with the amount to be paid; no amount or due date for that fee is given in this letter, so it must be tracked separately once received.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielheim – Baurechtsamt",
+      "document_date": "2026-03-02",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BRA 63-0214/2026"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Bauvorbescheid",
+          "quote": "Rechtsbehelf: Widerspruch. Frist: ein Monat ab Bekanntgabe dieses Bescheids.",
+          "computation": "Letter is dated Monday 02.03.2026 and sent by ordinary mail from a German authority. Under § 41 Abs. 2 LVwVfG BW, a letter sent by post is deemed delivered (Bekanntgabe) on the third day after posting, i.e. Thursday 05.03.2026 (no indication it arrived later). The one-month Widerspruchsfrist runs from this Bekanntgabe (§ 187 Abs. 1 BGB: the day of the triggering event, 05.03.2026, is not counted). Per § 188 Abs. 2 BGB, a one-month period ends on the day of the following month bearing the same date as the triggering event, i.e. 05.04.2026. However, 05.04.2026 is a Sunday (in fact Easter Sunday). Per § 193 BGB, if the last day of a period falls on a Sunday, holiday or Saturday, the period ends on the next working day. The following day, 06.04.2026 (Ostermontag/Easter Monday), is also a statutory public holiday in Baden-Württemberg, so the deadline moves to the next working day, Tuesday 07.04.2026.",
+          "due_date": "2026-04-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states that a separate fee notice (Gebührenbescheid) will follow with the amount to be paid; no amount or due date for that fee is given in this letter, so it must be tracked separately once received."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2891,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2100,
+      "cost_usd": 0.0379384,
+      "duration_ms": 28520,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"abfb4df7ff6c7f98d10a20d2a108c5c5de81a019dbb0dc8b512d4a292c8f4421\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2025-03-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2025-03-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Landkreis Beispielstedt – Gesundheitsamt, Kinder- und Jugendgesundheitsdienst\",\"document_date\":\"2025-03-11\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"53.2-SEU-25-1182\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"School entry medical examination (Schuleingangsuntersuchung) for Paula\",\"quote\":\"Wir laden Sie und Paula deshalb zur Schuleingangsuntersuchung ein: am 02.04.2025 um 08:40 Uhr im Gesundheitsamt, Am Kreishaus 5, Raum 014.\",\"computation\":\"The letter states a fixed calendar date and time for the appointment: 02.04.2025, 08:40. No period calculation is needed; the appointment date is taken as printed.\",\"due_date\":\"2025-04-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is an invitation to a routine, free health check-up with no payment or legal-remedy deadlines; if the date does not suit, the letter instructs calling 05141 916-530 to reschedule rather than a written objection.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Landkreis Beispielstedt – Gesundheitsamt, Kinder- und Jugendgesundheitsdienst",
+      "document_date": "2025-03-11",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "53.2-SEU-25-1182"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "School entry medical examination (Schuleingangsuntersuchung) for Paula",
+          "quote": "Wir laden Sie und Paula deshalb zur Schuleingangsuntersuchung ein: am 02.04.2025 um 08:40 Uhr im Gesundheitsamt, Am Kreishaus 5, Raum 014.",
+          "computation": "The letter states a fixed calendar date and time for the appointment: 02.04.2025, 08:40. No period calculation is needed; the appointment date is taken as printed.",
+          "due_date": "2025-04-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is an invitation to a routine, free health check-up with no payment or legal-remedy deadlines; if the date does not suit, the letter instructs calling 05141 916-530 to reschedule rather than a written objection."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1863,
+      "cache_read_tokens": 8256,
+      "cache_creation_tokens": 3322,
+      "cost_usd": 0.0335772,
+      "duration_ms": 16154,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

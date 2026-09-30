@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"cb5a4fe423981b884d22242ca98207436eeb23eb63a681ab9f6453f365dbecfe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-tax_assessment-C2"
+    ],
+    "prompt_head": "Today is Monday, 2026-05-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterhafen\",\"document_date\":\"2026-05-21\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"075/104/33871\"}],\"amounts\":[4402,793],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against tax assessment\",\"quote\":\"Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Musterhafen, Kaistraße 1, 27568 Musterhafen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.\",\"computation\":\"Bescheiddatum: 21.05.2026 (Donnerstag). Bekanntgabefiktion laut Bescheid: Zugang am vierten Tag nach Aufgabe zur Post (§122 Abs.2 Nr.1 AO n.F., seit 2025 vier statt drei Tage). 21.05.2026 + 4 Tage = 25.05.2026 (Montag); dieser Tag ist kein Samstag/Sonntag/Feiertag in NRW, also gilt der Bescheid am 25.05.2026 als bekannt gegeben. Einspruchsfrist: ein Monat ab Bekanntgabe (§355 Abs.1 AO), berechnet nach §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: Fristbeginn am Tag nach Bekanntgabe (26.05.2026), Fristende am Tag des Folgemonats mit gleicher Zahl wie der Bekanntgabetag, also 25.06.2026. Der 25.06.2026 ist ein Donnerstag und kein gesetzlicher Feiertag in NRW (Fronleichnam 2026 fällt auf den 04.06.2026), daher bleibt es bei diesem Datum.\",\"due_date\":\"2026-06-25\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Receive tax refund\",\"quote\":\"Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.\",\"computation\":\"The letter only states that payment will follow 'in den nächsten Tagen' (in the coming days) without giving a specific calendar date or a countable period, so no exact due date can be computed from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":793}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The refund payment date is only described as 'in den nächsten Tagen' (in the coming days) without a specific date, so the exact payment date cannot be determined from the letter.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterhafen",
+      "document_date": "2026-05-21",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "075/104/33871"
+        }
+      ],
+      "amounts": [
+        4402,
+        793
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against tax assessment",
+          "quote": "Der Einspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheids beim Finanzamt Musterhafen, Kaistraße 1, 27568 Musterhafen, schriftlich oder elektronisch einzulegen oder dort zur Niederschrift zu erklären.",
+          "computation": "Bescheiddatum: 21.05.2026 (Donnerstag). Bekanntgabefiktion laut Bescheid: Zugang am vierten Tag nach Aufgabe zur Post (§122 Abs.2 Nr.1 AO n.F., seit 2025 vier statt drei Tage). 21.05.2026 + 4 Tage = 25.05.2026 (Montag); dieser Tag ist kein Samstag/Sonntag/Feiertag in NRW, also gilt der Bescheid am 25.05.2026 als bekannt gegeben. Einspruchsfrist: ein Monat ab Bekanntgabe (§355 Abs.1 AO), berechnet nach §108 Abs.1 AO i.V.m. §187 Abs.1, §188 Abs.2 BGB: Fristbeginn am Tag nach Bekanntgabe (26.05.2026), Fristende am Tag des Folgemonats mit gleicher Zahl wie der Bekanntgabetag, also 25.06.2026. Der 25.06.2026 ist ein Donnerstag und kein gesetzlicher Feiertag in NRW (Fronleichnam 2026 fällt auf den 04.06.2026), daher bleibt es bei diesem Datum.",
+          "due_date": "2026-06-25",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Receive tax refund",
+          "quote": "Die Auszahlung erfolgt in den nächsten Tagen auf das bekannte Konto.",
+          "computation": "The letter only states that payment will follow 'in den nächsten Tagen' (in the coming days) without giving a specific calendar date or a countable period, so no exact due date can be computed from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 793
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The refund payment date is only described as 'in den nächsten Tagen' (in the coming days) without a specific date, so the exact payment date cannot be determined from the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3184,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2355,
+      "cost_usd": 0.04188839999999999,
+      "duration_ms": 28837,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b6f8d2c652b5188057aa4cd487b630e2bba7e5cb33e7796b572ac4d752ee7b8a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-E1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-05-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Software Solutions GmbH\",\"document_date\":\"2025-05-12\",\"references\":[{\"label\":\"Employee no.\",\"value\":\"E-20417\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Upload tax ID, health insurance certificate and residence permit\",\"quote\":\"Please upload your tax identification number (Steuer-ID), your health insurance membership certificate and a copy of your residence permit to the HR portal no later than 6 June 2025.\",\"computation\":\"The letter states an explicit calendar date, 6 June 2025, as the deadline. This is a private employer's internal deadline, not a statutory period governed by BGB/VwVfG delivery-fiction rules, so no delivery-date calculation is needed. 6 June 2025 falls on a Friday, a normal business day in NW, so no weekend/holiday shift applies.\",\"due_date\":\"2025-06-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Software Solutions GmbH",
+      "document_date": "2025-05-12",
+      "references": [
+        {
+          "label": "Employee no.",
+          "value": "E-20417"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Upload tax ID, health insurance certificate and residence permit",
+          "quote": "Please upload your tax identification number (Steuer-ID), your health insurance membership certificate and a copy of your residence permit to the HR portal no later than 6 June 2025.",
+          "computation": "The letter states an explicit calendar date, 6 June 2025, as the deadline. This is a private employer's internal deadline, not a statutory period governed by BGB/VwVfG delivery-fiction rules, so no delivery-date calculation is needed. 6 June 2025 falls on a Friday, a normal business day in NW, so no weekend/holiday shift applies.",
+          "due_date": "2025-06-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1272,
+      "cache_read_tokens": 8104,
+      "cache_creation_tokens": 2701,
+      "cost_usd": 0.0251528,
+      "duration_ms": 11581,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

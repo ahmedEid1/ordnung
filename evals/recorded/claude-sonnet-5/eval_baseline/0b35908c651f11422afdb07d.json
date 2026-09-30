@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2618b881474aea22d7ca40e6a2e4002154b0c67277b0a9da400f6058e7452075\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-D2"
+    ],
+    "prompt_head": "Today is Friday, 2026-02-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"$FUNCTION_NAME\":\"StructuredOutput\",\"kind\":\"university\",\"sender_name\":\"Musterfield Exchange Programme\",\"document_date\":\"2026-02-02\",\"references\":[{\"label\":\"Applicant no.\",\"value\":\"MEP-2026-0381\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit completed housing form\",\"quote\":\"The completed housing form is due on 03/06/2026; forms that arrive later go on the waiting list.\",\"computation\":\"The letter gives the due date as a numeric date '03/06/2026' without stating a format convention. The sender writes in English from an address in Germany, so the format could be DD/MM/YYYY (3 June 2026, consistent with the German postal address) or MM/DD/YYYY (6 March 2026, consistent with English-language wording and no other German-format numeric dates in the letter for comparison, since the letter's own document date '02/02/2026' is day=month=02 and does not disambiguate the convention). Because the reading cannot be determined with certainty, the earliest plausible date is used: 6 March 2026 (MM/DD/YYYY reading). This is a fixed calendar date as printed, not a period to be counted, so no delivery-fiction or weekend/holiday rule applies; a calendar date is used as written even if it falls on a weekend.\",\"due_date\":\"2026-03-06\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The due date is printed as the numeric date '03/06/2026', which is ambiguous between DD/MM/YYYY (3 June 2026) and MM/DD/YYYY (6 March 2026); the earlier reading (6 March 2026) was used with low confidence — please check the original for a spelled-out date or contact the sender to confirm.\"]}",
+    "data": {
+      "$FUNCTION_NAME": "StructuredOutput",
+      "kind": "university",
+      "sender_name": "Musterfield Exchange Programme",
+      "document_date": "2026-02-02",
+      "references": [
+        {
+          "label": "Applicant no.",
+          "value": "MEP-2026-0381"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit completed housing form",
+          "quote": "The completed housing form is due on 03/06/2026; forms that arrive later go on the waiting list.",
+          "computation": "The letter gives the due date as a numeric date '03/06/2026' without stating a format convention. The sender writes in English from an address in Germany, so the format could be DD/MM/YYYY (3 June 2026, consistent with the German postal address) or MM/DD/YYYY (6 March 2026, consistent with English-language wording and no other German-format numeric dates in the letter for comparison, since the letter's own document date '02/02/2026' is day=month=02 and does not disambiguate the convention). Because the reading cannot be determined with certainty, the earliest plausible date is used: 6 March 2026 (MM/DD/YYYY reading). This is a fixed calendar date as printed, not a period to be counted, so no delivery-fiction or weekend/holiday rule applies; a calendar date is used as written even if it falls on a weekend.",
+          "due_date": "2026-03-06",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The due date is printed as the numeric date '03/06/2026', which is ambiguous between DD/MM/YYYY (3 June 2026) and MM/DD/YYYY (6 March 2026); the earlier reading (6 March 2026) was used with low confidence — please check the original for a spelled-out date or contact the sender to confirm."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1857,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1771,
+      "cost_usd": 0.026764,
+      "duration_ms": 19833,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

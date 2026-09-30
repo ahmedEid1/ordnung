@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"12d1e7989d55b3df4d26306bfe57376d2a222c8cfb169eefd42df834d7e7dcaf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Muster Abrechnungszentrum für Zahnärzte GmbH\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"ZA-26-118503\"},{\"label\":\"Patientennummer\",\"value\":\"40931\"}],\"amounts\":[417.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding dental billing invoice (2nd reminder)\",\"quote\":\"Wir erwarten Ihre Zahlung bis 21.08.2026.\",\"computation\":\"The letter states an explicit calendar due date of 21.08.2026 (a Friday, no weekend/holiday adjustment needed). This is the second reminder (2. Mahnung) after the original invoice (02.06.2026) and a first reminder (10.07.2026), so the payment covers the invoiced amount plus dunning fee (417,80 €).\",\"due_date\":\"2026-08-21\",\"confidence\":\"high\",\"amount\":417.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a second dunning notice (2. Mahnung) from a private billing agency, not from a court or authority; if the underlying dental invoice is disputed, contact them by phone before paying as the letter itself suggests, and verify the IBAN independently before transferring money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Muster Abrechnungszentrum für Zahnärzte GmbH",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "ZA-26-118503"
+        },
+        {
+          "label": "Patientennummer",
+          "value": "40931"
+        }
+      ],
+      "amounts": [
+        417.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding dental billing invoice (2nd reminder)",
+          "quote": "Wir erwarten Ihre Zahlung bis 21.08.2026.",
+          "computation": "The letter states an explicit calendar due date of 21.08.2026 (a Friday, no weekend/holiday adjustment needed). This is the second reminder (2. Mahnung) after the original invoice (02.06.2026) and a first reminder (10.07.2026), so the payment covers the invoiced amount plus dunning fee (417,80 €).",
+          "due_date": "2026-08-21",
+          "confidence": "high",
+          "amount": 417.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a second dunning notice (2. Mahnung) from a private billing agency, not from a court or authority; if the underlying dental invoice is disputed, contact them by phone before paying as the letter itself suggests, and verify the IBAN independently before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1536,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2072,
+      "cost_usd": 0.0242764,
+      "duration_ms": 13994,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

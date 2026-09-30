@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ccb9ce025cc6dcadb4ae6f26245a8096832262ac2f89d7f6fc1a63ca1ad3596f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-08-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"EuroClaim Forderungsmanagement Ltd.\",\"document_date\":\"2026-08-03\",\"references\":[{\"label\":\"Forderungs-Nr.\",\"value\":\"EC-DE-2026-481120\"}],\"amounts\":[179.4,84,24,287.4],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay disputed collection demand (Gesamtforderung)\",\"quote\":\"Überweisen Sie den Gesamtbetrag innerhalb von 72 Stunden, spätestens bis 06.08.2026, ausschließlich auf folgendes Treuhandkonto: IBAN LT71 7300 0101 2345 6789, Kontoinhaber: A. Petrauskas, Verwendungszweck EC-DE-2026-481120.\",\"computation\":\"Letter's own date is 03.08.2026 (Monday) and it states a fixed calendar deadline 'spätestens bis 06.08.2026', also framed as '72 Stunden' from the letter's date (03.08.2026 + 72h ≈ 06.08.2026, consistent with the printed date). The sender is a private company, not a German authority, so no statutory deemed-delivery (Zugangsfiktion) or §§187-193 BGB extension applies to a company-set deadline; the printed calendar date is taken as the due date. 06.08.2026 is a Thursday and not a public holiday in NW, so no weekend/holiday shift is needed. Note: the underlying claim, the extremely short period, and the payment route to a personal foreign account are strong indicators this demand is fraudulent (see warnings) — the date is reproduced as printed, not a recommendation to pay.\",\"due_date\":\"2026-08-06\",\"confidence\":\"medium\",\"amount\":287.4}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"Payment is directed to a personal account holder ('Kontoinhaber: A. Petrauskas') at a Lithuanian bank rather than to the collection company's own registered business account — routing debt payments through what looks like an individual's foreign account is a classic fraud pattern; do not pay without independently verifying the debt and the payee.\",\"The IBAN LT71 7300 0101 2345 6789 is a technically valid Lithuanian IBAN, but validity of an IBAN's checksum says nothing about who actually controls the account; a German Inkassobüro would normally use a German or at least a business account matching its own name.\",\"The sentence 'Ein Widerspruch ist zwecklos und verursacht weitere Kosten' (an objection is pointless and only creates further costs) is legally incorrect and appears designed to discourage the recipient from disputing the debt — a manipulation tactic, not a legal statement.\",\"The letter threatens immediate 'Kontopfändung' (account seizure), a negative SCHUFA entry, and criminal charges for 'Eingehungsbetrug' without any court judgment, Mahnbescheid or enforceable title — a private debt-collection agency cannot lawfully seize a bank account, and these threats are typical of fraudulent collection letters.\",\"The extremely short 72-hour payment window combined with severe threats and no supporting documentation (no copy of the alleged telephone contract, no original creditor invoice) is a pressure tactic; fake 'Gewinnspiel-Abonnement' (prize-draw subscription) debt-collection scams sent from foreign addresses are a known and documented fraud pattern in Germany.\",\"Before paying anything, the recipient should ask in writing for proof of the underlying contract (Grundgeschäft) and the collection agency's registration under the German Rechtsdienstleistungsgesetz (RDG), and should not rely on any bank details given in this letter without independent verification.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "EuroClaim Forderungsmanagement Ltd.",
+      "document_date": "2026-08-03",
+      "references": [
+        {
+          "label": "Forderungs-Nr.",
+          "value": "EC-DE-2026-481120"
+        }
+      ],
+      "amounts": [
+        179.4,
+        84,
+        24,
+        287.4
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay disputed collection demand (Gesamtforderung)",
+          "quote": "Überweisen Sie den Gesamtbetrag innerhalb von 72 Stunden, spätestens bis 06.08.2026, ausschließlich auf folgendes Treuhandkonto: IBAN LT71 7300 0101 2345 6789, Kontoinhaber: A. Petrauskas, Verwendungszweck EC-DE-2026-481120.",
+          "computation": "Letter's own date is 03.08.2026 (Monday) and it states a fixed calendar deadline 'spätestens bis 06.08.2026', also framed as '72 Stunden' from the letter's date (03.08.2026 + 72h ≈ 06.08.2026, consistent with the printed date). The sender is a private company, not a German authority, so no statutory deemed-delivery (Zugangsfiktion) or §§187-193 BGB extension applies to a company-set deadline; the printed calendar date is taken as the due date. 06.08.2026 is a Thursday and not a public holiday in NW, so no weekend/holiday shift is needed. Note: the underlying claim, the extremely short period, and the payment route to a personal foreign account are strong indicators this demand is fraudulent (see warnings) — the date is reproduced as printed, not a recommendation to pay.",
+          "due_date": "2026-08-06",
+          "confidence": "medium",
+          "amount": 287.4
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "Payment is directed to a personal account holder ('Kontoinhaber: A. Petrauskas') at a Lithuanian bank rather than to the collection company's own registered business account — routing debt payments through what looks like an individual's foreign account is a classic fraud pattern; do not pay without independently verifying the debt and the payee.",
+        "The IBAN LT71 7300 0101 2345 6789 is a technically valid Lithuanian IBAN, but validity of an IBAN's checksum says nothing about who actually controls the account; a German Inkassobüro would normally use a German or at least a business account matching its own name.",
+        "The sentence 'Ein Widerspruch ist zwecklos und verursacht weitere Kosten' (an objection is pointless and only creates further costs) is legally incorrect and appears designed to discourage the recipient from disputing the debt — a manipulation tactic, not a legal statement.",
+        "The letter threatens immediate 'Kontopfändung' (account seizure), a negative SCHUFA entry, and criminal charges for 'Eingehungsbetrug' without any court judgment, Mahnbescheid or enforceable title — a private debt-collection agency cannot lawfully seize a bank account, and these threats are typical of fraudulent collection letters.",
+        "The extremely short 72-hour payment window combined with severe threats and no supporting documentation (no copy of the alleged telephone contract, no original creditor invoice) is a pressure tactic; fake 'Gewinnspiel-Abonnement' (prize-draw subscription) debt-collection scams sent from foreign addresses are a known and documented fraud pattern in Germany.",
+        "Before paying anything, the recipient should ask in writing for proof of the underlying contract (Grundgeschäft) and the collection agency's registration under the German Rechtsdienstleistungsgesetz (RDG), and should not rely on any bank details given in this letter without independent verification."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4723,
+      "cache_read_tokens": 15331,
+      "cache_creation_tokens": 3848,
+      "cost_usd": 0.06569620000000001,
+      "duration_ms": 52612,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "LT717300010123456789"
+        },
+        "result": "{\"iban\":\"LT71 7300 0101 2345 6789\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"LT\",\"name\":\"Lithuania\"},\"length\":{\"expected\":20,\"actual\":20},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

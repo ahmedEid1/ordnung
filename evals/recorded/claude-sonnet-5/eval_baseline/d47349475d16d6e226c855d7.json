@@ -1,0 +1,129 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"01ce5fc8e8c63f03baa3a5cb31d499898ba22e5946227005f0849a2ab4d5b2cd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-fine_bussgeld-B1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-09-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Musterland – Bußgeldstelle\",\"document_date\":\"2026-09-15\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"7.3-OWi-2026-88213\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-MB 77\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen – schriftlich oder zur Niederschrift beim Kreis Musterland – Bußgeldstelle.\",\"computation\":\"The attached Postzustellungsurkunde (formal service, § 182 ZPO) shows 'zugestellt am 19.09.2026' (a Saturday). Formal service has no deemed-delivery fiction — the actual date on the delivery certificate is the anchor. Under § 187 Abs. 1 BGB the day of delivery (19.09.) is not counted; the two-week period (§ 43 StPO via § 46 Abs. 1 OWiG, § 67 Abs. 1 OWiG) runs from 20.09.2026 and would end Sat 03.10.2026, which is a public holiday (Tag der Deutschen Einheit) in NW (and nationwide). Under § 43 StPO the period is extended to the next working day: Monday 05.10.2026.\",\"due_date\":\"2026-10-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and costs\",\"quote\":\"Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.\",\"computation\":\"Rechtskraft (finality) sets in only if no Einspruch is filed within the two-week objection period ending 05.10.2026; finality then takes effect the following day, 06.10.2026. Two weeks after that (day of Rechtskraft not counted per § 187 BGB, period ends per § 188 BGB) is Tuesday 20.10.2026, a normal working day in NW, so no further shift applies. This date assumes no Einspruch is lodged; if one is filed, Rechtskraft — and this payment deadline — do not arise on this schedule.\",\"due_date\":\"2026-10-20\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (20.10.2026) is derived, not printed: it assumes the Bescheid becomes final because no Einspruch is filed by 05.10.2026; filing an Einspruch removes this payment deadline and starts a court process instead.\",\"The letter itself is dated 15.09.2026 but was formally served (Zustellungsurkunde) only on 19.09.2026; the two-week Einspruch period is calculated from the actual service date shown on the delivery certificate, not from the letter's printed date.\",\"Before paying, verify the IBAN (DE69 4145 0075 0000 0200 01, Sparkasse Musterland) and the Aktenzeichen match a genuine notice from Kreis Musterland – Bußgeldstelle, since Bußgeld scams sometimes imitate official fine notices.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Musterland – Bußgeldstelle",
+      "document_date": "2026-09-15",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "7.3-OWi-2026-88213"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-MB 77"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen – schriftlich oder zur Niederschrift beim Kreis Musterland – Bußgeldstelle.",
+          "computation": "The attached Postzustellungsurkunde (formal service, § 182 ZPO) shows 'zugestellt am 19.09.2026' (a Saturday). Formal service has no deemed-delivery fiction — the actual date on the delivery certificate is the anchor. Under § 187 Abs. 1 BGB the day of delivery (19.09.) is not counted; the two-week period (§ 43 StPO via § 46 Abs. 1 OWiG, § 67 Abs. 1 OWiG) runs from 20.09.2026 and would end Sat 03.10.2026, which is a public holiday (Tag der Deutschen Einheit) in NW (and nationwide). Under § 43 StPO the period is extended to the next working day: Monday 05.10.2026.",
+          "due_date": "2026-10-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and costs",
+          "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
+          "computation": "Rechtskraft (finality) sets in only if no Einspruch is filed within the two-week objection period ending 05.10.2026; finality then takes effect the following day, 06.10.2026. Two weeks after that (day of Rechtskraft not counted per § 187 BGB, period ends per § 188 BGB) is Tuesday 20.10.2026, a normal working day in NW, so no further shift applies. This date assumes no Einspruch is lodged; if one is filed, Rechtskraft — and this payment deadline — do not arise on this schedule.",
+          "due_date": "2026-10-20",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (20.10.2026) is derived, not printed: it assumes the Bescheid becomes final because no Einspruch is filed by 05.10.2026; filing an Einspruch removes this payment deadline and starts a court process instead.",
+        "The letter itself is dated 15.09.2026 but was formally served (Zustellungsurkunde) only on 19.09.2026; the two-week Einspruch period is calculated from the actual service date shown on the delivery certificate, not from the letter's printed date.",
+        "Before paying, verify the IBAN (DE69 4145 0075 0000 0200 01, Sparkasse Musterland) and the Aktenzeichen match a genuine notice from Kreis Musterland – Bußgeldstelle, since Bußgeld scams sometimes imitate official fine notices."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4199,
+      "cache_read_tokens": 28143,
+      "cache_creation_tokens": 7961,
+      "cost_usd": 0.0794746,
+      "duration_ms": 43596,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-09-19",
+            "delivery_rule": "none",
+            "nature": "objection",
+            "legal_basis": "§ 67 OWiG",
+            "text": "Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen"
+          },
+          "document_date": "2026-09-15",
+          "received_date": "2026-09-19",
+          "sender_kind": "authority",
+          "sender_name": "Kreis Musterland – Bußgeldstelle",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-10-05\",\"weekday\":\"Monday\",\"send_by\":\"2026-09-29\",\"summary\":\"Two weeks after delivery on Sat 19 Sep 2026 (as stated on the letter) is Sat 3 Oct 2026, a public holiday, Tag der Deutschen Einheit, so the deadline moves to Mon 5 Oct 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 19 Sep 2026\",\"date\":\"2026-09-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Sat 3 Oct 2026\",\"date\":\"2026-10-03\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 3 Oct 2026 is a public holiday, Tag der Deutschen Einheit, so the deadline moves to Mon 5 Oct 2026\",\"date\":\"2026-10-05\",\"rule_id\":\"stpo_43\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\"},{\"label\":\"Send by Tue 29 Sep 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-09-29\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"owig_67\",\"title\":\"Objection to a fine (Einspruch gegen Bußgeldbescheid): two weeks\",\"citation\":\"§ 67 Abs. 1 OWiG; § 43 StPO\",\"url\":\"https://www.gesetze-im-internet.de/owig_1968/__67.html\"},{\"id\":\"stpo_43\",\"title\":\"Week periods in fine and criminal proceedings\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\",\"url\":\"https://www.gesetze-im-internet.de/stpo/__43.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-09-20\",\"letter_date\":\"2026-09-15\",\"received_date\":\"2026-09-19\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE69 4145 0075 0000 0200 01"
+        },
+        "result": "{\"iban\":\"DE69 4145 0075 0000 0200 01\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"41450075\"},\"account_number\":\"0000020001\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-10-06",
+            "nature": "payment",
+            "legal_basis": "§§ 187, 188 BGB (analog)",
+            "text": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft"
+          },
+          "document_date": "2026-09-15",
+          "sender_kind": "authority",
+          "sender_name": "Kreis Musterland – Bußgeldstelle",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-10-20\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-10-19\",\"summary\":\"Two weeks after Tue 6 Oct 2026 is Tue 20 Oct 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 6 Oct 2026\",\"date\":\"2026-10-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 20 Oct 2026\",\"date\":\"2026-10-20\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 20 Oct 2026 is a working day, so it stays\",\"date\":\"2026-10-20\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 19 Oct 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-10-19\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-09-20\",\"letter_date\":\"2026-09-15\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8f811aaf63b7492e4495629006f8b412869a7a8aeb25b658bf58fede91d62487\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-04-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"ZFB Zentrale Forderungsbeitreibung s.r.o.\",\"document_date\":\"2025-04-07\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZFB-25-0407-118\"}],\"amounts\":[149.9,96,22.8,268.7],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay disputed collection claim (Glücksmuster Premium subscription)\",\"quote\":\"Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.\",\"computation\":\"The letter itself gives a fixed calendar date rather than a period to be counted: 'bis spätestens 11.04.2025'. This is a private commercial collection agency, not a German authority, so no statutory deemed-delivery or BGB period-counting rules apply; the stated date is taken as written. 11.04.2025 is a Friday and not a public holiday in NW, so no weekend/holiday shift is needed. To actually reach the account by the stated deadline, a bank transfer should be sent about one business day earlier (§ 675s BGB), i.e. by 2025-04-10, but the obligation's due date as stated in the letter is 2025-04-11.\",\"due_date\":\"2025-04-11\",\"confidence\":\"high\",\"amount\":268.7}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private, foreign-registered debt collection agency (Slovak s.r.o.) sending a very short 4-day deadline and threatening immediate wage garnishment and credit-bureau entries 'ohne weitere Ankündigung' — these are classic pressure tactics of aggressive or fraudulent Inkasso letters; a genuine 'Vollstreckungsbescheid' can only follow a court-run Mahnverfahren, it cannot simply be 'beantragt' by the collector the day after an unpaid deadline, and no bailiff can seize wages without a court-issued enforceable title first.\",\"The payment account (IBAN SK20 1100 0000 0029 4512 3456, Slovakia) is held by 'R. Horváth', a person, not by 'ZFB Zentrale Forderungsbeitreibung s.r.o.' or by the claimed creditor 'Glücksmuster Entertainment Ltd.' — paying a private individual's foreign account for an alleged German consumer debt is a strong scam indicator and should be verified independently before any payment.\",\"The sentence 'Einwände gegen die Forderung werden nicht mehr bearbeitet' (objections will no longer be processed) is not correct under German law — a debtor can dispute a claim at any time, including after this deadline and even after a Mahnbescheid by filing a Widerspruch/Einspruch; this looks like an attempt to discourage the recipient from questioning the debt.\",\"The recipient's address ('35039 Musterbergen') and the alleged creditor's name ('Glücksmuster Entertainment Ltd.') read like generic template placeholders rather than real names, which together with the other signs above raises the possibility that this whole claim is fabricated or templated; the underlying subscription and its amount should be verified against the recipient's own records before paying anything.\",\"The letter contains no genuine Rechtsbehelfsbelehrung (legal remedy instructions) despite threatening formal enforcement steps, which is inconsistent with a legitimate pre-enforcement notice from a court or bailiff.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "ZFB Zentrale Forderungsbeitreibung s.r.o.",
+      "document_date": "2025-04-07",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZFB-25-0407-118"
+        }
+      ],
+      "amounts": [
+        149.9,
+        96,
+        22.8,
+        268.7
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay disputed collection claim (Glücksmuster Premium subscription)",
+          "quote": "Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.",
+          "computation": "The letter itself gives a fixed calendar date rather than a period to be counted: 'bis spätestens 11.04.2025'. This is a private commercial collection agency, not a German authority, so no statutory deemed-delivery or BGB period-counting rules apply; the stated date is taken as written. 11.04.2025 is a Friday and not a public holiday in NW, so no weekend/holiday shift is needed. To actually reach the account by the stated deadline, a bank transfer should be sent about one business day earlier (§ 675s BGB), i.e. by 2025-04-10, but the obligation's due date as stated in the letter is 2025-04-11.",
+          "due_date": "2025-04-11",
+          "confidence": "high",
+          "amount": 268.7
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private, foreign-registered debt collection agency (Slovak s.r.o.) sending a very short 4-day deadline and threatening immediate wage garnishment and credit-bureau entries 'ohne weitere Ankündigung' — these are classic pressure tactics of aggressive or fraudulent Inkasso letters; a genuine 'Vollstreckungsbescheid' can only follow a court-run Mahnverfahren, it cannot simply be 'beantragt' by the collector the day after an unpaid deadline, and no bailiff can seize wages without a court-issued enforceable title first.",
+        "The payment account (IBAN SK20 1100 0000 0029 4512 3456, Slovakia) is held by 'R. Horváth', a person, not by 'ZFB Zentrale Forderungsbeitreibung s.r.o.' or by the claimed creditor 'Glücksmuster Entertainment Ltd.' — paying a private individual's foreign account for an alleged German consumer debt is a strong scam indicator and should be verified independently before any payment.",
+        "The sentence 'Einwände gegen die Forderung werden nicht mehr bearbeitet' (objections will no longer be processed) is not correct under German law — a debtor can dispute a claim at any time, including after this deadline and even after a Mahnbescheid by filing a Widerspruch/Einspruch; this looks like an attempt to discourage the recipient from questioning the debt.",
+        "The recipient's address ('35039 Musterbergen') and the alleged creditor's name ('Glücksmuster Entertainment Ltd.') read like generic template placeholders rather than real names, which together with the other signs above raises the possibility that this whole claim is fabricated or templated; the underlying subscription and its amount should be verified against the recipient's own records before paying anything.",
+        "The letter contains no genuine Rechtsbehelfsbelehrung (legal remedy instructions) despite threatening formal enforcement steps, which is inconsistent with a legitimate pre-enforcement notice from a court or bailiff."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 6547,
+      "cache_read_tokens": 28826,
+      "cache_creation_tokens": 8628,
+      "cost_usd": 0.1057592,
+      "duration_ms": 62041,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "SK20 1100 0000 0029 4512 3456"
+        },
+        "result": "{\"iban\":\"SK20 1100 0000 0029 4512 3456\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"SK\",\"name\":\"Slovakia\"},\"length\":{\"expected\":24,\"actual\":24},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Slovakia, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 9 October 2025: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2025-04-11",
+            "nature": "payment",
+            "shift_rule": "none",
+            "text": "Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto ... zu überweisen."
+          },
+          "document_date": "2025-04-07",
+          "sender_kind": "company",
+          "sender_name": "ZFB Zentrale Forderungsbeitreibung s.r.o.",
+          "today": "2025-04-09"
+        },
+        "result": "{\"due_date\":\"2025-04-11\",\"weekday\":\"Friday\",\"send_by\":\"2025-04-10\",\"summary\":\"The date given is Fri 11 Apr 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Fri 11 Apr 2025\",\"date\":\"2025-04-11\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Thu 10 Apr 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-04-10\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-04-09\",\"letter_date\":\"2025-04-07\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}
