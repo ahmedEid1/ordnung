@@ -139,6 +139,8 @@ Key additions in v2 (to implement in models.py):
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
   `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
+- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude); the
+  per-purpose `AppSettings.models` aliases only key the cache and the recordings (§ 7).
 - `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
   (an e-mail's attachments and what became of each) and `DocumentDetail.email` (the e-mail a letter
   came attached to); `FolderStatus`, `FolderPickup` (`GET /api/folder`).
@@ -362,6 +364,14 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   401/403 → `ClaudeAuthError`; 429 / usage-limit text → `ClaudeRateLimited(reset_at)`; 5xx/529 →
   transient (retry ×2 with backoff); `error_max_budget_usd` → `LLMError`; missing or invalid
   structured output → `ClaudeBadOutput` (1 retry); no JSON at all → `LLMError` with stderr tail.
+- **Model** (`--model M`), decided in one place (`ClaudeCLIBackend.model_for`), in this order:
+  `ORDNUNG_CLAUDE_MODEL` (the benchmarks and the demo recorder pin one id for every call) >
+  `AppSettings.model` (Settings → Claude; `claude-sonnet-5` by default — a pinned id, an alias moves
+  with releases; an id or alias as Claude Code takes it: letters, digits, dots, dashes; read when the
+  call is made, so a save counts from the next call) > the request's own model
+  (`settings.models.<purpose>`, an alias that keys the cache and the recordings; the doctor probe's
+  `haiku`). The usage log and the trace name the model that answered (`modelUsage`), else the one
+  the call named. The demo's settings are the defaults, so it records with the default model.
 - **Lanes**: interactive (ask, draft, capture, brief; semaphore 1) and background (transcribe,
   extract, review; semaphore `settings.concurrency`, default 2).
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
@@ -1068,7 +1078,8 @@ letters they saw, a held e-mail's held attachments included; ids that no longer 
 `skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
 `documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
 never read since, wait again; an e-mail with the attachments kept private with it; a letter's
-`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read`; a waiting letter can't
+`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read` and `model` (trimmed;
+letters, digits, dots and dashes, else 422 with the reason); a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
 or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
@@ -1200,7 +1211,9 @@ Pages:
 9. **Settings** — profile & address, region (affects holidays), language, reminders (lead times,
    browser notifications, the morning desktop notification with a preview, a test and "start
    Ordnung when you log in"), models, privacy statement + "Privacy & AI usage" (activity, tokens,
-   API-equivalent cost, cache hits), Claude status (doctor), "How dates are computed" (rules
+   API-equivalent cost, cache hits), Claude status (doctor) with the model every call runs on
+   (Sonnet 5 by default, the server's reason under the field; the demo and the benchmarks keep their
+   recorded model), "How dates are computed" (rules
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
