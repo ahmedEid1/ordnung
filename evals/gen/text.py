@@ -122,6 +122,12 @@ _FEMININE = (
     "Zentrale ",
     "Polizei ",
     "Allgemeine ",
+    "Kreisverwaltung ",
+    "Agentur für Arbeit",
+    "Unfallkasse",
+    "Pflegekasse",
+    "Beispiel Ersatzkasse",
+    "BKK ",
 )
 _ADJECTIVE_DATIVE = {"Allgemeine ": "Allgemeinen ", "Zentrale ": "Zentralen "}
 
