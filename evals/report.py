@@ -540,8 +540,9 @@ def render_markdown(
     it is shown next to the held-out numbers, never in their place. ``prompt_runs`` are later runs of
     Ordnung alone with the extraction prompt the app uses now (new recordings, the same letters), shown
     in a section of their own with ``prompt_note``, the written reason for the new prompt.
-    ``holdout_run`` is the run of every condition on the holdout split (recorded once, prompts frozen),
-    shown in a section and table of its own beside the published run (see :func:`check_holdout_run`).
+    ``holdout_run`` is the run on the holdout split (recorded once, prompts frozen: Ordnung alone or
+    with the baselines), shown in a section and table of its own beside the published run (see
+    :func:`check_holdout_run`).
     """
     if not runs:
         return render_pending_markdown()
@@ -606,8 +607,12 @@ def _intro(
             "(“The prompt the app uses now”); the numbers above stay those of the published run."
         )
     if holdout_run is not None:
+        recorded = _conditions(holdout_run)
+        every = set(CONDITIONS) <= set(recorded)
+        who = "Every condition" if every else " and ".join(_label(c) for c in recorded)
+        verb = "was" if every or len(recorded) == 1 else "were"
         added += (
-            f"\n> Every condition was also recorded once on the fresh holdout split ({holdout_run['meta'].get('date')}): "
+            f"\n> {who} {verb} also recorded once on the fresh holdout split ({holdout_run['meta'].get('date')}): "
             "those are the held-out numbers (“Held-out run: the holdout split”)."
         )
     return f"""# Benchmark: who gets German deadlines right?
@@ -808,7 +813,8 @@ the tool results recorded when they ran.
 
 
 def check_holdout_run(results: Mapping[str, Any]) -> None:
-    """A held-out run is one complete run of every condition on the holdout split; raises ``ValueError`` if not."""
+    """A held-out run is one complete run on the holdout split, of Ordnung alone or with the baselines;
+    raises ``ValueError`` if not."""
     meta = results["meta"]
     if meta.get("split") != HOLDOUT_SPLIT:
         raise ValueError(
@@ -816,9 +822,10 @@ def check_holdout_run(results: Mapping[str, Any]) -> None:
         )
     if meta.get("partial"):
         raise ValueError("a held-out run covers the whole holdout split; this run was filtered")
-    missing = [condition for condition in CONDITIONS if condition not in results["metrics"]]
-    if missing:
-        raise ValueError(f"a held-out run records every condition at once; missing: {', '.join(missing)}")
+    if "ordnung" not in results["metrics"]:
+        raise ValueError(
+            "a held-out run records Ordnung (alone or with the baselines); this run has no Ordnung"
+        )
 
 
 def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -> str:
@@ -870,6 +877,9 @@ def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -
     if meta.get("model") != published["meta"].get("model"):
         model += f" (the published run used `{published['meta'].get('model')}`)"
     warning = f"\n\n> **Incomplete run.** {_unanswered_note(holdout)}" if _has_errors(holdout) else ""
+    backend = {"replay": "recorded outputs (replay)", "live": "live model calls"}.get(
+        meta.get("backend", ""), meta.get("backend", "")
+    )
     paired = f"Paired differences on the holdout letters:\n\n{paired}" if paired else ""
     accuracy = holdout["metrics"]["ordnung"]["due_date_accuracy"]
     wrong = round(accuracy["n"] - accuracy["k"])
@@ -879,24 +889,21 @@ def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -
         misses = f"Ordnung got {wrong} dated item(s) of the holdout split wrong; from the failure gallery:\n\n{misses}"
     else:
         misses = f"Ordnung got {wrong} dated item(s) of the holdout split wrong (see the results file)."
+    body = "\n\n".join(part for part in (table, paired, misses) if part)
     return f"""## Held-out run: the holdout split
 
-The test split was meant to be held out, but extraction prompts 9, 10 and 11 were each recorded on it,
-so it no longer is. The holdout split is a fresh sample of the same template families (variants E and
+The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
+it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
 **The holdout letters were written after prompt version 11 and before any holdout recording, and are
 recorded once with frozen prompts.** These are the benchmark's held-out numbers; elsewhere on this
 page, “the held-out run” is the first recording on the test split.
 
-> Recorded on {meta.get("date")} ({meta.get("backend")}), model {model}, commit `{meta.get("commit") or "?"}`{_commit_note(dict(meta))}:
+> Run on {meta.get("date")} from {backend}, model {model}, commit `{meta.get("commit") or "?"}`{_commit_note(dict(meta))}:
 > {meta.get("entries")} letters ({meta.get("photos")} phone photos, {meta.get("adversarial")} adversarial),
 > {meta.get("scored_items")} required items with a known date.{warning}
 
-{table}
-
-{paired}
-
-{misses}"""
+{body}"""
 
 
 def _prompt_section(
@@ -1430,7 +1437,7 @@ day it is read) and, where the letterhead names a Land, a holiday region.
 the test and holdout splits each have their own adversarial letters, dev has none; no
 deadline-bearing sentence of one split recurs in another. Prompts were tuned on dev letters and the
 published numbers are the test split — but the test split is no longer held-out: extraction prompts
-9, 10 and 11 were each recorded on it. The holdout split is a fresh sample of the same families and
+9 to 12 were each recorded on it. The holdout split is a fresh sample of the same families and
 attack classes (new senders, wording, layout, dates and amounts): the holdout letters were written
 after prompt version 11 and before any holdout recording, and are recorded once with frozen prompts.
 No split is blind: the same project wrote the letters, the labels, the prompts and the rules engine
@@ -1938,7 +1945,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--holdout-run",
         type=Path,
         metavar="RUN.json",
-        help="the run of every condition on the holdout split (recorded once), shown in its own section",
+        help="the run on the holdout split (recorded once; Ordnung alone or every condition), shown in its "
+        "own section",
     )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:

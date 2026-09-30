@@ -1189,11 +1189,25 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     # the page's own text documents the split
     method = report.method_section()
     assert "E/F the holdout split" in method and "recorded once with frozen prompts" in method
-    # only one complete run of every condition on the holdout split qualifies
+    # a run of Ordnung alone qualifies too: the page says what was recorded and renders what the file holds
+    alone = {
+        **holdout,
+        "meta": {**holdout["meta"], "conditions": ["ordnung"]},
+        "metrics": {"ordnung": holdout["metrics"]["ordnung"]},
+        "comparisons": {},
+    }
+    alone_page = report.render_markdown([published], holdout_run=alone)
+    alone_section = alone_page.split("## Held-out run: the holdout split", 1)[1].split("\n## ", 1)[0]
+    assert "Ordnung was also recorded once on the fresh holdout split" in alone_page.split("\n\n")[1]
+    assert "Every condition" not in alone_page.split("\n\n")[1]
+    assert "| **Ordnung** |" in alone_section and "| **LLM only** |" not in alone_section
+    assert "Paired differences" not in alone_section and "`holdout-tax_assessment-F1`" in alone_section
+    assert "> Run on 2026-09-25 from " in alone_section and ", model `sonnet`, commit `" in alone_section
+    # only one complete run on the holdout split with Ordnung in it qualifies
     not_holdout = {**holdout, "meta": {**holdout["meta"], "split": "test"}}
     filtered = {**holdout, "meta": {**holdout["meta"], "partial": True}}
-    three = {**holdout, "metrics": {c: m for c, m in holdout["metrics"].items() if c != "llm_rules_tool"}}
-    for bad in (not_holdout, filtered, three):
+    no_ordnung = {**holdout, "metrics": {c: m for c, m in holdout["metrics"].items() if c != "ordnung"}}
+    for bad in (not_holdout, filtered, no_ordnung):
         with pytest.raises(ValueError):
             report.render_markdown([published], holdout_run=bad)
     # the command line renders it from the results files, and never makes a holdout run the headline
