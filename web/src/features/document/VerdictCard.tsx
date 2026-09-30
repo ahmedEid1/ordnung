@@ -77,7 +77,6 @@ import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations, NB_HYPHEN, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
-import { focusFirstHeading } from "./HeldCard";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -193,9 +192,10 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
  * A private letter nobody read: Ordnung can't say what it asks, so it never says "nothing to do".
  * One kept private while it waited for the person (the server's `can_wait_again`) can wait again (its
  * "Keep private" undone): from there the person can let Claude read it. The waiting card then takes
- * this card's place, so focus moves to its heading; a failed undo leaves focus on the button.
+ * this card's place, so focus moves to its heading (`onAnswered`: the page moves it once that card is
+ * rendered); a failed undo leaves focus on the button.
  */
-function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWaitAgain: boolean }) {
+function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: () => void }) {
   const wait = useWaitAgain();
   return (
     <>
@@ -221,7 +221,7 @@ function NotRead({ doc, canWaitAgain }: { doc: DocumentDetail["document"]; canWa
                     return;
                   }
                   toast({ title: "It's back with the letters not read yet", description: "Choose “Read it” to have Claude read it.", tone: "info" });
-                  focusFirstHeading();
+                  onAnswered?.();
                 })
                 .catch(() => undefined) // the request's own error toast says what went wrong
             }
@@ -240,9 +240,11 @@ export interface VerdictCardProps {
   primary: Item | null;
   /** Scroll to the "When did this letter arrive?" question. */
   onAskArrival?: () => void;
+  /** "Undo “Keep private”" went through: the card goes, and focus belongs to the waiting card that takes its place. */
+  onAnswered?: () => void;
 }
 
-export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps) {
+export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: VerdictCardProps) {
   const doc = detail.document;
   const today = useToday();
   const scam = scamSuggestion(detail);
@@ -481,7 +483,7 @@ export function VerdictCard({ detail, primary, onAskArrival }: VerdictCardProps)
             </div>
           </div>
         ) : doc.ai_private && !doc.ai_processed_at ? (
-          <NotRead doc={doc} canWaitAgain={detail.can_wait_again} />
+          <NotRead doc={doc} canWaitAgain={detail.can_wait_again} onAnswered={onAnswered} />
         ) : (
           <p className="flex items-start gap-2 text-[15px] font-medium leading-snug text-ink">
             <CircleCheckBig className="mt-0.5 size-[18px] shrink-0 text-ok" aria-hidden />

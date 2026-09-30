@@ -5,9 +5,10 @@
  * attachments that still wait go with it. It takes the verdict card's place — and its page heading —
  * until the person answers.
  *
- * The answer's toast and the focus move run from the request's own promise, so they happen even
- * though the card is gone by then (the letter's refetch can land before the answer returns). While an
- * answer runs its button keeps focus, so a failed one leaves the person where they were.
+ * The answer's toast runs from the request's own promise, so it happens even though the card is gone
+ * by then (the letter's refetch can land before the answer returns); the focus move to the card that
+ * replaces this one is the page's (`onAnswered`: DocumentView moves it once that card is rendered).
+ * While an answer runs its button keeps focus, so a failed one leaves the person where they were.
  */
 import { Lock, Sparkles } from "lucide-react";
 import type { DocumentDetail } from "@/api/types";
@@ -48,22 +49,19 @@ export function LetterTitle({ title, filename }: { title: string | null; filenam
 /** The detail-page title size: a step smaller on phones for a title with a very long word. */
 export const detailTitleSize = (title: string) => (hasLongWord(title) ? "text-detail-long" : "text-detail");
 
-/** Once answered the card goes: focus moves to the page's new first heading (never to the page). */
-export function focusFirstHeading() {
-  requestAnimationFrame(() => {
-    const h = document.querySelector<HTMLElement>("main h1, main h2");
-    if (!h) return;
-    if (!h.hasAttribute("tabindex")) h.setAttribute("tabindex", "-1");
-    h.focus({ preventScroll: true });
-  });
-}
-
 /** How many of an e-mail's attachments still wait (they are answered with it). */
 export function waitingAttachments(detail: Pick<DocumentDetail, "attachments">): number {
   return detail.attachments.filter((a) => a.doc_id && a.status === "held").length;
 }
 
-export function HeldCard({ detail, className }: { detail: DocumentDetail; className?: string }) {
+export interface HeldCardProps {
+  detail: DocumentDetail;
+  className?: string;
+  /** An answer went through: the card goes, and focus belongs to the one that takes its place. */
+  onAnswered?: () => void;
+}
+
+export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
   const doc = detail.document;
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
@@ -77,7 +75,7 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
       .mutateAsync([doc.id])
       .then(() => {
         toast.success("Claude is reading it", { description: "You'll see every step here." });
-        focusFirstHeading();
+        onAnswered?.();
       })
       .catch(() => undefined); // the request's own error toast says what went wrong
 
@@ -96,7 +94,7 @@ export function HeldCard({ detail, className }: { detail: DocumentDetail; classN
                   .catch(() => undefined)
             : undefined,
         });
-        focusFirstHeading();
+        onAnswered?.();
       })
       .catch(() => undefined);
 

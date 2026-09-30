@@ -13,7 +13,7 @@
  * The letter's content is split around the pages (verdict first, then the pages on phones, then the
  * rest), so "The letter" controls two panels: its verdict and warnings, and the rest of the letter.
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useSearchParams } from "react-router";
 import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
@@ -84,6 +84,24 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const neverRead = busy && !doc.kind && !doc.title;
   const held = doc.status === "held";
 
+  // an answer to a waiting letter ("Keep private", "Read it with Claude", "Undo “Keep private”") replaces its card with
+  // another's: once the letter's new state is rendered, focus moves to the page's new first heading (never to the page).
+  // The answer resolves before its refetch is rendered (the query tells its listeners a task later), and on a busy
+  // computer the next frame comes before that render: a focus moved on the frame landed on the old heading and fell to
+  // the page with it (e2e: "focus never falls to the page")
+  const answered = useRef(false);
+  const onAnswered = useCallback(() => {
+    answered.current = true;
+  }, []);
+  useEffect(() => {
+    if (!answered.current) return;
+    answered.current = false;
+    const h = document.querySelector<HTMLElement>("main h1, main h2");
+    if (!h) return;
+    if (!h.hasAttribute("tabindex")) h.setAttribute("tabindex", "-1");
+    h.focus({ preventScroll: true });
+  }, [doc.status]);
+
   // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
   // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)
   const location = useLocation();
@@ -117,7 +135,11 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
           {/* the letter's panel is its verdict (or waiting card) and warnings; the rest of the letter follows the pages */}
           <TabPanel id="doc-view" value="letter" current={view} className="space-y-4 empty:hidden">
             {busy ? <ProcessingCard doc={doc} /> : null}
-            {held ? <HeldCard detail={detail} /> : !neverRead ? <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} /> : null}
+            {held ? (
+              <HeldCard detail={detail} onAnswered={onAnswered} />
+            ) : !neverRead ? (
+              <VerdictCard detail={detail} primary={primary} onAskArrival={askArrival} onAnswered={onAnswered} />
+            ) : null}
             {!neverRead && !held ? <DocumentWarnings detail={detail} /> : null}
           </TabPanel>
         </div>

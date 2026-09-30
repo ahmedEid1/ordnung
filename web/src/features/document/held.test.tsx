@@ -169,6 +169,25 @@ describe("answering on the letter's page", () => {
     await waitFor(() => expect(within(card).getByRole("heading", { level: 1 })).toHaveFocus());
   });
 
+  it("the focus move waits for the waiting card: a frame before its render (a busy computer) doesn't drop focus to the page", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
+    renderPage("doc_folder_scan");
+    const undo = await screen.findByRole("button", { name: "Undo “Keep private”" });
+    // the answer resolves before its refetch is rendered; on a busy computer the next frame comes before that render,
+    // so a focus moved on it would land on the verdict's heading, which goes with the card (and focus with it)
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(performance.now());
+      return 0;
+    });
+    await user.click(undo);
+    await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    await waitFor(() => expect(within(card).getByRole("heading", { level: 1 })).toHaveFocus());
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it("an e-mail waits again with the attachment kept private with it", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();
