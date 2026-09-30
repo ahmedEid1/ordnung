@@ -18,8 +18,12 @@ Policy (ADR 0007):
 * **An action asks for a transfer** when it names one, or a standing order (*Dauerauftrag*) the person
   sets up or changes: their own transfer, every period ("Adjust your standing order to the new total
   rent unless you use direct debit"), so it gets a send-by day. A standing order its clause tells them
-  to end — cancel, stop, delete, no longer needed (*löschen*, *kündigen*, *einstellen*, *nicht mehr*:
-  :data:`_ORDER_ENDED`), because the payee now collects — asks for none.
+  to end, because the payee now collects, asks for none: an end word — cancel, stop, end, discontinue,
+  delete, no longer, not … anymore, don't need (*löschen*, *kündigen*, *nicht mehr*: :data:`_ORDER_ENDED`)
+  — at most three words from it and nearer to it than to a word of the debit (direct debit, collect,
+  mandate, *Lastschrift*, *Einzug*: :data:`_ORDER_DEBIT`), so "set up a standing order, as we no longer
+  collect by direct debit" sets one up. *Einstellen* ("Dauerauftrag einstellen", "stellen Sie ihn ein")
+  is an end word too, unless its clause sets the order *auf* something ("stellen Sie ihn auf 670 € ein").
 * **A letter's sentence speaks of a direct debit** (:func:`debit_in_sentence`) when it names one —
   the same words, a mandate's reference or the creditor's ID, the split verb "buchen … ab", or
   "einziehen" in a clause that names the account or the money ("von Ihrem Konto eingezogen", "ziehen
@@ -43,7 +47,8 @@ Limits: wording is matched, not understood — a sentence that names a debit in 
 don't know reads as a transfer; one that names a debit and a transfer in some other way reads as
 a debit (no code; the safe side, SPEC §GiroCode). A warning worded without these markers ("Rück-
 lastschriften: 3 €") reads as a failure; a real failure told only in a clause with one of them ("die
-Lastschrift wurde zurückgegeben und verursacht Kosten") doesn't.
+Lastschrift wurde zurückgegeben und verursacht Kosten") doesn't. An end word that near a standing
+order ends it whatever the words between say ("you don't need to change your standing order").
 """
 
 from __future__ import annotations
@@ -73,13 +78,23 @@ _ACCOUNT_OR_MONEY = re.compile(r"konto|account|betrag|beitrag|summe|forderung|ge
 _TRANSFER_WORDS = re.compile(r"\btransfer|überweis", re.I)
 #: A standing order (*Dauerauftrag*): the person's own transfer, every period (module policy).
 _STANDING_ORDER = re.compile(r"standing\s+order|dauerauftr", re.I)
-#: A standing order its clause tells the person to end (the payee now collects: module policy).
+#: A word that ends a standing order near it (the payee now collects: module policy).
 _ORDER_ENDED = re.compile(
-    r"\b(?:cancel|stop|delet|remov|terminat)\w*|\bno\s+longer\b"
-    r"|lösch|kündig|einstell|eingestellt|beend|aufheb|widerruf|nicht\s+mehr"
-    r"|\b(?:stelle|stellen|stellt)\b.{0,80}?\bein\b",
-    re.I | re.S,
+    r"\b(?:cancel|stop|delet|remov|terminat|discontinu)\w*|\bend(?:ing)?\b(?!\s+of\b)|\bclose\b(?!\s+to\b)"
+    r"|\bswitch(?:ed)?\s+off\b|\bno\s+longer\b|\bany\s?more\b|(?:\bno|\bnot|n['’]t)\s+need"
+    r"|lösch|kündig|beend|aufheb|widerruf|nicht\s+mehr",
+    re.I,
 )
+#: *Einstellen*, which ends a standing order unless its clause sets it *auf* something (module policy).
+_ORDER_SET_OFF = re.compile(r"einstell|eingestellt|\b(?:stelle|stellen|stellt)\b.{0,80}?\bein\b", re.I | re.S)
+_ORDER_SET_TO = re.compile(r"\bauf\b", re.I)
+#: A word of the debit that an end word near a standing order may be about instead (module policy).
+_ORDER_DEBIT = re.compile(
+    r"debit|collect|mandat|lastschrift|abbuch|abgebucht|einzug|einzieh|eingezogen", re.I
+)
+#: How far from a standing order an end word ends it, in words between them (module policy).
+_ORDER_REACH = 3
+_WORD = re.compile(r"\w+")
 _DEBIT_NOUN = r"(?:lastschrift|abbuchung|einzug|debit|payment|zahlung)"
 _FAILED_VERB = r"(?:zurückgegeben|zurückgebucht|zurückgerufen|fehlgeschlagen|returned|bounced|failed)"
 #: A debit that failed: the bank returned it, or it couldn't be collected (in one clause).
@@ -135,12 +150,41 @@ def _description(item: Item | ExtractedItem) -> str | None:
     return item.description if isinstance(item, Item) else None
 
 
+def _words_between(words: list[re.Match[str]], first: re.Match[str], second: re.Match[str]) -> int:
+    """How many of the clause's ``words`` lie between two matches (0 when they touch or share a word)."""
+
+    def span(match: re.Match[str]) -> tuple[int, int]:
+        touched = [
+            i for i, word in enumerate(words) if word.end() > match.start() and word.start() < match.end()
+        ]
+        return touched[0], touched[-1]
+
+    (first_start, first_end), (second_start, second_end) = span(first), span(second)
+    return max(0, second_start - first_end - 1, first_start - second_end - 1)
+
+
+def _order_ended(clause: str) -> bool:
+    """The clause tells the person to end a standing order it names (policy): an end word at most
+    :data:`_ORDER_REACH` words from it, and nearer to it than to any word of the debit."""
+    words = list(_WORD.finditer(clause))
+    orders, debits = list(_STANDING_ORDER.finditer(clause)), list(_ORDER_DEBIT.finditer(clause))
+    ends = list(_ORDER_ENDED.finditer(clause))
+    if not _ORDER_SET_TO.search(clause):
+        ends += _ORDER_SET_OFF.finditer(clause)
+    for end in ends:
+        to_order = min((_words_between(words, end, order) for order in orders), default=None)
+        to_debit = min((_words_between(words, end, debit) for debit in debits), default=None)
+        if to_order is not None and to_order <= _ORDER_REACH and (to_debit is None or to_order < to_debit):
+            return True
+    return False
+
+
 def asks_for_transfer(action: str | None) -> bool:
     """A to-do's ``action`` asks the person to transfer the money: it names a transfer, or a standing order
     they set up or change — not one its clause tells them to end (policy)."""
     text = action or ""
     return bool(_TRANSFER_WORDS.search(text)) or any(
-        _STANDING_ORDER.search(clause) and not _ORDER_ENDED.search(clause) for clause in _clauses(text)
+        _STANDING_ORDER.search(clause) and not _order_ended(clause) for clause in _clauses(text)
     )
 
 

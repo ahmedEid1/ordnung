@@ -1515,7 +1515,9 @@ ask less, or up to three months (a flat, an insurance, an older contract).
 Ask and "Why this date?"; money coming in is never overdue. A standing order (Dauerauftrag) the person
 sets up or changes is their own transfer, so it keeps the send-by day even when its to-do names a direct
 debit as the alternative ("Adjust your standing order … unless you use direct debit"); one they are told
-to cancel because the payee now collects is none (`ordnung.payments`).
+to cancel or end because the payee now collects is none — an end word near the standing order, not one
+about the debit ("set up a standing order, as we no longer collect by direct debit" is a transfer;
+`ordnung.payments`).
 `ContractTerms.concluded_date` (fallback start_date with a warning). For notice deadlines falling on
 a weekend/holiday, also show a *safe date* (previous business day). Every dated obligation gets
 `must_arrive_by` and `send_by` (postal buffer default **4** business days; channel-aware:

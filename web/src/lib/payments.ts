@@ -14,12 +14,22 @@ const DEBIT_WORDS = /direct debit|debited|collected automatically|sufficient fun
 const TRANSFER_WORDS = /\btransfer|überweis/i;
 /** A standing order (Dauerauftrag): the person's own transfer, every period. */
 const STANDING_ORDER = /standing\s+order|dauerauftr/i;
+const STANDING_ORDERS = new RegExp(STANDING_ORDER.source, "gi");
 /**
- * A standing order its clause tells the person to end — cancel, stop, delete, no longer needed ("löschen",
- * "kündigen", "einstellen", "nicht mehr") — because the payee now collects.
+ * A word that ends a standing order near it — cancel, stop, end, discontinue, delete, no longer, not … anymore,
+ * don't need ("löschen", "kündigen", "nicht mehr") — because the payee now collects.
  */
 const ORDER_ENDED =
-  /(?<![\p{L}\p{N}_])(?:cancel|stop|delet|remov|terminat)[\p{L}\p{N}_]*|(?<![\p{L}\p{N}_])no\s+longer(?![\p{L}\p{N}_])|lösch|kündig|einstell|eingestellt|beend|aufheb|widerruf|nicht\s+mehr|(?<![\p{L}\p{N}_])(?:stelle|stellen|stellt)(?![\p{L}\p{N}_])[\s\S]{0,80}?(?<![\p{L}\p{N}_])ein(?![\p{L}\p{N}_])/iu;
+  /(?<![\p{L}\p{N}_])(?:cancel|stop|delet|remov|terminat|discontinu)[\p{L}\p{N}_]*|(?<![\p{L}\p{N}_])end(?:ing)?(?![\p{L}\p{N}_])(?!\s+of(?![\p{L}\p{N}_]))|(?<![\p{L}\p{N}_])close(?![\p{L}\p{N}_])(?!\s+to(?![\p{L}\p{N}_]))|(?<![\p{L}\p{N}_])switch(?:ed)?\s+off(?![\p{L}\p{N}_])|(?<![\p{L}\p{N}_])no\s+longer(?![\p{L}\p{N}_])|(?<![\p{L}\p{N}_])any\s?more(?![\p{L}\p{N}_])|(?:(?<![\p{L}\p{N}_])no|(?<![\p{L}\p{N}_])not|n['’]t)\s+need|lösch|kündig|beend|aufheb|widerruf|nicht\s+mehr/giu;
+/** "Einstellen", which ends a standing order unless its clause sets it "auf" something ("auf 670 € ein"). */
+const ORDER_SET_OFF =
+  /einstell|eingestellt|(?<![\p{L}\p{N}_])(?:stelle|stellen|stellt)(?![\p{L}\p{N}_])[\s\S]{0,80}?(?<![\p{L}\p{N}_])ein(?![\p{L}\p{N}_])/giu;
+const ORDER_SET_TO = /(?<![\p{L}\p{N}_])auf(?![\p{L}\p{N}_])/iu;
+/** A word of the debit that an end word near a standing order may be about instead. */
+const ORDER_DEBIT = /debit|collect|mandat|lastschrift|abbuch|abgebucht|einzug|einzieh|eingezogen/giu;
+/** How far from a standing order an end word ends it, in words between them. */
+const ORDER_REACH = 3;
+const WORD = /[\p{L}\p{N}_]+/gu;
 const DEBIT_NOUN = "(?:lastschrift|abbuchung|einzug|debit|payment|zahlung)";
 const FAILED_VERB = "(?:zurückgegeben|zurückgebucht|zurückgerufen|fehlgeschlagen|returned|bounced|failed)";
 /**
@@ -54,6 +64,39 @@ export function debitFailed(text: string): boolean {
   return text.split(CLAUSE_END).some((clause) => FAILED_DEBIT.test(clause) && !WARNING.test(clause));
 }
 
+type Span = { start: number; end: number };
+
+const spans = (text: string, pattern: RegExp): Span[] =>
+  [...text.matchAll(pattern)].map((m) => ({ start: m.index, end: m.index + m[0].length }));
+
+/** How many of the clause's words lie between two matches (0 when they touch or share a word). */
+function wordsBetween(words: Span[], first: Span, second: Span): number {
+  const span = (match: Span): [number, number] => {
+    const touched = words.flatMap((word, i) => (word.end > match.start && word.start < match.end ? [i] : []));
+    return [touched[0] ?? 0, touched[touched.length - 1] ?? 0];
+  };
+  const [firstStart, firstEnd] = span(first);
+  const [secondStart, secondEnd] = span(second);
+  return Math.max(0, secondStart - firstEnd - 1, firstStart - secondEnd - 1);
+}
+
+/**
+ * The clause tells the person to end a standing order it names: an end word at most `ORDER_REACH` words from
+ * it, and nearer to it than to any word of the debit ("set up a standing order, as we no longer collect by
+ * direct debit" sets one up). "Einstellen" is an end word too, unless the clause sets the order "auf" something.
+ */
+function orderEnded(clause: string): boolean {
+  const words = spans(clause, WORD);
+  const orders = spans(clause, STANDING_ORDERS);
+  const debits = spans(clause, ORDER_DEBIT);
+  const ends = [...spans(clause, ORDER_ENDED), ...(ORDER_SET_TO.test(clause) ? [] : spans(clause, ORDER_SET_OFF))];
+  const nearest = (end: Span, others: Span[]) => Math.min(...others.map((other) => wordsBetween(words, end, other)));
+  return ends.some((end) => {
+    const toOrder = nearest(end, orders);
+    return toOrder <= ORDER_REACH && toOrder < nearest(end, debits);
+  });
+}
+
 /**
  * A to-do's action asks the person to transfer the money: it names a transfer, or a standing order they set
  * up or change ("Adjust your standing order … unless you use direct debit") — not one its clause tells them
@@ -61,7 +104,7 @@ export function debitFailed(text: string): boolean {
  */
 export function asksForTransfer(action: string | null | undefined): boolean {
   const text = action ?? "";
-  return TRANSFER_WORDS.test(text) || text.split(CLAUSE_END).some((clause) => STANDING_ORDER.test(clause) && !ORDER_ENDED.test(clause));
+  return TRANSFER_WORDS.test(text) || text.split(CLAUSE_END).some((clause) => STANDING_ORDER.test(clause) && !orderEnded(clause));
 }
 
 /**

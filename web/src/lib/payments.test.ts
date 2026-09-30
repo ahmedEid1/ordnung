@@ -53,13 +53,21 @@ describe("isDirectDebit", () => {
     ["Neue Gesamtmiete", "Dauerauftrag auf 670 € anpassen, falls Sie nicht per Lastschrift zahlen"],
     ["Beitrag bisher per Lastschrift", "Set up a standing order for the monthly fee"],
     ["Miete per Lastschrift", "Richten Sie einen Dauerauftrag über 670 € ein"],
+    // an end word about the debit, not the standing order, and "einstellen" that sets it to an amount
+    ["Rent (direct debit until now)", "Set up a standing order for the rent because we no longer collect it by direct debit."],
+    ["Rent (direct debit until now)", "Cancel the direct debit mandate and set up a standing order for 670 EUR instead."],
+    ["Rent (direct debit until now)", "Stop paying by direct debit and set up a standing order."],
+    ["Rent (direct debit until now)", "Set up a standing order as we no longer collect by direct debit"],
+    ["Neue Gesamtmiete", "Bitte stellen Sie Ihren Dauerauftrag ab November auf 670 € ein, sofern Sie nicht am Lastschriftverfahren teilnehmen."],
+    ["Neue Gesamtmiete (bisher Lastschrift)", "Dauerauftrag auf 670 € einstellen"],
+    ["Rent (direct debit until now)", "Keep your standing order until the end of the month"],
   ])("%s / %s asks for a transfer", (title, action) => {
     expect(asksForTransfer(action)).toBe(true);
     expect(isDirectDebit(todo(title, action))).toBe(false);
     expect(isTransfer({ ...todo(title, action), direction: "out" })).toBe(true);
   });
 
-  // one the person is told to cancel, stop or delete — the payee now collects — is no transfer
+  // one the person is told to cancel, stop, end, delete or no longer needs — the payee now collects — is no transfer
   it.each([
     ["Monthly rent collected by direct debit", "Cancel your standing order: the rent is now debited."],
     ["Miete per Lastschrift", "Dauerauftrag löschen – die Miete wird ab November abgebucht."],
@@ -68,6 +76,11 @@ describe("isDirectDebit", () => {
     ["Beitrag per Lastschrift", "Dauerauftrag einstellen"],
     ["Fee collected by direct debit", "Stop your standing order; you no longer need it."],
     ["Monatsbeitrag per Bankeinzug", "Ihren Dauerauftrag brauchen Sie nicht mehr."],
+    // English actions (prompt 9) end one in other words too
+    ["Monthly fee (direct debit)", "End your standing order - the rent is now collected by direct debit."],
+    ["Monthly fee (direct debit)", "Discontinue your standing order as the fee will be collected by direct debit."],
+    ["Monthly fee (direct debit)", "You do not need your standing order anymore because the fee is collected by direct debit."],
+    ["Monthly fee (direct debit)", "Switch off your standing order; the fee is debited."],
   ])("%s / %s stays a direct debit", (title, action) => {
     expect(asksForTransfer(action)).toBe(false);
     expect(isDirectDebit(todo(title, action))).toBe(true);
