@@ -166,7 +166,7 @@ export default function SettingsPage() {
               ) : section === "ai" ? (
                 <AiSection settings={settings.data} profile={profile.data} />
               ) : section === "claude" ? (
-                <ClaudeSection health={health.data} />
+                <ClaudeSection health={health.data} settings={settings.data} />
               ) : section === "privacy" ? (
                 <PrivacySection />
               ) : section === "rules" ? (
