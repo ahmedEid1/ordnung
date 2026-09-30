@@ -981,7 +981,8 @@ def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
     ]
     assert len(payments) == 8
     for record, answer in payments:
-        assert "640.00 €" in answer.text, answer.text
+        # the rent, in either amount style the model writes English in ("640.00 €", "€640.00")
+        assert re.search(r"640[.,]00\s?€|€\s?640[.,]00", answer.text), answer.text
         scam_listed = any('"do_not_pay":[{' in result for result in record["results"])
         if scam_listed:
             assert re.search(r"254[.,]35", answer.text) and "scam" in answer.text.lower(), answer.text
