@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"bdc948415f55747d91054c895cfe4430ede34211676a6eb7e4e44e40149c2121\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbergen\",\"document_date\":\"2027-04-09\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"amounts\":[46],\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch deadline against interest assessment\",\"quote\":\"Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.\",\"computation\":\"The letter gives two conflicting dates for the same notice: the letterhead 'Datum' is 09.04.2027, but the text says 'Mit diesem Bescheid vom 06.04.2027'. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 06.04.2027 (Tuesday) as the posting day. § 122 Abs. 2 Nr. 1 AO / § 108 Abs. 3 AO (Finanzamt): delivery is deemed on the 4th day after posting = 06.04.2027 + 4 days = 10.04.2027, which is a Saturday; for tax offices the delivery day itself moves to the next working day, i.e. Monday 12.04.2027. The one-month Einspruchsfrist under § 355 Abs. 1 AO then ends on the day in the following month with the same number as the delivery day: 12.05.2027 (Wednesday), which is not a Saturday, Sunday or NW public holiday, so no further shift applies. (If instead the printed 'Datum' 09.04.2027 is used as the posting day, the 4th day is 13.04.2027, a Tuesday needing no weekend adjustment, giving a due date of 13.05.2027 — one day later than the conservative figure used here.)\",\"due_date\":\"2027-05-12\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states two different dates for the same notice — the letterhead shows 'Datum 09.04.2027' while the body refers to 'Bescheid vom 06.04.2027'; I used the earlier date (06.04.2027) as the assumed posting day to compute the conservative (earliest) Einspruch deadline of 12.05.2027, but if the actual postmark/posting date was 09.04.2027 the deadline would instead be 13.05.2027 — check the envelope postmark if this matters.\",\"This notice sets an interest refund of 46,00 € in the taxpayer's favour (Erstattungszinsen zu Ihren Gunsten); an objection is normally unnecessary for a favourable decision, the Rechtsbehelfsbelehrung is standard boilerplate.\",\"No payment date is given for when the 46,00 € refund itself will be paid out ('Der Betrag wird mit der Erstattung ausgezahlt'), so no due date could be set for that payment.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbergen",
+      "document_date": "2027-04-09",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "amounts": [
+        46
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch deadline against interest assessment",
+          "quote": "Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.",
+          "computation": "The letter gives two conflicting dates for the same notice: the letterhead 'Datum' is 09.04.2027, but the text says 'Mit diesem Bescheid vom 06.04.2027'. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 06.04.2027 (Tuesday) as the posting day. § 122 Abs. 2 Nr. 1 AO / § 108 Abs. 3 AO (Finanzamt): delivery is deemed on the 4th day after posting = 06.04.2027 + 4 days = 10.04.2027, which is a Saturday; for tax offices the delivery day itself moves to the next working day, i.e. Monday 12.04.2027. The one-month Einspruchsfrist under § 355 Abs. 1 AO then ends on the day in the following month with the same number as the delivery day: 12.05.2027 (Wednesday), which is not a Saturday, Sunday or NW public holiday, so no further shift applies. (If instead the printed 'Datum' 09.04.2027 is used as the posting day, the 4th day is 13.04.2027, a Tuesday needing no weekend adjustment, giving a due date of 13.05.2027 — one day later than the conservative figure used here.)",
+          "due_date": "2027-05-12",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states two different dates for the same notice — the letterhead shows 'Datum 09.04.2027' while the body refers to 'Bescheid vom 06.04.2027'; I used the earlier date (06.04.2027) as the assumed posting day to compute the conservative (earliest) Einspruch deadline of 12.05.2027, but if the actual postmark/posting date was 09.04.2027 the deadline would instead be 13.05.2027 — check the envelope postmark if this matters.",
+        "This notice sets an interest refund of 46,00 € in the taxpayer's favour (Erstattungszinsen zu Ihren Gunsten); an objection is normally unnecessary for a favourable decision, the Rechtsbehelfsbelehrung is standard boilerplate.",
+        "No payment date is given for when the 46,00 € refund itself will be paid out ('Der Betrag wird mit der Erstattung ausgezahlt'), so no due date could be set for that payment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7369,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1947,
+      "cost_usd": 0.082588,
+      "duration_ms": 67047,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

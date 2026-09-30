@@ -188,7 +188,7 @@ reads, the engine computes), **LLM only** (the model computes the date itself an
 current German law), **LLM + rules text** (the same, with a written summary of the rules in the prompt)
 and **LLM + rules tool** (the same, with Ordnung's engine as MCP tools the model may call: an agent with
 a calculator). Prompts were tuned on a dev split. Test split: 56 dated obligations in 63 synthetic
-letters (11 of them phone photos, 12 adversarial), model Sonnet, 95 % intervals (bootstrap; Wilson for a
+letters (11 of them phone photos, 12 adversarial), model Sonnet 5, 95 % intervals (bootstrap; Wilson for a
 rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 
 | Condition | Due date exactly right | Dangerously late¹ | Held-out? |
@@ -198,7 +198,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung** | 89.3 % [78.9–96.7] | **0 %** | yes |
 | **Ordnung**, after fixing the gap that run found² | 98.2 % [94.5–100] | **0 %** | no |
 | LLM + rules tool, with the fixed engine³ | 100 % [91.8–100] | 0 % | no |
-| **Ordnung**, with the extraction prompt the app uses now⁴ | 96.4 % [91.2–100] | **0 %** | no |
+| **Ordnung**, with the extraction prompt the app uses now⁴ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
@@ -214,8 +214,9 @@ where it scored 96 %, before the test split was recorded again).
 kind, three contract and rent terms the ledger could not hold and, from version 12, a monthly payment's
 day of the month or last working day, a standing order as the person's own transfer and a contract that
 names the statutory notice periods. Each version from 9 to 12 was checked on the dev split first, but the
-test split was recorded for each of them (54, 53, 54 and 54 of 56), which is iteration on it. Both misses
-are early, on the safe side.
+test split was recorded for each of them (54, 53, 54 and 54 of 56, on Sonnet 5.5), and version 12 once
+more on Sonnet 5 when the account lost access to 5.5 (55 of 56, the run this row shows): iteration on
+it. The one miss is early, on the safe side.
 ⁵ 63 new letters (11 photos, 12 adversarial; 56 dated obligations), written after prompt version 11 and
 before any recording on them, recorded once with prompt 12. The two late dates are two adversarial
 letters that print conflicting due dates: the reading took the later date with high confidence and no

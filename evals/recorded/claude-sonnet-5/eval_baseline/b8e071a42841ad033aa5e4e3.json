@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a4477a1c6c76ac19cb860a1e896171adc84ffb207e4f0b51109d4a6829d1f370\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Friday, 2027-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Ersatzkasse\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"K718204553\"},{\"label\":\"Vorgang\",\"value\":\"KE-27-004120\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of MRI cost reimbursement\",\"quote\":\"Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Schreibens bei der Beispiel Ersatzkasse möglich, schriftlich oder zur Niederschrift.\",\"computation\":\"The Widerspruch period is one month from 'Bekanntgabe' (deemed delivery) of this letter, per § 84 SGG together with the delivery-fiction rules of § 37 Abs. 2 SGB X (a letter sent by ordinary post within Germany is deemed delivered on the 3rd day after mailing, unless it did not actually arrive or arrived later). To apply this, the letter's own issue/posting date is required as the starting point, and the actual delivery day itself is excluded per § 187 Abs. 1 BGB, with the one-month period then ending on the day of the following month bearing the same number as the delivery day (§ 188 Abs. 2 BGB), shifted to the next business day if it fell on a Saturday, Sunday or NW public holiday (§ 193 BGB). However, this letter carries no printed document date anywhere, so neither the posting date nor the deemed delivery date can be established, and the one-month deadline cannot be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter has no printed date (no Ausstellungsdatum), so the one-month Widerspruch deadline, which runs from 'Bekanntgabe' of the letter, cannot be calculated exactly — check the envelope's postmark or the date on your own copy/portal message to determine the actual delivery date and count one month from three days after that.\",\"No amount is stated in the letter (it is a rejection, not a payment demand), so no sum could be extracted.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Ersatzkasse",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "K718204553"
+        },
+        {
+          "label": "Vorgang",
+          "value": "KE-27-004120"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of MRI cost reimbursement",
+          "quote": "Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Schreibens bei der Beispiel Ersatzkasse möglich, schriftlich oder zur Niederschrift.",
+          "computation": "The Widerspruch period is one month from 'Bekanntgabe' (deemed delivery) of this letter, per § 84 SGG together with the delivery-fiction rules of § 37 Abs. 2 SGB X (a letter sent by ordinary post within Germany is deemed delivered on the 3rd day after mailing, unless it did not actually arrive or arrived later). To apply this, the letter's own issue/posting date is required as the starting point, and the actual delivery day itself is excluded per § 187 Abs. 1 BGB, with the one-month period then ending on the day of the following month bearing the same number as the delivery day (§ 188 Abs. 2 BGB), shifted to the next business day if it fell on a Saturday, Sunday or NW public holiday (§ 193 BGB). However, this letter carries no printed document date anywhere, so neither the posting date nor the deemed delivery date can be established, and the one-month deadline cannot be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date (no Ausstellungsdatum), so the one-month Widerspruch deadline, which runs from 'Bekanntgabe' of the letter, cannot be calculated exactly — check the envelope's postmark or the date on your own copy/portal message to determine the actual delivery date and count one month from three days after that.",
+        "No amount is stated in the letter (it is a rejection, not a payment demand), so no sum could be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1736,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2037,
+      "cost_usd": 0.026136400000000004,
+      "duration_ms": 16160,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

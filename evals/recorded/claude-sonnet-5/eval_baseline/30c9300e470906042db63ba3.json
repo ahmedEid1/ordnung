@@ -1,0 +1,89 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e7725f7631659d4c4ba4c4dd3aea4b5406d1eebe926ae3c6a077cdd4180e78df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Schlüsseldienst Beispiel 24h\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"SD-4471\"}],\"amounts\":[266.56],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay locksmith call-out invoice\",\"quote\":\"Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.\",\"computation\":\"The invoice sets no fixed date and prints no invoice date; the payment period is one week after the invoice 'zugegangen' (received). For an on-site locksmith call-out the invoice is typically handed over at the time of service, so receipt is taken as the service date, Sunday 06.12.2026 (an assumption, not stated in the letter). Under §187(1) BGB the day of receipt is not counted, so the week starts 07.12.2026; one week later (§188(1),(2) BGB) falls on Sunday 13.12.2026. As that is a Sunday, under §193 BGB the deadline shifts to the next business day, Monday 14.12.2026.\",\"due_date\":\"2026-12-14\",\"confidence\":\"medium\",\"amount\":266.56}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice has no printed invoice date and does not state when it was handed to or received by the customer; the due date of 2026-12-14 assumes receipt on the service date (06.12.2026, a Sunday), which is an assumption, not a fact stated in the letter — confirm the actual hand-over/receipt date if in doubt.\",\"The IBAN DE43 3705 0198 0004 4002 40 is well-formed, but before paying, confirm the account belongs to this company (e.g. via the phone number or email on the letterhead) rather than relying on the letter alone.\",\"Before transferring, check that your bank's mandatory payee-name verification (Empfängerprüfung) confirms a match for 'Schlüsseldienst Beispiel 24h' on this IBAN; if it reports no match, do not pay until confirmed.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Schlüsseldienst Beispiel 24h",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "SD-4471"
+        }
+      ],
+      "amounts": [
+        266.56
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay locksmith call-out invoice",
+          "quote": "Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.",
+          "computation": "The invoice sets no fixed date and prints no invoice date; the payment period is one week after the invoice 'zugegangen' (received). For an on-site locksmith call-out the invoice is typically handed over at the time of service, so receipt is taken as the service date, Sunday 06.12.2026 (an assumption, not stated in the letter). Under §187(1) BGB the day of receipt is not counted, so the week starts 07.12.2026; one week later (§188(1),(2) BGB) falls on Sunday 13.12.2026. As that is a Sunday, under §193 BGB the deadline shifts to the next business day, Monday 14.12.2026.",
+          "due_date": "2026-12-14",
+          "confidence": "medium",
+          "amount": 266.56
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice has no printed invoice date and does not state when it was handed to or received by the customer; the due date of 2026-12-14 assumes receipt on the service date (06.12.2026, a Sunday), which is an assumption, not a fact stated in the letter — confirm the actual hand-over/receipt date if in doubt.",
+        "The IBAN DE43 3705 0198 0004 4002 40 is well-formed, but before paying, confirm the account belongs to this company (e.g. via the phone number or email on the letterhead) rather than relying on the letter alone.",
+        "Before transferring, check that your bank's mandatory payee-name verification (Empfängerprüfung) confirms a match for 'Schlüsseldienst Beispiel 24h' on this IBAN; if it reports no match, do not pay until confirmed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3179,
+      "cache_read_tokens": 26649,
+      "cache_creation_tokens": 6432,
+      "cost_usd": 0.0628598,
+      "duration_ms": 29740,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-12-06",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "Rechnung – Zahlungsfrist",
+            "text": "Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist."
+          },
+          "sender_kind": "company",
+          "sender_name": "Schlüsseldienst Beispiel 24h",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-12-14\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-11\",\"summary\":\"One week after delivery on Sun 6 Dec 2026 (as stated on the letter) is Sun 13 Dec 2026, a Sunday, so the deadline moves to Mon 14 Dec 2026.\",\"confidence\":\"medium\",\"warnings\":[\"The letter's date was not given, so the delivery day stated (Sun 6 Dec 2026) could not be checked against it: a stated day that is wrong or later than the letter's date moves the deadline later.\"],\"steps\":[{\"label\":\"Counting starts the day after Sun 6 Dec 2026\",\"date\":\"2026-12-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One week later: Sun 13 Dec 2026\",\"date\":\"2026-12-13\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 13 Dec 2026 is a Sunday, so the deadline moves to Mon 14 Dec 2026\",\"date\":\"2026-12-14\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 11 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-11\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-12-10\",\"received_date\":\"2026-12-06\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[\"Pass document_date: the engine checks a stated posting or delivery day against the letter's date (it counts from the letter's date when a stated posting day is later).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE43 3705 0198 0004 4002 40"
+        },
+        "result": "{\"iban\":\"DE43 3705 0198 0004 4002 40\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0004400240\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

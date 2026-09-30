@@ -194,10 +194,11 @@ def _latest_holdout() -> dict[str, Any]:
 
 def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
     """README's last two benchmark rows: Ordnung with the extraction prompt the app uses now (2026-09-30,
-    test split, not held-out) and Ordnung on the holdout split (the newest holdout run, recorded once);
-    the footnotes' scores per prompt version, the holdout split's size and what its three misses are."""
+    test split on the pinned model, not held-out) and Ordnung on the holdout split (the newest holdout run,
+    recorded once); the footnotes' scores per prompt version and model, the holdout split's size and what
+    its three misses are."""
     readme = _readme()
-    now = _results("2026-09-30-sonnet-test.json")["metrics"]["ordnung"]
+    now = _results("2026-09-30-claude-sonnet-5-test.json")["metrics"]["ordnung"]
     assert now["dangerous_late_rate"]["k"] == 0
     assert (
         f"| **Ordnung**, with the extraction prompt the app uses now⁴ | {_with_interval(now['due_date_accuracy'])} "
@@ -226,7 +227,10 @@ def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
             "2026-09-30-sonnet-test.json",
         )
     ]
-    assert f"({', '.join(map(str, scores[:-1]))} and {scores[-1]} of 56)" in readme
+    assert f"({', '.join(map(str, scores[:-1]))} and {scores[-1]} of 56, on Sonnet 5.5)" in readme
+    assert (
+        f"lost access to 5.5 ({int(now['due_date_accuracy']['k'])} of 56, the run this row shows)" in readme
+    )
     # the two late dates are the two conflicting-date letters; the third miss is early
     misses = [g for g in holdout["gallery"] if g["condition"] == "ordnung"]
     assert len(misses) == int(late["n"]) - exact == 3
@@ -236,7 +240,7 @@ def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
     ]
     assert [g["direction"] for g in misses if g["entry_id"] == "holdout-tax_assessment-F1"] == ["early"]
     # the test split's two letters of that class were read right with the same prompt
-    test_run = _results("2026-09-30-sonnet-test.json")
+    test_run = _results("2026-09-30-claude-sonnet-5-test.json")
     for entry in test_run["entries"]:
         if entry["id"].startswith("test-adversarial-conflicting_dates-"):
             items = entry["conditions"]["ordnung"]["score"]["items"]

@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e7725f7631659d4c4ba4c4dd3aea4b5406d1eebe926ae3c6a077cdd4180e78df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Schlüsseldienst Beispiel 24h\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"SD-4471\"}],\"amounts\":[266.56],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay locksmith invoice for emergency door opening\",\"quote\":\"Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.\",\"computation\":\"The one-week payment period starts on the day the invoice actually reaches the customer (Zugang), not on the service date. The letter carries no printed invoice date and does not state when or how it was delivered (post, hand-delivered on site, etc.), so the actual start of the period cannot be determined with certainty. If, as a best-effort assumption, the invoice was handed over on the day of the service call-out (06.12.2026, a Sunday), then under §§187 Abs.1, 188 Abs.2 BGB that day does not count and the one-week period would end on the same weekday one week later, i.e. Sunday 13.12.2026; since that is a Sunday, under §193 BGB the deadline would shift to the next business day, Monday 14.12.2026. However, since many locksmith invoices are posted afterwards rather than handed over on site, this is only an earliest-plausible estimate, not a reliable computed date.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":266.56}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice has no printed invoice date (Rechnungsdatum) and does not state how or when it was delivered to the customer, so the exact start of the one-week payment period cannot be reliably computed; the earliest plausible due date, if the invoice was handed over on the service day (06.12.2026), would be Monday 14.12.2026 — please check the envelope postmark or the date you actually received this invoice to confirm.\",\"The service was performed on a Sunday night, which the invoice separately surcharges as 'Zuschlag Sonn- und Feiertag, Nacht' (EUR 60.00) plus a call-out fee (Anfahrt EUR 35.00) on top of the EUR 129.00 door-opening charge — worth double-checking against any price list you were shown before agreeing to the service, as inflated call-out and surcharge fees are a known pattern with some locksmith services.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Schlüsseldienst Beispiel 24h",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "SD-4471"
+        }
+      ],
+      "amounts": [
+        266.56
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay locksmith invoice for emergency door opening",
+          "quote": "Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.",
+          "computation": "The one-week payment period starts on the day the invoice actually reaches the customer (Zugang), not on the service date. The letter carries no printed invoice date and does not state when or how it was delivered (post, hand-delivered on site, etc.), so the actual start of the period cannot be determined with certainty. If, as a best-effort assumption, the invoice was handed over on the day of the service call-out (06.12.2026, a Sunday), then under §§187 Abs.1, 188 Abs.2 BGB that day does not count and the one-week period would end on the same weekday one week later, i.e. Sunday 13.12.2026; since that is a Sunday, under §193 BGB the deadline would shift to the next business day, Monday 14.12.2026. However, since many locksmith invoices are posted afterwards rather than handed over on site, this is only an earliest-plausible estimate, not a reliable computed date.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 266.56
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice has no printed invoice date (Rechnungsdatum) and does not state how or when it was delivered to the customer, so the exact start of the one-week payment period cannot be reliably computed; the earliest plausible due date, if the invoice was handed over on the service day (06.12.2026), would be Monday 14.12.2026 — please check the envelope postmark or the date you actually received this invoice to confirm.",
+        "The service was performed on a Sunday night, which the invoice separately surcharges as 'Zuschlag Sonn- und Feiertag, Nacht' (EUR 60.00) plus a call-out fee (Anfahrt EUR 35.00) on top of the EUR 129.00 door-opening charge — worth double-checking against any price list you were shown before agreeing to the service, as inflated call-out and surcharge fees are a known pattern with some locksmith services."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3091,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2013,
+      "cost_usd": 0.040071999999999997,
+      "duration_ms": 30634,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
