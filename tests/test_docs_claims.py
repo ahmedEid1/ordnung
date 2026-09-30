@@ -246,6 +246,16 @@ def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
     assert (
         f"lost access to 5.5 ({int(now['due_date_accuracy']['k'])} of 56, the run this row shows)" in readme
     )
+    # the two-dates check, replayed on the same holdout recordings: its own row, not held-out
+    rescored = _results("2026-09-30-claude-sonnet-5-holdout-rescored.json")
+    assert rescored["meta"]["split"] == "holdout" and rescored["meta"]["backend"] == "replay"
+    after = rescored["metrics"]["ordnung"]
+    assert after["dangerous_late_rate"]["k"] == 0
+    assert (
+        f"| **Ordnung**, held-out split with the two-dates check⁶ | {_with_interval(after['due_date_accuracy'])} "
+        "| **0 %** | no |"
+    ) in readme
+    assert f"give {int(after['due_date_accuracy']['k'])} of 56 and no late date (row ⁶" in readme
     # the two late dates are the two conflicting-date letters; the third miss is early
     misses = [g for g in holdout["gallery"] if g["condition"] == "ordnung"]
     assert len(misses) == int(late["n"]) - exact == 3
