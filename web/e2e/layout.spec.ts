@@ -230,23 +230,54 @@ test.describe("laptop: focus stays clear of the sticky top bar", () => {
 });
 
 /**
- * Where a popover sits: fully in view (no inner scroll when the page can make room), clear of the
- * sticky top bar and never over its own trigger.
+ * Where a popover sits: clear of the sticky top bar, never over its own trigger, whole in the
+ * viewport, and it scrolls inside only when the screen is too short for it. The panel's rule
+ * (Popover, `scrollToFit`): the page scrolls to make room for its natural height as far as the
+ * trigger stays in view — up to the top bar or down to the bottom inset, as far as the page can
+ * still scroll — and only what is still missing scrolls inside the panel, which then takes all the
+ * room its side has. So a panel that could have sat whole must not scroll inside, whatever the demo
+ * puts in it; one the screen is too short for must reach its side's inset.
  */
 async function popoverLayout(panel: Locator, trigger: Locator) {
   const t = (await trigger.boundingBox())!;
   return panel.evaluate((el, t) => {
     const r = el.getBoundingClientRect();
     const bar = document.querySelector("header")!.getBoundingClientRect();
+    const root = document.documentElement;
+    const vh = root.clientHeight;
+    // the insets a panel keeps clear of are the page's own scroll padding (Popover's `pageInsets`)
+    const px = (v: string) => (Number.isFinite(parseFloat(v)) ? parseFloat(v) : 0);
+    const style = getComputedStyle(root);
+    const ins = { top: Math.max(8, px(style.scrollPaddingTop)), bottom: Math.max(8, px(style.scrollPaddingBottom)) };
+    const below = !el.style.bottom;
+    const gap = below ? r.top - (t.y + t.height) : t.y - r.bottom;
+    // how much further the page could still scroll to move the trigger towards the far edge
+    const movable = below
+      ? Math.max(0, Math.min(root.scrollHeight - vh - scrollY, t.y - ins.top))
+      : Math.max(0, Math.min(scrollY, vh - ins.bottom - (t.y + t.height)));
+    const mostRoom = below ? vh - ins.bottom - (t.y + t.height - movable) - gap : t.y + movable - gap - ins.top;
+    const height = el.scrollHeight + ((el as HTMLElement).offsetHeight - el.clientHeight);
+    const scrolls = el.scrollHeight > el.clientHeight + 1;
+    const fillsSide = below ? r.bottom >= vh - ins.bottom - 1 : r.top <= ins.top + 1;
     return {
-      innerScroll: el.scrollHeight > el.clientHeight + 1,
+      // scrolls inside although the page could have made room for all of it
+      needlessInnerScroll: scrolls && height <= mostRoom + 1,
+      // scrolls inside (the screen is too short for it) without taking all the room its side has
+      shortOfItsSide: scrolls && !fillsSide,
       underTopBar: r.top < bar.bottom,
       overTrigger: r.top < t.y + t.height && r.bottom > t.y && r.left < t.x + t.width && r.right > t.x,
       inViewport: r.top >= 0 && r.bottom <= innerHeight,
+      sizes: { height: Math.round(height), shown: el.clientHeight, mostRoom: Math.round(mostRoom), side: below ? "bottom" : "top" },
     };
   }, t);
 }
-const fits = { innerScroll: false, underTopBar: false, overTrigger: false, inViewport: true };
+const fits = { needlessInnerScroll: false, shortOfItsSide: false, underTopBar: false, overTrigger: false, inViewport: true };
+
+/** `popoverLayout` against `fits`, saying how tall the panel is and how much room the page had for it. */
+async function expectFits(panel: Locator, trigger: Locator): Promise<void> {
+  const { sizes, ...layout } = await popoverLayout(panel, trigger);
+  expect(layout, `panel ${sizes.height} px tall (${sizes.shown} px shown) ${sizes.side === "bottom" ? "below" : "above"} its trigger, room for ${sizes.mostRoom} px`).toEqual(fits);
+}
 
 /** Scroll the page so `trigger` sits a third of the way down the viewport (as far as the page can scroll). */
 async function pinInView(page: Page, trigger: Locator): Promise<void> {
@@ -261,7 +292,7 @@ for (const height of [800, 720]) {
   test.describe(`laptop 1280×${height}: popovers`, () => {
     test.use({ viewport: { width: 1280, height } });
 
-    test("Today's Pay panel shows everything, clear of the top bar and its trigger; Tab out moves on", async ({ page }) => {
+    test("Today's Pay panel shows everything the screen has room for, clear of the top bar and its trigger; Tab out moves on", async ({ page }) => {
       await open(page, "/", /Sam/);
       const pay = page.getByRole("main").getByRole("button", { name: /^Pay: / }).first();
       // a fixed place for the trigger — a third of the way down — whatever the shared demo's earlier tests left
@@ -274,7 +305,9 @@ for (const height of [800, 720]) {
       // focus goes to the panel (announced by its name), not to a control further down
       await expect(panel).toBeFocused();
       await settle(page);
-      expect(await popoverLayout(panel, pay)).toEqual(fits);
+      // what the demo puts in the panel (transfer details, the IBAN check, the GiroCode) can be taller than
+      // a 720 px screen leaves under the top bar: then, and only then, it scrolls inside
+      await expectFits(panel, pay);
 
       // Tab through to the end: the panel closes and focus continues right after the Pay button
       const inPanel = () => page.evaluate(() => Boolean(document.activeElement?.closest("[data-popover]")));
@@ -298,13 +331,12 @@ for (const height of [800, 720]) {
       const panel = page.getByRole("dialog", { name: /^Why this date\?/ });
       await expect(panel).toBeVisible();
       await settle(page);
-      const before = await popoverLayout(panel, why);
+      await expectFits(panel, why);
       const side = await panel.evaluate((el) => (el.style.bottom ? "top" : "bottom"));
       await panel.getByRole("button", { name: "Show the rules" }).click();
       await expect(panel.getByRole("button", { name: "Hide the rules" })).toBeVisible();
       await settle(page);
-      expect(before).toEqual(fits);
-      expect(await popoverLayout(panel, why)).toEqual(fits);
+      await expectFits(panel, why);
       expect(await panel.evaluate((el) => (el.style.bottom ? "top" : "bottom"))).toBe(side);
     });
   });
