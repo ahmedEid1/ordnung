@@ -1494,9 +1494,10 @@ may keep the law's basis, to the 15th or the end of a month).
 A third (migration 0005): `notice_statutory`, a contract that names the statutory notice periods instead of
 one of its own ("unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)"). Where a statute gives
 the person's period it counts as stated — a job's four weeks to the 15th or the end of a month (§ 622 Abs. 1
-BGB; the longer periods of Abs. 2 bind only the employer), a tenant's § 573c Abs. 1 BGB notice —: no "not
-found" warning, the confidence of a stated period, and a note in "Why these dates?" that the contract names
-them. A period stated as a number wins. The consumer, phone and insurance rules only cap a period, so there
+BGB; the longer periods of Abs. 2 bind only the employer, unless the contract extends them to the employee,
+Abs. 6), a tenant's § 573c Abs. 1 BGB notice —: no "not found" warning, the confidence of a stated period,
+and a note in "Why these dates?" that the contract names them. After two years in a job, when Abs. 2 gives
+the employer longer periods, a warning says to check whether the contract extends them to the person. A period stated as a number wins. The consumer, phone and insurance rules only cap a period, so there
 it changes nothing. The card says it in plain words ("the statutory notice, as the contract says"), and
 the notice edit's "The contract names the statutory notice periods" sets or clears it
 (`ContractPatch.notice_statutory`; notice terms saved without it clear it, as they clear the day).

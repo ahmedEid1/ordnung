@@ -1031,7 +1031,7 @@ function recomputeNotice(db: MockDb, c: Contract) {
 
 /** The engine's note on a job whose contract names the statutory notice periods (`_STATUTORY_NOTE`). */
 const STATUTORY_JOB_NOTE =
-  "Your contract names the statutory notice periods: for you, four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer.";
+  "Your contract names the statutory notice periods: for you, four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer, unless your contract extends them to you (§ 622 Abs. 6 BGB).";
 
 /**
  * Like the rules engine for a fixed-term job once the person entered its notice terms (`_ends_by_itself`,

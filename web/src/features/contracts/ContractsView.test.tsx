@@ -678,6 +678,8 @@ describe("Contracts page — adding a notice period by hand", () => {
     const statutory = within(form).getByRole("checkbox", { name: /^The contract names the statutory notice periods/ });
     expect(statutory).toBeChecked();
     expect(statutory.closest("div")).toHaveTextContent("for you, 4 weeks to the 15th or the end of a month (§ 622 BGB)");
+    // a contract may extend the employer's longer periods to the employee (§ 622 Abs. 6 BGB)
+    expect(statutory.closest("div")).toHaveTextContent("longer if the contract extends your employer's longer periods to you");
 
     // saved as it is: the person's own, and the engine's note in "Why these dates?"
     fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
@@ -692,7 +694,9 @@ describe("Contracts page — adding a notice period by hand", () => {
     });
     fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /Why these dates\?/ }));
     const why = await screen.findByRole("dialog", { name: /Why these dates\? Werkstudent/ });
-    expect(within(why).getByText(/^Your contract names the statutory notice periods: for you, four weeks/)).toBeInTheDocument();
+    expect(within(why).getByText(/^Your contract names the statutory notice periods: for you, four weeks/)).toHaveTextContent(
+      "unless your contract extends them to you (§ 622 Abs. 6 BGB)",
+    );
     fireEvent.keyDown(why, { key: "Escape" });
 
     // a misreading: unticked, it is cleared — the rules assume the law's four weeks again, and say so

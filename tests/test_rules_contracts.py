@@ -738,6 +738,29 @@ def test_a_job_that_names_the_statutory_notice_periods_states_them() -> None:
     assert named.model_copy(update={"notes": stated.notes}) == stated
 
 
+def test_a_job_of_two_years_that_names_the_statutory_periods_is_asked_to_check_for_the_longer_ones() -> None:
+    """An employee since 2016 whose contract names the statutory periods: the longer periods of § 622 Abs. 2
+    BGB (four months to a month's end after ten years) bind the employer, and bind them too when the contract
+    extends them to the employee — often in the same clause, as § 622 Abs. 6 BGB allows. The four weeks
+    still give the dates, but with a warning to check the contract, one confidence level lower, and a note
+    that doesn't say flatly the longer periods don't bind them. Under two years in the job, Abs. 2 adds
+    nothing: no warning."""
+    job = {
+        "category": "employment",
+        "is_consumer": False,
+        "start_date": "2016-04-01",
+        "notice_statutory": True,
+    }
+    long = compute_contract(terms(**job), ctx())
+    assert (long.cancel_by, long.earliest_exit) == ("2026-10-03", "2026-10-31")
+    assert long.confidence == "medium" and not any(w.startswith(NOT_FOUND) for w in long.warnings)
+    assert any("§ 622 Abs. 6 BGB" in w and "check" in w for w in long.warnings)
+    note = next(n for n in long.notes if "statutory notice periods" in n)
+    assert "unless your contract extends them to you (§ 622 Abs. 6 BGB)" in note
+    under_two = compute_contract(terms(**{**job, "start_date": "2024-10-15"}), ctx())
+    assert under_two.confidence == "high" and not any("§ 622 Abs. 6 BGB" in w for w in under_two.warnings)
+
+
 def test_a_period_the_contract_states_wins_over_the_statutory_ones() -> None:
     """An open-ended job with both: the stated period decides, and no note claims the statutory one."""
     named = compute_contract(terms(category="employment", notice_statutory=True), ctx())

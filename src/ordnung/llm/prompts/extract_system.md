@@ -78,7 +78,9 @@ ACCURACY RULES:
     probation clause, and not for "the statutory periods".
   - `notice_statutory`: true when the contract names the statutory notice periods instead of its own
     ("unter Einhaltung der gesetzlichen Kündigungsfristen", "Kündigungsfristen nach § 622 BGB",
-    "the statutory notice period"); quote that clause.
+    "the statutory notice period"); quote that clause — with the sentence that extends the longer
+    periods to the other side too, if the contract has one ("Jede gesetzliche Verlängerung der
+    Kündigungsfrist gilt auch für den Arbeitnehmer").
   - A cancellation that must arrive by a day of the month to end the contract at the end of that
     same month ("bis zum 10. eines Monats zum Ende dieses Monats") is no period: set `notice_basis`
     "end_of_month" and `notice_day` to that day, leave the period empty, and quote the whole

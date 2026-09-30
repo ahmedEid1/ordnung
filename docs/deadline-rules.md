@@ -870,7 +870,9 @@ Two terms a notice period can't say:
   gesetzlichen Kündigungsfristen (§ 622 BGB)", "Es gelten die gesetzlichen Kündigungsfristen"; migration
   0005). Where a statute gives the person's period, that is the contract's period, as if it were stated:
   an employee's four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB — the longer periods of
-  § 622 Abs. 2 BGB bind only the employer), a tenant's notice by the 3rd Werktag for the end of the month
+  § 622 Abs. 2 BGB bind only the employer, unless the contract extends them to the employee, which § 622
+  Abs. 6 BGB allows and a contract often does in the same clause: after two years in the job, when Abs. 2
+  gives longer periods, a warning says to check), a tenant's notice by the 3rd Werktag for the end of the month
   after next (§ 573c Abs. 1 BGB, which the lease rule applies anyway; the longer periods of Abs. 1 S. 2 bind
   only the landlord). No "No notice period found" warning then, the confidence of a stated period, and a
   note that the contract names the statutory periods. A period the contract states as a number wins. The

@@ -43,7 +43,8 @@ export function noticeValueError(raw: string, unit: NoticeUnit): string | null {
  * `src/ordnung/rules/contracts.py`): no statute gives other contracts one, so there the period decides.
  */
 export function statutoryHint(c: Pick<Contract, "category">): string {
-  if (c.category === "employment") return "The law's “gesetzliche Kündigungsfristen”: for you, 4 weeks to the 15th or the end of a month (§ 622 BGB).";
+  if (c.category === "employment")
+    return "The law's “gesetzliche Kündigungsfristen”: for you, 4 weeks to the 15th or the end of a month (§ 622 BGB) — longer if the contract extends your employer's longer periods to you.";
   if (c.category === "rent") return "The law's “gesetzliche Kündigungsfristen”: for you as the tenant, by the 3rd working day of a month for the end of the month after next (§ 573c BGB).";
   return "No law gives this kind of contract a notice period of its own — the period you enter decides.";
 }

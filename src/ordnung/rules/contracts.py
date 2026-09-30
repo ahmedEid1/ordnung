@@ -51,7 +51,8 @@ Three terms a notice period can't say (policies in :func:`_notice_day`, :func:`_
 * ``notice_statutory`` — the contract names the statutory notice periods ("unter Einhaltung der gesetzlichen
   Kündigungsfristen (§ 622 BGB)", "Es gelten die gesetzlichen Kündigungsfristen"). Where a statute gives the
   person's period, that is the contract's period, as if it were stated: a job's four weeks to the 15th or the
-  end of a month (§ 622 Abs. 1 BGB; the longer periods of Abs. 2 bind only the employer), a tenant's notice
+  end of a month (§ 622 Abs. 1 BGB; the longer periods of Abs. 2 bind only the employer unless the contract
+  extends them to the employee, Abs. 6 — after two years in the job, a warning says to check), a tenant's notice
   by the 3rd Werktag for the end of the month after next (§ 573c Abs. 1 BGB, which the lease rule applies
   anyway). There is then no "not found" warning, and a note says the contract names them
   (:data:`_STATUTORY_NOTE`). A period the contract states as a number wins. The consumer, phone and
@@ -329,7 +330,8 @@ def _limit(
 #: regimes where a statute gives the person's period (module policy).
 _STATUTORY_NOTE: dict[ContractRegime, str] = {
     "employment622": "Your contract names the statutory notice periods: for you, four weeks to the 15th or the "
-    "end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer.",
+    "end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer, "
+    "unless your contract extends them to you (§ 622 Abs. 6 BGB).",
     "rent573c": "Your lease names the statutory notice periods: as the tenant, notice by the 3rd working day of "
     "a month ends it at the end of the month after next (§ 573c Abs. 1 BGB). The longer periods for the "
     "landlord don't bind you.",
@@ -761,13 +763,22 @@ def _plan_employment(trace: Trace, inp: _Inputs) -> _Plan:
     a notice period shorter than four weeks, or notice to any day, is usually the probation period's (§ 622
     Abs. 3 BGB), and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB). So the notice is then at
     least four weeks, to the 15th or the end of a month (only the end of a month when the contract says so).
-    A contract that names the statutory periods (``notice_statutory``) states those four weeks: no warning."""
+    A contract that names the statutory periods (``notice_statutory``) states those four weeks: no warning —
+    unless the job has lasted two years when notice sent today arrives: the longer periods of § 622 Abs. 2 BGB
+    then bind the employer, and bind the employee too if the contract extends them (§ 622 Abs. 6 BGB allows
+    it, often in the same clause), so a warning says to check."""
     notice = _written_notice(inp.terms)
     if notice is None:
         if not inp.terms.notice_statutory:
             trace.soft(
                 "No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your "
                 "contract or collective agreement for a longer one."
+            )
+        elif inp.start is not None and add_months(inp.start, 24) <= inp.arrival:
+            trace.soft(
+                "You have been in this job for two years or more, so the longer statutory periods of § 622 "
+                "Abs. 2 BGB bind your employer — and you too if your contract extends them to you (§ 622 Abs. 6 "
+                "BGB): check your contract. We used the four weeks."
             )
         notice = FOUR_WEEKS
     basis = inp.terms.notice_basis
