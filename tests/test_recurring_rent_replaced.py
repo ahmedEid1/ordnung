@@ -22,6 +22,7 @@ import pytest
 from fixtures_llm import Letter
 from ordnung import clock
 from ordnung.assistant.mcp_server import LedgerTools
+from ordnung.payments import asks_for_transfer
 from ordnung.recurrence import KEEPS_DAY_STEP, LAW_DEFAULT_WARNING
 from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.brief import build_agenda
@@ -99,10 +100,9 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
         # and the Sunday is no longer the due day
         assert not any("not a working day" in warning for warning in receipt["warnings"])
         assert LAW_DEFAULT_WARNING not in receipt["warnings"]
-        # its send-by follows how the statement says it is paid: the demo's reading ("Adjust your standing
-        # order … unless you use direct debit") names a direct debit, which the sender collects
-        # (ordnung.payments) — a transfer's send-by is tested below with a statement that asks for one
-        assert new["send_by"] is None
+        # its send-by follows how the statement says it is paid: the demo's reading asks the person to adjust
+        # their standing order ("… unless you use direct debit"), their own transfer (ordnung.payments)
+        assert asks_for_transfer(new["action"]) and new["send_by"] == "2026-11-03"
 
         november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
         assert [(r["id"], r["amount"], r["due_date"]) for r in november] == [
