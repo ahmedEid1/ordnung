@@ -1,8 +1,10 @@
 """High-stakes letters end to end: reading → the kind code files → routed dates → the deadlines the
 law adds → the "get advice" card, corrections of the kind and the arrival day, and re-reading.
 
-The letters are SPECIMEN texts with the extraction a model would return; the extraction prompt is
-unchanged, so every high-stakes signal comes from the model's ordinary reading (ADR 0002).
+The letters are SPECIMEN texts with the extraction a model would return. Most readings name no
+``high_stakes_kind``, like every reading recorded before extraction prompt version 9, so their high-stakes
+signals come from the model's ordinary reading (ADR 0002); the section on the kind the model names has
+readings that name one (ADR 0010 point 5).
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from ordnung.ingest.plan import (
     needs_check,
     with_corrections,
 )
-from ordnung.models import DocumentExtraction, Item
+from ordnung.models import DocumentExtraction, Item, Recurrence
 from ordnung.rules import RuleContext
 from ordnung.rules.advice import LATE_STATEMENT_WARNING, RENT_INCREASE_PAYMENT_WARNING
 from test_api_support import TODAY, Api, ApiRouter, api_for
@@ -1392,6 +1394,116 @@ def test_a_kind_the_person_chose_is_a_correction() -> None:
     assert corrections(filed, dunning, chosen_kind="court_payment_order") == {"kind": "court_payment_order"}
 
 
+# ------------------------------------------------ the kind the model names (extraction prompt version 9)
+
+
+#: The Mahnbescheid with its court's name read in English: code doesn't recognise the court by name (an
+#: accepted miss of ADR 0010), but the model names the kind itself.
+ENGLISH_COURT_ORDER = Letter(
+    marker="26-7654321-0-1",
+    pages=(
+        (
+            "Amtsgericht Hagen - Zentrales Mahngericht - 58084 Hagen",
+            "SPECIMEN",
+            "Mahnbescheid vom 21.09.2026",
+            "Geschäftsnummer: 26-7654321-0-1",
+            MB_QUOTE,
+            MB_WARNING,
+        ),
+    ),
+    payload={
+        **MAHNBESCHEID.payload,
+        "sender": {"name": "Local Court of Hagen - Central Dunning Court", "kind": "authority"},
+        "references": [{"label": "Geschäftsnummer", "value": "26-7654321-0-1"}],
+        "remedy": {"type": "widerspruch", "addressee": "Local Court of Hagen", "quote": MB_QUOTE},
+        "high_stakes_kind": "court_payment_order",
+    },
+)
+MODEL_STATEMENT_QUOTE = "Abrechnung über die Nebenkosten für das Jahr 2025"
+#: A landlord's statement whose reading code's words don't recognise; the model names it one.
+MODEL_STATEMENT = Letter(
+    marker=MODEL_STATEMENT_QUOTE,
+    pages=(("Wohnbau Muster GmbH", "SPECIMEN", MODEL_STATEMENT_QUOTE, "Nachzahlung 120,00 EUR"),),
+    payload={
+        **STATEMENT.payload,
+        "title": "Annual utility cost settlement 2025",
+        "summary": "The landlord's settlement of the utility costs for 2025, with a back-payment of 120 EUR.",
+        "key_facts": [{"label": "Billing year", "value": "2025", "quote": MODEL_STATEMENT_QUOTE}],
+        "high_stakes_kind": "operating_costs",
+    },
+)
+
+
+def _router_for(*letters: Letter) -> ApiRouter:
+    router = ApiRouter()
+    Router.__init__(router, letters=letters)
+    return router
+
+
+def test_the_kind_the_person_chose_wins_over_the_kind_the_model_names() -> None:
+    english = _reading(ENGLISH_COURT_ORDER)
+    assert filed_kind(_reading(ENGLISH_COURT_ORDER, high_stakes_kind=None), {}) == "authority_letter"
+    assert filed_kind(english, {}) == "court_payment_order"
+    assert filed_kind(english, {"kind": "authority_letter"}) == "authority_letter"
+    # code's kind wins a disagreement
+    assert (
+        filed_kind(_reading(MAHNBESCHEID, high_stakes_kind="enforcement_order"), {}) == "court_payment_order"
+    )
+    # a statement the model names counts on read, never against a kind the person chose
+    statement = _reading(MODEL_STATEMENT)
+    assert not is_statement("utility_bill", _reading(MODEL_STATEMENT, high_stakes_kind=None))
+    assert is_statement("utility_bill", statement)
+    assert not is_statement("utility_bill", statement, chosen=True)
+    assert not is_statement("dunning", statement) and not is_statement("landlord_notice", statement)
+
+
+async def test_a_court_order_the_model_names_is_filed_as_one_until_the_person_changes_it(
+    data_dir: Path,
+) -> None:
+    """ADR 0010 point 5: the model names the letter a court payment order, and nothing in the reading rules
+    it out, so it is filed as one although code doesn't know the court's English name — its date follows
+    the court rule and it gets the card. The kind the person chooses wins, also when it is read again."""
+    async with api_for(data_dir, router=_router_for(ENGLISH_COURT_ORDER)) as api:
+        doc_id = await _read(api, ENGLISH_COURT_ORDER)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "court_payment_order"
+        [objection] = detail["items"]
+        assert "zpo_692" in objection["computation"]["rule_ids"]
+        assert detail["advice"]["kind"] == "court_payment_order"
+
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "authority_letter"})
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"] is None
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        assert (api.ctx.store.get_document(doc_id) or pytest.fail()).kind == "authority_letter"
+
+
+async def test_a_statement_the_model_names_gets_its_card_unless_the_person_chose_its_kind(
+    data_dir: Path,
+) -> None:
+    router = _router_for(MODEL_STATEMENT)
+    async with api_for(data_dir, router=router) as api:
+        doc_id = await _read(api, MODEL_STATEMENT)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["kind"] == "utility_bill"  # recognised on read, never filed
+        assert detail["advice"]["kind"] == "operating_costs"
+
+        # the same reading without the model's kind: its words alone don't make it a statement
+        router.payloads[MODEL_STATEMENT.marker]["high_stakes_kind"] = None
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"] is None
+
+        router.payloads[MODEL_STATEMENT.marker]["high_stakes_kind"] = "operating_costs"
+        await api.client.post(f"/api/documents/{doc_id}/reprocess")
+        await api.read_all()
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"][
+            "kind"
+        ] == "operating_costs"
+        await api.client.patch(f"/api/documents/{doc_id}", json={"kind": "utility_bill"})
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"] is None
+
+
 # ------------------------------------------------------------------------------------ final review 1
 
 
@@ -1472,6 +1584,31 @@ async def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(data
         assert after is not None and after.due_date == "2027-01-01"
         [decision] = _by_origin(api, doc_id)["rule"]
         assert decision.due_date == "2026-12-31"
+
+
+async def test_a_rent_increases_new_rent_by_its_working_day_starts_when_the_law_allows(
+    data_dir: Path,
+) -> None:
+    """Review of recurrence.py point 8: the new rent of a request of 24 Sep "ab dem 01.11.2026", paid by the
+    3rd working day of each month (set on the stored to-do of a request read without it, and the letter's
+    dates are recomputed). Its schedule starts in the month § 558b Abs. 1 BGB allows (Thu 3 Dec,
+    not Wed 4 Nov), and dated by its working day it keeps the note that it is only owed once the person
+    agrees: Ask still lists it to decide on before paying."""
+    from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
+
+    async with api_for(data_dir, router=_router()) as api:
+        doc_id = await _read(api, RENT_INCREASE_EARLY)
+        [payment] = _by_origin(api, doc_id)["extracted"]
+        api.ctx.store.update_item(payment.id, recurrence=Recurrence(working_day=3))
+        chosen = await api.client.put("/api/profile", json={"region": "BY", "onboarded": True})
+        assert chosen.status_code == 200, chosen.text
+        after = api.ctx.store.get_item(payment.id)
+        assert after is not None and after.due_date == "2026-12-03" and after.computation is not None
+        assert RENT_INCREASE_PAYMENT_WARNING in after.computation.warnings
+        assert "bgb_558b" in after.computation.rule_ids
+        record = LedgerTools(api.ctx.store, today=date(2026, 11, 20)).money_summary().record
+        assert [row["id"] for row in record[DECIDE_BEFORE_PAYING]] == [payment.id]
+        assert all(row["id"] != payment.id for row in record["upcoming_payments"])
 
 
 async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(data_dir: Path) -> None:

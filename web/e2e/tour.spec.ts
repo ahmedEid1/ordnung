@@ -4,7 +4,7 @@
  * receipt, and the tour card walks on through Idea → Ask → Timeline.
  */
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, envelope, expect, expectAccessible, open, openMail, setTour, test, type TourState } from "./helpers";
+import { apiGet, envelope, expect, expectAccessible, letterDetail, letterItem, mailLetterId, open, openMail, setTour, shownAs, test, type TourState } from "./helpers";
 
 const FINANZAMT = "Finanzamt Musterstadt";
 
@@ -50,17 +50,22 @@ test("New mail → the tax assessment is read → evidence, Einspruch deadline a
   }
 
   // ---- the viewer: verdict card first -----------------------------------------------------
-  const verdict = page.getByRole("article", { name: /Income Tax Assessment 2025/ });
-  await expect(verdict.getByRole("heading", { level: 1 })).toContainText("Income Tax Assessment 2025");
+  // the letter by its tray sender, headed by its title as read (the model's words, new with every recording)
+  const id = await mailLetterId(page, FINANZAMT);
+  const { title } = await letterDetail(page, id);
+  const verdict = page.getByRole("article", { name: shownAs(title) });
+  await expect(verdict.getByRole("heading", { level: 1 })).toContainText(shownAs(title));
   await expect(verdict).toContainText("Einspruch"); // the objection, with its German term
   await expect(verdict.locator("time", { hasText: "Wed 21 Oct" })).toBeVisible();
   await expect(verdict.getByText("Not legal advice", { exact: false })).toBeVisible();
 
   // ---- the evidence: the sentence the deadline comes from, highlighted -------------------
   const todos = page.getByRole("region", { name: /^To-dos & dates/ });
-  const objection = todos.getByRole("listitem").filter({ hasText: "File objection (Einspruch) if you disagree with the assessment" });
+  // the objection is the assessment's one deadline; its to-do's title is the model's too: read from the API
+  const deadline = await letterItem(page, id, "deadline");
+  const objection = todos.getByRole("listitem").filter({ hasText: shownAs(deadline.title) });
   await expect(objection.locator("time", { hasText: "Wed 21 Oct" })).toBeVisible();
-  await objection.getByRole("button", { name: /show “File objection \(Einspruch\) if you disagree with the assessment” on the page/ }).click();
+  await objection.getByRole("button", { name: new RegExp(`show “${shownAs(deadline.title).source}” on the page`) }).click();
   const evidence = page.getByRole("region", { name: "Letter pages" }).getByTestId("evidence-quote");
   await expect(evidence).toBeVisible();
   // a phone photo has no text layer: the quote is shown highlighted, labelled as read by AI

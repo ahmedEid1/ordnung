@@ -1,0 +1,129 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "11.7.1",
+    "cache_key": "{\"doc\":\"02c5a42277cbc550440faa145ee2d3d39fdc08f1ed04ce85ae91d78c1d7655e4\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_0b2t88kqsf2n"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract_change\",\"title\":\"Musterbank: account fee rising to €6.90, your consent needed\",\"summary\":\"Musterbank eG wants to raise the monthly account fee for your Girokonto Klassik from €4.90 to €6.90 from 1 December 2026. It needs your explicit consent, requested by 30 November 2026.\",\"explanation\":\"Your bank plans to raise the monthly fee for your current account from €4.90 to €6.90 from 1 December 2026. Silence does not count as consent, so the bank must get your explicit agreement, either in online banking or with the signed reply form. If you don't agree, the bank says it may terminate the account with two months' notice. You may also close the account yourself at any time free of charge. You can decide whether to consent, switch to another account, or ask about the free \\\"Start\\\" model for people in education up to age 27. The app shows any cancellation window it calculates.\",\"case_title\":\"Musterbank account fee increase\",\"area\":\"money\",\"document_date\":\"2026-09-18\",\"language\":\"German\",\"urgency\":\"normal\",\"sender\":{\"name\":\"Musterbank eG\",\"kind\":\"bank\",\"address\":\"Bankplatz 1, 12345 Musterstadt\",\"phone\":\"0123 4000-0\",\"website\":\"www.musterbank.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE123467016\"},{\"label\":\"BIC\",\"value\":\"MUBKDEM1XXX\"}]},\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"7004 1128\"}],\"change\":{\"type\":\"price_increase\",\"effective_date\":\"2026-12-01\",\"old_amount\":4.9,\"new_amount\":6.9,\"cost_interval\":\"monthly\",\"quote\":\"Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen.\"},\"contract\":{\"name\":\"Girokonto Klassik\",\"category\":\"bank\",\"customer_number\":\"7004 1128\",\"cost_amount\":4.9,\"cost_interval\":\"monthly\",\"is_consumer\":true,\"is_basic_supply\":false,\"notice_before_end\":false,\"quotes\":[\"Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei kündigen.\"]},\"items\":[{\"kind\":\"deadline\",\"title\":\"Give consent to the new account fee\",\"action\":\"Decide whether to consent to the fee increase, via online banking (Postfach › Zustimmungen) or the signed reply form.\",\"consequence\":\"Without consent the bank reserves the right to terminate the account with two months' notice.\",\"priority\":\"normal\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-30\",\"text\":\"Bitte erteilen Sie Ihre Zustimmung bis zum 30.11.2026.\",\"nature\":\"declaration\",\"shift_rule\":\"auto\"},\"quote\":\"Bitte erteilen Sie Ihre Zustimmung bis zum 30.11.2026.\"}],\"key_facts\":[{\"label\":\"Current monthly fee (Kontoführungspreis)\",\"value\":\"4,90 €\",\"quote\":\"Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen.\"},{\"label\":\"New monthly fee (Kontoführungspreis)\",\"value\":\"6,90 €\",\"quote\":\"Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen.\"},{\"label\":\"Bank's notice period if you don't consent (Frist)\",\"value\":\"zwei Monaten\",\"quote\":\"In diesem Fall behalten wir uns vor, die Geschäftsbeziehung für dieses Konto unter Einhaltung einer Frist von zwei Monaten zu kündigen (Nr. 19 Abs. 1 unserer Allgemeinen\"},{\"label\":\"Free account for students up to 27 (Kontomodell „Start“)\",\"value\":\"no monthly fee\",\"quote\":\"Übrigens: Für junge Leute in Ausbildung und Studium bis zum vollendeten 27. Lebensjahr bieten wir\"}],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"warnings\":[]}",
+    "data": {
+      "kind": "contract_change",
+      "title": "Musterbank: account fee rising to €6.90, your consent needed",
+      "summary": "Musterbank eG wants to raise the monthly account fee for your Girokonto Klassik from €4.90 to €6.90 from 1 December 2026. It needs your explicit consent, requested by 30 November 2026.",
+      "explanation": "Your bank plans to raise the monthly fee for your current account from €4.90 to €6.90 from 1 December 2026. Silence does not count as consent, so the bank must get your explicit agreement, either in online banking or with the signed reply form. If you don't agree, the bank says it may terminate the account with two months' notice. You may also close the account yourself at any time free of charge. You can decide whether to consent, switch to another account, or ask about the free \"Start\" model for people in education up to age 27. The app shows any cancellation window it calculates.",
+      "case_title": "Musterbank account fee increase",
+      "area": "money",
+      "document_date": "2026-09-18",
+      "language": "German",
+      "urgency": "normal",
+      "sender": {
+        "name": "Musterbank eG",
+        "kind": "bank",
+        "address": "Bankplatz 1, 12345 Musterstadt",
+        "phone": "0123 4000-0",
+        "website": "www.musterbank.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE123467016"
+          },
+          {
+            "label": "BIC",
+            "value": "MUBKDEM1XXX"
+          }
+        ]
+      },
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "7004 1128"
+        }
+      ],
+      "change": {
+        "type": "price_increase",
+        "effective_date": "2026-12-01",
+        "old_amount": 4.9,
+        "new_amount": 6.9,
+        "cost_interval": "monthly",
+        "quote": "Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen."
+      },
+      "contract": {
+        "name": "Girokonto Klassik",
+        "category": "bank",
+        "customer_number": "7004 1128",
+        "cost_amount": 4.9,
+        "cost_interval": "monthly",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "notice_before_end": false,
+        "quotes": [
+          "Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei kündigen."
+        ]
+      },
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Give consent to the new account fee",
+          "action": "Decide whether to consent to the fee increase, via online banking (Postfach › Zustimmungen) or the signed reply form.",
+          "consequence": "Without consent the bank reserves the right to terminate the account with two months' notice.",
+          "priority": "normal",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-30",
+            "text": "Bitte erteilen Sie Ihre Zustimmung bis zum 30.11.2026.",
+            "nature": "declaration",
+            "shift_rule": "auto"
+          },
+          "quote": "Bitte erteilen Sie Ihre Zustimmung bis zum 30.11.2026."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Current monthly fee (Kontoführungspreis)",
+          "value": "4,90 €",
+          "quote": "Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen."
+        },
+        {
+          "label": "New monthly fee (Kontoführungspreis)",
+          "value": "6,90 €",
+          "quote": "Für Ihr Girokonto Klassik möchten wir den monatlichen Kontoführungspreis ab dem 01.12.2026 von 4,90 € auf 6,90 € anpassen."
+        },
+        {
+          "label": "Bank's notice period if you don't consent (Frist)",
+          "value": "zwei Monaten",
+          "quote": "In diesem Fall behalten wir uns vor, die Geschäftsbeziehung für dieses Konto unter Einhaltung einer Frist von zwei Monaten zu kündigen (Nr. 19 Abs. 1 unserer Allgemeinen"
+        },
+        {
+          "label": "Free account for students up to 27 (Kontomodell „Start“)",
+          "value": "no monthly fee",
+          "quote": "Übrigens: Für junge Leute in Ausbildung und Studium bis zum vollendeten 27. Lebensjahr bieten wir"
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1808,
+      "cache_read_tokens": 8372,
+      "cache_creation_tokens": 2833,
+      "cost_usd": 0.031090399999999997,
+      "duration_ms": 17788,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

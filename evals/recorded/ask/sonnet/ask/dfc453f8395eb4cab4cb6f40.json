@@ -1,0 +1,321 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"dcd97b3e5e8b45f282f59fe0d9f64e7271918ec386f81b7d5b409ac16fe26dc2\",\"question\":\"I got a reminder from TechMarkt. How much do I owe them and until when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nI got a reminder from TechMarkt. How much do I owe them and until when?\n"
+  },
+  "response": {
+    "text": "You owe TechMarkt Online GmbH 94.99 €, due Wed 30 Sep 2026 [item:itm_bfvgt8ybg96k]. That is the total on their first payment reminder [doc:doc_1ndcj96tf28z].\n\n- Ordnung's send-by date is Tue 29 Sep 2026, which is the day to post or transfer so the money arrives in time [item:itm_bfvgt8ybg96k].\n- Pay by bank transfer and use the invoice number as the payment reference.\n- If you don't pay, the letter says the claim will be handed to a debt collection agency, which would cause further costs.\n- The reminder follows an invoice for headphones [doc:doc_jcbakmxv29p8]. The reminder total is higher than the original invoice amount. If you want to know why, check the reminder letter for the fees it added.\n\nOnce you've paid, you can use \"Mark done\" in Ordnung to close the to-do.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 406,
+      "cache_read_tokens": 12003,
+      "cache_creation_tokens": 5820,
+      "cost_usd": 0.0297486,
+      "duration_ms": 7892,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "TechMarkt"
+      },
+      "tool_use_id": "toolu_01LuVVHgUCaRjFQqzwBFFbii"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__money_summary",
+      "input": {},
+      "tool_use_id": "toolu_016xbV7AXgcdmc5zW54Jeq6L"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"party_id\":\"pty_adyabnsvdbpg\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_jcbakmxv29p8\":{\"title\":\"TechMarkt Online invoice – headphones €89.99\",\"snippet\":\"…www.techmarkt-online.example · 0123 6655440 Rechnungs-Nr. TM-2026-0048213 Rechnungsdatum 20.08.2026 TechMarkt…\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_1ndcj96tf28z\":{\"title\":\"First payment reminder from TechMarkt Online – €94.99 due by 30 September 2026\",\"snippet\":\"First payment reminder from TechMarkt Online – €94.99 due by 30 September 2026 15_mahnung_techmarkt…\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LuVVHgUCaRjFQqzwBFFbii"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"month\":\"2026-09\",\"currency\":\"EUR\",\"due_this_month\":94.99,\"fixed_costs_monthly\":825.78,\"fixed_costs_by_category\":{\"bank\":4.9,\"energy\":48.0,\"gym\":29.9,\"insurance\":4.99,\"mobile\":34.99,\"rent\":640.0,\"transport\":63.0},\"upcoming_payments\":[{\"id\":\"itm_bfvgt8ybg96k\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_cfpx42mmhb49\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-05\",\"send_by\":\"2026-10-02\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"amount\":156.55,\"currency\":\"EUR\"},{\"id\":\"itm_kttk9625293w\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"}],\"payments_without_due_date\":[{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"leisure\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"leisure\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_61wt30mrhybv\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":1560.0,\"currency\":\"EUR\"},{\"id\":\"itm_2s90qr4prp13\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"}],\"do_not_pay\":[{\"id\":\"itm_fx2sjzsca7b6\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_4q7m6qzy2ya8\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true,\"amount\":254.35,\"currency\":\"EUR\"}],\"fixed_cost_contracts\":[{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"monthly_cost\":63.0,\"currency\":\"EUR\"},{\"id\":\"ctr_15banyk4pc92\",\"category\":\"gym\",\"monthly_cost\":29.9,\"currency\":\"EUR\"},{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"monthly_cost\":34.99,\"currency\":\"EUR\"},{\"id\":\"ctr_611d1sk7v1cr\",\"category\":\"bank\",\"monthly_cost\":4.9,\"currency\":\"EUR\"},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"monthly_cost\":48.0,\"currency\":\"EUR\"},{\"id\":\"ctr_w97tm6xhn7zw\",\"category\":\"insurance\",\"monthly_cost\":4.99,\"currency\":\"EUR\"},{\"id\":\"ctr_y2hc77av3ps4\",\"category\":\"rent\",\"monthly_cost\":640.0,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_cmeadtk38mac\":{\"name\":\"Deutschlandticket subscription\"},\"ctr_15banyk4pc92\":{\"name\":\"FitWell Flex 12 (Studenten)\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"ctr_611d1sk7v1cr\":{\"name\":\"Girokonto Klassik\"},\"ctr_bbzemyapzvm5\":{\"name\":\"MusterStrom Flex\"},\"ctr_w97tm6xhn7zw\":{\"name\":\"Privat-Haftpflichtversicherung, Tarif Basis Single\"},\"ctr_y2hc77av3ps4\":{\"name\":\"Rental agreement Beispielweg 5\"},\"itm_bfvgt8ybg96k\":{\"title\":\"Pay reminder total to TechMarkt Online\",\"action\":\"Transfer €94.99 to TechMarkt Online GmbH using the invoice number as the payment reference.\",\"consequence\":\"The claim will be handed to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay parking warning fee\",\"action\":\"Transfer €30.00 to the Stadtkasse Musterstadt, quoting the Kassenzeichen as the reference.\",\"consequence\":\"A fine proceeding (Bußgeldverfahren) is started, with additional fees and expenses of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_cfpx42mmhb49\":{\"name\":\"Stadt Musterstadt, Ordnungsamt\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent\",\"action\":\"Pay the total rent (Gesamtmiete) so it arrives by the third working day of each month\",\"consequence\":\"Payment counts only when the money is received by the landlord.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_dmaw27qvv18n\":{\"title\":\"Pay additional operating costs\",\"action\":\"Transfer €184.30 to the landlord's account with reference MV-2025-0412 NK 2025.\"},\"itm_wj2v05avgk1m\":{\"title\":\"Extension fee\",\"action\":\"Pay the fee on site by girocard at the appointment.\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Monthly health and care insurance contribution\",\"action\":\"Keep enough money in your account for the direct debit of the new monthly contribution.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_kttk9625293w\":{\"title\":\"Monthly electricity advance payment\",\"action\":\"Ensure the account has enough funds; the amount is collected by SEPA direct debit.\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay overdue fees\",\"action\":\"Pay the €4.50 fees when returning the items, at the service desk or payment machine.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym fee\",\"action\":\"Make sure your account has enough funds for the direct debit on the 1st of each month.\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_61wt30mrhybv\":{\"title\":\"Rent deposit (Kaution)\",\"action\":\"Pay the deposit of €1,560.00, optionally in three equal monthly instalments of €520.00 with the first rent payments\"},\"itm_2s90qr4prp13\":{\"title\":\"Monthly Deutschlandticket fee\",\"action\":\"Keep enough funds in your account for the direct debit at the start of each month.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_fx2sjzsca7b6\":{\"title\":\"Claimed arrears (unverified)\",\"action\":\"Do not pay until the claim is verified as genuine.\",\"consequence\":\"The letter says enforcement (Zwangsvollstreckung) with further costs of at least €180 would follow.\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale (RBS)” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_4q7m6qzy2ya8\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_016xbV7AXgcdmc5zW54Jeq6L"
+    },
+    {
+      "type": "text",
+      "text": "You owe TechMark"
+    },
+    {
+      "type": "text",
+      "text": "t Online GmbH "
+    },
+    {
+      "type": "text",
+      "text": "94.99 €"
+    },
+    {
+      "type": "text",
+      "text": ", due"
+    },
+    {
+      "type": "text",
+      "text": " Wed 30 Sep"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_bfv"
+    },
+    {
+      "type": "text",
+      "text": "gt8yb"
+    },
+    {
+      "type": "text",
+      "text": "g96k]. That is the"
+    },
+    {
+      "type": "text",
+      "text": " total"
+    },
+    {
+      "type": "text",
+      "text": " on"
+    },
+    {
+      "type": "text",
+      "text": " their"
+    },
+    {
+      "type": "text",
+      "text": " first payment reminder ["
+    },
+    {
+      "type": "text",
+      "text": "doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_1ndcj96"
+    },
+    {
+      "type": "text",
+      "text": "tf28z].\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung's send"
+    },
+    {
+      "type": "text",
+      "text": "-by date is T"
+    },
+    {
+      "type": "text",
+      "text": "ue 29 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2026, which"
+    },
+    {
+      "type": "text",
+      "text": " is the day"
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": " post or"
+    },
+    {
+      "type": "text",
+      "text": " transfer so"
+    },
+    {
+      "type": "text",
+      "text": " the money arrives in"
+    },
+    {
+      "type": "text",
+      "text": " time ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_bfv"
+    },
+    {
+      "type": "text",
+      "text": "gt8ybg96k"
+    },
+    {
+      "type": "text",
+      "text": "].\n- Pay by"
+    },
+    {
+      "type": "text",
+      "text": " bank transfer and"
+    },
+    {
+      "type": "text",
+      "text": " use the invoice number as the"
+    },
+    {
+      "type": "text",
+      "text": " payment reference."
+    },
+    {
+      "type": "text",
+      "text": "\n- If you don't pay"
+    },
+    {
+      "type": "text",
+      "text": ", the letter says the claim"
+    },
+    {
+      "type": "text",
+      "text": " will be handed to"
+    },
+    {
+      "type": "text",
+      "text": " a debt collection agency,"
+    },
+    {
+      "type": "text",
+      "text": " which would cause further costs."
+    },
+    {
+      "type": "text",
+      "text": "\n- The re"
+    },
+    {
+      "type": "text",
+      "text": "minder foll"
+    },
+    {
+      "type": "text",
+      "text": "ows an inv"
+    },
+    {
+      "type": "text",
+      "text": "oice for head"
+    },
+    {
+      "type": "text",
+      "text": "phones ["
+    },
+    {
+      "type": "text",
+      "text": "doc:doc_jc"
+    },
+    {
+      "type": "text",
+      "text": "bakmxv29p8"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": ". The reminder total"
+    },
+    {
+      "type": "text",
+      "text": " is higher than the original invo"
+    },
+    {
+      "type": "text",
+      "text": "ice amount. If"
+    },
+    {
+      "type": "text",
+      "text": " you want to know"
+    },
+    {
+      "type": "text",
+      "text": " why,"
+    },
+    {
+      "type": "text",
+      "text": " check the re"
+    },
+    {
+      "type": "text",
+      "text": "minder let"
+    },
+    {
+      "type": "text",
+      "text": "ter for the fees it"
+    },
+    {
+      "type": "text",
+      "text": " added"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "\n\nOnce you've paid, you"
+    },
+    {
+      "type": "text",
+      "text": " can use \"Mark done\""
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung to close"
+    },
+    {
+      "type": "text",
+      "text": " the to"
+    },
+    {
+      "type": "text",
+      "text": "-do."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You owe TechMarkt Online GmbH 94.99 €, due Wed 30 Sep 2026 [item:itm_bfvgt8ybg96k]. That is the total on their first payment reminder [doc:doc_1ndcj96tf28z].\n\n- Ordnung's send-by date is Tue 29 Sep 2026, which is the day to post or transfer so the money arrives in time [item:itm_bfvgt8ybg96k].\n- Pay by bank transfer and use the invoice number as the payment reference.\n- If you don't pay, the letter says the claim will be handed to a debt collection agency, which would cause further costs.\n- The reminder follows an invoice for headphones [doc:doc_jcbakmxv29p8]. The reminder total is higher than the original invoice amount. If you want to know why, check the reminder letter for the fees it added.\n\nOnce you've paid, you can use \"Mark done\" in Ordnung to close the to-do.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 406,
+          "cache_read_tokens": 12003,
+          "cache_creation_tokens": 5820,
+          "cost_usd": 0.0297486,
+          "duration_ms": 7892,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

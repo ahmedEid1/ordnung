@@ -13,6 +13,7 @@ from ordnung.ingest.plan import (
     ComputedDate,
     activity_message,
     compute_item,
+    consistency_reasons,
     end_date_grounding,
     for_item,
     grade_receipt,
@@ -20,6 +21,7 @@ from ordnung.ingest.plan import (
     payment_details,
     remedy_text,
     remedy_warnings,
+    rent_increase_note,
     rule_context,
     slot_key,
     slot_keys,
@@ -27,12 +29,13 @@ from ordnung.ingest.plan import (
     verify_extraction,
     write_items,
 )
-from ordnung.ingest.verify import MODEL_READ_NOTE, UNVERIFIED_NOTE
+from ordnung.ingest.verify import MODEL_READ_NOTE, REASON_TEXT, UNVERIFIED_NOTE, WORKING_DAY_NOT_IN_QUOTE
 from ordnung.models import (
     ComputationReceipt,
     Document,
     DocumentExtraction,
     Evidence,
+    ExtractedChange,
     ExtractedItem,
     Item,
     PaymentDetails,
@@ -41,6 +44,7 @@ from ordnung.models import (
     Remedy,
 )
 from ordnung.rules import RuleContext
+from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.scam import invalid_iban_message
 
 PAGE_TEXT = (
@@ -137,6 +141,46 @@ def test_unfound_or_inconsistent_dated_items_need_review() -> None:
 def test_undated_items_never_need_review() -> None:
     task = item("Ein Satz, der nicht im Brief steht.", kind="task")
     assert not verify_extraction("doc_x", extraction([task]), [TEXT_PAGE]).needs_review
+
+
+RENT_BY_WORKING_DAY = "Die Miete ist spätestens am dritten Werktag eines jeden Monats zu zahlen."
+RENT_IN_ADVANCE = "Die Miete ist monatlich im Voraus zu zahlen."
+LEASE_PAGE = (1, f"Monatliche Miete: 640,00 EUR\n{RENT_BY_WORKING_DAY}\n{RENT_IN_ADVANCE}", [], "text")
+
+
+def rent(quote: str, working_day: int | None) -> ExtractedItem:
+    """A lease's monthly rent as a reading gives it: no date of its own, its amount on the line above."""
+    reading = item(quote, money=640.0, type="none", nature="payment")
+    return reading.model_copy(update={"recurrence": Recurrence(working_day=working_day)})
+
+
+def test_a_working_day_its_quote_names_is_consistent() -> None:
+    """The reviewer's check: "spätestens am dritten Werktag" names the working day the reading gives (3)."""
+    [verified] = verify_extraction("doc_x", extraction([rent(RENT_BY_WORKING_DAY, 3)]), [LEASE_PAGE]).items
+    assert verified.reasons == () and verified.evidence.value_consistent
+    assert verified.dated and not verified.needs_check  # dated by its working day, and it checks out
+    assert consistency_reasons(rent(RENT_BY_WORKING_DAY, None), [LEASE_PAGE]) == ()  # no working day read
+
+
+@pytest.mark.parametrize(
+    ("quote", "working_day"),
+    [
+        (RENT_IN_ADVANCE, 3),  # the letter names it, but not in this item's sentence: only the quote counts
+        (RENT_BY_WORKING_DAY, 1),  # the quote names another working day
+    ],
+)
+def test_a_working_day_its_quote_does_not_name_needs_a_check(quote: str, working_day: int) -> None:
+    """The working day is the reading's claim about the item's sentence: one the sentence doesn't name is
+    ``working_day_not_in_quote``, so the value is not consistent with its quote and the letter says a date
+    could not be confirmed ("Please check"); its receipt is graded one level lower, with the reason's note."""
+    result = verify_extraction("doc_x", extraction([rent(quote, working_day)]), [LEASE_PAGE])
+    [verified] = result.items
+    assert verified.reasons == (WORKING_DAY_NOT_IN_QUOTE,)
+    assert not verified.evidence.value_consistent and verified.evidence.grounding == "verified"
+    assert result.needs_review
+    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
+    receipt = grade_receipt(ComputationReceipt(due_date="2026-10-05", confidence="high"), verified)
+    assert receipt.confidence == "medium" and receipt.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
 
 
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
@@ -700,6 +744,48 @@ def test_a_recurring_to_do_moves_to_a_reading_that_corrects_its_amount(store: St
     assert (again_power.id, again_power.amount, again_power.due_date) == (stored_power.id, 55.0, "2026-12-15")
     assert (again_gas.id, again_gas.due_date) == (stored_gas.id, "2026-10-15")
     assert len(store.list_items(doc_id=document.id)) == 2
+
+
+def test_a_new_rent_dated_by_its_working_day_starts_when_the_law_allows_with_its_note(store: Store) -> None:
+    """recurrence.py point 8 when the letter is read: a rent increase's new rent "ab dem 01.11.2026", paid by
+    the 3rd working day (read with its working day, which its quote names), in a request of
+    24 Sep. Its first rent is December's (Thu 3 Dec: § 558b Abs. 1 BGB allows no earlier month), and dated by
+    its working day it is still only owed once the person agrees (the note and its rule stay)."""
+    from ordnung.ingest.pipeline import compute_dates
+
+    quote = "Neue monatliche Miete 670,00 EUR ab dem 01.11.2026, zahlbar bis zum 3. Werktag."
+    reading = item(
+        quote, money=670.0, type="fixed", date="2026-11-01", nature="payment", text="ab dem 01.11.2026"
+    )
+    new_rent = reading.model_copy(update={"recurrence": Recurrence(working_day=3)})
+    change = ExtractedChange(type="price_increase", old_amount=640.0, new_amount=670.0)
+    data = DocumentExtraction(
+        kind="rent_lease",
+        title="Rent increase",
+        summary="s",
+        explanation="e",
+        items=[new_rent],
+        change=change,
+    )
+    document = add_doc(store)
+    verification = verify_extraction(document.id, data, [(1, quote, [], "text")])
+    ctx = RuleContext(today=date(2026, 9, 29), document_date=date(2026, 9, 24), letter_kind="rent_increase")
+    note = rent_increase_note("rent_increase", data)
+    computed = compute_dates(verification.items, ctx, postal_buffer_days=4, note=note)
+    [written] = write_items(
+        store,
+        document.id,
+        verification,
+        computed,
+        data,
+        LinkResult(),
+        today=ctx.today,
+        ctx=ctx,
+        postal_buffer_days=4,
+    )
+    assert written.due_date == "2026-12-03" and written.computation is not None
+    assert RENT_INCREASE_PAYMENT_WARNING in written.computation.warnings
+    assert "bgb_558b" in written.computation.rule_ids
 
 
 def test_activity_message() -> None:

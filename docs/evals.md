@@ -5,6 +5,7 @@
 > 12 adversarial), 56 required items with a known date
 > (a phone photo repeats the items of the PDF it was made from).
 > LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
+> Ordnung was run again on 2026-09-29 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -56,7 +57,7 @@ Paired differences (bootstrap over the same letters; an interval that excludes 0
 The held-out run exposed a gap in Ordnung itself rather than in the model's reading: its sender categories had no place for social-benefit agencies, so a job centre, the pension insurance or the Familienkasse was filed as a plain *authority*, and the engine applied general administrative law (§ 41 VwVfG, with a Land's older 3-day rule) instead of social law (§ 37 SGB X). All five of Ordnung's reading errors above are this case. The engine now also reads the sender's name and the remedy notice (a Sozialgericht or the SGB means social law; an *Einspruch* to the Familienkasse is tax law): `scope_for_party_kind` in `src/ordnung/rules/delivery.py`, with tests. The one error left is deliberate: that letter prints a posting day two days after its own date, and Ordnung counts from the letter's date (the earliest plausible start), telling the person why.
 
 The fix changed code only (no prompt, schema or model change), so the **same recorded model outputs**
-were scored again (commit `5c3e35b`, a commit from before the history was squashed; a replay on any later commit gives the same numbers). Because the test split informed the fix,
+were scored again (commit `5c3e35b`, a commit from before the history was squashed; a replay on a commit whose extraction prompt is version 8 gives the same numbers — from version 9 on, a replay scores the recordings of the prompt the app uses then (the “Prompt now” row)). Because the test split informed the fix,
 these numbers are **no longer held-out**; the held-out run above stays the headline. The baselines'
 numbers cannot change: they do not use the rules engine, or (LLM + rules tool) they answered from
 the tool results recorded when they ran.
@@ -71,6 +72,26 @@ the tool results recorded when they ran.
 Ordnung's remaining errors after the fix:
 
 - `test-tax_assessment-D1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Mon 9 Feb 2026, got Thu 5 Feb 2026 (wrong, early, computing error)
+
+## The prompt the app uses now
+
+Extraction prompt version 11 (2026-09-29) is the one the app uses now. Versions 9 to 11 fix what the UI audit and the Ask benchmark found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats ("Semesterbeitrag überweisen", "94.99 EUR", "03.09.2026"); a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel); and three terms the ledger could not hold: the working day a rent is due on (§ 556b BGB), a cancellation that must arrive by a day of the month (the Deutschlandticket's "by the 10th") and a fixed-term job that may be ended by notice after probation. The model also names a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. Each version was checked on the dev split before the test split, but the test split was recorded three times for them, which is iteration on it: read the row with that in mind. Version 9 scored 54 of 56 (dev 24 of 25). Version 10 added the three terms and scored 53 of 56 (dev 23 of 25): it left the delivery date out of fines served by Zustellung ("zugestellt am") on both splits, so their objection deadlines were counted from an earlier day (versions 8 and 9 filled it in all 6 fines; version 10 in 4, one of them read as an explicit anchor, and left it out of 2). Version 11 says so explicitly, was checked on the dev split (24 of 25) and scored 54 of 56. In its 91 readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). Its two misses are early, on the safe side: a questionnaire's "10 Arbeitstagen (Montag bis Freitag)" read as working days that include Saturdays, so its return date came out two days early (version 9 made the same slip on the letter's photo); and the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date. No benchmark letter states one of the three new terms; they are measured on the demo and in the Ask benchmark. Recording cost $10.66 (API-equivalent): version 9 $3.56, version 10 $3.51, version 11 $3.59. Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts.
+
+These are new recordings of the same letters, scored by the rules engine of the commit named in each
+row. The test split informed the fix above and has been read since, so the prompt-now row is **not
+held-out**; the sections below describe the published run.
+
+| Ordnung | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Cost / letter | Latency p50 / mean |
+|---|---|---|---|---|---|---|---|
+| Held-out run (2026-09-25, headline) | 89.3 % [78.9–96.7] | 50/56 | 0.0 % | 10.7 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
+| Re-scored after the fix | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
+| **Prompt now** (2026-09-29, commit `ab96bb3`) | 96.4 % [91.2–100.0] | 54/56 | 0.0 % | 3.6 % | 0.0 % | $0.0400 | 12.2 s / 15.7 s |
+| **Prompt now** (2026-09-29, commit `ab96bb3`, dev split) | 96.0 % [87.5–100.0] | 24/25 | 0.0 % | 4.0 % | 0.0 % | $0.0384 | 11.2 s / 13.2 s |
+
+Ordnung's errors with the prompt now:
+
+- `test-relative_business_days-D1` — *Fragebogen zum Unfallhergang zurücksenden*: expected Thu 21 May 2026, got Tue 19 May 2026 (wrong, early, reading error)
+- `test-tax_assessment-D1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Mon 9 Feb 2026, got Thu 5 Feb 2026 (wrong, early, reading error)
 
 ## Error taxonomy: reading vs computing
 
@@ -334,7 +355,8 @@ python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   
 
 Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay fixtures), the full
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
-rules engine of the checked-out commit; this run's numbers come from commit `17f2292`, a commit from before the history was squashed; a replay on any later commit gives the same numbers.
+rules engine of the checked-out commit; this run's numbers come from commit `17f2292`, a commit from before the history was squashed; a replay on a commit whose extraction prompt is version 8 gives the same numbers — from version 9 on, a replay scores the recordings of the prompt the app uses then (the “Prompt now” row).
 The page is rendered from the results files alone:
-`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]`.
+`python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
+[--prompt-run evals/results/<later run>.json --prompt-note <why>.md]`.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model sonnet --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).

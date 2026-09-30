@@ -17,7 +17,8 @@ import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
 import { CARD_GRID, NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
 import { CallSheetCard, OpenCaseCard, nextStepWhen } from "./cards";
-import { NumberRow, numberTitle, printedLabel } from "./NumberRow";
+import { NumberRow } from "./NumberRow";
+import { numberTitle, printedLabel } from "./title";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -64,6 +65,19 @@ describe("masking", () => {
     expect(printedLabel(n)).toBe("Steuerliche Identifikationsnummer");
     expect(printedLabel({ kind: "tax_id", name: "Tax ID (Steuer-ID)", label: "Steuer-ID" })).toBeNull();
     expect(numberTitle({ kind: "other", name: "Your number", label: "Scholarship ID" })).toBe("Scholarship ID");
+    // which register it is says more than "Company register" — and the label, being the title, isn't printed twice
+    const register = { kind: "register", name: "Company register", label: "Handelsregister" } as const;
+    expect(numberTitle(register)).toBe("Handelsregister");
+    expect(printedLabel(register)).toBeNull();
+  });
+
+  it("a row is headed by that title: a register entry by the letter's label", () => {
+    const theirs = MOCK_NUMBERS.organisations.flatMap((s) => s.their_numbers)[0]!;
+    const register = { ...theirs, kind: "register", name: "Company register", label: "Handelsregister", value: "HRB 20417", display: "HRB 20417", copy_value: "HRB 20417" } as const;
+    renderWithProviders(<NumberRow number={register} masked={false} showLetter={false} />);
+    expect(screen.getByText("Handelsregister")).toBeInTheDocument();
+    expect(screen.queryByText("Company register")).toBeNull();
+    expect(screen.getByRole("button", { name: "Copy Handelsregister" })).toBeInTheDocument();
   });
 
   it("wraps a long German label after its slashes and marks it German, never mid-word first", () => {
@@ -93,7 +107,7 @@ describe("masking", () => {
 
 describe("an open case's next step", () => {
   const today = "2026-09-28";
-  const step = (fields: Partial<NonNullable<OpenCase["next_item"]>>) => ({ kind: "deadline" as const, due_date: null, send_by: null, at_appointment: false, ...fields });
+  const step = (fields: Partial<NonNullable<OpenCase["next_item"]>>) => ({ kind: "deadline" as const, due_date: null, send_by: null, at_appointment: false, direction: null, ...fields });
 
   it("reads its day by the weekly session's rule", () => {
     // ahead: by the day to act (the send-by day when it comes first)
@@ -108,6 +122,16 @@ describe("an open case's next step", () => {
     expect(nextStepWhen(step({ kind: "appointment", due_date: "2026-10-14" }), today)).toEqual({ kind: "on", date: "2026-10-14" });
     expect(nextStepWhen(step({ kind: "payment", due_date: "2026-10-14", at_appointment: true }), today)).toEqual({ kind: "on", date: "2026-10-14" });
     expect(nextStepWhen(step({}), today)).toBeNull();
+  });
+
+  it("says money coming in is expected on its day, never by it nor overdue", () => {
+    const refund = (fields: Partial<NonNullable<OpenCase["next_item"]>>) => step({ kind: "payment", direction: "in", ...fields });
+    expect(nextStepWhen(refund({ due_date: "2026-10-02" }), today)).toEqual({ kind: "expected", date: "2026-10-02" });
+    expect(nextStepWhen(refund({ due_date: "2026-09-26", send_by: "2026-09-24" }), today)).toEqual({ kind: "expected", date: "2026-09-26" });
+    expect(nextStepWhen(refund({}), today)).toBeNull();
+    // money going out is unchanged
+    expect(nextStepWhen(step({ kind: "payment", direction: "out", due_date: "2026-09-26" }), today)).toEqual({ kind: "overdue", due: "2026-09-26" });
+    expect(nextStepWhen(step({ kind: "payment", direction: "out", due_date: "2026-10-02" }), today)).toEqual({ kind: "by", date: "2026-10-02" });
   });
 
   const found = (next: Partial<NonNullable<OpenCase["next_item"]>>): OpenCase => ({
@@ -142,6 +166,13 @@ describe("an open case's next step", () => {
   it("keeps “by” for a day still ahead", () => {
     renderWithProviders(<OpenCaseCard found={found({ due_date: "2026-10-14", send_by: "2026-10-08" })} />);
     expect(screen.getByText("by Thu 8 Oct")).toBeInTheDocument();
+  });
+
+  it("never counts a refund whose day has passed as overdue", () => {
+    renderWithProviders(<OpenCaseCard found={found({ kind: "payment", direction: "in", due_date: "2026-09-26" })} />);
+    expect(screen.getByText("expected Sat 26 Sep")).toBeInTheDocument();
+    expect(screen.queryByText(/overdue|Act today/)).toBeNull();
+    expect(screen.queryByText("due")).toBeNull();
   });
 });
 

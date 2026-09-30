@@ -62,6 +62,12 @@ def notice_phrase(period: str) -> str:
     return f"{period}' notice" if period.endswith("s") else f"{period}'s notice"
 
 
+def ordinal(day: int) -> str:
+    """A day of the month as an English ordinal: ``1st``, ``2nd``, ``3rd``, ``10th``, ``11th``, ``21st``."""
+    suffix = "th" if 11 <= day % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    return f"{day}{suffix}"
+
+
 def capitalize_first(text: str) -> str:
     """Upper-case only the first character (``str.capitalize`` would lower-case month names)."""
     return text[:1].upper() + text[1:]

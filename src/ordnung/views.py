@@ -856,8 +856,9 @@ date as a mutual waiver of ordinary notice until then (BGH, 10 Jul 2013, VIII ZR
 earlier may not be possible — except where § 575 does not apply (§ 549 Abs. 2 and 3 BGB: student
 or youth halls, temporary use, a furnished room in the landlord's flat not let for lasting use with a
 family or partner, housing a public body or welfare organisation lets on to people in urgent need). The
-rules engine reads none of these clauses (it applies ``fixed_term`` to every such contract with an end
-date), so for a flat let Ask's record says notice may still be needed; the engine's own summary for a
+rules engine reads none of these clauses but a job's agreed notice clause (``notice_before_end``: it then
+plans that notice before the end date) — it applies ``fixed_term`` to every other such contract with an end
+date — so for a flat let Ask's record says notice may still be needed; the engine's own summary for a
 flat let says so too (``rules/explain.py``, :func:`~ordnung.rules.explain.contract_fixed_end_sentence`)."""
 
 
@@ -911,9 +912,10 @@ def fixed_term_summary(comp: ContractComputation, *, today: date, active: bool =
     the engine's): a job ends by itself on its date (§ 15 Abs. 1 TzBfG), a flat let may still need
     notice (:data:`_FIXED_TERM_NOTICE`); both point to ``if_not_cancelled`` for the rest. Once the end
     date has passed, an ``active`` one may still run (:data:`_FIXED_TERM_PAST`) — never the engine's
-    "This contract ended on …"."""
+    "This contract ended on …". A job its contract lets be ended earlier by notice keeps the engine's
+    summary, which names that notice's dates and the end date (its ``earliest_exit`` comes first)."""
     end = parse_day(comp.current_term_end) if "fixed_term" in comp.rule_ids else None
-    if end is None or comp.regime not in _FIXED_TERM_NOTICE:
+    if end is None or comp.regime not in _FIXED_TERM_NOTICE or comp.earliest_exit != comp.current_term_end:
         return None
     if end < today:
         if not active:

@@ -960,6 +960,11 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
     # itself (the prompt forbids both); the payments it leads keep their dates. The final re-recording (prompt
     # version 6) left no sentence to remove
     assert removed == []
+    # completion pass (Ask prompt 7: a to-do's own words are letter text): no kept sentence has a value left
+    # out either, so no demo answer shows "[… only in the letter]" or "[… left out]"
+    assert [
+        (name[:10], [s.text for s in answer.redacted]) for name, _, answer in checked if answer.redacted
+    ] == []
     # final review 3: the residence-permit answers were recorded again and none names § 81 Abs. 4
     # AufenthG any more; it is still a law Ordnung's own Ideas state, so a sentence naming it stays
     known = TurnEvidence.from_results([], today=TODAY, catalog=known_laws())

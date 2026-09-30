@@ -1069,6 +1069,35 @@ def test_a_letter_to_send_past_its_day_to_arrive_is_counted_overdue(store: Store
     assert week.overdue == 2
 
 
+def test_a_letter_to_send_is_counted_overdue_when_the_to_do_with_its_day_is_not(store: Store) -> None:
+    """The objection to a backfilled Bescheid, whose deadline had long passed when it was read (history,
+    never counted), is drafted and not sent: the to-do carrying its day is not counted, so the letter is —
+    the session never ends "All clear" while it waits unsent."""
+    _, doc = _authority(store)
+    add_item(
+        store,
+        kind="deadline",
+        title="Widerspruch einlegen",
+        due_date="2026-09-01",
+        filed_on="2026-09-28",
+        doc_id=doc,
+    )
+    draft = store.add_draft(
+        kind="objection",
+        subject="Widerspruch",
+        status="final",
+        doc_id=doc,
+        send_guidance={"send_by": None, "must_arrive_by": "2026-09-01", "channels": []},
+    ).id
+    later = date(2026, 10, 7)
+    clock.set_today(later)
+    week = weekly_session(store, later)
+    (row,) = _step(week, "post").entries
+    assert (row.ref.id, row.date, row.overdue, row.tone) == (draft, "2026-09-01", True, "danger")
+    assert week.overdue == 1
+    assert all(step.id != "now" for step in week.steps)
+
+
 def test_the_date_looking_right_never_vouches_for_the_amount_in_pay_this_week(store: Store) -> None:
     """ "The date looks right" on a photo letter's payment confirms its date (``grounding="user"``); the Pay
     step keeps asking to compare the amount until the Pay panel's check does — the GiroCode's own rule, so

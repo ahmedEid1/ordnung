@@ -23,10 +23,31 @@ from ordnung.api.routes.dates import date_nature, manual_date_fields, refresh_re
 from ordnung.calendar.ics import build_ics
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.ingest.plan import item_context
-from ordnung.models import Area, Item, ItemKind, ItemStatus, ListedItem, Priority, Recurrence
+from ordnung.ingest.plan import item_context, item_contexts
+from ordnung.models import (
+    Area,
+    ComputationReceipt,
+    Item,
+    ItemKind,
+    ItemStatus,
+    ListedItem,
+    Priority,
+    Recurrence,
+)
 from ordnung.payments import is_collected_or_incoming, pays_on_site
-from ordnung.recurrence import mark_done, replaced_occurrence, roll_item, same_rule, standing_in, undo_done
+from ordnung.recurrence import (
+    kept_occurrence,
+    mark_done,
+    over_the_law,
+    replaced_occurrence,
+    replacement,
+    roll_item,
+    same_rule,
+    settle_rents,
+    standing_in,
+    undo_done,
+    undo_replaced,
+)
 from ordnung.secretary.triggers import postal_buffer
 
 router = APIRouter(tags=["items"])
@@ -164,7 +185,16 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
     _check_links(store, fields)
     due = fields.pop("due_date")
     nature = date_nature(body.kind, None)
-    dates = manual_date_fields(store, due, today, nature=nature, party_id=body.party_id)
+    probe = Item.model_construct(**fields)  # judged by its words, as an edit is; never stored
+    dates = manual_date_fields(
+        store,
+        due,
+        today,
+        nature=nature,
+        party_id=body.party_id,
+        in_person=pays_on_site(probe),
+        collected=is_collected_or_incoming(probe),
+    )
     if due is not None and body.recurrence is not None:
         dates["date_spec"] = schedule_spec(due, nature)
     item = store.add_item(
@@ -206,17 +236,33 @@ def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
     no date (added by hand, or undated in its letter) keeps the first date it gets as a fixed DateSpec
     (its day of the month; the letter's words kept), and so does a to-do added by hand that starts
     repeating or repeats by a new rule. A date moved by hand later leaves the schedule as it is: it
-    stands in for the occurrence it replaced until it passes (point 7)."""
+    stands in for the occurrence it replaced until it passes (point 7). A date its working day gave it
+    (point 8: ``computed``, though its DateSpec gives none) is not one it got from the person; one the
+    person gives a rent the law's working day dates replaces the law's day for every month, and says so
+    on its receipt when it is later (:func:`~ordnung.recurrence.over_the_law`)."""
     recurrence = fields.get("recurrence", item.recurrence)
     due = fields.get("due_date", item.due_date)
     spec = item.date_spec
     if recurrence is None or due is None:
         return {}
     if spec is not None and spec.type == "none":
+        if "due_date" not in fields and item.due_date_source == "computed":
+            return {}
         return {"date_spec": spec.model_copy(update={"type": "fixed", "date": due})}
     if spec is None or (item.origin != "extracted" and not same_rule(recurrence, item.recurrence)):
         return {"date_spec": schedule_spec(due, date_nature(item.kind, spec))}
     return {}
+
+
+def _kept_day_stands_in(store: Store, dated: Item, today: date) -> ComputationReceipt | None:
+    """The receipt of the first date the person gives an undated to-do (``dated``: with it): for a rent that
+    keeps an earlier rent's due day, one naming the occurrence of that month it stands in for, so marked paid
+    it moves on past that month (:func:`~ordnung.recurrence.kept_occurrence`, points 7 and 9)."""
+    if dated.recurrence is None or dated.computation is None:
+        return dated.computation
+    buffer = postal_buffer(store.get_profile())
+    kept = kept_occurrence(dated, item_context(store, dated, today), postal_buffer_days=buffer)
+    return dated.computation if kept is None else standing_in(dated.computation, kept)
 
 
 def _follow_schedule(
@@ -224,16 +270,28 @@ def _follow_schedule(
 ) -> Item:
     """A recurring to-do follows its schedule (:mod:`ordnung.recurrence`): marked done it moves on to
     its next occurrence and stays open, and set open again ("Undo") it goes back to the occurrence
-    marked done; a date that has passed moves on to the current occurrence."""
+    marked done; a date that has passed moves on to the current occurrence. A rent a later one replaces
+    never moves into the month that one starts: marked done at its last occurrence it closes there, and
+    the rents of its contract follow (point 9: :func:`~ordnung.recurrence.settle_rents`; a rent a payment
+    closed opens again with its "Undo": :func:`~ordnung.recurrence.undo_replaced`)."""
     if item.recurrence is None:
         return item
-    ctx = item_context(store, item, today)
+    contexts = item_contexts()
+    ctx = contexts(store, item, today)
     buffer = postal_buffer(store.get_profile())
+    replaced = replacement(store, item, ctx, contexts)
     if done:
-        return mark_done(store, item, ctx, postal_buffer_days=buffer) or item
-    if reopened:
-        item = undo_done(store, item) or item
-    return roll_item(store, item, ctx, postal_buffer_days=buffer)
+        item = mark_done(store, item, ctx, postal_buffer_days=buffer, replaced=replaced) or item
+    else:
+        undone = undo_done(store, item) if reopened else None
+        if undone is not None:  # and a rent its payment closed is back (point 9)
+            item = undone
+            undo_replaced(store, item, contexts, today)
+        ends = replaced.starts if replaced is not None else None
+        item = roll_item(store, item, ctx, postal_buffer_days=buffer, ends=ends)
+    if item.contract_id is not None and settle_rents(store, today, contexts, contract_ids=[item.contract_id]):
+        item = store.get_item(item.id) or item
+    return item
 
 
 def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
@@ -257,19 +315,22 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
         replaced = replaced_occurrence(item)
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
             fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7
+        fields["computation"] = over_the_law(item, fields["due_date"], fields["computation"])  # point 8
     fields |= _schedule_fields(item, fields)
+    if "due_date" in changes and fields["computation"] is not None and replaced_occurrence(item) is None:
+        fields["computation"] = _kept_day_stands_in(store, item.model_copy(update=fields), today)
     if fields:
         fields["user_modified"] = True
     fields |= _status_fields(item, changes, today)
     if not fields:
         return item
-    # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on
-    reopened = item.status == "open" and fields.get("status") == "open"
+    # an open recurring to-do set open again: the "Undo" of marking it done, which moved it on (or closed
+    # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
+    reopened = item.status in ("open", "done") and fields.get("status") == "open"
+    done = item.status != "done" and fields.get("status") == "done"
     with store.tx():
         updated = store.update_item(item_id, **fields)
-        updated = _follow_schedule(
-            store, updated, today, done=fields.get("status") == "done", reopened=reopened
-        )
+        updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
         refresh_review_status(store, updated.doc_id)
     return updated
 

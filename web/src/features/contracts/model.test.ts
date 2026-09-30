@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Contract } from "@/api/types";
+import type { Contract, ContractRegime } from "@/api/types";
 import { CONTRACT_REGIMES } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
 import { CONTRACTS } from "@/mocks/data/contracts";
@@ -15,6 +15,8 @@ import {
   isFixedTerm,
   isLockInDecision,
   isRollingContract,
+  nextActionDate,
+  noticeDayPhrase,
   noticeEditable,
   noticeFromYou,
   noticePhrase,
@@ -83,6 +85,21 @@ describe("decisions", () => {
     expect(isRollingContract(byId("ctr_phone"))).toBe(false);
   });
 
+  it("a fixed-term job its contract lets you leave earlier: its notice's date locks nothing in (migration 0004)", () => {
+    // as the rules engine computes it for Sam (Mon 28 Sep 2026): four weeks to the end of October, else it
+    // ends by itself on Wed 31 Mar 2027
+    const job: Contract = {
+      ...byId("ctr_job"),
+      computed: { ...byId("ctr_job").computed!, cancel_by: "2026-10-03", safe_date: "2026-10-02", send_by: "2026-09-28", earliest_exit: "2026-10-31" },
+    };
+    expect(job.computed!.current_term_end).toBe("2027-03-31");
+    expect(isRollingContract(job)).toBe(true);
+    expect(isLockInDecision(job)).toBe(false);
+    expect(decideBy([job], TODAY)).toEqual([]);
+    expect(nextActionDate(job, TODAY)).toBeNull();
+    expect(isFixedTerm(job)).toBe(true); // … and it still ends by itself on its date
+  });
+
   it("sorts cards: next action first, then by monthly cost", () => {
     // the Deutschlandticket can be cancelled any month: no date to act on, so it sorts by cost
     expect(sortContracts(CONTRACTS, TODAY).map((c) => c.id).slice(0, 4)).toEqual(["ctr_phone", "ctr_liability", "ctr_rent", "ctr_bkk"]);
@@ -110,12 +127,14 @@ describe("rules in plain words", () => {
     expect(ruleInWords(byId("ctr_gym"), TODAY).text).toBe("Cancellable any time with 1 month's notice (consumer contract since March 2022)");
     expect(ruleInWords(byId("ctr_rent"), TODAY).text).toMatch(/^Open-ended: notice given by the 3rd working day/);
     expect(ruleInWords(byId("ctr_liability"), TODAY).text).toBe("Renews every insurance year; cancel with 3 months' notice before the insurance year ends");
-    // a fixed-term job ends by itself; leaving earlier takes the notice the contract names — and
-    // without one, no statutory notice is promised (§ 15 Abs. 4 TzBfG)
-    expect(ruleInWords(byId("ctr_job"), TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: 4 weeks' notice");
+    // a fixed-term job ends by itself; leaving earlier by notice needs a clause that allows it (§ 15 Abs. 4
+    // TzBfG, `notice_before_end`): then the notice the contract names (at least the statutory one), or the
+    // statutory one — without the clause no notice is promised, whatever period the letter names
+    expect(ruleInWords(byId("ctr_job"), TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: 4 weeks' notice, at least the legal minimum");
     expect(ruleInWords({ ...byId("ctr_job"), notice_value: null, notice_unit: null }, TODAY).text).toBe(
-      "Fixed term until 31 Mar 2027 — it ends by itself, no notice needed",
+      "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice",
     );
+    expect(ruleInWords({ ...byId("ctr_job"), notice_before_end: false }, TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself, no notice needed");
     // a current account (walkthrough of phase 2: "we couldn't compute a cancellation date")
     const giro = byId("ctr_bank");
     const account: Contract = { ...giro, computed: { ...giro.computed!, regime: "bgb675h" } };
@@ -127,12 +146,57 @@ describe("rules in plain words", () => {
     const ticket = byId("ctr_dticket");
     const written: Contract = {
       ...ticket,
+      notice_day: null,
       computed: { ...ticket.computed!, regime: "as_written", summary: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct." },
     };
     expect(ruleInWords(written, TODAY)).toEqual({
       text: "Cancel by the 10th of a month to end it at the end of that month — next: by Sat 10 Oct for 31 Oct",
       citation: null,
     });
+  });
+
+  it("reads the contract's own day of the month where the rules do: by the 10th, to the month's end (migration 0004)", () => {
+    // the Deutschlandticket: "Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen"
+    const ticket: Contract = byId("ctr_dticket");
+    expect(ticket.notice_day).toBe(10);
+    expect(noticeDayPhrase(ticket)).toBe("by the 10th of the month, to the month's end");
+    expect(ruleInWords(ticket, TODAY)).toEqual({
+      text: "Cancellable by the 10th of the month, to the month's end (consumer contract since March 2022)",
+      citation: "§ 309 Nr. 9 BGB",
+    });
+    expect([1, 2, 3, 11, 21, 22, 23, 31].map((d) => noticeDayPhrase({ ...ticket, notice_day: d })!.split(" ")[2])).toEqual([
+      "1st", "2nd", "3rd", "11th", "21st", "22nd", "23rd", "31st",
+    ]);
+    // a notice period read with it applies too (the person's own terms clear the day), and another basis is no
+    // month-end rule
+    expect(noticeDayPhrase({ ...ticket, notice_value: 10, notice_unit: "days" })).toBe("with 10 days' notice by the 10th of the month, to the month's end");
+    expect(ruleInWords({ ...ticket, notice_value: 10, notice_unit: "days" }, TODAY).text).toBe(
+      "Cancellable with 10 days' notice by the 10th of the month, to the month's end (consumer contract since March 2022)",
+    );
+    // limited to a month, as the rules limit it after the first term
+    expect(ruleInWords({ ...ticket, notice_value: 3, notice_unit: "months" }, TODAY).text).toBe(
+      "Cancellable with 1 month's notice by the 10th of the month, to the month's end (consumer contract since March 2022)",
+    );
+    expect(noticeDayPhrase({ ...ticket, notice_basis: "any_time" })).toBeNull();
+    const withComp = (regime: ContractRegime, extra: Partial<Contract> = {}): Contract => ({
+      ...ticket,
+      ...extra,
+      computed: { ...ticket.computed!, regime },
+    });
+    expect(ruleInWords(withComp("bgb309_old"), TODAY).text).toBe("Cancellable by the 10th of the month, to the month's end (consumer contract from before March 2022)");
+    expect(ruleInWords(withComp("tkg56"), TODAY).text).toBe("Cancellable by the 10th of the month, to the month's end (phone & internet contract after its minimum term)");
+    expect(ruleInWords(withComp("as_written"), TODAY).text).toBe("As written in the contract: cancellable by the 10th of the month, to the month's end");
+    expect(ruleInWords(withComp("as_written", { notice_value: 3, notice_unit: "months" }), TODAY).text).toBe(
+      "As written in the contract: cancellable with 3 months' notice by the 10th of the month, to the month's end",
+    );
+    // entered on the card, the day is the person's (the API's `entered_notice`)
+    const mine = { doc_id: "doc_dticket", page: null, quote: "notice by the 10th of the month, to the end of that month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
+    expect(ruleInWords(withComp("as_written", { evidence: [mine] }), TODAY).text).toBe("As you entered it: cancellable by the 10th of the month, to the month's end");
+    const inFirstTerm = withComp("bgb309_new", { initial_term_months: 12 });
+    inFirstTerm.computed = { ...inFirstTerm.computed!, current_term_end: "2027-01-31" };
+    expect(ruleInWords(inFirstTerm, TODAY).text).toBe(
+      "Minimum term until 31 Jan 2027; after that cancellable by the 10th of the month, to the month's end (consumer contract since March 2022)",
+    );
   });
 
   it("never leaks a regime code, for every regime", () => {
@@ -177,7 +241,7 @@ describe("contracts-only lanes", () => {
     const phone: Contract = { ...byId("ctr_phone"), cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } };
     const [l] = contractLanes([phone], range, TODAY);
     expect(l!.bars.map((b) => b.kind)).toEqual(["contract", "contract"]);
-    expect(l!.markers).toEqual([{ date: phone.computed!.earliest_exit, label: "Ends (cancellation sent)", kind: "other" }]);
+    expect(l!.markers).toEqual([{ date: phone.computed!.earliest_exit, label: "Ends (cancellation sent)", kind: "other", ref: { type: "contract", id: "ctr_phone" } }]);
     expect(contractLaneNote(phone, TODAY)).toEqual({ text: "Cancellation sent", tone: "muted" });
   });
 
@@ -192,7 +256,7 @@ describe("contracts-only lanes", () => {
   it("marks fixed terms and the earliest possible end of open-ended contracts", () => {
     expect(lane("ctr_job").bars[0]).toMatchObject({ label: "Fixed term", end: "2027-03-31" });
     expect(lane("ctr_gym").bars[0]!.label).toBe("Cancellable any time");
-    expect(lane("ctr_gym").markers).toEqual([{ date: "2026-10-28", label: "Earliest end (if you cancel now)", kind: "other" }]);
+    expect(lane("ctr_gym").markers).toEqual([{ date: "2026-10-28", label: "Earliest end (if you cancel now)", kind: "other", ref: { type: "contract", id: "ctr_gym" } }]);
     expect(lane("ctr_bkk").bars[0]).toMatchObject({ label: "Open-ended", open_end: true });
     expect(lane("ctr_job").bars[0]!.open_end).toBeUndefined();
   });
@@ -226,7 +290,7 @@ describe("contracts-only lanes", () => {
       ["Cancellable any time", "2026-10-01", addDaysISO(range.to, 1)],
     ]);
     expect(l!.bars.flatMap((b) => b.markers).map((m) => m.kind)).not.toContain("expiry");
-    expect(l!.markers).toEqual([{ date: "2026-11-02", label: "Earliest end (if you cancel now)", kind: "other" }]);
+    expect(l!.markers).toEqual([{ date: "2026-11-02", label: "Earliest end (if you cancel now)", kind: "other", ref: { type: "contract", id: "ctr_power2" } }]);
     // under its name: when it could end at the earliest, not "Minimum term ends · in 2 days"
     expect(contractLaneNote(power, TODAY)).toEqual({ text: "Earliest end · 2 Nov", tone: "muted" });
 
@@ -273,6 +337,17 @@ describe("contracts-only lanes", () => {
     expect(ruleInWords(entered, TODAY).text).toBe("As you entered it: 3 months' notice to the end of a month");
     // a statutory rule with sure dates: nothing to enter, nothing to check
     expect(noticeEditable(byId("ctr_phone"))).toBe(false);
+    // the terms a notice period can't say stay correctable, as a misreading can get them wrong (migration 0004): the
+    // contract's own day of the month where the rules read it, and a fixed-term job's early notice, either way
+    expect(noticeEditable(byId("ctr_dticket"))).toBe(true);
+    expect(noticeEditable({ ...byId("ctr_dticket"), notice_basis: "any_time" })).toBe(false);
+    const insurance = byId("ctr_liability");
+    expect(noticeEditable({ ...insurance, notice_day: 10, notice_basis: "end_of_month" })).toBe(false); // § 11 VVG reads no day
+    expect(noticeEditable(byId("ctr_job"))).toBe(true);
+    const endsByItself: Contract = { ...byId("ctr_job"), notice_before_end: false };
+    expect(noticeEditable(endsByItself)).toBe(true);
+    expect(noticeEditable({ ...byId("ctr_job"), end_date: null })).toBe(false);
+    expect(noticeEditable({ ...byId("ctr_dticket"), status: "cancelled" })).toBe(false);
     expect(pleaseCheckHint(byId("ctr_phone"))).toBeNull();
     expect(pleaseCheckHint({ ...byId("ctr_phone"), computed: { ...byId("ctr_phone").computed!, confidence: "low" } })).toBe(
       "Ordnung isn't sure of these dates — check them against the contract",
@@ -288,5 +363,16 @@ describe("contracts-only lanes", () => {
     // send-by and must-arrive-by sit 6 days (15 px) apart: one mark that names both dates
     expect(ly.markers.map((m) => m.primary.marker.kind)).toEqual(["send_by", "other"]);
     expect(ly.markers[0]!.entries.map((e) => e.marker.kind)).toEqual(["send_by", "cancel_by"]);
+  });
+
+  it("lays out on the chart: the earliest end is the contract's own date, on its bar — not a row of its own", () => {
+    const scale = createTimeScale(range.from, range.to, 1200);
+    const ly = layoutLane(lane("ctr_gym"), scale, TODAY);
+    expect(ly.tracks).toBe(1);
+    expect(ly.rails).toEqual([]);
+    const end = ly.markers.find((m) => m.entries.some((e) => e.marker.label === "Earliest end (if you cancel now)"))!;
+    expect(end.track).toBe(ly.bars[0]!.track);
+    expect(end.x).toBeGreaterThan(ly.bars[0]!.x);
+    expect(end.x).toBeLessThan(ly.bars[0]!.x + ly.bars[0]!.width);
   });
 });

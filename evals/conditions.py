@@ -372,6 +372,8 @@ def contract_terms(extraction: DocumentExtraction) -> ContractTerms | None:
         notice_value=contract.notice_value,
         notice_unit=contract.notice_unit,
         notice_basis=contract.notice_basis,
+        notice_day=contract.notice_day,
+        notice_before_end=contract.notice_before_end,
         end_date=contract.end_date,
         is_consumer=contract.is_consumer,
         is_basic_supply=contract.is_basic_supply,

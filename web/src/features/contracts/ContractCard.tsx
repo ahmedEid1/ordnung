@@ -19,6 +19,7 @@ import {
   CONTINUES_MONTHLY,
   cancellationSent,
   contractMonthlyCost,
+  endsAtTheFifteenth,
   isFixedTerm,
   isLockInDecision,
   isRollingContract,
@@ -86,8 +87,9 @@ export function ContractCard({
   // e.g. the broadcasting fee: say why there is nothing to cancel instead of offering a letter
   const whyNot = active && !offerLetter ? c.cancel_hint : null;
   const hasCost = c.cost_amount !== null && Boolean(c.cost_interval) && c.cost_interval !== "once";
-  // terms we couldn't work out, follow as written or the person entered: the notice period can be
-  // entered (or corrected) here, and the engine redoes the dates
+  // terms we couldn't work out, follow as written or the person entered, a day of the month or a fixed-term
+  // job's early notice (a misreading stays correctable): the notice terms can be entered (or corrected) here,
+  // and the engine redoes the dates
   const editable = noticeEditable(c);
   const [editingNotice, setEditingNotice] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
@@ -115,7 +117,7 @@ export function ContractCard({
         data-notice-button={unclear ? "lead" : "end"}
         onClick={() => setEditingNotice(true)}
       >
-        {c.notice_value ? "Change notice period" : "Add notice period"}
+        {c.notice_value || c.notice_day ? "Change notice period" : "Add notice period"}
         <span className="sr-only"> for {c.name}</span>
       </Button>
     ) : null;
@@ -255,7 +257,9 @@ export function ContractCard({
 
       {rollingArriveBy ? (
         <p className="mt-2 text-[12.5px] leading-5 text-muted" data-testid="rolling-note">
-          You can cancel any month — a notice that arrives later ends it a month later.
+          {endsAtTheFifteenth(c)
+            ? "You can give notice any time — a notice that arrives later ends it at a later 15th or month's end."
+            : "You can cancel any month — a notice that arrives later ends it a month later."}
         </p>
       ) : null}
 

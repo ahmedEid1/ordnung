@@ -218,21 +218,27 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   consumer contracts concluded on/after 2022-03-01 → after the initial term indefinite, cancellable
   any time with ≤ 1 month notice (§ 309 Nr. 9 BGB); telecom § 56 TKG similar; older contracts use
   their written renewal terms; tenant rent § 573c BGB (3rd business day rule); special cancellation
-  rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows.
+  rights after price increases (§ 41 Abs. 5 EnWG, § 57 TKG) become Ideas with computed windows
+  (`Ledger.price_increase_windows`), which Ask's record carries too (`special_cancellation`, § 10).
 - **payments** get a send-by day one business day before the due date for a bank transfer (§ 675s
   Abs. 1 BGB) — none when their words say they are paid in person, by card or cash at the appointment,
-  the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` when a letter is read
-  or a date is set by hand; UI audit R1-backend-8).
+  the desk or a machine (`RuleContext.in_person`, set from `payments.pays_on_site` whenever a to-do's
+  dates are computed: a letter read, a to-do added or a date set by hand, a recurring one moving on; UI
+  audit R1-backend-8).
 - Every result has steps with rule ids + citations and a one-sentence plain explanation
   (`ComputationReceipt.summary`), e.g. "Letter dated 15 Sep counts as delivered on Sat 19 Sep →
   moved to Mon 21 Sep; one month later is Wed 21 Oct."
 - **High-stakes letters** (`routing.py`, `letters.py`, `advice.py`; `docs/deadline-rules.md` § 7):
   code recognises a court payment order, an enforcement order, a dismissal, a landlord's notice and
-  a rent increase request from the model's reading (a written policy; the extraction prompt is
-  unchanged) and files the letter under that kind (`Document.kind`, a `HighStakesKind` only code
-  assigns). `RuleContext.letter_kind` routes its dates (two weeks from the envelope date for court
-  orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period, § 558b BGB; two months
-  before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
+  a rent increase request from the model's reading (a written policy) and files the letter under that
+  kind (`Document.kind`, a `HighStakesKind` only code assigns). Since extraction prompt version 9 the
+  model names the kind itself (`DocumentExtraction.high_stakes_kind`): code's own kind wins when it reads
+  one, else the model's is filed unless the reading rules it out (a sender that is clearly no court, a
+  European order for payment, a contract of another category, an increase that needs no consent); a
+  reading without it (every one recorded before version 9) is filed as before, and the kind the person
+  chose wins over both (ADR 0010, update). `RuleContext.letter_kind` routes its dates (two weeks from the
+  envelope date for court orders, § 692/§ 339 ZPO; § 38 SGB III; the end-of-month consent period,
+  § 558b BGB; two months before the end, § 574b BGB; the 14-day withdrawal that only has to be sent, § 355 BGB), and
   `routing.derived_deadlines` adds the deadlines the law sets that the letter doesn't state (the
   three weeks of § 4 KSchG) as `origin="rule"` to-dos, unless one of the letter's own dates was
   computed under that rule and is not later than the law's (a date that only mentions it, like a
@@ -305,8 +311,9 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   own period the letter counts from its own date (§ 221 ZPO), which the envelope date never moves (unless
   the letter's date is missing: then it is the latest start). Rule to-dos are filed on read and when the person chooses the kind; a
   changed region, postal buffer or arrival day only recomputes those left, so a deleted one stays
-  deleted. An operating-cost statement is recognised on read only, never from a reminder about one, and
-  counts from the statement's own date when a later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
+  deleted. An operating-cost statement is recognised on read only (from its words, or the model's
+  `operating_costs`), never from a reminder about one, and counts from the statement's own date when a
+  later letter dates it ("Abrechnung 2023 vom 15.11.2024": after
   the billing period, of that period's year — never another year's statement's date); a date without its
   year ("unsere Abrechnung vom 15.11.2024", an enclosure's) may be either, so the letter's arrival counts
   but the statement is never called late when that date would make it on time (the card says both
@@ -443,10 +450,11 @@ the same invoice number and amount — or no amount in the e-mail) keeps its to-
 takes it over on read (`link.attachment_repeats`, `Ledger.is_covered_by_attachment`: left out of
 Today, the totals and the Ideas, noted on the e-mail, set aside as `attached` on the party and in
 Ask's record) — deleting the bill brings it back. The bill counts as the e-mail's attachment also
-when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and only its
-payments no payment reminder took over count: a reminder e-mail with its invoice attached (or with
-the Mahnung PDF of the day before) takes the invoice's payment over as the later reminder and keeps
-its own — the two never set each other aside, so one payment to act on always stays. An e-mail nested too deeply
+when Ordnung had it before (`known`: uploaded, from the folder or another e-mail), and its payments
+count unless the e-mail itself took them over as a payment reminder: a reminder e-mail with its invoice
+attached (or with the Mahnung PDF of the day before) takes the invoice's payment over as the later
+reminder and keeps its own — the two never set each other aside; a bill a later reminder took over
+keeps the e-mail that repeats it set aside — so one payment to act on always stays. An e-mail nested too deeply
 for the parser is refused with a reason. An e-mail title is its subject and sender while it is private
 or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
 whose adding was stopped before its attachments adds them.
@@ -578,7 +586,15 @@ MCP server (`python -m ordnung mcp --data-dir D`, read-only DB, lazy imports): `
 `get_document`, `list_items`, `list_contracts`, `get_party`, `timeline`, `money_summary`,
 `explain_date`, `get_profile`, `today`, `get_my_numbers` — the ledger tools. `list_items` with a date range
 (and no kind, or kind `deadline`) also lists the contracts' cancellation deadlines in that range
-(`contract_deadlines`), unless the cancellation was sent or confirmed. Ask runs `claude -p` with `--tools ""`,
+(`contract_deadlines`), unless the cancellation was sent or confirmed. The special cancellation window a
+price increase opened — the one its Idea shows, computed on read; of several letters', the one that closes
+first (in `contract_deadlines`, of those in the range) — is in the contract's `list_contracts` row,
+`explain_date` (with its steps and rules) and `contract_deadlines` row, and in the price letter's
+`get_document` (`special_cancellation`); `timeline` gives every letter's window's days
+(`special_cancellation_send_by`, `special_cancellation_cancel_by`). It is flagged `needs_check` when the
+letter's text does not write a day it is computed from — the effective date, and the letter's own date where
+the window counts from being told (§ 57 TKG, § 40 VVG) — and gone once the cancellation was sent or
+confirmed. Ask runs `claude -p` with `--tools ""`,
 `--allowedTools` naming exactly these ledger tools (`mcp__ordnung__search`, …), `--mcp-config`
 (absolute `sys.executable`, the server started `--ledger-only`), `--max-budget-usd 0.50`, 120 s
 timeout. **Ask keeps to the ledger** (ADR 0011): the ledger-free rules tools (below) are not on its
@@ -607,7 +623,8 @@ HTML and without remote images.
   in the record: each number's kind, group and check-digit result (with its code-written note and law),
   the letter and party ids to cite, an identity document's expiry as its to-do (`id`, `due_date`,
   `needs_check` when not confirmed against the letter) and an open case's next to-do (no `send_by` and
-  `at_appointment` for a fee paid at the appointment). It takes `section` (about_you, organisations,
+  `at_appointment` for a fee paid at the appointment; `direction: in` for money coming in, never
+  overdue). It takes `section` (about_you, organisations,
   open_cases) and `organisation` (an id or name: that call sheet and its open cases only, never the
   person's own numbers), and bounds itself — at most 20 call sheets (latest letter first), 20 open
   cases, 20 numbers of a kind per sheet and no further sheet past 150 numbers — saying what it left out
@@ -617,8 +634,10 @@ HTML and without remote images.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
-  fixed-cost contract's category. A to-do of an e-mail whose attached bill asks for the same payment
-  says so in its record (`set_aside`, with the bill's id): one payment, counted once. A payment the app says to decide on before paying — a rent increase's
+  fixed-cost contract's category. An invoice payment still to be made that a later payment reminder took
+  over, or a to-do of an e-mail whose attached bill asks for the same payment, says so in its record
+  (`set_aside`, with the reminder's or the bill's id, in every row and timeline entry): one payment, counted
+  once. A payment the app says to decide on before paying — a rent increase's
   new rent (only owed once the person agrees, and paying it can count as agreeing, § 558b Abs. 1 BGB) or
   a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3 BGB) — carries the app's note in
   its record (`payment_note`, in every row and timeline entry) and is listed apart too
@@ -1151,9 +1170,11 @@ Pages:
    while hidden (forms get the Steuer-ID, social insurance number and IBAN without spaces) and is
    announced; the check-digit badge explains itself in a tooltip; each number links to the letter it
    came from (on a call sheet or case card when that is not the card's last letter); a date or next
-   step not confirmed against the letter says to compare it. An open case's next step reads its day as
-   the weekly session does: *on* for an appointment and a fee paid at it, else *by* the day to act,
-   *act today* with the due date once its send-by day has passed, overdue counted from its due date.
+   step not confirmed against the letter says to compare it. An open case's next step is the earliest of
+   the person's own to-dos, money coming in only when nothing else is open; it reads its day as the
+   weekly session does: *expected* for money coming in (never overdue), *on* for an appointment and a
+   fee paid at it, else *by* the day to act, *act today* with the due date once its send-by day has
+   passed, overdue counted from its due date.
    **Weekly review** (`/week`, from Today; one name on Today, the page, its ending and its messages) —
    the weekly session as a stepper (step list beside the step on wide pages, dots on phones with a name
    under each, over two lines when they don't fit on one — ticks only on the steps looked at; `?step=`),
@@ -1260,9 +1281,12 @@ sender/reference/amount accuracy, item recall/precision, evidence grounding rate
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
-change to them waits for a new benchmark run: known limitation (UI audit R1-backend-6), a reading's
-action, consequence and key-fact labels can stay in the letter's German and number formats, and its
-explanation doesn't qualify "nothing to react to" when the rules engine computes a decision window.
+change to them is recorded again on the benchmark: versions 9 to 11 (labels, actions and consequences
+in the person's language, dates and amounts written as that language writes them, an explanation that
+names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
+a notice day of the month and notice before a fixed end; UI audit R1-backend-6, ADR 0010) were each
+checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
+run ("The prompt the app uses now", which says what the three test recordings mean).
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
@@ -1352,7 +1376,21 @@ document may close, cancel, dismiss, mark missed, or delete an obligation withou
 click. Overdue is computed on read (the tick never changes item status); recurring items are never
 overdue. **Recurring obligations** follow the policy in `recurrence.py` (ADR 0007): Ordnung cannot see
 payments, so a recurring item is a schedule that always shows its next occurrence; "paid" moves it to
-the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back.
+the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back. A
+rule with a working day ("spätestens am dritten Werktag eines jeden Monats": `Recurrence.working_day`)
+is dated in every month by counting working days from its first — Monday to Friday for rent (a payment
+on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
+and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
+confidence level lower and with a warning to check the lease, until the person gives it a date. The
+extraction schema carries the working day (`ExtractedItem.recurrence` is a `Recurrence`); one the
+item's quote doesn't name is graded like any value its quote doesn't state (`working_day_not_in_quote`,
+see **Verification**). A later rent on the same rent contract that restates the whole rent (a
+statement's new total rent, a rent increase's new rent once agreed: its letter's old amount is the
+earlier rent's, or its amount is at least that) replaces the earlier one from the month it starts — the
+earlier one never moves into that month, and once its last occurrence is marked paid it closes, logged —
+and keeps its due day unless its own reading gives a working day (`recurrence.py`, point 9). A payment
+that is only part of the rent (a statement's new advance payment alone, § 560 Abs. 4 BGB; a heating
+advance) runs beside it.
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
@@ -1420,6 +1458,21 @@ its terms say can be ended any time: without notice unless one was agreed, at mo
 Abs. 1 BGB), `as_written` (unknown → written terms, `low` confidence). Notice = min(written notice,
 statutory cap) where a cap exists. A contract whose notice period the letter doesn't give gets the
 longest the law allows, with a warning; the card then asks "Please check" and offers "Add notice period".
+Two terms a notice period can't say (migration 0004): `notice_day`, the contract's own month-end rule
+("bis zum 10. eines Monats zum Ende dieses Monats"), read under `bgb309_new`, `tkg56`, `bgb309_old` and
+`as_written` when the basis is the end of a month — the cancellation must arrive by that day of the month
+the contract is to end in (the 29th–31st: a shorter month's last day), never moved off a weekend; a notice
+period read with it applies too, and the earlier deadline decides (notice terms the person saves without
+a day replace it); after a first term the law may instead let a cancellation end it one month after it
+arrives, which a hedged warning names when that is sooner. And `notice_before_end`, a fixed-term job whose contract
+allows ordinary notice before its end date (§ 15 Abs. 4 TzBfG): while that notice (§ 622 BGB, at least
+four weeks to the 15th or the end of a month) ends it before the end date, the job has the notice's dates
+and otherwise ends by itself on its date (`current_term_end`); read for a job only. The card reads the
+first as "by the 10th of the month, to the month's end" and shows the job's notice date as a
+must-arrive-by date that locks nothing in. Both are read from the letter, so the card's notice edit
+corrects them (`ContractPatch.notice_day`, `notice_before_end`): "Must arrive by day __ of the month"
+where the rules read a day, and "Can be ended early by notice" for a job with an end date (whose notice
+may keep the law's basis, to the 15th or the end of a month).
 A contract carries the person's cancellation of it once it is marked as sent (`cancellation_sent`,
 worked out on read): it is then no decision any more — no "Decide by", no cancellation Idea, no send-by
 date in the calendar — and the card says it waits for the provider's confirmation.
@@ -1458,7 +1511,10 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 **Verification.** `spec_consistency`: numbers (digits and German/English number words), units
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
-English) → `low` confidence. Mismatch → "Please check". UI never says "verified"; it says
+English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
+quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
+working day", "3rd business day"; 1–10), else `working_day_not_in_quote`: the working day still dates
+the item, one confidence level lower with a note. Mismatch → "Please check". UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

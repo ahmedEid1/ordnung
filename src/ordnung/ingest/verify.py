@@ -5,7 +5,8 @@
   the matched passage) — and maps the match back to highlight boxes on the page image.
 * :func:`ground_evidence` turns that into :class:`~ordnung.models.Evidence` with a grounding level.
 * :func:`spec_consistency` checks that a :class:`~ordnung.models.DateSpec` and an amount are
-  actually stated by their quote (numbers, number words, units, explicit dates).
+  actually stated by their quote (numbers, number words, units, explicit dates), and
+  :func:`working_day_consistency` that a recurrence's working day is (:func:`working_days_named`).
 * :func:`grade_reading` applies the § 21 confidence rubric's reading conditions to a date's receipt,
   and :func:`regrade` the same reading to the receipt of a schedule's next occurrence.
 """
@@ -44,6 +45,8 @@ DATE_NOT_IN_QUOTE = "date_not_in_quote"
 PERIOD_NOT_IN_QUOTE = "period_not_in_quote"
 AMOUNT_NOT_IN_QUOTE = "amount_not_in_quote"
 INCOMPLETE_SPEC = "incomplete_spec"
+# Returned by working_day_consistency: the reading's ``recurrence.working_day`` is not named by its quote.
+WORKING_DAY_NOT_IN_QUOTE = "working_day_not_in_quote"
 
 PageInput = PageText | Page | tuple[int, str, Sequence[Word | Sequence[Any]], str]
 """A page to search: a :class:`PageText`, a stored :class:`~ordnung.models.Page`, or
@@ -472,6 +475,45 @@ def _nearest_number(tokens: list[str], index: int) -> int | None:
     return None
 
 
+_ORDINAL_WORDS: dict[str, int] = {
+    **dict.fromkeys(("erst", "first"), 1),
+    **dict.fromkeys(("zweit", "second"), 2),
+    **dict.fromkeys(("dritt", "third"), 3),
+    **dict.fromkeys(("viert", "fourth"), 4),
+    **dict.fromkeys(("fünft", "fuenft", "fifth"), 5),
+    **dict.fromkeys(("sechst", "sixth"), 6),
+    **dict.fromkeys(("siebent", "siebt", "seventh"), 7),
+    **dict.fromkeys(("acht", "eighth"), 8),
+    **dict.fromkeys(("neunt", "ninth"), 9),
+    **dict.fromkeys(("zehnt", "tenth"), 10),
+}
+_GERMAN_ORDINAL = "erst|zweit|dritt|viert|fünft|fuenft|sechst|siebent|siebt|acht|neunt|zehnt"
+_ENGLISH_ORDINAL = "first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth"
+_WORKING_DAY_PHRASE = re.compile(
+    rf"""(?<![\w.,])
+    (?: (?P<digits>10|[1-9])(?:\.|st|nd|rd|th)
+      | (?P<german>{_GERMAN_ORDINAL})e[mnrs]?
+      | (?P<english>{_ENGLISH_ORDINAL})
+    )
+    [\s)]*
+    (?:werktag|(?:bank)?arbeitstag|(?:working|business)[\s-]+day)""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def working_days_named(text: str) -> set[int]:
+    """The working days (1–10) ``text`` names as an ordinal before *Werktag*, *Arbeitstag* (also
+    *Bankarbeitstag*), "working day" or "business day": a German ordinal word in any ending ("ersten" …
+    "zehnten"), digits with a full stop ("3. Werktag") or an English ordinal ("third", "3rd").
+    "spätestens am dritten Werktag eines jeden Monats" → ``{3}``. A number of working days (a period:
+    "innerhalb von 3 Werktagen") names none, nor does a larger ordinal ("13. Werktag")."""
+    named: set[int] = set()
+    for match in _WORKING_DAY_PHRASE.finditer(fold_punctuation(text)):
+        digits, word = match.group("digits"), match.group("german") or match.group("english")
+        named.add(int(digits) if digits else _ORDINAL_WORDS[word.casefold()])
+    return named
+
+
 # --------------------------------------------------------------------------------------------------
 # Spec consistency
 # --------------------------------------------------------------------------------------------------
@@ -529,6 +571,16 @@ def _relative_reasons(quote: str, spec: DateSpec, mentions: list[DateMention]) -
     return reasons
 
 
+def working_day_consistency(quote: str, working_day: int | None) -> list[str]:
+    """Whether a recurrence's working day (``Recurrence.working_day``, "spätestens am dritten Werktag eines
+    jeden Monats" is 3) is stated by its item's quote: ``[WORKING_DAY_NOT_IN_QUOTE]`` unless the quote names
+    that ordinal (:func:`working_days_named`); ``[]`` for a recurrence without one. Only the quote counts,
+    never the rest of the letter: the working day is the reading's claim about that sentence."""
+    if working_day is None or working_day in working_days_named(quote):
+        return []
+    return [WORKING_DAY_NOT_IN_QUOTE]
+
+
 def _canonical_period(amount: int, unit: PeriodUnit) -> tuple[int, PeriodUnit]:
     """Equal periods in one form: weeks → days (§ 188 Abs. 2 BGB ends both on the same weekday),
     years → months."""
@@ -557,6 +609,7 @@ REASON_TEXT: dict[str, str] = {
     PERIOD_NOT_IN_QUOTE: "The period (e.g. “one month”) doesn't appear in the sentence it was taken from — please check it.",
     AMOUNT_NOT_IN_QUOTE: "The amount doesn't appear in the sentence it was taken from — please check it.",
     INCOMPLETE_SPEC: "Part of the date description is missing — please check it.",
+    WORKING_DAY_NOT_IN_QUOTE: "The working day (e.g. “the 3rd working day”) doesn't appear in the sentence it was taken from — please check it.",
 }
 UNVERIFIED_NOTE = "We couldn't find this sentence in the letter — please check the date against the letter."
 MODEL_READ_NOTE = "This was read by AI from a photo or scan — compare the date with the paper letter."
@@ -570,9 +623,9 @@ def grade_reading(
 ) -> ComputationReceipt:
     """Apply the § 21 confidence rubric's reading conditions on top of the engine's own grade.
 
-    Each failed condition (quote not located in the page text, quote not stating the DateSpec)
-    lowers the confidence one level; an ambiguous numeric date makes it ``low``. Reasons are added
-    to the receipt's warnings.
+    Each failed condition (quote not located in the page text, quote not stating the DateSpec, the
+    amount or the working day: any ``reasons``) lowers the confidence one level; an ambiguous numeric
+    date makes it ``low``. Reasons are added to the receipt's warnings (:data:`REASON_TEXT`).
     """
     failures = _FAILURES[receipt.confidence]
     notes: list[str] = []

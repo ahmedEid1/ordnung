@@ -148,7 +148,7 @@ working-day periods; consumer contract law (§ 309 BGB, § 56 TKG, § 11 VVG, el
 rent, employment); fines; and the rare letters that are costly to miss: a court payment order
 (*Mahnbescheid*) or enforcement order, a dismissal (court action in three weeks, registering as
 job-seeking), a landlord's notice or rent increase, a late operating-cost statement and a consumer's
-withdrawal. The extraction prompt has no field for those kinds: code assigns them from the reading
+withdrawal. Claude names those kinds and code checks its answer against the rest of the reading
 ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md)). In doubt, the engine picks the
 earliest plausible date. Every rule is documented with its source in
 [docs/deadline-rules.md](docs/deadline-rules.md).
@@ -198,6 +198,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung** | 89.3 % [78.9–96.7] | **0 %** | yes |
 | **Ordnung**, after fixing the gap that run found² | 98.2 % [94.5–100] | **0 %** | no |
 | LLM + rules tool, with the fixed engine³ | 100 % [91.8–100] | 0 % | no |
+| **Ordnung**, with the extraction prompt the app uses now⁴ | 96.4 % [91.2–100] | **0 %** | no |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -208,6 +209,10 @@ is no longer held-out.
 the third recording of this condition on the test split (the first scored 98.2 %, the second 100 %;
 after each, a review revised the tool interface, and the last version was checked on the dev split,
 where it scored 96 %, before the test split was recorded again).
+⁴ Extraction prompt version 11: labels and actions in the person's language, the letter's high-stakes
+kind, and three contract and rent terms the ledger could not hold. Each version from 9 to 11 was
+checked on the dev split first, but the test split was recorded for each of them (54, 53 and 54 of
+56), which is iteration on it. Both misses are early, on the safe side.
 
 What the numbers say:
 
@@ -232,8 +237,9 @@ What the numbers say:
   baseline got two of six invoice terms wrong because it didn't know that 14 May 2026 is Ascension Day.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
-source checkout, `ordnung eval` re-scores every recorded output with the current engine without calling
-a model; CI requires Ordnung to stay at 95 % or more with no dangerously late date.
+source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
+Ordnung, extraction prompt 11: the last Ordnung row) with the current engine without calling a model; CI
+requires Ordnung to stay at 95 % or more with no dangerously late date.
 
 ### Answering questions: can you trust what Ask says?
 
@@ -243,22 +249,26 @@ never against the app's own outputs.
 
 | Metric | Result |
 |---|---|
-| Answer correct: every gold date and amount stated | 88.6 % (39/44); 100 % (34/34) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 99.0 % (99/100) |
-| Abstention on questions with no answer in the records | 87.5 % (7/8) |
-| Injected claim in the answer the person sees | 4.8 % (1/21), against 38.1 % (8/21) before the check |
+| Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
+| Citation precision: the cited record holds the sentence's value | 99.4 % (159/160) |
+| Abstention on questions with no answer in the records⁵ | 100 % (8/8) |
+| Injected claim in the answer the person sees | 0 % (0/21), against 4.8 % (1/21) before the check |
 | Unsupported values left in final answers | 0 |
 
-The five wrong answers are gaps in the ledger (dates Ordnung never filed, or filed differently from
-the truth), not values the check let through. Read by hand, all eight raw "successes" before the check
-were warnings that repeated the injected value to flag it — none presented the claim as the answer; the
-check shows such a value as "[date only in the letter]". The one success that reaches the person claims
-a letter has no deadline where Ordnung never filed one, which a check of stated values cannot see. This benchmark is
-**not held-out**: its questions come from the same sample life as the demo, and the check and the
-prompt were revised over several review rounds on these recordings (the first nine attack letters were
-written before any measurement and never tuned). CI replays the recordings and gates accuracy,
-abstention and unsupported values; any successful attack but that documented one fails the build.
-Details: [docs/evals-ask.md](docs/evals-ask.md).
+The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
+filed differently from the truth), not values the check let through; the current ledger closes all five:
+the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
+job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the one raw "success" before the check is a denial that
+repeats the question's injected date to say the record does not hold it; the answer the person sees
+shows it in quotation marks. This benchmark is **not held-out**: its questions come from the same
+sample life as the demo, and the check and the prompt were revised over several review rounds on these
+recordings (the first nine attack letters were written before any measurement and never tuned). CI
+replays the recordings and gates accuracy, abstention and unsupported values; any successful attack
+fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
+
+⁵ 7/8 as first scored: the gas-bill answer leads with "I found no gas contract or gas bill in your
+records", a wording the scorer's abstention reader did not know; it was added after the measurement,
+with a test.
 
 ## Privacy
 
@@ -354,7 +364,7 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
 
 | | |
 |---|---|
-| Tests | 5,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,400+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
+| Tests | 5,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,400+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
 | CI gates | ruff, mypy, ESLint, `tsc`, both test suites, rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite, and a check that the committed web build matches its sources |
@@ -368,15 +378,20 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call.
-- High-stakes kinds are recognised by code from Claude's reading, partly from its German wording, until
-  the extraction prompt can name them itself; you can change a letter's kind on its page
+- High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
+  its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
+  reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
+  before extraction prompt version 9 names no kind and is classified by code alone. You can change a
+  letter's kind on its page
   ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md) lists the accepted misses).
-- Some of what Claude reads from a letter stays in the letter's words: a to-do's action and consequence
-  and a key fact's label can come out in German ("Semesterbeitrag … überweisen", "Fällig am"), with the
-  letter's own number formats ("94.99 EUR", "03.09.2026"), and a letter's explanation doesn't mention a
-  decision window Ordnung computed. The fix is in the extraction prompt, which also runs the published
-  extraction benchmark's Ordnung condition; it waits for the next benchmark run, so the published
-  numbers stay those of the prompt the app uses.
+- A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
+  to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
+  decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
+- A recurring payment is dated only when its letter gives a first date or a working day — except a
+  lease's own monthly rent, which is due by the law's 3rd working day (§ 556b Abs. 1 BGB), from the month
+  the tenancy starts at the earliest, one confidence level lower and with a warning to check the lease. A
+  direct debit "zum 1. eines Monats" with no start month, like the demo's gym fee, is listed with its
+  amount and no due date: Ordnung doesn't invent one from a contract's start.
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends

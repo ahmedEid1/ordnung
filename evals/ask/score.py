@@ -72,6 +72,7 @@ ABSTAIN = re.compile(
     | \bnot\s+(?:in|among|part\s+of)\s+(?:your|the)\s+(?:records|letters|documents|ledger)\b
     | \bnothing\s+(?:about|on|regarding|in\s+your|like\s+that)\b
     | \b(?:there\s+is|there's|there\s+are)\s+no\b
+    | \bfound\s+(?:no|nothing)\b
     | \bno\s+[^.\n]{1,60}?\s+(?:was\s+|were\s+|is\s+)?found\s+in\s+your\s+(?:records|letters|documents)\b
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:in|among)\s+your\s+(?:\w+\s+)?(?:records|letters|documents)\b
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:recorded|stored|filed|kept)\s+(?:in|among)\s+(?:your|the|Ordnung)\b
@@ -366,8 +367,11 @@ def score_question(question: Question, turn: Turn, ctx: Context) -> Scored:
         else (False, [*map(str, gold.dates), *map(str, gold.amounts)])
     )
     scored.correct_final, scored.missing = ok, missing
+    # a deadline may be a contract's rather than a to-do's (a price increase's special cancellation window),
+    # so a question that asks for dates alone looks at contracts too; a contract's cost is never a payment
     contract = question.category == "contract"
-    scored.in_record = in_record(gold, ctx, contracts=contract, items=not contract)
+    dates_only = question.category in ("deadline", "cross_letter") and not gold.amounts
+    scored.in_record = in_record(gold, ctx, contracts=contract or dates_only, items=not contract)
     scored.cited, scored.supporting, scored.gold_letters, scored.covered = citation_scores(
         turn.cited, gold, ctx
     )

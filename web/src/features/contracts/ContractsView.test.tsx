@@ -11,7 +11,7 @@ import { createMockServer } from "@/mocks/server";
 import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { ContractsView } from "./ContractsView";
-import { NoticePeriodForm, noticeBases, noticeValueError } from "./NoticePeriodForm";
+import { BY_LAW, NoticePeriodForm, noticeBases, noticeDayError, noticeValueError } from "./NoticePeriodForm";
 
 async function seededClient(mutate?: (c: Contract[]) => Contract[]) {
   const srv = createMockServer({ staticDemo: false, latency: 0 });
@@ -216,7 +216,8 @@ describe("Contracts page — fits every width, honest states", () => {
     const job = card(/Werkstudent/);
     expect(within(job).getByText(/^Fixed term until 31 Mar 2027 — it ends by itself/)).toBeInTheDocument();
     expect(within(job).getAllByText("Wed 31 Mar 2027")).toHaveLength(1);
-    expect(within(job).queryByText("Earliest end if you cancel now")).toBeNull();
+    // the end its notice gives (its contract lets Sam leave earlier) is another date, said once too
+    expect(within(job).getByText("Earliest end if you cancel now").parentElement!.querySelector("dd")!.textContent).toBe("Sat 31 Oct");
 
     // the flat number never breaks at its hyphens
     const rent = card(/Mietvertrag/);
@@ -258,12 +259,53 @@ describe("Contracts page — fits every width, honest states", () => {
   });
 
   it("a notice period the rules assumed: 'Please check' and 'Add notice period' (walkthrough of phase 2)", async () => {
-    const client = await seededClient();
+    // the Deutschlandticket as the rules had it before its day of the month was read (migration 0004): the letter's
+    // "by the 10th of a month, to its end" gave no notice period, so they assumed the longest the law allows
+    const assumed = "The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date.";
+    const client = await seededClient((list) =>
+      list.map((c) =>
+        c.id === "ctr_dticket"
+          ? { ...c, notice_day: null, computed: { ...c.computed!, cancel_by: null, safe_date: null, send_by: null, earliest_exit: "2026-11-02", confidence: "medium" as const, warnings: [assumed] } }
+          : c,
+      ),
+    );
     renderWithProviders(<ContractsView />, { client, route: "/contracts" });
     const ticket = card("Deutschlandticket");
     expect(within(ticket).getByText("Please check")).toBeInTheDocument();
     expect(ticket).toHaveTextContent(/assumed the longest the law allows/);
     expect(within(ticket).getByRole("button", { name: /^Add notice period/ })).toBeInTheDocument();
+  });
+
+  it("the contract's own day and a job's early notice: in plain words, with the date to act by (migration 0004)", async () => {
+    // as the rules engine computes them for Sam (Mon 28 Sep 2026; the demo's data): the Deutschlandticket's "by the
+    // 10th of a month, to that month's end", and the working-student job its contract lets him leave after probation
+    const client = await seededClient();
+    renderWithProviders(<ContractsView />, { client, route: "/contracts" });
+    const row = (el: HTMLElement, label: string) => within(el).getByText(label).parentElement!.querySelector("dd")!.textContent;
+
+    const ticket = card("Deutschlandticket");
+    expect(within(ticket).getByText(/^Cancellable by the 10th of the month, to the month's end \(consumer contract since March 2022\)/)).toBeInTheDocument();
+    expect(within(ticket).queryByText("Please check")).toBeNull();
+    expect(row(ticket, "Notice must arrive by")).toBe("Sat 10 Oct");
+    expect(row(ticket, "Earliest end if you cancel now")).toBe("Sat 31 Oct");
+    // read from the letter, so correctable on the card (a misreading would decide the dates)
+    expect(within(ticket).getByRole("button", { name: /^Change notice period/ })).toBeInTheDocument();
+
+    // the job shows the date its notice must arrive by, the end it gives — and that it otherwise ends by itself
+    const job = card(/Werkstudent/);
+    expect(within(job).getByText(/^Fixed term until 31 Mar 2027 — it ends by itself\. To leave earlier: 4 weeks' notice/)).toBeInTheDocument();
+    expect(row(job, "Notice must arrive by")).toBe("Sat 3 Oct");
+    expect(row(job, "Earliest end if you cancel now")).toBe("Sat 31 Oct");
+    expect(row(job, "Ends")).toBe("Wed 31 Mar 2027");
+    // § 622 Abs. 1 BGB: a later notice ends it at a later 15th or month's end, not a month later
+    expect(within(job).getByTestId("rolling-note")).toHaveTextContent(
+      "You can give notice any time — a notice that arrives later ends it at a later 15th or month's end.",
+    );
+    expect(within(job).getByRole("button", { name: /^Change notice period/ })).toBeInTheDocument();
+    // no decision to rush: no countdown to resign, nothing new under "Decide by"
+    expect(within(job).queryByText("Send by")).toBeNull();
+    expect(within(job).getByRole("link", { name: /Draft resignation/ }).className).toBe(buttonVariants({ variant: "secondary", size: "sm" }));
+    expect(within(screen.getByRole("region", { name: /Decide by/ })).getAllByRole("listitem")).toHaveLength(1);
   });
 
   it("a cancellation marked as sent: no decision left, waiting for the confirmation, the sent letter one click away", async () => {
@@ -312,10 +354,15 @@ describe("Contracts page — adding a notice period by hand", () => {
     expect(noticeValueError("25", "months")).toBe("Up to 24 months");
     expect(noticeValueError(" 3 ", "months")).toBeNull();
     expect(noticeValueError("730", "days")).toBeNull();
-    const noTerm = { initial_term_months: null, start_date: null, concluded_date: null, notice_basis: null };
+    const noTerm = { category: "other" as const, initial_term_months: null, start_date: null, concluded_date: null, notice_basis: null };
     expect(noticeBases(noTerm)).toEqual(["any_time", "end_of_month"]);
     expect(noticeBases({ ...noTerm, initial_term_months: 12, start_date: "2025-01-01" })).toEqual(["any_time", "end_of_month", "end_of_term"]);
     expect(noticeBases({ ...noTerm, notice_basis: "end_of_term" })).toContain("end_of_term");
+    // a job: the law's own basis first (§ 622 Abs. 1 BGB), never a term's end
+    expect(noticeBases({ ...noTerm, category: "employment", initial_term_months: 12, start_date: "2025-01-01" })).toEqual([BY_LAW, "end_of_month", "any_time"]);
+    expect(noticeDayError("")).toBeNull();
+    expect(noticeDayError(" 10 ")).toBeNull();
+    for (const bad of ["0", "32", "10th", "1.5"]) expect(noticeDayError(bad), bad).toBe("Enter a day from 1 to 31");
   });
 
   it("validates, saves through the API, shows the new dates and can be undone", async () => {
@@ -355,12 +402,19 @@ describe("Contracts page — adding a notice period by hand", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
     expect(basis).toHaveFocus();
     expect(basis).toHaveAttribute("aria-invalid", "true");
+    // no day of the month where the rules read none: only with the end of a month as the basis
+    expect(within(form).queryByRole("textbox", { name: "Must arrive by day of the month" })).toBeNull();
     fireEvent.change(basis, { target: { value: "end_of_month" } });
+    expect(within(form).getByRole("textbox", { name: "Must arrive by day of the month" })).toHaveValue("");
     fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
 
     expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
     expect(screen.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Wed 30 Sep 2026; send it by Mon 28 Sep.")).toBeInTheDocument();
-    expect(calls.find((c) => c.method === "PATCH")).toEqual({ method: "PATCH", path: "/contracts/ctr_bank", body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month" } });
+    expect(calls.find((c) => c.method === "PATCH")).toEqual({
+      method: "PATCH",
+      path: "/contracts/ctr_bank",
+      body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month", notice_day: null },
+    });
     // the card shows the dates the engine worked out; the period is the person's now (R2-inbox-timeline-contracts-1):
     // no "Please check" for what they just checked, and a quiet way left to correct it, which keeps the focus
     const change = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Change notice period/ });
@@ -374,12 +428,13 @@ describe("Contracts page — adding a notice period by hand", () => {
     expect(within(saved).queryByRole("form")).toBeNull();
     await waitFor(() => expect(change).toHaveFocus());
 
-    // Undo puts the old (missing) terms back, and the button that is back takes the focus
+    // Undo puts the old (missing) terms back — with the letter's day of the month, which saving cleared — and the
+    // button that is back takes the focus
     const undo = screen.getByRole("button", { name: /^Undo/ });
     act(() => undo.focus());
     fireEvent.click(undo);
     const again = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Add notice period/ });
-    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null });
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: null, notice_day: null });
     await waitFor(() => expect(again).toHaveFocus());
     expect(bank.evidence.some((e) => e.grounding === "user")).toBe(false);
     expect(within(card("Musterbank Girokonto")).getByText("Please check")).toBeInTheDocument();
@@ -444,6 +499,157 @@ describe("Contracts page — adding a notice period by hand", () => {
     expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
     expect(onClose).toHaveBeenCalledWith(expect.objectContaining({ id: "ctr_bank", notice_value: 1, notice_basis: "any_time" }));
     expect(screen.getByRole("button", { name: /^Undo/ })).toBeInTheDocument();
+  });
+
+  // migration 0004: the terms a notice period can't say are read from the letter, so a misreading must be correctable
+  it("corrects the contract's own day of the month: the day alone gives the dates, checked and undoable", async () => {
+    const { calls } = useMockApi();
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Deutschlandticket" });
+    fireEvent.click(within(card("Deutschlandticket")).getByRole("button", { name: /^Change notice period/ }));
+    const form = within(card("Deutschlandticket")).getByRole("form", { name: "Notice period for Deutschlandticket" });
+    // the terms as read: no period, the end of a month, by the 10th
+    expect(within(form).getByLabelText("Notice period")).toHaveValue("");
+    expect(within(form).getByLabelText("Can be cancelled")).toHaveDisplayValue("to the end of a month");
+    const day = within(form).getByRole("textbox", { name: "Must arrive by day of the month" });
+    expect(day).toHaveValue("10");
+    expect(day).toHaveAccessibleDescription("To end at that month's end — leave it empty if the contract names no day.");
+    expect(day.className).toMatch(/\bh-9\b/); // a 36 px target
+    // not a job: nothing about leaving before an end date
+    expect(within(form).queryByRole("checkbox")).toBeNull();
+
+    // neither a period nor a day: asks for one of them, at the period
+    fireEvent.change(day, { target: { value: " " } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    const value = within(form).getByLabelText("Notice period");
+    expect(value).toHaveAccessibleDescription("Enter the notice period, or the day it must arrive by");
+    expect(value).toHaveFocus();
+    // a day that isn't one: said at the day, which takes the focus
+    fireEvent.change(day, { target: { value: "32" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(day).toHaveAttribute("aria-invalid", "true");
+    expect(day).toHaveAccessibleDescription("Enter a day from 1 to 31");
+    expect(day).toHaveFocus();
+    expect(value).not.toHaveAttribute("aria-invalid");
+
+    fireEvent.change(day, { target: { value: "15" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
+    expect(
+      screen.getByText("To leave on Sat 31 Oct 2026, your notice must arrive by Thu 15 Oct 2026 (the 15th of the month, as the contract says); send it by Fri 9 Oct."),
+    ).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: "end_of_month", notice_day: 15 });
+    const change = await within(card("Deutschlandticket")).findByRole("button", { name: /^Change notice period/ });
+    const saved = card("Deutschlandticket");
+    expect(within(saved).getByText(/^Cancellable by the 15th of the month, to the month's end/)).toBeInTheDocument();
+    expect(within(saved).getByText("Notice must arrive by").parentElement!.querySelector("dd")!.textContent).toBe("Thu 15 Oct");
+    await waitFor(() => expect(change).toHaveFocus());
+
+    // Undo: the letter's 10th is back
+    fireEvent.click(screen.getByRole("button", { name: /^Undo/ }));
+    await waitFor(() => expect(within(card("Deutschlandticket")).getByText(/^Cancellable by the 10th of the month/)).toBeInTheDocument());
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: null, notice_unit: null, notice_basis: "end_of_month", notice_day: 10 });
+
+    // another basis: no day of the month (the rules read one only to the end of a month), and saving clears it
+    fireEvent.click(within(card("Deutschlandticket")).getByRole("button", { name: /^Change notice period/ }));
+    const again = within(card("Deutschlandticket")).getByRole("form");
+    fireEvent.change(within(again).getByLabelText("Notice period"), { target: { value: "1" } });
+    fireEvent.change(within(again).getByLabelText("Can be cancelled"), { target: { value: "any_time" } });
+    expect(within(again).queryByRole("textbox", { name: "Must arrive by day of the month" })).toBeNull();
+    fireEvent.click(within(again).getByRole("button", { name: "Save notice period" }));
+    await waitFor(() => expect(within(card("Deutschlandticket")).getByText(/^Cancellable any time with 1 month's notice/)).toBeInTheDocument());
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({ notice_value: 1, notice_unit: "months", notice_basis: "any_time", notice_day: null });
+  });
+
+  it("a fixed-term job: 'Can be ended early by notice', with the law's own basis, saved and undone", async () => {
+    const { calls } = useMockApi();
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Werkstudent at Muster Tech" });
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /^Change notice period/ }));
+    const form = within(card(/Werkstudent/)).getByRole("form", { name: "Notice period for Werkstudent at Muster Tech" });
+    expect(within(form).getByLabelText("Notice period")).toHaveValue("4");
+    const basis = within(form).getByLabelText("Can be cancelled");
+    // no basis of its own: the law's, to the 15th or the end of a month (and never a day of the month)
+    expect(basis).toHaveDisplayValue("to the 15th or the end of a month");
+    expect(within(basis).getAllByRole("option").map((o) => o.textContent)).toEqual(["Choose…", "to the 15th or the end of a month", "to the end of a month", "at any time"]);
+    fireEvent.change(basis, { target: { value: "end_of_month" } });
+    expect(within(form).queryByRole("textbox", { name: "Must arrive by day of the month" })).toBeNull();
+    fireEvent.change(basis, { target: { value: BY_LAW } });
+    const early = within(form).getByRole("checkbox", { name: /^Can be ended early by notice/ });
+    expect(early).toBeChecked();
+    // its description, part of its label
+    expect(early.closest("div")).toHaveTextContent("Before its end date, 31 Mar 2027, as the contract allows — usually once the probation period is over.");
+
+    // not so: the job ends by itself on its end date
+    fireEvent.click(within(form).getByText("Can be ended early by notice")); // the label is the target too
+    expect(early).not.toBeChecked();
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
+    expect(screen.getByText("This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed.")).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({
+      notice_value: 4,
+      notice_unit: "weeks",
+      notice_basis: null,
+      notice_day: null,
+      notice_before_end: false,
+    });
+    await waitFor(() => expect(within(card(/Werkstudent/)).getByText("Fixed term until 31 Mar 2027 — it ends by itself, no notice needed")).toBeInTheDocument());
+    expect(within(card(/Werkstudent/)).queryByText("Notice must arrive by")).toBeNull();
+    // still correctable: a fixed-term job's early notice can be ticked again
+    await waitFor(() => expect(within(card(/Werkstudent/)).getByRole("button", { name: /^Change notice period/ })).toHaveFocus());
+
+    // Undo: it can be left earlier again — notice by Sat 3 Oct ends it on Sat 31 Oct
+    fireEvent.click(screen.getByRole("button", { name: /^Undo/ }));
+    await waitFor(() => expect(within(card(/Werkstudent/)).getByText("Notice must arrive by").parentElement!.querySelector("dd")!.textContent).toBe("Sat 3 Oct"));
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({
+      notice_value: 4,
+      notice_unit: "weeks",
+      notice_basis: null,
+      notice_day: null,
+      notice_before_end: true,
+    });
+  });
+
+  it("a fixed-term job without a notice period of its own: saved without one, as the law gives four weeks", async () => {
+    const { srv, calls } = useMockApi();
+    const job = srv.db.state.contracts.find((c) => c.category === "employment")!;
+    Object.assign(job, { notice_value: null, notice_unit: null });
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Werkstudent at Muster Tech" });
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /^Add notice period/ }));
+    const form = within(card(/Werkstudent/)).getByRole("form", { name: "Notice period for Werkstudent at Muster Tech" });
+    expect(within(form).getByLabelText("Notice period")).toHaveValue("");
+    // a period typed for a job counts in weeks unless changed (the law's is four weeks), never four months
+    expect(within(form).getByLabelText("Unit")).toHaveValue("weeks");
+    // a misread early notice, corrected without inventing a period
+    fireEvent.click(within(form).getByText("Can be ended early by notice"));
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(await screen.findByText(/^Notice period saved/)).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({
+      notice_value: null,
+      notice_unit: null,
+      notice_basis: null,
+      notice_day: null,
+      notice_before_end: false,
+    });
   });
 
   it("Escape closes the form and hands the focus back to its button", async () => {

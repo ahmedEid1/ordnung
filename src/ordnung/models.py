@@ -45,9 +45,11 @@ DocumentKind = Literal[
     "other",
 ]
 DOCUMENT_KINDS: tuple[str, ...] = DocumentKind.__args__  # type: ignore[attr-defined]
-#: Letters whose deadlines the rules engine handles specially. Only code assigns these kinds, from
-#: the model's reading (:mod:`ordnung.rules.routing`), so the extraction schema and the benchmark keep
-#: the model's own vocabulary (:data:`DocumentKind`) and its recorded answers stay valid.
+#: Letters whose deadlines the rules engine handles specially. They are not a :data:`DocumentKind`: the
+#: model names one in a field of its own (``DocumentExtraction.high_stakes_kind``, extraction prompt
+#: version 9), and code files a letter under one from the reading, checking the kind the model names
+#: against it (:mod:`ordnung.rules.routing`, ADR 0010); answers recorded before version 9 name none and
+#: are filed as before.
 HighStakesKind = Literal[
     "court_payment_order",
     "enforcement_order",
@@ -254,8 +256,26 @@ class ComputationReceipt(_Model):
 
 
 class Recurrence(_Model):
+    # How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
+    # each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3), for a rule in
+    # months or years (a rule in days or weeks has none); Ordnung computes each month's date from it
+    # (ordnung.recurrence, point 8). A reading gives it too (``ExtractedItem.recurrence``), graded by
+    # whether the item's quote names it (ordnung.ingest.verify.WORKING_DAY_NOT_IN_QUOTE). Its JSON schema
+    # is part of the extraction prompt's, which the benchmark's recordings pin by version
+    # (evals/recorded/*/prompts.lock.json), so it has no docstring: the model reads only the field
+    # descriptions, and a changed one is a changed prompt.
+
     interval: int = 1
     unit: Literal["days", "weeks", "months", "years"] = "months"
+    working_day: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description=(
+            "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden "
+            "Monats'; empty for a day of the month"
+        ),
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -374,7 +394,12 @@ class ContractComputation(_Model):
 
 
 class ContractTerms(_Model):
-    """The rule-relevant part of a contract (input of ``rules.contracts.compute_contract``)."""
+    """The rule-relevant part of a contract (input of ``rules.contracts.compute_contract``).
+
+    ``notice_day``: a cancellation must arrive by this day of a month to end the contract at the end of
+    that month (read with ``notice_basis`` "end_of_month"; a notice period stated too applies as well).
+    ``notice_before_end``: a contract with an end date whose own clause lets it be ended earlier by
+    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). The rules engine's docstrings hold the policies."""
 
     category: ContractCategory = "other"
     party_kind: str | None = None
@@ -385,6 +410,8 @@ class ContractTerms(_Model):
     notice_value: int | None = None
     notice_unit: NoticeUnit | None = None
     notice_basis: NoticeBasis | None = None
+    notice_day: int | None = None
+    notice_before_end: bool = False
     end_date: str | None = None
     is_consumer: bool = True
     is_basic_supply: bool = False
@@ -414,6 +441,8 @@ class Contract(_Model):
     notice_value: int | None = None
     notice_unit: NoticeUnit | None = None
     notice_basis: NoticeBasis | None = None
+    notice_day: int | None = None
+    notice_before_end: bool = False
     end_date: str | None = None
     is_basic_supply: bool = False
     cost_amount: float | None = None
@@ -447,6 +476,8 @@ class Contract(_Model):
             notice_value=self.notice_value,
             notice_unit=self.notice_unit,
             notice_basis=self.notice_basis,
+            notice_day=self.notice_day,
+            notice_before_end=self.notice_before_end,
             end_date=self.end_date,
             is_consumer=self.is_consumer,
             status=self.status,
@@ -964,6 +995,8 @@ class ExtractedContract(_Model):
     notice_value: int | None = None
     notice_unit: NoticeUnit | None = None
     notice_basis: NoticeBasis | None = None
+    notice_day: int | None = Field(default=None, ge=1, le=31)
+    notice_before_end: bool = False
     end_date: str | None = None
     cost_amount: float | None = None
     cost_interval: CostInterval | None = None
@@ -992,6 +1025,9 @@ class ExtractedChange(_Model):
 
 class DocumentExtraction(_Model):
     kind: DocumentKind
+    #: the model's own answer (extraction prompt version 9, ADR 0010); code checks it
+    #: (:func:`ordnung.rules.routing.classify_letter`). Readings recorded before have none.
+    high_stakes_kind: HighStakesKind | None = None
     area: Area = "other"
     title: str
     language: str = "de"
@@ -1842,6 +1878,10 @@ class CaseItemRef(_Model):
     )
     needs_check: bool = Field(
         default=False, description="Its date or amount is not confirmed against the letter (compare it)"
+    )
+    direction: Literal["out", "in"] | None = Field(
+        default=None,
+        description="A payment's direction: money coming in is expected on its day, never overdue",
     )
 
 

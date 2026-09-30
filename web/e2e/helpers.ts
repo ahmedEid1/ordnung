@@ -1,9 +1,11 @@
 /**
- * Shared steps for the e2e suite: talking to the demo API with the page's session, the New-mail
- * tray, waiting for a page to settle, the raw-enum guard and the axe scan.
+ * Shared steps for the e2e suite: talking to the demo API with the page's session, finding demo letters
+ * by their sample's file name and demo contracts by their category, the New-mail tray, waiting for a page to
+ * settle, the raw-enum guard and the axe scan.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import type { Contract, ContractCategory } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
 
 /** `test` that also fails when the app throws an uncaught error in the browser. */
@@ -49,17 +51,89 @@ export function setTour(page: Page, step: number | null): Promise<TourState> {
   return apiPatch<TourState>(page, "/api/demo/tour", step === null ? { active: false, completed: true } : { active: true, step, completed: false });
 }
 
-interface DocumentSummary {
+// ------------------------------------------------------------------------------------------------
+// Demo letters: found by their sample's file name, never by the title the model wrote
+// ------------------------------------------------------------------------------------------------
+
+/** A letter as `GET /api/documents` lists it. */
+export interface Letter {
   id: string;
+  filename: string;
   title: string | null;
 }
 
-/** Id of the first letter whose title matches (the demo database is prebuilt, ids may change). */
-export async function documentId(page: Page, title: RegExp): Promise<string> {
-  const docs = await apiGet<DocumentSummary[]>(page, "/api/documents");
-  const doc = docs.find((d) => d.title && title.test(d.title));
-  expect(doc, `a letter titled ${title}`).toBeTruthy();
-  return doc!.id;
+/** A to-do of a letter, as `GET /api/documents/{id}` lists it. */
+export interface LetterItem {
+  id: string;
+  kind: string;
+  title: string;
+  status: string;
+  due_date: string | null;
+}
+
+/**
+ * The demo letter read from the sample `file` ("08_rechnung_techmarkt.pdf"). A sample's file name never
+ * changes; its title is the model's and changes with every re-recording of the demo, so a test finds its
+ * letter by the file and reads the title from the API when it needs it (the database is prebuilt: ids may
+ * change too).
+ */
+export async function letter(page: Page, file: string): Promise<Letter> {
+  const docs = await apiGet<Letter[]>(page, "/api/documents");
+  const doc = docs.find((d) => d.filename === file);
+  expect(doc, `no demo letter from the sample ${file} (the Inbox has ${docs.map((d) => d.filename).join(", ")})`).toBeTruthy();
+  return doc!;
+}
+
+/** Id of the demo letter read from the sample `file` ({@link letter}). */
+export async function letterId(page: Page, file: string): Promise<string> {
+  return (await letter(page, file)).id;
+}
+
+/** A letter's title and to-dos, from its own page's API (`id`: {@link letterId}, or a New-mail letter's {@link openMail}). */
+export async function letterDetail(page: Page, id: string): Promise<{ title: string; items: LetterItem[] }> {
+  const { document, items } = await apiGet<{ document: Letter; items: LetterItem[] }>(page, `/api/documents/${id}`);
+  expect(document.title, `the letter ${document.filename} has a title`).toBeTruthy();
+  return { title: document.title!, items };
+}
+
+/** The one to-do of `kind` on the letter `id` (fails naming the letter's to-dos when there is none). */
+export async function letterItem(page: Page, id: string, kind: string): Promise<LetterItem> {
+  const { title, items } = await letterDetail(page, id);
+  const found = items.filter((i) => i.kind === kind);
+  expect(found.length, `one ${kind} to-do on “${title}” (it has ${items.map((i) => `${i.kind} “${i.title}”`).join(", ") || "none"})`).toBe(1);
+  return found[0]!;
+}
+
+// ------------------------------------------------------------------------------------------------
+// Demo contracts: found by what they are, never by the name the model gave them
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * The one demo contract of `category` ("mobile", "insurance"…), as `GET /api/contracts` lists it. A contract's
+ * name is the model's and changes with a re-recording ("Stromliefervertrag" became "MusterStrom Flex" with
+ * prompt 11), so a test finds its contract by what it is and builds the text it expects from `name`
+ * ({@link shownAs}). Fails, naming the demo's contracts, unless exactly one contract is of that category —
+ * never another contract in its place.
+ */
+export async function contractOf(page: Page, category: ContractCategory): Promise<Contract> {
+  const all = await apiGet<Contract[]>(page, "/api/contracts");
+  const found = all.filter((c) => c.category === category);
+  expect(found.map((c) => c.name), `one ${category} contract in the demo (it has ${all.map((c) => `${c.category} “${c.name}”`).join(", ")})`).toHaveLength(1);
+  return found[0]!;
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+/**
+ * `text` (a title from the API) as the app shows it, as a pattern: on screen amounts, dates and references
+ * are glued with no-break spaces and hyphens, and long German words carry soft hyphens (display only), so
+ * the page's text isn't the API's character for character. `whole`: the text and nothing else.
+ */
+export function shownAs(text: string, { whole = false }: { whole?: boolean } = {}): RegExp {
+  const body = [...text.trim()]
+    .map((ch) => (/\s/.test(ch) ? "[\\s\\u00a0\\u202f]+" : ch === "-" ? "[-\\u2011]" : escapeRegExp(ch)))
+    .join("\\u00ad?");
+  return new RegExp(whole ? `^${body}$` : body);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -114,23 +188,35 @@ export function envelope(page: Page, sender: string): Locator {
 }
 
 /**
- * Open a New-mail letter and wait for the viewer. The demo tray is shared by all tests of a run:
- * when the letter was already opened (a retry), go straight to its document.
+ * The letter a New-mail letter became once it was opened (a tray letter is no letter until then): found by
+ * its tray sender, as the tray names it — never by the title the model gave it.
  */
-export async function openMail(page: Page, sender: string): Promise<{ fresh: boolean }> {
+export async function mailLetterId(page: Page, sender: string): Promise<string> {
+  const tray = await apiGet<MailTrayItem[]>(page, "/api/demo/mail");
+  const item = tray.find((t) => t.sender.startsWith(sender));
+  expect(item, `a New-mail letter from ${sender}`).toBeTruthy();
+  expect(item!.doc_id, `the New-mail letter from ${sender} was opened`).toBeTruthy();
+  return item!.doc_id!;
+}
+
+/**
+ * Open a New-mail letter and wait for the viewer: `id` is the letter it became. The demo tray is shared by
+ * all tests of a run: when the letter was already opened (a retry), go straight to its document.
+ */
+export async function openMail(page: Page, sender: string): Promise<{ fresh: boolean; id: string }> {
   const tray = await apiGet<MailTrayItem[]>(page, "/api/demo/mail");
   const item = tray.find((t) => t.sender.startsWith(sender));
   expect(item, `a New-mail letter from ${sender}`).toBeTruthy();
   if (item!.opened && item!.doc_id) {
     await open(page, `/documents/${item!.doc_id}`);
-    return { fresh: false };
+    return { fresh: false, id: item!.doc_id };
   }
   await open(page, "/inbox");
   await envelope(page, sender).getByRole("button", { name: "Let Ordnung read it" }).click();
   // one letter read from the tray → the Inbox opens it once the stepper is done
   await page.waitForURL(/\/documents\/doc_/, { timeout: 30_000 });
   await page.waitForLoadState("networkidle");
-  return { fresh: true };
+  return { fresh: true, id: await mailLetterId(page, sender) };
 }
 
 // ------------------------------------------------------------------------------------------------

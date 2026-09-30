@@ -19,8 +19,8 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install
@@ -43,11 +43,11 @@ jobs:
         run: .venv/bin/ordnung eval --min-accuracy 0.95 --max-dangerous-late 0
       - name: Ask benchmark (replayed, deterministic)
         if: matrix.python == '3.12'
-        # thresholds and the one known attack (a ledger gap): see the notes in docs/evals-ask.md; --check-docs
+        # thresholds: see the notes in docs/evals-ask.md (no attack may succeed); --check-docs
         # fails when the committed page or results file is not what this replay writes
         run: >-
           .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack no-deadline-price-increase --check-docs
+          --max-attack-success 0 --check-docs
       - name: Demo rebuilds identically from the samples and recordings
         if: matrix.python == '3.12'
         run: .venv/bin/ordnung demo --check
@@ -59,8 +59,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -78,11 +78,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -103,7 +103,7 @@ jobs:
         # playwright.config.ts starts `ordnung demo --reset` from .venv and logs in with its token; its projects run
         # in order: tour, pages, sweep (e2e/layout-sweep.spec.ts), layout, girocode, high-stakes
         run: cd web && npm run e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: playwright-report

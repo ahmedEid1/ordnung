@@ -91,7 +91,8 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   end-of-period shift rule, which all treat Saturday like Sunday.
 - **Werktag** — Monday to Saturday, not a public holiday. Used where the law counts *Werktage*, such
   as the three-day grace period for a tenancy notice. In legal language Saturday **is** a Werktag
-  (BGH VIII ZR 206/04).
+  (BGH VIII ZR 206/04) — except for paying rent, where the 3rd working day counts business days
+  (BGH VIII ZR 129/09; section 8, "Paying rent").
 - **Holidays** come from the [`holidays`](https://pypi.org/project/holidays/) package
   (`holidays.Germany(subdiv=…)`). The nine nationwide holidays always count. Regional ones (e.g.
   Fronleichnam, Allerheiligen, Reformationstag, Buß- und Bettag, Frauentag in Berlin) count **only
@@ -204,7 +205,10 @@ Which DateSpecs shift (`DateSpec.nature` and `shift_rule`):
 **Fixed dates** ("bis zum 10.10.2026") are used **as written**, and moved only when the DateSpec says
 `shift_rule == "next_business_day"`. Deadlines *set by an authority* do move by law (§ 108 Abs. 3
 AO; example: "Belege bis zum 10.10.2026" → Mon 12 Oct 2026); when the DateSpec doesn't say so, the
-receipt keeps the written (earlier) date and warns that it may legally be later.
+receipt keeps the written (earlier) date and warns that it may legally be later. The receipt cites
+`authority_deadline` (for that weekend date, or an appointment kept on its day) only when an authority
+set the date (a sender with a delivery scope, not a court): never for a court's date (ZPO) or a private
+sender's.
 
 **A cancellation for an end date** ("denken Sie daran, dieses rechtzeitig zum 31.03.2027 zu kündigen",
 "Kündigung zum 31.12.2026 möglich", "mit Wirkung zum …", "effective …") names the day the contract should
@@ -358,18 +362,32 @@ Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the 
 ## 7. High-stakes letters
 
 Some letters are rare but catastrophic when missed, and several of them never state their most
-important deadline. The extraction prompt is unchanged (its recorded answers stay valid), so Ordnung
-recognises these letters **in code** from the model's ordinary reading (`rules/routing.py`, a short
-written policy per ADR 0007, and ADR 0010 for why code assigns these kinds) and files them under their own kind:
+important deadline. Ordnung files these letters under their own kind **in code** (`rules/routing.py`, a
+short written policy per ADR 0007, and ADR 0010 for why code assigns these kinds). Since extraction prompt
+version 9 the model names the kind itself (`high_stakes_kind`); code weighs that against the kind it
+reads from the rest of the reading (the table below):
 
-| Kind | Recognised when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
+- the model names none (every reading recorded before version 9): code's kind, as before;
+- code reads a kind: code's, whether the model names the same one or another;
+- only the model names one: the model's, unless the reading rules it out — a court order whose sender is
+  clearly no court (read as a company, a landlord, a bank … under a name that names no court, or a bailiff
+  or a court cashier) or that is a European order for payment; a dismissal or landlord's notice whose
+  contract is of another category (a gym, a job ticket; a tenancy for a dismissal, a job for a landlord's
+  notice); a rent increase of a kind that needs no consent (the vetoes in its row). The model's
+  `operating_costs` is never filed: it makes a statement one on read, with the vetoes in its row.
+
+A veto only takes the model's kind away when the reading says the letter is something else, so a court
+named only in English, a court order read without its remedy or a termination the reading doesn't record
+is filed under the kind the model names. The kind the person chose on the letter's page wins over both.
+
+| Kind | Code reads it when the reading … | Its dates follow | Deadlines the law adds (filed as to-dos) | Card |
 |---|---|---|---|---|
 | `court_payment_order` (*Mahnbescheid*) | comes from a court (the sender's name is a kind of court — *Amtsgericht*, also *des Amtsgerichts*, *Zentrales Mahngericht*, *Verfassungsgerichtshof* — or abbreviates one before a place of a word or two, *AG Hagen*, *SG Berlin*, *VG Minden* — a federal court's needs no place, *BGH*, *BSG* —, from a sender read as an authority (or of no particular kind; a club "SG …" or "VG Wort" read so counts as a court, the safe side) — a recipient typed into a template letter, whose kind is unknown, only by the court's full name; never any word ending in "gericht", a company whose name starts like one — *LG Electronics Deutschland GmbH*, *OLG Immobilien* —, a bailiff — *Gerichtsvollzieher bei dem Amtsgericht …* — or a court cashier), asks the person to answer it as the respondent, and names the order (see below) | `zpo_692` (at a labour court `arbgg_46a`) | pay or object within two weeks (one week at a labour court) | get advice now |
 | `enforcement_order` (*Vollstreckungsbescheid*) | comes from a court, names a Vollstreckungsbescheid, asks the person to answer it, and is one (see below) | `zpo_339` (at a labour court `arbgg_59`) | object within two weeks (one week at a labour court) | get advice now |
 | `dismissal` | reports a termination by the other side about a job — what it ends is decided by the contract it names (an employment contract; any other category but "other", like a job ticket, is neither), then the letter's kind, and only then the sender's (an employer) | `kschg_4`, `sgb3_38` | court action within three weeks; register as job-seeking | get advice now |
 | `landlord_notice` | reports a termination by the other side about a tenancy, in the same order (a rent contract, a tenancy letter, a landlord): an employer ending the lease of a company flat gives a landlord's notice, not a dismissal | `bgb_574b` | the objection, when the notice has a notice period (or gives one in the alternative): two months before its stated end — or before the earliest end the law allows (`bgb_573c_landlord`) when the stated end is too early for it or a notice in the alternative names none | tenants' association |
 | `rent_increase` | reports a rent increase whose quoted German wording asks for consent (Zustimmung, Vergleichsmiete, Mietspiegel, § 558 BGB), unless the increase's own quote or the title names another kind of increase (graduated, index, prepayments, §§ 557a, 557b, 559, 560 BGB; a modernisation only when the increase's own quote doesn't ask for consent) or a quote says consent isn't needed — what happens *without* consent ("Sollten Sie Ihre Zustimmung nicht erteilen …"), the prepayment in the new total and a Mietspiegel feature ("Bad modernisiert", "nach der Modernisierung des Bades … zuzustimmen") never veto it | `bgb_558b` | decide on the consent | rent cap check |
-| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period, isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
+| `operating_costs` | names an operating-cost statement in its title, or with a tenancy or a billing period (or the model names it one), isn't a reminder (a reminder about an old statement's back-payment quotes the statement without being it) and isn't from a utility or a public body — recognised on read only, because its dates don't depend on it | ordinary 12-month period | — | late-statement check |
 
 **Which court order a court's letter is.** A court writes many letters that name an order: to the
 claimant (the other side objected, the order was served, a cost invoice, a request to fix the
@@ -392,15 +410,17 @@ and vetoed genuine orders whose reading said "you have not objected" or "served 
 
 *Limitation:* a later letter whose reading nevertheless gives the person an objection date (or a
 remedy), and whose title names the order, is filed as that order — the safe side for a two-week
-*Notfrist*. The person changes the kind on the letter's page. The next extraction prompt should let the
-model name the order itself (a `letter_kind` field with these kinds); the recorded prompt stays as it
-is until then.
+*Notfrist*. The person changes the kind on the letter's page. A court order these signals don't
+recognise — a court named only in English, a reading with no remedy and no objection date — is filed
+under the kind the model names (above); only a sender that is clearly no court, or a European order for
+payment, takes that kind away.
 
 A debt collector threatening a Mahnbescheid is not a court, so its letter stays a payment reminder;
 text in the model's own advice (`explanation`, `warnings`) never classifies a letter. A court order
 about an invoice takes over its payment like a reminder does, so the invoice isn't shown to pay twice.
-A letter the policy misses (or gets wrong) keeps the model's kind; the person can set the kind on the
-letter's page ("What kind of letter is this?"), and its dates and to-dos are recomputed at once. A kind
+A letter the policy misses gets the kind the model names, else keeps the model's ordinary kind; the
+person can set the kind on the letter's page ("What kind of letter is this?") whenever it is wrong, and
+its dates and to-dos are recomputed at once. A kind
 the person chose is kept when the letter is read again; a kind Ordnung chose is not, so a letter filed
 before Ordnung knew these kinds gets its high-stakes kind the next time it is read.
 
@@ -810,16 +830,53 @@ negative terms and notice periods are misreadings and treated as missing; values
 ignored with `low` confidence. If the usual sending time has passed, `send_by` is today and the last
 step says so.
 
+Two terms a notice period can't say:
+
+- **The contract's own day of the month** (`notice_day`: "Die Kündigung muss bis zum 10. eines Monats zum
+  Ende dieses Monats bei uns eingehen"). Read under `bgb309_new`, `tkg56`, `bgb309_old` and `as_written`
+  when the notice basis is the end of a month. The cancellation must arrive by that day of the month the
+  contract is to end in (the 29th–31st: a shorter month's last day; a first term that ends before the day:
+  the day of the month before), never moved off a weekend. A notice period read with it applies as well
+  (limited as a period alone would be) and the earlier deadline decides — neither wins, since a misreading
+  can put either in the other's place (prompt 9 read this very clause as "10 days' notice"). The card's
+  notice edit corrects the day with the period ("Must arrive by day __ of the month"); notice terms the
+  person saves without one replace it: the API clears it (an Undo puts it back). A first term still
+  running is left by the day of its last month, and an end date with a day needs notice (it never
+  "ends by itself"). The day asks for less than a month before the month's end. After a fixed first term,
+  § 309 Nr. 9 BGB and § 56 Abs. 3 TKG may instead let a cancellation end the contract one month after it
+  arrives (not settled for a contract open-ended from the start): the dates keep the contract's rule, and
+  a warning names the earlier end, hedged, when a cancellation sent now would reach it. Days outside 1–31
+  are misreadings, treated as missing. *Limitation:* other month-end forms ("zum Ende des Folgemonats",
+  "bis zum 15. zum Ende des übernächsten Monats") are not read; their notice is assumed as for a missing
+  period.
+- **A fixed-term job its contract lets be ended earlier by ordinary notice** (`notice_before_end`: "Nach
+  Ablauf der Probezeit kann das Arbeitsverhältnis … ordentlich gekündigt werden", § 15 Abs. 4 TzBfG). A
+  fixed-term job ends with its time (§ 15 Abs. 1 TzBfG). A notice period read alone doesn't set the flag,
+  since it may be the probation clause's (§ 622 Abs. 3 BGB); but a notice period the contract agrees for
+  the time after probation ("nach Ablauf der Probezeit gilt die gesetzliche Kündigungsfrist") is itself the
+  § 15 Abs. 4 agreement (BAG, 4 Aug 2011, 6 AZR 436/10). *Limitation:* the extraction prompt names only a
+  clause that says the job may be ended after probation, so a reading may leave the flag unset for one
+  that only gives the period; the card's notice edit sets it. Without the flag a job with an end date
+  simply ends then. With it, and while the end date is ahead, the
+  job is planned like an open-ended one (four weeks to the 15th or the end of a month, or the written
+  period), with § 622 Abs. 1 BGB as the floor: a shorter period or notice to any day is usually the
+  probation clause's (§ 622 Abs. 3 BGB), and after probation a contract can rarely agree less (§ 622 Abs.
+  4, 5 BGB), so the dates use at least four weeks to the 15th or the end of a month, with a warning. If
+  that notice ends it before the end date, those are its dates and `current_term_end` is the end date it
+  otherwise ends on by itself; if not, the end date decides, explained by the fixed term alone. Read for a
+  job only: a flat let's fixed term is § 575 BGB's question (above). A misreading either way is corrected
+  on the card's notice edit ("Can be ended early by notice").
+
 | Regime | Applies to | Rule |
 |---|---|---|
-| `bgb309_new` | consumer contracts concluded from 1 Mar 2022 (streaming, gym, energy …) | first term ≤ 2 years, notice ≤ 1 month before its end; afterwards indefinite, cancellable any day with ≤ 1 month (§ 309 Nr. 9 BGB, Art. 229 § 60 EGBGB). Fixed renewals in such contracts are invalid. |
+| `bgb309_new` | consumer contracts concluded from 1 Mar 2022 (streaming, gym, energy …) | first term ≤ 2 years, notice ≤ 1 month before its end; afterwards indefinite, cancellable any day with ≤ 1 month (§ 309 Nr. 9 BGB, Art. 229 § 60 EGBGB) — or by the contract's own day of the month for that month's end (`notice_day`). Fixed renewals in such contracts are invalid. |
 | `bgb309_old` | consumer contracts concluded before 1 Mar 2022 | first term ≤ 2 years (a longer one is capped, `medium`), renewals ≤ 1 year, notice ≤ 3 months before the end of each term |
 | `tkg56` | phone and internet | first term ≤ 24 months; afterwards one month's notice any day, also for old contracts (§ 56 Abs. 1, 3 TKG) |
 | `vvg11` | insurance (not statutory health) | renews for ≤ 1 year; notice 1–3 months before the end of the insurance year; contracts > 3 years (by term or end date) can be cancelled at the end of year 3 and every later year with **three** months' notice, whatever shorter notice the contract has (§ 11 Abs. 4 VVG) |
 | `sgbv175` | statutory health insurance | 12-month lock-in, then to the end of the second month after the month of notice — always a month end, so a lock-in ending mid-month is left at the end of that month; switching = just join the new insurer (§ 175 SGB V) |
 | `stromgvv20` | basic energy supply (*Grundversorgung*) | two weeks' notice any day, text form (§ 20 StromGVV/GasGVV) |
 | `rent573c` | tenant of a flat | notice by the 3rd *Werktag* of a month → end of the month after next (§ 573c BGB); hand-signed letter (§ 568 BGB); a fixed-term lease ends by itself only with a written reason (§ 575 BGB), and one lived in past its end may continue (§ 545 BGB) |
-| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
+| `employment622` | employee | four weeks to the 15th or the end of a month, or the longer written period (§ 622 BGB); hand-signed letter (§ 623 BGB); fixed-term contracts simply end — unless the contract allows ordinary notice before the end (§ 15 Abs. 4 TzBfG, `notice_before_end`: that notice while it ends the job sooner) — and one worked on past its end with the employer's knowledge may continue (§ 15 Abs. 6 TzBfG) |
 | `bgb675h` | a consumer's current account its terms say can be ended any time (*jederzeit kündigen*) | any time, without notice unless one was agreed; an agreed notice counts for at most one month (§ 675h Abs. 1 BGB) |
 | `as_written` | other bank contracts, business contracts, anything unknown | the contract's own terms, `low` confidence |
 
@@ -827,8 +884,32 @@ step says so.
 three-day grace period of § 573c BGB (BGH, 27.4.2005, VIII ZR 206/04 — we read the decision). It
 expressly left open whether the period extends to Monday when the 3rd Werktag itself is a Saturday
 (some courts say yes). Ordnung keeps the Saturday as `cancel_by` (earliest plausible) and says so.
-(For *paying* rent, § 556b BGB, Saturday does not count — BGH VIII ZR 129/09 — which is a different
-rule and not computed here.)
+
+**Paying rent** (`bgb_556b`, § 556b Abs. 1 BGB) is a different rule: rent is due in advance, at the
+latest by the 3rd working day of each month, and here Saturday does **not** count (BGH
+VIII ZR 129/09). A monthly payment due by a working day ("spätestens am dritten Werktag eines jeden
+Monats": `Recurrence.working_day`, which the extraction schema carries — one the item's quote doesn't
+name is graded one confidence level lower and marked "Please check") is dated in every month by
+counting that many working days from the month's first — Monday to Friday without holidays for rent
+(a payment on a lease or under a rent contract), *Werktage* otherwise — so the rent runs Mon 5 Oct
+(3 Oct is a holiday), Wed 4 Nov, Thu 3 Dec 2026 and Tue 7 Apr 2026 after Easter, never on the day of
+the month the first one fell on (`recurrence.py`, point 8). The first month is the month of the date
+the rules engine gives the letter's date (a rent increase's new rent: never before § 558b BGB allows
+it), else the current one — or the month the tenancy starts, if that is later; a rent increase's new
+rent without a date gets no schedule, and one dated keeps its note that it is only owed once agreed. A
+lease's monthly rent the lease leaves without a day gets the law's 3rd working day, one confidence
+level lower (`medium` at most) and with a warning to check the lease: a lease may agree an earlier day
+("bis zum 1."), so this default can be late — the warning says so, and a date the person gives
+replaces it for every month (a later one says so on its receipt). Only the lease's own rent gets it,
+never a payment under the rent contract on another letter (a rent increase's new or current rent, a
+statement's new total rent or prepayment). Such a later rent on the same rent contract replaces the
+earlier one from the month it starts when it restates the whole rent — its letter's old amount is the
+earlier rent's ("bisher 640,00 €"), or its amount is at least that (a rent increase's new rent only once
+agreed) — and keeps its due day — the lease's working day, the law's 3rd, or its day of the month — unless
+its own words give a working day, so a statement's new total rent "ab dem 01.11.2026" is due Wed 4 Nov
+2026, not Sun 1 Nov (`recurrence.py`, point 9). A payment that is only part of the rent — a statement's
+new prepayment alone (§ 560 Abs. 4 BGB: the base rent stays owed), a heating advance, an instalment —
+runs beside the rent with its own date.
 
 Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by post):
 
@@ -846,7 +927,9 @@ Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by
 | Flat (tenant), October 2026 | `rent573c` | 3rd Werktag = Mon 5 Oct (Sat 3 Oct is a holiday) → ends Thu 31 Dec 2026; post the signed letter by Tue 29 Sep |
 | Flat, notice arrives Tue 6 Oct 2026 | `rent573c` | next month: by Wed 4 Nov → ends Sun 31 Jan 2027 |
 | Flat, April 2026 | `rent573c` | 3rd Werktag = **Sat 4 Apr** (Good Friday skipped) → ends Tue 30 Jun 2026; safe date Thu 2 Apr |
-| Werkstudent job ending 31 Mar 2027 | `employment622` | ends by itself — no cancellation needed |
+| Werkstudent job ending 31 Mar 2027, no notice clause | `employment622` | ends by itself — no cancellation needed |
+| Same, "nach Ablauf der Probezeit … ordentlich gekündigt werden" (no period of its own) | `employment622` | four weeks to the end of October: **arrive by Sat 3 Oct 2026** (German Unity Day, kept; safe date Fri 2 Oct; post the signed letter by Mon 28 Sep) → ends Sat 31 Oct 2026; otherwise it ends by itself on Wed 31 Mar 2027 (`medium`: the statutory four weeks) |
+| Deutschlandticket from 1 Jan 2026, "bis zum 10. eines Monats zum Ende dieses Monats" | `bgb309_new` | 10 Sep has passed: **arrive by Sat 10 Oct 2026** (safe date Fri 9 Oct; post by Mon 5 Oct) → ends Sat 31 Oct 2026; arriving on the 11th, it ends Mon 30 Nov |
 | Current account, "jederzeit kündigen", no notice period | `bgb675h` | a letter posted today arrives Thu 1 Oct → the account ends then |
 | Magazine from 1 Jan 2021, yearly renewal, 3 months | `bgb309_old` | cancel by Wed 30 Sep 2026 for 31 Dec 2026, else Fri 31 Dec 2027 |
 | Gym from 1 Jun 2021, 24 months then yearly, 3 months | `bgb309_old` | term ends Mon 31 May 2027; cancel by **Sun 28 Feb 2027** (no shift); safe Fri 26 Feb; post by Mon 22 Feb |
@@ -993,6 +1076,7 @@ action, contracts, sending and form, price increases).
 | `bgb_574b` | Objecting to a landlord's notice | §§ 574, 574b BGB | 2025-01-01 (text form) | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__574b.html) |
 | `bgb_549` | Short lets and furnished rooms in the landlord's flat: no hardship objection, no consent procedure | § 549 Abs. 2, 3 BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__549.html) |
 | `bgb_556_3`, `bgb_536c` | Operating-cost statements; reporting defects | § 556 Abs. 3, 4 BGB; § 536c BGB | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556.html) |
+| `bgb_556b` | Rent is due by the 3rd working day of the month (Saturday doesn't count) | § 556b Abs. 1 BGB; BGH VIII ZR 129/09 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556b.html) |
 | `bgb_355`, `bgb_356_4`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | § 355, § 356 Abs. 2–4 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
 | `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |
 | `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days`, `termination_end` | Ordnung's own policies | — | — | — |

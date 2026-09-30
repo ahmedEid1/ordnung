@@ -33,18 +33,24 @@ from ordnung.ingest.verify import (
     INCOMPLETE_SPEC,
     MIN_SCORE,
     PERIOD_NOT_IN_QUOTE,
+    REASON_TEXT,
+    WORKING_DAY_NOT_IN_QUOTE,
     DateMention,
     Located,
     PageInput,
     amount_matches,
+    grade_reading,
     ground_evidence,
     locate_quote,
     parse_amounts,
     parse_dates,
     parse_periods,
+    regrade,
     spec_consistency,
+    working_day_consistency,
+    working_days_named,
 )
-from ordnung.models import Box, DateSpec, Page
+from ordnung.models import Box, ComputationReceipt, DateSpec, Page
 
 
 def _extract(directory: Path, data: bytes) -> tuple[list[RenderedPage], list[PageText]]:
@@ -616,3 +622,88 @@ def test_amount_and_date_reasons_combine() -> None:
 
 def test_none_spec_without_amount_is_always_consistent() -> None:
     assert spec_consistency("Irgendein Satz.", DateSpec(type="none"), None) == (True, [])
+
+
+# --------------------------------------------------------------------------------------------------
+# working_day_consistency: a recurrence's working day must be named by its quote
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Die Miete ist spätestens am dritten Werktag eines jeden Monats zu zahlen.", {3}),
+        ("zahlbar bis zum 3. Werktag", {3}),
+        ("zahlbar bis zum 3.Werktag", {3}),
+        ("spätestens am dritten Arbeitstag des Monats", {3}),
+        ("bis zum dritten Bankarbeitstag", {3}),
+        ("due by the third working day of each month", {3}),
+        ("due by the 3rd business day", {3}),
+        ("am 3. (dritten) Werktag", {3}),
+        ("DER ERSTE WERKTAG", {1}),
+        ("am zweiten Werktage des Monats", {2}),
+        ("am fünften Werktag", {5}),
+        ("am fuenften Werktag", {5}),
+        ("am siebten Werktag", {7}),
+        ("am siebenten Werktag", {7}),
+        ("am achten Werktag", {8}),
+        ("am zehnten Werktag", {10}),
+        ("am 10. Werktag", {10}),
+        ("the first business day", {1}),
+        ("the 10th working day", {10}),
+        ("am zweiten oder dritten Werktag", {3}),
+        # a period of working days, a larger ordinal or no working day at all names none
+        ("innerhalb von 3 Werktagen", set()),
+        ("innerhalb von drei Werktagen", set()),
+        ("within 3 working days", set()),
+        ("am 13. Werktag", set()),
+        ("am dreizehnten Werktag", set()),
+        ("am 1.3. Werktag", set()),
+        ("am 3. Oktober", set()),
+        ("am dritten Kalendertag", set()),
+        ("Bitte beachten Sie: die Miete ist monatlich im Voraus zu zahlen.", set()),
+    ],
+)
+def test_working_days_named(text: str, expected: set[int]) -> None:
+    assert working_days_named(text) == expected
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "spätestens am dritten Werktag eines jeden Monats",
+        "zahlbar bis zum 3. Werktag",
+        "spätestens am dritten Arbeitstag",
+        "due by the third working day",
+        "due by the 3rd business day",
+    ],
+)
+def test_a_working_day_the_quote_names_is_consistent(quote: str) -> None:
+    assert working_day_consistency(quote, 3) == []
+
+
+@pytest.mark.parametrize(
+    ("quote", "working_day"),
+    [
+        ("Die Miete ist monatlich im Voraus zu zahlen.", 3),  # no working day at all
+        ("spätestens am dritten Werktag eines jeden Monats", 1),  # another ordinal
+        ("innerhalb von 3 Werktagen", 3),  # a period, not the 3rd working day
+    ],
+)
+def test_a_working_day_the_quote_does_not_name_is_flagged(quote: str, working_day: int) -> None:
+    assert working_day_consistency(quote, working_day) == [WORKING_DAY_NOT_IN_QUOTE]
+
+
+def test_a_recurrence_without_a_working_day_has_nothing_to_check() -> None:
+    assert working_day_consistency("Die Miete ist monatlich im Voraus zu zahlen.", None) == []
+
+
+def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
+    """Like every reason, it lowers the receipt one level and says why in words (REASON_TEXT); the next
+    occurrence of the schedule is graded the same (regrade)."""
+    graded = grade_reading(ComputationReceipt(due_date="2026-10-05"), "verified", [WORKING_DAY_NOT_IN_QUOTE])
+    assert graded.confidence == "medium"
+    assert graded.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
+    assert "working day" in graded.warnings[0] and "please check" in graded.warnings[0]
+    again = regrade(ComputationReceipt(due_date="2026-11-04"), graded)
+    assert (again.confidence, again.warnings) == ("medium", graded.warnings)

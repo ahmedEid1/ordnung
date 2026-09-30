@@ -74,6 +74,8 @@ export const CONTRACTS: Contract[] = [
       current_term_end: "2026-11-14",
       cancel_by: "2026-10-14",
       send_by: "2026-10-08",
+      // as the rules engine gives it: then it runs on month to month — the term that locks in (`is_decision`)
+      next_renewal: "2026-11-15",
       earliest_exit: "2026-11-14",
       summary: "Minimum term ends Sat 14 Nov 2026. To leave then, FunkNetz must receive your cancellation by Wed 14 Oct (post it by Thu 8 Oct). Afterwards: cancel any time with one month's notice.",
       notes: ["FunkNetz must offer a cancel button on its website (§ 312k BGB) — the fastest way."],
@@ -207,23 +209,29 @@ export const CONTRACTS: Contract[] = [
     customer_number: "D-448120",
     start_date: "2026-02-01",
     notice_basis: "end_of_month",
+    // the letter's "bis zum 10. eines Monats zum Ende dieses Monats": the contract's own day of the month
+    notice_day: 10,
     cost_amount: 63,
     cost_interval: "monthly",
     area: "mobility",
     source_doc_id: "doc_dticket",
     evidence: [ev("doc_dticket", Q.dticket.price), ev("doc_dticket", Q.dticket.cancel)],
-    // as the rules engine computes it (walkthrough of phase 2: the static demo said "31 Oct", the live demo
-    // "2 Nov"): the letter's "by the 10th of a month, to its end" is no notice period the reading gives, so
-    // the engine assumes the longest the law allows — and the card asks to check it
+    // as the rules engine computes it for Sam (Mon 28 Sep 2026, NW; migration 0004): notice that arrives by the
+    // 10th ends the ticket at that month's end — cancellable any month, so no decision to make by a date
     concluded_date: "2026-01-20",
     computed: comp({
       regime: "bgb309_new",
-      earliest_exit: "2026-11-02",
-      summary: "You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026.",
-      steps: [step("If it arrives by Fri 2 Oct 2026, the contract ends one month later, on Mon 2 Nov 2026", "2026-11-02", "bgb_188", "§ 188 Abs. 1, 2 BGB")],
-      rule_ids: ["bgb_309_9_new", "bgb_188"],
-      confidence: "medium",
-      warnings: ["The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date."],
+      cancel_by: "2026-10-10",
+      safe_date: "2026-10-09",
+      send_by: "2026-10-05",
+      earliest_exit: "2026-10-31",
+      summary: "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 10 Oct 2026 (the 10th of the month, as the contract says); send it by Mon 5 Oct.",
+      steps: [
+        step("To end the contract on Sat 31 Oct 2026 with notice by the 10th of the month, it must arrive by Sat 10 Oct 2026", "2026-10-10", "contract_as_written", "The contract's own terms"),
+        step("Safe date: make sure it arrives by Fri 9 Oct 2026", "2026-10-09", "safe_date"),
+        step("Post it by Mon 5 Oct 2026 to allow 4 business days for delivery", "2026-10-05", "postal_buffer"),
+      ],
+      rule_ids: ["bgb_309_9_new", "contract_as_written", "safe_date", "postal_buffer"],
     }),
   }),
   contract({
@@ -273,6 +281,8 @@ export const CONTRACTS: Contract[] = [
     end_date: "2027-03-31",
     notice_value: 4,
     notice_unit: "weeks",
+    // "Nach Ablauf der Probezeit kann das Arbeitsverhältnis … ordentlich gekündigt werden" (§ 15 Abs. 4 TzBfG)
+    notice_before_end: true,
     is_consumer: false,
     area: "work",
     source_doc_id: "doc_job",
@@ -280,12 +290,24 @@ export const CONTRACTS: Contract[] = [
     cancellable: false,
     cancel_hint:
       "A job ends with a resignation, not a consumer cancellation: print it, sign it by hand and hand it over or post it (§ 623 BGB — email is not enough).",
+    // as the rules engine computes it for Sam (Mon 28 Sep 2026, NW; migration 0004): planned like an open-ended
+    // job while its end date is ahead — to leave on 31 Oct, notice must arrive by Sat 3 Oct — else it ends by itself
     computed: comp({
       regime: "employment622",
       current_term_end: "2027-03-31",
-      summary: "Fixed term until 31 Mar 2027. Either side can end it earlier with four weeks' notice to the 15th or the end of a month.",
+      cancel_by: "2026-10-03",
+      safe_date: "2026-10-02",
+      send_by: "2026-09-28",
+      earliest_exit: "2026-10-31",
+      summary: "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 3 Oct 2026; send it by Mon 28 Sep. If you don't give notice, it ends by itself on Wed 31 Mar 2027.",
       notes: ["A resignation must be signed by hand on paper (§ 623 BGB)."],
-      rule_ids: ["employment622", "bgb623"],
+      steps: [
+        step("To end the contract on Sat 31 Oct 2026 with four weeks' notice, it must arrive by Sat 3 Oct 2026", "2026-10-03", "bgb_188", "§ 188 Abs. 1, 2 BGB"),
+        step("If you don't give notice, it ends by itself on Wed 31 Mar 2027", "2027-03-31", "fixed_term", "§ 620 Abs. 1 BGB; § 15 Abs. 1 TzBfG"),
+        step("Safe date: make sure it arrives by Fri 2 Oct 2026", "2026-10-02", "safe_date"),
+        step("Post it by Mon 28 Sep 2026 to allow 4 business days for delivery", "2026-09-28", "postal_buffer"),
+      ],
+      rule_ids: ["bgb_622", "bgb_188", "fixed_term", "safe_date", "postal_buffer"],
     }),
   }),
 ];

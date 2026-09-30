@@ -5869,6 +5869,22 @@
             "title": "Needs Check",
             "description": "Its date or amount is not confirmed against the letter (compare it)",
             "default": false
+          },
+          "direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "out",
+                  "in"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direction",
+            "description": "A payment's direction: money coming in is expected on its day, never overdue"
           }
         },
         "type": "object",
@@ -5879,7 +5895,8 @@
           "due_date",
           "send_by",
           "at_appointment",
-          "needs_check"
+          "needs_check",
+          "direction"
         ],
         "title": "CaseItemRef",
         "description": "The next open to-do of a case."
@@ -6267,6 +6284,22 @@
             ],
             "title": "Notice Basis"
           },
+          "notice_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Day"
+          },
+          "notice_before_end": {
+            "type": "boolean",
+            "title": "Notice Before End",
+            "default": false
+          },
           "end_date": {
             "anyOf": [
               {
@@ -6428,6 +6461,8 @@
           "notice_value",
           "notice_unit",
           "notice_basis",
+          "notice_day",
+          "notice_before_end",
           "end_date",
           "is_basic_supply",
           "cost_amount",
@@ -6761,6 +6796,24 @@
               }
             ],
             "title": "Notice Basis"
+          },
+          "notice_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 31.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Day"
+          },
+          "notice_before_end": {
+            "type": "boolean",
+            "title": "Notice Before End",
+            "default": false
           },
           "end_date": {
             "anyOf": [
@@ -13203,6 +13256,20 @@
             ],
             "title": "Unit",
             "default": "months"
+          },
+          "working_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Day",
+            "description": "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month"
           }
         },
         "type": "object",
@@ -13225,12 +13292,27 @@
             ],
             "title": "Unit",
             "default": "months"
+          },
+          "working_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Working Day",
+            "description": "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month"
           }
         },
         "type": "object",
         "required": [
           "interval",
-          "unit"
+          "unit",
+          "working_day"
         ],
         "title": "Recurrence"
       },

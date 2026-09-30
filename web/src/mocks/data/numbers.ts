@@ -215,7 +215,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "due_date": "2026-10-13",
             "send_by": null,
             "at_appointment": false,
-            "needs_check": false
+            "needs_check": false,
+            "direction": null
           },
           "open_items": 3,
           "letter": {
@@ -668,7 +669,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "due_date": "2026-09-29",
             "send_by": null,
             "at_appointment": false,
-            "needs_check": true
+            "needs_check": true,
+            "direction": "out"
           },
           "open_items": 1,
           "letter": {
@@ -795,7 +797,8 @@ export const MOCK_NUMBERS: MyNumbers = {
             "due_date": "2026-09-30",
             "send_by": null,
             "at_appointment": false,
-            "needs_check": false
+            "needs_check": false,
+            "direction": "out"
           },
           "open_items": 1,
           "letter": {
@@ -914,7 +917,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "due_date": "2026-09-29",
         "send_by": null,
         "at_appointment": false,
-        "needs_check": true
+        "needs_check": true,
+        "direction": "out"
       },
       "open_items": 1,
       "letter": {
@@ -960,7 +964,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "due_date": "2026-09-30",
         "send_by": null,
         "at_appointment": false,
-        "needs_check": false
+        "needs_check": false,
+        "direction": "out"
       },
       "open_items": 1,
       "letter": {
@@ -1006,7 +1011,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "due_date": "2026-10-13",
         "send_by": null,
         "at_appointment": false,
-        "needs_check": false
+        "needs_check": false,
+        "direction": null
       },
       "open_items": 3,
       "letter": {
@@ -1813,7 +1819,8 @@ export const MOCK_WEEK: WeeklySession = {
             "direction": "out",
             "recurrence": {
               "interval": 1,
-              "unit": "months"
+              "unit": "months",
+              "working_day": null
             },
             "status": "open",
             "snoozed_until": null,

@@ -1799,6 +1799,14 @@ class Store:
             _ACTIVITY, f"{where.sql()} ORDER BY id DESC{paging}", [*where.params, *paging_params]
         )
 
+    def activity_about(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> list[Activity]:
+        """The activity entries of one of ``kinds`` about a row, newest first."""
+        where = _Where()
+        where.equals("ref_type", ref_type)
+        where.equals("ref_id", ref_id)
+        where.within("kind", kinds)
+        return self._many(_ACTIVITY, f"{where.sql()} ORDER BY id DESC", where.params)
+
     def last_activity(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> Activity | None:
         """The newest activity entry of one of ``kinds`` about a row (``None``: there is none)."""
         where = _Where()

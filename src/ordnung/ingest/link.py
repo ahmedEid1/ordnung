@@ -474,6 +474,8 @@ _CONTRACT_TERM_FIELDS = (
     "notice_value",
     "notice_unit",
     "notice_basis",
+    "notice_day",
+    "notice_before_end",
     "end_date",
     "cost_amount",
     "cost_interval",
@@ -507,14 +509,36 @@ def _contract_values(extraction: DocumentExtraction | None) -> dict[str, Any] | 
     return values
 
 
+#: The notice terms, which the person enters on the contract's card together (``_entered_terms``).
+_NOTICE_TERMS = frozenset({"notice_value", "notice_unit", "notice_basis", "notice_day", "notice_before_end"})
+
+
 def _unedited(existing: Contract, values: dict[str, Any], previous: dict[str, Any] | None) -> dict[str, Any]:
     """The fields to write: empty ones, and — when the last extraction is known — those the person
-    has not changed since (their value still equals what was extracted before)."""
+    has not changed since (their value still equals what was extracted before). Notice terms the person
+    entered on the card (their quote, with a term of theirs still set) are theirs as a whole: a term
+    they left empty or cleared there — a misread day of the month — is not filled from the letter. So are
+    terms they only cleared (a term the last extraction gave is empty now: only the card empties one, as
+    reading again stores what it wrote) — the misread day that was their only change, which leaves no
+    quote of theirs when what is left gives no dates, or a job's early notice unticked."""
+    entered = any(e.grounding == "user" for e in existing.evidence) and any(
+        getattr(existing, name) not in (None, False) for name in _NOTICE_TERMS
+    )
+    entered = entered or (
+        previous is not None
+        and any(
+            getattr(existing, name) in (None, False) and previous.get(name) not in (None, False)
+            for name in _NOTICE_TERMS
+        )
+    )
     return {
         name: value
         for name, value in values.items()
-        if getattr(existing, name) is None
-        or (previous is not None and getattr(existing, name) == previous.get(name))
+        if not (entered and name in _NOTICE_TERMS)
+        and (
+            getattr(existing, name) is None
+            or (previous is not None and getattr(existing, name) == previous.get(name))
+        )
     }
 
 
@@ -702,9 +726,9 @@ def attachment_repeats(
     :func:`reminder_covers`).
 
     Pure: callers decide which letters count as the e-mail's attachments and which of their payments
-    count (live letters without scam signs; payments no payment reminder took over — so the reminder
-    e-mail itself never loses its to-do to the invoice it took over), so deleting the attachment brings
-    the e-mail's to-do back.
+    count (live letters without scam signs; payments the e-mail itself did not take over as a payment
+    reminder — so a reminder e-mail never loses its to-do to the invoice it took over), so deleting the
+    attachment brings the e-mail's to-do back.
     """
     if item.kind != "payment" or item.doc_id != email.id or attachment.id == email.id:
         return False

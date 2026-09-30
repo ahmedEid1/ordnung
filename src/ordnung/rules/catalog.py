@@ -676,6 +676,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         f"{_GII}/bgb/__536c.html",
         None,
     ),
+    (
+        "bgb_556b",
+        "Rent is due by the 3rd working day of the month",
+        "§ 556b Abs. 1 BGB; BGH VIII ZR 129/09",
+        "Unless the lease names another day, the rent for a home is paid in advance, at the latest by the 3rd "
+        "working day of each month. For paying rent, Saturday is not a working day (unlike for a tenant's "
+        "notice, § 573c BGB).",
+        f"{_GII}/bgb/__556b.html",
+        None,
+    ),
     # ------------------------------------------------------------------ consumer letters
     (
         "bgb_355",
@@ -814,7 +824,9 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "Contract terms as written",
         "The contract's own terms",
         "When no special consumer rule applies, Ordnung uses the term and notice period written in the "
-        "contract.",
+        "contract. Under the consumer rules it also uses a contract's own deadline for the end of a month, "
+        "such as the 10th of that month for its end; where the law lets a later cancellation end the contract "
+        "one month after it arrives, a warning says so.",
         None,
         None,
     ),

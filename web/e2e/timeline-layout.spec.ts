@@ -7,7 +7,7 @@
  * its own area; and the filters never float the switch between two rows of menus.
  */
 import type { Locator, Page } from "@playwright/test";
-import { expect, open, setTour, test } from "./helpers";
+import { expect, letterId, letterItem, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -94,13 +94,19 @@ test("a lane marker highlights its own row, not another bill of the same day", a
   // payments only: the health contribution stands alone in its Health lane (unfiltered, it merges with the
   // objection deadline a day earlier), while the electricity instalment is due the same day in Home
   await open(page, "/timeline?type=payment", "Timeline");
-  await lanes(page)
-    .getByRole("button", { name: /Monthly health and long-term care insurance contribution/ })
-    .first()
-    .click();
+  // the contribution notice's payment, by its letter's file; its mark by its lane (the app's own name) and
+  // the day it stands for (`data-mark-date`) — never by the title the model gave the to-do
+  const contribution = await letterItem(page, await letterId(page, "14_krankenkasse_beitragsbescheid.pdf"), "payment");
+  expect(contribution.due_date, "the contribution's payment has a due date").toBeTruthy();
+  const sameDay = list(page).locator(`li[data-date="${contribution.due_date}"]`);
+  // the premise: another bill is due that day (the electricity instalment, in Home)
+  expect(await sameDay.count(), `more than one payment on ${contribution.due_date}`).toBeGreaterThan(1);
+  const health = lanes(page).getByRole("listitem", { name: "Health", exact: true });
+  await health.locator(`button[data-mark-date="${contribution.due_date}"]`).click();
   const row = list(page).locator("li[data-entry-id]").filter({ has: page.locator("[class*='bg-marker']") });
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText("Monthly health and long-term care insurance contribution");
+  await expect(row).toHaveAttribute("data-entry-id", contribution.id);
+  await expect(row).toContainText(shownAs(contribution.title));
 });
 
 test("the area filter judges each mark by its own area: Getting around shows its contract and its payments in its own lane", async ({ page }) => {

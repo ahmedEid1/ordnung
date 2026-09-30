@@ -13,7 +13,7 @@
  *  7. contracts-edit — a notice period saved for real, on its own demo data folder
  */
 import { fakeApi, failApi, holdApi, pinToasts, settle } from "../browser.mjs";
-import { inMain } from "../steps.mjs";
+import { inMain, shownAs } from "../steps.mjs";
 import { remindersBackupStates } from "./reminders-backup.mjs";
 import { commonSettingsSections, loadingAndErrorStates, SETTINGS_SECTIONS } from "./shared.mjs";
 import { numbersAndWeekDemoStates, numbersAndWeekMutationStates } from "./numbers-week.mjs";
@@ -48,16 +48,24 @@ export async function demoCatalog({ api, server }) {
   ]);
   await setTour(api, null);
 
-  const byTitle = (re) => docs.find((d) => d.title && re.test(d.title));
-  const payDoc = byTitle(/Payment Reminder|Mahnung/) ?? docs.find((d) => d.payment);
+  /** The demo letter read from the sample `file`: never found by its title, which the model writes anew with each recording. */
+  const byFile = (file) => {
+    const doc = docs.find((d) => d.filename === file);
+    if (!doc) throw new Error(`no demo letter from the sample ${file} (the demo has ${docs.map((d) => d.filename).join(", ")})`);
+    return doc;
+  };
+  const payDoc = byFile("15_mahnung_techmarkt.pdf"); // the payment reminder
   const reviewDoc = docs.find((d) => d.status === "needs_review");
   const photoDoc = docs.find((d) => d.text_mode === "vision") ?? docs[0];
   const multiDoc = docs.find((d) => (d.pages ?? 1) > 1) ?? docs[0];
   const objectionDoc = docs.find((d) => d.remedy?.type === "widerspruch" || d.remedy?.type === "einspruch");
   const noRemedyDoc = docs.find((d) => d.remedy?.type === "none" && d.area !== "other") ?? docs.find((d) => d.remedy?.type === "none");
-  const replyDoc = byTitle(/Heizkosten|Operating/) ?? docs[0];
+  const replyDoc = byFile("13_nebenkostenabrechnung_2025.pdf"); // the operating-cost statement
   const glossaryDoc = objectionDoc ?? docs[0];
-  const phoneContract = contracts.find((c) => /FunkNetz/.test(c.name)) ?? contracts[0];
+  // the phone contract by what it is, never by the name the model gave it (a re-recording renames it), and never
+  // another contract in its place
+  const phoneContract = contracts.find((c) => c.category === "mobile");
+  if (!phoneContract) throw new Error(`no mobile contract in the demo (it has ${contracts.map((c) => `${c.category} “${c.name}”`).join(", ")})`);
   const employment = contracts.find((c) => c.category === "employment");
   const draft = drafts[0];
   const bigParty = [...parties].sort((a, b) => (b.name?.length ?? 0) - (a.name?.length ?? 0))[0];
@@ -119,9 +127,15 @@ export async function demoCatalog({ api, server }) {
       else c.note("no “Show code”: this payment has no GiroCode");
     },
   });
+  const fineDoc = byFile("21_verwarnungsgeld_parken.jpg"); // the parking fine, a photo
   const payFine = async (c) => {
     await c.goto("/");
-    const pay = main(c.page).getByRole("button", { name: /^Pay: .*(Verwarnungsgeld|traffic fine|parking)/i }).first();
+    // the Top-3 button is named after the fine's payment to-do (its title is the model's: from the API),
+    // without saying "Pay" twice ("Pay: parking fee", not "Pay: Pay parking fee")
+    const { items } = await c.api.get(`/api/documents/${fineDoc.id}`);
+    const title = items.find((i) => i.kind === "payment")?.title;
+    if (!title) return c.note("the photographed fine has no payment to-do");
+    const pay = main(c.page).getByRole("button", { name: new RegExp(`^Pay: ${shownAs(title.replace(/^pay\s+/i, "")).source}`) }).first();
     if (await c.exists(pay)) await c.click(pay);
     else c.note("no Top-3 “Pay” for the photographed fine");
   };
@@ -129,7 +143,7 @@ export async function demoCatalog({ api, server }) {
     id: "today-pay-girocode-check",
     group: "today",
     route: "/",
-    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button",
+    how: "open /, click the parking fine's Top-3 “Pay: …” button",
     description: "Today's Pay panel of a letter read from a photo: compare the details with the paper letter first (a phone says to scan on a computer or copy the details).",
     run: payFine,
   });
@@ -137,7 +151,7 @@ export async function demoCatalog({ api, server }) {
     id: "today-pay-girocode-mismatch",
     group: "today",
     route: "/",
-    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “They don't match”",
+    how: "open /, click the parking fine's Top-3 “Pay: …” button, then “They don't match”",
     description: "Today's Pay panel after “They don't match”: type the details as the letter shows them, or read the letter again.",
     run: async (c) => {
       await payFine(c);
@@ -176,7 +190,7 @@ export async function demoCatalog({ api, server }) {
     id: "today-pay-girocode-refused",
     group: "today",
     route: "/",
-    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “These match the letter” (the server's refusal forced: 409)",
+    how: "open /, click the parking fine's Top-3 “Pay: …” button, then “These match the letter” (the server's refusal forced: 409)",
     description: "Today's Pay panel after a refused “These match the letter”: the reason under the buttons, scrolled clear of the sticky footer, focus back on the button.",
     run: async (c) => {
       await refuseConfirm(c);
@@ -188,7 +202,7 @@ export async function demoCatalog({ api, server }) {
     id: "today-pay-girocode-read-again-failed",
     group: "today",
     route: "/",
-    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, “They don't match”, then “Read the letter again” (a 429 forced)",
+    how: "open /, click the parking fine's Top-3 “Pay: …” button, “They don't match”, then “Read the letter again” (a 429 forced)",
     description: "Today's Pay panel after “Read the letter again” failed: why, under the button, clear of the sticky footer, focus kept on the button.",
     run: async (c) => {
       await failReadAgain(c);
@@ -412,7 +426,7 @@ export async function demoCatalog({ api, server }) {
   docState(payDoc, "evidence", "click the first “show … on the page” evidence button", "The evidence highlight and quote on the page image.", (c) => c.click(c.page.getByRole("button", { name: /show “.*” on the page/ })));
   docState(payDoc, "evidence-tooltip", "hover the first evidence chip", "Tooltip of an evidence chip.", (c) => c.hover(c.page.getByRole("button", { name: /show “.*” on the page/ })));
   docState(payDoc, "delete-dialog", "click “Delete”", "The delete-letter confirmation.", (c) => c.click(main(c.page).getByRole("button", { name: /^Delete$/ })));
-  const statementDoc = docs.find((d) => /nebenkosten/i.test(d.filename ?? ""));
+  const statementDoc = byFile("13_nebenkostenabrechnung_2025.pdf");
   const photoFineDoc = docs.find((d) => d.text_mode === "vision" && d.payment?.iban);
   const openPay = async (c) => {
     const pay = c.page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ });
@@ -428,8 +442,8 @@ export async function demoCatalog({ api, server }) {
     else c.note("no “They don't match”: already compared");
   });
   // no code for a reason the person can't resolve here (a reminder took over), and a lease's deposit
-  const replacedInvoiceDoc = docs.find((d) => d.kind === "invoice" && /techmarkt/i.test(`${d.filename} ${d.title}`));
-  const leaseDoc = docs.find((d) => /mietvertrag|lease/i.test(`${d.filename} ${d.title}`));
+  const replacedInvoiceDoc = byFile("08_rechnung_techmarkt.pdf");
+  const leaseDoc = byFile("03_mietvertrag.pdf");
   docState(replacedInvoiceDoc, "girocode-replaced", "click the verdict card's “Pay …” button", "The Pay popover of an invoice a payment reminder took over: why there is no code.", openPay);
   docState(leaseDoc, "girocode-lease", "click the verdict card's “Pay …” button", "The Pay popover of the lease's deposit: its sentence doesn't state the amount, so compare with the paper letter first (the monthly rent next to it gets no code: several payments).", openPay);
   docState(photoFineDoc, "girocode-refused", "click the verdict card's “Pay …” button, then “These match the letter” (the server's refusal forced: 409)", "The Pay popover after a refused “These match the letter”: the reason in the block, clear of the footer.", async (c) => {
@@ -499,7 +513,7 @@ export async function demoCatalog({ api, server }) {
   });
   // a phone photo's quote (its numbers matched only against Claude's transcript) and its date (named by
   // the deadline's nature: "On" for an appointment)
-  const apptDoc = byTitle(/Zahnarzt|Dentist|Terminkarte/i) ?? photoDoc;
+  const apptDoc = byFile("22_zahnarzt_terminkarte.jpg"); // the dentist's appointment card, a photo
   docState(apptDoc, "trace-photo-steps", "“How this was read” → a quote and a date opened", "A photo's quote (numbers found in Claude's transcript) and its date step, named by what kind of date it is.", async (c) => {
     await traceTab(c);
     await openStep(c, /^Quotes checked on the page/);
@@ -806,7 +820,7 @@ export async function demoCatalog({ api, server }) {
     });
   composer("new", "new=1", "The New-letter composer, nothing chosen yet.");
   composer("cancellation", "kind=cancellation", "Composer: “Cancel a contract” with the contract list.");
-  if (phoneContract) composer("cancellation-chosen", `kind=cancellation&contract=${phoneContract.id}`, `Composer: cancelling “${phoneContract.name}” (recipient, send-by date, instructions).`);
+  composer("cancellation-chosen", `kind=cancellation&contract=${phoneContract.id}`, `Composer: cancelling “${phoneContract.name}” (recipient, send-by date, instructions).`);
   if (employment) composer("cancellation-employment", `kind=cancellation&contract=${employment.id}`, "Composer: ending an employment contract (resignation wording and hints).");
   composer("objection", "kind=objection", "Composer: “Object to a decision” with the eligible letters.");
   if (objectionDoc) composer("objection-chosen", `kind=objection&doc=${objectionDoc.id}`, `Composer: objection against “${objectionDoc.title}”.`);
@@ -816,7 +830,7 @@ export async function demoCatalog({ api, server }) {
     const box = c.page.getByRole("dialog").getByRole("textbox").last();
     if (await c.exists(box)) await c.type(box, "Bitte schicken Sie mir die Belege zur Heizkostenabrechnung. Ich möchte in zwei Raten zahlen.");
   });
-  if (phoneContract && draft) {
+  if (draft) {
     add({
       id: "composer-written-toast",
       group: "letters",
@@ -1768,7 +1782,7 @@ export async function demoCatalog({ api, server }) {
     id: "today-pay-girocode-confirmed",
     group: "today",
     route: "/",
-    how: "open /, click the Top-3 “Pay: …Verwarnungsgeld…” button, then “These match the letter” (later captures find it done and unfold the code)",
+    how: "open /, click the parking fine's Top-3 “Pay: …” button, then “These match the letter” (later captures find it done and unfold the code)",
     description: "Today's Pay panel right after “These match the letter”: the code and its confirmation line scrolled clear of the sticky footer.",
     run: async (c) => {
       await payFine(c);
@@ -2066,13 +2080,13 @@ export async function demoCatalog({ api, server }) {
             for (let i = 0; i < 120 && (await api.get("/api/jobs?active_only=true")).length; i += 1) await new Promise((r) => setTimeout(r, 500));
             extra.readAgain = again.id;
           }
-          const gym = contracts2.find((c) => /FitWell/.test(c.name)) ?? contracts2.find((c) => c.id !== phoneContract?.id);
+          const gym = contracts2.find((c) => c.category === "gym");
           if (gym) {
             const d = await api.post("/api/drafts", { kind: "cancellation", contract_id: gym.id, doc_id: gym.source_doc_id ?? null, party_id: gym.party_id ?? null, language: "en" });
             await api.post(`/api/drafts/${d.id}/sent`, { channel: "registered_letter", date: "2026-09-26" });
             extra.sent = d;
           }
-          const phone = contracts2.find((c) => /FunkNetz/.test(c.name));
+          const phone = contracts2.find((c) => c.category === "mobile");
           if (phone) {
             const d2 = await api.post("/api/drafts", { kind: "cancellation", contract_id: phone.id, doc_id: phone.source_doc_id ?? null, party_id: phone.party_id ?? null, language: "en" });
             await api.post(`/api/drafts/${d2.id}/sent`, { channel: "registered_letter", date: "2026-09-10", tracking_number: "1234 5678 9012" });

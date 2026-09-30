@@ -5,20 +5,21 @@
  * heading (never <body>), and the tab's title sits where the verdict's does, so switching tabs doesn't move it.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, apiPatch, documentId, expect, open, setTour, settle, test } from "./helpers";
+import { apiGet, apiPatch, expect, letterId, open, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
 });
 
-const STATEMENT = /Operating and Heating Cost Statement|Betriebs/;
+/** The operating-cost statement, by its sample's file name (its title is the model's, new with each recording). */
+const STATEMENT = "13_nebenkostenabrechnung_2025.pdf";
 
 interface Detail {
   items: { id: string; kind: string; status: string }[];
 }
 
 async function openStatementPay(page: Page) {
-  const id = await documentId(page, STATEMENT);
+  const id = await letterId(page, STATEMENT);
   await open(page, `/documents/${id}`);
   await page.getByRole("main").getByRole("article").first().getByRole("button", { name: /^Pay €184\.30/ }).click();
   const panel = page.getByRole("dialog");
@@ -84,7 +85,7 @@ for (const [width, height] of [
 ] as const) {
   test(`${width}×${height}: “How it was read” keeps the title where the verdict has it`, async ({ page }) => {
     await page.setViewportSize({ width, height });
-    const id = await documentId(page, /1st Payment Reminder/);
+    const id = await letterId(page, "15_mahnung_techmarkt.pdf"); // the payment reminder
     await open(page, `/documents/${id}`);
     const verdict = page.locator("#verdict-title");
     const before = (await verdict.boundingBox())!;

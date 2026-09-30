@@ -128,6 +128,11 @@ describe("Button", () => {
     expect(busy).toBeDisabled();
   });
 
+  it("fills a hovered danger button opaquely in dark mode: its text contrast never depends on the parent", () => {
+    const hover = buttonVariants({ variant: "danger" }).split(" ").filter((c) => c.startsWith("dark:hover:bg-"));
+    expect(hover).toEqual(["dark:hover:bg-danger-soft-hover"]);
+  });
+
   it("lets a caller shrink a button: its text label can end in an ellipsis", () => {
     renderWithProviders(<Button className="min-w-0 flex-1">Ask about them</Button>);
     const button = screen.getByRole("button", { name: "Ask about them" });

@@ -6,13 +6,19 @@
   "1": "6fb8a7084dc19157"
  },
  "extract_system": {
-  "8": "88672dc9357c7f43"
+  "10": "9c915820d3b5b9ce",
+  "11": "ca0667643edaca46",
+  "8": "88672dc9357c7f43",
+  "9": "b08cd58efbd3701e"
  },
  "extract_text": {
   "1": "4f9bc414abdafab0"
  },
  "extraction_schema": {
-  "8": "76ef28592fbf9dd4"
+  "10": "efcd09e3013ac327",
+  "11": "efcd09e3013ac327",
+  "8": "76ef28592fbf9dd4",
+  "9": "eebf578dfd9160f3"
  },
  "transcribe": {
   "1": "0aade81ca5f0536b"

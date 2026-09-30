@@ -66,22 +66,42 @@ export function fixedCosts(contracts: Contract[]): FixedCosts {
 // ------------------------------------------------------------------------------------------------
 
 /**
+ * The notice ends the contract before its term does: a fixed-term job its contract lets you leave
+ * earlier by notice (`notice_before_end`) — the rules then plan that notice, and the job otherwise
+ * ends by itself on its date. Missing the notice's date locks nothing in.
+ */
+function endsBeforeItsTerm(c: Pick<Contract, "computed">): boolean {
+  const k = c.computed;
+  return Boolean(k?.earliest_exit && k.current_term_end && k.earliest_exit < k.current_term_end);
+}
+
+/**
  * A window that closes and locks you in: after it, the contract runs on for another term (a
  * minimum term ending, a yearly renewal).
  */
 export function isLockInDecision(c: Pick<Contract, "computed">): boolean {
   const k = c.computed;
-  return Boolean(k?.cancel_by && k.send_by && (k.next_renewal || k.current_term_end));
+  return Boolean(k?.cancel_by && k.send_by && (k.next_renewal || k.current_term_end)) && !endsBeforeItsTerm(c);
 }
 
 /**
- * A contract you can cancel any month (rent, statutory health insurance after its first year): no
- * term runs out, so its "cancel by" date only says when it would end — miss it, and it ends a month
- * later. Never urgent.
+ * A contract you can cancel any month (rent, statutory health insurance after its first year, a
+ * fixed-term job its contract lets you leave earlier): no term runs out on you, so its "cancel by"
+ * date only says when it would end — miss it, and it ends later (a month later, or a job at a later
+ * 15th or month's end: {@link endsAtTheFifteenth}). Never urgent.
  */
 export function isRollingContract(c: Pick<Contract, "computed" | "status">): boolean {
   const k = c.computed;
-  return c.status === "active" && Boolean(k?.cancel_by) && !k?.next_renewal && !k?.current_term_end;
+  return c.status === "active" && Boolean(k?.cancel_by) && !k?.next_renewal && (!k?.current_term_end || endsBeforeItsTerm(c));
+}
+
+/**
+ * A job whose notice runs to the 15th or the end of a month (§ 622 Abs. 1 BGB, the rules' floor unless its
+ * contract says the end of a month): a notice that arrives after its date ends it at the next 15th or month's
+ * end, not a month later.
+ */
+export function endsAtTheFifteenth(c: Pick<Contract, "computed" | "notice_basis">): boolean {
+  return c.computed?.regime === "employment622" && c.notice_basis !== "end_of_month";
 }
 
 /** Rules under which an uncancelled contract simply continues after its term, cancellable any month. */
@@ -131,12 +151,36 @@ export function noticeAssumed(c: Pick<Contract, "computed" | "status" | "evidenc
 }
 
 /**
- * The notice period can be entered or changed on the card: terms we couldn't work out, terms the
- * rules follow as written (no statutory rule), a period the rules assumed, or terms the person entered
- * (a typo stays correctable).
+ * Rules that read the contract's own day of the month for notice when its basis is the end of a month
+ * (`_notice_day` in `src/ordnung/rules/contracts.py`) — and a current account's, which follows its terms as
+ * written once they say the end of a month.
  */
-export function noticeEditable(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
-  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c));
+const NOTICE_DAY_REGIMES = new Set<string>(["bgb309_new", "bgb309_old", "tkg56", "as_written", "bgb675h"]);
+
+/** The contract's own day of the month for notice counts for it (with the end of a month as the basis). */
+export function noticeDayCounts(c: Pick<Contract, "computed">): boolean {
+  return NOTICE_DAY_REGIMES.has(c.computed?.regime ?? "as_written");
+}
+
+/**
+ * A fixed-term job, which its contract may let you leave earlier by ordinary notice (`notice_before_end`, read
+ * for a job only: `_ends_by_itself` in `src/ordnung/rules/contracts.py`).
+ */
+export function earlyNoticeCounts(c: Pick<Contract, "category" | "end_date">): boolean {
+  return c.category === "employment" && Boolean(c.end_date);
+}
+
+/**
+ * The notice terms can be entered or changed on the card: terms we couldn't work out, terms the rules
+ * follow as written (no statutory rule), a period the rules assumed, terms the person entered (a typo
+ * stays correctable) — and the terms a notice period can't say, which a misreading can get wrong: the
+ * contract's own day of the month the rules read, or whether a fixed-term job can be left earlier.
+ */
+export function noticeEditable(
+  c: Pick<Contract, "computed" | "status" | "evidence" | "category" | "end_date" | "notice_day" | "notice_basis" | "notice_value" | "notice_unit">,
+): boolean {
+  const byDay = noticeDayCounts(c) && noticeDayPhrase(c) !== null;
+  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c) || byDay || earlyNoticeCounts(c));
 }
 
 /**
@@ -218,6 +262,28 @@ export function noticePhrase(c: Pick<Contract, "notice_value" | "notice_unit">):
   return c.notice_value === 1 ? `1 ${unit}'s notice` : `${c.notice_value} ${unit}s' notice`;
 }
 
+const ORDINAL_SUFFIX: Record<number, string> = { 1: "st", 2: "nd", 3: "rd" };
+
+/** "1st", "2nd", "3rd", "10th", "11th", "21st" (as `ordinal` in `src/ordnung/rules/explain.py`). */
+export function ordinal(day: number): string {
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  return `${day}${teen ? "th" : (ORDINAL_SUFFIX[day % 10] ?? "th")}`;
+}
+
+/**
+ * The contract's own month-end rule — "by the 10th of the month, to the month's end" — when the rules
+ * read it (`notice_day`; `_notice_day` in `src/ordnung/rules/contracts.py`): its notice basis is the
+ * end of a month. A notice period it states too applies as well ("with 10 days' notice by the 10th …"):
+ * `notice`, that period as the rules count it. Null otherwise.
+ */
+export function noticeDayPhrase(
+  c: Pick<Contract, "notice_day" | "notice_basis" | "notice_value" | "notice_unit">,
+  notice: string | null = noticePhrase(c),
+): string | null {
+  if (!c.notice_day || c.notice_basis !== "end_of_month") return null;
+  return `${notice ? `with ${notice} ` : ""}by the ${ordinal(c.notice_day)} of the month, to the month's end`;
+}
+
 function noticeMonths(c: Pick<Contract, "notice_value" | "notice_unit">): number | null {
   if (!c.notice_value || !c.notice_unit) return null;
   return c.notice_unit === "months" ? c.notice_value : c.notice_unit === "weeks" ? c.notice_value / 4.35 : c.notice_value / 30.44;
@@ -249,21 +315,30 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
   const until = termEnd ? formatDate(termEnd, { style: "day", today }) : "";
   const notice = noticePhrase(c);
   const shortNotice = (noticeMonths(c) ?? 1) < 1 && notice ? notice : "1 month's notice";
+  // the contract's own "by the 10th of the month, to the month's end", where the rules read it — with its
+  // notice period too, limited to a month where the consumer rules limit it after the first term
+  const byDay = noticeDayPhrase(c, regime === "bgb309_new" || regime === "tkg56" ? notice && shortNotice : notice);
   let text: string;
   switch (regime) {
-    case "bgb309_new":
+    case "bgb309_new": {
+      const how = byDay ?? `any time with ${shortNotice}`;
       text = inMinTerm
-        ? `Minimum term until ${until}; after that cancellable any time with ${shortNotice} (consumer contract since March 2022)`
-        : `Cancellable any time with ${shortNotice} (consumer contract since March 2022)`;
+        ? `Minimum term until ${until}; after that cancellable ${how} (consumer contract since March 2022)`
+        : `Cancellable ${how} (consumer contract since March 2022)`;
       break;
+    }
     case "bgb309_old":
-      text = `Renews by up to 12 months at a time; ${notice ?? "up to 3 months' notice"} before the term ends (consumer contract from before March 2022)`;
+      text = byDay
+        ? `Cancellable ${byDay} (consumer contract from before March 2022)`
+        : `Renews by up to 12 months at a time; ${notice ?? "up to 3 months' notice"} before the term ends (consumer contract from before March 2022)`;
       break;
-    case "tkg56":
+    case "tkg56": {
+      const how = byDay ?? "any time with 1 month's notice";
       text = inMinTerm
-        ? `Minimum term until ${until}; after that cancellable any time with 1 month's notice (phone & internet contract)`
-        : "Cancellable any time with 1 month's notice (phone & internet contract after its minimum term)";
+        ? `Minimum term until ${until}; after that cancellable ${how} (phone & internet contract)`
+        : `Cancellable ${how} (phone & internet contract after its minimum term)`;
       break;
+    }
     case "vvg11":
       text = `Renews every insurance year; cancel with ${notice ?? "3 months' notice"} before the insurance year ends`;
       break;
@@ -277,10 +352,11 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
       text = "Open-ended: notice given by the 3rd working day of a month ends the tenancy at the end of the month after next — signed by hand on paper";
       break;
     case "employment622":
-      // a fixed-term job can only be ended early if the contract allows it (§ 15 Abs. 4 TzBfG):
-      // name the notice only when the contract has one
+      // a fixed-term job can only be ended early by notice if its contract allows it (§ 15 Abs. 4 TzBfG,
+      // `notice_before_end`): name the notice only then
+      // (then at least the statutory notice: `_plan_employment` in `src/ordnung/rules/contracts.py`)
       text = c.end_date
-        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${notice ? `. To leave earlier: ${notice}` : ", no notice needed"}`
+        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${c.notice_before_end ? `. To leave earlier: ${notice ? `${notice}, at least the legal minimum` : "the statutory notice"}` : ", no notice needed"}`
         : `Employment: ${notice ?? "the statutory notice"}, at least the legal minimum`;
       break;
     case "bgb675h":
@@ -290,7 +366,10 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
     default: {
       const basis = c.notice_basis ? copyFor(NOTICE_BASIS_COPY, c.notice_basis).label : null;
       // the person's own entry says so (the card then asks nothing more of it)
-      if (notice) text = `${noticeFromYou(c) ? "As you entered it" : "As written in the contract"}: ${notice}${basis ? ` ${basis}` : ""}`;
+      // (notice terms the person saves without a day clear it: the API's `_update`)
+      const whose = noticeFromYou(c) ? "As you entered it" : "As written in the contract";
+      if (byDay) text = `${whose}: cancellable ${byDay}`;
+      else if (notice) text = `${whose}: ${notice}${basis ? ` ${basis}` : ""}`;
       else text = firstSentence(c.computed?.summary)?.replace(/\.$/, "") ?? "As written in the contract — no special legal rule applies";
     }
   }
@@ -418,11 +497,12 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
         ref,
       });
     }
+    // the contract's own date (its `ref`): the chart draws it on the bar it falls on, not on a row of its own
     const exit = comp?.earliest_exit;
     if (c.status === "active" && exit && exit >= today && sent) {
-      markers.push(marker(exit, "Ends (cancellation sent)", "other"));
+      markers.push({ ...marker(exit, "Ends (cancellation sent)", "other"), ref });
     } else if (c.status === "active" && exit && exit >= today && exit !== termEnd && (!comp?.cancel_by || rolling)) {
-      markers.push(marker(exit, "Earliest end (if you cancel now)", "other"));
+      markers.push({ ...marker(exit, "Earliest end (if you cancel now)", "other"), ref });
     }
     return { id: c.id, label: c.name, area: c.area, bars, markers };
   });

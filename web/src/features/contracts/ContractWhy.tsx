@@ -10,7 +10,7 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
 import { CONTRACT_REGIME_COPY, copyFor } from "@/lib/copy";
 import { formatInlineText } from "@/lib/format";
-import { CONTINUES_MONTHLY, isFixedTerm, isRollingContract } from "./model";
+import { CONTINUES_MONTHLY, endsAtTheFifteenth, isFixedTerm, isRollingContract } from "./model";
 
 function contractDates(contract: Contract): ReceiptDate[] {
   const comp = contract.computed;
@@ -51,7 +51,9 @@ export function ContractWhyView({ contract }: { contract: Contract }) {
     >
       {rolling ? (
         <p className="rounded-lg bg-surface-2/70 px-3 py-2 text-sm leading-5 text-ink/85">
-          You can cancel this any month. Miss this date and it simply ends a month later — nothing is locked in.
+          {endsAtTheFifteenth(contract)
+            ? "You can give notice any time. Miss this date and it ends at a later 15th or month's end — nothing is locked in."
+            : "You can cancel this any month. Miss this date and it simply ends a month later — nothing is locked in."}
         </p>
       ) : null}
       {comp.notes.length ? (

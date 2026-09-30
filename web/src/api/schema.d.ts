@@ -2274,6 +2274,11 @@ export interface components {
              * @default false
              */
             needs_check: boolean;
+            /**
+             * Direction
+             * @description A payment's direction: money coming in is expected on its day, never overdue
+             */
+            direction: ("out" | "in") | null;
         };
         /**
          * CitationRef
@@ -2380,6 +2385,13 @@ export interface components {
             notice_unit: ("days" | "weeks" | "months") | null;
             /** Notice Basis */
             notice_basis: ("end_of_term" | "any_time" | "end_of_month") | null;
+            /** Notice Day */
+            notice_day: number | null;
+            /**
+             * Notice Before End
+             * @default false
+             */
+            notice_before_end: boolean;
             /** End Date */
             end_date: string | null;
             /**
@@ -2500,6 +2512,13 @@ export interface components {
             notice_unit?: ("days" | "weeks" | "months") | null;
             /** Notice Basis */
             notice_basis?: ("end_of_term" | "any_time" | "end_of_month") | null;
+            /** Notice Day */
+            notice_day?: number | null;
+            /**
+             * Notice Before End
+             * @default false
+             */
+            notice_before_end?: boolean;
             /** End Date */
             end_date?: string | null;
             /** Is Basic Supply */
@@ -4668,6 +4687,11 @@ export interface components {
              * @enum {string}
              */
             unit?: "days" | "weeks" | "months" | "years";
+            /**
+             * Working Day
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             */
+            working_day?: number | null;
         };
         /** Recurrence */
         "Recurrence-Output": {
@@ -4682,6 +4706,11 @@ export interface components {
              * @enum {string}
              */
             unit: "days" | "weeks" | "months" | "years";
+            /**
+             * Working Day
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             */
+            working_day: number | null;
         };
         /** RefLink */
         RefLink: {

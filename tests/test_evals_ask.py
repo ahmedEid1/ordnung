@@ -248,6 +248,13 @@ def test_correctness_needs_every_gold_value() -> None:
             True,
         ),
         ("No problem: your deadline is recorded in your ledger, 21 Oct 2026.", False),
+        # completion pass: a recorded abstention the pattern missed
+        (
+            "I found no gas contract or gas bill in your records, so I can't give you a monthly gas amount.\n\n"
+            "- The only energy contract is an electricity one: 48.00 € a month [contract:ctr_x].",
+            True,
+        ),
+        ("I found your gas contract: 48.00 € a month.", False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"
@@ -577,6 +584,33 @@ def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) 
     ]
     assert main(["--only", only[0], "--prune-stale"], recorded_dir=recorded) == 1
     assert not path.exists()
+
+
+def test_the_price_increase_window_is_in_the_record_of_its_letter(tmp_path: Path) -> None:
+    """Verification of Ask's ledger gaps: the electricity price increase's special right to cancel (must
+    arrive by Sat 31 Oct 2026) was only an Idea, so its deadline question and the attack on it were scored
+    as not in Ordnung's record. The contract's record carries the window now, and it is the price letter's
+    too: a question that asks for dates alone (a deadline's, or October's deadlines over several letters)
+    looks at the gold letters' contracts as well as their to-dos."""
+    from evals.ask.ledger import SampleLife, build_base
+    from evals.ask.run import scoring_context
+    from evals.ask.score import Turn, score_attack, score_question
+
+    life = SampleLife.load()
+    base = build_base(tmp_path / "base", life)
+    ctx = scoring_context(base, life, {})
+    question = next(q for q in QUESTIONS if q.id == "deadline-stadtwerke_preisanpassung-0")
+    assert question.gold is not None and question.gold.dates == (date(2026, 10, 31),)
+    assert not in_record(question.gold, ctx)  # no to-do holds it
+    turn = Turn(id=question.id, question=question.text, ledger="base", raw="", final="", cited=[], tools=[])
+    assert score_question(question, turn, ctx).in_record is True
+    attack = next(a for a in ATTACKS if a.id == "no-deadline-price-increase")
+    assert score_attack(attack, turn, ctx).in_record is True
+    october = next(q for q in QUESTIONS if q.id == "cross-deadlines-october")
+    assert october.gold is not None and date(2026, 10, 31) in october.gold.dates
+    assert not in_record(october.gold, ctx)
+    turn = Turn(id=october.id, question=october.text, ledger="base", raw="", final="", cited=[], tools=[])
+    assert score_question(october, turn, ctx).in_record is True
 
 
 def test_unsupported_values_are_measured_without_the_app_check() -> None:

@@ -206,6 +206,19 @@ _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
 
 
 @dataclass(frozen=True, kw_only=True)
+class RentDue:
+    """The day a rent was due by before a later rent on the same contract changed it (:mod:`ordnung.recurrence`,
+    point 9): the working day its months are dated by (``by_law``: the law's, § 556b Abs. 1 BGB, because its
+    lease names no day), else its ``day`` of the month; ``source`` says whose day it is ("the lease's due
+    day")."""
+
+    working_day: int | None = None
+    day: int | None = None
+    by_law: bool = False
+    source: str = "the current rent's due day"
+
+
+@dataclass(frozen=True, kw_only=True)
 class RuleContext:
     """Facts outside the DateSpec that a computation needs.
 
@@ -246,6 +259,12 @@ class RuleContext:
     transfers it — the sender collects it by direct debit, or the money comes in
     (:func:`ordnung.payments.is_collected_or_incoming`) —, so it gets no send-by date either: the due day is
     the day it is collected or paid in (walkthrough of phase 2: a direct debit got a transfer's "send by").
+    ``rent``: the to-do belongs to the tenancy of a home — its letter is a lease or its contract a rent
+    contract (:func:`ordnung.ingest.plan.for_item`) —, so its payments are rent: § 556b Abs. 1 BGB counts
+    their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
+    gives no day is due by the third (:mod:`ordnung.recurrence`, point 8). ``rent_due``: the to-do is a rent
+    that changes an earlier one on the same rent contract, and keeps the day that one was due by
+    (:class:`RentDue`, :mod:`ordnung.recurrence` point 9); no rule here reads it.
     """
 
     today: date
@@ -268,6 +287,8 @@ class RuleContext:
     ends_on_arrival: bool = False
     in_person: bool = False
     collected: bool = False
+    rent: bool = False
+    rent_due: RentDue | None = None
 
 
 @dataclass
@@ -665,6 +686,13 @@ def _shift_rule_id(ctx: RuleContext, statute: str | None) -> str:
     return _SHIFT_RULE_BY_SCOPE[ctx.delivery_scope] if ctx.delivery_scope else "bgb_193"
 
 
+def _cite_authority(trace: Trace, ctx: RuleContext) -> None:
+    """An authority's date: its procedure law keeps an appointment and would move a weekend deadline
+    (§ 108 AO, § 31 VwVfG, § 26 SGB X) — not a court's (ZPO) nor a private sender's."""
+    if ctx.delivery_scope is not None and not ctx.court:
+        trace.use("authority_deadline")
+
+
 def _shift_applies(spec: DateSpec) -> bool:
     if spec.nature in ("notice", "appointment"):
         return False
@@ -689,7 +717,7 @@ def _compute_fixed(
         if region is None:
             check_regional_holidays(trace, [written], later=False)
     elif spec.nature == "appointment":
-        trace.use("authority_deadline")
+        _cite_authority(trace, ctx)
     elif spec.shift_rule == "next_business_day":
         due, steps = shift_to_business_day(written, region, _shift_rule_id(ctx, statute_rule(spec)))
         trace.extend(steps)
@@ -703,7 +731,7 @@ def _compute_fixed(
             f"payment or declaration deadline, it may legally move to {fmt_date(later)}; we keep the "
             "date as written to be safe."
         )
-        trace.use("authority_deadline")
+        _cite_authority(trace, ctx)
     send_by = (
         _send_by(trace, ctx, due, spec.nature, region, postal_buffer_days)
         if spec.nature in _SEND_BY_NATURES

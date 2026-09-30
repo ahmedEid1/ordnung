@@ -1,6 +1,6 @@
 # ADR 0010 — High-stakes letters: kinds assigned by code from the reading
 
-**Status:** accepted · **Date:** 2026-09-26
+**Status:** accepted · **Date:** 2026-09-26 · **Updated:** 2026-09-29 (extraction prompt version 9)
 
 ## Context
 Some letters are rare but catastrophic when missed — a court payment order (*Mahnbescheid*), an
@@ -13,7 +13,8 @@ means reading some German wording in code — the kind of clause parsing ADR 000
 
 ## Decision
 1. **Kinds assigned by code.** `HighStakesKind` (`court_payment_order`, `enforcement_order`, `dismissal`,
-   `landlord_notice`, `rent_increase`, `operating_costs`) is not part of the extraction schema. Code files
+   `landlord_notice`, `rent_increase`, `operating_costs`) is not part of the model's `kind` vocabulary
+   (since prompt version 9 the model names one in a field of its own, point 5). Code files
    a letter under one of them from the reading (`rules/routing.py`), one short written policy per kind in
    the module docstring; the person can change the kind on the letter's page, and a kind the person
    chose is kept when the letter is read again. An operating-cost statement is only recognised on read
@@ -52,17 +53,20 @@ means reading some German wording in code — the kind of clause parsing ADR 000
    direction). A notice whose end is too early for its period (or a notice in the alternative with no end
    of its own) keeps an objection to-do, `low`, from the earliest end the law allows (§ 573c Abs. 1 BGB):
    such a notice usually ends the tenancy then.
-5. **The prompt change is deferred, not dropped.** The next extraction prompt should let the model name
-   the letter kind itself (a `letter_kind` field with these kinds); the wording rules then become a check
-   on the model's answer rather than the decision.
+5. **The prompt change was deferred, not dropped — and is done.** Extraction prompt version 9 lets the
+   model name the letter kind itself (a `high_stakes_kind` field with these kinds); the rules check the
+   model's answer where they read no kind of their own, and still decide where they do (see the update
+   below).
 
 ## Consequences
 - The recorded answers, the demo and the benchmark stay valid; every high-stakes kind is testable
-  without a model call.
-- Accepted misses, documented in `routing.py`: a court named only in English; a club "SG …" or "VG Wort"
-  read as an authority (or `other`) counts as a court (the safe side: earlier dates, never `high`); a court order whose
-  reading has no remedy and no objection date (filed under the model's kind — the person can change
-  it); a later court letter whose reading gives the person an objection date anyway (filed as the
+  without a model call. Readings recorded before prompt version 9 name no kind of their own and are filed
+  exactly as before.
+- Accepted misses, documented in `routing.py`: a court named only in English and a court order whose
+  reading has no remedy and no objection date (both filed under the kind the model names since prompt
+  version 9; without one, under the model's ordinary kind — the person can change it); a club "SG …" or
+  "VG Wort" read as an authority (or `other`) counts as a court (the safe side: earlier dates, never
+  `high`); a later court letter whose reading gives the person an objection date anyway (filed as the
   order: the safe side for a two-week *Notfrist*); "Hilfsweise behalten wir uns eine ordentliche
   Kündigung vor" read as a notice in the alternative; a reply to objections about an old statement that
   names the statement in its title without dating it; an enclosure a statement dates with the statement's
@@ -71,4 +75,48 @@ means reading some German wording in code — the kind of clause parsing ADR 000
   if this letter is the statement itself".
 - When a review round finds a new counter-example in one of the wording rules, the fix follows ADR
   0007: prefer moving the error to the safe side (keep the to-do, show the caveat) over more clause
-  parsing; the real fix is the `letter_kind` prompt field.
+  parsing. The prompt field is in place (`high_stakes_kind`, version 9): a letter the rules read no kind
+  from gets the model's, so a new counter-example there is fixed by a veto from the structured parts of
+  the reading, never by another wording list.
+
+## Update (extraction prompt version 9)
+**Date:** 2026-09-29
+
+Extraction prompt version 9 adds `high_stakes_kind` to the reading: the model names a court payment order,
+an enforcement order, a dismissal, a landlord's notice, a rent increase request or an operating-cost
+statement itself, else null (point 5). `routing.classify_letter` weighs it against the kind code reads, in
+one short written policy (ADR 0007):
+
+- **The model names none** — every reading recorded before version 9: code's kind, exactly as before. The
+  demo, the recorded benchmark answers and every earlier test give the same kinds.
+- **Code reads a kind:** code's, whether the model names the same one or another. Code's kind is the
+  structured decision the review rounds checked; a disagreement is not worth a rule of its own.
+- **Only the model names one:** the model's, unless the rest of the reading rules it out with the checks
+  code already has, and no new wording lists — a court order whose sender is clearly no court (read as a
+  company, a landlord, a bank … under a name that names no court, or a bailiff or a court cashier) or that
+  is a European order for payment; a dismissal or a landlord's notice whose contract is of another category
+  (a gym, a job ticket; a tenancy for a dismissal, a job for a landlord's notice), the contract deciding
+  first as in point 3; a rent increase of a kind that needs no consent (graduated or index rent, a
+  prepayment adjustment, a modernisation, "Zustimmung nicht erforderlich") — in its own quote or title, or
+  anywhere the reading quotes (a key fact, an item's quote, a legal basis) while nothing quoted asks for
+  consent.
+- **An operating-cost statement** is still recognised on read only (point 1): the model's `operating_costs`
+  makes a reading one, with the vetoes of code's own recognition (a reminder, a utility or a public body),
+  and never against a kind the person chose.
+- **The kind the person chose** on the letter's page wins over both, also when the letter is read again.
+
+Errors stay on the safe side (point 4): a veto only takes the model's kind away when the reading says the
+letter is something else, and filing a letter under a kind that brings the law's deadlines is the safe
+side of missing one — except for a rent increase: filed as a § 558 request, an increase that needs no
+consent would have its new rent dated too late (an index rent is owed from the start of the month after
+next, § 557b Abs. 3 S. 3 BGB, not the third) and be called optional (§ 559b Abs. 2 BGB), so for it the
+veto reads every quote, not only the increase's own.
+
+When the model names the kind, it now covers these misses: a court named only in English; a court order
+whose reading has no remedy and no objection date; a termination the reading doesn't record (no
+termination by the other side); a rent increase request whose reading doesn't quote its consent wording
+in German; a statement whose reading doesn't use the words code knows ("utility cost settlement"). Still
+missed: all of these when the model names no kind either; and a labour court named only in English — its
+order is filed from the model's kind, but code can't tell it is a labour court, so the law's to-do gives
+the civil courts' two weeks rather than one week (when the reading has the letter's own one-week date, that
+earlier date is the one filed).

@@ -1,0 +1,275 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"dcd97b3e5e8b45f282f59fe0d9f64e7271918ec386f81b7d5b409ac16fe26dc2\",\"question\":\"When is my appointment with Dr. Müller?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen is my appointment with Dr. Müller?\n"
+  },
+  "response": {
+    "text": "I couldn't find a Dr. Müller in your records. A search for \"Müller\" returned nothing, and none of your three open appointments is with anyone by that name.\n\nYour open appointments are:\n- **Dental check-up and cleaning**, Zahnarztpraxis Dr. Anna Beispiel: Thu 8 Oct 2026 at 09:15 [item:itm_tt8cexs1k1tw].\n- **Residence permit extension**, Ausländerbehörde Musterstadt: Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp].\n- **Autumn Meeting in Berlin**, Global Talent Scholarship Foundation: Sat 7 Nov 2026 [item:itm_jc3tjtjvhz0z].\n\nIf Dr. Müller is a doctor whose letter hasn't been added to Ordnung, the appointment won't show up here. Please check the paper letter or the practice's confirmation.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 437,
+      "cache_read_tokens": 11995,
+      "cache_creation_tokens": 2410,
+      "cost_usd": 0.016417,
+      "duration_ms": 5957,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Müller"
+      },
+      "tool_use_id": "toolu_01F3acNpg79bZHbA4RHwHYoF"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment"
+      },
+      "tool_use_id": "toolu_018ycQbooyB6eUUxR4NUYUn5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_tt8cexs1k1tw\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_jc3tjtjvhz0z\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"low\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tt8cexs1k1tw\":{\"title\":\"Dental check-up and professional cleaning (PZR)\",\"action\":\"Attend the appointment, arriving 10 minutes early and bringing your health insurance card (Gesundheitskarte).\",\"location\":\"Zahnarztpraxis Dr. Anna Beispiel, Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Residence permit extension appointment\",\"action\":\"Attend with all listed original documents, and pay the €100 fee by girocard (no cash).\",\"consequence\":\"Not stated; the permit expires on 30 November 2026 unless an extension is applied for before then.\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_jc3tjtjvhz0z\":{\"title\":\"Autumn Meeting in Berlin\",\"action\":\"Watch for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_018ycQbooyB6eUUxR4NUYUn5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01F3acNpg79bZHbA4RHwHYoF"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find a"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Müller in"
+    },
+    {
+      "type": "text",
+      "text": " your records. A"
+    },
+    {
+      "type": "text",
+      "text": " search for \"Müller\" retur"
+    },
+    {
+      "type": "text",
+      "text": "ned nothing, and none of"
+    },
+    {
+      "type": "text",
+      "text": " your three"
+    },
+    {
+      "type": "text",
+      "text": " open appointments is with an"
+    },
+    {
+      "type": "text",
+      "text": "yone by that name."
+    },
+    {
+      "type": "text",
+      "text": "\n\nYour open appointments are"
+    },
+    {
+      "type": "text",
+      "text": ":\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Dental check-up and c"
+    },
+    {
+      "type": "text",
+      "text": "leaning**,"
+    },
+    {
+      "type": "text",
+      "text": " Zahnarztprax"
+    },
+    {
+      "type": "text",
+      "text": "is Dr. Anna"
+    },
+    {
+      "type": "text",
+      "text": " Beispiel:"
+    },
+    {
+      "type": "text",
+      "text": " Thu 8 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026 at"
+    },
+    {
+      "type": "text",
+      "text": " 09:15 [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_tt8cex"
+    },
+    {
+      "type": "text",
+      "text": "s1k1tw]."
+    },
+    {
+      "type": "text",
+      "text": "\n- **Residence permit"
+    },
+    {
+      "type": "text",
+      "text": " extension**"
+    },
+    {
+      "type": "text",
+      "text": ", "
+    },
+    {
+      "type": "text",
+      "text": "Ausländerbehörde"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt: W"
+    },
+    {
+      "type": "text",
+      "text": "ed 14 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 at 10:30"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_64"
+    },
+    {
+      "type": "text",
+      "text": "wce6sh2rp"
+    },
+    {
+      "type": "text",
+      "text": "p].\n- **Autum"
+    },
+    {
+      "type": "text",
+      "text": "n Meeting in Ber"
+    },
+    {
+      "type": "text",
+      "text": "lin**, Global Tal"
+    },
+    {
+      "type": "text",
+      "text": "ent Scholarship Fo"
+    },
+    {
+      "type": "text",
+      "text": "undation: Sat 7"
+    },
+    {
+      "type": "text",
+      "text": " Nov 2026 "
+    },
+    {
+      "type": "text",
+      "text": "[item:itm_jc"
+    },
+    {
+      "type": "text",
+      "text": "3tjt"
+    },
+    {
+      "type": "text",
+      "text": "jvhz0z]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Müller is a"
+    },
+    {
+      "type": "text",
+      "text": " doctor wh"
+    },
+    {
+      "type": "text",
+      "text": "ose letter h"
+    },
+    {
+      "type": "text",
+      "text": "asn't been added"
+    },
+    {
+      "type": "text",
+      "text": " to Ordnung, the"
+    },
+    {
+      "type": "text",
+      "text": " appointment won"
+    },
+    {
+      "type": "text",
+      "text": "'t show"
+    },
+    {
+      "type": "text",
+      "text": " up here. Please check the pa"
+    },
+    {
+      "type": "text",
+      "text": "per letter or"
+    },
+    {
+      "type": "text",
+      "text": " the pract"
+    },
+    {
+      "type": "text",
+      "text": "ice's confirmation."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find a Dr. Müller in your records. A search for \"Müller\" returned nothing, and none of your three open appointments is with anyone by that name.\n\nYour open appointments are:\n- **Dental check-up and cleaning**, Zahnarztpraxis Dr. Anna Beispiel: Thu 8 Oct 2026 at 09:15 [item:itm_tt8cexs1k1tw].\n- **Residence permit extension**, Ausländerbehörde Musterstadt: Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp].\n- **Autumn Meeting in Berlin**, Global Talent Scholarship Foundation: Sat 7 Nov 2026 [item:itm_jc3tjtjvhz0z].\n\nIf Dr. Müller is a doctor whose letter hasn't been added to Ordnung, the appointment won't show up here. Please check the paper letter or the practice's confirmation.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 437,
+          "cache_read_tokens": 11995,
+          "cache_creation_tokens": 2410,
+          "cost_usd": 0.016417,
+          "duration_ms": 5957,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

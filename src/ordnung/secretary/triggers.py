@@ -40,6 +40,7 @@ from ordnung.models import (
     Area,
     CallNote,
     CancellationSent,
+    ComputationReceipt,
     Contract,
     ContractComputation,
     Document,
@@ -421,6 +422,21 @@ def expiry_class(item: Item, doc: Document | None) -> str:
     return "other"
 
 
+@dataclass(frozen=True)
+class PriceIncreaseWindow:
+    """A statutory special cancellation window a price increase opened
+    (:meth:`Ledger.price_increase_windows`): the letter, the contract it belongs to, the letter's reading,
+    the day the new price applies, and the rules engine's receipt, whose ``due_date`` (``due``) is the last
+    day a cancellation may arrive."""
+
+    letter: Document
+    contract: Contract
+    change: ExtractedChange
+    effective: date
+    due: date
+    receipt: ComputationReceipt
+
+
 class Ledger:
     """A read-only snapshot of the store as of ``today`` (loaded once per trigger run or view)."""
 
@@ -445,6 +461,7 @@ class Ledger:
         self._proofs: dict[str, list[Proof]] | None = None
         self._replies: dict[str, Document | None] = {}
         self._call_notes: list[CallNote] | None = None
+        self._price_windows: list[PriceIncreaseWindow] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -467,8 +484,9 @@ class Ledger:
         """An item that is never presented as something to do, whatever its status — on Today, in the
         weekly session, the calendar and its sync, the money figures: one of a letter with scam signs,
         an invoice payment a later payment reminder took over (the reminder is the one to act on), or an
-        e-mail's payment its attached bill repeats (the bill is the one to act on; it stays set aside
-        after the bill is paid, so nothing asks for the money twice)."""
+        e-mail's payment its attached bill repeats (the bill is the one to act on, or the reminder that
+        took the bill over; it stays set aside after the bill is paid, so nothing asks for the money
+        twice)."""
         return (
             self.is_suspicious_item(item)
             or self.is_superseded_by_reminder(item)
@@ -530,15 +548,18 @@ class Ledger:
         (cached; :func:`~ordnung.ingest.link.attachment_repeats`).
 
         Worked out on read: only attachments that are not in the trash and show no scam signs count
-        (:meth:`attachments_of`), whichever of the letters was read first. Only an attachment's payments
-        no payment reminder took over count: the one to act on must stay. So a reminder e-mail with its
-        invoice attached keeps its own to-do (it takes the invoice's over, :meth:`covering_reminders`),
-        and the two never set each other aside.
+        (:meth:`attachments_of`), whichever of the letters was read first. An attachment's payments the
+        e-mail itself took over as a payment reminder don't count: the one to act on must stay. So a
+        reminder e-mail with its invoice attached keeps its own to-do (it takes the invoice's over,
+        :meth:`covering_reminders`), and the two never set each other aside. A bill another reminder took
+        over still counts, so the e-mail that repeats it stays set aside and that reminder is the one
+        payment to act on.
         """
         if self._attached is None:
+            covering = self.covering_reminders()
             items_of: dict[str, list[Item]] = {}
             for item in self.items:
-                if item.doc_id and item.kind == "payment" and not self.is_superseded_by_reminder(item):
+                if item.doc_id and item.kind == "payment":
                     items_of.setdefault(item.doc_id, []).append(item)
             self._attached = {}
             for item in self.items:
@@ -546,7 +567,11 @@ class Ledger:
                 if email is None or item.kind != "payment" or not is_email(email):
                     continue
                 for attachment in self.attachments_of(email):
-                    if attachment_repeats(email, item, attachment, items_of.get(attachment.id, [])):
+                    payments = items_of.get(attachment.id, [])
+                    taker = covering.get(attachment.id)
+                    if taker is not None and taker.id == email.id:
+                        payments = [p for p in payments if not self.is_superseded_by_reminder(p)]
+                    if attachment_repeats(email, item, attachment, payments):
                         self._attached[item.id] = attachment
                         break
         return self._attached
@@ -711,6 +736,55 @@ class Ledger:
                 )
                 found[contract.id] = (doc, effective)
         return found
+
+    def price_increase_windows(self) -> list[PriceIncreaseWindow]:
+        """The statutory special cancellation windows still open after a price increase (§ 41 Abs. 5 EnWG,
+        § 57 TKG, § 40 VVG, § 175 Abs. 4 SGB V), one per letter, in the ledger's letter order (cached).
+
+        A letter opens one when its reading is a price increase with an effective date and it belongs to
+        an active contract (:meth:`linked_contract`); the rules engine computes the window
+        (:func:`~ordnung.rules.price_increase_window`, with the letter's own date as the earliest possible
+        arrival), and it counts while its last day has not passed. A health insurer's opens only with a
+        higher Zusatzbeitrag stated as numbers (:func:`zusatzbeitrag_raised`). The ``price_increase_right``
+        Idea and Ask's record read these same windows, so Ask never states a right the Idea withholds.
+        """
+        if self._price_windows is None:
+            self._price_windows = []
+            for doc in self.documents.values():
+                extraction = self.extraction(doc.id)
+                change = extraction.change if extraction else None
+                effective = parse_day(change.effective_date) if change else None
+                if change is None or change.type != "price_increase" or effective is None:
+                    continue
+                contract = self.linked_contract(doc)
+                if contract is None or contract.status != "active":
+                    continue
+                party = self.parties.get(contract.party_id or "")
+                ctx = RuleContext(
+                    today=self.today,
+                    country=self.profile.country,
+                    region=party.region if party else None,
+                    document_date=parse_day(doc.doc_date),
+                )
+                # notified_on=None: the letter's own date is the earliest possible arrival (safety policy)
+                receipt = price_increase_window(
+                    effective,
+                    contract.category,
+                    None,
+                    ctx,
+                    is_basic_supply=contract.is_basic_supply,
+                    party_kind=party.kind if party else None,
+                    postal_buffer_days=postal_buffer(self.profile),
+                )
+                due = parse_day(receipt.due_date)
+                if due is None or due < self.today:
+                    continue
+                if "sgbv_175_4_zb" in receipt.rule_ids and not zusatzbeitrag_raised(change):
+                    continue  # no higher Zusatzbeitrag stated as numbers: no special right claimed
+                self._price_windows.append(
+                    PriceIncreaseWindow(doc, contract, change, effective, due, receipt)
+                )
+        return self._price_windows
 
     def reminder_window(self, kind: str) -> int:
         """How many days ahead an item of ``kind`` becomes an Idea (the longest reminder)."""
@@ -993,38 +1067,12 @@ def zusatzbeitrag_raised(change: ExtractedChange) -> bool:
 
 def price_increase_right(ledger: Ledger) -> list[Suggestion]:
     """Price-increase letters linked to an active contract with a statutory special cancellation
-    window still open (§ 41 Abs. 5 EnWG, § 57 TKG, § 40 VVG, § 175 Abs. 4 SGB V)."""
+    window still open (:meth:`Ledger.price_increase_windows`)."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    for doc in ledger.documents.values():
-        extraction = ledger.extraction(doc.id)
-        change = extraction.change if extraction else None
-        effective = parse_day(change.effective_date) if change else None
-        if change is None or change.type != "price_increase" or effective is None:
-            continue
-        contract = ledger.linked_contract(doc)
-        if contract is None or contract.status != "active":
-            continue
-        party = ledger.parties.get(contract.party_id or "")
-        ctx = RuleContext(
-            today=today,
-            country=ledger.profile.country,
-            region=party.region if party else None,
-            document_date=parse_day(doc.doc_date),
-        )
-        # notified_on=None: the letter's own date is the earliest possible arrival (safety policy)
-        receipt = price_increase_window(
-            effective,
-            contract.category,
-            None,
-            ctx,
-            is_basic_supply=contract.is_basic_supply,
-            party_kind=party.kind if party else None,
-            postal_buffer_days=postal_buffer(ledger.profile),
-        )
-        due = parse_day(receipt.due_date)
-        if due is None or due < today:
-            continue
+    for window in ledger.price_increase_windows():
+        doc, contract, change, receipt = window.letter, window.contract, window.change, window.receipt
+        due = window.due
         old = change.old_amount if change.old_amount is not None else contract.cost_amount
         extra = yearly_extra_cost(old, change.new_amount, change.cost_interval or contract.cost_interval)
         who = ledger.party_name(contract.party_id) or contract.name
@@ -1036,8 +1084,6 @@ def price_increase_right(ledger: Ledger) -> list[Suggestion]:
             f"Special right to cancel after a price increase ({_citations(receipt.rule_ids, _PRICE_RULES)})."
         )
         switch = "sgbv_175_4_zb" in receipt.rule_ids
-        if switch and not zusatzbeitrag_raised(change):
-            continue  # no higher Zusatzbeitrag stated as numbers: no special right claimed
         action = (
             _open("document", doc.id, "Compare insurers")
             if switch

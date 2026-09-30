@@ -72,6 +72,34 @@ async def test_a_date_set_by_hand_for_a_payment_made_in_person_has_no_send_by(da
         assert moved["send_by"] is not None and moved["send_by"] < "2026-11-03"
 
 
+async def test_a_payment_added_by_hand_gets_a_send_by_only_if_it_is_transferred(data_dir: Path) -> None:
+    """Judged by its words as an edit is: a payment added by hand for the service desk, or collected by
+    direct debit, has no transfer's send-by day; one paid by transfer has, and marked done a monthly
+    one paid at the counter moves on without one."""
+    async with api_for(data_dir) as api:
+
+        async def added(**fields: Any) -> dict[str, Any]:
+            body = {"kind": "payment", "direction": "out", "due_date": "2026-10-15", **fields}
+            response = await api.client.post("/api/items", json=body)
+            assert response.status_code == 201
+            return dict(response.json())
+
+        on_site = await added(title="Pay the fee", description="Pay the fee in cash at the service desk.")
+        debit = await added(title="SEPA-Lastschrift Stadtwerke")
+        transfer = await added(title="Pay the tax", description="Transfer it to the tax office's account.")
+        assert (on_site["due_date"], on_site["send_by"]) == ("2026-10-15", None)
+        assert (debit["due_date"], debit["send_by"]) == ("2026-10-15", None)
+        assert transfer["send_by"] is not None and transfer["send_by"] < "2026-10-15"
+
+        monthly = await added(
+            title="Pay the club fee",
+            description="In cash at the counter.",
+            recurrence={"interval": 1, "unit": "months"},
+        )
+        moved = (await api.client.patch(f"/api/items/{monthly['id']}", json={"status": "done"})).json()
+        assert (moved["status"], moved["due_date"], moved["send_by"]) == ("open", "2026-11-15", None)
+
+
 async def test_status_changes_are_explicit(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         payment = _by_kind(await _items_of(api, TAX_LETTER.pdf()), "payment")

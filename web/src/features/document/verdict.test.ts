@@ -55,7 +55,7 @@ describe("selectPrimaryItem — which to-do the verdict card is about", () => {
   });
 
   it("prefers a one-off to-do over a recurring payment of the same priority", () => {
-    const rent = makeItem({ id: "rent", kind: "payment", amount: 640, due_date: "2026-10-05", recurrence: { interval: 1, unit: "months" } });
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 640, due_date: "2026-10-05", recurrence: { interval: 1, unit: "months", working_day: null } });
     const notice = makeItem({ id: "notice", kind: "deadline", due_date: "2026-10-31" });
     expect(selectPrimaryItem([rent, notice])?.id).toBe("notice");
   });
@@ -126,25 +126,25 @@ describe("chooseMainAction", () => {
   it("never says a late statement's credit or new monthly prepayment may not be owed", () => {
     const card = { kind: "operating_costs", urgent: true } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
     const credit = makeItem({ kind: "payment", amount: 85, direction: "in", computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
-    const prepayment = makeItem({ kind: "payment", amount: 210, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
+    const prepayment = makeItem({ kind: "payment", amount: 210, recurrence: { interval: 1, unit: "months", working_day: null }, computation: makeReceipt({ rule_ids: ["bgb_556_3"] }) });
     expect(notOwedReason(credit, card)).toBeNull();
     expect(notOwedReason(prepayment, card)).toBeNull();
     expect(notOwedReason(makeItem({ kind: "payment", amount: 120 }), card)).toBe("late_statement");
   });
 
   it("holds a rent increase's new rent until the person agrees", () => {
-    const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months", working_day: null }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
     expect(notOwedReason(rent, null)).toBe("consent");
     const card = { kind: "rent_increase", urgent: false } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
     // review round 2: the note is the server's, on the new rent alone (dated or not) — never the current rent
     expect(notOwedReason(makeItem({ kind: "payment", amount: 670, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) }), card)).toBe("consent");
-    expect(notOwedReason(makeItem({ kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months" } }), card)).toBeNull();
+    expect(notOwedReason(makeItem({ kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months", working_day: null } }), card)).toBeNull();
     expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
     expect(chooseMainAction(makeDetail({ items: [rent] }), rent).type).toBe("calendar");
   });
 
   it("holds a rent increase's new rent only until the person closed the consent decision", () => {
-    const rent = makeItem({ id: "rent", kind: "payment", amount: 670, recurrence: { interval: 1, unit: "months" }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 670, recurrence: { interval: 1, unit: "months", working_day: null }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
     const decision = makeItem({ id: "consent", origin: "rule", computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
     expect(consentDecided([rent])).toBe(false); // no decision to-do: still hold the rent
     expect(consentDecided([rent, decision])).toBe(false);
@@ -316,7 +316,7 @@ describe("glossary terms in explanations", () => {
 describe("UI audit round 1: which to-do the verdict leads with", () => {
   it("never leads with a to-do the server set aside (history, replaced by a reminder)", () => {
     const deposit = makeItem({ id: "deposit", kind: "payment", amount: 1560, due_date: "2025-10-01" });
-    const rent = makeItem({ id: "rent", kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months" } });
+    const rent = makeItem({ id: "rent", kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months", working_day: null } });
     expect(selectPrimaryItem([deposit, rent])?.id).toBe("deposit");
     expect(selectPrimaryItem([deposit, rent], [{ item_id: "deposit" }])?.id).toBe("rent");
     expect(selectPrimaryItem([deposit], [{ item_id: "deposit" }])).toBeNull();
@@ -376,7 +376,7 @@ describe("UI audit round 1: the verdict leads in English", () => {
   });
 
   it("builds an English lead for every kind when nothing English was read", () => {
-    const debit = makeItem({ kind: "payment", title: "Monatliche Abbuchung Deutschlandticket", action: "Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.", amount: 63, currency: "EUR", direction: "out", recurrence: { interval: 1, unit: "months" } });
+    const debit = makeItem({ kind: "payment", title: "Monatliche Abbuchung Deutschlandticket", action: "Ausreichende Kontodeckung für die monatliche SEPA-Lastschrift sicherstellen.", amount: 63, currency: "EUR", direction: "out", recurrence: { interval: 1, unit: "months", working_day: null } });
     expect(verdictWords(debit).lead).toBe("Keep €63.00 a month in your account for the direct debit");
     expect(plainLead(makeItem({ kind: "appointment" }))).toBe("Go to the appointment");
     expect(plainLead(makeItem({ kind: "payment", direction: "in", amount: 312.45, currency: "EUR" }))).toBe("€312.45 comes to you");

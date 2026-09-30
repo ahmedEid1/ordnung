@@ -783,6 +783,33 @@ def test_a_fee_paid_at_the_appointment_is_no_transfer(store: Store, ledger: dict
     )
 
 
+def test_money_coming_in_is_the_next_step_only_when_nothing_else_is_open(
+    store: Store, ledger: dict[str, str]
+) -> None:
+    """A refund is nothing for the person to do: the fine stays the case's next step though the refund's
+    day comes first. Once the fine is paid the refund is, and says it is incoming (expected, never
+    overdue)."""
+    refund = store.add_item(
+        kind="payment",
+        title="Refund of the fee paid twice",
+        due_date="2026-09-25",  # before today, and before the fine's due date
+        amount=30.0,
+        direction="in",
+        doc_id=ledger["fine"],
+        party_id=ledger["city"],
+    ).id
+    (fine,) = [c for c in _numbers(store).open_cases if c.title == "fine"]
+    assert fine.next_item is not None
+    assert (fine.next_item.id, fine.next_item.direction) == (ledger["fine_payment"], None)
+    store.update_item(ledger["fine_payment"], direction="out")
+    (fine,) = [c for c in _numbers(store).open_cases if c.title == "fine"]
+    assert fine.next_item is not None
+    assert (fine.next_item.id, fine.next_item.direction) == (ledger["fine_payment"], "out")
+    store.update_item(ledger["fine_payment"], status="done")
+    (fine,) = [c for c in _numbers(store).open_cases if c.title == "fine"]
+    assert fine.next_item is not None and (fine.next_item.id, fine.next_item.direction) == (refund, "in")
+
+
 def test_a_snoozed_to_do_keeps_its_case_open(store: Store, ledger: dict[str, str]) -> None:
     """Putting the fine off does not close it: its Aktenzeichen and Kassenzeichen stay on the page."""
     store.update_item(ledger["fine_payment"], status="snoozed", snoozed_until="2026-10-20")
@@ -891,13 +918,13 @@ def test_the_demo_numbers(demo_store: Store) -> None:
         "Marktlokation",
     }
     assert {n.kind for n in stadtwerke.their_numbers} == {"vat_id", "register", "creditor_id"}
-    cases = {c.party_name: sorted(r.value for r in c.references) for c in page.open_cases}
-    assert cases["Stadt Musterstadt – Ordnungsamt (Bußgeldstelle)"] == [
-        "32.4-VW-2026-0184512",
-        "5126 0184 5122",
-    ]
-    assert cases["Stadt Musterstadt – Ausländerbehörde"] == ["32.2-AE-24-08815"]
-    assert "FunkNetz Mobil GmbH" not in cases  # a 2024 order number of a running contract is no open case
+    # keyed by the case numbers: how a reading names an office ("Stadt Musterstadt, Ordnungsamt") may differ
+    cases = {tuple(sorted(r.value for r in c.references)): c.party_name for c in page.open_cases}
+    assert cases[("32.4-VW-2026-0184512", "5126 0184 5122")].startswith("Stadt Musterstadt")  # the fine
+    assert cases[("32.2-AE-24-08815",)].startswith("Stadt Musterstadt")  # the residence permit
+    assert (
+        "FunkNetz Mobil GmbH" not in cases.values()
+    )  # a 2024 order number of a running contract is no open case
 
 
 # --------------------------------------------------------------------------------------------------

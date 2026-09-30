@@ -1,0 +1,501 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "7+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"d0853a522db5e56f9228b65e687afc9e92530cc268ae01c0a5b7f980f50fead3\",\"question\":\"How much do I owe the library, and how does that fit with my payments this month?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nHow much do I owe the library, and how does that fit with my payments this month?\n"
+  },
+  "response": {
+    "text": "You owe the library 4.50 € in overdue fees [item:itm_kgsfgwac9wzx]. The fee is for two overdue items, a statistics book and a German B2 exercise book [doc:doc_5c5axexztnw6]. The letter says to pay it when you return the items, at the service desk or payment machine. Ordnung has no due date stored for this payment.\n\nHow it fits with this month's payments:\n- Ordnung shows 94.99 € due this month. That is the TechMarkt Online reminder, due Wed 30 Sep 2026 [item:itm_bfvgt8ybg96k]. The library fee is not counted in that figure because it has no due date.\n- Other payments due in the next few weeks include:\n  - The parking warning fee, due Fri 2 Oct 2026. Its amount was read by AI from a scan, so check it against the paper letter [item:itm_31yxpwg03cdb].\n  - The rent, 640.00 €, due Mon 5 Oct 2026 [item:itm_b1b5643x7qy7].\n  - The additional operating costs, 184.30 €, due Fri 9 Oct 2026 [item:itm_dmaw27qvv18n].\n- Ordnung also has no due date stored for these payments: the gym fee, the rent deposit and the Deutschlandticket fee.\n- One demand, from \"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\", shows scam signs. Do not pay it until you have checked with the sender, using contact details you already know. A genuine sender whose bank details changed would show the same signs [item:itm_fx2sjzsca7b6].\n\nThe library fee is small, so returning the items soon should keep it from growing. I can't pay it for you. You can mark it done in Ordnung once it's paid.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 682,
+      "cache_read_tokens": 12006,
+      "cache_creation_tokens": 5621,
+      "cost_usd": 0.0317132,
+      "duration_ms": 16185,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__money_summary",
+      "input": {},
+      "tool_use_id": "toolu_01QW94gC9c3EGK3PWvC7w2Y9"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library"
+      },
+      "tool_use_id": "toolu_01S1pC5V3PeBeCDXyHpmy3rA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"Library overdue notice (1st reminder)\",\"snippet\":\"Two library items are overdue: a statistics book and a German B2 exercise book. Fees so…\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01S1pC5V3PeBeCDXyHpmy3rA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"month\":\"2026-09\",\"currency\":\"EUR\",\"due_this_month\":94.99,\"fixed_costs_monthly\":825.78,\"fixed_costs_by_category\":{\"bank\":4.9,\"energy\":48.0,\"gym\":29.9,\"insurance\":4.99,\"mobile\":34.99,\"rent\":640.0,\"transport\":63.0},\"upcoming_payments\":[{\"id\":\"itm_bfvgt8ybg96k\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"mobility\",\"party_id\":\"pty_cfpx42mmhb49\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-05\",\"send_by\":\"2026-10-02\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":640.0,\"currency\":\"EUR\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_46nd7njtwctz\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"amount\":156.55,\"currency\":\"EUR\"},{\"id\":\"itm_kttk9625293w\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"amount\":48.0,\"currency\":\"EUR\"}],\"payments_without_due_date\":[{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"leisure\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"leisure\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_61wt30mrhybv\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":1560.0,\"currency\":\"EUR\"},{\"id\":\"itm_2s90qr4prp13\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"}],\"do_not_pay\":[{\"id\":\"itm_fx2sjzsca7b6\",\"kind\":\"payment\",\"status\":\"open\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_4q7m6qzy2ya8\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true,\"amount\":254.35,\"currency\":\"EUR\"}],\"fixed_cost_contracts\":[{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"monthly_cost\":63.0,\"currency\":\"EUR\"},{\"id\":\"ctr_15banyk4pc92\",\"category\":\"gym\",\"monthly_cost\":29.9,\"currency\":\"EUR\"},{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"monthly_cost\":34.99,\"currency\":\"EUR\"},{\"id\":\"ctr_611d1sk7v1cr\",\"category\":\"bank\",\"monthly_cost\":4.9,\"currency\":\"EUR\"},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"monthly_cost\":48.0,\"currency\":\"EUR\"},{\"id\":\"ctr_w97tm6xhn7zw\",\"category\":\"insurance\",\"monthly_cost\":4.99,\"currency\":\"EUR\"},{\"id\":\"ctr_y2hc77av3ps4\",\"category\":\"rent\",\"monthly_cost\":640.0,\"currency\":\"EUR\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"ctr_cmeadtk38mac\":{\"name\":\"Deutschlandticket subscription\"},\"ctr_15banyk4pc92\":{\"name\":\"FitWell Flex 12 (Studenten)\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"ctr_611d1sk7v1cr\":{\"name\":\"Girokonto Klassik\"},\"ctr_bbzemyapzvm5\":{\"name\":\"MusterStrom Flex\"},\"ctr_w97tm6xhn7zw\":{\"name\":\"Privat-Haftpflichtversicherung, Tarif Basis Single\"},\"ctr_y2hc77av3ps4\":{\"name\":\"Rental agreement Beispielweg 5\"},\"itm_bfvgt8ybg96k\":{\"title\":\"Pay reminder total to TechMarkt Online\",\"action\":\"Transfer €94.99 to TechMarkt Online GmbH using the invoice number as the payment reference.\",\"consequence\":\"The claim will be handed to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay parking warning fee\",\"action\":\"Transfer €30.00 to the Stadtkasse Musterstadt, quoting the Kassenzeichen as the reference.\",\"consequence\":\"A fine proceeding (Bußgeldverfahren) is started, with additional fees and expenses of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_cfpx42mmhb49\":{\"name\":\"Stadt Musterstadt, Ordnungsamt\"},\"itm_b1b5643x7qy7\":{\"title\":\"Monthly rent\",\"action\":\"Pay the total rent (Gesamtmiete) so it arrives by the third working day of each month\",\"consequence\":\"Payment counts only when the money is received by the landlord.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_dmaw27qvv18n\":{\"title\":\"Pay additional operating costs\",\"action\":\"Transfer €184.30 to the landlord's account with reference MV-2025-0412 NK 2025.\"},\"itm_wj2v05avgk1m\":{\"title\":\"Extension fee\",\"action\":\"Pay the fee on site by girocard at the appointment.\"},\"pty_46nd7njtwctz\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Monthly health and care insurance contribution\",\"action\":\"Keep enough money in your account for the direct debit of the new monthly contribution.\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_kttk9625293w\":{\"title\":\"Monthly electricity advance payment\",\"action\":\"Ensure the account has enough funds; the amount is collected by SEPA direct debit.\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay overdue fees\",\"action\":\"Pay the €4.50 fees when returning the items, at the service desk or payment machine.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym fee\",\"action\":\"Make sure your account has enough funds for the direct debit on the 1st of each month.\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_61wt30mrhybv\":{\"title\":\"Rent deposit (Kaution)\",\"action\":\"Pay the deposit of €1,560.00, optionally in three equal monthly instalments of €520.00 with the first rent payments\"},\"itm_2s90qr4prp13\":{\"title\":\"Monthly Deutschlandticket fee\",\"action\":\"Keep enough funds in your account for the direct debit at the start of each month.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_fx2sjzsca7b6\":{\"title\":\"Claimed arrears (unverified)\",\"action\":\"Do not pay until the claim is verified as genuine.\",\"consequence\":\"The letter says enforcement (Zwangsvollstreckung) with further costs of at least €180 would follow.\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale (RBS)” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_4q7m6qzy2ya8\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01QW94gC9c3EGK3PWvC7w2Y9"
+    },
+    {
+      "type": "text",
+      "text": "You owe the library 4."
+    },
+    {
+      "type": "text",
+      "text": "50 € in"
+    },
+    {
+      "type": "text",
+      "text": " overdue f"
+    },
+    {
+      "type": "text",
+      "text": "ees [item:itm_k"
+    },
+    {
+      "type": "text",
+      "text": "gsfgwac9w"
+    },
+    {
+      "type": "text",
+      "text": "zx]. The"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ee is for"
+    },
+    {
+      "type": "text",
+      "text": " two overdue items,"
+    },
+    {
+      "type": "text",
+      "text": " a statistics book and a German"
+    },
+    {
+      "type": "text",
+      "text": " B2 exercise book ["
+    },
+    {
+      "type": "text",
+      "text": "doc:doc_5c"
+    },
+    {
+      "type": "text",
+      "text": "5axexztnw6]"
+    },
+    {
+      "type": "text",
+      "text": ". The letter says to"
+    },
+    {
+      "type": "text",
+      "text": " pay it when you"
+    },
+    {
+      "type": "text",
+      "text": " return the items, at the service des"
+    },
+    {
+      "type": "text",
+      "text": "k or payment machine."
+    },
+    {
+      "type": "text",
+      "text": " Ordnung has no due date"
+    },
+    {
+      "type": "text",
+      "text": " stored for this payment."
+    },
+    {
+      "type": "text",
+      "text": "\n\nHow it fits with this"
+    },
+    {
+      "type": "text",
+      "text": " month's payments:\n-"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung sh"
+    },
+    {
+      "type": "text",
+      "text": "ows "
+    },
+    {
+      "type": "text",
+      "text": "94.99 € due"
+    },
+    {
+      "type": "text",
+      "text": " this month."
+    },
+    {
+      "type": "text",
+      "text": " That"
+    },
+    {
+      "type": "text",
+      "text": " is the TechMarkt"
+    },
+    {
+      "type": "text",
+      "text": " Online re"
+    },
+    {
+      "type": "text",
+      "text": "minder, due W"
+    },
+    {
+      "type": "text",
+      "text": "ed 30 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_bfvgt8"
+    },
+    {
+      "type": "text",
+      "text": "ybg96k]. The"
+    },
+    {
+      "type": "text",
+      "text": " library fee is"
+    },
+    {
+      "type": "text",
+      "text": " not counted in"
+    },
+    {
+      "type": "text",
+      "text": " that fig"
+    },
+    {
+      "type": "text",
+      "text": "ure because"
+    },
+    {
+      "type": "text",
+      "text": " it has no due date.\n-"
+    },
+    {
+      "type": "text",
+      "text": " Other"
+    },
+    {
+      "type": "text",
+      "text": " pay"
+    },
+    {
+      "type": "text",
+      "text": "ments due"
+    },
+    {
+      "type": "text",
+      "text": " in the next few weeks include"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "\n  - The parking warning"
+    },
+    {
+      "type": "text",
+      "text": " fee, due Fri "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": " Its amount was"
+    },
+    {
+      "type": "text",
+      "text": " read by"
+    },
+    {
+      "type": "text",
+      "text": " AI from a scan, so"
+    },
+    {
+      "type": "text",
+      "text": " check"
+    },
+    {
+      "type": "text",
+      "text": " it against the paper letter ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_31yx"
+    },
+    {
+      "type": "text",
+      "text": "pwg03cdb]."
+    },
+    {
+      "type": "text",
+      "text": "\n  - The rent, "
+    },
+    {
+      "type": "text",
+      "text": "640."
+    },
+    {
+      "type": "text",
+      "text": "00 €"
+    },
+    {
+      "type": "text",
+      "text": ", due Mon 5 "
+    },
+    {
+      "type": "text",
+      "text": "Oct 2026 ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_b1b"
+    },
+    {
+      "type": "text",
+      "text": "5643x7qy7]."
+    },
+    {
+      "type": "text",
+      "text": "\n  - The addit"
+    },
+    {
+      "type": "text",
+      "text": "ional operating costs, 184"
+    },
+    {
+      "type": "text",
+      "text": ".30 €, due F"
+    },
+    {
+      "type": "text",
+      "text": "ri 9 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_dmaw27qv"
+    },
+    {
+      "type": "text",
+      "text": "v18n].\n-"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung also"
+    },
+    {
+      "type": "text",
+      "text": " has"
+    },
+    {
+      "type": "text",
+      "text": " no due"
+    },
+    {
+      "type": "text",
+      "text": " date stored for these payments:"
+    },
+    {
+      "type": "text",
+      "text": " the g"
+    },
+    {
+      "type": "text",
+      "text": "ym fee, the r"
+    },
+    {
+      "type": "text",
+      "text": "ent deposit and"
+    },
+    {
+      "type": "text",
+      "text": " the Deutschlandtic"
+    },
+    {
+      "type": "text",
+      "text": "ket fee."
+    },
+    {
+      "type": "text",
+      "text": "\n- One"
+    },
+    {
+      "type": "text",
+      "text": " demand,"
+    },
+    {
+      "type": "text",
+      "text": " from \""
+    },
+    {
+      "type": "text",
+      "text": "Rundfunk-"
+    },
+    {
+      "type": "text",
+      "text": "Beitragsservice Z"
+    },
+    {
+      "type": "text",
+      "text": "ahlungszentrale ("
+    },
+    {
+      "type": "text",
+      "text": "RBS)\", sh"
+    },
+    {
+      "type": "text",
+      "text": "ows scam signs. Do"
+    },
+    {
+      "type": "text",
+      "text": " not pay it until you have chec"
+    },
+    {
+      "type": "text",
+      "text": "ked with the sender,"
+    },
+    {
+      "type": "text",
+      "text": " using contact details you already know"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": " A genuine sender whose"
+    },
+    {
+      "type": "text",
+      "text": " bank details changed would"
+    },
+    {
+      "type": "text",
+      "text": " show the same signs [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_fx2s"
+    },
+    {
+      "type": "text",
+      "text": "jzsca7b6]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nThe library fee is small,"
+    },
+    {
+      "type": "text",
+      "text": " so retur"
+    },
+    {
+      "type": "text",
+      "text": "ning the items so"
+    },
+    {
+      "type": "text",
+      "text": "on should"
+    },
+    {
+      "type": "text",
+      "text": " keep it from"
+    },
+    {
+      "type": "text",
+      "text": " growing. I can"
+    },
+    {
+      "type": "text",
+      "text": "'t p"
+    },
+    {
+      "type": "text",
+      "text": "ay it for"
+    },
+    {
+      "type": "text",
+      "text": " you."
+    },
+    {
+      "type": "text",
+      "text": " You can mark it done in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung once it's"
+    },
+    {
+      "type": "text",
+      "text": " paid."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You owe the library 4.50 € in overdue fees [item:itm_kgsfgwac9wzx]. The fee is for two overdue items, a statistics book and a German B2 exercise book [doc:doc_5c5axexztnw6]. The letter says to pay it when you return the items, at the service desk or payment machine. Ordnung has no due date stored for this payment.\n\nHow it fits with this month's payments:\n- Ordnung shows 94.99 € due this month. That is the TechMarkt Online reminder, due Wed 30 Sep 2026 [item:itm_bfvgt8ybg96k]. The library fee is not counted in that figure because it has no due date.\n- Other payments due in the next few weeks include:\n  - The parking warning fee, due Fri 2 Oct 2026. Its amount was read by AI from a scan, so check it against the paper letter [item:itm_31yxpwg03cdb].\n  - The rent, 640.00 €, due Mon 5 Oct 2026 [item:itm_b1b5643x7qy7].\n  - The additional operating costs, 184.30 €, due Fri 9 Oct 2026 [item:itm_dmaw27qvv18n].\n- Ordnung also has no due date stored for these payments: the gym fee, the rent deposit and the Deutschlandticket fee.\n- One demand, from \"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\", shows scam signs. Do not pay it until you have checked with the sender, using contact details you already know. A genuine sender whose bank details changed would show the same signs [item:itm_fx2sjzsca7b6].\n\nThe library fee is small, so returning the items soon should keep it from growing. I can't pay it for you. You can mark it done in Ordnung once it's paid.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 682,
+          "cache_read_tokens": 12006,
+          "cache_creation_tokens": 5621,
+          "cost_usd": 0.0317132,
+          "duration_ms": 16185,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

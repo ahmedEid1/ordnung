@@ -159,7 +159,12 @@ test("the cards of a row are as tall as each other, their letter lines level", a
 for (const width of [390, 1280]) {
   test(`Next and Back at ${width}px: the focus on the new step's heading, its “Step n of m” clear of the top bar`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await open(page, "/week", "Weekly review");
+    // R2-week-waiting-3. The review opens on its first step, and that isn't always "New": the demo's library
+    // notice must be returned by Fri 2 Oct, so its send-by day is the demo's today (Mon 28 Sep) and "Act now"
+    // (one row) comes first. Start on the step before "Compare with the letter" — New, with every letter of
+    // the week — as the review did before
+    await open(page, "/week?step=new", "Weekly review");
+    await expect(page.getByRole("heading", { level: 2, name: /^New (in the last \d+ days|since your last review)$/ })).toBeVisible();
     const bar = (await page.getByRole("banner").boundingBox())!;
     const below = bar.y + bar.height - 1;
     // from the foot of a long step, as someone who read it to the end

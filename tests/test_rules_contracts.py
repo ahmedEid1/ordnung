@@ -29,6 +29,7 @@ from ordnung.rules.contracts import (
     third_werktag,
 )
 from ordnung.rules.deadlines import RuleContext
+from ordnung.rules.explain import ordinal
 from ordnung.rules.send import send_guidance
 
 D = date.fromisoformat
@@ -343,6 +344,368 @@ def test_employment_fifteenth_exit() -> None:
     result = compute_contract(terms(category="employment"), ctx(today="2026-10-10"))
     assert result.earliest_exit == "2026-11-15"
     assert result.cancel_by == "2026-10-18"
+
+
+# ------------------------------------------------------ terms a notice period can't say (migration 0004)
+
+SAM_TODAY = "2026-09-28"
+#: The Deutschlandticket as its letter states it: "Die Kündigung muss bis zum 10. eines Monats zum Ende
+#: dieses Monats bei uns eingehen" — no notice period, the 10th of the month (scripts/samplelife).
+DEUTSCHLANDTICKET = {
+    "category": "transport",
+    "concluded_date": "2025-12-10",
+    "start_date": "2026-01-01",
+    "initial_term_months": 1,
+    "notice_basis": "end_of_month",
+    "notice_day": 10,
+}
+#: The working-student job: fixed until 31 Mar 2027, and "Nach Ablauf der Probezeit kann das
+#: Arbeitsverhältnis … unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB) ordentlich gekündigt
+#: werden" — ordinary notice before the end, with no period of its own.
+WERKSTUDENT = {
+    "category": "employment",
+    "is_consumer": False,
+    "concluded_date": "2026-03-20",
+    "start_date": "2026-04-01",
+    "initial_term_months": 12,
+    "end_date": "2027-03-31",
+    "notice_before_end": True,
+}
+
+
+def test_ordinal() -> None:
+    assert [ordinal(day) for day in (1, 2, 3, 4, 10, 11, 12, 13, 21, 22, 23, 30, 31)] == [
+        "1st", "2nd", "3rd", "4th", "10th", "11th", "12th", "13th", "21st", "22nd", "23rd", "30th", "31st",
+    ]  # fmt: skip
+
+
+def test_deutschlandticket_by_the_10th_to_the_end_of_that_month() -> None:
+    """Demo (Sam, Mon 28 Sep 2026, NW): September's 10th has passed, so the next deadline is Sat 10 Oct for
+    Sat 31 Oct; a notice deadline never moves off the weekend (safe date Fri 9 Oct), post it by Mon 5 Oct."""
+    result = compute_contract(terms(**DEUTSCHLANDTICKET), ctx(today=SAM_TODAY))
+    assert result.regime == "bgb309_new"
+    assert (result.cancel_by, result.safe_date, result.send_by, result.earliest_exit) == (
+        "2026-10-10",
+        "2026-10-09",
+        "2026-10-05",
+        "2026-10-31",
+    )
+    assert result.current_term_end is None and result.next_renewal is None  # nothing locks you in
+    assert result.summary == (
+        "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 10 Oct 2026 (the 10th of the month, as "
+        "the contract says); send it by Mon 5 Oct."
+    )
+    step = (
+        "To end the contract on Sat 31 Oct 2026 with notice by the 10th of the month, it must arrive by Sat 10 "
+        "Oct 2026"
+    )
+    assert step in [s.label for s in result.steps]
+    assert "contract_as_written" in result.rule_ids and "bgb_188" not in result.rule_ids
+    # no notice period assumed, so the card asks no "Please check"
+    assert not any("notice period wasn't found" in w for w in result.warnings)
+    assert result.confidence == "high"
+    # a letter posted now arrives Fri 2 Oct: one month from then (Mon 2 Nov) is no sooner — no warning
+    assert not any("may let a cancellation" in w for w in result.warnings)
+
+
+def test_a_missed_10th_moves_to_the_next_month_and_names_the_month_from_arrival() -> None:
+    """After the 10th: the 10th of next month for its end. After a fixed first term the law may let a
+    cancellation end the contract one month after it arrives (§ 309 Nr. 9 BGB) — sooner here, so a hedged
+    warning names it; the dates keep the contract's own rule."""
+    result = compute_contract(terms(**DEUTSCHLANDTICKET), ctx(today="2026-10-11"))
+    assert (result.cancel_by, result.earliest_exit) == ("2026-11-10", "2026-11-30")
+    assert (
+        "If the contract continued after a fixed first term, the law may let a cancellation that arrives by Thu "
+        "15 Oct 2026 end it one month later, on Sun 15 Nov 2026 (§ 309 Nr. 9 BGB; Art. 229 § 60 EGBGB); the "
+        "contract's date avoids any argument."
+    ) in result.warnings
+    assert result.confidence == "high"
+    phone = {
+        "category": "mobile",
+        "concluded_date": "2019-01-01",
+        "notice_basis": "end_of_month",
+        "notice_day": 10,
+    }
+    button = compute_contract(terms(**phone), ctx(today="2026-10-11"), channel="online_button")
+    assert (button.cancel_by, button.earliest_exit) == ("2026-11-10", "2026-11-30")
+    assert any("on Wed 11 Nov 2026 (§ 56 Abs. 1, 3 TKG)" in w for w in button.warnings)
+
+
+@pytest.mark.parametrize(
+    ("day", "today", "cancel_by", "exit_day"),
+    [
+        (30, "2027-02-01", "2027-02-28", "2027-02-28"),  # a shorter month: its last day
+        (31, "2026-09-28", "2026-09-30", "2026-09-30"),
+        (1, "2026-09-28", "2026-10-01", "2026-10-31"),
+    ],
+)
+def test_the_day_is_a_shorter_months_last_day(day: int, today: str, cancel_by: str, exit_day: str) -> None:
+    result = compute_contract(terms(**{**DEUTSCHLANDTICKET, "notice_day": day}), ctx(today=today))
+    assert (result.cancel_by, result.earliest_exit) == (cancel_by, exit_day)
+
+
+def test_a_notice_period_stated_with_the_day_applies_too() -> None:
+    """Review of migration 0004: prompt 9 read this letter's "bis zum 10." as 10 days' notice. Read with the
+    day as well, a stated period that won over it gave "cancel any time with 10 days' notice … ends on Mon 12
+    Oct" — no deadline, 19 days before the true one. Both apply now, the earlier deadline decides; another
+    basis ignores the day."""
+    misread = compute_contract(
+        terms(**DEUTSCHLANDTICKET, notice_value=10, notice_unit="days"), ctx(today=SAM_TODAY)
+    )
+    assert (misread.cancel_by, misread.earliest_exit) == ("2026-10-10", "2026-10-31")
+    assert misread.summary.startswith(
+        "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 10 Oct 2026 (10 days' notice by the 10th of "
+        "the month, as the contract says)"
+    )
+    month = compute_contract(
+        terms(**DEUTSCHLANDTICKET, notice_value=1, notice_unit="months"), ctx(today=SAM_TODAY)
+    )
+    assert (month.cancel_by, month.earliest_exit) == ("2026-09-30", "2026-10-31")  # the month's the earlier
+    assert (
+        "To end the contract on Sat 31 Oct 2026 with one month's notice by the 10th of the month, it must arrive "
+        "by Wed 30 Sep 2026"
+    ) in [s.label for s in month.steps]
+    # capped as a period alone would be (§ 309 Nr. 9 BGB: at most one month), with the day still applying
+    long = compute_contract(
+        terms(**DEUTSCHLANDTICKET, notice_value=3, notice_unit="months"), ctx(today=SAM_TODAY)
+    )
+    assert (long.cancel_by, long.earliest_exit) == ("2026-09-30", "2026-10-31")
+    assert any(w.startswith("Your contract asks for three months' notice") for w in long.warnings)
+    any_time = compute_contract(
+        terms(**{**DEUTSCHLANDTICKET, "notice_basis": "any_time"}), ctx(today=SAM_TODAY)
+    )
+    assert any_time.cancel_by is None and any(
+        w.startswith("The contract's notice period wasn't found") for w in any_time.warnings
+    )
+
+
+def test_a_first_term_is_left_by_the_day_of_its_last_month() -> None:
+    """A first term still running: the day of the month it ends in (or of the month before, when the term ends
+    first); once that has passed, the next month end whose day is ahead — never inside the first term."""
+    gym = {
+        "category": "gym",
+        "concluded_date": "2026-01-15",
+        "start_date": "2026-02-01",
+        "initial_term_months": 12,
+    }
+    day = {"notice_basis": "end_of_month", "notice_day": 10}
+    running = compute_contract(terms(**gym, **day), ctx(today=SAM_TODAY))
+    assert (running.cancel_by, running.earliest_exit, running.current_term_end, running.next_renewal) == (
+        "2027-01-10",
+        "2027-01-31",
+        "2027-01-31",
+        "2027-02-01",
+    )
+    assert running.summary.endswith("otherwise it continues.")
+    missed = compute_contract(terms(**gym, **day), ctx(today="2027-01-20"))
+    assert "The deadline to leave when the first term ends was Sun 10 Jan 2027" in [
+        s.label for s in missed.steps
+    ]
+    assert (missed.cancel_by, missed.earliest_exit) == ("2027-02-10", "2027-02-28")
+    mid_month = compute_contract(terms(**{**gym, "start_date": "2026-02-06"}, **day), ctx(today=SAM_TODAY))
+    assert (mid_month.cancel_by, mid_month.earliest_exit) == ("2027-01-10", "2027-02-05")
+
+
+def test_an_end_date_with_the_day_needs_notice() -> None:
+    """Review of migration 0004: a minimum term's end read as the end date, with the day as the only notice
+    term, was "ends by itself — no cancellation needed" while the contract runs on. The day needs notice, as a
+    notice period does."""
+    gym = {
+        "category": "gym",
+        "concluded_date": "2026-01-15",
+        "start_date": "2026-02-01",
+        "end_date": "2027-01-31",
+    }
+    result = compute_contract(terms(**gym, notice_basis="end_of_month", notice_day=10), ctx(today=SAM_TODAY))
+    assert (result.cancel_by, result.earliest_exit, result.next_renewal) == (
+        "2027-01-10",
+        "2027-01-31",
+        "2027-02-01",
+    )
+    assert "fixed_term" not in result.rule_ids and "no cancellation needed" not in result.summary
+    # the day is read only with a month-end basis: another one leaves the end date deciding
+    other = compute_contract(terms(**gym, notice_basis="any_time", notice_day=10), ctx(today=SAM_TODAY))
+    assert other.summary == "This contract ends by itself on Sun 31 Jan 2027 — no cancellation needed."
+
+
+def test_the_day_waits_for_a_first_term_that_still_runs() -> None:
+    """Review of migration 0004: under the contract's own terms (here a business contract), "by the 10th of a
+    month, to its end" gave an exit inside a 24-month first term. The first term is left by the day of its last
+    month; once that has passed, the month ends after it."""
+    business = {
+        "category": "internet",
+        "is_consumer": False,
+        "start_date": "2026-01-01",
+        "initial_term_months": 24,
+        "renewal_term_months": 12,
+        "notice_basis": "end_of_month",
+        "notice_day": 10,
+    }
+    running = compute_contract(terms(**business), ctx(today=SAM_TODAY))
+    assert running.regime == "as_written"
+    assert (running.cancel_by, running.earliest_exit, running.next_renewal) == (
+        "2027-12-10",
+        "2027-12-31",
+        "2028-01-01",
+    )
+    missed = compute_contract(terms(**business), ctx(today="2027-12-15"))
+    assert "The deadline to leave when the first term ends was Fri 10 Dec 2027" in [
+        s.label for s in missed.steps
+    ]
+    assert (missed.cancel_by, missed.earliest_exit) == ("2028-01-10", "2028-01-31")
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"},  # bgb309_old
+        {"category": "streaming"},  # as_written
+    ],
+)
+def test_renewing_contracts_read_the_day_too(kw: dict[str, Any]) -> None:
+    result = compute_contract(terms(**kw, notice_basis="end_of_month", notice_day=15), ctx(today=SAM_TODAY))
+    assert (result.cancel_by, result.earliest_exit) == ("2026-10-15", "2026-10-31")
+    assert result.summary.startswith(
+        "To leave on Sat 31 Oct 2026, your notice must arrive by Thu 15 Oct 2026"
+    )
+    # with a notice period too, both apply (the old consumer rule caps it at three months)
+    short = compute_contract(
+        terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=2, notice_unit="weeks"),
+        ctx(today=SAM_TODAY),
+    )
+    assert (short.cancel_by, short.earliest_exit) == ("2026-10-15", "2026-10-31")
+    long = compute_contract(
+        terms(**kw, notice_basis="end_of_month", notice_day=15, notice_value=4, notice_unit="months"),
+        ctx(today=SAM_TODAY),
+    )
+    capped = any(w.startswith("Your contract asks for four months' notice") for w in long.warnings)
+    if result.regime == "bgb309_old":
+        assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2026-12-31", True)
+    else:
+        assert (long.cancel_by, long.earliest_exit, capped) == ("2026-09-30", "2027-01-31", False)
+
+
+def test_insurance_ignores_the_day() -> None:
+    insurance = {
+        "category": "insurance",
+        "party_kind": "insurer",
+        "start_date": "2023-12-01",
+        "notice_value": 3,
+    }
+    insurance |= {"notice_unit": "months", "notice_basis": "end_of_month"}
+    assert compute_contract(terms(**insurance, notice_day=10), ctx()) == compute_contract(
+        terms(**insurance), ctx()
+    )
+
+
+def test_an_implausible_day_is_missing() -> None:
+    zero = compute_contract(terms(**{**DEUTSCHLANDTICKET, "notice_day": 0}), ctx(today=SAM_TODAY))
+    assert zero.cancel_by is None and zero.confidence == "medium"  # the longest the law allows, any day
+    assert any(w.startswith("The contract's notice period wasn't found") for w in zero.warnings)
+    late = compute_contract(terms(**{**DEUTSCHLANDTICKET, "notice_day": 45}), ctx(today=SAM_TODAY))
+    assert (
+        "The contract's day of the month for notice (45) can't be right, so we ignored it — please check it."
+        in late.warnings
+    )
+    assert late.confidence == "low"
+
+
+def test_werkstudent_job_can_be_left_by_notice_before_its_end() -> None:
+    """Demo (Sam, Mon 28 Sep 2026, NW): four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB) —
+    Sat 31 Oct, so the notice must arrive by Sat 3 Oct (German Unity Day; kept, safe date Fri 2 Oct), post it
+    today; without notice the job ends by itself on Wed 31 Mar 2027."""
+    result = compute_contract(terms(**WERKSTUDENT), ctx(today=SAM_TODAY))
+    assert result.regime == "employment622"
+    assert (result.cancel_by, result.safe_date, result.send_by, result.earliest_exit) == (
+        "2026-10-03",
+        "2026-10-02",
+        "2026-09-28",
+        "2026-10-31",
+    )
+    assert result.current_term_end == "2027-03-31" and result.next_renewal is None  # no decision locks you in
+    assert "fixed_term" in result.rule_ids and "bgb_622" in result.rule_ids
+    assert result.confidence == "medium"  # the statutory four weeks were assumed
+    assert result.summary == (
+        "To leave on Sat 31 Oct 2026, your notice must arrive by Sat 3 Oct 2026; send it by Mon 28 Sep. If you "
+        "don't give notice, it ends by itself on Wed 31 Mar 2027."
+    )
+    written = compute_contract(
+        terms(**WERKSTUDENT, notice_value=4, notice_unit="weeks", notice_basis="end_of_month"),
+        ctx(today=SAM_TODAY),
+    )
+    assert (written.cancel_by, written.earliest_exit, written.current_term_end) == (
+        "2026-10-03",
+        "2026-10-31",
+        "2027-03-31",
+    )
+    assert written.confidence == "high"
+    assert not any("probation" in w for w in written.warnings)
+
+
+FLOOR = (
+    "Before the fixed term's end we used at least four weeks' notice to the 15th or the end of a month (§ 622 "
+    "Abs. 1 BGB): a shorter notice, or notice to any day, is usually the probation period's (§ 622 Abs. 3 BGB), "
+    "and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB)."
+)
+
+
+def test_a_job_left_before_its_end_gets_at_least_the_statutory_notice() -> None:
+    """Review of migration 0004: the working-student contract's probation clause ("mit einer Frist von zwei
+    Wochen") is where a model picks up 2 weeks or any day. Planned as read, the job "ends on Fri 16 Oct" with no
+    deadline; after probation § 622 Abs. 1 BGB applies (a contract can't shorten it, § 622 Abs. 5 BGB): arrive by
+    Sat 3 Oct for Sat 31 Oct."""
+    probation = compute_contract(
+        terms(**WERKSTUDENT, notice_value=2, notice_unit="weeks", notice_basis="any_time"),
+        ctx(today=SAM_TODAY),
+    )
+    assert (probation.cancel_by, probation.earliest_exit, probation.current_term_end) == (
+        "2026-10-03",
+        "2026-10-31",
+        "2027-03-31",
+    )
+    assert FLOOR in probation.warnings
+    assert probation.summary.endswith("If you don't give notice, it ends by itself on Wed 31 Mar 2027.")
+    # any day with the statutory four weeks assumed: still to the 15th or the end of a month
+    statutory = compute_contract(terms(**WERKSTUDENT, notice_basis="any_time"), ctx(today="2026-10-05"))
+    assert (statutory.cancel_by, statutory.earliest_exit) == ("2026-10-18", "2026-11-15")
+    # a longer period stands, to the 15th or the end of a month
+    longer = compute_contract(
+        terms(**WERKSTUDENT, notice_value=3, notice_unit="months", notice_basis="any_time"),
+        ctx(today=SAM_TODAY),
+    )
+    assert (longer.cancel_by, longer.earliest_exit) == ("2026-09-30", "2026-12-31")
+    # an open-ended job keeps its terms as read
+    open_ended = {**WERKSTUDENT, "end_date": None, "notice_value": 2, "notice_unit": "weeks"}
+    as_read = compute_contract(terms(**open_ended, notice_basis="any_time"), ctx(today=SAM_TODAY))
+    assert (as_read.cancel_by, as_read.earliest_exit) == (None, "2026-10-16")
+
+
+def test_a_job_notice_cant_end_sooner_than_its_end_date() -> None:
+    """Near its end, or after it: the fixed term decides (and the clause is not read for a flat let)."""
+    near = compute_contract(terms(**WERKSTUDENT), ctx(today="2027-03-10"))
+    assert (near.cancel_by, near.earliest_exit, near.current_term_end) == (None, "2027-03-31", "2027-03-31")
+    assert near.summary == "This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed."
+    # the fixed term alone explains it: no notice's must-arrive-by date, no assumed notice period
+    unflagged = compute_contract(
+        terms(**{**WERKSTUDENT, "notice_before_end": False}), ctx(today="2027-03-10")
+    )
+    assert [s.label for s in near.steps] == [
+        *[s.label for s in unflagged.steps[:-1]],
+        "Fixed term: notice can't end it sooner, so it ends on Wed 31 Mar 2027",
+    ]
+    assert near.model_copy(update={"steps": unflagged.steps}) == unflagged
+    assert "bgb_188" not in near.rule_ids and near.confidence == "high"
+    past = compute_contract(terms(**{**WERKSTUDENT, "end_date": "2026-03-31"}), ctx(today=SAM_TODAY))
+    without = compute_contract(
+        terms(**{**WERKSTUDENT, "end_date": "2026-03-31", "notice_before_end": False}), ctx(today=SAM_TODAY)
+    )
+    assert past == without and past.summary.startswith(
+        "This job's fixed-term end date, Tue 31 Mar 2026, has passed."
+    )
+    lease = {"category": "rent", "start_date": "2025-04-01", "end_date": "2027-03-31"}
+    assert compute_contract(terms(**lease, notice_before_end=True), ctx()) == compute_contract(
+        terms(**lease), ctx()
+    )
 
 
 # ------------------------------------------------------------------------ research examples

@@ -6,7 +6,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, expect, expectNoRawEnums, open, setTour, settle, test } from "./helpers";
+import { apiGet, contractOf, expect, expectNoRawEnums, open, setTour, settle, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const TRACKING = "RT 123 456 785 DE";
@@ -51,16 +51,14 @@ function receiptPdf(): Buffer {
  * and a call with FunkNetz whose promise is overdue. Made once per demo run (the tests share it).
  */
 async function setUp(page: Page): Promise<Setup> {
-  const contracts = await apiGet<{ id: string; name: string | null; party_id: string | null }[]>(page, "/api/contracts");
-  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""));
-  expect(contract, "the FunkNetz contract").toBeTruthy();
+  const contract = await contractOf(page, "mobile"); // FunkNetz's: the demo's phone contract
   const parties = await apiGet<{ id: string; name: string }[]>(page, "/api/parties");
-  const party = parties.find((p) => p.id === contract!.party_id)!;
+  const party = parties.find((p) => p.id === contract.party_id)!;
   const drafts = await apiGet<DraftRow[]>(page, "/api/drafts");
-  const done = drafts.find((d) => d.contract_id === contract!.id && d.status === "sent" && d.tracking_number);
+  const done = drafts.find((d) => d.contract_id === contract.id && d.status === "sent" && d.tracking_number);
   if (done) return { draftId: done.id, partyId: party.id, partyName: party.name };
 
-  const made = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: contract!.id }, headers: CLIENT });
+  const made = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: contract.id }, headers: CLIENT });
   expect(made.status(), "draft the cancellation").toBe(201);
   const draftId = ((await made.json()) as { id: string }).id;
   const sent = await page.request.post(`/api/drafts/${draftId}/sent`, { data: { channel: "registered_letter", date: "2026-09-22", tracking_number: TRACKING }, headers: CLIENT });
@@ -231,8 +229,7 @@ test("keyboard focus never falls to <body> after the proof, Waiting-for and call
 
 /** An unsent cancellation of the FunkNetz contract (a new one each time: marking it sent uses it up). */
 async function unsentLetter(page: Page): Promise<string> {
-  const contracts = await apiGet<{ id: string; name: string | null }[]>(page, "/api/contracts");
-  const contract = contracts.find((c) => /FunkNetz/.test(c.name ?? ""))!;
+  const contract = await contractOf(page, "mobile");
   const made = await page.request.post("/api/drafts", { data: { kind: "cancellation", contract_id: contract.id }, headers: CLIENT });
   expect(made.status(), "draft a cancellation").toBe(201);
   return ((await made.json()) as { id: string }).id;

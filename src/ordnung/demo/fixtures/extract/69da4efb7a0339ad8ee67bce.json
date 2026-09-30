@@ -1,0 +1,136 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "11.7.1",
+    "cache_key": "{\"doc\":\"8cbbb797476debc36595b65be482a75a934a1ebec1a122d81d0ca05ed0a8050d\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"title\":\"Suspicious \\\"final warning before seizure\\\" for broadcasting fees (€254.35)\",\"case_title\":\"Suspected fake Rundfunkbeitrag collection letter\",\"summary\":\"A letter dated 26 September 2026 from a \\\"Rundfunk Zahlungszentrale\\\" demands €254.35 in broadcasting fees within 48 hours of receipt. It threatens account and wage seizure and asks for payment to a Lithuanian IBAN. It has several signs of a scam.\",\"explanation\":\"This letter looks like a scam, or at least needs checking before you pay anything. The real fee service (Beitragsservice) does not normally demand payment within 48 hours. It does not normally use foreign accounts or tell you not to contact its usual address. The IBAN is Lithuanian (LT) and the payee is a \\\"UAB\\\", which is a Lithuanian company form. Don't pay and don't reply by the e-mail given. Instead, check your fee account through the official Beitragsservice website or the contact details from your earlier letters. If it is fake, you can report it to the police or a consumer advice centre.\",\"language\":\"German\",\"urgency\":\"high\",\"area\":\"money\",\"document_date\":\"2026-09-26\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale (RBS)\",\"kind\":\"company\",\"address\":\"Postfach 4 41 10, 12399 Musterstadt\",\"email\":\"zahlung@rundfunk-beitragservice.example\"},\"payment\":{\"iban\":\"LT083999000005439871\",\"payee\":\"RBS Zahlungszentrale / Beitragsinkasso UAB\",\"reference\":\"623918044-ZZ\",\"iban_valid\":null},\"items\":[{\"kind\":\"task\",\"title\":\"Verify the demand before paying\",\"action\":\"Check with the official Beitragsservice (using contact details from earlier genuine letters, not this one) whether you owe any arrears. Do not pay to the IBAN in this letter until confirmed.\",\"consequence\":\"The letter threatens seizure of account and wages, but this is unverified and may be a scam.\",\"priority\":\"high\",\"date\":{\"type\":\"none\",\"text\":\"innerhalb von 48 Stunden nach Erhalt dieses Schreibens\"},\"quote\":\"Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48\"},{\"kind\":\"payment\",\"title\":\"Claimed arrears (unverified)\",\"action\":\"Do not pay until the claim is verified as genuine.\",\"consequence\":\"The letter says enforcement (Zwangsvollstreckung) with further costs of at least €180 would follow.\",\"amount\":254.35,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"high\",\"date\":{\"type\":\"none\",\"text\":\"innerhalb von 48 Stunden nach Erhalt dieses Schreibens\"},\"quote\":\"GESAMT OFFEN   254,35 EUR\"}],\"key_facts\":[{\"label\":\"Total claimed (GESAMT OFFEN)\",\"value\":\"254,35 EUR\",\"quote\":\"GESAMT OFFEN   254,35 EUR\"},{\"label\":\"Broadcasting fees claimed (Rundfunkbeitrag 01.2025 – 12.2025)\",\"value\":\"220,32 EUR\",\"quote\":\"Rundfunkbeitrag 01.2025 – 12.2025 (12 x 18,36 EUR)   220,32 EUR\"},{\"label\":\"Late fee (Säumniszuschlag)\",\"value\":\"8,00 EUR\",\"quote\":\"Säumniszuschlag   8,00 EUR\"},{\"label\":\"Processing fee (Bearbeitungsgebühr Zahlungszentrale)\",\"value\":\"26,03 EUR\",\"quote\":\"Bearbeitungsgebühr Zahlungszentrale   26,03 EUR\"},{\"label\":\"Threatened extra costs\",\"value\":\"at least 180,00 EUR\",\"quote\":\"Andernfalls wird ohne weitere Ankündigung die Zwangsvollstreckung (Kontopfändung,\"},{\"label\":\"Payee IBAN\",\"value\":\"LT08 3999 0000 0543 9871\",\"quote\":\"IBAN: LT08 3999 0000 0543 9871\"}],\"references\":[{\"label\":\"Beitrags-Nr.\",\"value\":\"623 918 044\"},{\"label\":\"Vorgangs-Nr.\",\"value\":\"ZZ-2026/88419-B\"}],\"warnings\":[\"The payment account is a Lithuanian IBAN (LT) and the payee is a 'UAB', which does not fit a German broadcasting fee service.\",\"A 48-hour deadline with threats of seizure and no further notice is a typical pressure tactic.\",\"The letter tells you not to write to the known Beitragsservice address and to use only an unfamiliar e-mail address.\",\"The sender name differs from your known Beitragsservice Musterstadt, and the greeting 'Sehr geehrte Herr Rivera' and the spaced-out signature look unprofessional.\",\"A genuine enforcement process would normally come from the fee service with an official notice, not a 'last warning' with a foreign bank account.\"],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "dunning",
+      "title": "Suspicious \"final warning before seizure\" for broadcasting fees (€254.35)",
+      "case_title": "Suspected fake Rundfunkbeitrag collection letter",
+      "summary": "A letter dated 26 September 2026 from a \"Rundfunk Zahlungszentrale\" demands €254.35 in broadcasting fees within 48 hours of receipt. It threatens account and wage seizure and asks for payment to a Lithuanian IBAN. It has several signs of a scam.",
+      "explanation": "This letter looks like a scam, or at least needs checking before you pay anything. The real fee service (Beitragsservice) does not normally demand payment within 48 hours. It does not normally use foreign accounts or tell you not to contact its usual address. The IBAN is Lithuanian (LT) and the payee is a \"UAB\", which is a Lithuanian company form. Don't pay and don't reply by the e-mail given. Instead, check your fee account through the official Beitragsservice website or the contact details from your earlier letters. If it is fake, you can report it to the police or a consumer advice centre.",
+      "language": "German",
+      "urgency": "high",
+      "area": "money",
+      "document_date": "2026-09-26",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Rundfunk-Beitragsservice Zahlungszentrale (RBS)",
+        "kind": "company",
+        "address": "Postfach 4 41 10, 12399 Musterstadt",
+        "email": "zahlung@rundfunk-beitragservice.example"
+      },
+      "payment": {
+        "iban": "LT083999000005439871",
+        "payee": "RBS Zahlungszentrale / Beitragsinkasso UAB",
+        "reference": "623918044-ZZ",
+        "iban_valid": null
+      },
+      "items": [
+        {
+          "kind": "task",
+          "title": "Verify the demand before paying",
+          "action": "Check with the official Beitragsservice (using contact details from earlier genuine letters, not this one) whether you owe any arrears. Do not pay to the IBAN in this letter until confirmed.",
+          "consequence": "The letter threatens seizure of account and wages, but this is unverified and may be a scam.",
+          "priority": "high",
+          "date": {
+            "type": "none",
+            "text": "innerhalb von 48 Stunden nach Erhalt dieses Schreibens"
+          },
+          "quote": "Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48"
+        },
+        {
+          "kind": "payment",
+          "title": "Claimed arrears (unverified)",
+          "action": "Do not pay until the claim is verified as genuine.",
+          "consequence": "The letter says enforcement (Zwangsvollstreckung) with further costs of at least €180 would follow.",
+          "amount": 254.35,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "high",
+          "date": {
+            "type": "none",
+            "text": "innerhalb von 48 Stunden nach Erhalt dieses Schreibens"
+          },
+          "quote": "GESAMT OFFEN   254,35 EUR"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total claimed (GESAMT OFFEN)",
+          "value": "254,35 EUR",
+          "quote": "GESAMT OFFEN   254,35 EUR"
+        },
+        {
+          "label": "Broadcasting fees claimed (Rundfunkbeitrag 01.2025 – 12.2025)",
+          "value": "220,32 EUR",
+          "quote": "Rundfunkbeitrag 01.2025 – 12.2025 (12 x 18,36 EUR)   220,32 EUR"
+        },
+        {
+          "label": "Late fee (Säumniszuschlag)",
+          "value": "8,00 EUR",
+          "quote": "Säumniszuschlag   8,00 EUR"
+        },
+        {
+          "label": "Processing fee (Bearbeitungsgebühr Zahlungszentrale)",
+          "value": "26,03 EUR",
+          "quote": "Bearbeitungsgebühr Zahlungszentrale   26,03 EUR"
+        },
+        {
+          "label": "Threatened extra costs",
+          "value": "at least 180,00 EUR",
+          "quote": "Andernfalls wird ohne weitere Ankündigung die Zwangsvollstreckung (Kontopfändung,"
+        },
+        {
+          "label": "Payee IBAN",
+          "value": "LT08 3999 0000 0543 9871",
+          "quote": "IBAN: LT08 3999 0000 0543 9871"
+        }
+      ],
+      "references": [
+        {
+          "label": "Beitrags-Nr.",
+          "value": "623 918 044"
+        },
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "ZZ-2026/88419-B"
+        }
+      ],
+      "warnings": [
+        "The payment account is a Lithuanian IBAN (LT) and the payee is a 'UAB', which does not fit a German broadcasting fee service.",
+        "A 48-hour deadline with threats of seizure and no further notice is a typical pressure tactic.",
+        "The letter tells you not to write to the known Beitragsservice address and to use only an unfamiliar e-mail address.",
+        "The sender name differs from your known Beitragsservice Musterstadt, and the greeting 'Sehr geehrte Herr Rivera' and the spaced-out signature look unprofessional.",
+        "A genuine enforcement process would normally come from the fee service with an official notice, not a 'last warning' with a foreign bank account."
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2461,
+      "cache_read_tokens": 8372,
+      "cache_creation_tokens": 2681,
+      "cost_usd": 0.0370124,
+      "duration_ms": 16437,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
