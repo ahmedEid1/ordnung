@@ -218,7 +218,9 @@ def build_agenda(store: Store, today: date) -> Agenda:
     month_start = today.replace(day=1)
     next_month = (month_start + timedelta(days=32)).replace(day=1)
     for item in ledger.actionable_items():
-        due, act = parse_day(item.due_date), action_day(item)
+        due = parse_day(item.due_date)
+        # a fee paid in person at an appointment is paid on its day, never transferred ahead
+        act = due if paid_at_appointment(item, ledger.items) else action_day(item)
         if due is None or act is None or (item.kind == "payment" and item.direction == "in"):
             continue
         if is_overdue(item, today):
@@ -411,15 +413,56 @@ _SEND_WORD = re.compile(
     r"|senden|sende)\b",
     re.IGNORECASE,
 )
-#: Where a sentence's clauses end: ", " (not the comma of "640,00"), ";", ": ", brackets, a spaced dash
+#: Where a sentence's clauses end: ", " (not the comma of "640,00"), ";", ": ", brackets (those that
+#: hold neither a date nor a due or send word are unwrapped first, :func:`_unbracket`), a spaced dash
 #: (typographic dashes are folded to "-") and a few conjunctions ("and"/"und" do not end one).
 _CLAUSE_END = re.compile(
     r",\s|;|:\s|[()\[\]]|\s-+\s|\b(?:but|so|then|while|whereas|aber|doch|sondern|dann|während)\b",
     re.IGNORECASE,
 )
+_BRACKETED = re.compile(r"[(\[]([^()\[\]]*)[)\]]")
 _AND = re.compile(r"\b(?:and|und|as well as|sowie)\b", re.IGNORECASE)
 _PLURAL = re.compile(r"\b(?:are|were|sind|waren)\b", re.IGNORECASE)
 _WORD = re.compile(r"[^\W\d_]{4,}")
+#: Days written relative to the agenda's day, by how many days after it they are ("morgen" is
+#: tomorrow; "Morgen" inside a clause is the morning: "Guten Morgen", "heute Morgen").
+_RELATIVE_DAYS = {
+    "the day after tomorrow": 2,
+    "übermorgen": 2,
+    "tomorrow": 1,
+    "morgen": 1,
+    "today": 0,
+    "heute": 0,
+}
+_RELATIVE = re.compile(
+    r"\b(?:" + "|".join(word.replace(" ", r"\s+") for word in _RELATIVE_DAYS) + r")\b", re.IGNORECASE
+)
+#: Weekday names a note may write without a date ("due Wednesday"), by weekday (Monday = 0). Names are
+#: capitalised, so a lower-case "sat" or "sun" is no weekday; a date's own weekday ("Fri 2 Oct") is
+#: removed before (:func:`~ordnung.secretary.review.strip_weekdays`).
+_WEEKDAYS = {
+    **dict.fromkeys(("Monday", "Mon", "Montag"), 0),
+    **dict.fromkeys(("Tuesday", "Tues", "Tue", "Dienstag"), 1),
+    **dict.fromkeys(("Wednesday", "Wed", "Mittwoch"), 2),
+    **dict.fromkeys(("Thursday", "Thurs", "Thur", "Thu", "Donnerstag"), 3),
+    **dict.fromkeys(("Friday", "Fri", "Freitag"), 4),
+    **dict.fromkeys(("Saturday", "Sat", "Samstag", "Sonnabend"), 5),
+    **dict.fromkeys(("Sunday", "Sun", "Sonntag"), 6),
+}
+_WEEKDAY = re.compile(
+    r"(?:\b(?P<last>(?i:last|previous|letzten|vergangenen))\s+)?"
+    r"\b(?P<name>" + "|".join(sorted(_WEEKDAYS, key=len, reverse=True)) + r")\b"
+)
+#: A "by" before a date ("by Fri 2 Oct", "bis zum 2. Oktober"): a day to act by, which a due word
+#: labels only when it governs it directly (:func:`_labels`).
+_BY_BEFORE = re.compile(
+    r"\b(?:by|until|before|bis|spätestens|vor)(?:\s+(?:the|zum|am|dem|den|spätestens))*\s*$", re.IGNORECASE
+)
+#: Words that may stand between a due word and a "by" date it governs ("due by", "bis zum … fällig").
+_LINK_WORDS = frozenset(
+    {"on", "or", "by", "until", "before", "the", "is", "it", "are", "am", "bis", "zum", "spätestens"}
+    | {"vor", "dem", "den", "ist", "sind", "sie", "es", "er", "wird", "werden"}
+)
 #: Words of titles that name no to-do: months, weekdays and a few common ones.
 _NOT_NAMES = frozenset(
     {
@@ -434,7 +477,8 @@ _NOT_NAMES = frozenset(
 
 @dataclass(frozen=True)
 class _Mention:
-    """A date written in a clause, with where it is."""
+    """A date in a clause, with where it is: written out ("2 Oct"), or a day word the agenda's day
+    resolves ("tomorrow", "Wednesday"; ``written`` is then false)."""
 
     text: str
     day: int
@@ -442,6 +486,7 @@ class _Mention:
     year: int | None
     start: int
     end: int
+    written: bool = True
 
     def is_day(self, iso: str | None) -> bool:
         """Whether this mention writes the day ``iso`` (by day and month when it has no year)."""
@@ -453,7 +498,15 @@ class _Mention:
         return (self.month, self.day) == (value.month, value.day)
 
 
-def _mentions(clause: str) -> list[_Mention]:
+def _day_word(match: re.Match[str], day: date, group: int | str = 0) -> _Mention:
+    start, end = match.span(group)
+    return _Mention(match.group(group), day.day, day.month, day.year, start, end, written=False)
+
+
+def _mentions(clause: str, today: date) -> list[_Mention]:
+    """The dates of ``clause`` in order: written ones, and "today"/"tomorrow"/"heute"/"morgen" and bare
+    weekday names ("due Wednesday": the next such day after ``today``, as today is "today"; "last
+    Friday" is left out)."""
     found: list[_Mention] = []
     cursor = 0
     for mention in parse_dates(clause):
@@ -461,7 +514,30 @@ def _mentions(clause: str) -> list[_Mention]:
         start = cursor if start < 0 else start
         cursor = start + len(mention.text)
         found.append(_Mention(mention.text, mention.day, mention.month, mention.year, start, cursor))
-    return found
+    for match in _RELATIVE.finditer(clause):
+        if match.group() == "Morgen" and clause[: match.start()].strip():
+            continue
+        ahead = _RELATIVE_DAYS[" ".join(match.group().casefold().split())]
+        found.append(_day_word(match, today + timedelta(days=ahead)))
+    for match in _WEEKDAY.finditer(clause):
+        if match.group("last"):
+            continue
+        ahead = (_WEEKDAYS[match.group("name")] - today.weekday()) % 7 or 7
+        found.append(_day_word(match, today + timedelta(days=ahead), "name"))
+    return sorted(found, key=lambda mention: mention.start)
+
+
+def _unbracket(sentence: str, today: date) -> str:
+    """``sentence`` with the brackets that hold no date and no due or send word written as spaces: an
+    amount or a word in brackets belongs to its clause ("the gym fee (€29.90) is due", "rent (Miete)")."""
+
+    def unwrap(match: re.Match[str]) -> str:
+        inner = match.group(1)
+        if _DUE_WORD.search(inner) or _SEND_WORD.search(inner) or _mentions(inner, today):
+            return match.group()
+        return f" {inner} "
+
+    return _BRACKETED.sub(unwrap, sentence)
 
 
 def _todos(agenda: Agenda) -> list[AgendaEntry]:
@@ -514,52 +590,96 @@ def _mislabelled(mention: _Mention, named: list[AgendaEntry], todos: list[Agenda
     )
 
 
+def _labels(clause: str, word: re.Match[str], mention: _Mention) -> bool:
+    """Whether the due word ``word`` can label ``mention``: always, unless the date follows a "by" and
+    the due word does not govern it directly — "the amount due of €94.99 by 29 Sep" names a day to pay
+    by, "due by 2 Oct" and "bis zum 2. Oktober fällig" a due date."""
+    if not _BY_BEFORE.search(clause[: mention.start]):
+        return True
+    if word.end() <= mention.start:
+        between = clause[word.end() : mention.start]
+    else:
+        between = clause[mention.end : word.start()]
+    return all(token.casefold() in _LINK_WORDS for token in re.findall(r"\w+", between))
+
+
 def _nearest(dates: list[_Mention], word: re.Match[str]) -> _Mention:
     """The date nearest to ``word`` (the later one on a tie)."""
     return min(dates, key=lambda m: (max(m.start - word.end(), word.start() - m.end), -m.start))
 
 
-def _subject(clause: str, word: re.Match[str]) -> str:
-    """The part of ``clause`` a due word is about: its own "and" part ("the fee is due and the rent
-    goes out"), or the whole clause after a plural verb ("the rent and the fee are due")."""
-    if _PLURAL.search(clause[: word.start()]):
-        return clause
+def _parts(clause: str) -> list[tuple[int, int]]:
+    """The spans of ``clause``'s "and" parts ("the fee is due" · "the rent goes out")."""
+    spans: list[tuple[int, int]] = []
     start = 0
     for joint in _AND.finditer(clause):
-        if joint.start() >= word.start():
-            return clause[start : joint.start()]
+        spans.append((start, joint.start()))
         start = joint.end()
-    return clause[start:]
+    spans.append((start, len(clause)))
+    return spans
+
+
+def _about(
+    clauses: list[str], index: int, word: re.Match[str], todos: list[AgendaEntry], words: dict[str, set[str]]
+) -> list[AgendaEntry]:
+    """The to-dos the due word ``word`` of ``clauses[index]`` is about: those named in its "and" part
+    (every part not about sending after a plural verb: "the rent and the fee are due"), else in the
+    other parts of its clause, else in the other clauses of its sentence — parts and clauses about
+    sending left out ("… both due that day, and transfer the rent")."""
+    clause = clauses[index]
+    parts = [(clause[start:end], start <= word.start() <= end) for start, end in _parts(clause)]
+    if _PLURAL.search(clause[: word.start()]):
+        subject = " ".join(text for text, own in parts if own or not _SEND_WORD.search(text))
+    else:
+        subject = next(text for text, own in parts if own)
+    other_parts = [text for text, own in parts if not own and not _SEND_WORD.search(text)]
+    other_clauses = [
+        other for at, other in enumerate(clauses) if at != index and not _SEND_WORD.search(other)
+    ]
+    for text in (subject, " ".join(other_parts), " ".join(other_clauses)):
+        if found := _named(text, todos, words):
+            return found
+    return []
 
 
 def mislabelled_dates(text: str, agenda: Agenda) -> list[str]:
     """Dates ``text`` calls due ("due", "fällig", …) that are a send-by day, not the due date.
 
-    A due word labels the date of its clause nearest to it — in a clause without a date, the dates
-    of its sentence's clauses that are not about sending ("Then on Fri 2 Oct, the rent is due"). The
-    to-dos it is about are those named (by amount or by a word of their own) in its part of the
-    clause (:func:`_subject`), else in its clause, else in its sentence; see :func:`_mislabelled`.
+    Dates are written ones and the day words the agenda's day resolves ("due tomorrow", "due
+    Wednesday"). A due word labels the date of its clause nearest to it, in its own "and" part first (a
+    "by" date only when the due word governs it, :func:`_labels`). A due word in a clause without any
+    date labels the dates of its sentence's clauses that are not about sending ("Then on Fri 2 Oct, the
+    rent is due") — but not today's date when the sentence writes it out ("Today is Tue 29 Sep; …" says
+    what day it is, so "Today, Tue 29 Sep, the fee is due" is not checked). The to-dos it is about are
+    :func:`_about`; whether the label is wrong, :func:`_mislabelled`.
     """
+    today = parse_day(agenda.date) or date.today()
     todos = _todos(agenda)
     words = _own_words(todos)
     wrong: list[str] = []
     for sentence in split_sentences(strip_weekdays(fold_punctuation(text))):
+        sentence = _unbracket(sentence, today)
         clauses = [clause for clause in _CLAUSE_END.split(sentence) if clause.strip()]
+        found = [_mentions(clause, today) for clause in clauses]
+        states_today = any(
+            mention.written and mention.is_day(agenda.date) for dates in found for mention in dates
+        )
         loose = [
-            mention for clause in clauses if not _SEND_WORD.search(clause) for mention in _mentions(clause)
+            mention
+            for clause, dates in zip(clauses, found, strict=True)
+            if not _SEND_WORD.search(clause)
+            for mention in dates
+            if not (states_today and mention.is_day(agenda.date))
         ]
-        for clause in clauses:
-            dates = _mentions(clause)
+        for index, (clause, dates) in enumerate(zip(clauses, found, strict=True)):
+            spans = _parts(clause)
             for word in _DUE_WORD.finditer(clause):
-                labelled = [_nearest(dates, word)] if dates else loose
-                named = next(
-                    (
-                        found
-                        for part in (_subject(clause, word), clause, sentence)
-                        if (found := _named(part, todos, words))
-                    ),
-                    [],
-                )
+                start, end = next(span for span in spans if span[0] <= word.start() <= span[1])
+                candidates = [mention for mention in dates if _labels(clause, word, mention)]
+                in_part = [mention for mention in candidates if start <= mention.start < end]
+                # its own date; with none, the sentence's (a clause whose only dates are "by" dates has none)
+                labelled = [_nearest(in_part or candidates, word)] if candidates else [] if dates else loose
+                named = _about(clauses, index, word, todos, words)
                 for mention in labelled:
                     if mention.text not in wrong and _mislabelled(mention, named, todos):
                         wrong.append(mention.text)

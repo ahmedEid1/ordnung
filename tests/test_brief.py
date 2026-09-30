@@ -236,6 +236,13 @@ def test_a_missed_or_in_person_send_by_day_is_not_named(store: Store, ids: dict[
     row = next(row for row in _rows(_model_payload(late), "today") if row["id"] == rent)
     assert row["due"] == "2026-10-05" and "send_by" not in row
 
+    fee = _visa_fee(store)
+    paid_there = next(entry for entry in build_agenda(store, TODAY).next_7_days if entry.id == fee)
+    assert (paid_there.due, paid_there.send_by) == ("2026-10-01", None)
+
+
+def _visa_fee(store: Store) -> str:
+    """A visa fee of €93 paid at the appointment on Thu 1 Oct 09:00 (its letter's transfer day: Tue 29 Sep)."""
     doc = add_doc(store, "visa-fee")
     add_item(
         store,
@@ -245,7 +252,7 @@ def test_a_missed_or_in_person_send_by_day_is_not_named(store: Store, ids: dict[
         due_date="2026-10-01",
         due_time="09:00",
     )
-    fee = add_item(
+    return add_item(
         store,
         kind="payment",
         title="Visa fee",
@@ -257,8 +264,21 @@ def test_a_missed_or_in_person_send_by_day_is_not_named(store: Store, ids: dict[
         currency="EUR",
         direction="out",
     )
-    paid_there = next(entry for entry in build_agenda(store, TODAY).next_7_days if entry.id == fee)
-    assert (paid_there.due, paid_there.send_by) == ("2026-10-01", None)
+
+
+def test_a_fee_paid_at_an_appointment_is_listed_on_its_day(store: Store, ids: dict[str, str]) -> None:
+    """A fee paid in person is listed (and the code-written note dates it) on the appointment's day, not
+    on the transfer day its letter's deadline gives — which the note would otherwise show unlabelled."""
+    fee = _visa_fee(store)
+    agenda = build_agenda(store, TODAY)
+    entry = next(entry for entry in agenda.next_7_days if entry.id == fee)
+    assert (entry.date, entry.due, entry.send_by) == ("2026-10-01", "2026-10-01", None)
+    assert (
+        agenda_text(Agenda(date=agenda.date, next_7_days=[entry]))
+        == "Next 7 days: Visa fee (Thu 1 Oct, €93)."
+    )
+    # on the transfer day it is not yet today's
+    assert all(entry.id != fee for entry in build_agenda(store, date(2026, 9, 29)).today)
 
 
 def test_agenda_text_says_a_send_by_day_is_one() -> None:
@@ -345,3 +365,139 @@ async def test_brief_text_falls_back_when_the_note_calls_a_send_by_day_due(
     brief = await brief_text(LLMService(backend), agenda, store.get_profile())
     assert (brief.source, brief.text) == ("template", agenda_text(agenda))
     assert "Pay monthly rent (Miete) (send by Fri 2 Oct, due Mon 5 Oct, €640)" in brief.text
+
+
+# the week of the demo: a transfer that must go out a day or more before its due date, next to to-dos
+# due on those days
+MON_28, TUE_29 = date(2026, 9, 28), date(2026, 9, 29)
+WEEK = [
+    # (id, kind, title, party, due, send_by, amount)
+    (
+        "techmarkt",
+        "payment",
+        "Pay the reminder amount for invoice TM-4711",
+        "TechMarkt Online GmbH",
+        "2026-09-30",
+        "2026-09-29",
+        94.99,
+    ),
+    ("gym", "payment", "Monthly gym membership fee", "FitWell Studios GmbH", "2026-10-01", None, 29.9),
+    (
+        "fine",
+        "payment",
+        "Pay the traffic warning fine (Verwarnungsgeld)",
+        "Stadt Musterstadt",
+        "2026-10-02",
+        "2026-10-01",
+        30.0,
+    ),
+    (
+        "rent",
+        "payment",
+        "Pay monthly rent (Miete)",
+        "Wohnbau Musterstadt eG",
+        "2026-10-05",
+        "2026-10-02",
+        640.0,
+    ),
+    ("fee", "payment", "Pay the accrued library fee", "Stadtbibliothek Musterstadt", "2026-10-02", None, 4.5),
+    (
+        "books",
+        "deadline",
+        "Return the overdue library books",
+        "Stadtbibliothek Musterstadt",
+        "2026-10-02",
+        None,
+        None,
+    ),
+]
+
+
+def _week(today: date) -> Agenda:
+    entries = [
+        AgendaEntry(
+            id=key,
+            ref=RefLink(type="item", id=key),
+            title=title,
+            kind=kind,
+            date=send_by or due,
+            due=due,
+            send_by=send_by,
+            amount=amount,
+            party=party,
+        )
+        for key, kind, title, party, due, send_by, amount in WEEK
+    ]
+    return Agenda(date=today.isoformat(), next_7_days=entries)
+
+
+MISLABELLED_IN_WEEK = [
+    # a day word is the date it names: the reminder is transferred on Tue 29 Sep and due Wed 30 Sep
+    (TUE_29, "Good morning Sam! The TechMarkt reminder of €94.99 is due today."),
+    (MON_28, "The TechMarkt reminder of €94.99 is due tomorrow."),
+    (MON_28, "Die TechMarkt-Mahnung über 94,99 € ist morgen fällig."),
+    (MON_28, "The rent of €640.00 is due Friday."),
+    (MON_28, "Die Miete (640,00 €) ist am Freitag fällig."),
+    # "due by" a send-by day is still calling it due
+    (MON_28, "Your rent of €640.00 is due by Fri 2 Oct."),
+    (MON_28, "Die Miete von 640,00 € ist bis zum 2. Oktober fällig."),
+]
+
+
+@pytest.mark.parametrize(("today", "note"), MISLABELLED_IN_WEEK)
+def test_a_day_word_or_by_date_called_due_is_checked(today: date, note: str) -> None:
+    agenda = _week(today)
+    assert not Facts.from_data(agenda.model_dump()).unsupported(note)
+    assert mislabelled_dates(note, agenda)
+    assert not grounded_note(note, agenda)
+
+
+CORRECT_IN_WEEK = [
+    # today's date stated on a send-by day, and a due word with its own day word
+    (
+        TUE_29,
+        "Good morning Sam! Today is Tue 29 Sep; the TechMarkt reminder of €94.99 is due tomorrow, Wed 30 Sep.",
+    ),
+    (
+        TUE_29,
+        "Good morning Sam! Today, Tue 29 Sep, transfer the TechMarkt reminder of €94.99, which is due tomorrow.",
+    ),
+    (
+        TUE_29,
+        "Good morning Sam! It's Tue 29 Sep, and the TechMarkt reminder of €94.99 is due tomorrow - transfer it today.",
+    ),
+    (TUE_29, "Tuesday 29 September: pay the TechMarkt reminder of €94.99, due Wednesday."),
+    # "amount due … by" names the day to pay by
+    (TUE_29, "Settle the TechMarkt amount due of €94.99 by Tue 29 Sep."),
+    # an amount in brackets stays in its clause
+    (MON_28, "The gym fee (€29.90) is due Thu 1 Oct and the traffic fine (€30.00) is due Fri 2 Oct."),
+    (
+        MON_28,
+        "Das Fitnessstudio (29,90 €) ist am 1. Oktober fällig und das Verwarnungsgeld (30,00 €) am 2. Oktober.",
+    ),
+    # a to-do named where the note speaks of sending is not what the due word is about
+    (
+        MON_28,
+        "Fri 2 Oct is busy: return the library books and pay the €4.50 fee, both due that day, and transfer "
+        "the rent of €640.00.",
+    ),
+    (
+        MON_28,
+        "Am 2. Oktober sind die Bibliotheksgebühr von 4,50 € fällig und die Miete von 640,00 € zu überweisen.",
+    ),
+    # day words for due dates; "Guten Morgen" and "heute Morgen" are no dates
+    (
+        MON_28,
+        "Guten Morgen, Sam! Die Miete von 640,00 € ist am 5. Oktober fällig; überweise sie bis Freitag.",
+    ),
+    (MON_28, "Good morning, Sam! Transfer the rent of €640.00 by Friday; it is due Monday."),
+    (MON_28, "The TechMarkt reminder of €94.99 is due Wednesday; transfer it tomorrow."),
+    (MON_28, "Heute Morgen: Die Miete von 640,00 € ist am Montag fällig."),
+]
+
+
+@pytest.mark.parametrize(("today", "note"), CORRECT_IN_WEEK)
+def test_a_correct_note_about_the_week_is_accepted(today: date, note: str) -> None:
+    agenda = _week(today)
+    assert mislabelled_dates(note, agenda) == []
+    assert grounded_note(note, agenda)
