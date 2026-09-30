@@ -2,9 +2,11 @@
  * Ask on the real demo, where jsdom can't measure (UI audit round 1, ask): long words, an IBAN and a
  * law's web address never widen a 320 px phone, markers follow their word, sources and follow-up
  * chips wrap instead of cutting their text, two suggested questions in a row both replay, a question
- * without a recording gets a note (no Try again), and the question box leaves a phone room.
+ * without a recording gets a note (no Try again), the question box leaves a phone room, and the layout
+ * sweep's target-size probe tells a marker after its words from a marker alone.
  */
 import type { Page } from "@playwright/test";
+import { layoutFindings } from "../scripts/ui-audit/probes.mjs";
 import { apiGet, expect, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -78,6 +80,53 @@ test.describe("phone", () => {
     const source = turn.getByRole("link", { name: /^Source 1:/ }).last();
     const [chip, column] = await Promise.all([source.boundingBox(), turn.boundingBox()]);
     expect(chip!.x + chip!.width).toBeLessThanOrEqual(column!.x + column!.width + 0.5);
+  });
+
+  // The layout sweep's target-size probe exempts a marker after its words (WCAG 2.5.8's inline exception). A
+  // person's or organisation's marker is a button (it opens their drawer), not a link: it counts the same when
+  // it follows words, also right after another marker ("…94.99 €¹ ²"); a marker alone in a list item does not
+  // (the sweep's run after `pages` replayed list answers ending in a letter's and a person's marker).
+  test("the target-size probe exempts markers after their words, a person's button too, but not a marker alone", async ({ page }) => {
+    const docs = await apiGet<{ id: string; title: string | null }[]>(page, "/api/documents");
+    const parties = await apiGet<{ id: string; name: string }[]>(page, "/api/parties");
+    const doc = docs[0]!;
+    const party = parties[0]!;
+    await answerWith(page, [
+      { type: "text" },
+      {
+        type: "done",
+        text: `Due soon:\n\n- The phone bill, 94.99 € [doc:${doc.id}] [party:${party.id}]\n- Paid by transfer [party:${party.id}]\n- [party:${party.id}]`,
+        note: null,
+        note_label: "Checked by Ordnung:",
+        citations: [
+          { type: "document", id: doc.id, label: doc.title },
+          { type: "party", id: party.id, label: party.name },
+        ],
+        message_id: "msg_e2e_markers",
+        thread_id: "thr_e2e_markers",
+      },
+    ]);
+    await open(page, "/ask");
+    await page.getByRole("textbox").first().fill("What is due soon?");
+    await page.getByRole("textbox").first().press("Enter");
+    await expect(status(page)).toHaveText("Answer ready.");
+
+    // the answer's list (the sources under it are a list too)
+    const items = page.getByRole("article").last().getByRole("list").first().getByRole("listitem");
+    await expect(items).toHaveCount(3);
+    // the app draws them as the sweep sees them: small inline boxes, the person's a button
+    const alone = items.nth(2).getByRole("button", { name: /^Source 2: / });
+    await expect(items.nth(0).getByRole("button", { name: /^Source 2: / })).toBeVisible();
+    await expect(alone).toBeVisible();
+    expect((await alone.boundingBox())!.height).toBeLessThan(24);
+
+    const { findings } = await layoutFindings(page);
+    const markers = findings.filter((f) => f.probe === "target-size" && f.selector.includes('[aria-label="Source '));
+    const where = await alone.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY) };
+    });
+    expect(markers.map((f) => ({ x: f.rect!.x, y: f.rect!.y })), "only the marker alone in its list item").toEqual([where]);
   });
 
   test("the question box leaves a 320 × 640 screen room: a one-line hint, no deep fade", async ({ page }) => {

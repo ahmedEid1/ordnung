@@ -452,16 +452,33 @@ function layoutProbeInPage(opts) {
 
   // f. target size (WCAG 2.5.8), skipping targets inside running text (its "inline" exception: a link,
   // a glossary term — an inline box in a sentence, whose line height sets its size)
+  //
+  // A button that reads as a citation marker after the words it backs: text of its own (a number, not an icon
+  // box), no taller than the line it sits in, and words before it in its block, an earlier marker counting as
+  // one ("…94.99 €¹ ²": the second follows the first). Ask's marker for a person or organisation is a button (it
+  // opens their drawer), a letter's, to-do's or contract's a link; a marker alone at the start of its block (a
+  // list item that is only a marker) stands on its own and needs its 24 px.
+  const markerAfterWords = (el, block) => {
+    if (!el.matches("button") || !clean(el.textContent)) return false;
+    const bs = cs(block);
+    const line = bs.lineHeight === "normal" ? parseFloat(bs.fontSize) * 1.2 : parseFloat(bs.lineHeight);
+    if (!(rectOf(el).height <= line + 0.5)) return false;
+    const before = document.createRange();
+    before.setStart(block, 0);
+    before.setEndBefore(el);
+    // spaces, no-break spaces and the word joiner that keeps a marker on its word's line are no words
+    return /[^\s⁠​]/.test(before.toString());
+  };
   const inSentence = (el) => {
     const s = cs(el);
     if (!s.display.startsWith("inline")) return false;
-    // an inline box of its own (inline-flex, -grid, -block) is a button-like box — unless it is a link in the
-    // sentence (a citation marker after the words it backs)
-    if (s.display !== "inline" && !el.matches("a[href]")) return false;
     // the box its line belongs to: the first parent that isn't itself inline
     let block = el.parentElement;
     while (block && block !== document.body && (cs(block).display === "inline" || cs(block).display === "contents")) block = block.parentElement;
     if (!block) return false;
+    // an inline box of its own (inline-flex, -grid, -block) is a button-like box — unless it is a link in the
+    // sentence (a citation marker after the words it backs) or a marker button after its words (above)
+    if (s.display !== "inline" && !el.matches("a[href]") && !markerAfterWords(el, block)) return false;
     // the whole texts, never cut to a report's length: a link of 90+ characters (a long letter title after
     // "From") would be as long as its cut sentence and count as standing alone
     const own = clean(el.textContent, Infinity);
