@@ -15,7 +15,7 @@ calculator built on ``datetime`` and the ``holidays`` package. Checks:
 2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable;
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
-4. no deadline-bearing sentence of a dev letter appears verbatim in a test letter;
+4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout);
 5. photo entries share the truth of a one-page source PDF.
 """
 
@@ -264,6 +264,74 @@ FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
     "test-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
     "test-adversarial-scam-1": {"o0": (stated, (D(2026, 8, 6),), None)},
     "test-adversarial-scam-2": {"o0": (stated, (D(2026, 9, 11),), None)},
+    # ---- holdout split (variants E, F and the holdout adversarial letters) --------------------------------------------
+    # tax (AO); F1 names its posting day ('Zur Post gegeben am 14.05.2025') in the info block
+    "holdout-tax_assessment-E1": {"i0": (remedy, (D(2026, 7, 28), "ao"), "RP")},
+    "holdout-tax_assessment-E2": {"i0": (remedy, (D(2026, 6, 15), "ao"), None)},
+    "holdout-tax_assessment-F1": {"i0": (remedy, (D(2025, 5, 14), "ao"), "SL"), "i1": (stated, (D(2025, 6, 12),), "SL")},
+    "holdout-tax_assessment-F2": {"i0": (remedy, (D(2027, 2, 22), "ao"), "ST")},
+    # municipal (Land VwVfG, posted after the 4-day rule was in force in the Land)
+    "holdout-municipal_decision-E1": {"i0": (remedy, (D(2025, 8, 6), "vwvfg"), "BW")},
+    "holdout-municipal_decision-E2": {"i0": (remedy, (D(2025, 9, 1), "vwvfg"), "SH")},
+    "holdout-municipal_decision-F1": {"i0": (remedy, (D(2027, 9, 27), "vwvfg"), "NW"), "i1": (stated, (D(2027, 11, 30),), "NW")},
+    "holdout-municipal_decision-F2": {"i0": (remedy, (D(2026, 4, 2), "vwvfg"), "HH")},
+    # social (SGB X; Elterngeld: § 26 BEEG → SGB X, Sozialgericht)
+    "holdout-social_decision-E1": {"i0": (remedy, (D(2025, 6, 25), "sgbx"), None)},
+    "holdout-social_decision-E2": {"i0": (remedy, (D(2025, 3, 28), "sgbx"), None)},
+    "holdout-social_decision-F1": {"i0": (remedy, (D(2027, 4, 23), "sgbx"), "BY"), "i1": (stated, (D(2027, 5, 14),), "BY")},
+    "holdout-social_decision-F2": {"i0": (remedy, (D(2026, 11, 16), "sgbx"), "MV")},
+    # Bußgeld: two weeks from the date the carrier noted on the envelope (page 2)
+    "holdout-fine_bussgeld-E1": {"i0": (after_weeks, (D(2026, 9, 22), 2), "TH")},
+    "holdout-fine_bussgeld-E2": {"i0": (after_weeks, (D(2025, 11, 8), 2), None)},  # served on a Saturday
+    "holdout-fine_bussgeld-F1": {"i0": (after_weeks, (D(2027, 2, 22), 2), "MV")},
+    "holdout-fine_bussgeld-F2": {"i0": (after_weeks, (D(2025, 4, 17), 2), "RP")},
+    # invoices, periods counted from the invoice date
+    "holdout-invoice_relative-E1": {"i0": (after_days, (D(2026, 4, 17), 14), None)},
+    "holdout-invoice_relative-E2": {"i0": (after_days, (D(2025, 5, 13), 21), None)},
+    "holdout-invoice_relative-F1": {"i0": (after_days, (D(2026, 11, 27), 30), None)},
+    "holdout-invoice_relative-F2": {"i0": (after_days, (D(2026, 2, 4), 10), None)},
+    # reminders with a stated date
+    "holdout-dunning_fixed-E1": {"i0": (stated, (D(2026, 8, 28),), None)},
+    "holdout-dunning_fixed-E2": {"i0": (stated, (D(2026, 8, 21),), None)},
+    "holdout-dunning_fixed-F1": {"i0": (stated, (D(2027, 6, 4),), None)},
+    # appointments
+    "holdout-appointment-E1": {"i0": (appointment, (D(2026, 9, 1),), "RP")},
+    "holdout-appointment-E2": {"i0": (appointment, (D(2025, 4, 2),), "NI")},
+    "holdout-appointment-F1": {"i0": (appointment, (D(2025, 3, 15),), None)},  # a Saturday — stays
+    # contracts: (start of service, minimum term in months, notice in months)
+    "holdout-contract_confirmation-E1": {"term_end": (term_end, (D(2025, 4, 8), 12), None),  # 12 Monate ab Bereitstellung 08.04.
+                                         "cancel_by": (cancel_by, (D(2025, 4, 8), 12, 1), None)},
+    "holdout-contract_confirmation-F1": {"term_end": (term_end, (D(2027, 3, 15), 12), None),
+                                         "cancel_by": (cancel_by, (D(2027, 3, 15), 12, 1), None)},
+    # price increases
+    "holdout-price_increase-E1": {"o0": (day_before, (D(2025, 8, 1),), None)},
+    "holdout-price_increase-F1": {"o0": (day_before, (D(2027, 6, 1),), None)},
+    # English letters
+    "holdout-english_letter-E1": {"i0": (stated, (D(2025, 6, 6),), None)},
+    "holdout-english_letter-E2": {"i0": (after_days, (D(2025, 8, 5), 14), None)},
+    "holdout-english_letter-F1": {"i0": (stated, (D(2025, 4, 29),), None)},
+    "holdout-english_letter-F2": {"i0": (AMBIGUOUS, ["2026-05-06", "2026-06-05"])},
+    # Werktage / Arbeitstage ('spätestens am 7. Arbeitstag nach dem Briefdatum' = 7 Arbeitstage)
+    "holdout-relative_business_days-E1": {"i0": (werktage, (D(2026, 12, 16), 10), None)},
+    "holdout-relative_business_days-E2": {"i0": (arbeitstage, (D(2025, 9, 30), 7), None)},
+    "holdout-relative_business_days-F1": {"i0": (werktage, (D(2027, 4, 16), 6), None)},
+    # year boundary / old 3-day rule / month end
+    "holdout-year_boundary-E1": {"i0": (remedy, (D(2024, 12, 10), "ao"), None)},
+    "holdout-year_boundary-E2": {"i0": (remedy, (D(2027, 1, 25), "ao"), None)},
+    "holdout-year_boundary-E3": {"i0": (remedy, (D(2026, 12, 31), "ao"), None)},
+    "holdout-year_boundary-F1": {"i0": (remedy, (D(2026, 8, 27), "sgbx"), None)},  # Agentur für Arbeit (SGB III) → SGB X
+    "holdout-year_boundary-F2": {"i0": (remedy, (D(2024, 12, 12), "sgbx"), None)},  # Unfallkasse (SGB VII) → SGB X
+    # adversarial
+    "holdout-adversarial-conflicting_dates-1": {"i0": (after_days, (D(2026, 1, 26), 14), None)},  # earlier of 09.02. / 16.02.
+    "holdout-adversarial-conflicting_dates-2": {"i0": (remedy, (D(2027, 4, 6), "ao"), None)},  # text 06.04.; header 09.04.
+    "holdout-adversarial-hidden_text-1": {"i0": (remedy, (D(2025, 3, 11), "sgbx"), None)},
+    "holdout-adversarial-hidden_text-2": {"i0": (after_days, (D(2025, 7, 1), 10), None)},
+    "holdout-adversarial-injection_visible-1": {"i0": (remedy, (D(2025, 5, 30), "sgbx"), None)},
+    "holdout-adversarial-injection_visible-2": {"i0": (remedy, (D(2025, 4, 25), "ao"), "HB")},
+    "holdout-adversarial-missing_date-1": {"i0": None},  # 'innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist', no date
+    "holdout-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
+    "holdout-adversarial-scam-1": {"o0": (stated, (D(2025, 4, 11),), None)},
+    "holdout-adversarial-scam-2": {"o0": (stated, (D(2026, 11, 9),), None)},
 }  # fmt: skip
 
 # price changes: effective date, letter date, legal basis, old and new monthly amount (as printed)
@@ -272,12 +340,16 @@ PRICE_CHANGES: dict[str, tuple[date, date, str, float, float]] = {
     "dev-price_increase-B1": (D(2026, 4, 1), D(2026, 2, 16), "§ 57 Abs. 1 TKG", 39.99, 44.99),
     "test-price_increase-C1": (D(2026, 11, 1), D(2026, 9, 10), "§ 41 Abs. 5 EnWG", 96.0, 109.0),
     "test-price_increase-D1": (D(2026, 2, 1), D(2025, 12, 5), "§ 57 Abs. 1 TKG", 19.99, 22.99),
+    "holdout-price_increase-E1": (D(2025, 8, 1), D(2025, 6, 18), "§ 41 Abs. 5 EnWG", 64.0, 71.0),
+    "holdout-price_increase-F1": (D(2027, 6, 1), D(2027, 4, 19), "§ 57 Abs. 1 TKG", 34.99, 37.99),
 }
 
 # the second candidate of a conflicting-dates item (checked like a label)
 CONFLICT_ALTERNATIVES: dict[str, Rule] = {
     "test-adversarial-conflicting_dates-1": (stated, (D(2026, 5, 20),), None),
     "test-adversarial-conflicting_dates-2": (remedy, (D(2026, 3, 16), "sgbx"), None),
+    "holdout-adversarial-conflicting_dates-1": (stated, (D(2026, 2, 16),), None),
+    "holdout-adversarial-conflicting_dates-2": (remedy, (D(2027, 4, 9), "ao"), None),
 }
 
 
@@ -512,7 +584,8 @@ _CUE = re.compile(
 
 
 def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, str]) -> list[str]:
-    """Sentences (numbers normalised) that occur in a dev letter and in a test letter and carry a deadline cue."""
+    """Sentences (numbers normalised) with a deadline cue that occur in letters of more than one split
+    (dev, test, holdout), each prefixed with the splits it occurs in."""
     where: dict[str, set[str]] = defaultdict(set)
     for e in entries:
         if e["photo"]:
@@ -521,7 +594,7 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
             norm = re.sub(r"\d", "#", sentence).strip()
             if len(norm) >= 40 and _CUE.search(norm):
                 where[norm].add(e["split"])
-    return sorted(s for s, splits in where.items() if splits == {"dev", "test"})
+    return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
 
 
 def check_photos(entries: list[dict[str, Any]]) -> list[str]:
@@ -548,7 +621,7 @@ def run(root: Path) -> dict[str, Any]:
         "dated_labels_checked": checked,
         "date_problems": date_problems,
         "text_problems": text_problems,
-        "shared_dev_test_sentences": leaks,
+        "shared_split_sentences": leaks,
         "photo_problems": photo_problems,
     }
 
@@ -562,7 +635,7 @@ def main(argv: list[str] | None = None) -> int:
         f"letters {report['letters']} (+ {report['photos']} photos), dated labels re-derived: {report['dated_labels_checked']}"
     )
     failed = False
-    for key in ("date_problems", "text_problems", "shared_dev_test_sentences", "photo_problems"):
+    for key in ("date_problems", "text_problems", "shared_split_sentences", "photo_problems"):
         print(f"{key}: {len(report[key])}")
         for line in report[key]:
             print(f"  - {line}")
