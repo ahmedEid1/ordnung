@@ -755,14 +755,14 @@ HTML and without remote images.
   standing alone in its title too, since 9 a matter's open to-dos and appointments are looked up before
   the answer says what to do, since 10, when the records hold nothing on the question, the first
   paragraph says only that — no date, amount or other record — and a related record may follow in a
-  paragraph of its own; the check keeps the answer's paragraph breaks) says what the check does: a value only a letter holds is not
-  stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
-  record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
-  term dates are left out, its cost stays), today's date is checked like any other date, each sentence
-  and list item cites its own record, the record's legal statements keep their hedges, German answers
-  use "Sie", and a `do_not_pay` demand is not to be paid until checked with the sender. It names every
-  ledger tool (`get_my_numbers` too) and the app's buttons by their labels ("Add your dates to your
-  calendar"). Every demo and benchmark answer was recorded with it.
+  paragraph of its own; the check keeps the answer's paragraph breaks) says what the check does: a value
+  only a letter holds is not stated (it would be shown as "[… only in the letter]", however the sentence
+  frames it), only a cited record's flagged amount and the person's own words stay as quotes (a
+  `terms_unverified` contract's term dates are left out, its cost stays), today's date is checked like
+  any other date, each sentence and list item cites its own record, the record's legal statements keep
+  their hedges, German answers use "Sie", and a `do_not_pay` demand is not to be paid until checked with
+  the sender. It names every ledger tool (`get_my_numbers` too) and the app's buttons by their labels
+  ("Add your dates to your calendar"). Every demo and benchmark answer was recorded with it.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
