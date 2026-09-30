@@ -57,7 +57,7 @@ from ordnung.models import AppSettings
 EVALS_DIR = Path(__file__).resolve().parents[1]
 RECORDED_DIR = EVALS_DIR / "recorded" / "ask"
 RESULTS_DIR = EVALS_DIR / "results"
-DEFAULT_MODEL = "sonnet"
+DEFAULT_MODEL = "claude-sonnet-5"  # a pinned id: an alias moves with releases, the recordings do not
 ASK_PROMPTS = ("ask_system", "ask")
 
 

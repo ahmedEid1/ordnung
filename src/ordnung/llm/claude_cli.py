@@ -9,6 +9,9 @@ Design notes
 * **No tools unless asked.** Extraction and transcription run with ``--tools ""``: the model sees the
   document as content blocks and can do nothing but answer. Ask gets only Ordnung's read-only MCP tools.
   No call ever uses ``--dangerously-skip-permissions``.
+* **The model.** Each request names a model alias (``sonnet``); ``ORDNUNG_CLAUDE_MODEL`` pins an id
+  for every call instead (an alias moves with releases; recordings are made with one model), as
+  ``ORDNUNG_CLAUDE_BIN`` picks the binary.
 * **Isolation.** ``--setting-sources ""`` ignores the user's hooks/settings, ``--strict-mcp-config``
   keeps the user's own MCP servers out, ``--system-prompt`` replaces the coding-assistant prompt, and
   ``--no-session-persistence`` keeps calls out of the user's history. Never ``--bare`` (it disables
@@ -270,7 +273,7 @@ class ClaudeCLIBackend:
             "stream-json",
             "--verbose",
             "--model",
-            req.model,
+            os.environ.get("ORDNUNG_CLAUDE_MODEL") or req.model,  # a pinned id beats the request's alias
             "--no-session-persistence",
             "--setting-sources",
             "",
