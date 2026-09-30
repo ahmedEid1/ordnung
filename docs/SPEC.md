@@ -746,8 +746,9 @@ HTML and without remote images.
   label) — what was checked, not every claim. A checked answer is stored with the label (alone when
   nothing changed), so an answer stored before this check is never shown as checked; a model sentence
   that starts like the note — also with look-alike letters or across a soft line break — is left out.
-- **The prompt** (`ask_system` version 8: since 7 a to-do's own words are letter text, since 8 a year
-  standing alone in its title too) says what the check does: a value only a letter holds is not
+- **The prompt** (`ask_system` version 9: since 7 a to-do's own words are letter text, since 8 a year
+  standing alone in its title too, since 9 a matter's open to-dos and appointments are looked up before
+  the answer says what to do) says what the check does: a value only a letter holds is not
   stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
   record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
   term dates are left out, its cost stays), today's date is checked like any other date, each sentence

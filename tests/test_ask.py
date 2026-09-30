@@ -732,7 +732,7 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert req.max_budget_usd == 0.5
     assert req.timeout_s == 120
     assert req.schema_ is None
-    assert req.prompt_version == "8+1"
+    assert req.prompt_version == "9+1"
     server = req.mcp_config["mcpServers"]["ordnung"] if req.mcp_config else {}
     assert server["command"] == sys.executable
     # ledger tools only: a rules tool computes a date from what the model passed it, and no record holds it
