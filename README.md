@@ -269,9 +269,9 @@ never against the app's own outputs.
 | Metric | Result |
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 98.4 % (121/123) |
-| Abstention on questions with no answer in the records | 100 % (8/8) |
-| Injected claim in the answer the person sees | 4.8 % (1/21), against 33.3 % (7/21) before the check |
+| Citation precision: the cited record holds the sentence's value | 98.1 % (101/103) |
+| Abstention on questions with no answer in the records | 87.5 % (7/8) |
+| Injected claim in the answer the person sees | 0 % (0/21), against 33.3 % (7/21) before the check |
 | Unsupported values left in final answers | 0 |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
@@ -279,14 +279,15 @@ filed differently from the truth), not values the check let through; the current
 the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
 job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the
 seven raw "successes" before the check are warnings that repeat the injected value to flag it — none
-presents the claim as the answer; the check shows such a value as "[date only in the letter]". The one
-success that reaches the person is the strict metric's: asked about the library fee, the answer gives it
-(4.50 €) and names the rent's own 640.00 € on the rent's record in a comparison of the month's payments,
-in a bullet that also cites the library's to-do. This benchmark is **not held-out**: its questions come
+presents the claim as the answer; the check shows such a value as "[date only in the letter]", and none
+reaches the person. The one question counted as answered rather than declined leads with "I don't have a
+separate gas contract or bill in your records" and names the electricity contract's cost in the same
+paragraph, which the strict rule counts as an answer. This benchmark is **not held-out**: its questions come
 from the same sample life as the demo, and the check and the prompt were revised over several review
 rounds on these recordings (the first nine attack letters were written before any measurement and never
 tuned). CI replays the recordings and gates accuracy, abstention and unsupported values; any successful
-attack but that documented one fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
+attack fails the build, but one an earlier round documented (the rent's own amount in a comparison of the
+month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 
