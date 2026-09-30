@@ -620,6 +620,41 @@ def test_doctor_with_a_fake_claude(tmp_path: Path, data_dir: Path, monkeypatch: 
     assert "2.1.5" in result.output
 
 
+def test_doctor_probes_on_the_model_every_call_runs_on(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``--probe`` tries the model saved under Settings → Claude — the default before there is any data
+    (and the folder is not created for it) — and the row names it."""
+    from ordnung import doctor
+    from ordnung.llm.claude_cli import ProbeResult
+
+    bin_dir = tmp_path / "bin"
+    fake_claude(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/bin{os.pathsep}/usr/bin")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    probed: list[str | None] = []
+
+    async def probe(
+        binary: str | None = None, timeout_s: float = 60, *, model: str | None = None
+    ) -> ProbeResult:
+        probed.append(model)
+        return ProbeResult(True, "OK", model or "haiku")
+
+    monkeypatch.setattr(doctor.claude_cli, "probe", probe)
+    result = invoke("doctor", "--probe", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert probed == ["claude-sonnet-5"] and "(on claude-sonnet-5)" in result.output
+    assert not Paths(data_dir).db.exists()
+    with Store.open(Paths(data_dir)) as store:
+        store.save_settings(store.get_settings().model_copy(update={"model": "claude-opus-5-5"}))
+    result = invoke("doctor", "--probe", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    assert probed == ["claude-sonnet-5", "claude-opus-5-5"] and "(on claude-opus-5-5)" in result.output
+    # zero tokens without --probe
+    assert invoke("doctor", "--data-dir", str(data_dir)).exit_code == 0 and len(probed) == 2
+
+
 def test_doctor_without_claude_fails_with_a_fix(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

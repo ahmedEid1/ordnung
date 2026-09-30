@@ -1,8 +1,9 @@
 """The application context: everything a request handler, CLI command or background task needs.
 
 ``build_context`` opens the data directory, applies a simulated "today" (settings or the
-``simulated_today`` meta key shared with the MCP subprocess), picks the model backend and wires the
-LLM service to the store (cache + accounting) and the event bus. The ingest worker is created with
+``simulated_today`` meta key shared with the MCP subprocess), picks the model backend (the live one
+reads the chosen model from the settings) and wires the LLM service to the store (cache + accounting)
+and the event bus. The ingest worker is created with
 the context but only runs once started (``await ctx.worker.start()``) or driven with
 ``await ctx.worker.run_until_idle()``.
 """
@@ -91,7 +92,10 @@ def build_context(
     try:
         settings = store.get_settings()
         apply_simulated_today(store, settings)
-        chosen = backend_obj or make_backend(backend, concurrency=settings.concurrency)
+        # the live backend reads the chosen model from the store at each call: a save counts at once
+        chosen = backend_obj or make_backend(
+            backend, concurrency=settings.concurrency, model_setting=lambda: store.get_settings().model
+        )
     except BaseException:
         store.close()
         raise

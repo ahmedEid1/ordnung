@@ -13,8 +13,9 @@ export interface paths {
         };
         /**
          * Health
-         * @description Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min) and
-         *     the rules catalog's "law as of" date; with ``probe`` also the doctor's checks.
+         * @description Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min), the
+         *     model ``ORDNUNG_CLAUDE_MODEL`` pins (if set) and the rules catalog's "law as of" date; with
+         *     ``probe`` also the doctor's checks.
          */
         get: operations["health_api_health_get"];
         put?: never;
@@ -119,13 +120,14 @@ export interface paths {
         };
         /**
          * Read Settings
-         * @description App settings: models per purpose, concurrency, inbox folder, AI note.
+         * @description App settings: the model every call runs on (and the aliases per purpose), concurrency, inbox
+         *     folder, AI note.
          */
         get: operations["read_settings_api_settings_get"];
         /**
          * Update Settings
          * @description Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
-         *     restarts the folder watcher.
+         *     restarts the folder watcher, a new model counts from the next call to Claude.
          */
         put: operations["update_settings_api_settings_put"];
         post?: never;
@@ -1639,6 +1641,11 @@ export interface components {
         /** AppSettings */
         AppSettings: {
             models: components["schemas"]["ModelSettings"];
+            /**
+             * Model
+             * @default claude-sonnet-5
+             */
+            model: string;
             /**
              * Concurrency
              * @default 2
@@ -3344,6 +3351,11 @@ export interface components {
             backend: string;
             claude: components["schemas"]["ClaudeStatus"];
             /**
+             * Model Pinned
+             * @description The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)
+             */
+            model_pinned: string | null;
+            /**
              * Rules Last Checked
              * @description The day the rules catalog was last checked against the law (“Based on the law as of …”)
              */
@@ -4138,7 +4150,12 @@ export interface components {
              */
             tracking_number?: string | null;
         };
-        /** ModelSettings */
+        /**
+         * ModelSettings
+         * @description A request's own model per purpose. It keys the cache and the recordings (an alias, so they
+         *     survive a change of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
+         *     (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`).
+         */
         ModelSettings: {
             /**
              * Transcribe
@@ -4846,6 +4863,11 @@ export interface components {
             models?: {
                 [key: string]: string;
             } | null;
+            /**
+             * Model
+             * @description the model every call runs on: an id or alias Claude Code accepts (claude-sonnet-5 by default)
+             */
+            model?: string | null;
             /** Concurrency */
             concurrency?: number | null;
             /** Inbox Dir */

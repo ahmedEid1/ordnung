@@ -36,6 +36,10 @@ INSTALL_HINT = (
     "then run `ordnung doctor` again."
 )
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
+MODEL_HINT = (
+    "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude), may not be a "
+    "name Claude Code accepts."
+)
 UPDATE_HINT = "Update Claude Code with `claude update` (or npm install -g @anthropic-ai/claude-code)."
 API_KEY_HINT = "Unset it (`unset ANTHROPIC_API_KEY`) so Claude Code uses your Claude subscription."
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
@@ -123,21 +127,27 @@ def _auth_check(status: dict[str, Any] | None) -> DoctorCheck:
     )
 
 
-async def _probe_check(binary: str | None) -> DoctorCheck:
-    ok, text = await claude_cli.probe(binary)
+async def _probe_check(binary: str | None, model: str | None) -> DoctorCheck:
+    """The live call, on the model every call runs on when the caller knows it (the API, the CLI with
+    data): a failure then may as well be that model's name, so the fix says so after the sign-in."""
+    probe = await claude_cli.probe(binary, model=model)
+    detail = probe.text or ("Claude answered." if probe.ok else "No answer.")
+    fix = None if probe.ok else LOGIN_HINT
+    if fix and model is not None:
+        fix = f"{fix} {MODEL_HINT.format(model=probe.model)}"
     return DoctorCheck(
         id="claude_probe",
         label="Live test call",
-        status="ok" if ok else "fail",
-        detail=text or ("Claude answered." if ok else "No answer."),
-        fix=None if ok else LOGIN_HINT,
+        status="ok" if probe.ok else "fail",
+        detail=f"{detail} (on {probe.model})",
+        fix=fix,
     )
 
 
 async def check_claude(
-    binary: str | None = None, *, probe: bool = False
+    binary: str | None = None, *, probe: bool = False, model: str | None = None
 ) -> tuple[list[DoctorCheck], ClaudeStatus]:
-    """The Claude checks (install, version, sign-in, optional live probe) and their summary."""
+    """The Claude checks (install, version, sign-in, optional live probe on ``model``) and their summary."""
     path = claude_cli.find_claude(binary)
     if path is None:
         missing = DoctorCheck(
@@ -155,7 +165,7 @@ async def check_claude(
         _auth_check(auth),
     ]
     if probe:
-        checks.append(await _probe_check(path))
+        checks.append(await _probe_check(path, model))
     version = parse_version(raw_version)
     problem = next((check for check in checks if check.status == "fail"), None)
     status = ClaudeStatus(
@@ -322,13 +332,18 @@ def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
     ]
 
 
-async def run_doctor(data_dir: str | Path, *, probe: bool = False, binary: str | None = None) -> DoctorReport:
-    """Run every check. Zero tokens unless ``probe`` is set (one tiny live call)."""
-    claude_checks, status = await check_claude(binary, probe=probe)
+async def run_doctor(
+    data_dir: str | Path, *, probe: bool = False, binary: str | None = None, model: str | None = None
+) -> DoctorReport:
+    """Run every check. Zero tokens unless ``probe`` is set (one tiny live call, on ``model`` — the one
+    every call runs on — when the caller knows it)."""
+    claude_checks, status = await check_claude(binary, probe=probe, model=model)
     checks = await asyncio.to_thread(local_checks, data_dir)
     return DoctorReport(checks=[*claude_checks, *checks], claude=status)
 
 
-def run_doctor_sync(data_dir: str | Path, *, probe: bool = False, binary: str | None = None) -> DoctorReport:
+def run_doctor_sync(
+    data_dir: str | Path, *, probe: bool = False, binary: str | None = None, model: str | None = None
+) -> DoctorReport:
     """:func:`run_doctor` for synchronous callers (the CLI)."""
-    return asyncio.run(run_doctor(data_dir, probe=probe, binary=binary))
+    return asyncio.run(run_doctor(data_dir, probe=probe, binary=binary, model=model))

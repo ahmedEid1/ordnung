@@ -19,6 +19,7 @@ export const TEST_HEALTH: Health = {
   today: TEST_TODAY,
   backend: "fake",
   claude: { installed: true, version: "test", path: null, ok: true, detail: null },
+  model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],
 };

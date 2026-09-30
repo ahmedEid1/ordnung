@@ -1147,8 +1147,9 @@ def doctor(
     """Check Claude, search, fonts, the web app and your data folder (zero tokens)."""
     from ordnung.doctor import run_doctor_sync
 
+    folder = _folder(ctx, data_dir)
     with _friendly():
-        report = run_doctor_sync(_folder(ctx, data_dir), probe=probe)
+        report = run_doctor_sync(folder, probe=probe, model=_chosen_model(folder) if probe else None)
     table = Table(title="Ordnung doctor", title_justify="left", show_header=False)
     table.add_column("", no_wrap=True)
     table.add_column("Check", no_wrap=True)
@@ -1161,6 +1162,19 @@ def doctor(
             console.print(f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}")
     if not report.ok:
         raise typer.Exit(1)
+
+
+def _chosen_model(folder: Path) -> str:
+    """The model every call runs on (Settings → Claude), so the probe tries that one and not an alias;
+    the default before any data exists (the doctor must not create the folder)."""
+    from ordnung.db.store import Store
+    from ordnung.llm.base import DEFAULT_MODEL
+
+    paths = Paths(folder)
+    if not paths.db.is_file():
+        return DEFAULT_MODEL
+    with Store.open(paths, read_only=True) as store:
+        return store.get_settings().model
 
 
 def _evals_module() -> Any:

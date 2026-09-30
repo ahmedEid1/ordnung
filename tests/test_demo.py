@@ -44,9 +44,10 @@ from ordnung.demo.loader import (
     tray_states,
 )
 from ordnung.ids import doc_id_for_sha
-from ordnung.llm.base import LLMError, LLMRequest, ReplayMiss, StreamEvent
+from ordnung.llm.base import DEFAULT_MODEL, LLMError, LLMRequest, ReplayMiss, StreamEvent
+from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.fake import FakeBackend
-from ordnung.llm.replay import ReplayBackend
+from ordnung.llm.replay import RecordingBackend, ReplayBackend
 from ordnung.models import TourState
 from ordnung.secretary.brief import get_brief
 
@@ -338,6 +339,23 @@ async def test_the_recorder_refuses_documents_outside_the_sample_life(
     recorded = await backend.complete(_request([life.ids["tax"]]))
     assert recorded.data == {"kind": "other"}
     assert list((tmp_path / "fixtures" / "extract").glob("*.json"))
+
+
+def test_the_recorder_names_the_default_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The demo's settings are the defaults, so its recordings are made with the default model — a
+    request's alias never reaches the CLI — unless ORDNUNG_CLAUDE_MODEL pins another."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    folder = tmp_path / "demo"
+    folder.mkdir()
+    (folder / MARKER_NAME).write_text(json.dumps({"version": ""}), encoding="utf-8")
+    backend = recording_backend(folder, tmp_path / "fixtures", set())
+    assert isinstance(backend, ReplayBackend) and isinstance(backend.fallback, RecordingBackend)
+    live = backend.fallback.inner
+    assert isinstance(live, ClaudeCLIBackend)
+    request = LLMRequest(purpose="brief", prompt="p", system="s", model="haiku")
+    assert live.model_for(request) == DEFAULT_MODEL == "claude-sonnet-5"
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-opus-5-5")
+    assert live.model_for(request) == "claude-opus-5-5"
 
 
 def test_recording_is_only_allowed_into_a_demo_folder(tmp_path: Path) -> None:

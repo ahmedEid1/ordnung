@@ -249,6 +249,20 @@ async def test_health_probe_runs_the_doctor_once_a_minute(data_dir: Path) -> Non
         assert not contract.problems, contract.problems
 
 
+async def test_health_names_the_model_the_environment_pins(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ORDNUNG_CLAUDE_MODEL beats the saved model for every call while it is set, so health says so
+    (Settings → Claude shows the pin next to the field); unset or empty, nothing is pinned."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    async with api_for(data_dir) as api:
+        assert (await api.client.get("/api/health")).json()["model_pinned"] is None
+        monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5")
+        assert (await api.client.get("/api/health")).json()["model_pinned"] == "claude-sonnet-5"
+        monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "")
+        assert (await api.client.get("/api/health")).json()["model_pinned"] is None
+
+
 async def test_health_probe_with_the_claude_cli_runs_the_live_check(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -256,18 +270,21 @@ async def test_health_probe_with_the_claude_cli_runs_the_live_check(
     from ordnung.doctor import DoctorReport
     from ordnung.models import ClaudeStatus, DoctorCheck
 
-    calls: list[tuple[Path, bool]] = []
+    calls: list[tuple[Path, bool, str | None]] = []
 
-    async def fake_doctor(data: Path, *, probe: bool = False) -> DoctorReport:
-        calls.append((data, probe))
+    async def fake_doctor(data: Path, *, probe: bool = False, model: str | None = None) -> DoctorReport:
+        calls.append((data, probe, model))
         check = DoctorCheck(id="claude_probe", label="Live test call", status="ok", detail="Claude answered.")
         return DoctorReport(checks=[check], claude=ClaudeStatus(installed=True, version="2.1.4", ok=True))
 
     monkeypatch.setattr(system, "backend_uses_cli", lambda ctx: True)
     async with api_for(data_dir) as api:
         api.app.state.ordnung.doctor = fake_doctor
+        # the live call runs on the model every call runs on: the one saved under Settings → Claude
+        saved = await api.client.put("/api/settings", json={"model": "claude-opus-5-5"})
+        assert saved.status_code == 200, saved.text
         probed = (await api.client.get("/api/health", params={"probe": "true"})).json()
-        assert calls == [(api.ctx.paths.data_dir, True)]
+        assert calls == [(api.ctx.paths.data_dir, True, "claude-opus-5-5")]
         assert probed["checks"][0]["id"] == "claude_probe" and probed["claude"]["ok"] is True
         # the fresh status is what the cached health shows from now on (no second probe)
         assert (await api.client.get("/api/health")).json()["claude"]["version"] == "2.1.4"

@@ -29,20 +29,23 @@ files `0600`), so other accounts on a shared computer can't read your letters or
 
 ## What is sent to Claude, per feature
 
-Every model call goes through the `claude` CLI you installed and signed in to. Anthropic's
-handling of that data (retention, training use) is governed by **your** account type and settings —
-see Anthropic's [consumer terms & privacy settings](https://www.anthropic.com/legal/privacy) or, if
-you use an API key, the [commercial terms](https://www.anthropic.com/legal/commercial-terms).
-Check your Claude privacy settings before processing sensitive documents.
+Every model call goes through the `claude` CLI you installed and signed in to, and names the
+model it runs on: Sonnet 5 (`claude-sonnet-5`) unless you choose another under **Settings →
+Claude** (`ORDNUNG_CLAUDE_MODEL`, while it is set, overrides both for every call). Anthropic's
+handling of that data (retention, training use) is governed by **your** account
+type and settings — see Anthropic's
+[consumer terms & privacy settings](https://www.anthropic.com/legal/privacy) or, if you use an API
+key, the [commercial terms](https://www.anthropic.com/legal/commercial-terms). Check your Claude
+privacy settings before processing sensitive documents.
 
-| Feature | Sent to Claude | Model (default) |
-|---|---|---|
-| **Read a letter** — text PDFs | the page text of that document, today's date, your country and region, your name, and the names and kinds of organisations you already have (no numbers from other letters) | Sonnet |
-| **Read a letter** — photos/scans | each page image (JPEG, ≤ 1600 px) for transcription, then the transcribed text as above | Sonnet |
-| **Weekly Ideas** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa | Sonnet |
-| **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name | Haiku |
-| **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) | Sonnet |
-| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it | Sonnet |
+| Feature | Sent to Claude |
+|---|---|
+| **Read a letter** — text PDFs | the page text of that document, today's date, your country and region, your name, and the names and kinds of organisations you already have (no numbers from other letters) |
+| **Read a letter** — photos/scans | each page image (JPEG, ≤ 1600 px) for transcription, then the transcribed text as above |
+| **Weekly Ideas** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa |
+| **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name |
+| **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
+| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it |
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
@@ -135,7 +138,8 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
 - **A letter deleted while it is being read** — if a call to Claude about it is still under way,
   its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
   deleted afterwards.
-- **Models** — choose which Claude model handles each purpose.
+- **Model** — choose the Claude model every call runs on (Settings → Claude; Sonnet 5 unless you
+  change it). The demo and the benchmarks keep the model they were recorded with.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
   there. (The one thing that keeps itself current is calendar sync, and only after you

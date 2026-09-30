@@ -11,6 +11,8 @@ from typing import Annotated, Any, Final, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
+from ordnung.llm.base import DEFAULT_MODEL
+
 # --------------------------------------------------------------------------------------------------
 # Enums
 # --------------------------------------------------------------------------------------------------
@@ -868,6 +870,10 @@ class Profile(_Model):
 
 
 class ModelSettings(_Model):
+    """A request's own model per purpose. It keys the cache and the recordings (an alias, so they
+    survive a change of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
+    (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`)."""
+
     transcribe: str = "sonnet"
     extract: str = "sonnet"
     review: str = "sonnet"
@@ -883,6 +889,9 @@ DesktopNotifyMode = Literal["off", "discreet", "full"]
 
 class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
+    #: The model every call runs on (Settings → Claude): an id or alias as Claude Code takes it, Sonnet 5
+    #: by default; ``ORDNUNG_CLAUDE_MODEL`` overrides it for every call.
+    model: str = DEFAULT_MODEL
     concurrency: int = 2
     inbox_dir: str | None = None
     #: Files from the watched folder are read by Claude at once; off (the default), they wait for the
@@ -1714,6 +1723,11 @@ class Health(_Model):
     today: str
     backend: str
     claude: ClaudeStatus = Field(default_factory=ClaudeStatus)
+    #: Settings → Claude shows it next to the Model field: the saved model counts once it is unset.
+    model_pinned: str | None = Field(
+        default=None,
+        description="The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)",
+    )
     rules_last_checked: str = Field(
         description="The day the rules catalog was last checked against the law (“Based on the law as of …”)"
     )

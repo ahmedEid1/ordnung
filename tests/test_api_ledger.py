@@ -16,7 +16,7 @@ from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from helpers_secretary import add_doc
 from ordnung import clock
 from ordnung.api.routes import demo as demo_routes
-from ordnung.api.routes.profile import inbox_dir_problem
+from ordnung.api.routes.profile import inbox_dir_problem, model_problem
 from ordnung.config import Paths
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import Document, Evidence, Job, MailTrayItem, PartyDetail, Suggestion, TourState
@@ -423,6 +423,39 @@ async def test_profile_is_merged_and_validated(data_dir: Path) -> None:
         )
         cleared = await api.client.put("/api/profile", json={"email": ""})
         assert cleared.status_code == 200 and cleared.json()["email"] == ""
+
+
+async def test_the_model_setting_is_trimmed_and_checked(data_dir: Path) -> None:
+    """Settings → Claude → Model: Sonnet 5 until changed; an id or alias as Claude Code takes it,
+    trimmed — a Bedrock id (``:``), a Vertex id (``@``), an inference-profile ARN (``/``) and the
+    1M-context aliases (``[1m]``) included; a blank, a name with spaces or one starting with a dash
+    (it follows ``--model`` on argv) is refused with the reason (shown under the field), nothing saved."""
+    async with api_for(data_dir) as api:
+        assert (await api.client.get("/api/settings")).json()["model"] == "claude-sonnet-5"
+        saved = await api.client.put("/api/settings", json={"model": " claude-opus-5-5 "})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["model"] == "claude-opus-5-5" == api.ctx.settings.model
+        for bad, reason in (
+            ("", "Enter a model id or alias"),
+            ("   ", "Enter a model id or alias"),
+            ("claude opus 5 5", "no spaces and doesn't start with a dash"),
+            ("-sonnet", "no spaces and doesn't start with a dash"),
+            ("--model", "no spaces and doesn't start with a dash"),
+        ):
+            refused = await api.client.put("/api/settings", json={"model": bad})
+            assert refused.status_code == 422 and reason in refused.json()["detail"], bad
+        assert api.ctx.store.get_settings().model == "claude-opus-5-5"
+        for accepted in (
+            "sonnet",
+            "sonnet[1m]",
+            "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "claude-sonnet-4-5@20250929",
+            "arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/abc123",
+        ):
+            assert (await api.client.put("/api/settings", json={"model": accepted})).json()[
+                "model"
+            ] == accepted
+    assert model_problem("claude-3-7-sonnet-20250219") is None and model_problem("opus") is None
 
 
 async def test_settings_are_merged_and_the_inbox_is_guarded(data_dir: Path, tmp_path: Path) -> None:
