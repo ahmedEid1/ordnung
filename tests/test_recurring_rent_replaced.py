@@ -151,9 +151,12 @@ ASK_QUOTE = "Wir bitten Sie um Zustimmung zur Erhöhung der Miete auf die ortsü
 INCREASE_QUOTE = "Die neue Miete von 700,00 EUR ist ab dem 01.12.2026 zu zahlen."
 
 
-def _lease(quote: str = RENT_QUOTE, when: dict[str, Any] | None = None) -> Letter:
+def _lease(
+    quote: str = RENT_QUOTE, when: dict[str, Any] | None = None, recurrence: dict[str, Any] = MONTHLY
+) -> Letter:
     """The lease of a flat from 1 Oct 2026: its monthly rent read as the demo's is, without a day (the law's
-    3rd working day dates it) unless ``when`` gives one, and the tenancy as a rent contract."""
+    3rd working day dates it) unless ``when`` or ``recurrence`` gives one, and the tenancy as a rent
+    contract."""
     return Letter(
         marker="Wohnraummietvertrag Beispielweg 7",
         pages=(("Wohnbau Musterstadt eG", "SPECIMEN", "Wohnraummietvertrag Beispielweg 7", quote),),
@@ -175,7 +178,7 @@ def _lease(quote: str = RENT_QUOTE, when: dict[str, Any] | None = None) -> Lette
                     "amount": 640.0,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": MONTHLY,
+                    "recurrence": recurrence,
                     "quote": quote,
                 }
             ],
@@ -194,6 +197,7 @@ def _statement(
     quote: str = NEW_RENT_QUOTE,
     working_day: int | None = None,
     *,
+    day_of_month: int | None = None,
     title: str = "New monthly total rent €670",
     amount: float = 670.0,
     old_amount: float | None = 640.0,
@@ -225,7 +229,7 @@ def _statement(
                     "amount": amount,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": {**MONTHLY, "working_day": working_day},
+                    "recurrence": {**MONTHLY, "working_day": working_day, "day_of_month": day_of_month},
                     "quote": quote,
                 }
             ],
@@ -315,6 +319,55 @@ async def _read_again(api: Api, doc_id: str) -> None:
     await api.read_all()
 
 
+DAY_RENT_QUOTE = "Die Miete von 640,00 EUR ist spätestens zum 5. eines Monats zu zahlen."
+
+
+async def test_a_lease_rent_due_on_a_day_of_the_month_is_dated_by_it_and_the_new_rent_keeps_it(
+    data_dir: Path,
+) -> None:
+    """Point 10: a lease whose rent is due "zum 5. eines Monats" (``recurrence.day_of_month`` 5) is dated by
+    that day — Mon 5 Oct, the first 5th from the tenancy's start — not by the law's 3rd working day, and
+    without its warning (the lease names a day). The statement's new rent keeps the lease's day (point 9):
+    Thu 5 Nov, not Sun 1 Nov as the statement words its start."""
+    lease = _lease(DAY_RENT_QUOTE, recurrence={**MONTHLY, "day_of_month": 5})
+    statement = _statement()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        _, rent = await _read(api, lease)
+        assert (rent["due_date"], rent["send_by"]) == ("2026-10-05", "2026-10-02")
+        receipt = rent["computation"]
+        assert (
+            receipt["summary"]
+            == "Repeats every month on the 5th since Mon 5 Oct 2026; next on Mon 5 Oct 2026."
+        )
+        assert LAW_DEFAULT_WARNING not in receipt["warnings"] and "bgb_556b" not in receipt["rule_ids"]
+        assert receipt["confidence"] == "high"
+
+        _, new = await _read(api, statement)
+        assert (new["due_date"], new["send_by"]) == ("2026-11-05", "2026-11-04")
+        assert f"The lease's due day{KEEPS_DAY_STEP}Sun 1 Nov 2026 as the start" in _step_labels(new)
+        closed = await _patch(api, rent["id"], status="done")
+        assert (closed["status"], closed["due_date"]) == ("done", "2026-10-05")
+        december = await _patch(api, new["id"], status="done")
+        assert december["due_date"] == "2026-12-05"
+
+
+async def test_a_new_rent_keeps_the_leases_working_day_over_a_day_of_the_month_of_its_own(
+    data_dir: Path,
+) -> None:
+    """Point 10: a statement's new rent read with a day of the month from the day it starts ("ab dem
+    01.11.2026" as ``day_of_month`` 1) still keeps the lease's due day, its 3rd working day (point 9): Wed 4
+    Nov, not Sun 1 Nov — a letter that changes the rent changes the amount, not when rent is due."""
+    lease, statement = _lease(), _statement(day_of_month=1)
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        await _read(api, lease)
+        _, new = await _read(api, statement)
+        assert (new["due_date"], new["send_by"]) == ("2026-11-04", "2026-11-03")
+        assert new["recurrence"]["day_of_month"] == 1  # as it was read
+        assert new["computation"]["summary"].startswith("Repeats every month on the 3rd working day;")
+
+
 async def test_the_new_rent_keeps_the_leases_day_and_its_send_by(data_dir: Path) -> None:
     """The statement's new rent, "ab dem 01.11.2026", paid by transfer: due by the lease's day — the law's
     3rd working day, which the lease leaves it (so it carries the same warning to check the lease) — Wed 4
@@ -330,7 +383,7 @@ async def test_the_new_rent_keeps_the_leases_day_and_its_send_by(data_dir: Path)
             "2026-11-04",
             "2026-11-03",
         )
-        assert new["recurrence"] == {**MONTHLY, "working_day": None}  # the reading stays as it was read
+        assert new["recurrence"] == {**MONTHLY, "working_day": None, "day_of_month": None}  # as it was read
         assert f"The lease's due day{KEEPS_DAY_STEP}Sun 1 Nov 2026 as the start" in _step_labels(new)
         assert LAW_DEFAULT_WARNING in new["computation"]["warnings"]
 

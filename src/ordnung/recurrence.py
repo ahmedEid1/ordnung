@@ -40,10 +40,14 @@ limits, not bugs):
    first (point 5; no letter rule re-dates it): Monday to Friday without public holidays for rent (a
    payment whose letter is a lease or whose contract is a rent contract, ``RuleContext.rent``: § 556b
    Abs. 1 BGB as the BGH reads it for rent, VIII ZR 129/09 — Saturday does not count), Werktage
-   (Monday to Saturday) otherwise. Point 2's date only names the month it starts in — the month of the
-   date the rules engine gives its DateSpec in its letter's context, so a rent increase's new rent never
-   starts before § 558b BGB allows it; without one, the current month, or the later one its contract
-   starts in (never for a rent increase's new rent: only a date its letter gives starts it). So the
+   (Monday to Saturday) otherwise. The last working day (-1, "am letzten Bankarbeitstag des Monats") is
+   the month's last Monday to Friday that is no public holiday and no bank closing day (24 and 31
+   December), in the holidays of the place the payment is made (:func:`_last_working_day`): of the
+   readings of a working day always the earlier, as a Saturday is for the Nth. Point 2's date only names
+   the month it starts in — the month of the date the rules engine gives its DateSpec in its letter's
+   context, so a rent increase's new rent never starts before § 558b BGB allows it; without one, the
+   current month, or the later one its contract starts in (never for a rent increase's new rent: only a
+   date its letter gives starts it). So the
    item is dated when its letter is read or its dates are recomputed (:func:`first_scheduled`), then
    moves on by points 3 and 4. A lease's rent paid every month that the lease gives no day and no
    working day is due by the law's third working day (§ 556b Abs. 1 BGB, :func:`schedule_rule`), one
@@ -82,6 +86,20 @@ limits, not bugs):
    restates the earlier one (a letter that states only the new net rent, or a lower rent without the old
    amount); and a rent once closed stays closed when the one that replaced it is dismissed or deleted later
    (the person sets it open again).
+10. A rule with a day of the month (``Recurrence.day_of_month``: "zum 1. eines Monats" is 1; a day past a
+   month's end is that month's last day, "zum Monatsende" is 31) — and no working day, which wins — is
+   dated on that day in each of its months (point 5, moved as its DateSpec says), like point 8's: its first
+   occurrence is the first such day on or after the date its DateSpec gives, else on or after its letter's
+   date, or the later start of its contract when the letter is read or its dates are recomputed
+   (:func:`first_scheduled`); points 3 and 4 then move it on. Nothing else starts it: a day of the month
+   with no date at all (no DateSpec date, no letter date, no contract start) stays undated until the person
+   gives it one (point 2), and a date the person gives stands in for its occurrence (point 7), the day of
+   the month dating the months after. A day of the month equal to its first occurrence's day is the same
+   schedule as none (points 2 and 6). A lease's rent with a day of the month is dated by it, never by the
+   law's third working day (point 8); a later rent keeps the due day of the one it follows (point 9) over a
+   day of the month its own reading gives (often the day it starts on: "ab dem 01.11.2026"). A day of the
+   month the reading gives dates the item even when its quote doesn't name it, graded as a working day
+   is (``DAY_OF_MONTH_NOT_IN_QUOTE``).
 """
 
 from __future__ import annotations
@@ -96,6 +114,7 @@ from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.verify import grade_reading, regrade
 from ordnung.models import (
+    LAST_WORKING_DAY,
     Activity,
     ComputationReceipt,
     ComputationStep,
@@ -105,8 +124,10 @@ from ordnung.models import (
     Item,
     Recurrence,
 )
-from ordnung.rules import RentDue, RuleContext, compute_due, get_rule
+from ordnung.rules import RentDue, RuleContext, calendar_de, compute_due, get_rule
 from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
+from ordnung.rules.deadlines import place_region
+from ordnung.rules.explain import ordinal
 from ordnung.secretary.triggers import postal_buffer
 
 _MAX_STEPS = 10_000  # safety net against pathological schedules
@@ -118,6 +139,12 @@ _WORKING_DAY_SPAN = 31
 _KIND_NATURES: dict[str, DateNature] = {"payment": "payment", "appointment": "appointment"}
 #: The working day rent is due by when the lease names no day (§ 556b Abs. 1 BGB; point 8).
 RENT_WORKING_DAY = 3
+#: A day of the month that is every month's last day (point 10: "zum Monatsende" is 31).
+_LAST_DAY = 31
+#: The step of an occurrence's receipt that says which day is its month's last working day (point 8).
+LAST_WORKING_DAY_STEP = (
+    "The last working day of {month:%B %Y}: Monday to Friday, not a public holiday or 24 or 31 December"
+)
 #: The warning on an occurrence the law's working day dates (point 8).
 LAW_DEFAULT_WARNING = (
     "The lease gives no day Ordnung could date; this is the law's default (3rd working day, Saturdays not "
@@ -188,32 +215,43 @@ def next_occurrence(first: date, rule: Recurrence, on_or_after: date) -> date:
 
 
 def describe(rule: Recurrence) -> str:
-    """``every month`` / ``every 3 months`` / ``every year`` / ``every month on the 3rd working day``."""
+    """``every month`` / ``every 3 months`` / ``every year`` / ``every month on the 3rd working day`` /
+    ``every month on the last working day`` / ``every month on the 1st`` / ``every month on the last day``."""
     unit = rule.unit.rstrip("s")
     every = f"every {unit}" if rule.interval <= 1 else f"every {rule.interval} {rule.unit}"
-    working_day = _steps(rule)[2]
-    return every if working_day is None else f"{every} on the {_ordinal(working_day)} working day"
+    working_day, day = _steps(rule)[2:]
+    if working_day is not None:
+        return f"{every} on the {_ordinal(working_day)} working day"
+    if day is not None:
+        return f"{every} on the {'last day' if day == _LAST_DAY else ordinal(day)}"
+    return every
 
 
 def _ordinal(number: int) -> str:
-    return {1: "1st", 2: "2nd", 3: "3rd"}.get(number, f"{number}th")
+    return "last" if number == LAST_WORKING_DAY else ordinal(number)
 
 
-def _steps(rule: Recurrence) -> tuple[int, str, int | None]:
-    """The rule as :func:`occurrence` steps it, with its working day (point 8): every year →
-    ``(12, "months", None)``, every 2 weeks → ``(14, "days", None)`` (a rule in days or weeks has none)."""
+def _steps(rule: Recurrence) -> tuple[int, str, int | None, int | None]:
+    """The rule as :func:`occurrence` steps it, with its working day (point 8) and else its day of the month
+    (point 10): every year → ``(12, "months", None, None)``, every 2 weeks → ``(14, "days", None, None)`` (a
+    rule in days or weeks has neither)."""
     interval = max(1, rule.interval)
-    if rule.unit == "years":
-        return 12 * interval, "months", rule.working_day
-    if rule.unit == "weeks":
-        return 7 * interval, "days", None
-    return interval, rule.unit, rule.working_day if rule.unit == "months" else None
+    if rule.unit in ("days", "weeks"):
+        return (7 if rule.unit == "weeks" else 1) * interval, "days", None, None
+    months = 12 * interval if rule.unit == "years" else interval
+    return months, "months", rule.working_day, rule.day_of_month if rule.working_day is None else None
 
 
 def rule_working_day(rule: Recurrence | None) -> int | None:
     """The working day a rule dates its months by (point 8): its own in months or years, none in days or
     weeks (and none without a rule)."""
     return None if rule is None else _steps(rule)[2]
+
+
+def rule_day_of_month(rule: Recurrence | None) -> int | None:
+    """The day of the month a rule dates its months by (point 10): its own in months or years without a
+    working day, none in days or weeks (and none without a rule)."""
+    return None if rule is None else _steps(rule)[3]
 
 
 def same_rule(first: Recurrence | None, second: Recurrence | None) -> bool:
@@ -229,18 +267,19 @@ def _is_rent(item: Item, ctx: RuleContext) -> bool:
 
 
 def schedule_rule(item: Item, ctx: RuleContext) -> Recurrence | None:
-    """The rule the item's dates follow (point 8): its own, without a working day in days or weeks, and
-    with the law's third working day (§ 556b Abs. 1 BGB) for a lease's rent paid every month that the lease
-    gives no day — only on the lease itself (``ctx.letter_kind``), never on another letter about the
-    tenancy (a rent increase's new rent, whose first payment § 558b BGB dates once agreed, or a statement's
-    new prepayment). A rent that changes an earlier one and gives no working day of its own keeps that one's
-    (``ctx.rent_due``, point 9)."""
+    """The rule the item's dates follow (points 8 and 10): its own, without a working day or a day of the
+    month in days or weeks, nor a day of the month beside a working day, and with the law's third working
+    day (§ 556b Abs. 1 BGB) for a lease's rent paid every month that the lease gives no day — only on the
+    lease itself (``ctx.letter_kind``), never on another letter about the tenancy (a rent increase's new
+    rent, whose first payment § 558b BGB dates once agreed, or a statement's new prepayment). A rent that
+    changes an earlier one and gives no working day of its own keeps that one's due day (``ctx.rent_due``,
+    point 9), over a day of the month of its own."""
     rule, spec = item.recurrence, item.date_spec
     if rule is None:
         return None
-    working_day = _steps(rule)[2]
-    if working_day is None and ctx.rent_due is not None and _steps(rule)[1] == "months":
-        working_day = ctx.rent_due.working_day
+    _, unit, working_day, day = _steps(rule)
+    if working_day is None and ctx.rent_due is not None and unit == "months":
+        working_day, day = ctx.rent_due.working_day, None
     if (
         working_day is None
         and _is_rent(item, ctx)
@@ -250,7 +289,9 @@ def schedule_rule(item: Item, ctx: RuleContext) -> Recurrence | None:
         and spec.type == "none"
     ):
         working_day = RENT_WORKING_DAY
-    return rule if working_day == rule.working_day else rule.model_copy(update={"working_day": working_day})
+    if (working_day, day) == (rule.working_day, rule.day_of_month):
+        return rule
+    return rule.model_copy(update={"working_day": working_day, "day_of_month": day})
 
 
 def _lookback(rule: Recurrence) -> int:
@@ -286,14 +327,22 @@ def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
     engine gives its DateSpec in ``ctx`` (so a rent increase's new rent never starts before § 558b BGB
     allows it), else of its current date's or the current month — ``None`` for a rent increase's new rent
     without a date, which only a date its letter gives can start. A rent that keeps an earlier rent's day of
-    the month (point 9) starts on that day of the month the rules engine's date names."""
+    the month (point 9) starts on that day of the month the rules engine's date names. With a day of the
+    month (point 10), the first such day on or after the date the rules engine gives its DateSpec, else its
+    letter's date (``ctx.document_date``), else its current date less the days a weekend or holiday can
+    move it (the occurrence it stands for); ``None`` without any of them."""
     rule, spec, given = schedule_rule(item, ctx), item.date_spec, None
     by_working_day = rule is not None and rule.working_day is not None
+    day = rule.day_of_month if rule is not None else None
     keeps = ctx.rent_due
-    if spec is not None and spec.type == "fixed" and not by_working_day and keeps is None:
+    if spec is not None and spec.type == "fixed" and not by_working_day and keeps is None and day is None:
         given = _parse(spec.date)
     else:
         given = _given(item, ctx)
+    if rule is not None and day is not None:
+        due = _parse(item.due_date)
+        start = given or ctx.document_date or (due - timedelta(days=_SHIFT_DAYS) if due else None)
+        return None if start is None else _starting(start, rule)
     start = given or _parse(item.due_date)
     if not by_working_day:
         if start is not None and keeps is not None and keeps.day is not None:
@@ -304,12 +353,23 @@ def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
     return (start or ctx.today).replace(day=1)
 
 
+def _starting(start: date, rule: Recurrence) -> date:
+    """The first occurrence of a rule with a working day or a day of the month on or after ``start`` (as
+    scheduled): with a working day its month's first (point 8), with a day of the month the first such day
+    (point 10; a day past a month's end is its last day)."""
+    if rule.working_day is not None or rule.day_of_month is None:
+        return start.replace(day=1)
+    on = _add_months(start, 0, rule.day_of_month)
+    return on if on >= start else _add_months(start, 1, rule.day_of_month)
+
+
 def _anchor_day(first: date, rule: Recurrence, ctx: RuleContext) -> int:
     """The day of the month the schedule's months are dated by: the day a rent keeps from the rent before it
     (point 9: a kept 31st stays the last day of every month, not the 30th its first month clipped it to),
-    else its first occurrence's (with a working day, the month's first: point 8)."""
+    else its own day of the month (point 10), else its first occurrence's (with a working day, the month's
+    first: point 8)."""
     kept = ctx.rent_due.day if ctx.rent_due is not None and rule.working_day is None else None
-    return kept or first.day
+    return kept or rule.day_of_month or first.day
 
 
 def over_the_law(
@@ -359,17 +419,28 @@ def kept_occurrence(item: Item, ctx: RuleContext, *, postal_buffer_days: int) ->
 # --------------------------------------------------------------------------------------------------
 
 
+def _last_working_day(month: date, spec: DateSpec, ctx: RuleContext) -> date:
+    """The last working day of ``month``'s month (point 8): Monday to Friday, no public holiday and no bank
+    closing day (24 and 31 December), in the holidays of the place ``spec``'s date is met (a payment: the
+    payer's, :func:`~ordnung.rules.deadlines.place_region`)."""
+    region, last = place_region(spec, ctx), _add_months(month, 0, _LAST_DAY)
+    while not calendar_de.is_bank_business_day(last, region):
+        last -= timedelta(days=1)
+    return last
+
+
 def _occurrence_spec(item: Item, rule: Recurrence, day: date, ctx: RuleContext) -> DateSpec:
     """The occurrence scheduled on ``day`` as a DateSpec of the item's nature (moved as its DateSpec says):
     that date, or with a working day that many working days counted from ``day``, its month's first
-    (point 8: business days for rent, Werktage otherwise)."""
+    (point 8: business days for rent, Werktage otherwise) — the last working day of its month for -1."""
     spec = item.date_spec or DateSpec(
         type="none", nature=_KIND_NATURES.get(item.kind, "other"), shift_rule="none"
     )
-    if rule.working_day is None:
+    if rule.working_day is None or rule.working_day == LAST_WORKING_DAY:
+        on = day if rule.working_day is None else _last_working_day(day, spec, ctx)
         return DateSpec(
             type="fixed",
-            date=day.isoformat(),
+            date=on.isoformat(),
             time=spec.time,
             nature=spec.nature,
             shift_rule=spec.shift_rule,
@@ -398,9 +469,9 @@ def _by_law(
     lower (``medium`` at most) — also on a rent that keeps the law's day of the rent before it (point 9)."""
     if rule.working_day is None:
         return receipt
-    rent, ordinal = get_rule("bgb_556b"), _ordinal(rule.working_day)
+    rent, nth = get_rule("bgb_556b"), _ordinal(rule.working_day)
     step = ComputationStep(
-        label=f"Rent is due by the {ordinal} working day of the month; Saturdays don't count",
+        label=f"Rent is due by the {nth} working day of the month; Saturdays don't count",
         date=receipt.due_date,
         rule_id=rent.id,
         citation=rent.citation,
@@ -460,11 +531,11 @@ def _receipt(
     since = f"Repeats {describe(rule)}"
     if rule.working_day is None:  # a working day says itself which day of the month it is
         since = f"{since} since {_day(first)}"
+    steps = [ComputationStep(label=since, date=day.isoformat()), *computed.steps]
+    if rule.working_day == LAST_WORKING_DAY and due is not None:
+        steps.insert(1, ComputationStep(label=LAST_WORKING_DAY_STEP.format(month=due), date=due.isoformat()))
     receipt = computed.model_copy(
-        update={
-            "summary": f"{since}; next on {_day(due)}." if due else computed.summary,
-            "steps": [ComputationStep(label=since, date=day.isoformat()), *computed.steps],
-        }
+        update={"summary": f"{since}; next on {_day(due)}." if due else computed.summary, "steps": steps}
     )
     return _keeps_day(item, _by_law(item, rule, receipt, ctx) if _is_rent(item, ctx) else receipt, ctx)
 
@@ -570,19 +641,25 @@ def first_scheduled(
     starts: str | None = None,
     reasons: Sequence[str] = (),
 ) -> Item | None:
-    """Point 8 when a letter is read or its dates are recomputed: an item whose rule has a working day
-    (:func:`schedule_rule`) at its schedule's first occurrence (:func:`first_occurrence`), with its dates
-    and receipt from the engine — an undated one starts in the current month, or in the month its contract
-    ``starts`` if that is later (no rent before the tenancy begins), and is graded by ``reasons``, what its
-    quote leaves out (:func:`~ordnung.ingest.plan.consistency_reasons`); :func:`rolled` then moves it on if
-    it has passed. So is a rent that keeps an earlier rent's due day (``ctx.rent_due``, point 9). ``None``
-    for any other item."""
+    """Points 8 and 10 when a letter is read or its dates are recomputed: an item whose rule has a working
+    day or a day of the month (:func:`schedule_rule`) at its schedule's first occurrence
+    (:func:`first_occurrence`), with its dates and receipt from the engine — an undated one starts in the
+    current month (a working day) or on its day after its letter's date (a day of the month), or at its
+    contract's start (``starts``) if that is later (no rent before the tenancy begins; a day of the month
+    without a letter date starts there), and is graded by ``reasons``, what its quote leaves out
+    (:func:`~ordnung.ingest.plan.consistency_reasons`); :func:`rolled` then moves it on if it has passed. So
+    is a rent that keeps an earlier rent's due day (``ctx.rent_due``, point 9). ``None`` for any other item,
+    and for a day of the month with no date to start from."""
     rule, first, start = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(starts)
-    if rule is None or first is None or (rule.working_day is None and ctx.rent_due is None):
+    if rule is None or (rule.working_day is None and rule.day_of_month is None and ctx.rent_due is None):
         return None
     undated = item.due_date is None and (item.date_spec is None or item.date_spec.type == "none")
-    if undated and start is not None and start > first:
-        first = start.replace(day=1)
+    # a day of the month without a letter date starts with its contract (point 10), never from nothing
+    later = start is not None and (start > first if first is not None else rule.day_of_month is not None)
+    if undated and start is not None and later:
+        first = _starting(start, rule)
+    if first is None:
+        return None
     return _at(item, rule, first, first, ctx, postal_buffer_days, reasons)
 
 
@@ -632,10 +709,13 @@ def moved_on(
 
 
 def _schedule(recurrence: Recurrence | None, spec: DateSpec | None) -> tuple[object, object]:
-    """Point 2's schedule: the rule (as it steps) and the first occurrence, a fixed DateSpec's date. (Of
+    """Point 2's schedule: the rule (as it steps) and the first occurrence, a fixed DateSpec's date — whose
+    own day of the month, read as the rule's too, is the rule without one (point 10: the same dates). (Of
     another DateSpec, everything it says about the date decides the first occurrence.)"""
     rule = _steps(recurrence) if recurrence is not None else None
     first = _parse(spec.date) if spec is not None and spec.type == "fixed" else None
+    if rule is not None and first is not None and rule[3] == first.day:
+        rule = (*rule[:3], None)
     if first is not None or spec is None:
         return rule, first
     return rule, spec.model_dump(exclude={"text", "legal_basis"})
@@ -875,6 +955,8 @@ def _due_day(rent: _Rent, kept: RentDue | None) -> RentDue | None:
         own = item.recurrence is not None and item.recurrence.working_day is not None
         by_law = not own and (kept is None or kept.by_law)
         return RentDue(working_day=rule.working_day, by_law=by_law, source=source)
+    if rule is not None and rule.day_of_month is not None:  # its own day, dated or not (point 10)
+        return RentDue(day=rule.day_of_month, source=source)
     if rule is None or first is None:
         return None
     return RentDue(day=_anchor_day(first, rule, ctx), source=source)

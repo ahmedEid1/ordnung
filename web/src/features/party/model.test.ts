@@ -8,7 +8,7 @@ const pay = (over: Partial<Item> & Pick<Item, "id">): Item => item({ kind: "paym
 describe("party to-dos", () => {
   it("lists dated to-dos soonest first, then repeating ones, then undated; set-aside ones apart", () => {
     const items = [
-      pay({ id: "rent", title: "Monthly rent", recurrence: { interval: 1, unit: "months", working_day: null } }),
+      pay({ id: "rent", title: "Monthly rent", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } }),
       item({ id: "report", kind: "task", title: "Report other scholarships" }),
       pay({ id: "late", title: "Nachzahlung", due_date: "2026-10-09", send_by: "2026-10-08" }),
       pay({ id: "deposit", title: "Security deposit", due_date: "2025-10-01" }),
@@ -33,8 +33,8 @@ describe("party to-dos", () => {
     expect(countdownMode(item({ id: "g", kind: "milestone", title: "Probation ends" }))).toBe("event");
     expect(countdownMode(pay({ id: "h", direction: "in" }))).toBe("event");
     expect(countdownMode(pay({ id: "i" }))).toBe("due");
-    expect(repeatsLabel({ interval: 1, unit: "months", working_day: null })).toBe("Every month");
-    expect(repeatsLabel({ interval: 3, unit: "months", working_day: null })).toBe("Every 3 months");
+    expect(repeatsLabel({ interval: 1, unit: "months", working_day: null, day_of_month: null })).toBe("Every month");
+    expect(repeatsLabel({ interval: 3, unit: "months", working_day: null, day_of_month: null })).toBe("Every 3 months");
     expect(repeatsLabel(null)).toBeNull();
   });
 

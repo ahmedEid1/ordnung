@@ -1379,16 +1379,23 @@ payments, so a recurring item is a schedule that always shows its next occurrenc
 the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back. A
 rule with a working day ("spätestens am dritten Werktag eines jeden Monats": `Recurrence.working_day`)
 is dated in every month by counting working days from its first — Monday to Friday for rent (a payment
-on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
+on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise; the
+last working day (-1, "am letzten Bankarbeitstag des Monats") is the month's last Monday to Friday that
+is no public holiday and no bank closing day (24 and 31 December), the earlier reading —
 and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
-confidence level lower and with a warning to check the lease, until the person gives it a date. The
-extraction schema carries the working day (`ExtractedItem.recurrence` is a `Recurrence`); one the
-item's quote doesn't name is graded like any value its quote doesn't state (`working_day_not_in_quote`,
-see **Verification**). A later rent on the same rent contract that restates the whole rent (a
+confidence level lower and with a warning to check the lease, until the person gives it a date. A rule
+with a day of the month ("zum 1. eines Monats": `Recurrence.day_of_month`; a day past a month's end is
+its last day, "zum Monatsende" is 31) is dated on that day in every month, from the first such day on or
+after the letter's date, or the later start of its contract — never from nothing: without a date to start
+from it stays undated until the person gives it one (`recurrence.py`, point 10). A lease's rent with a
+day of the month is dated by it, not the law's. The extraction schema carries both (`ExtractedItem.recurrence`
+is a `Recurrence`); one the item's quote doesn't name is graded like any value its quote doesn't state
+(`working_day_not_in_quote`, `day_of_month_not_in_quote`, see **Verification**). A later rent on the same rent contract that restates the whole rent (a
 statement's new total rent, a rent increase's new rent once agreed: its letter's old amount is the
 earlier rent's, or its amount is at least that) replaces the earlier one from the month it starts — the
 earlier one never moves into that month, and once its last occurrence is marked paid it closes, logged —
-and keeps its due day unless its own reading gives a working day (`recurrence.py`, point 9). A payment
+and keeps its due day unless its own reading gives a working day — a day of the month of its own doesn't
+replace it (`recurrence.py`, points 9 and 10). A payment
 that is only part of the rent (a statement's new advance payment alone, § 560 Abs. 4 BGB; a heating
 advance) runs beside it.
 
@@ -1525,8 +1532,11 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
 English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
 quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
-working day", "3rd business day"; 1–10), else `working_day_not_in_quote`: the working day still dates
-the item, one confidence level lower with a note. Mismatch → "Please check". UI never says "verified"; it says
+working day", "3rd business day"; 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else
+`working_day_not_in_quote`: the working day still dates the item, one confidence level lower with a note.
+A recurrence's day of the month likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st",
+"Monatsanfang" for 1, "Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch →
+"Please check". UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

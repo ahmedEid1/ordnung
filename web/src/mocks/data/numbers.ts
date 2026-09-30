@@ -1820,7 +1820,8 @@ export const MOCK_WEEK: WeeklySession = {
             "recurrence": {
               "interval": 1,
               "unit": "months",
-              "working_day": null
+              "working_day": null,
+              "day_of_month": null
             },
             "status": "open",
             "snoozed_until": null,

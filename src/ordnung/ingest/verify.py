@@ -6,7 +6,8 @@
 * :func:`ground_evidence` turns that into :class:`~ordnung.models.Evidence` with a grounding level.
 * :func:`spec_consistency` checks that a :class:`~ordnung.models.DateSpec` and an amount are
   actually stated by their quote (numbers, number words, units, explicit dates), and
-  :func:`working_day_consistency` that a recurrence's working day is (:func:`working_days_named`).
+  :func:`working_day_consistency` and :func:`day_of_month_consistency` that a recurrence's working day
+  or day of the month is (:func:`working_days_named`, :func:`days_of_month_named`).
 * :func:`grade_reading` applies the § 21 confidence rubric's reading conditions to a date's receipt,
   and :func:`regrade` the same reading to the receipt of a schedule's next occurrence.
 """
@@ -26,6 +27,7 @@ from rapidfuzz import fuzz
 from ordnung.ingest.normalize import digit_tokens, fold_punctuation, normalise_with_map
 from ordnung.ingest.text import PageText, Word
 from ordnung.models import (
+    LAST_WORKING_DAY,
     Box,
     ComputationReceipt,
     Confidence,
@@ -47,6 +49,8 @@ AMOUNT_NOT_IN_QUOTE = "amount_not_in_quote"
 INCOMPLETE_SPEC = "incomplete_spec"
 # Returned by working_day_consistency: the reading's ``recurrence.working_day`` is not named by its quote.
 WORKING_DAY_NOT_IN_QUOTE = "working_day_not_in_quote"
+# Returned by day_of_month_consistency: the reading's ``recurrence.day_of_month`` is not named by its quote.
+DAY_OF_MONTH_NOT_IN_QUOTE = "day_of_month_not_in_quote"
 
 PageInput = PageText | Page | tuple[int, str, Sequence[Word | Sequence[Any]], str]
 """A page to search: a :class:`PageText`, a stored :class:`~ordnung.models.Page`, or
@@ -494,23 +498,58 @@ _WORKING_DAY_PHRASE = re.compile(
     (?: (?P<digits>10|[1-9])(?:\.|st|nd|rd|th)
       | (?P<german>{_GERMAN_ORDINAL})e[mnrs]?
       | (?P<english>{_ENGLISH_ORDINAL})
+      | (?P<last>letzte[mnrs]?|last)
     )
     [\s)]*
-    (?:werktag|(?:bank)?arbeitstag|(?:working|business)[\s-]+day)""",
+    (?:werktag|(?:bank)?arbeitstag|(?:bank[\s-]+)?(?:working|business)[\s-]+day)""",
     re.IGNORECASE | re.VERBOSE,
 )
 
 
 def working_days_named(text: str) -> set[int]:
-    """The working days (1–10) ``text`` names as an ordinal before *Werktag*, *Arbeitstag* (also
-    *Bankarbeitstag*), "working day" or "business day": a German ordinal word in any ending ("ersten" …
-    "zehnten"), digits with a full stop ("3. Werktag") or an English ordinal ("third", "3rd").
-    "spätestens am dritten Werktag eines jeden Monats" → ``{3}``. A number of working days (a period:
-    "innerhalb von 3 Werktagen") names none, nor does a larger ordinal ("13. Werktag")."""
+    """The working days (1–10, and -1 for the last) ``text`` names as an ordinal before *Werktag*,
+    *Arbeitstag* (also *Bankarbeitstag*), "working day" or "business day" (also "bank working day"): a German
+    ordinal word in any ending ("ersten" … "zehnten", "letzten"), digits with a full stop ("3. Werktag") or an
+    English ordinal ("third", "3rd", "last"). "spätestens am dritten Werktag eines jeden Monats" → ``{3}``,
+    "am letzten Bankarbeitstag des Monats" → ``{-1}``. A number of working days (a period: "innerhalb von 3
+    Werktagen") names none, nor does a larger ordinal ("13. Werktag")."""
     named: set[int] = set()
     for match in _WORKING_DAY_PHRASE.finditer(fold_punctuation(text)):
         digits, word = match.group("digits"), match.group("german") or match.group("english")
-        named.add(int(digits) if digits else _ORDINAL_WORDS[word.casefold()])
+        if match.group("last"):
+            named.add(LAST_WORKING_DAY)
+        else:
+            named.add(int(digits) if digits else _ORDINAL_WORDS[word.casefold()])
+    return named
+
+
+_DAY_NUMBER = r"3[01]|[12]\d|0?[1-9]"
+_EVERY_MONTH = r"(?:eines|des|jeden|jedes)\s+(?:jeden\s+)?(?:kalender)?monats"
+_A_WORKING_DAY = r"\s*\)?\s*(?:werktag|(?:bank)?arbeitstag|(?:bank[\s-]+)?(?:working|business)[\s-]+day)"
+_DAY_OF_MONTH_PHRASE = re.compile(
+    rf"""(?<![\w.,])
+    (?: (?:zum|am|bis|jeweils)\s+(?:(?:zum|am)\s+)?(?P<after>{_DAY_NUMBER})\.(?!\d)(?!{_A_WORKING_DAY})
+      | (?P<before>{_DAY_NUMBER})\.\s*{_EVERY_MONTH}
+      | (?P<english>{_DAY_NUMBER})(?:st|nd|rd|th)\b(?!{_A_WORKING_DAY})
+      | (?P<start>monatsanfang|monatsbeginn|(?:anfang|beginn)\s+{_EVERY_MONTH}
+          |(?:start|beginning|first\s+day)\s+of\s+(?:each|every|the)\s+month)
+      | (?P<end>monatsende|monatsletzten|(?:ende|letzten\s+tag)\s+{_EVERY_MONTH}|zum\s+letzten\b(?!{_A_WORKING_DAY})
+          |(?:end|last\s+day)\s+of\s+(?:each|every|the)\s+month)
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def days_of_month_named(text: str) -> set[int]:
+    """The days of the month (1–31) ``text`` names: digits with a full stop after *zum*, *am*, *bis* or
+    *jeweils* ("jeweils zum 15.", "zum 1. eines Monats") or before *eines/des/jeden Monats*, an English
+    ordinal ("the 1st"), and the start (1) or end (31, a month's last day) of a month in words
+    ("Monatsanfang", "zum Monatsende", "zum Letzten", "end of the month"). A date ("am 15.10.2026") names none,
+    nor does a working day ("zum 3. Werktag")."""
+    named: set[int] = set()
+    for match in _DAY_OF_MONTH_PHRASE.finditer(fold_punctuation(text)):
+        digits = match.group("after") or match.group("before") or match.group("english")
+        named.add(int(digits) if digits else 1 if match.group("start") else 31)
     return named
 
 
@@ -581,6 +620,16 @@ def working_day_consistency(quote: str, working_day: int | None) -> list[str]:
     return [WORKING_DAY_NOT_IN_QUOTE]
 
 
+def day_of_month_consistency(quote: str, day: int | None) -> list[str]:
+    """Whether a recurrence's day of the month (``Recurrence.day_of_month``, "zum 1. eines Monats" is 1) is
+    stated by its item's quote: ``[DAY_OF_MONTH_NOT_IN_QUOTE]`` unless the quote names that day
+    (:func:`days_of_month_named`); ``[]`` for a recurrence without one. Only the quote counts, as for a
+    working day (:func:`working_day_consistency`)."""
+    if day is None or day in days_of_month_named(quote):
+        return []
+    return [DAY_OF_MONTH_NOT_IN_QUOTE]
+
+
 def _canonical_period(amount: int, unit: PeriodUnit) -> tuple[int, PeriodUnit]:
     """Equal periods in one form: weeks → days (§ 188 Abs. 2 BGB ends both on the same weekday),
     years → months."""
@@ -610,6 +659,7 @@ REASON_TEXT: dict[str, str] = {
     AMOUNT_NOT_IN_QUOTE: "The amount doesn't appear in the sentence it was taken from — please check it.",
     INCOMPLETE_SPEC: "Part of the date description is missing — please check it.",
     WORKING_DAY_NOT_IN_QUOTE: "The working day (e.g. “the 3rd working day”) doesn't appear in the sentence it was taken from — please check it.",
+    DAY_OF_MONTH_NOT_IN_QUOTE: "The day of the month (e.g. “on the 1st of each month”) doesn't appear in the sentence it was taken from — please check it.",
 }
 UNVERIFIED_NOTE = "We couldn't find this sentence in the letter — please check the date against the letter."
 MODEL_READ_NOTE = "This was read by AI from a photo or scan — compare the date with the paper letter."
@@ -624,7 +674,7 @@ def grade_reading(
     """Apply the § 21 confidence rubric's reading conditions on top of the engine's own grade.
 
     Each failed condition (quote not located in the page text, quote not stating the DateSpec, the
-    amount or the working day: any ``reasons``) lowers the confidence one level; an ambiguous numeric
+    amount, the working day or the day of the month: any ``reasons``) lowers the confidence one level; an ambiguous numeric
     date makes it ``low``. Reasons are added to the receipt's warnings (:data:`REASON_TEXT`).
     """
     failures = _FAILURES[receipt.confidence]

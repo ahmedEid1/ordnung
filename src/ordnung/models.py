@@ -7,7 +7,7 @@ database, the API and the LLM outputs. Timestamps are ISO-8601 UTC strings.
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
@@ -255,25 +255,39 @@ class ComputationReceipt(_Model):
     confidence: Confidence = "high"
 
 
+#: ``Recurrence.working_day`` of the last working day of each period ("am letzten Bankarbeitstag des Monats").
+LAST_WORKING_DAY: Final = -1
+
+
 class Recurrence(_Model):
     # How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
-    # each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3), for a rule in
-    # months or years (a rule in days or weeks has none); Ordnung computes each month's date from it
-    # (ordnung.recurrence, point 8). A reading gives it too (``ExtractedItem.recurrence``), graded by
-    # whether the item's quote names it (ordnung.ingest.verify.WORKING_DAY_NOT_IN_QUOTE). Its JSON schema
-    # is part of the extraction prompt's, which the benchmark's recordings pin by version
+    # each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3; -1 is the last,
+    # "am letzten Bankarbeitstag des Monats"), and else ``day_of_month``: the day of each month it is due
+    # on ("zum 1. eines Monats" is 1; a day past a month's end is its last day, "zum Monatsende" is 31),
+    # for a rule in months or years (a rule in days or weeks has neither); Ordnung computes each month's
+    # date from them (ordnung.recurrence, points 8 and 10). A reading gives them too
+    # (``ExtractedItem.recurrence``), graded by whether the item's quote names them
+    # (ordnung.ingest.verify.WORKING_DAY_NOT_IN_QUOTE, DAY_OF_MONTH_NOT_IN_QUOTE). Its JSON schema is part of
+    # the extraction prompt's, which the benchmark's recordings pin by version
     # (evals/recorded/*/prompts.lock.json), so it has no docstring: the model reads only the field
     # descriptions, and a changed one is a changed prompt.
 
     interval: int = 1
     unit: Literal["days", "weeks", "months", "years"] = "months"
-    working_day: int | None = Field(
+    working_day: Literal[-1] | Annotated[int, Field(ge=1, le=10)] | None = Field(
         default=None,
-        ge=1,
-        le=10,
         description=(
             "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden "
-            "Monats'; empty for a day of the month"
+            "Monats', -1 for the last ('am letzten Bankarbeitstag des Monats'); empty for a day of the month"
+        ),
+    )
+    day_of_month: int | None = Field(
+        default=None,
+        ge=1,
+        le=31,
+        description=(
+            "the day of each month it is due on, e.g. 1 for 'zum 1. eines Monats' or 'zum Monatsanfang', "
+            "31 for 'zum Monatsende' (a month's last day); empty for a working day"
         ),
     )
 

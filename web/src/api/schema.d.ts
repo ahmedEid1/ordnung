@@ -4699,9 +4699,14 @@ export interface components {
             unit?: "days" | "weeks" | "months" | "years";
             /**
              * Working Day
-             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats', -1 for the last ('am letzten Bankarbeitstag des Monats'); empty for a day of the month
              */
-            working_day?: number | null;
+            working_day?: -1 | number | null;
+            /**
+             * Day Of Month
+             * @description the day of each month it is due on, e.g. 1 for 'zum 1. eines Monats' or 'zum Monatsanfang', 31 for 'zum Monatsende' (a month's last day); empty for a working day
+             */
+            day_of_month?: number | null;
         };
         /** Recurrence */
         "Recurrence-Output": {
@@ -4718,9 +4723,14 @@ export interface components {
             unit: "days" | "weeks" | "months" | "years";
             /**
              * Working Day
-             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats'; empty for a day of the month
+             * @description the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden Monats', -1 for the last ('am letzten Bankarbeitstag des Monats'); empty for a day of the month
              */
-            working_day: number | null;
+            working_day: -1 | number | null;
+            /**
+             * Day Of Month
+             * @description the day of each month it is due on, e.g. 1 for 'zum 1. eines Monats' or 'zum Monatsanfang', 31 for 'zum Monatsende' (a month's last day); empty for a working day
+             */
+            day_of_month: number | null;
         };
         /** RefLink */
         RefLink: {

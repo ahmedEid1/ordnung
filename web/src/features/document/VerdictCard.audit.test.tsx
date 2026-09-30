@@ -129,7 +129,7 @@ describe("the date box", () => {
       direction: "out",
       due_date: "2026-10-01",
       send_by: "2026-09-30",
-      recurrence: { interval: 1, unit: "months", working_day: null },
+      recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null },
       computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_675s"] }),
     });
     const verdict = renderVerdict(makeDetail({ items: [debit] }));
@@ -181,7 +181,7 @@ describe("what the verdict leads with", () => {
 
   it("a date long past when the letter was read is a quiet 'Still open?' row, not '362 days overdue'", () => {
     const deposit = makeItem({ id: "dep", kind: "payment", title: "Security deposit (Kaution)", amount: 1560, currency: "EUR", direction: "out", due_date: "2025-10-01" });
-    const rent = makeItem({ id: "rent", kind: "payment", title: "Monthly rent payment", action: "Pay the total rent by the third working day of each month.", amount: 640, recurrence: { interval: 1, unit: "months", working_day: null } });
+    const rent = makeItem({ id: "rent", kind: "payment", title: "Monthly rent payment", action: "Pay the total rent by the third working day of each month.", amount: 640, recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
     const verdict = renderVerdict(makeDetail({ items: [deposit, rent], set_aside: [{ item_id: "dep", reason: "history", replaced_by: null }] }));
     expect(within(verdict).getByText("Pay the total rent by the third working day of each month.")).toBeInTheDocument();
     expect(within(verdict).queryByText(/overdue/)).toBeNull();

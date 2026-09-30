@@ -905,7 +905,10 @@ name is graded one confidence level lower and marked "Please check") is dated in
 counting that many working days from the month's first — Monday to Friday without holidays for rent
 (a payment on a lease or under a rent contract), *Werktage* otherwise — so the rent runs Mon 5 Oct
 (3 Oct is a holiday), Wed 4 Nov, Thu 3 Dec 2026 and Tue 7 Apr 2026 after Easter, never on the day of
-the month the first one fell on (`recurrence.py`, point 8). The first month is the month of the date
+the month the first one fell on (`recurrence.py`, point 8). The last working day (-1: a salary
+"spätestens am letzten Bankarbeitstag des Monats") is the month's last Monday to Friday that is no public
+holiday and no bank closing day (24 and 31 December): Wed 30 Sep, Fri 30 Oct, Wed 30 Dec 2026 — of the
+readings of "working day" the earlier, as counting Saturdays is for the Nth. The first month is the month of the date
 the rules engine gives the letter's date (a rent increase's new rent: never before § 558b BGB allows
 it), else the current one — or the month the tenancy starts, if that is later; a rent increase's new
 rent without a date gets no schedule, and one dated keeps its note that it is only owed once agreed. A
@@ -922,6 +925,19 @@ its own words give a working day, so a statement's new total rent "ab dem 01.11.
 2026, not Sun 1 Nov (`recurrence.py`, point 9). A payment that is only part of the rent — a statement's
 new prepayment alone (§ 560 Abs. 4 BGB: the base rent stays owed), a heating advance, an instalment —
 runs beside the rent with its own date.
+
+**A day of the month** ("zum 1. eines Monats", "jeweils zum 15.", "Abbuchung zum Monatsanfang":
+`Recurrence.day_of_month`; a day past a month's end is its last day, so "zum Monatsende" is 31) dates a
+recurring payment on that day in every month, moved as its date says (a payment on a Sunday is kept as
+written, with the note that it may move to Monday). Its first occurrence is the first such day on or after
+the date the letter gives, else its letter's date, else — when the letter is read or its dates recomputed
+— its contract's start; the current one follows as the days pass (`recurrence.py`, point 10). Nothing
+else starts it: with no date at all it stays undated until the person gives it one. Read so, the demo's
+gym fee ("zum 1. eines Monats", letter of 2 Jan 2025) is due Thu 1 Oct 2026 (Mon 28 Sep 2026), and so is
+its Deutschlandticket ("Abbuchung zum Monatsanfang"). A lease that names a day of the month is dated by it, never by the law's 3rd working
+day, and a later rent keeps that day; a later rent's own day of the month (often just the day it starts
+on) doesn't replace the lease's due day. One the item's quote doesn't name dates it one confidence level
+lower, marked "Please check".
 
 Worked examples (demo persona Sam, today = Fri 25 Sep 2026, region NW, letter by post):
 

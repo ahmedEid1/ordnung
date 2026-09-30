@@ -4,7 +4,8 @@
 or after today · 4 done moves on and stays open (Undo brings it back), dismissed ends it · 5 every
 occurrence's dates and receipt from the rules engine · 6 reading again never moves it backwards · 7 a
 date set by hand stands in for the occurrence it replaced and is kept until it passes · 8 a working day
-of each month (rent's by § 556b BGB) · 9 a later rent replaces the one it changes and keeps its due day.
+of each month (rent's by § 556b BGB), also the last · 9 a later rent replaces the one it changes and keeps
+its due day · 10 a day of each month.
 Realistic histories through the API are in
 ``test_regressions_recurrence.py`` and ``test_policy_recurring.py``.
 """
@@ -42,6 +43,7 @@ from ordnung.recurrence import (
     roll_item,
     rolled,
     same_rule,
+    same_schedule,
     schedule_rule,
     standing_in,
     undo_done,
@@ -802,3 +804,146 @@ def test_a_later_rent_on_the_rent_contract_replaces_the_leases_and_keeps_its_day
     assert replacement(store, alone, item_context(store, alone, TODAY), item_context) is None
     twin = _item(store, title="Also from November", date_spec=from_november, contract_id=flat.id)
     assert replacement(store, twin, item_context(store, twin, TODAY), item_context) is None
+
+
+# --------------------------------------------------------------------------------------------------
+# 10. a day of each month, and 8's last working day
+# --------------------------------------------------------------------------------------------------
+
+ON_THE_FIRST = Recurrence(interval=1, unit="months", day_of_month=1)
+UNDATED = DateSpec(type="none", nature="payment", text="zum 1. eines Monats")
+
+
+def test_a_day_of_the_month_belongs_to_a_rule_in_months_without_a_working_day() -> None:
+    """A day of the month is part of the rule (it gives other dates), in months or years; in days or weeks, or
+    beside a working day (which wins), there is none."""
+    assert describe(ON_THE_FIRST) == "every month on the 1st"
+    assert describe(Recurrence(interval=3, day_of_month=22)) == "every 3 months on the 22nd"
+    assert describe(Recurrence(day_of_month=31)) == "every month on the last day"
+    assert describe(Recurrence(working_day=-1)) == "every month on the last working day"
+    assert describe(Recurrence(working_day=3, day_of_month=15)) == "every month on the 3rd working day"
+    assert describe(Recurrence(unit="weeks", day_of_month=1)) == "every week"
+    assert not same_rule(ON_THE_FIRST, MONTHLY) and not same_rule(ON_THE_FIRST, Recurrence(day_of_month=2))
+    assert same_rule(Recurrence(unit="years", day_of_month=5), Recurrence(interval=12, day_of_month=5))
+    assert same_rule(Recurrence(working_day=3, day_of_month=15), BY_THE_THIRD)
+    item = Item(
+        id="i",
+        kind="payment",
+        title="t",
+        recurrence=Recurrence(working_day=3, day_of_month=15),
+        created_at="",
+        updated_at="",
+    )
+    rule = schedule_rule(item, RuleContext(today=TODAY))
+    assert rule is not None and (rule.working_day, rule.day_of_month) == (3, None)
+
+
+def test_a_day_of_the_month_equal_to_the_first_dates_day_is_the_same_schedule(store: Store) -> None:
+    """Point 2: "jeweils zum 15., erstmals am 15.10.2025" read with or without its day of the month gives the
+    same dates, so a payment paid ahead keeps its date when read again with it (point 6); another day is
+    another schedule, and so is the 31st for a first date on the 30th (it gives the 31st of other months)."""
+    stored = _item(store)
+    spec = stored.date_spec
+    assert same_schedule(stored, Recurrence(day_of_month=15), spec)
+    assert not same_schedule(stored, Recurrence(day_of_month=1), spec)
+    thirtieth = DateSpec(type="fixed", date="2026-09-30", nature="payment")
+    at_the_end = _item(store, date_spec=thirtieth, due_date="2026-09-30")
+    assert not same_schedule(at_the_end, Recurrence(day_of_month=31), thirtieth)
+
+
+def _fee(store: Store, **fields: object) -> Item:
+    """A gym's monthly fee read from "zum 1. eines Monats" (its sentence found in the letter): no date."""
+    base = {
+        "title": "Monthly fee",
+        "due_date": None,
+        "date_spec": UNDATED,
+        "amount": 29.9,
+        "recurrence": ON_THE_FIRST,
+    }
+    return _item(store, **{**base, "due_date_source": "none", "grounding": "verified", **fields})
+
+
+def test_a_day_of_the_month_starts_on_or_after_its_letters_date(store: Store) -> None:
+    """Point 10: the first 1st on or after the letter's date (Thu 2 Jan 2025: Sat 1 Feb 2025), else on or after
+    the contract's later start; a date its DateSpec gives comes first (on or after it, on that day). Without
+    a letter date it counts from its current date, less a weekend's move (Sun 1 Nov moved to Mon 2 Nov is
+    still November's); without any date, nothing starts it."""
+    letter = RuleContext(today=TODAY, document_date=date(2025, 1, 2))
+    fee = _fee(store)
+    assert first_occurrence(fee, letter) == date(2025, 2, 1)
+    filed = _filed(fee, letter)
+    assert (filed.due_date, filed.send_by, filed.due_date_source) == ("2026-10-01", "2026-09-30", "computed")
+    assert filed.computation is not None
+    assert (
+        filed.computation.summary
+        == "Repeats every month on the 1st since Sat 1 Feb 2025; next on Thu 1 Oct 2026."
+    )
+    later = first_scheduled(fee, letter, postal_buffer_days=BUFFER, starts="2026-11-15")
+    assert later is not None and later.due_date == "2026-12-01"
+    spec = DateSpec(type="fixed", date="2026-10-20", nature="payment")
+    assert first_occurrence(_fee(store, date_spec=spec), letter) == date(2026, 11, 1)
+    moved = _fee(store, due_date="2026-11-02")
+    assert first_occurrence(moved, RuleContext(today=TODAY)) == date(2026, 11, 1)
+    assert first_occurrence(fee, RuleContext(today=TODAY)) is None
+    assert first_scheduled(fee, RuleContext(today=TODAY), postal_buffer_days=BUFFER) is None
+    started = first_scheduled(fee, RuleContext(today=TODAY), postal_buffer_days=BUFFER, starts="2026-10-15")
+    assert started is not None and started.due_date == "2026-11-01"  # the first 1st on or after its start
+
+
+def test_a_day_past_a_months_end_is_its_last_day(store: Store) -> None:
+    """ "zum Monatsende" (31): Sat 31 Oct, Mon 30 Nov, Thu 31 Dec, Sun 28 Feb 2027 — the 31st kept for every
+    month after a short one (the anchor is the rule's day, not the clipped date)."""
+    letter = RuleContext(today=date(2026, 10, 2), document_date=date(2026, 9, 10))
+    spec = DateSpec(type="none", nature="payment", shift_rule="none", text="zum Monatsende")
+    fee = _filed(_fee(store, date_spec=spec, recurrence=Recurrence(day_of_month=31)), letter)
+    dates = [fee.due_date]
+    for _ in range(4):
+        moved = moved_on(fee, letter, postal_buffer_days=BUFFER)
+        assert moved is not None
+        fee = moved
+        dates.append(fee.due_date)
+    assert dates == ["2026-10-31", "2026-11-30", "2026-12-31", "2027-01-31", "2027-02-28"]
+
+
+def test_a_leases_rent_on_a_day_of_the_month_is_never_the_laws_working_day(store: Store) -> None:
+    """Point 10 with point 8: the lease names a day (the 1st), so the law's 3rd working day doesn't date it —
+    no warning to check the lease — and a later rent keeps that day (point 9)."""
+    rent = _rent(store, recurrence=ON_THE_FIRST)
+    rule = schedule_rule(rent, RENT)
+    assert rule is not None and (rule.working_day, rule.day_of_month) == (None, 1)
+    lease = replace(RENT, document_date=date(2026, 9, 1))
+    october = _filed(rent, lease)
+    assert october.due_date == "2026-10-01" and october.computation is not None
+    assert LAW_DEFAULT_WARNING not in october.computation.warnings
+    assert "bgb_556b" not in october.computation.rule_ids
+    kept = replace(RENT, rent_due=RentDue(working_day=3, source="the lease's due day"))
+    own_day = schedule_rule(_rent(store, recurrence=ON_THE_FIRST), kept)
+    assert own_day is not None and (own_day.working_day, own_day.day_of_month) == (3, None)
+
+
+def test_the_last_working_day_is_the_months_last_bank_working_day(store: Store) -> None:
+    """Point 8's -1: the month's last Monday to Friday that is no public holiday and no bank closing day —
+    Wed 30 Sep, Fri 30 Oct 2026 (the 31st is a Saturday), Wed 30 Dec 2026 (the 31st is one), Fri 29 Apr 2022
+    (the 30th is a Saturday); in Brandenburg Fri 30 Oct 2026 is the last, as Reformation Day is Sat 31 Oct,
+    but on Tue 31 Oct 2023 it is a holiday there only: Mon 30 Oct. Money coming in has no send-by day."""
+    spec = DateSpec(type="none", nature="payment", text="am letzten Bankarbeitstag des Monats")
+    salary = _rent(
+        store, title="Salary", direction="in", date_spec=spec, recurrence=Recurrence(working_day=-1)
+    )
+    at = RuleContext(today=TODAY, collected=True)
+    september = _filed(salary, at)
+    assert (september.due_date, september.send_by) == ("2026-09-30", None)
+    assert september.computation is not None
+    assert (
+        september.computation.summary
+        == "Repeats every month on the last working day; next on Wed 30 Sep 2026."
+    )
+    october = moved_on(september, at, postal_buffer_days=BUFFER)
+    assert october is not None and october.due_date == "2026-10-30"
+    december = _filed(salary, replace(at, today=date(2026, 12, 1)))
+    assert december.due_date == "2026-12-30"
+    april = _filed(salary, replace(at, today=date(2022, 4, 20)))
+    assert april.due_date == "2022-04-29"
+    brandenburg = replace(at, today=date(2023, 10, 20), recipient_region="BB")
+    assert _filed(salary, brandenburg).due_date == "2023-10-30"
+    assert _filed(salary, replace(brandenburg, recipient_region="NW")).due_date == "2023-10-31"
