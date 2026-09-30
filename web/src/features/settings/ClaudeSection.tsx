@@ -1,15 +1,22 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, CircleCheck, FlaskConical, RotateCw, Terminal } from "lucide-react";
-import { useProbeHealth } from "@/api/hooks";
-import type { Health } from "@/api/types";
+import { api } from "@/api/endpoints";
+import { ApiError } from "@/api/client";
+import { qk, useProbeHealth } from "@/api/hooks";
+import type { AppSettings, Health, SettingsPatch } from "@/api/types";
 import { Button } from "@/components/ui/Button";
+import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { CLAUDE_INSTALL_CMD, CLAUDE_LOGIN_CMD } from "@/features/onboarding/options";
 import { claudeState } from "@/features/onboarding/wizard";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
-import { SectionHeading, SettingsCard } from "./SettingsCard";
+import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
+
+/** The model every call runs on until another is chosen (`ordnung.llm.base.DEFAULT_MODEL`: Sonnet 5, pinned). */
+export const DEFAULT_MODEL = "claude-sonnet-5";
 
 /** "2.1.4 (Claude Code)" → "2.1.4" (the row is already called "Claude Code"). */
 export function bareVersion(version: string | null | undefined): string | null {
@@ -49,6 +56,88 @@ function useProbe() {
   return { mutate, isPending: probe.isPending };
 }
 
+const focusModelField = () => document.getElementById("claude-model")?.focus();
+
+/**
+ * Saves the model. A name the server refuses (422) is the form's mistake, shown under the field;
+ * anything else is a failed save, which the toast explains.
+ */
+function useSaveModel(onRefused: (reason: string) => void) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: SettingsPatch) => api.updateSettings(patch),
+    meta: { silent: true },
+    onSuccess: (settings) => qc.setQueryData(qk.settings, settings),
+    onError: (err) => {
+      if (err instanceof ApiError && err.status === 422) onRefused(err.message);
+      else toast.error("Couldn't save your settings", { description: err instanceof Error ? err.message : undefined });
+    },
+  });
+}
+
+/**
+ * "Model": the model every call to Claude runs on — Sonnet 5 unless another is named. Saved
+ * trimmed; the server's reason for refusing a name goes under the field (like the folder's path).
+ * The demo and the benchmarks replay recordings, so the card says they keep their recorded model.
+ */
+function ModelCard({ settings }: { settings: AppSettings }) {
+  const saved = settings.model;
+  const [model, setModel] = useState(saved);
+  const [refused, setRefused] = useState<string | null>(null);
+  const save = useSaveModel((reason) => {
+    setRefused(reason);
+    requestAnimationFrame(focusModelField);
+  });
+  const dirty = model.trim() !== saved;
+  const onSave = () =>
+    save.mutateAsync({ model: model.trim() }).then((s) => {
+      setModel(s.model);
+      setRefused(null);
+      return `Every call to Claude runs on ${s.model} from now on.`;
+    });
+  return (
+    <SettingsCard
+      title="Model"
+      id="set-claude-model"
+      description="The Claude model Ordnung uses for everything it reads, suggests and drafts."
+      footer={
+        <SaveBar
+          dirty={dirty}
+          saving={save.isPending}
+          onSave={onSave}
+          invalid={Boolean(refused) && dirty}
+          onInvalid={focusModelField}
+          onDiscard={() => {
+            setModel(saved);
+            setRefused(null);
+          }}
+        />
+      }
+    >
+      <Field
+        label="Model"
+        hint={`Sonnet 5 by default: ${DEFAULT_MODEL}. Any model id or alias Claude Code accepts, for example claude-opus-5-5 or sonnet.`}
+        error={refused ?? undefined}
+        id="claude-model"
+      >
+        <Input
+          value={model}
+          onChange={(e) => {
+            setModel(e.target.value);
+            setRefused(null);
+          }}
+          placeholder={DEFAULT_MODEL}
+          spellCheck={false}
+          autoCapitalize="off"
+          autoCorrect="off"
+          className={FIELD_WIDTH}
+        />
+      </Field>
+      <p className="mt-3 text-[13px] leading-5 text-muted">The demo and the benchmarks keep the model they were recorded with.</p>
+    </SettingsCard>
+  );
+}
+
 /** The install / sign-in commands, numbered. */
 function FixSteps({ missing, children }: { missing: boolean; children?: ReactNode }) {
   return (
@@ -68,8 +157,8 @@ function FixSteps({ missing, children }: { missing: boolean; children?: ReactNod
   );
 }
 
-/** "Claude connection": is the `claude` CLI installed and signed in — and how to fix it. */
-export function ClaudeSection({ health }: { health: Health }) {
+/** "Claude connection": is the `claude` CLI installed and signed in — and how to fix it; the model every call runs on. */
+export function ClaudeSection({ health, settings }: { health: Health; settings: AppSettings }) {
   const probe = useProbe();
   const c = health.claude;
   const state = claudeState(c);
@@ -162,6 +251,8 @@ export function ClaudeSection({ health }: { health: Health }) {
             )}
           </dl>
         </SettingsCard>
+
+        <ModelCard settings={settings} />
 
         {(state === "missing" || state === "signed_out") && replay ? (
           <details className="card group overflow-clip">

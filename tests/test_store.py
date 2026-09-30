@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import inspect
+import json
 import random
 import sqlite3
 import threading
@@ -18,7 +19,7 @@ from ordnung.db import store as store_module
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import NotFoundError, Store, normalize_identifier, search_tokens
 from ordnung.ids import PREFIXES, content_id, doc_id_for_sha, new_id, prefix_of
-from ordnung.llm.base import LLMRequest, Usage
+from ordnung.llm.base import DEFAULT_MODEL, LLMRequest, Usage
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService, UsageSink
 from ordnung.models import (
@@ -346,11 +347,21 @@ def test_profile_defaults_and_round_trip(store: Store) -> None:
 
 def test_settings_defaults_and_round_trip(store: Store) -> None:
     assert store.get_settings() == AppSettings()
-    settings = AppSettings(concurrency=4, demo=True, simulated_today="2026-09-28")
+    assert AppSettings().model == DEFAULT_MODEL == "claude-sonnet-5"
+    settings = AppSettings(concurrency=4, demo=True, simulated_today="2026-09-28", model="claude-opus-5-5")
     settings.models.extract = "opus"
     store.save_settings(settings)
     loaded = store.get_settings()
-    assert loaded == settings and loaded.models.extract == "opus"
+    assert loaded == settings and loaded.models.extract == "opus" and loaded.model == "claude-opus-5-5"
+
+
+def test_settings_saved_before_the_model_setting_get_the_default(store: Store) -> None:
+    """Settings are one JSON row: a folder from before the field existed loads with Sonnet 5."""
+    old = AppSettings(concurrency=3).model_dump()
+    del old["model"]
+    store.set_meta("settings", json.dumps(old))
+    loaded = store.get_settings()
+    assert loaded.model == DEFAULT_MODEL and loaded.concurrency == 3
 
 
 # --------------------------------------------------------------------------------------------------

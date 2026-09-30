@@ -27,9 +27,10 @@ class Attachment(BaseModel):
     media_type: Literal["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]
 
 
-#: The model every call names unless a request says otherwise: a pinned id, because an alias such as
-#: ``sonnet`` moves with releases while the demo's and the benchmarks' recordings were made with one model
-#: (``ORDNUNG_CLAUDE_MODEL`` overrides it for every call: :mod:`ordnung.llm.claude_cli`).
+#: The model every call runs on unless the person chose another (``AppSettings.model``, Settings →
+#: Claude): a pinned id, because an alias such as ``sonnet`` moves with releases while the demo's and
+#: the benchmarks' recordings were made with one model. ``ORDNUNG_CLAUDE_MODEL`` overrides both for
+#: every call (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for` is the one place that decides).
 DEFAULT_MODEL = "claude-sonnet-5"
 
 

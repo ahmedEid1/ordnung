@@ -119,13 +119,14 @@ export interface paths {
         };
         /**
          * Read Settings
-         * @description App settings: models per purpose, concurrency, inbox folder, AI note.
+         * @description App settings: the model every call runs on (and the aliases per purpose), concurrency, inbox
+         *     folder, AI note.
          */
         get: operations["read_settings_api_settings_get"];
         /**
          * Update Settings
          * @description Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
-         *     restarts the folder watcher.
+         *     restarts the folder watcher, a new model counts from the next call to Claude.
          */
         put: operations["update_settings_api_settings_put"];
         post?: never;
@@ -1639,6 +1640,11 @@ export interface components {
         /** AppSettings */
         AppSettings: {
             models: components["schemas"]["ModelSettings"];
+            /**
+             * Model
+             * @default claude-sonnet-5
+             */
+            model: string;
             /**
              * Concurrency
              * @default 2
@@ -4138,7 +4144,12 @@ export interface components {
              */
             tracking_number?: string | null;
         };
-        /** ModelSettings */
+        /**
+         * ModelSettings
+         * @description A request's own model per purpose. It keys the cache and the recordings (an alias, so they
+         *     survive a change of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
+         *     (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`).
+         */
         ModelSettings: {
             /**
              * Transcribe
@@ -4846,6 +4857,11 @@ export interface components {
             models?: {
                 [key: string]: string;
             } | null;
+            /**
+             * Model
+             * @description the model every call runs on: an id or alias Claude Code accepts (claude-sonnet-5 by default)
+             */
+            model?: string | null;
             /** Concurrency */
             concurrency?: number | null;
             /** Inbox Dir */

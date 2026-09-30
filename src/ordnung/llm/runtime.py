@@ -287,11 +287,17 @@ class LLMService:
 
 
 def make_backend(
-    kind: str | None = None, *, concurrency: int = 2, fixtures: Path | None = None
+    kind: str | None = None,
+    *,
+    concurrency: int = 2,
+    fixtures: Path | None = None,
+    model_setting: Callable[[], str | None] | None = None,
 ) -> LLMBackend:
     """Create a backend by name: ``claude`` (default), ``replay``, ``replay+claude``, ``fake``.
 
-    ``ORDNUNG_BACKEND`` overrides the default. Recording is done by the demo loader only.
+    ``ORDNUNG_BACKEND`` overrides the default. ``model_setting`` reads the model the person chose
+    for the live backend (:meth:`~ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`). Recording is
+    done by the demo loader only.
     """
     from ordnung.config import fixtures_dir
     from ordnung.llm.claude_cli import ClaudeCLIBackend
@@ -304,7 +310,7 @@ def make_backend(
         return FakeBackend()
     if kind == "replay":
         return ReplayBackend(root)
-    live = ClaudeCLIBackend(concurrency=concurrency)
+    live = ClaudeCLIBackend(concurrency=concurrency, model_setting=model_setting)
     if kind in ("replay+claude", "replay-then-claude"):
         return ReplayBackend(root, fallback=live)
     if kind == "record":

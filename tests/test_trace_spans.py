@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from ordnung.config import Paths
 from ordnung.db.store import Store
-from ordnung.llm.base import ClaudeTimeout, LLMRequest, LLMResponse, Usage
+from ordnung.llm.base import DEFAULT_MODEL, ClaudeTimeout, LLMRequest, LLMResponse, Usage
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService, call_outcome, request_key
 from ordnung.models import ComputationReceipt, DateSpec, Evidence, TraceSpan
@@ -276,7 +276,7 @@ async def test_a_traced_call_writes_its_row_and_describes_its_step(usage_store: 
     assert step.recorded_ms == 1234
     assert step.attributes["call_id"] == row.id and step.attributes["outcome"] == "ok"
     assert (
-        step.attributes["request_model"] == "sonnet"
+        step.attributes["request_model"] == DEFAULT_MODEL
         and step.attributes["served_model"] == "model-that-answered"
     )
     assert "call_id" not in response.model_dump(), "the log id never reaches the cache or a recording"

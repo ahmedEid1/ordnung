@@ -345,6 +345,13 @@ function inboxDirProblem(value: string): string | null {
   return null;
 }
 
+/** Like the API: a model id or alias as Claude Code takes it — letters, digits, dots and dashes. */
+function modelProblem(value: string): string | null {
+  if (!value) return "Enter a model id or alias, like claude-sonnet-5 or sonnet.";
+  if (!/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(value)) return "A model is named with letters, digits, dots and dashes only — no spaces — like claude-sonnet-5.";
+  return null;
+}
+
 function folderStatus(db: MockDb, canRead: boolean): FolderStatus {
   const s = db.state.settings;
   return {
@@ -1185,6 +1192,11 @@ const routes: [string, string, Handler][] = [
         const problem = inboxDirProblem(patch.inbox_dir);
         if (problem) throw new HttpError(422, problem);
         patch.inbox_dir = patch.inbox_dir.trim();
+      }
+      if (typeof patch.model === "string") {
+        patch.model = patch.model.trim();
+        const problem = modelProblem(patch.model);
+        if (problem) throw new HttpError(422, problem);
       }
       const before = db.state.settings.inbox_dir;
       db.state.settings = { ...db.state.settings, ...patch, models, ...cleared };

@@ -371,9 +371,12 @@ def recording_backend(
     if not is_demo_dir(data_dir):
         raise DemoError(f"Recording is only allowed into a demo folder, and {data_dir} is not one.")
     if live is None:
+        from ordnung.llm.base import DEFAULT_MODEL
         from ordnung.llm.claude_cli import ClaudeCLIBackend
 
-        live = ClaudeCLIBackend(concurrency=1)
+        # the demo's settings are the defaults (``_seed``): its recordings name the default model,
+        # never a request's alias, unless ORDNUNG_CLAUDE_MODEL pins another
+        live = ClaudeCLIBackend(concurrency=1, model_setting=lambda: DEFAULT_MODEL)
     recorder = RecordingBackend(live, fixtures, allowed_doc_ids=set(allowed_doc_ids))
     return ReplayBackend(fixtures, fallback=recorder)
 

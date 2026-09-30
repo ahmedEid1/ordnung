@@ -3,9 +3,10 @@
 ``PUT`` merges the fields sent into the stored values (the web app sends partial objects). A new
 holiday region, country or postal buffer recomputes the dates of every letter's to-dos (contracts
 are recomputed on read anyway). Settings guard the watched inbox folder (never the home folder, a
-file-system root or Ordnung's own data) and keep the server-controlled ``demo`` and
-``simulated_today`` read-only. A new inbox folder restarts the folder watcher; choosing Ordnung's own
-inbox folder (``<data>/inbox``) creates it.
+file-system root or Ordnung's own data), take the model every call runs on only as an id or alias
+Claude Code accepts, and keep the server-controlled ``demo`` and ``simulated_today`` read-only. A new
+inbox folder restarts the folder watcher; choosing Ordnung's own inbox folder (``<data>/inbox``)
+creates it.
 """
 
 from __future__ import annotations
@@ -36,6 +37,9 @@ router = APIRouter(tags=["profile"])
 _READ_ONLY_SETTINGS = ("demo", "simulated_today")
 #: The shape the Profile form accepts (``EMAIL`` in ``web/src/features/settings/ProfileSection.tsx``).
 _EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+#: A model id or alias as Claude Code takes it (``claude-sonnet-5``, ``claude-opus-5-5``, ``sonnet``):
+#: letters, digits, dots and dashes, nothing else (the static demo's mock API checks the same).
+_MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]*")
 #: Profile fields the rules engine uses for to-do dates (holidays, German rules, send-by buffer).
 _DATE_FIELDS = ("region", "country", "postal_buffer_days")
 
@@ -126,6 +130,11 @@ class SettingsPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     models: dict[str, str] | None = None
+    model: str | None = Field(
+        default=None,
+        max_length=200,
+        description="the model every call runs on: an id or alias Claude Code accepts (claude-sonnet-5 by default)",
+    )
     concurrency: int | None = Field(default=None, ge=1, le=8)
     inbox_dir: str | None = None
     inbox_auto_read: bool | None = Field(
@@ -230,6 +239,25 @@ def inbox_dir_problem(value: str, paths: Paths) -> str | None:
     return None
 
 
+def model_problem(value: str) -> str | None:
+    """Why ``value`` can't be the model every call runs on (``None`` if it can; ``value`` is trimmed)."""
+    if not value:
+        return "Enter a model id or alias, like claude-sonnet-5 or sonnet."
+    if not _MODEL.fullmatch(value):
+        return (
+            "A model is named with letters, digits, dots and dashes only — no spaces — like claude-sonnet-5."
+        )
+    return None
+
+
+def _checked_model(value: str) -> str:
+    model = value.strip()
+    problem = model_problem(model)
+    if problem:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
+    return model
+
+
 def _checked_inbox(value: str | None, paths: Paths) -> str | None:
     if not value:
         return None
@@ -252,6 +280,8 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
             )
     if "inbox_dir" in changes:
         changes["inbox_dir"] = _checked_inbox(changes["inbox_dir"], ctx.paths)
+    if changes.get("model") is not None:
+        changes["model"] = _checked_model(changes["model"])
     if changes.get("models") is not None:
         changes["models"] = current.models.model_dump() | changes["models"]
     merged = current.model_dump() | {name: value for name, value in changes.items() if value is not None}
@@ -265,14 +295,15 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
 
 @router.get("/settings", response_model=AppSettings)
 def read_settings(store: StoreDep) -> AppSettings:
-    """App settings: models per purpose, concurrency, inbox folder, AI note."""
+    """App settings: the model every call runs on (and the aliases per purpose), concurrency, inbox
+    folder, AI note."""
     return store.get_settings()
 
 
 @router.put("/settings", response_model=AppSettings)
 async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
     """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
-    restarts the folder watcher."""
+    restarts the folder watcher, a new model counts from the next call to Claude."""
     settings = await asyncio.to_thread(_merge_settings, state.ctx, patch)
     await state.folder.reconfigure()
     return settings
