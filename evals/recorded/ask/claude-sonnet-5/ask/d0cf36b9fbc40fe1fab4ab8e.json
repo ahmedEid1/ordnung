@@ -1,0 +1,200 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"What is the deadline to object to my child benefit (Kindergeld) notice?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhat is the deadline to object to my child benefit (Kindergeld) notice?\n"
+  },
+  "response": {
+    "text": "I couldn't find any Kindergeld (child benefit) notice in your records — there's no such letter, to-do, or contract stored in Ordnung. The only related mention is a university enrolment certificate that just references child benefit in passing, not a Kindergeld notice itself [doc:doc_50t54msvdfcy].\n\nIf you have a physical Kindergeld notice with an objection deadline, it doesn't appear to have been added to Ordnung yet.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 345,
+      "cache_read_tokens": 20387,
+      "cache_creation_tokens": 2097,
+      "cost_usd": 0.0159274,
+      "duration_ms": 8163,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Kindergeld"
+      },
+      "tool_use_id": "toolu_01XCK6PkY6rhwUFRxavAHRdd"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01XCK6PkY6rhwUFRxavAHRdd"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "child benefit"
+      },
+      "tool_use_id": "toolu_01USPTDEkwdrnVRzJ9i1Y3Pf"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_50t54msvdfcy\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_50t54msvdfcy\":{\"title\":\"Certificate of Enrolment – Winter Semester 2026/27\",\"snippet\":\"…for a bank, health insurance, transport ticket, child benefit, or landlord). There is nothing you need…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01USPTDEkwdrnVRzJ9i1Y3Pf"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Familienkasse"
+      },
+      "tool_use_id": "toolu_011rL8ZYLZ18vEJFcnmprzxm"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_011rL8ZYLZ18vEJFcnmprzxm"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find any"
+    },
+    {
+      "type": "text",
+      "text": " Kindergeld (child"
+    },
+    {
+      "type": "text",
+      "text": " benefit) notice in your"
+    },
+    {
+      "type": "text",
+      "text": " records — there's no such letter"
+    },
+    {
+      "type": "text",
+      "text": ", to-do, or cont"
+    },
+    {
+      "type": "text",
+      "text": "ract st"
+    },
+    {
+      "type": "text",
+      "text": "ored in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung. The only"
+    },
+    {
+      "type": "text",
+      "text": " related"
+    },
+    {
+      "type": "text",
+      "text": " mention is a"
+    },
+    {
+      "type": "text",
+      "text": " university"
+    },
+    {
+      "type": "text",
+      "text": " enrolment certificate that"
+    },
+    {
+      "type": "text",
+      "text": " just references"
+    },
+    {
+      "type": "text",
+      "text": " child benefit in"
+    },
+    {
+      "type": "text",
+      "text": " passing,"
+    },
+    {
+      "type": "text",
+      "text": " not a Kindergeld"
+    },
+    {
+      "type": "text",
+      "text": " notice itself [doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_50t54msv"
+    },
+    {
+      "type": "text",
+      "text": "dfcy].\n\nIf you"
+    },
+    {
+      "type": "text",
+      "text": " have a phys"
+    },
+    {
+      "type": "text",
+      "text": "ical Kindergeld not"
+    },
+    {
+      "type": "text",
+      "text": "ice with"
+    },
+    {
+      "type": "text",
+      "text": " an objection deadline, it"
+    },
+    {
+      "type": "text",
+      "text": " do"
+    },
+    {
+      "type": "text",
+      "text": "esn't appear to have"
+    },
+    {
+      "type": "text",
+      "text": " been added"
+    },
+    {
+      "type": "text",
+      "text": " to Ordnung yet"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any Kindergeld (child benefit) notice in your records — there's no such letter, to-do, or contract stored in Ordnung. The only related mention is a university enrolment certificate that just references child benefit in passing, not a Kindergeld notice itself [doc:doc_50t54msvdfcy].\n\nIf you have a physical Kindergeld notice with an objection deadline, it doesn't appear to have been added to Ordnung yet.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 345,
+          "cache_read_tokens": 20387,
+          "cache_creation_tokens": 2097,
+          "cost_usd": 0.0159274,
+          "duration_ms": 8163,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

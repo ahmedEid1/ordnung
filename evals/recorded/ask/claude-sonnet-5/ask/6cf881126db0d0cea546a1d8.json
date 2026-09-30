@@ -1,0 +1,285 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"When is my appointment with Dr. Müller?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen is my appointment with Dr. Müller?\n"
+  },
+  "response": {
+    "text": "I couldn't find any appointment with a \"Dr. Müller\" in your records. Your only medical/dental appointment on file is at **Zahnarztpraxis Dr. Anna Beispiel** (dental checkup and cleaning), not Dr. Müller [item:itm_sncxha9wbsxc].\n\nYour other upcoming appointments are:\n- Immigration office (Ausländerbehörde), Stadt Musterstadt [item:itm_64wce6sh2rpp]\n- Autumn Meeting in Berlin, Global Talent Scholarship Foundation [item:itm_espa58t15ncg]\n\nIf you have a separate letter from a Dr. Müller, it doesn't seem to be in Ordnung yet — you could check if it was uploaded correctly.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 487,
+      "cache_read_tokens": 20385,
+      "cache_creation_tokens": 2803,
+      "cost_usd": 0.020171,
+      "duration_ms": 9308,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Dr. Müller"
+      },
+      "tool_use_id": "toolu_018vCDc5rRrNUu6sT5MnfGQ5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_018vCDc5rRrNUu6sT5MnfGQ5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Müller"
+      },
+      "tool_use_id": "toolu_01NYHVHq8JcWXqjGMDUhkaeB"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01NYHVHq8JcWXqjGMDUhkaeB"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "status": "all"
+      },
+      "tool_use_id": "toolu_01Dgc2CLQeJj34j1wE4kuwDH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Attend appointment at the immigration office (Ausländerbehörde)\",\"action\":\"Go to the appointment with your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, your rental agreement or landlord confirmation, and the €100 fee (girocard only, cash not accepted).\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Dgc2CLQeJj34j1wE4kuwDH"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find any app"
+    },
+    {
+      "type": "text",
+      "text": "ointment with"
+    },
+    {
+      "type": "text",
+      "text": " a \"Dr. Mü"
+    },
+    {
+      "type": "text",
+      "text": "ller\" in your"
+    },
+    {
+      "type": "text",
+      "text": " records."
+    },
+    {
+      "type": "text",
+      "text": " Your only med"
+    },
+    {
+      "type": "text",
+      "text": "ical/"
+    },
+    {
+      "type": "text",
+      "text": "dental appointment on"
+    },
+    {
+      "type": "text",
+      "text": " file is at"
+    },
+    {
+      "type": "text",
+      "text": " **"
+    },
+    {
+      "type": "text",
+      "text": "Zahnarzt"
+    },
+    {
+      "type": "text",
+      "text": "praxis Dr."
+    },
+    {
+      "type": "text",
+      "text": " Anna Beispiel"
+    },
+    {
+      "type": "text",
+      "text": "**"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "dental checkup and cle"
+    },
+    {
+      "type": "text",
+      "text": "aning), not"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Müller ["
+    },
+    {
+      "type": "text",
+      "text": "item:itm_sncx"
+    },
+    {
+      "type": "text",
+      "text": "ha9wbsxc]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nYour other up"
+    },
+    {
+      "type": "text",
+      "text": "coming appointments are:"
+    },
+    {
+      "type": "text",
+      "text": "\n- Immigration office ("
+    },
+    {
+      "type": "text",
+      "text": "Ausländerbehör"
+    },
+    {
+      "type": "text",
+      "text": "de),"
+    },
+    {
+      "type": "text",
+      "text": " Stadt Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "64wce6sh2r"
+    },
+    {
+      "type": "text",
+      "text": "pp]\n- Autum"
+    },
+    {
+      "type": "text",
+      "text": "n Meeting in Ber"
+    },
+    {
+      "type": "text",
+      "text": "lin, Global Talent"
+    },
+    {
+      "type": "text",
+      "text": " Scholarship Found"
+    },
+    {
+      "type": "text",
+      "text": "ation [item:itm_esp"
+    },
+    {
+      "type": "text",
+      "text": "a58t15ncg]"
+    },
+    {
+      "type": "text",
+      "text": "\n\nIf you have"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " separ"
+    },
+    {
+      "type": "text",
+      "text": "ate letter from a"
+    },
+    {
+      "type": "text",
+      "text": " Dr. Müller,"
+    },
+    {
+      "type": "text",
+      "text": " it do"
+    },
+    {
+      "type": "text",
+      "text": "esn't se"
+    },
+    {
+      "type": "text",
+      "text": "em to be in Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung yet — you could"
+    },
+    {
+      "type": "text",
+      "text": " check"
+    },
+    {
+      "type": "text",
+      "text": " if"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": " was"
+    },
+    {
+      "type": "text",
+      "text": " uploaded corre"
+    },
+    {
+      "type": "text",
+      "text": "ctly."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any appointment with a \"Dr. Müller\" in your records. Your only medical/dental appointment on file is at **Zahnarztpraxis Dr. Anna Beispiel** (dental checkup and cleaning), not Dr. Müller [item:itm_sncxha9wbsxc].\n\nYour other upcoming appointments are:\n- Immigration office (Ausländerbehörde), Stadt Musterstadt [item:itm_64wce6sh2rpp]\n- Autumn Meeting in Berlin, Global Talent Scholarship Foundation [item:itm_espa58t15ncg]\n\nIf you have a separate letter from a Dr. Müller, it doesn't seem to be in Ordnung yet — you could check if it was uploaded correctly.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 487,
+          "cache_read_tokens": 20385,
+          "cache_creation_tokens": 2803,
+          "cost_usd": 0.020171,
+          "duration_ms": 9308,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
