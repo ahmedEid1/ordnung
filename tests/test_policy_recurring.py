@@ -842,6 +842,42 @@ async def test_a_day_of_the_month_with_no_date_at_all_stays_undated(data_dir: Pa
         assert (await _item(api, fee["id"]))["due_date"] == "2026-11-01"
 
 
+async def test_a_fee_the_person_dated_stays_one_when_read_again_with_its_day_of_the_month(
+    data_dir: Path,
+) -> None:
+    """A gym fee read before prompt 12 — no day of the month, its quote without the day — stayed undated, and
+    the person gave it its date, Thu 1 Oct. "Read again" (as the README advises for such letters) reads the
+    day, the 1st, and quotes the sentence that names it: the same obligation, so the person's to-do takes the
+    new reading's slot and keeps their date — never a second "Monthly fee" beside it."""
+    clock.set_today("2026-09-28")
+    gym = _monthly(
+        "Beitragsvereinbarung Sportwerk",
+        GYM_QUOTE,
+        {"day_of_month": 1},
+        document_date="2025-01-02",
+        start_date=None,
+    )
+    router = _with(gym)
+    [fee] = router.payloads[gym.marker]["items"]
+    read_then = {
+        **fee,
+        "quote": "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig",
+        "recurrence": MONTHLY,
+    }
+    router.payloads[gym.marker]["items"] = [read_then]
+    async with api_for(data_dir, router=router) as api:
+        doc_id, undated = await _monthly_of(api, gym)
+        assert undated["due_date"] is None
+        dated = await _patch(api, undated["id"], due_date="2026-10-01")
+        assert dated["user_modified"]
+
+        router.payloads[gym.marker]["items"] = [fee]
+        assert (await api.client.post(f"/api/documents/{doc_id}/reprocess")).status_code == 202
+        await api.read_all()
+        [after] = await _payments(api, doc_id)
+        assert (after["id"], after["due_date"]) == (undated["id"], "2026-10-01")
+
+
 async def test_a_day_of_the_month_its_quote_does_not_name_is_graded_lower(data_dir: Path) -> None:
     """As a working day is (point 8): the day still dates the fee, one level lower, with a note to check it,
     and the letter asks "Please check"."""

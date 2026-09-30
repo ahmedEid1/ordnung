@@ -962,8 +962,9 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
     or for a recurring one the same schedule (:func:`~ordnung.recurrence.same_schedule`: the rule and
     first occurrence) with any amount unless ``same_amount`` (reading the letter again corrects a
     misread amount). A recurring to-do the person edited also matches a reading of its rule that gives
-    no date (the letter leaves it undated; the person gave it its first occurrence). An undated to-do
-    without an amount can't be told apart from another one, so it never matches."""
+    no date (the letter leaves it undated; the person gave it its first occurrence) — also with a day of
+    the month its own rule doesn't have (read before prompt 12 gave one). An undated to-do without an
+    amount can't be told apart from another one, so it never matches."""
     new = verified.item
     if (new.date.type == "none" and new.amount is None) or item.kind != new.kind or item.date_spec is None:
         return False
@@ -973,7 +974,12 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
         return False
     if same_schedule(item, new.recurrence, new.date):
         return True
-    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, new.recurrence)
+    if not item.user_modified or new.date.type != "none":
+        return False
+    rule = new.recurrence
+    if rule is not None and rule_day_of_month(item.recurrence) is None:
+        rule = rule.model_copy(update={"day_of_month": None})
+    return same_rule(item.recurrence, rule)
 
 
 def carry_over(store: Store, doc_id: str, verification: Verification) -> int:
