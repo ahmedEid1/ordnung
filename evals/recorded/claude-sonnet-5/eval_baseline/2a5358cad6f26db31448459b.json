@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0cd3879e5f8c9b3e886d3c37a8af5bd8eee367adbece9b44c5b3537478c0e0fe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[249.19],\"contract\":null,\"document_date\":\"2026-01-26\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for wedding invitations\",\"quote\":\"Den Rechnungsbetrag überweisen Sie bitte binnen 14 Tagen nach dem Rechnungsdatum.\",\"computation\":\"The invoice is dated 26.01.2026 (Monday). Under §187 BGB the 14-day period begins the day after the triggering event, so it starts on 27.01.2026 and its 14th day falls on 09.02.2026 (Monday), which is not a Saturday, Sunday or public holiday in NW, so no §193 BGB extension applies. However, the letter also prints an explicit due date 'Zahlbar bis: 16.02.2026', which is a week later and contradicts the 14-day calculation from the invoice date. Following the rule to use the earliest plausible date when a letter contradicts itself, 09.02.2026 is used, with reduced confidence and a warning about the discrepancy.\",\"due_date\":\"2026-02-09\",\"confidence\":\"medium\",\"amount\":249.19}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"DB-26-0117\"},{\"label\":\"Kunden-Nr.\",\"value\":\"K-3390\"}],\"remedy_type\":\"none\",\"sender_name\":\"Druckerei Beispiel & Sohn\",\"warnings\":[\"The letter gives two conflicting due dates: '14 Tagen nach dem Rechnungsdatum' (which computes to 09.02.2026) versus the explicitly printed 'Zahlbar bis: 16.02.2026' — the earlier date (09.02.2026) was used to be safe, but the recipient should double-check with the sender which date actually applies.\",\"Verify the IBAN (DE64 3705 0198 0002 7270 00) and payee name match the printed sender details before paying, as a basic phishing precaution for any invoice.\"]}",
+    "data": {
+      "amounts": [
+        249.19
+      ],
+      "contract": null,
+      "document_date": "2026-01-26",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for wedding invitations",
+          "quote": "Den Rechnungsbetrag überweisen Sie bitte binnen 14 Tagen nach dem Rechnungsdatum.",
+          "computation": "The invoice is dated 26.01.2026 (Monday). Under §187 BGB the 14-day period begins the day after the triggering event, so it starts on 27.01.2026 and its 14th day falls on 09.02.2026 (Monday), which is not a Saturday, Sunday or public holiday in NW, so no §193 BGB extension applies. However, the letter also prints an explicit due date 'Zahlbar bis: 16.02.2026', which is a week later and contradicts the 14-day calculation from the invoice date. Following the rule to use the earliest plausible date when a letter contradicts itself, 09.02.2026 is used, with reduced confidence and a warning about the discrepancy.",
+          "due_date": "2026-02-09",
+          "confidence": "medium",
+          "amount": 249.19
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "DB-26-0117"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "K-3390"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Druckerei Beispiel & Sohn",
+      "warnings": [
+        "The letter gives two conflicting due dates: '14 Tagen nach dem Rechnungsdatum' (which computes to 09.02.2026) versus the explicitly printed 'Zahlbar bis: 16.02.2026' — the earlier date (09.02.2026) was used to be safe, but the recipient should double-check with the sender which date actually applies.",
+        "Verify the IBAN (DE64 3705 0198 0002 7270 00) and payee name match the printed sender details before paying, as a basic phishing precaution for any invoice."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1936,
+      "cache_read_tokens": 0,
+      "cache_creation_tokens": 5172,
+      "cost_usd": 0.040052000000000004,
+      "duration_ms": 18110,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
