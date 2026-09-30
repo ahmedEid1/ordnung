@@ -407,7 +407,12 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
-   language, region, name, known parties) → `DocumentExtraction`.
+   language, region, name, known parties) → `DocumentExtraction`, completed by code where the model
+   left out an item its own fields imply (`ingest/extract.py`, `with_rent_series`): a statement's
+   higher advance payments given in `change` alone (a monthly price increase with an effective day and
+   a new amount on a letter that states a rent contract) become the payment every month from that day
+   that the prompt asks for and `recurrence.py` point 9 needs, quoting the change's sentence — never for
+   a rent increase that needs consent (§ 558b BGB) or beside a recurring payment that holds the amount.
 5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
    page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
