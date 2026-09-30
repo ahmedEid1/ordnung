@@ -387,11 +387,15 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
 - A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
   to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
   decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
-- A recurring payment is dated only when its letter gives a first date or a working day — except a
-  lease's own monthly rent, which is due by the law's 3rd working day (§ 556b Abs. 1 BGB), from the month
-  the tenancy starts at the earliest, one confidence level lower and with a warning to check the lease. A
-  direct debit "zum 1. eines Monats" with no start month, like the demo's gym fee, is listed with its
-  amount and no due date: Ordnung doesn't invent one from a contract's start.
+- A recurring payment is dated only when its letter gives a first date, a working day (also the last,
+  "am letzten Bankarbeitstag") or a day of the month ("zum 1. eines Monats", counted from the letter's date
+  or the contract's start) — except a lease's own monthly rent, which is due by the law's 3rd working day
+  (§ 556b Abs. 1 BGB), from the month the tenancy starts at the earliest, one confidence level lower and
+  with a warning to check the lease. A payment its letter gives no day for ("monatlich im Voraus"), or a
+  day of the month on an undated letter with no contract start, is listed with its amount and no due
+  date: Ordnung doesn't invent a start. A letter read before extraction prompt version 12 holds no day of
+  the month, no last working day and no statutory notice periods; *Read again* reads it with the current
+  prompt.
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends

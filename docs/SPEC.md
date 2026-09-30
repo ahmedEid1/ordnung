@@ -1286,7 +1286,9 @@ in the person's language, dates and amounts written as that language writes them
 names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
 a notice day of the month and notice before a fixed end; UI audit R1-backend-6, ADR 0010) were each
 checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
-run ("The prompt the app uses now", which says what the three test recordings mean).
+run ("The prompt the app uses now", which says what the three test recordings mean). Version 12 adds a
+recurring payment's day of the month and last working day and the statutory notice periods a contract
+names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`).
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
