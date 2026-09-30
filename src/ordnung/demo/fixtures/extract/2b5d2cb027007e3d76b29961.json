@@ -1,0 +1,231 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"b285c4dc70efef3283cb2fe3b9dc93b79099baf6ca04e11779fe6166fad45e17\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_pa2w9q3gxzqk"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Hochschule Musterstadt (university)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (ins"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"Global Talent Scholarship award\",\"kind\":\"other\",\"language\":\"en\",\"document_date\":\"2026-09-05\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Global Talent Scholarship Foundation\",\"kind\":\"other\",\"address\":\"Beispielallee 20 · 12350 Berlin\",\"phone\":\"+49 123 555 0317\",\"email\":null,\"website\":null,\"identifiers\":[{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}]},\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"summary\":\"The Global Talent Scholarship Foundation has awarded Sam Rivera a scholarship for the 2026/27 academic year, paying a monthly stipend of €450.00 from October 2026 to September 2027, with a first progress report due on 15 December 2026.\",\"explanation\":\"This is your official award letter confirming a scholarship for 2026/27. You will receive €450 per month from October 2026 to September 2027 by bank transfer around the first working day of each month. To keep the funding, stay enrolled full-time at Hochschule Musterstadt, upload your enrolment certificate each semester to the portal, and submit your first progress report (countersigned by your supervisor) by 15 December 2026. Tell the foundation within two weeks of any change to your address, bank details or study status, and report any other scholarship or grant before accepting it. You're invited to the Autumn Meeting in Berlin on 7 November 2026; a separate invitation with the programme will follow. Keep this letter for your tax records.\",\"references\":[{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"}],\"key_facts\":[{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\",\"quote\":\"Scholarship ID: GTSF-2026-0317 (please quote it in all correspondence).\"},{\"label\":\"Monthly stipend\",\"value\":\"EUR 450.00\",\"quote\":\"The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by\\nbank transfer on or around the first working day of each month.\"},{\"label\":\"Funding period\",\"value\":\"1 October 2026 – 30 September 2027\",\"quote\":\"Funding period: 1 October 2026 – 30 September 2027 (12 months).\"},{\"label\":\"First progress report due\",\"value\":\"15 December 2026\",\"quote\":\"Your first progress report is due on 15 December 2026.\"},{\"label\":\"Notification period for changes\",\"value\":\"within two weeks\",\"quote\":\"Please notify us of any change of address, bank details or study status within two weeks of\\nthe change.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Receive monthly scholarship stipend\",\"action\":\"No action needed; the stipend arrives automatically each month.\",\"consequence\":null,\"amount\":450,\"currency\":\"EUR\",\"direction\":\"in\",\"priority\":\"normal\",\"location\":null,\"quote\":\"The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by\\nbank transfer on or around the first working day of each month.\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"on or around the first working day of each month\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"working_day\":1,\"day_of_month\":null}},{\"kind\":\"task\",\"title\":\"Upload certificate of enrolment each semester\",\"action\":\"Upload your certificate of enrolment for each semester to the scholarship portal.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"quote\":\"You remain enrolled as a full-time student at Hochschule Musterstadt throughout the funding\\nperiod and upload your certificate of enrolment for each semester to the scholarship portal.\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"throughout the funding period, each semester\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":null},{\"kind\":\"deadline\",\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"quote\":\"Your first progress report is due on 15 December 2026.\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-15\",\"nature\":\"declaration\",\"text\":\"due on 15 December 2026\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":null},{\"kind\":\"task\",\"title\":\"Notify foundation of any change of address, bank details or study status\",\"action\":\"Inform the foundation of any change to your address, bank details or study status within two weeks of the change occurring.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"quote\":\"Please notify us of any change of address, bank details or study status within two weeks of\\nthe change.\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"within two weeks of the change\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":null},{\"kind\":\"task\",\"title\":\"Report other scholarships or grants before accepting\",\"action\":\"Report any other scholarship or grant to the foundation before accepting it.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"quote\":\"Other scholarships or grants must be reported to us before you accept them.\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"before you accept them\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":null},{\"kind\":\"appointment\",\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":\"Berlin\",\"quote\":\"We look forward to welcoming you to our scholar community at the Autumn Meeting in Berlin on 7\\nNovember 2026.\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-07\",\"nature\":\"appointment\",\"text\":\"Autumn Meeting in Berlin on 7 November 2026\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"recurrence\":null}],\"contract\":null,\"change\":null,\"payment\":null,\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"warnings\":[],\"high_stakes_kind\":null,\"urgency\":\"normal\",\"tax_relevant\":true,\"tax_note\":\"The letter states the scholarship stipend is generally tax-free under §3 No. 44 of the German Income Tax Act (EStG); keep this letter as documentation for your tax records even though no tax is likely due.\"}",
+    "data": {
+      "area": "study",
+      "case_title": "Global Talent Scholarship award",
+      "kind": "other",
+      "language": "en",
+      "document_date": "2026-09-05",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Global Talent Scholarship Foundation",
+        "kind": "other",
+        "address": "Beispielallee 20 · 12350 Berlin",
+        "phone": "+49 123 555 0317",
+        "email": null,
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Foundation register",
+            "value": "Berlin 3/GT-2011"
+          }
+        ]
+      },
+      "title": "Award of the Global Talent Scholarship 2026/27",
+      "summary": "The Global Talent Scholarship Foundation has awarded Sam Rivera a scholarship for the 2026/27 academic year, paying a monthly stipend of €450.00 from October 2026 to September 2027, with a first progress report due on 15 December 2026.",
+      "explanation": "This is your official award letter confirming a scholarship for 2026/27. You will receive €450 per month from October 2026 to September 2027 by bank transfer around the first working day of each month. To keep the funding, stay enrolled full-time at Hochschule Musterstadt, upload your enrolment certificate each semester to the portal, and submit your first progress report (countersigned by your supervisor) by 15 December 2026. Tell the foundation within two weeks of any change to your address, bank details or study status, and report any other scholarship or grant before accepting it. You're invited to the Autumn Meeting in Berlin on 7 November 2026; a separate invitation with the programme will follow. Keep this letter for your tax records.",
+      "references": [
+        {
+          "label": "Scholarship ID",
+          "value": "GTSF-2026-0317"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Scholarship ID",
+          "value": "GTSF-2026-0317",
+          "quote": "Scholarship ID: GTSF-2026-0317 (please quote it in all correspondence)."
+        },
+        {
+          "label": "Monthly stipend",
+          "value": "EUR 450.00",
+          "quote": "The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by\nbank transfer on or around the first working day of each month."
+        },
+        {
+          "label": "Funding period",
+          "value": "1 October 2026 – 30 September 2027",
+          "quote": "Funding period: 1 October 2026 – 30 September 2027 (12 months)."
+        },
+        {
+          "label": "First progress report due",
+          "value": "15 December 2026",
+          "quote": "Your first progress report is due on 15 December 2026."
+        },
+        {
+          "label": "Notification period for changes",
+          "value": "within two weeks",
+          "quote": "Please notify us of any change of address, bank details or study status within two weeks of\nthe change."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Receive monthly scholarship stipend",
+          "action": "No action needed; the stipend arrives automatically each month.",
+          "consequence": null,
+          "amount": 450,
+          "currency": "EUR",
+          "direction": "in",
+          "priority": "normal",
+          "location": null,
+          "quote": "The monthly stipend of EUR 450.00 will be paid from October 2026 to September 2027 by\nbank transfer on or around the first working day of each month.",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "on or around the first working day of each month",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "working_day": 1,
+            "day_of_month": null
+          }
+        },
+        {
+          "kind": "task",
+          "title": "Upload certificate of enrolment each semester",
+          "action": "Upload your certificate of enrolment for each semester to the scholarship portal.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "quote": "You remain enrolled as a full-time student at Hochschule Musterstadt throughout the funding\nperiod and upload your certificate of enrolment for each semester to the scholarship portal.",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "throughout the funding period, each semester",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Submit first progress report",
+          "action": "Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "quote": "Your first progress report is due on 15 December 2026.",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-15",
+            "nature": "declaration",
+            "text": "due on 15 December 2026",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "task",
+          "title": "Notify foundation of any change of address, bank details or study status",
+          "action": "Inform the foundation of any change to your address, bank details or study status within two weeks of the change occurring.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "quote": "Please notify us of any change of address, bank details or study status within two weeks of\nthe change.",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "within two weeks of the change",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "task",
+          "title": "Report other scholarships or grants before accepting",
+          "action": "Report any other scholarship or grant to the foundation before accepting it.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "quote": "Other scholarships or grants must be reported to us before you accept them.",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "before you accept them",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": null
+        },
+        {
+          "kind": "appointment",
+          "title": "Attend Autumn Meeting in Berlin",
+          "action": "Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": "Berlin",
+          "quote": "We look forward to welcoming you to our scholar community at the Autumn Meeting in Berlin on 7\nNovember 2026.",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-07",
+            "nature": "appointment",
+            "text": "Autumn Meeting in Berlin on 7 November 2026",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "recurrence": null
+        }
+      ],
+      "contract": null,
+      "change": null,
+      "payment": null,
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "warnings": [],
+      "high_stakes_kind": null,
+      "urgency": "normal",
+      "tax_relevant": true,
+      "tax_note": "The letter states the scholarship stipend is generally tax-free under §3 No. 44 of the German Income Tax Act (EStG); keep this letter as documentation for your tax records even though no tax is likely due."
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 10696,
+      "cache_read_tokens": 20301,
+      "cache_creation_tokens": 10387,
+      "cost_usd": 0.15257620000000002,
+      "duration_ms": 80467,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

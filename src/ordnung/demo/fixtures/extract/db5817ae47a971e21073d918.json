@@ -1,0 +1,160 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"aad439826a416e0ed349afd7c8b08b834c8b14f2c287c6a2aae62efc8aa4c7a3\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe G"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"University re-registration and semester fee for Summer Semester 2027\",\"kind\":\"university\",\"language\":\"de\",\"document_date\":\"2026-09-01\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Hochschule Musterstadt\",\"kind\":\"university\",\"address\":\"Hochschulallee 1, 12347 Musterstadt\",\"phone\":\"0123 7788-2210\",\"website\":\"www.hs-musterstadt.example\",\"identifiers\":[]},\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"summary\":\"Hochschule Musterstadt confirms that Sam Rivera's re-registration (Rückmeldung) for winter semester 2026/27 is complete and encloses the enrollment certificate. To re-register for summer semester 2027, the semester fee of €312.40 must reach the university's account by 15 January 2027.\",\"explanation\":\"Your university confirms you are enrolled for winter semester 2026/27 and includes your enrollment certificate (Immatrikulationsbescheinigung). To stay enrolled for summer semester 2027 you don't file a separate form — you simply transfer the semester fee of €312.40 so it arrives in the university's account by the deadline shown; the re-registration window opens 1 December 2026. Paying late adds a €15.00 late fee, and if the fee is not received in time you risk being deregistered (Exmatrikulation). From summer semester 2027 the Deutschlandsemesterticket is included in this fee — if you separately hold a Deutschlandticket subscription, remember to cancel it in time so you don't pay for two tickets.\",\"references\":[{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}],\"payment\":{\"iban\":\"DE10123456000007700220\",\"iban_valid\":true,\"payee\":\"Hochschule Musterstadt\",\"reference\":\"4711123 SoSe 2027\"},\"remedy\":{\"type\":\"none\"},\"key_facts\":[{\"label\":\"Matriculation number (Matrikelnummer)\",\"value\":\"4711123\",\"quote\":\"Matrikelnummer 4711123\"},{\"label\":\"Programme (Studiengang)\",\"value\":\"Data Science (M.Sc.)\",\"quote\":\"Studiengang   Data Science (M.Sc.)\"},{\"label\":\"Semester fee (Semesterbeitrag)\",\"value\":\"312,40 €\",\"quote\":\"Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule eingegangen sein.\"},{\"label\":\"Re-registration period start (Rückmeldezeitraum)\",\"value\":\"01.12.2026\",\"quote\":\"Der Rückmeldezeitraum beginnt am 01.12.2026.\"},{\"label\":\"Late fee (Säumnisgebühr)\",\"value\":\"15,00 €\",\"quote\":\"Bei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben.\"},{\"label\":\"Risk of non-payment\",\"value\":\"Exmatrikulation\",\"quote\":\"Ohne fristgerechte Rückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW).\"},{\"label\":\"Deutschlandsemesterticket validity\",\"value\":\"01.04.–30.09.2027\",\"quote\":\"Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027).\"},{\"label\":\"Deadline to cancel a separate Deutschlandticket subscription\",\"value\":\"31.03.2027\",\"quote\":\"Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\",\"amount\":312.4,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"high\",\"date\":{\"type\":\"fixed\",\"date\":\"2027-01-15\",\"text\":\"bis spätestens zum 15.01.2027\",\"nature\":\"payment\",\"anchor\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule eingegangen sein.\"},{\"kind\":\"deadline\",\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\",\"priority\":\"normal\",\"date\":{\"type\":\"fixed\",\"date\":\"2027-03-31\",\"text\":\"rechtzeitig zum 31.03.2027\",\"nature\":\"notice\",\"anchor\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen.\"}],\"change\":{\"type\":\"terms_change\",\"quote\":\"Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027).\",\"effective_date\":\"2027-04-01\",\"old_amount\":null,\"new_amount\":null,\"cost_interval\":null,\"unit_price_old\":null,\"unit_price_new\":null},\"contract\":null,\"warnings\":[],\"urgency\":\"high\",\"tax_relevant\":true,\"tax_note\":\"As a Master's programme following a first degree, semester and study-related costs may be claimable as income-related expenses (Werbungskosten) for a second degree (Zweitausbildung) — keep this letter and the payment proof for the tax return.\",\"high_stakes_kind\":null}",
+    "data": {
+      "area": "study",
+      "case_title": "University re-registration and semester fee for Summer Semester 2027",
+      "kind": "university",
+      "language": "de",
+      "document_date": "2026-09-01",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Hochschule Musterstadt",
+        "kind": "university",
+        "address": "Hochschulallee 1, 12347 Musterstadt",
+        "phone": "0123 7788-2210",
+        "website": "www.hs-musterstadt.example",
+        "identifiers": []
+      },
+      "title": "Semester documents for winter semester 2026/27 and re-registration for summer semester 2027",
+      "summary": "Hochschule Musterstadt confirms that Sam Rivera's re-registration (Rückmeldung) for winter semester 2026/27 is complete and encloses the enrollment certificate. To re-register for summer semester 2027, the semester fee of €312.40 must reach the university's account by 15 January 2027.",
+      "explanation": "Your university confirms you are enrolled for winter semester 2026/27 and includes your enrollment certificate (Immatrikulationsbescheinigung). To stay enrolled for summer semester 2027 you don't file a separate form — you simply transfer the semester fee of €312.40 so it arrives in the university's account by the deadline shown; the re-registration window opens 1 December 2026. Paying late adds a €15.00 late fee, and if the fee is not received in time you risk being deregistered (Exmatrikulation). From summer semester 2027 the Deutschlandsemesterticket is included in this fee — if you separately hold a Deutschlandticket subscription, remember to cancel it in time so you don't pay for two tickets.",
+      "references": [
+        {
+          "label": "Matrikelnummer",
+          "value": "4711123"
+        }
+      ],
+      "payment": {
+        "iban": "DE10123456000007700220",
+        "iban_valid": true,
+        "payee": "Hochschule Musterstadt",
+        "reference": "4711123 SoSe 2027"
+      },
+      "remedy": {
+        "type": "none"
+      },
+      "key_facts": [
+        {
+          "label": "Matriculation number (Matrikelnummer)",
+          "value": "4711123",
+          "quote": "Matrikelnummer 4711123"
+        },
+        {
+          "label": "Programme (Studiengang)",
+          "value": "Data Science (M.Sc.)",
+          "quote": "Studiengang   Data Science (M.Sc.)"
+        },
+        {
+          "label": "Semester fee (Semesterbeitrag)",
+          "value": "312,40 €",
+          "quote": "Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule eingegangen sein."
+        },
+        {
+          "label": "Re-registration period start (Rückmeldezeitraum)",
+          "value": "01.12.2026",
+          "quote": "Der Rückmeldezeitraum beginnt am 01.12.2026."
+        },
+        {
+          "label": "Late fee (Säumnisgebühr)",
+          "value": "15,00 €",
+          "quote": "Bei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben."
+        },
+        {
+          "label": "Risk of non-payment",
+          "value": "Exmatrikulation",
+          "quote": "Ohne fristgerechte Rückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW)."
+        },
+        {
+          "label": "Deutschlandsemesterticket validity",
+          "value": "01.04.–30.09.2027",
+          "quote": "Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027)."
+        },
+        {
+          "label": "Deadline to cancel a separate Deutschlandticket subscription",
+          "value": "31.03.2027",
+          "quote": "Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the semester fee (Semesterbeitrag) for summer semester 2027",
+          "action": "Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.",
+          "consequence": "Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).",
+          "amount": 312.4,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "high",
+          "date": {
+            "type": "fixed",
+            "date": "2027-01-15",
+            "text": "bis spätestens zum 15.01.2027",
+            "nature": "payment",
+            "anchor": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "Der Semesterbeitrag in Höhe von 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule eingegangen sein."
+        },
+        {
+          "kind": "deadline",
+          "title": "Cancel any separate Deutschlandticket subscription",
+          "action": "If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.",
+          "consequence": "You may otherwise end up paying for two tickets at the same time.",
+          "priority": "normal",
+          "date": {
+            "type": "fixed",
+            "date": "2027-03-31",
+            "text": "rechtzeitig zum 31.03.2027",
+            "nature": "notice",
+            "anchor": null,
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen."
+        }
+      ],
+      "change": {
+        "type": "terms_change",
+        "quote": "Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027).",
+        "effective_date": "2027-04-01",
+        "old_amount": null,
+        "new_amount": null,
+        "cost_interval": null,
+        "unit_price_old": null,
+        "unit_price_new": null
+      },
+      "contract": null,
+      "warnings": [],
+      "urgency": "high",
+      "tax_relevant": true,
+      "tax_note": "As a Master's programme following a first degree, semester and study-related costs may be claimable as income-related expenses (Werbungskosten) for a second degree (Zweitausbildung) — keep this letter and the payment proof for the tax return.",
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 11053,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2758,
+      "cost_usd": 0.12335660000000001,
+      "duration_ms": 92342,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
