@@ -1219,11 +1219,13 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     assert "Every condition was also recorded once on the fresh holdout split" in page.split("\n\n")[1]
     assert "--split holdout" in page.split("## Reproduce", 1)[1]
     # a holdout run recorded with another model is replayed with its own model, not the published run's
-    opus = {**holdout, "meta": {**holdout["meta"], "model": "opus"}}
-    opus_page = report.render_markdown([published], holdout_run=opus)
-    assert "(the published run used `claude-sonnet-5`)" in opus_page
-    assert "python -m evals.run --split holdout --model opus " in opus_page.split("## Reproduce", 1)[1]
-    assert "--split holdout --model sonnet" not in opus_page
+    other = {**holdout, "meta": {**holdout["meta"], "model": "another-model"}}
+    other_page = report.render_markdown([published], holdout_run=other)
+    assert "(the published run used `claude-sonnet-5`)" in other_page
+    assert (
+        "python -m evals.run --split holdout --model another-model " in other_page.split("## Reproduce", 1)[1]
+    )
+    assert "--split holdout --model sonnet" not in other_page
     # the page's own text documents the split
     method = report.method_section()
     assert "E/F the holdout split" in method and "recorded once with frozen prompts" in method
@@ -1324,9 +1326,14 @@ async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
 
     # only a replay of the same recordings qualifies, and only beside the held-out run
     live = {**rescored, "meta": {**rescored["meta"], "backend": "live"}}
-    other_model = {**rescored, "meta": {**rescored["meta"], "model": "opus"}}
+    other_model = {**rescored, "meta": {**rescored["meta"], "model": "another-model"}}
     filtered = {**rescored, "meta": {**rescored["meta"], "partial": True}}
-    for bad in (live, other_model, filtered):
+    other_dataset = {
+        **rescored,
+        "meta": {**rescored["meta"], "dataset": {**rescored["meta"]["dataset"], "manifest_sha256": "0" * 64}},
+    }
+    no_dataset = {**rescored, "meta": {k: v for k, v in rescored["meta"].items() if k != "dataset"}}
+    for bad in (live, other_model, filtered, other_dataset, no_dataset):
         with pytest.raises(ValueError):
             report.render_markdown([published], holdout_run=holdout, holdout_rescored=bad)
     with pytest.raises(ValueError):

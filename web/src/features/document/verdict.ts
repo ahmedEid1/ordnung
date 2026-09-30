@@ -379,10 +379,11 @@ export function existingDraft(drafts: readonly Draft[], kind: DraftKind): Draft 
 
 /**
  * Rules that apply no law — the letter's own date, Ordnung's safety margin for the post, a date an
- * authority set — so a date computed only with them needs no "Based on the law as of …" disclaimer
- * (a passport's expiry, a dentist's appointment).
+ * authority set, the earlier of two dates the letter gives for the same thing — so a date computed
+ * only with them needs no "Based on the law as of …" disclaimer (a passport's expiry, a dentist's
+ * appointment).
  */
-const NO_LAW = new Set(["date_as_written", "authority_deadline", "postal_buffer"]);
+const NO_LAW = new Set(["date_as_written", "authority_deadline", "postal_buffer", "conflicting_dates"]);
 /** A bank's execution time (§ 675s BGB) — nothing to transfer for a direct debit. */
 const TRANSFER_TIME = "bgb_675s";
 

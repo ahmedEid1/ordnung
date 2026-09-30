@@ -16,14 +16,20 @@ second statement:
   wir", "this letter dated …"). Only statements that plausibly concern the *same* obligation count:
   never a recurring to-do, money coming in, or a to-do with no date; never a statement whose sentence
   is the to-do's own quote, whose date is another to-do's, which names a different amount (an
-  instalment), which is written in the past ("war fällig am …", "wurde"), or which is an
-  early-payment discount (*Skonto*: paying after the discount date is not late — the net date is
-  the obligation, so a discount date is never a second due date).
+  instalment), a kind of payment the to-do's sentence does not (instalments, a prepayment, a fee, a
+  direct debit, a series: "die neuen Abschläge … erstmals am", "die nächste Vorauszahlung"), or —
+  for an objection — another remedy (a Klage's date is not a Beschwerde's), which is written in the
+  past ("war fällig am …", "wurde"), or which is an early-payment discount (*Skonto*: paying after
+  the discount date is not late — the net date is the obligation, so a discount date is never a
+  second due date). The page's line breaks stay: a due word counts for a date only on the date's own
+  label or in its sentence, never from another label ("Rechnungsdatum: …" above "Zahlbar bis: …"),
+  and a remedy's sentence gives no payment period.
 * :func:`settle` (compute stage) computes each such statement with the rules engine, as the to-do's
-  own date is computed. A statement whose date is the to-do's, or a written date before the letter's
-  own (a reminder repeats the original invoice's due date: history, not a second date), is no
-  conflict; nor is a reminder's period "after the invoice date" (it counts from the old invoice's
-  date, not the reminder's). When the letter does give another date, the to-do keeps the **earlier** one (the safe
+  own date is computed. A statement whose date is the to-do's, or a written date on or before the
+  letter's own (the letter's date itself; a reminder repeats the original invoice's due date:
+  history, not a second date — before the day it arrived, or today, when the letter's date was not
+  read), is no conflict; nor is a reminder's period "after the invoice date" (it counts from the old
+  invoice's date, not the reminder's). When the letter does give another date, the to-do keeps the **earlier** one (the safe
   side: acting by it is on time whichever applies), its receipt names both dates and says why the
   earlier one was kept (rule ``conflicting_dates``), its confidence is ``low`` and it is marked
   "Please check" (its evidence is not ``value_consistent``: :func:`~ordnung.ingest.plan.needs_check`).
@@ -131,6 +137,40 @@ _OWN_DECISION_AFTER = re.compile(
 )
 #: Where a sentence ends: a full stop, "!", "?" or ";" before a capital letter or an opening quote.
 _SENTENCE_END = re.compile(r"[.!?;]\s+(?=[A-ZÄÖÜ\"(])")
+#: A label's colon ("Rechnungsdatum: …", "Total due: …"), not a time's ("10:00").
+_LABEL_COLON = re.compile(r":(?=\s|$)")
+#: Where a label's words start on a line ("… fällig. Hinweis:", "02.03.2026 · Zahlbar bis:").
+_FIELD_BREAK = re.compile(r"[.!?;,]\s|[·|(]|\s[-–]\s")
+#: Words that mark another obligation than a one-off payment: an instalment, an advance payment, a
+#: fee, a direct debit, a series ("erstmals am …", "jeweils", "monatlich", "die nächste …"). A statement
+#: with one the to-do's own sentence lacks dates something else (a utility's new instalments, a tax
+#: prepayment, a first premium collected from the account).
+_OTHER_OBLIGATION: dict[str, re.Pattern[str]] = {
+    key: re.compile(pattern, re.IGNORECASE)
+    for key, pattern in {
+        "instalment": r"\babschl[aä]g\w*|\braten?\b|\w*ratenzahlung\w*|\bteil(?:zahlung|betr[aä]g)\w*"
+        r"|\binstal+ments?\b|\b(?:folge|erst)(?:beitr[aä]g|rate)\w*",
+        "advance": r"\bvorauszahlung\w*|\bprepayments?\b|\badvance\s+payments?\b",
+        "fee": r"\w*gebühr\w*|\bfees?\b",
+        "debit": r"\babgebucht\b|\babbuch\w*|\w*lastschrift\w*|\beingezogen\b|\beinzug\w*|\bdirect\s+debit\w*"
+        r"|\bdebited\b",
+        "series": r"\berstmal\w*|\bjeweils\b|\b(?:zu)?künftig\w*|\bnächste\w*|\bnext\b|\bthereafter\b"
+        r"|\bsubsequent\w*|\beach\s+month\b|\bevery\s+month\b",
+        "period": r"\w*monatlich\w*|\w*jährlich\w*|\bmonthly\b|\bquarterly\b|\bannual(?:ly)?\b|\byearly\b",
+    }.items()
+}
+#: The remedy an objection statement names: a date for a Widerspruch is not one for a Klage.
+_REMEDIES: dict[str, re.Pattern[str]] = {
+    key: re.compile(pattern, re.IGNORECASE)
+    for key, pattern in {
+        "widerspruch": r"widerspr\w*",
+        "einspruch": r"einspr\w*",
+        "klage": r"\bklage\w*|\bklagen\b",
+        "beschwerde": r"beschwerde\w*",
+        "objection": r"\bobjection\w*|\bobject\b",
+        "appeal": r"\bappeal\w*",
+    }.items()
+}
 
 Nature = Literal["payment", "objection"]
 
@@ -151,11 +191,16 @@ class Rival:
 
 @dataclass(frozen=True)
 class _Statement:
+    """``window``: the text around the statement in which an amount belongs to it; ``context``: the words
+    that stand with its date (not past a label or another date), in which a word marking another
+    obligation or a remedy counts."""
+
     spec: DateSpec
     phrase: str
     window: str
     grounding: Grounding
     letter_date: date | None = None
+    context: str = ""
 
 
 # --------------------------------------------------------------------------------------------------
@@ -172,10 +217,11 @@ def _page_text(page: PageInput) -> tuple[str, Grounding]:
 
 
 def _clauses(text: str) -> list[tuple[str, list[tuple[int, int, date]]]]:
-    """The letter's text folded and flattened into sentences, each with its dated mentions (dates
-    without a year are left out: they can't be compared). A full stop inside a date ("30. Juni") never
-    ends a sentence."""
-    flat = re.sub(r"\s+", " ", fold_punctuation(text)).strip()
+    """The letter's text folded into sentences, each with its dated mentions (dates without a year are
+    left out: they can't be compared). The line breaks stay (a label's line is its own:
+    :func:`_label_before`); a full stop inside a date ("30. Juni") never ends a sentence."""
+    lines = (re.sub(r"\s+", " ", line).strip() for line in fold_punctuation(text).splitlines())
+    flat = "\n".join(line for line in lines if line)
     spans = [(start, end, found) for start, end, m in date_spans(flat) if (found := m.as_date()) is not None]
     inside = [(start, end) for start, end, _ in spans]
     cuts = [0]
@@ -191,15 +237,44 @@ def _clauses(text: str) -> list[tuple[str, list[tuple[int, int, date]]]]:
     return clauses
 
 
+def _label_before(before: str) -> str:
+    """The words before a date that are its own. On a label's line ("Zahlbar bis: 16.03.2026") the line
+    itself, from the label before it on that line if any ("Fälligkeit: sofort, Datum: 02.03.2026" gives
+    "sofort, Datum:"); otherwise the words back to the last label of an earlier line, never into it
+    ("Gesamtbetrag fällig: 120,00 EUR" above "Datum: 02.03.2026": that "fällig" is the total's)."""
+    line = before.rfind("\n") + 1
+    colons = [m.start() for m in _LABEL_COLON.finditer(before)]
+    own = [c for c in colons if c >= line]
+    if own:
+        return before[own[-2] + 1 :] if len(own) > 1 else before[line:]
+    earlier = [c for c in colons if c < line]
+    return before[earlier[-1] + 1 :] if earlier else before
+
+
+def _label_after(after: str) -> str:
+    """The words after a date that are its own: up to the next label, never into its words ("… 16.03.2026
+    zu zahlen", but not the "Zahlbar bis:" after "Rechnungsdatum: 02.03.2026", on the next line or the
+    same one)."""
+    colon = _LABEL_COLON.search(after)
+    if colon is None:
+        return after
+    line = after.rfind("\n", 0, colon.start())
+    if line >= 0:
+        return after[:line]
+    breaks = list(_FIELD_BREAK.finditer(after, 0, colon.start()))
+    return after[: breaks[-1].start()] if breaks else ""
+
+
 def _explicit(clause: str, dates: list[tuple[int, int, date]], grounding: Grounding) -> list[_Statement]:
     """Dates the clause sets for a payment or an objection ("Zahlbar bis: 16.02.2026",
-    "Widerspruch … bis zum 12.05.2026")."""
+    "Widerspruch … bis zum 12.05.2026"): a due word on the date's own label or in its sentence —
+    never one of another label or beyond another date."""
     found = []
     for index, (start, end, day) in enumerate(dates):
         lo = dates[index - 1][1] if index > 0 else 0
         hi = dates[index + 1][0] if index + 1 < len(dates) else len(clause)
-        before = clause[max(lo, start - _CUE_REACH) : start]
-        after = clause[end : min(hi, end + _AFTER_REACH)]
+        before = _label_before(clause[max(lo, start - _CUE_REACH) : start])
+        after = _label_after(clause[end : min(hi, end + _AFTER_REACH)])
         if not _DUE_PREPOSITION.search(before):
             continue
         nature: Nature | None = None
@@ -220,7 +295,7 @@ def _explicit(clause: str, dates: list[tuple[int, int, date]], grounding: Ground
         phrase = (before[cue:] + clause[start:end]).strip()
         spec = DateSpec(type="fixed", date=day.isoformat(), nature=nature, shift_rule="auto", text=phrase)
         window = clause[max(0, start - _AMOUNT_REACH) : end + _AMOUNT_REACH]
-        found.append(_Statement(spec, phrase, window, grounding))
+        found.append(_Statement(spec, phrase, window, grounding, context=before + clause[start:end] + after))
     return found
 
 
@@ -231,6 +306,8 @@ def _relative(clause: str, grounding: Grounding) -> list[_Statement]:
         return []
     if _PAST.search(clause) or _DISCOUNT.search(clause):
         return []
+    if _OBJECTION_CUE.search(clause):
+        return []  # a remedy's period ("Widerspruch … nach Zugang; die Zahlungspflicht bleibt"), not a payment's
     found = []
     for match in _RELATIVE_PAYMENT.finditer(clause):
         periods = parse_periods(match.group("period"))
@@ -248,7 +325,12 @@ def _relative(clause: str, grounding: Grounding) -> list[_Statement]:
             text=match.group().strip(),
         )
         window = clause[max(0, match.start() - _AMOUNT_REACH) : match.end() + _AMOUNT_REACH]
-        found.append(_Statement(spec, match.group().strip(), window, grounding))
+        context = (
+            _label_before(clause[max(0, match.start() - _CUE_REACH) : match.start()])
+            + match.group()
+            + _label_after(clause[match.end() : match.end() + _AFTER_REACH])
+        )
+        found.append(_Statement(spec, match.group().strip(), window, grounding, context=context))
     return found
 
 
@@ -300,9 +382,25 @@ def _is_own(statement: _Statement, item: ExtractedItem) -> bool:
     return bool(phrase) and phrase in _normalised(item.quote)
 
 
+def _found(patterns: dict[str, re.Pattern[str]], text: str) -> set[str]:
+    return {key for key, pattern in patterns.items() if pattern.search(text)}
+
+
+def _own_words(item: ExtractedItem) -> str:
+    return f"{item.quote} {item.date.text or ''}"
+
+
 def _other_obligation(statement: _Statement, item: ExtractedItem, others: Sequence[ExtractedItem]) -> bool:
-    """Whether the statement dates another to-do of the letter (its date or its period), or names an
-    amount that is not the to-do's (an instalment, a fee)."""
+    """Whether the statement dates another to-do of the letter (its date or its period), names an
+    amount that is not the to-do's (an instalment, a fee) or a kind of obligation the to-do's own
+    sentence does not ("die neuen Abschläge … erstmals am", "die nächste Vorauszahlung ist fällig am"),
+    or — for an objection — another remedy than the to-do's (a Klage's date is not a Beschwerde's)."""
+    if _found(_OTHER_OBLIGATION, statement.context) - _found(_OTHER_OBLIGATION, _own_words(item)):
+        return True
+    if statement.spec.nature == "objection":
+        remedies = _found(_REMEDIES, f"{_own_words(item)} {item.title}")
+        if not remedies & _found(_REMEDIES, statement.context):
+            return True  # another remedy, or the to-do names none: whether it is the same can't be told
     spec = statement.spec
     for other in others:
         if other is item or other.date.type == "none":
@@ -377,9 +475,18 @@ def _noun(item: ExtractedItem) -> str:
     return {"payment": "payment", "deadline": "deadline", "appointment": "appointment"}.get(item.kind, "date")
 
 
+def _history(written: date, ctx: RuleContext) -> bool:
+    """Whether a date the letter writes can't be a second date to meet: on or before the letter's own
+    date (the letter's date itself, or a reminder's original due date) — or, when the letter's date is
+    not known, before the day it arrived (or today)."""
+    if ctx.document_date is not None:
+        return written <= ctx.document_date
+    return written < (ctx.received_date or ctx.today)
+
+
 def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_days: int) -> _Candidate | None:
     """The date a rival statement gives, computed as the to-do's own is — ``None`` when it gives the
-    same date, none, or a written date before the letter's own (a reminder's original due date)."""
+    same date, none, or a written date that is history (:func:`_history`)."""
     if rival.letter_date is not None:
         if ctx.document_date is None or rival.letter_date == ctx.document_date:
             return None
@@ -388,7 +495,7 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         if rival.spec.type == "relative" and ctx.letter_kind in PAYMENT_DEMAND_KINDS:
             return None  # a reminder's "14 Tage nach Rechnungsdatum" counts from the old invoice's date
         written = parse_date(rival.spec.date)
-        if written is not None and ctx.document_date is not None and written < ctx.document_date:
+        if written is not None and _history(written, ctx):
             return None
         counted = replace(ctx, quote=rival.statement)
     receipt = grade_reading(

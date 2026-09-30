@@ -839,7 +839,7 @@ def check_holdout_run(results: Mapping[str, Any]) -> None:
 
 def check_holdout_rescored(holdout: Mapping[str, Any], rescored: Mapping[str, Any]) -> None:
     """A re-scored holdout run replays the held-out run's recorded outputs — the whole holdout split, with
-    Ordnung, the same model — on later code; raises ``ValueError`` if not."""
+    Ordnung, the same model, the same benchmark dataset — on later code; raises ``ValueError`` if not."""
     check_holdout_run(rescored)
     meta = rescored["meta"]
     if meta.get("backend") != "replay":
@@ -850,6 +850,12 @@ def check_holdout_rescored(holdout: Mapping[str, Any], rescored: Mapping[str, An
         raise ValueError(
             f"a re-scored holdout run replays the held-out run's recordings (model {holdout['meta'].get('model')!r}), "
             f"not {meta.get('model')!r}"
+        )
+    dataset = (meta.get("dataset") or {}).get("manifest_sha256")
+    if dataset is None or dataset != (holdout["meta"].get("dataset") or {}).get("manifest_sha256"):
+        raise ValueError(
+            "a re-scored holdout run replays the held-out run's recordings of the same benchmark dataset; "
+            "the runs used different datasets"
         )
 
 

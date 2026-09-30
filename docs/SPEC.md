@@ -436,9 +436,12 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 the letter's other statements of the same nature — a payment's date or period ("Zahlbar bis",
 "binnen 14 Tagen nach Rechnungsdatum"), an objection's date, and for a period counted from the letter a
 date the letter gives for itself ("mit diesem Bescheid vom …") — never its own sentence, another
-to-do's date, a statement naming another amount or in the past tense, or an early-payment discount
-(*Skonto*: paying after it is not late). At **compute** the engine dates each; a same date, or a
-written date before the letter's own (a reminder's original due date), is no conflict. Otherwise the
+to-do's date, a statement naming another amount, another kind of payment (instalments, a prepayment,
+a fee, a direct debit, "erstmals am …") or another remedy, one in the past tense, a due word of another
+label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), or an early-payment discount (*Skonto*:
+paying after it is not late). At **compute** the engine dates each; a same date, or a written date on or
+before the letter's own (the letter's date itself, a reminder's original due date; before the day it
+arrived when the letter's date is unknown), is no conflict. Otherwise the
 to-do keeps the **earlier** date, its receipt names both and says why (`conflicting_dates`), and it is
 `low` and "Please check" — also when the letter's dates are recomputed.
 

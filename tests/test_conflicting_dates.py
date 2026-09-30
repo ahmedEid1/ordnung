@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -323,6 +324,165 @@ def test_recurring_undated_and_incoming_to_dos_are_not_checked() -> None:
     assert find_rivals(monthly, [monthly], pages) == ()
     assert find_rivals(refund, [refund], pages) == ()
     assert find_rivals(undated, [undated], pages) == ()
+
+
+@pytest.mark.parametrize(
+    ("header", "own_quote"),
+    [
+        (
+            "Rechnung Nr. RV-12\nRechnungsdatum: 02.03.2026\nZahlbar bis: 16.03.2026\nBetrag: 120,00 EUR",
+            "Zahlbar bis: 16.03.2026",
+        ),
+        (
+            "Gesamtbetrag fällig: 120,00 EUR\nDatum: 02.03.2026\nZahlbar bis: 16.03.2026",
+            "Zahlbar bis: 16.03.2026",
+        ),
+        (
+            "Rechnungsdatum: 02.03.2026 · Zahlbar bis: 16.03.2026\nBetrag: 120,00 EUR",
+            "Zahlbar bis: 16.03.2026",
+        ),
+        ("Invoice date: 02.03.2026\nDue date: 16.03.2026\nAmount: 120.00 EUR", "Due date: 16.03.2026"),
+        (
+            "Total due: 120.00 EUR\nInvoice date: 02.03.2026\nPayment due: 16.03.2026",
+            "Payment due: 16.03.2026",
+        ),
+    ],
+)
+@pytest.mark.parametrize("letter_date", [date(2026, 3, 2), None])
+def test_an_invoice_headers_own_date_is_no_second_due_date(
+    header: str, own_quote: str, letter_date: date | None
+) -> None:
+    """The invoice's date stands on its own label: the next label's "Zahlbar", or a payment word of an
+    earlier label, is not its — and the letter's own date is never a date to pay by."""
+    [verified] = read(f"Druckerei Muster GmbH\n{header}\n", fixed(own_quote, "2026-03-16", money=120.0))
+    assert verified.rivals == ()
+    ctx = RuleContext(
+        today=date(2026, 3, 4), document_date=letter_date, private_sender=True, sender_kind="company"
+    )
+    result = computed(verified, ctx)
+    assert result.due_date == "2026-03-16" and not result.conflict
+
+
+def test_the_letters_own_date_is_never_a_second_date_to_pay_by() -> None:
+    text = "Musterstadt, 02.03.2026\nDer Betrag ist fällig am 02.03.2026.\nZahlbar bis: 16.03.2026\n"
+    [verified] = read(text, fixed("Zahlbar bis: 16.03.2026", "2026-03-16"))
+    assert [rival.statement for rival in verified.rivals] == ["fällig am 02.03.2026"]
+    assert not computed(verified, company(date(2026, 3, 2))).conflict
+
+
+def test_a_payment_request_wrapped_over_two_lines_is_still_a_second_date() -> None:
+    text = (
+        "Musterstadt, 02.03.2026\n"
+        "Bitte überweisen Sie den Betrag von 120,00 EUR bis\n"
+        "zum 09.03.2026.\n"
+        "Zahlbar bis: 16.03.2026\n"
+    )
+    [verified] = read(text, fixed("Zahlbar bis: 16.03.2026", "2026-03-16", money=120.0))
+    result = computed(verified, company(date(2026, 3, 2)))
+    assert result.conflict and result.due_date == "2026-03-09"
+
+
+def test_a_reminder_whose_own_date_was_not_read_keeps_the_original_due_date_as_history() -> None:
+    text = (
+        "Zahlungserinnerung\n"
+        "Die Rechnung vom 01.03.2026 ist fällig am 15.03.2026.\n"
+        "Bitte überweisen Sie 49,99 EUR bis zum 10.04.2026.\n"
+    )
+    own = fixed("Bitte überweisen Sie 49,99 EUR bis zum 10.04.2026.", "2026-04-10", money=49.99)
+    [verified] = read(text, own, kind="dunning")
+    ctx = RuleContext(
+        today=date(2026, 4, 2),
+        document_date=None,
+        private_sender=True,
+        sender_kind="company",
+        letter_kind="dunning",
+    )
+    result = computed(verified, ctx)
+    assert result.due_date == "2026-04-10" and not result.conflict
+    # the day it arrived counts before today when it is known
+    arrived = replace(ctx, today=date(2026, 4, 20), received_date=date(2026, 4, 2))
+    assert not computed(verified, arrived).conflict
+
+
+@pytest.mark.parametrize(
+    ("text", "own"),
+    [
+        (
+            "Stadtwerke, 02.03.2026\nDer Nachzahlungsbetrag von 120,00 EUR ist bis zum 31.03.2026 zu zahlen, "
+            "die neuen Abschläge sind monatlich fällig, erstmals am 15.03.2026.\n",
+            fixed(
+                "Der Nachzahlungsbetrag von 120,00 EUR ist bis zum 31.03.2026 zu zahlen",
+                "2026-03-31",
+                money=120.0,
+            ),
+        ),
+        (
+            "Finanzamt, 02.03.2026\nBitte zahlen Sie die Abschlusszahlung von 1.200,00 EUR bis zum 31.03.2026.\n"
+            "Die nächste Vorauszahlung ist fällig am 10.03.2026.\n",
+            fixed(
+                "Bitte zahlen Sie die Abschlusszahlung von 1.200,00 EUR bis zum 31.03.2026.",
+                "2026-03-31",
+                money=1200.0,
+            ),
+        ),
+        (
+            "Finanzamt, 02.03.2026\nBitte zahlen Sie die Abschlusszahlung von 1.200,00 EUR bis zum 31.03.2026.\n"
+            "Vorauszahlungen: Die Vorauszahlungen sind jeweils fällig am 10.06.2026 und 10.09.2026.\n",
+            fixed(
+                "Bitte zahlen Sie die Abschlusszahlung von 1.200,00 EUR bis zum 31.03.2026.",
+                "2026-03-31",
+                money=1200.0,
+            ),
+        ),
+        (
+            "Versicherung AG, 02.03.2026\n"
+            "Der Erstbeitrag von 60,00 EUR ist fällig am 01.04.2026 und wird von Ihrem Konto abgebucht.\n"
+            "Bitte zahlen Sie den Restbetrag von 60,00 EUR bis zum 16.03.2026.\n",
+            fixed(
+                "Bitte zahlen Sie den Restbetrag von 60,00 EUR bis zum 16.03.2026.", "2026-03-16", money=60.0
+            ),
+        ),
+    ],
+    ids=["new-instalments", "next-prepayment", "prepayment-dates", "first-premium-debited"],
+)
+def test_a_date_for_another_kind_of_payment_is_not_a_second_date(text: str, own: ExtractedItem) -> None:
+    """Instalments, prepayments, a premium collected by direct debit: the letter's other payments, even
+    when the reading did not list them as to-dos."""
+    [verified] = read(text, own, kind="utility_bill")
+    assert verified.rivals == ()
+    result = computed(verified, company(date(2026, 3, 2)))
+    assert result.due_date == own.date.date and not result.conflict
+
+
+def test_a_remedy_period_mentioning_the_payment_duty_is_no_payment_period() -> None:
+    text = (
+        "Stadt Musterstadt, 02.03.2026\n"
+        "Bitte zahlen Sie die Gebühr von 80,00 EUR bis zum 16.03.2026.\n"
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Zugang Widerspruch erhoben werden; "
+        "die Zahlungspflicht bleibt davon unberührt.\n"
+    )
+    pay = fixed("Bitte zahlen Sie die Gebühr von 80,00 EUR bis zum 16.03.2026.", "2026-03-16", money=80.0)
+    [verified] = read(text, pay, kind="authority_letter")
+    assert verified.rivals == ()
+    ctx = RuleContext(today=date(2026, 3, 4), document_date=date(2026, 3, 2), delivery_scope="vwvfg")
+    assert not computed(verified, ctx).conflict
+
+
+def test_another_remedys_deadline_is_not_a_second_objection_deadline() -> None:
+    text = (
+        "Amtsgericht, 02.03.2026\n"
+        "Gegen den Beschluss ist die Beschwerde bis zum 30.03.2026 zulässig.\n"
+        "Eine Klage ist bis zum 02.04.2026 möglich.\n"
+    )
+    complaint = fixed(
+        "Gegen den Beschluss ist die Beschwerde bis zum 30.03.2026 zulässig.",
+        "2026-03-30",
+        nature="objection",
+    )
+    [verified] = read(text, complaint, kind="authority_letter")
+    assert verified.rivals == ()
+    ctx = RuleContext(today=date(2026, 3, 4), document_date=date(2026, 3, 2))
+    assert not computed(verified, ctx).conflict
 
 
 def needs_check_after(verified: VerifiedItem, result: ComputedDate) -> bool:
