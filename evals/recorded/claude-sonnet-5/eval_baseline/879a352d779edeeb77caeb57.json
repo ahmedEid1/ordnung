@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8f56e4525c1253a4edefdd8e3a2e19ac0b4ad8dae4d9d34b5a76368702b4cd68\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-invoice_relative-F2"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-02-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Dachdeckerei Muster\",\"document_date\":\"2026-02-04\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"D-2026-038\"},{\"label\":\"Kunden-Nr.\",\"value\":\"1471\"}],\"amounts\":[569.53],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay roof repair invoice\",\"quote\":\"Bitte gleichen Sie diese Rechnung binnen 10 Kalendertagen nach dem Rechnungsdatum aus; Teilzahlungen sind nach Absprache möglich.\",\"computation\":\"Invoice date (Rechnungsdatum) is 04.02.2026. The period is '10 Kalendertage nach dem Rechnungsdatum', so under §187 Abs.1 BGB the day of the triggering event (04.02.) is not counted; the period starts 05.02.2026. Counting 10 calendar days: 05,06,07,08,09,10,11,12,13,14.02.2026 -> the 10th day is Saturday, 14.02.2026. Since 14.02.2026 is a Saturday (Jan 1 2026 = Thursday, so Feb 4 = Wednesday, Feb 14 = Wednesday+10 = Saturday), §193 BGB shifts the deadline to the next business day. 15.02.2026 is a Sunday, so the deadline moves to Monday, 16.02.2026.\",\"due_date\":\"2026-02-16\",\"confidence\":\"high\",\"amount\":569.53}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Dachdeckerei Muster",
+      "document_date": "2026-02-04",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "D-2026-038"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "1471"
+        }
+      ],
+      "amounts": [
+        569.53
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay roof repair invoice",
+          "quote": "Bitte gleichen Sie diese Rechnung binnen 10 Kalendertagen nach dem Rechnungsdatum aus; Teilzahlungen sind nach Absprache möglich.",
+          "computation": "Invoice date (Rechnungsdatum) is 04.02.2026. The period is '10 Kalendertage nach dem Rechnungsdatum', so under §187 Abs.1 BGB the day of the triggering event (04.02.) is not counted; the period starts 05.02.2026. Counting 10 calendar days: 05,06,07,08,09,10,11,12,13,14.02.2026 -> the 10th day is Saturday, 14.02.2026. Since 14.02.2026 is a Saturday (Jan 1 2026 = Thursday, so Feb 4 = Wednesday, Feb 14 = Wednesday+10 = Saturday), §193 BGB shifts the deadline to the next business day. 15.02.2026 is a Sunday, so the deadline moves to Monday, 16.02.2026.",
+          "due_date": "2026-02-16",
+          "confidence": "high",
+          "amount": 569.53
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2133,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2026,
+      "cost_usd": 0.0300624,
+      "duration_ms": 18079,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
