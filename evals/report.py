@@ -566,7 +566,7 @@ def render_markdown(
         _models_section(runs) if len(runs) > 1 else "",
         _gallery_section(main),
         method_section(meta),
-        _reproduce_section(meta, holdout=holdout_run is not None),
+        _reproduce_section(meta, holdout_model=holdout_run["meta"].get("model") if holdout_run else None),
     ]
     return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
 
@@ -1491,12 +1491,13 @@ answers, so a later change to the rules engine can change Ordnung's replayed num
 condition's."""
 
 
-def _reproduce_section(meta: Mapping[str, Any], *, holdout: bool = False) -> str:
+def _reproduce_section(meta: Mapping[str, Any], *, holdout_model: str | None = None) -> str:
+    """How to rerun the page; ``holdout_model`` is the holdout run's own model, which may differ from ``meta``'s."""
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
     held = (
-        f"\npython -m evals.run --split {HOLDOUT_SPLIT} --model {model}       # the held-out run, from its recorded outputs"
-        if holdout
+        f"\npython -m evals.run --split {HOLDOUT_SPLIT} --model {holdout_model}       # the held-out run, from its recorded outputs"
+        if holdout_model
         else ""
     )
     added = sorted(meta.get("added_conditions") or {})

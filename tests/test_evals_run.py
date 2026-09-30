@@ -1180,6 +1180,12 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     assert "`holdout-tax_assessment-F1`" in section
     assert "Every condition was also recorded once on the fresh holdout split" in page.split("\n\n")[1]
     assert "--split holdout" in page.split("## Reproduce", 1)[1]
+    # a holdout run recorded with another model is replayed with its own model, not the published run's
+    opus = {**holdout, "meta": {**holdout["meta"], "model": "opus"}}
+    opus_page = report.render_markdown([published], holdout_run=opus)
+    assert "(the published run used `sonnet`)" in opus_page
+    assert "python -m evals.run --split holdout --model opus " in opus_page.split("## Reproduce", 1)[1]
+    assert "--split holdout --model sonnet" not in opus_page
     # the page's own text documents the split
     method = report.method_section()
     assert "E/F the holdout split" in method and "recorded once with frozen prompts" in method
