@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0cd3879e5f8c9b3e886d3c37a8af5bd8eee367adbece9b44c5b3537478c0e0fe\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Druckerei Beispiel & Sohn\",\"document_date\":\"2026-01-26\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"DB-26-0117\"},{\"label\":\"Kunden-Nr.\",\"value\":\"K-3390\"}],\"amounts\":[249.19],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice DB-26-0117 (wedding invitations)\",\"quote\":\"Den Rechnungsbetrag überweisen Sie bitte binnen 14 Tagen nach dem Rechnungsdatum.\",\"computation\":\"Invoice date 26.01.2026. Under § 187 (1) BGB the day of the event is not counted, so the period starts 27.01.2026. 14 days end at the end of 09.02.2026 (§ 188 (1) BGB), which is a Monday and not a holiday, so there is no shift. The letter also prints 'Zahlbar bis: 16.02.2026', which contradicts the 14-day period (it would be 21 days). I use the earlier date, 09.02.2026.\",\"due_date\":\"2026-02-09\",\"confidence\":\"medium\",\"amount\":249.19}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter contradicts itself: 'binnen 14 Tagen nach dem Rechnungsdatum' gives 09.02.2026, but 'Zahlbar bis: 16.02.2026' is printed. The earlier date is used. Pay by 09.02.2026 to be safe, or ask the sender which date applies.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Druckerei Beispiel & Sohn",
+      "document_date": "2026-01-26",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "DB-26-0117"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "K-3390"
+        }
+      ],
+      "amounts": [
+        249.19
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice DB-26-0117 (wedding invitations)",
+          "quote": "Den Rechnungsbetrag überweisen Sie bitte binnen 14 Tagen nach dem Rechnungsdatum.",
+          "computation": "Invoice date 26.01.2026. Under § 187 (1) BGB the day of the event is not counted, so the period starts 27.01.2026. 14 days end at the end of 09.02.2026 (§ 188 (1) BGB), which is a Monday and not a holiday, so there is no shift. The letter also prints 'Zahlbar bis: 16.02.2026', which contradicts the 14-day period (it would be 21 days). I use the earlier date, 09.02.2026.",
+          "due_date": "2026-02-09",
+          "confidence": "medium",
+          "amount": 249.19
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter contradicts itself: 'binnen 14 Tagen nach dem Rechnungsdatum' gives 09.02.2026, but 'Zahlbar bis: 16.02.2026' is printed. The earlier date is used. Pay by 09.02.2026 to be safe, or ask the sender which date applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 968,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 7107,
+      "cost_usd": 0.038726800000000006,
+      "duration_ms": 8929,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
