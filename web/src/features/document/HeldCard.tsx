@@ -7,7 +7,8 @@
  *
  * The answer's toast runs from the request's own promise, so it happens even though the card is gone
  * by then (the letter's refetch can land before the answer returns); the focus move to the card that
- * replaces this one is the page's (`onAnswered`: DocumentView moves it once that card is rendered).
+ * replaces this one is the page's (`onAnswered`: DocumentView moves it once that card is rendered,
+ * whether that render comes before the answer returns or after).
  * While an answer runs its button keeps focus, so a failed one leaves the person where they were.
  */
 import { Lock, Sparkles } from "lucide-react";
@@ -57,8 +58,8 @@ export function waitingAttachments(detail: Pick<DocumentDetail, "attachments">):
 export interface HeldCardProps {
   detail: DocumentDetail;
   className?: string;
-  /** An answer went through: the card goes, and focus belongs to the one that takes its place. */
-  onAnswered?: () => void;
+  /** An answer went through (`from`: the status it answered): the card goes, and focus belongs to the one that takes its place. */
+  onAnswered?: (from: DocumentDetail["document"]["status"]) => void;
 }
 
 export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
@@ -75,7 +76,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
       .mutateAsync([doc.id])
       .then(() => {
         toast.success("Claude is reading it", { description: "You'll see every step here." });
-        onAnswered?.();
+        onAnswered?.(doc.status);
       })
       .catch(() => undefined); // the request's own error toast says what went wrong
 
@@ -94,7 +95,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
                   .catch(() => undefined)
             : undefined,
         });
-        onAnswered?.();
+        onAnswered?.(doc.status);
       })
       .catch(() => undefined);
 

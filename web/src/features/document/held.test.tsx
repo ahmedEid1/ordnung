@@ -9,6 +9,7 @@ import { Route, Routes } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { qk } from "@/api/hooks";
+import { handleServerEvent } from "@/api/sse";
 import type { DocumentDetail } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { useMockApi } from "@/test/mockFetch";
@@ -186,6 +187,44 @@ describe("answering on the letter's page", () => {
     const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
     await waitFor(() => expect(within(card).getByRole("heading", { level: 1 })).toHaveFocus());
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  /**
+   * The server tells the page the letter changed (`document.updated`, sent before the answer's reply), and the page's
+   * refetch can render the new card before the answer's promise resolves (a server slowed by a busy computer; e2e:
+   * "focus never falls to the page"). The answer's reply is held here until the new card is on the page: focus still
+   * goes to that card's heading once the reply comes.
+   */
+  async function answerAfterItsEvent({ srv }: ReturnType<typeof useMockApi>, button: string, from: "held" | "processed") {
+    if (from === "processed") await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
+    const mocked = globalThis.fetch;
+    let reply!: () => void;
+    const replied = new Promise<void>((resolve) => (reply = resolve));
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      /\/documents\/held\/(wait|keep-private)/.test(String(input)) ? mocked(input, init).then((res) => replied.then(() => res)) : mocked(input, init),
+    );
+    const user = userEvent.setup();
+    const { client } = renderPage("doc_folder_scan");
+    await user.click(await screen.findByRole("button", { name: button }));
+    await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe(from === "held" ? "processed" : "held"));
+    act(() => handleServerEvent(client, { type: "document.updated", data: { doc_id: "doc_folder_scan" } }));
+    // the new card is rendered while the answer's reply is still on its way (its button went with the old card)
+    await waitFor(() => expect(screen.queryByRole("button", { name: button })).toBeNull());
+    const heading = () =>
+      from === "held"
+        ? screen.getByRole("heading", { level: 1 })
+        : within(screen.getByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).getByRole("heading", { level: 1 });
+    expect(heading().id).toBe(from === "held" ? "verdict-title" : "held-title");
+    await act(async () => reply());
+    await waitFor(() => expect(heading()).toHaveFocus());
+  }
+
+  it("“Undo “Keep private”” whose waiting card came before its reply still moves focus to that card", async () => {
+    await answerAfterItsEvent(useMockApi(), "Undo “Keep private”", "processed");
+  });
+
+  it("“Keep private” whose verdict came before its reply still moves focus to the verdict", async () => {
+    await answerAfterItsEvent(useMockApi(), "Keep private", "held");
   });
 
   it("an e-mail waits again with the attachment kept private with it", async () => {
