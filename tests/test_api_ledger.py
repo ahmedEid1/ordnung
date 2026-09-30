@@ -245,6 +245,50 @@ async def test_a_fixed_term_jobs_early_notice_is_corrected_on_the_card(data_dir:
         assert (await api.client.patch(url, json={"notice_before_end": None})).status_code == 422
 
 
+async def test_the_statutory_notice_periods_a_job_names_are_corrected_on_the_card(data_dir: Path) -> None:
+    """The working-student contract names the statutory notice periods ("unter Einhaltung der gesetzlichen
+    Kündigungsfristen (§ 622 BGB)", ``notice_statutory``): four weeks, as if stated — no "No notice period
+    found", and a note says so. The card's notice form saved without it clears it, as it clears the letter's
+    day of the month (the rules then assume the four weeks again), and its Undo puts it back, as the person's."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        employer = store.add_party(name="Muster Tech GmbH", kind="employer")
+        contract = store.add_contract(
+            name="Werkstudent",
+            category="employment",
+            party_id=employer.id,
+            start_date="2026-04-01",
+            end_date="2027-03-31",
+            notice_before_end=True,
+            notice_statutory=True,
+            is_consumer=False,
+        )
+        url = f"/api/contracts/{contract.id}"
+        (listed,) = (await api.client.get("/api/contracts")).json()
+        computed = listed["computed"]
+        assert (computed["cancel_by"], computed["earliest_exit"], computed["confidence"]) == (
+            "2026-10-03",
+            "2026-10-31",
+            "high",
+        )
+        assert not any(w.startswith("No notice period found") for w in computed["warnings"])
+        assert any("statutory notice periods" in n for n in computed["notes"])
+
+        names = ("notice_value", "notice_unit", "notice_basis", "notice_day", "notice_before_end")
+        before = {k: listed[k] for k in (*names, "notice_statutory")}
+        cleared = (await api.client.patch(url, json={k: listed[k] for k in names})).json()
+        assert cleared["notice_statutory"] is False
+        assert cleared["computed"]["confidence"] == "medium"
+        assert any(w.startswith("No notice period found") for w in cleared["computed"]["warnings"])
+
+        undone = (await api.client.patch(url, json=before)).json()
+        assert undone["notice_statutory"] is True and undone["computed"]["confidence"] == "high"
+        assert [e["quote"] for e in undone["evidence"] if e["grounding"] == "user"] == [
+            "the statutory notice periods, also before the fixed term ends"
+        ]
+        assert (await api.client.patch(url, json={"notice_statutory": None})).status_code == 422
+
+
 async def test_parties_threads_timeline_and_lanes(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await _letter(api, TAX_LETTER.pdf())

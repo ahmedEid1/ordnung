@@ -439,8 +439,8 @@ transcribed page), never the document's status; removing a proof deletes its fil
 ([ADR 0014](decisions/0014-proof-files-are-deleted-for-good.md)).
 
 **Migrations** (`db/migrate.py`): numbered SQL files — 0001 the v1 schema, 0002 proof of sending and
-call notes, 0003 reading traces, 0004 a contract's notice day and a fixed-term job's early notice,
-numbered without a gap when they ship — applied once each and recorded
+call notes, 0003 reading traces, 0004 a contract's notice day and a fixed-term job's early notice, 0005
+the statutory notice periods a contract names, numbered without a gap when they ship — applied once each and recorded
 in `schema_migrations`, so work merged in any order (a lower number after a higher one) still reaches
 every database. A ledger that records a different migration under one of the numbers (a development
 build from before a renumbering) is refused with the reason, never migrated on a guess.

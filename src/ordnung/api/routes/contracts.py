@@ -21,8 +21,11 @@ NOT_FOUND = "Unknown contract."
 ContractStatus = Literal["active", "cancelled", "ended"]
 _NOTICE_FIELDS = frozenset({"notice_value", "notice_unit", "notice_basis"})
 #: What the card's notice edit saves: the notice period and its basis, the contract's day of the month for
-#: notice and a fixed-term job's early notice. Saving any of them records the terms as the person's.
-_NOTICE_TERMS = _NOTICE_FIELDS | {"notice_day", "notice_before_end"}
+#: notice, a fixed-term job's early notice and the statutory periods the contract names. Saving any of them
+#: records the terms as the person's.
+_NOTICE_TERMS = _NOTICE_FIELDS | {"notice_day", "notice_before_end", "notice_statutory"}
+#: Contracts whose statutory notice periods give the person's dates (``rules.contracts._STATUTORY_NOTE``).
+_STATUTORY_CATEGORIES = frozenset({"employment", "rent"})
 #: How a notice period runs, in words (as ``NOTICE_BASIS_COPY`` in ``web/src/lib/copy.ts``).
 _NOTICE_BASIS_WORDS: dict[NoticeBasis, str] = {
     "end_of_term": "to the end of the term",
@@ -53,6 +56,9 @@ class ContractPatch(BaseModel):
     notice_day: int | None = Field(default=None, ge=1, le=31)
     #: A fixed-term job its contract lets be ended earlier by ordinary notice (read for a job only).
     notice_before_end: bool = False
+    #: The contract names the statutory notice periods: cleared too when notice terms are saved without it (an
+    #: Undo puts it back with them).
+    notice_statutory: bool = False
     end_date: IsoDate | None = None
     is_basic_supply: bool | None = None
     cost_amount: float | None = None
@@ -76,8 +82,9 @@ def entered_notice(contract: Contract) -> str | None:
     no dates by themselves. A notice period with its basis ("three months' notice to the end of a month"; a
     job's without one runs to the 15th or the end of a month, § 622 Abs. 1 BGB), or the day of the month notice
     must arrive by when the basis is the end of a month, with the period asked for too ("notice by the 10th of
-    the month, to the end of that month"; ``rules.contracts.DayOfMonth``). A job's early notice is named when
-    its end date allows it ("…, also before the fixed term ends")."""
+    the month, to the end of that month"; ``rules.contracts.DayOfMonth``), or — for a job or a lease, whose
+    statutory periods give the dates — "the statutory notice periods". A job's early notice is named when its
+    end date allows it ("…, also before the fixed term ends")."""
     value, unit, basis = contract.notice_value, contract.notice_unit, contract.notice_basis
     period = Notice(value, unit) if value is not None and unit is not None else None
     job = contract.category == "employment"
@@ -87,6 +94,8 @@ def entered_notice(contract: Contract) -> str | None:
         words = f"{period.phrase} {_NOTICE_BASIS_WORDS[basis]}"
     elif period is not None and job:
         words = f"{period.phrase} to the 15th or the end of a month"
+    elif contract.notice_statutory and contract.category in _STATUTORY_CATEGORIES:
+        words = "the statutory notice periods"
     else:
         return None
     if job and contract.end_date is not None and contract.notice_before_end:
@@ -111,10 +120,11 @@ def _update(store: Store, contract_id: str, patch: ContractPatch, today: date) -
     require(store.get_contract(contract_id), NOT_FOUND)
     changes = patch.model_dump(exclude_unset=True)
     if _NOTICE_FIELDS & changes.keys():
-        # the person's notice terms replace the letter's day of the month unless they give one with them: the
-        # rules apply a period and a day both where both are read (``rules.contracts._notice_day``), so only the
-        # data can let the person's entry decide
+        # the person's notice terms replace the letter's day of the month and statutory periods unless they
+        # give them too: the rules apply a period and a day both where both are read
+        # (``rules.contracts._notice_day``), so only the data can let the person's entry decide
         changes.setdefault("notice_day", None)
+        changes.setdefault("notice_statutory", False)
     if changes.get("party_id") is not None:
         require(store.get_party(changes["party_id"]), "Unknown person or organisation.")
     if changes.get("case_id") is not None:

@@ -2392,6 +2392,11 @@ export interface components {
              * @default false
              */
             notice_before_end: boolean;
+            /**
+             * Notice Statutory
+             * @default false
+             */
+            notice_statutory: boolean;
             /** End Date */
             end_date: string | null;
             /**
@@ -2519,6 +2524,11 @@ export interface components {
              * @default false
              */
             notice_before_end?: boolean;
+            /**
+             * Notice Statutory
+             * @default false
+             */
+            notice_statutory?: boolean;
             /** End Date */
             end_date?: string | null;
             /** Is Basic Supply */

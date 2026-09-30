@@ -32,7 +32,7 @@ if nobody cancels in time; ``None`` means nothing locks you in.
 extraction prompt's convention): such a contract never ends by itself and, after its first term, can
 be ended any day with its notice period.
 
-Two terms a notice period can't say (policies in :func:`_notice_day`, :func:`_ends_by_itself` and
+Three terms a notice period can't say (policies in :func:`_notice_day`, :func:`_ends_by_itself` and
 :func:`_plan_employment`):
 
 * ``notice_day`` — the contract's own month-end rule, "by the 10th of a month, to the end of that month".
@@ -48,6 +48,16 @@ Two terms a notice period can't say (policies in :func:`_notice_day`, :func:`_en
   (§ 15 Abs. 4 TzBfG): while its end date is ahead, the job is planned like an open-ended one, with at
   least § 622 Abs. 1 BGB's notice, and ends by itself on that date if the notice can't end it sooner.
   Read for a job only.
+* ``notice_statutory`` — the contract names the statutory notice periods ("unter Einhaltung der gesetzlichen
+  Kündigungsfristen (§ 622 BGB)", "Es gelten die gesetzlichen Kündigungsfristen"). Where a statute gives the
+  person's period, that is the contract's period, as if it were stated: a job's four weeks to the 15th or the
+  end of a month (§ 622 Abs. 1 BGB; the longer periods of Abs. 2 bind only the employer), a tenant's notice
+  by the 3rd Werktag for the end of the month after next (§ 573c Abs. 1 BGB, which the lease rule applies
+  anyway). There is then no "not found" warning, and a note says the contract names them
+  (:data:`_STATUTORY_NOTE`). A period the contract states as a number wins. The consumer, phone and
+  insurance rules only cap what a contract may ask (§ 309 Nr. 9 BGB, § 56 TKG, § 11 VVG): no statute gives
+  those contracts a period of their own, so the term changes nothing there, and a missing period is assumed
+  at the cap as before.
 """
 
 from __future__ import annotations
@@ -313,6 +323,17 @@ def _limit(
             f"({catalog.citation(rule_id)}), so we used {cap.text}.{advice}"
         )
     return notice
+
+
+#: The note on the dates of a contract that names the statutory notice periods (``notice_statutory``), for the
+#: regimes where a statute gives the person's period (module policy).
+_STATUTORY_NOTE: dict[ContractRegime, str] = {
+    "employment622": "Your contract names the statutory notice periods: for you, four weeks to the 15th or the "
+    "end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer.",
+    "rent573c": "Your lease names the statutory notice periods: as the tenant, notice by the 3rd working day of "
+    "a month ends it at the end of the month after next (§ 573c Abs. 1 BGB). The longer periods for the "
+    "landlord don't bind you.",
+}
 
 
 #: The web's contract card reads this warning's start (``NOTICE_ASSUMED`` in ``web/src/features/contracts/model.ts``)
@@ -739,13 +760,15 @@ def _plan_employment(trace: Trace, inp: _Inputs) -> _Plan:
     Before a fixed term's end (``notice_before_end``, :func:`_ends_by_itself`), § 622 Abs. 1 BGB is the floor:
     a notice period shorter than four weeks, or notice to any day, is usually the probation period's (§ 622
     Abs. 3 BGB), and after it a contract can rarely agree less (§ 622 Abs. 4, 5 BGB). So the notice is then at
-    least four weeks, to the 15th or the end of a month (only the end of a month when the contract says so)."""
+    least four weeks, to the 15th or the end of a month (only the end of a month when the contract says so).
+    A contract that names the statutory periods (``notice_statutory``) states those four weeks: no warning."""
     notice = _written_notice(inp.terms)
     if notice is None:
-        trace.soft(
-            "No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your contract "
-            "or collective agreement for a longer one."
-        )
+        if not inp.terms.notice_statutory:
+            trace.soft(
+                "No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your "
+                "contract or collective agreement for a longer one."
+            )
         notice = FOUR_WEEKS
     basis = inp.terms.notice_basis
     if inp.end is not None:  # before a fixed term's end: § 622 Abs. 1 BGB at least
@@ -1010,6 +1033,8 @@ def _compute_contract(
     if end is not None and _ends_by_itself(terms, regime, past=end < ctx.today):
         trace.step(f"Fixed term: it ends on {fmt_date(end)}", end, "fixed_term")
         return result(contract_fixed_end_sentence(end, past=end < ctx.today, regime=regime))
+    if terms.notice_statutory and regime in _STATUTORY_NOTE and _written_notice(terms) is None:
+        notes.insert(1, _STATUTORY_NOTE[regime])
 
     inp = _Inputs(
         terms=terms,

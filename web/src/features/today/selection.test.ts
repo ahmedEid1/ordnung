@@ -78,6 +78,7 @@ function contract(p: Partial<Contract> & Pick<Contract, "id" | "name">): Contrac
     notice_basis: null,
     notice_day: null,
     notice_before_end: false,
+    notice_statutory: false,
     end_date: null,
     is_basic_supply: false,
     cost_amount: null,

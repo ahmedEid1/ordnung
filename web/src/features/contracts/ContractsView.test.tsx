@@ -603,6 +603,7 @@ describe("Contracts page — adding a notice period by hand", () => {
       notice_unit: "weeks",
       notice_basis: null,
       notice_day: null,
+      notice_statutory: false,
       notice_before_end: false,
     });
     await waitFor(() => expect(within(card(/Werkstudent/)).getByText("Fixed term until 31 Mar 2027 — it ends by itself, no notice needed")).toBeInTheDocument());
@@ -618,6 +619,7 @@ describe("Contracts page — adding a notice period by hand", () => {
       notice_unit: "weeks",
       notice_basis: null,
       notice_day: null,
+      notice_statutory: false,
       notice_before_end: true,
     });
   });
@@ -648,8 +650,61 @@ describe("Contracts page — adding a notice period by hand", () => {
       notice_unit: null,
       notice_basis: null,
       notice_day: null,
+      notice_statutory: false,
       notice_before_end: false,
     });
+  });
+
+  it("a job whose contract names the statutory notice periods: in plain words, in Why, and cleared on the form", async () => {
+    // the working-student contract's § 7: "unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)"
+    const { srv, calls } = useMockApi();
+    const job = srv.db.state.contracts.find((c) => c.category === "employment")!;
+    Object.assign(job, { notice_value: null, notice_unit: null, notice_statutory: true });
+    renderWithProviders(
+      <>
+        <ContractsView />
+        <Toaster />
+      </>,
+      { route: "/contracts" },
+    );
+    await screen.findByRole("heading", { level: 3, name: "Werkstudent at Muster Tech" });
+    expect(
+      within(card(/Werkstudent/)).getByText(
+        "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice, as the contract says: 4 weeks to the 15th or the end of a month",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /^Change notice period/ }));
+    const form = within(card(/Werkstudent/)).getByRole("form", { name: "Notice period for Werkstudent at Muster Tech" });
+    const statutory = within(form).getByRole("checkbox", { name: /^The contract names the statutory notice periods/ });
+    expect(statutory).toBeChecked();
+    expect(statutory.closest("div")).toHaveTextContent("for you, 4 weeks to the 15th or the end of a month (§ 622 BGB)");
+
+    // saved as it is: the person's own, and the engine's note in "Why these dates?"
+    fireEvent.click(within(form).getByRole("button", { name: "Save notice period" }));
+    expect(await screen.findByText("Notice period saved")).toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toEqual({
+      notice_value: null,
+      notice_unit: null,
+      notice_basis: null,
+      notice_day: null,
+      notice_statutory: true,
+      notice_before_end: true,
+    });
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /Why these dates\?/ }));
+    const why = await screen.findByRole("dialog", { name: /Why these dates\? Werkstudent/ });
+    expect(within(why).getByText(/^Your contract names the statutory notice periods: for you, four weeks/)).toBeInTheDocument();
+    fireEvent.keyDown(why, { key: "Escape" });
+
+    // a misreading: unticked, it is cleared — the rules assume the law's four weeks again, and say so
+    fireEvent.click(within(card(/Werkstudent/)).getByRole("button", { name: /^Change notice period/ }));
+    const again = within(card(/Werkstudent/)).getByRole("form");
+    fireEvent.click(within(again).getByText("The contract names the statutory notice periods"));
+    fireEvent.click(within(again).getByRole("button", { name: "Save notice period" }));
+    await waitFor(() => expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toMatchObject({ notice_statutory: false }));
+    await waitFor(() =>
+      expect(within(card(/Werkstudent/)).getByText("Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice")).toBeInTheDocument(),
+    );
+    expect(srv.db.state.contracts.find((c) => c.id === job.id)!.computed!.warnings.some((w) => w.startsWith("No notice period found"))).toBe(true);
   });
 
   it("Escape closes the form and hands the focus back to its button", async () => {

@@ -6300,6 +6300,11 @@
             "title": "Notice Before End",
             "default": false
           },
+          "notice_statutory": {
+            "type": "boolean",
+            "title": "Notice Statutory",
+            "default": false
+          },
           "end_date": {
             "anyOf": [
               {
@@ -6463,6 +6468,7 @@
           "notice_basis",
           "notice_day",
           "notice_before_end",
+          "notice_statutory",
           "end_date",
           "is_basic_supply",
           "cost_amount",
@@ -6813,6 +6819,11 @@
           "notice_before_end": {
             "type": "boolean",
             "title": "Notice Before End",
+            "default": false
+          },
+          "notice_statutory": {
+            "type": "boolean",
+            "title": "Notice Statutory",
             "default": false
           },
           "end_date": {

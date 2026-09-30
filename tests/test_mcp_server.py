@@ -1153,7 +1153,7 @@ def test_a_fixed_term_job_its_contract_lets_you_leave_early_keeps_the_notice_dat
     (``notice_before_end``), but Ask's record said only that it ends by itself on 31 Mar 2027. The record now
     keeps the engine's summary with the notice's dates (§ 622 Abs. 1 BGB: arrive by Sat 3 Oct for Sat 31 Oct),
     and if_not_cancelled still says it otherwise ends by itself — with the job-seeking advice."""
-    store.update_contract(ids["job"], notice_before_end=True)
+    store.update_contract(ids["job"], notice_before_end=True, notice_statutory=True)
     tools = LedgerTools(store, today=TODAY)
     (row,) = [row for row in tools.list_contracts().record["contracts"] if row["id"] == ids["job"]]
     dates = row["dates"]
@@ -1170,6 +1170,9 @@ def test_a_fixed_term_job_its_contract_lets_you_leave_early_keeps_the_notice_dat
     assert "Its fixed term ends on Wed 31 Mar 2027." in row["if_not_cancelled"]
     assert "(§ 38 Abs. 1 SGB III)" in row["if_not_cancelled"]
     assert row["notice_before_end"] is True and row["notice_day"] is None  # the terms it was computed from
+    assert (
+        row["notice_statutory"] is True
+    )  # "unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)"
     explained = tools.explain_date(ids["job"]).record
     assert explained["computation"]["summary"] == dates["summary"]
     assert explained["if_not_cancelled"] == row["if_not_cancelled"]  # the § 38 SGB III advice too

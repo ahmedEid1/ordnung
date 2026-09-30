@@ -246,12 +246,18 @@ def test_upsert_contract_is_deterministic_and_computed(store: Store) -> None:
             {"start_date": "2026-04-01", "end_date": "2027-03-31", "notice_before_end": True, "is_consumer": False},
             ("2026-10-03", "2026-10-31", "2027-03-31"),
         ),
+        (
+            "employment",  # … "unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)" (migration 0005)
+            {"start_date": "2026-04-01", "end_date": "2027-03-31", "notice_before_end": True, "notice_statutory": True, "is_consumer": False},
+            ("2026-10-03", "2026-10-31", "2027-03-31"),
+        ),
     ],
 )  # fmt: skip
 def test_upsert_contract_copies_the_notice_terms_a_period_cant_say(
     store: Store, category: str, terms: dict[str, Any], dates: tuple[str, str, str | None]
 ) -> None:
-    """Migration 0004: the day of the month and the early notice of a fixed-term job are stored and computed."""
+    """Migrations 0004 and 0005: the day of the month, the early notice of a fixed-term job and the statutory
+    notice periods a contract names are stored and computed."""
     document = add_doc(store)
     data = extraction(contract={"name": "Contract", "category": category, **terms})
     contract = upsert_contract(
@@ -265,13 +271,16 @@ def test_upsert_contract_copies_the_notice_terms_a_period_cant_say(
         postal_buffer_days=4,
     )
     assert contract is not None and store.get_contract(contract.id) == contract
-    assert (contract.notice_day, contract.notice_before_end) == (
+    assert (contract.notice_day, contract.notice_before_end, contract.notice_statutory) == (
         terms.get("notice_day"),
         terms.get("notice_before_end", False),
+        terms.get("notice_statutory", False),
     )
     assert contract.computed is not None
     computed = contract.computed
     assert (computed.cancel_by, computed.earliest_exit, computed.current_term_end) == dates
+    if contract.notice_statutory:  # the four weeks the contract names, not ones the rules assumed
+        assert computed.confidence == "high" and not any("No notice period" in w for w in computed.warnings)
 
 
 def test_upsert_contract_never_overwrites_a_contract_from_elsewhere(store: Store) -> None:
@@ -459,6 +468,38 @@ def test_reading_again_never_brings_back_a_term_the_person_cleared_alone(store: 
     unticked = store.update_contract(job.id, notice_before_end=False)
     store.update_contract(job.id, evidence=notice_evidence(unticked))
     assert read(read_job, job_document).notice_before_end is False
+
+
+def test_reading_again_never_brings_back_statutory_periods_the_person_cleared(store: Store) -> None:
+    """The job's contract read as naming the statutory notice periods (``notice_statutory``, migration 0005);
+    the person clears it on the card (it names none: a misreading). Reading the letter again leaves it
+    cleared, as for the other notice terms."""
+    document = add_doc(store)
+    terms = {"name": "Werkstudent", "category": "employment", "start_date": "2025-04-01"}
+    read_job = extraction(
+        contract=terms | {"end_date": "2027-03-31", "notice_before_end": True, "notice_statutory": True}
+    )
+
+    def read() -> Contract:
+        contract = upsert_contract(
+            store,
+            document=document,
+            extraction=read_job,
+            party=None,
+            case=None,
+            evidence=[],
+            rule_ctx=RuleContext(today=date(2026, 9, 28), region="NW"),
+            postal_buffer_days=4,
+        )
+        assert contract is not None
+        return contract
+
+    job = read()
+    assert job.notice_statutory is True
+    store.update_document(document.id, extraction=read_job)
+    cleared = store.update_contract(job.id, notice_statutory=False)
+    store.update_contract(job.id, evidence=notice_evidence(cleared))
+    assert read().notice_statutory is False
 
 
 def test_change_links_to_the_only_active_contract_without_touching_it(store: Store) -> None:

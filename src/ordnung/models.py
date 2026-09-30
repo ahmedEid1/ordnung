@@ -399,7 +399,9 @@ class ContractTerms(_Model):
     ``notice_day``: a cancellation must arrive by this day of a month to end the contract at the end of
     that month (read with ``notice_basis`` "end_of_month"; a notice period stated too applies as well).
     ``notice_before_end``: a contract with an end date whose own clause lets it be ended earlier by
-    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). The rules engine's docstrings hold the policies."""
+    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). ``notice_statutory``: the contract names the
+    statutory notice periods ("unter Einhaltung der gesetzlichen Kündigungsfristen"), which count as its
+    period where a statute gives the person's. The rules engine's docstrings hold the policies."""
 
     category: ContractCategory = "other"
     party_kind: str | None = None
@@ -412,6 +414,7 @@ class ContractTerms(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = None
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     is_consumer: bool = True
     is_basic_supply: bool = False
@@ -443,6 +446,7 @@ class Contract(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = None
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     is_basic_supply: bool = False
     cost_amount: float | None = None
@@ -478,6 +482,7 @@ class Contract(_Model):
             notice_basis=self.notice_basis,
             notice_day=self.notice_day,
             notice_before_end=self.notice_before_end,
+            notice_statutory=self.notice_statutory,
             end_date=self.end_date,
             is_consumer=self.is_consumer,
             status=self.status,
@@ -997,6 +1002,7 @@ class ExtractedContract(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = Field(default=None, ge=1, le=31)
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     cost_amount: float | None = None
     cost_interval: CostInterval | None = None

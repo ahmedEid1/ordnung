@@ -171,16 +171,30 @@ export function earlyNoticeCounts(c: Pick<Contract, "category" | "end_date">): b
 }
 
 /**
+ * A job or a lease, whose statutory notice periods give the dates when the contract names them
+ * (`notice_statutory`; `_STATUTORY_NOTE` in `src/ordnung/rules/contracts.py`): four weeks to the 15th or the
+ * end of a month for an employee (§ 622 Abs. 1 BGB), the tenant's notice by the 3rd working day (§ 573c Abs. 1
+ * BGB). Other contracts get no period from a statute: there the term changes nothing.
+ */
+export function statutoryNoticeCounts(c: Pick<Contract, "category">): boolean {
+  return c.category === "employment" || c.category === "rent";
+}
+
+/**
  * The notice terms can be entered or changed on the card: terms we couldn't work out, terms the rules
  * follow as written (no statutory rule), a period the rules assumed, terms the person entered (a typo
  * stays correctable) — and the terms a notice period can't say, which a misreading can get wrong: the
- * contract's own day of the month the rules read, or whether a fixed-term job can be left earlier.
+ * contract's own day of the month the rules read, whether a fixed-term job can be left earlier, or the
+ * statutory notice periods it was read to name.
  */
 export function noticeEditable(
-  c: Pick<Contract, "computed" | "status" | "evidence" | "category" | "end_date" | "notice_day" | "notice_basis" | "notice_value" | "notice_unit">,
+  c: Pick<Contract, "computed" | "status" | "evidence" | "category" | "end_date" | "notice_day" | "notice_basis" | "notice_value" | "notice_unit" | "notice_statutory">,
 ): boolean {
   const byDay = noticeDayCounts(c) && noticeDayPhrase(c) !== null;
-  return c.status === "active" && (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c) || byDay || earlyNoticeCounts(c));
+  return (
+    c.status === "active" &&
+    (termsUnclear(c) || c.computed?.regime === "as_written" || noticeAssumed(c) || noticeFromYou(c) || byDay || earlyNoticeCounts(c) || c.notice_statutory)
+  );
 }
 
 /**
@@ -349,16 +363,20 @@ export function ruleInWords(c: Contract, today: string): RuleInWords {
       text = "Basic energy supply: cancellable any time with 2 weeks' notice";
       break;
     case "rent573c":
-      text = "Open-ended: notice given by the 3rd working day of a month ends the tenancy at the end of the month after next — signed by hand on paper";
+      // the statutory notice the lease names (`notice_statutory`) is the tenant's rule anyway: say the lease names it
+      text = `Open-ended${c.notice_statutory && !notice ? ", with the statutory notice as the lease says" : ""}: notice given by the 3rd working day of a month ends the tenancy at the end of the month after next — signed by hand on paper`;
       break;
-    case "employment622":
+    case "employment622": {
       // a fixed-term job can only be ended early by notice if its contract allows it (§ 15 Abs. 4 TzBfG,
       // `notice_before_end`): name the notice only then
-      // (then at least the statutory notice: `_plan_employment` in `src/ordnung/rules/contracts.py`)
+      // (then at least the statutory notice: `_plan_employment` in `src/ordnung/rules/contracts.py`); the
+      // statutory periods the contract names (`notice_statutory`) are four weeks for you, as if stated
+      const statutory = c.notice_statutory && !notice ? "the statutory notice, as the contract says: 4 weeks to the 15th or the end of a month" : null;
       text = c.end_date
-        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${c.notice_before_end ? `. To leave earlier: ${notice ? `${notice}, at least the legal minimum` : "the statutory notice"}` : ", no notice needed"}`
-        : `Employment: ${notice ?? "the statutory notice"}, at least the legal minimum`;
+        ? `Fixed term until ${formatDate(c.end_date, { style: "day", today })} — it ends by itself${c.notice_before_end ? `. To leave earlier: ${statutory ?? (notice ? `${notice}, at least the legal minimum` : "the statutory notice")}` : ", no notice needed"}`
+        : `Employment: ${statutory ?? `${notice ?? "the statutory notice"}, at least the legal minimum`}`;
       break;
+    }
     case "bgb675h":
       // a current account (§ 675h Abs. 1 BGB): no notice unless one was agreed, and at most a month of it counts
       text = notice ? `Current account: cancellable any time with ${notice} (at most one month counts)` : "Current account: cancellable any time, without notice";

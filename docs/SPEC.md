@@ -1473,6 +1473,15 @@ must-arrive-by date that locks nothing in. Both are read from the letter, so the
 corrects them (`ContractPatch.notice_day`, `notice_before_end`): "Must arrive by day __ of the month"
 where the rules read a day, and "Can be ended early by notice" for a job with an end date (whose notice
 may keep the law's basis, to the 15th or the end of a month).
+A third (migration 0005): `notice_statutory`, a contract that names the statutory notice periods instead of
+one of its own ("unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)"). Where a statute gives
+the person's period it counts as stated — a job's four weeks to the 15th or the end of a month (§ 622 Abs. 1
+BGB; the longer periods of Abs. 2 bind only the employer), a tenant's § 573c Abs. 1 BGB notice —: no "not
+found" warning, the confidence of a stated period, and a note in "Why these dates?" that the contract names
+them. A period stated as a number wins. The consumer, phone and insurance rules only cap a period, so there
+it changes nothing. The card says it in plain words ("the statutory notice, as the contract says"), and
+the notice edit's "The contract names the statutory notice periods" sets or clears it
+(`ContractPatch.notice_statutory`; notice terms saved without it clear it, as they clear the day).
 A contract carries the person's cancellation of it once it is marked as sent (`cancellation_sent`,
 worked out on read): it is then no decision any more — no "Decide by", no cancellation Idea, no send-by
 date in the calendar — and the card says it waits for the provider's confirmation.
