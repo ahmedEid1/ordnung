@@ -1,7 +1,8 @@
 """Recorded model outputs for demo mode and CI.
 
 Fixture layout: ``<fixtures>/<purpose>/<key[:24]>.json`` where ``key`` is
-:func:`ordnung.llm.runtime.request_key` — the same key the cache uses. Each file holds
+:func:`ordnung.llm.runtime.request_key` of the request as made (the cache keys it by the model the
+call runs on instead: ``LLMService._cache_key``). Each file holds
 ``{"request": {...summary...}, "response": LLMResponse, "stream": [StreamEvent...]?}``.
 """
 

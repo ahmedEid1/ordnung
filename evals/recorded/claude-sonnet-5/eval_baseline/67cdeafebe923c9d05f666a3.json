@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6e68172d8788b6dc266b32eedb297dd02b575605b61b00c66caeca593e97abc3\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-02-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-F2"
+    ],
+    "prompt_head": "Today is Sunday, 2027-02-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume"
+  },
+  "response": {
+    "text": "{\"amounts\":[33228,5496,661],\"contract\":null,\"document_date\":\"2027-02-22\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the tax assessment\",\"quote\":\"Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.\",\"computation\":\"Letter dated (and assumed posted) Monday 22.02.2027; no separate 'Tag der Aufgabe zur Post' is stated, so the printed letter date is used as the posting day. Under § 122 Abs. 2 Nr. 1 AO (posting on/after 1 Jan 2025), delivery is deemed on the 4th day after posting: 23.02. (day1, Tue), 24.02. (day2, Wed), 25.02. (day3, Thu), 26.02.2027 (day4, Fri). 26.02.2027 is a working day (not Sat/Sun/holiday in ST), so for the Finanzamt no shift under § 108 Abs. 3 AO applies and delivery stands on Friday 26.02.2027. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) begins with expiry of that day (§ 187 Abs. 1 BGB analog via § 108 Abs. 1 AO) and ends one month later on the day with the same number: 26.03.2027 (Friday). This is a working day in Sachsen-Anhalt (not a public holiday), so no further shift under § 108 Abs. 3 AO is needed. Final deadline: 26.03.2027.\",\"due_date\":\"2027-03-26\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"102/148/05527\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterstedt\",\"warnings\":[\"The delivery-date computation assumes the printed letter date (22.02.2027) is the actual posting date, since the letter states no separate 'Tag der Aufgabe zur Post'; if actual mailing occurred on a different day, the deadline shifts accordingly.\",\"The assessment sets a refund (Erstattung) of 661,00 € to be paid to the account on file with the tax office; no specific payout date is given, so this was not listed as a dated item — verify the correct bank account is on file.\"]}",
+    "data": {
+      "amounts": [
+        33228,
+        5496,
+        661
+      ],
+      "contract": null,
+      "document_date": "2027-02-22",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the tax assessment",
+          "quote": "Die Einspruchsfrist beträgt einen Monat und beginnt mit Ablauf des Tages, an dem der Bescheid bekannt gegeben wurde; wird er Ihnen per Post zugeschickt, gilt er nach § 122 Abs. 2 Nr. 1 AO am vierten Tag nach der Aufgabe zur Post als bekannt gegeben, falls er Sie nicht nachweislich erst später oder gar nicht erreicht hat.",
+          "computation": "Letter dated (and assumed posted) Monday 22.02.2027; no separate 'Tag der Aufgabe zur Post' is stated, so the printed letter date is used as the posting day. Under § 122 Abs. 2 Nr. 1 AO (posting on/after 1 Jan 2025), delivery is deemed on the 4th day after posting: 23.02. (day1, Tue), 24.02. (day2, Wed), 25.02. (day3, Thu), 26.02.2027 (day4, Fri). 26.02.2027 is a working day (not Sat/Sun/holiday in ST), so for the Finanzamt no shift under § 108 Abs. 3 AO applies and delivery stands on Friday 26.02.2027. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) begins with expiry of that day (§ 187 Abs. 1 BGB analog via § 108 Abs. 1 AO) and ends one month later on the day with the same number: 26.03.2027 (Friday). This is a working day in Sachsen-Anhalt (not a public holiday), so no further shift under § 108 Abs. 3 AO is needed. Final deadline: 26.03.2027.",
+          "due_date": "2027-03-26",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "102/148/05527"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterstedt",
+      "warnings": [
+        "The delivery-date computation assumes the printed letter date (22.02.2027) is the actual posting date, since the letter states no separate 'Tag der Aufgabe zur Post'; if actual mailing occurred on a different day, the deadline shifts accordingly.",
+        "The assessment sets a refund (Erstattung) of 661,00 € to be paid to the account on file with the tax office; no specific payout date is given, so this was not listed as a dated item — verify the correct bank account is on file."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2617,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2406,
+      "cost_usd": 0.036904,
+      "duration_ms": 23808,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

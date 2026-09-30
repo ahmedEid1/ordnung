@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d93804a3f94c8b930df090335737217d1f257cf90f18f4c47542d3ec6ffc0aa7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-16\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-F2"
+    ],
+    "prompt_head": "Today is Monday, 2024-12-16 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2024-12-12\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against non-recognition as Arbeitsunfall\",\"quote\":\"Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Unfallkasse Musterland, Postfach 11 22, 35001 Musterbergen).\",\"computation\":\"Letter dated 12.12.2024, posted on or before 31.12.2024, so the pre-2025 3-day delivery fiction applies (also stated verbatim in the letter: 'gilt er am dritten Tag nach Aufgabe zur Post als bekannt gegeben'). Posting date = 12.12.2024 (Thu) + 3 days = 15.12.2024 (Sun). The Unfallkasse is a social-law body (§ 37 Abs. 2 SGB X); for such bodies (unlike tax offices) the deemed-delivery day does not move even if it falls on a weekend, so delivery = 15.12.2024. The one-month Widerspruch period (§ 84 SGG) starts the day after delivery (§ 187 Abs. 1 BGB) and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): 15.01.2025. That day is a Wednesday and not a public holiday in NW, so no shift under § 26 Abs. 3 SGB X applies.\",\"due_date\":\"2025-01-15\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"UK-24-11-07715\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Unfallkasse Musterland\",\"warnings\":[\"The letterhead itself labels the sender 'Gesetzliche Unfallversicherung (fiktiv)' and uses placeholder names (Musterland, Musterbergen, Musterbank), suggesting this may be a fictional/sample document rather than a real notice — verify the sender and reference number independently before relying on this deadline.\",\"No payment is requested in this letter, so the printed IBAN (DE28 5335 0000 0004 0400 00) is not relevant here and should not be used to send money.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2024-12-12",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against non-recognition as Arbeitsunfall",
+          "quote": "Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Unfallkasse Musterland, Postfach 11 22, 35001 Musterbergen).",
+          "computation": "Letter dated 12.12.2024, posted on or before 31.12.2024, so the pre-2025 3-day delivery fiction applies (also stated verbatim in the letter: 'gilt er am dritten Tag nach Aufgabe zur Post als bekannt gegeben'). Posting date = 12.12.2024 (Thu) + 3 days = 15.12.2024 (Sun). The Unfallkasse is a social-law body (§ 37 Abs. 2 SGB X); for such bodies (unlike tax offices) the deemed-delivery day does not move even if it falls on a weekend, so delivery = 15.12.2024. The one-month Widerspruch period (§ 84 SGG) starts the day after delivery (§ 187 Abs. 1 BGB) and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): 15.01.2025. That day is a Wednesday and not a public holiday in NW, so no shift under § 26 Abs. 3 SGB X applies.",
+          "due_date": "2025-01-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "UK-24-11-07715"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Unfallkasse Musterland",
+      "warnings": [
+        "The letterhead itself labels the sender 'Gesetzliche Unfallversicherung (fiktiv)' and uses placeholder names (Musterland, Musterbergen, Musterbank), suggesting this may be a fictional/sample document rather than a real notice — verify the sender and reference number independently before relying on this deadline.",
+        "No payment is requested in this letter, so the printed IBAN (DE28 5335 0000 0004 0400 00) is not relevant here and should not be used to send money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3377,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2103,
+      "cost_usd": 0.043292,
+      "duration_ms": 31334,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

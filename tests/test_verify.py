@@ -30,6 +30,7 @@ from ordnung.ingest.verify import (
     AMOUNT_NOT_IN_QUOTE,
     DATE_NOT_IN_QUOTE,
     DATE_WITHOUT_YEAR,
+    DAY_OF_MONTH_NOT_IN_QUOTE,
     INCOMPLETE_SPEC,
     MIN_SCORE,
     PERIOD_NOT_IN_QUOTE,
@@ -39,6 +40,8 @@ from ordnung.ingest.verify import (
     Located,
     PageInput,
     amount_matches,
+    day_of_month_consistency,
+    days_of_month_named,
     grade_reading,
     ground_evidence,
     locate_quote,
@@ -652,6 +655,14 @@ def test_none_spec_without_amount_is_always_consistent() -> None:
         ("the first business day", {1}),
         ("the 10th working day", {10}),
         ("am zweiten oder dritten Werktag", {3}),
+        # the last one (-1): the demo's salary, "spätestens am letzten Bankarbeitstag des Monats"
+        ("die Vergütung wird spätestens am letzten Bankarbeitstag des Monats überwiesen.", {-1}),
+        ("am letzten Werktag des Monats", {-1}),
+        ("zum letzten Arbeitstag", {-1}),
+        ("on the last working day of each month", {-1}),
+        ("by the last business day", {-1}),
+        ("the last bank working day of the month", {-1}),
+        ("on or around the first working day of each month", {1}),
         # a period of working days, a larger ordinal or no working day at all names none
         ("innerhalb von 3 Werktagen", set()),
         ("innerhalb von drei Werktagen", set()),
@@ -698,6 +709,13 @@ def test_a_recurrence_without_a_working_day_has_nothing_to_check() -> None:
     assert working_day_consistency("Die Miete ist monatlich im Voraus zu zahlen.", None) == []
 
 
+def test_the_last_working_day_is_named_or_flagged() -> None:
+    quote = "die Vergütung wird spätestens am letzten Bankarbeitstag des Monats überwiesen."
+    assert working_day_consistency(quote, -1) == []
+    assert working_day_consistency(quote, 1) == [WORKING_DAY_NOT_IN_QUOTE]
+    assert working_day_consistency("am letzten Tag des Monats", -1) == [WORKING_DAY_NOT_IN_QUOTE]
+
+
 def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
     """Like every reason, it lowers the receipt one level and says why in words (REASON_TEXT); the next
     occurrence of the schedule is graded the same (regrade)."""
@@ -706,4 +724,70 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
     assert graded.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
     assert "working day" in graded.warnings[0] and "please check" in graded.warnings[0]
     again = regrade(ComputationReceipt(due_date="2026-11-04"), graded)
+    assert (again.confidence, again.warnings) == ("medium", graded.warnings)
+
+
+# --------------------------------------------------------------------------------------------------
+# day_of_month_consistency: a recurrence's day of the month must be named by its quote
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        # the demo's gym fee and Deutschlandticket
+        (
+            "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per "
+            "SEPA-Lastschrift eingezogen.",
+            {1},
+        ),
+        ("Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID", {1}),
+        ("Monatlicher Abschlag 48,00 €, fällig jeweils zum 15. eines Monats, erstmals am", {15}),
+        (
+            "Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am 15.10.2026.",
+            {15},
+        ),
+        ("fällig am 5. jeden Monats", {5}),
+        ("bis zum 01. des Monats", {1}),
+        ("15. des Monats", {15}),
+        ("payable on the 1st of each month", {1}),
+        ("due on the 22nd", {22}),
+        ("am Monatsbeginn", {1}),
+        ("at the beginning of each month", {1}),
+        ("on the first day of the month", {1}),
+        # a month's end is its last day: 31
+        ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
+        ("zum Letzten eines Monats", {31}),
+        ("am letzten Tag des Monats", {31}),
+        ("at the end of each month", {31}),
+        ("jeweils zum 30. und zum 31.", {30, 31}),
+        # a date, a working day, a start date or no day at all names none
+        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).", set()),
+        ("am 1.10. abgebucht", set()),
+        ("spätestens bis zum 3. Werktag", set()),
+        ("due on the 3rd business day", set()),
+        ("am letzten Bankarbeitstag des Monats", set()),
+        ("zum letzten Werktag", set()),
+        ("§ 7. Kündigung", set()),
+        ("am 32. eines Monats", set()),
+        ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
+    ],
+)
+def test_days_of_month_named(text: str, expected: set[int]) -> None:
+    assert days_of_month_named(text) == expected
+
+
+def test_a_day_of_the_month_is_named_or_flagged() -> None:
+    """Graded like a working day: only the quote counts, and a reason lowers the receipt with a note."""
+    gym = "Der Monatsbeitrag wird zum 1. eines Monats per SEPA-Lastschrift eingezogen."
+    assert day_of_month_consistency(gym, 1) == []
+    assert day_of_month_consistency(gym, 15) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency("Die Miete ist jeweils zum Monatsende zu zahlen.", 31) == []
+    assert day_of_month_consistency("Der Beitrag ist monatlich zu zahlen.", 1) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency("Der Beitrag ist monatlich zu zahlen.", None) == []
+    graded = grade_reading(ComputationReceipt(due_date="2026-10-01"), "verified", [DAY_OF_MONTH_NOT_IN_QUOTE])
+    assert graded.confidence == "medium"
+    assert graded.warnings == [REASON_TEXT[DAY_OF_MONTH_NOT_IN_QUOTE]]
+    assert "day of the month" in graded.warnings[0] and "please check" in graded.warnings[0]
+    again = regrade(ComputationReceipt(due_date="2026-11-02"), graded)
     assert (again.confidence, again.warnings) == ("medium", graded.warnings)

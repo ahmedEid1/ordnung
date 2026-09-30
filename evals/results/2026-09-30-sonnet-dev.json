@@ -1,0 +1,6258 @@
+{
+ "schema": 1,
+ "meta": {
+  "date": "2026-09-30",
+  "generated_at": "2026-09-30T06:59:06+00:00",
+  "model": "claude-sonnet-5-5",
+  "split": "dev",
+  "conditions": [
+   "ordnung"
+  ],
+  "backend": "live",
+  "run_id": "v12-dev",
+  "entries": 28,
+  "photos": 4,
+  "adversarial": 0,
+  "families": [
+   "appointment",
+   "contract_confirmation",
+   "dunning_fixed",
+   "english_letter",
+   "fine_bussgeld",
+   "invoice_relative",
+   "municipal_decision",
+   "price_increase",
+   "relative_business_days",
+   "social_decision",
+   "tax_assessment",
+   "year_boundary"
+  ],
+  "scored_items": 25,
+  "partial": false,
+  "filters": {
+   "families": null,
+   "ids": null,
+   "limit": null
+  },
+  "seed": 20260925,
+  "resamples": 2000,
+  "evals_version": "1",
+  "fingerprints": {
+   "ordnung": "3c580fb7e9e05651"
+  },
+  "dataset": {
+   "name": "ordnung-deadline-benchmark",
+   "version": 1,
+   "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
+  },
+  "commit": "f1207a0",
+  "prompt_note": "Extraction prompt version 12 (2026-09-30) is the one the app uses now. Versions 9 to 11 fix what the UI audit and the Ask benchmark found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats (\"Semesterbeitrag überweisen\", \"94.99 EUR\", \"03.09.2026\"); a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel); and three terms the ledger could not hold: the working day a rent is due on (§ 556b BGB), a cancellation that must arrive by a day of the month (the Deutschlandticket's \"by the 10th\") and a fixed-term job that may be ended by notice after probation. The model also names a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. Version 12 adds three more terms the ledger could not hold: a monthly payment's day of the month or last working day, a standing order as the person's own transfer, and a contract that names the statutory notice periods. Each version was checked on the dev split before the test split, but the test split was recorded four times for them, which is iteration on it: read the row with that in mind. Version 9 scored 54 of 56 (dev 24 of 25). Version 10 added the three terms and scored 53 of 56 (dev 23 of 25): it left the delivery date out of fines served by Zustellung (\"zugestellt am\") on both splits, so their objection deadlines were counted from an earlier day (versions 8 and 9 filled it in all 6 fines; version 10 in 4, one of them read as an explicit anchor, and left it out of 2). Version 11 says so explicitly, was checked on the dev split (24 of 25) and scored 54 of 56. In its 91 readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). Its two misses are early, on the safe side: a questionnaire's \"10 Arbeitstagen (Montag bis Freitag)\" read as working days that include Saturdays, so its return date came out two days early (version 9 made the same slip on the letter's photo); and the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date. Version 12 was checked on the dev split (24 of 25) and scored 54 of 56, with the same two misses, both early, on the safe side: the questionnaire's ten working days, this time on the letter's photo (its text PDF was read right), and the tax notice, counted from the letter's date again. No benchmark letter states one of version 10's or version 12's terms; version 10's are measured on the demo and in the Ask benchmark. Recording cost $14.18 (API-equivalent): version 9 $3.56, version 10 $3.51, version 11 $3.59, version 12 $3.51. Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts.",
+  "model_alias": "sonnet"
+ },
+ "metrics": {
+  "ordnung": {
+   "documents": 28,
+   "due_date_accuracy": {
+    "value": 0.96,
+    "ci": [
+     0.875,
+     1.0
+    ],
+    "k": 24.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "dangerous_late_rate": {
+    "value": 0.0,
+    "ci": [
+     0.0,
+     0.16817922405261618
+    ],
+    "k": 0.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "early_rate": {
+    "value": 0.04,
+    "ci": [
+     0.0,
+     0.125
+    ],
+    "k": 1.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "missed_rate": {
+    "value": 0.0,
+    "ci": [
+     0.0,
+     0.16817922405261618
+    ],
+    "k": 0.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "declined_rate": {
+    "value": 0.0,
+    "ci": [
+     0.0,
+     0.16817922405261618
+    ],
+    "k": 0.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "reading_error_rate": {
+    "value": 0.04,
+    "ci": [
+     0.0,
+     0.125
+    ],
+    "k": 1.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "computing_error_rate": {
+    "value": 0.0,
+    "ci": [
+     0.0,
+     0.16817922405261618
+    ],
+    "k": 0.0,
+    "n": 25.0,
+    "docs": 23
+   },
+   "taxonomy": {
+    "n": 25,
+    "correct": 24,
+    "wrong": 1,
+    "reading": 1,
+    "computing": 0,
+    "declined": 0,
+    "missed": 0,
+    "late": 0,
+    "early": 1,
+    "computing_late": 0,
+    "reading_late": 0,
+    "flagged_wrong": 0,
+    "region_ignored": 0,
+    "lucky_reading": 0,
+    "reading_fields": {
+     "posting_date": 1
+    }
+   },
+   "by_family": {
+    "appointment": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 3.0,
+     "n": 3.0,
+     "docs": 3
+    },
+    "contract_confirmation": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "dunning_fixed": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 3.0,
+     "n": 3.0,
+     "docs": 3
+    },
+    "english_letter": {
+     "value": 1.0,
+     "ci": [
+      0.20654931437723745,
+      1.0
+     ],
+     "k": 1.0,
+     "n": 1.0,
+     "docs": 1
+    },
+    "fine_bussgeld": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 2.0,
+     "n": 2.0,
+     "docs": 2
+    },
+    "invoice_relative": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 3.0,
+     "n": 3.0,
+     "docs": 3
+    },
+    "municipal_decision": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 2.0,
+     "n": 2.0,
+     "docs": 2
+    },
+    "price_increase": {
+     "value": null,
+     "ci": [
+      null,
+      null
+     ],
+     "k": 0.0,
+     "n": 0.0,
+     "docs": 0
+    },
+    "relative_business_days": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 2.0,
+     "n": 2.0,
+     "docs": 2
+    },
+    "social_decision": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 3
+    },
+    "tax_assessment": {
+     "value": 0.6666666666666666,
+     "ci": [
+      0.5,
+      1.0
+     ],
+     "k": 2.0,
+     "n": 3.0,
+     "docs": 2
+    },
+    "year_boundary": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 2.0,
+     "n": 2.0,
+     "docs": 2
+    }
+   },
+   "by_modality": {
+    "text": {
+     "due_date_accuracy": {
+      "value": 0.9523809523809523,
+      "ci": [
+       0.8636363636363636,
+       1.0
+      ],
+      "k": 20.0,
+      "n": 21.0,
+      "docs": 19
+     },
+     "dangerous_late_rate": {
+      "value": 0.0,
+      "ci": [
+       0.0,
+       0.16817922405261618
+      ],
+      "k": 0.0,
+      "n": 21.0,
+      "docs": 19
+     },
+     "documents": 24
+    },
+    "photo": {
+     "due_date_accuracy": {
+      "value": 1.0,
+      "ci": [
+       0.5101091635454027,
+       1.0
+      ],
+      "k": 4.0,
+      "n": 4.0,
+      "docs": 4
+     },
+     "dangerous_late_rate": {
+      "value": 0.0,
+      "ci": [
+       0.0,
+       0.4898908364545972
+      ],
+      "k": 0.0,
+      "n": 4.0,
+      "docs": 4
+     },
+     "documents": 4
+    }
+   },
+   "extraction": {
+    "classification": {
+     "value": 0.8928571428571429,
+     "ci": [
+      0.7777777777777778,
+      1.0
+     ],
+     "k": 25.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "sender": {
+     "value": 1.0,
+     "ci": [
+      0.8620237953250198,
+      1.0
+     ],
+     "k": 28.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "document_date": {
+     "value": 1.0,
+     "ci": [
+      0.8620237953250198,
+      1.0
+     ],
+     "k": 28.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "remedy_type": {
+     "value": 1.0,
+     "ci": [
+      0.8620237953250198,
+      1.0
+     ],
+     "k": 28.0,
+     "n": 28.0,
+     "docs": 28
+    },
+    "references_recall": {
+     "value": 0.9772727272727273,
+     "ci": [
+      0.925,
+      1.0
+     ],
+     "k": 43.0,
+     "n": 44.0,
+     "docs": 28
+    },
+    "references_precision": {
+     "value": 0.8775510204081632,
+     "ci": [
+      0.7857142857142857,
+      0.976757399577167
+     ],
+     "k": 43.0,
+     "n": 49.0,
+     "docs": 28
+    },
+    "amounts_recall": {
+     "value": 1.0,
+     "ci": [
+      0.8156818649911481,
+      1.0
+     ],
+     "k": 24.0,
+     "n": 24.0,
+     "docs": 20
+    },
+    "amounts_precision": {
+     "value": 0.43636363636363634,
+     "ci": [
+      0.3392781476997579,
+      0.5869884910485935
+     ],
+     "k": 24.0,
+     "n": 55.0,
+     "docs": 22
+    },
+    "item_recall": {
+     "value": 1.0,
+     "ci": [
+      0.8388748419471808,
+      1.0
+     ],
+     "k": 26.0,
+     "n": 26.0,
+     "docs": 24
+    },
+    "item_precision": {
+     "value": 0.9285714285714286,
+     "ci": [
+      0.8125,
+      1.0
+     ],
+     "k": 26.0,
+     "n": 28.0,
+     "docs": 24
+    },
+    "contract_dates": {
+     "value": 1.0,
+     "ci": [
+      0.3423802275066532,
+      1.0
+     ],
+     "k": 4.0,
+     "n": 4.0,
+     "docs": 2
+    }
+   },
+   "grounding": {
+    "items": 34,
+    "shares": {
+     "verified": 0.8529411764705882,
+     "model_read": 0.14705882352941177,
+     "unverified": 0.0
+    },
+    "counts": {
+     "verified": 29,
+     "model_read": 5,
+     "unverified": 0
+    },
+    "false_grounded": {
+     "value": 0.037037037037037035,
+     "ci": [
+      0.0,
+      0.11538461538461539
+     ],
+     "k": 1.0,
+     "n": 27.0,
+     "docs": 23
+    },
+    "false_grounded_by_level": {
+     "verified": {
+      "value": 0.043478260869565216,
+      "ci": [
+       0.0,
+       0.13043478260869565
+      ],
+      "k": 1.0,
+      "n": 23.0,
+      "docs": 19
+     },
+     "model_read": {
+      "value": 0.0,
+      "ci": [
+       0.0,
+       0.4898908364545972
+      ],
+      "k": 0.0,
+      "n": 4.0,
+      "docs": 4
+     }
+    }
+   },
+   "tool_use": null,
+   "adversarial": {
+    "ambiguous_handled": {
+     "value": 1.0,
+     "ci": [
+      0.20654931437723745,
+      1.0
+     ],
+     "k": 1.0,
+     "n": 1.0,
+     "docs": 1
+    },
+    "scam_false_alarm": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.13797620467498012
+     ],
+     "k": 0.0,
+     "n": 28.0,
+     "docs": 28
+    }
+   },
+   "latency_ms": {
+    "mean": 13301.857142857143,
+    "p50": 11470.0,
+    "p95": 20616.95,
+    "total": 372452.0
+   },
+   "cost_usd": {
+    "mean": 0.04034501428571429,
+    "p50": 0.0381046,
+    "p95": 0.06179035999999999,
+    "total": 1.1296604000000001
+   },
+   "tokens": {
+    "input": 80,
+    "output": 61070,
+    "cache_read": 309282,
+    "cache_creation": 114236,
+    "total": 484668,
+    "mean_per_document": 17309.571428571428
+   },
+   "calls": 32,
+   "failed": 0,
+   "errors": 0
+  }
+ },
+ "comparisons": {},
+ "gallery": [
+  {
+   "entry_id": "dev-tax_assessment-B1",
+   "cluster": "dev-tax_assessment-B1",
+   "severity": 2,
+   "condition": "ordnung",
+   "family": "tax_assessment",
+   "modality": "text",
+   "item": "Einspruchsfrist Einkommensteuerbescheid 2025",
+   "kind": "deadline",
+   "expected": "2026-05-07",
+   "predicted": "2026-04-30",
+   "outcome": "wrong",
+   "direction": "early",
+   "days_off": -7,
+   "cause": "reading",
+   "reading_diffs": [
+    "posting_date"
+   ],
+   "rule": "Einspruch against a tax administrative act: one month after Bekanntgabe (§ 355 Abs. 1 AO).",
+   "truth_spec": "1 month after deemed_delivery, ao, posted on 2026-03-30",
+   "predicted_spec": "1 month after deemed_delivery, de_admin_post, nature objection",
+   "explanation": "Letter dated Thu 26 Mar 2026 counts as delivered on Mon 30 Mar; one month later is Thu 30 Apr 2026.",
+   "notes": [],
+   "quote": "Frist: ein Monat nach Bekanntgabe dieses Bescheids.",
+   "failed": null
+  }
+ ],
+ "entries": [
+  {
+   "id": "dev-appointment-A1",
+   "family": "appointment",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-04-29",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "appointment",
+     "title": "Terminbestätigung – Beantragung eines Reisepasses",
+     "expected_due": "2026-05-12",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-appointment-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "appointment",
+      "sender_name": "Stadt Musterstadt – Bürgeramt",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2026-04-27",
+      "references": [
+       "T-2026-044817"
+      ],
+      "amounts": [
+       70.0
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "appointment",
+        "title": "Passport application appointment",
+        "due_date": "2026-05-12",
+        "time": "09:30",
+        "amount": null,
+        "quote": "hiermit bestätigen wir Ihren Termin am Dienstag, 12.05.2026, um 09:30 Uhr im Bürgeramt",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-05-12",
+         "time": "09:30",
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "appointment",
+         "legal_basis": null,
+         "text": "Dienstag, 12.05.2026, um 09:30 Uhr"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "authority_deadline"
+        ],
+        "explanation": "The date given is Tue 12 May 2026.",
+        "notes": []
+       },
+       {
+        "kind": "payment",
+        "title": "Passport fee",
+        "due_date": "2026-05-12",
+        "time": "09:30",
+        "amount": 70.0,
+        "quote": "Bitte bringen Sie Ihren bisherigen Ausweis, ein aktuelles biometrisches Passfoto und die Gebühr",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-05-12",
+         "time": "09:30",
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "Dienstag, 12.05.2026, um 09:30 Uhr"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Tue 12 May 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1322,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 10633,
+        "cost_usd": 0.055756,
+        "duration_ms": 7936,
+        "wall_ms": 9531
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-appointment-A1",
+      "condition": "ordnung",
+      "family": "appointment",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-appointment-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "appointment",
+        "title": "Terminbestätigung – Beantragung eines Reisepasses",
+        "expected": "2026-05-12",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-05-12",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 1,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.055756,
+      "latency_ms": 7936,
+      "tokens": {
+       "input": 2,
+       "output": 1322,
+       "cache_read": 0,
+       "cache_creation": 10633
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-appointment-A1-photo",
+   "family": "appointment",
+   "variant": "A",
+   "modality": "photo",
+   "today": "2026-04-29",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "appointment",
+     "title": "Terminbestätigung – Beantragung eines Reisepasses",
+     "expected_due": "2026-05-12",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-appointment-A1-photo",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "appointment",
+      "sender_name": "Stadt Musterstadt – Bürgeramt",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2026-04-27",
+      "references": [
+       "T-2026-044817"
+      ],
+      "amounts": [
+       70.0
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "appointment",
+        "title": "Passport application appointment",
+        "due_date": "2026-05-12",
+        "time": "09:30",
+        "amount": null,
+        "quote": "hiermit bestätigen wir Ihren Termin am Dienstag, 12.05.2026, um 09:30 Uhr im Bürgeramt Mitte, Schalter 4.",
+        "confidence": "medium",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-05-12",
+         "time": "09:30",
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "appointment",
+         "legal_basis": null,
+         "text": "Dienstag, 12.05.2026, um 09:30 Uhr"
+        },
+        "grounding": "model_read",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "authority_deadline"
+        ],
+        "explanation": "The date given is Tue 12 May 2026.",
+        "notes": [
+         "This was read by AI from a photo or scan — compare the date with the paper letter."
+        ]
+       },
+       {
+        "kind": "payment",
+        "title": "Passport fee",
+        "due_date": "2026-05-12",
+        "time": null,
+        "amount": 70.0,
+        "quote": "Bitte bringen Sie Ihren bisherigen Ausweis, ein aktuelles biometrisches Passfoto und die Gebühr von 70,00 € (Kartenzahlung möglich) mit.",
+        "confidence": "medium",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-05-12",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "Bitte bringen Sie ... die Gebühr von 70,00 € (Kartenzahlung möglich) mit."
+        },
+        "grounding": "model_read",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Tue 12 May 2026.",
+        "notes": [
+         "This was read by AI from a photo or scan — compare the date with the paper letter."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "transcribe",
+        "backend": "replay",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 599,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 4612,
+        "cost_usd": 0.024442,
+        "duration_ms": 9540,
+        "wall_ms": 246
+       },
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1433,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 10630,
+        "cost_usd": 0.056854,
+        "duration_ms": 8370,
+        "wall_ms": 9548
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-appointment-A1-photo",
+      "condition": "ordnung",
+      "family": "appointment",
+      "variant": "A",
+      "modality": "photo",
+      "cluster": "dev-appointment-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "appointment",
+        "title": "Terminbestätigung – Beantragung eines Reisepasses",
+        "expected": "2026-05-12",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-05-12",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "medium",
+        "grounding": "model_read",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 1,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "model_read": 2
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        1
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.08129600000000001,
+      "latency_ms": 17910,
+      "tokens": {
+       "input": 4,
+       "output": 2032,
+       "cache_read": 0,
+       "cache_creation": 15242
+      },
+      "calls": 2,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-appointment-B1",
+   "family": "appointment",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-01-26",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "appointment",
+     "title": "Ihr Untersuchungstermin (MRT Kniegelenk rechts)",
+     "expected_due": "2026-02-03",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-appointment-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "appointment",
+      "sender_name": "Radiologie am Musterplatz",
+      "sender_kind": "doctor",
+      "delivery_scope": null,
+      "document_date": "2026-01-20",
+      "references": [
+       "RM-118204"
+      ],
+      "amounts": [],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "appointment",
+        "title": "MRI right knee",
+        "due_date": "2026-02-03",
+        "time": "14:15",
+        "amount": null,
+        "quote": "Ihr Termin: 03.02.2026, 14:15 Uhr. Bitte finden Sie sich 15 Minuten vorher an der Anmeldung",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-02-03",
+         "time": "14:15",
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "appointment",
+         "legal_basis": null,
+         "text": "03.02.2026, 14:15 Uhr"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written"
+        ],
+        "explanation": "The date given is Tue 3 Feb 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1160,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 10633,
+        "cost_usd": 0.054136000000000004,
+        "duration_ms": 7532,
+        "wall_ms": 8967
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-appointment-B1",
+      "condition": "ordnung",
+      "family": "appointment",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-appointment-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "appointment",
+        "title": "Ihr Untersuchungstermin (MRT Kniegelenk rechts)",
+        "expected": "2026-02-03",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-02-03",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.054136000000000004,
+      "latency_ms": 7532,
+      "tokens": {
+       "input": 2,
+       "output": 1160,
+       "cache_read": 0,
+       "cache_creation": 10633
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-contract_confirmation-A1",
+   "family": "contract_confirmation",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-02-14",
+   "region": "NW",
+   "expected": [],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-contract_confirmation-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "contract",
+      "sender_name": "MusterFit Studios GmbH",
+      "sender_kind": "gym",
+      "delivery_scope": null,
+      "document_date": "2026-02-10",
+      "references": [
+       "MF-51230",
+       "V-2026-0877"
+      ],
+      "amounts": [
+       34.9
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Monthly membership fee",
+        "due_date": null,
+        "time": null,
+        "amount": 34.9,
+        "quote": "Die Beiträge buchen wir monatlich im Voraus per Lastschrift ab.",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "other",
+         "legal_basis": null,
+         "text": "Die Beiträge buchen wir monatlich im Voraus per Lastschrift ab."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       }
+      ],
+      "contract": {
+       "current_term_end": "2027-02-28",
+       "cancel_by": "2027-01-31"
+      },
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1591,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1826,
+        "cost_usd": 0.024995000000000003,
+        "duration_ms": 9121,
+        "wall_ms": 10438
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-contract_confirmation-A1",
+      "condition": "ordnung",
+      "family": "contract_confirmation",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-contract_confirmation-A1",
+      "items": [],
+      "required": 0,
+      "matched_required": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       2,
+       2
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       0
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.024995000000000003,
+      "latency_ms": 9121,
+      "tokens": {
+       "input": 2,
+       "output": 1591,
+       "cache_read": 8885,
+       "cache_creation": 1826
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-contract_confirmation-B1",
+   "family": "contract_confirmation",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-06-17",
+   "region": "NW",
+   "expected": [],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-contract_confirmation-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "contract",
+      "sender_name": "Muster Mobil GmbH",
+      "sender_kind": "telecom",
+      "delivery_scope": null,
+      "document_date": "2025-06-12",
+      "references": [
+       "MM-7730921",
+       "0151 2345 6789"
+      ],
+      "amounts": [
+       24.99
+      ],
+      "remedy_type": "none",
+      "items": [],
+      "contract": {
+       "current_term_end": "2026-06-15",
+       "cancel_by": "2026-05-15"
+      },
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1532,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1866,
+        "cost_usd": 0.024565000000000003,
+        "duration_ms": 9046,
+        "wall_ms": 10396
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-contract_confirmation-B1",
+      "condition": "ordnung",
+      "family": "contract_confirmation",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-contract_confirmation-B1",
+      "items": [],
+      "required": 0,
+      "matched_required": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       2,
+       2
+      ],
+      "grounding": {},
+      "false_grounded": [
+       0,
+       0
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.024565000000000003,
+      "latency_ms": 9046,
+      "tokens": {
+       "input": 2,
+       "output": 1532,
+       "cache_read": 8885,
+       "cache_creation": 1866
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-dunning_fixed-A1",
+   "family": "dunning_fixed",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-05-08",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Offenen Betrag bezahlen",
+     "expected_due": "2026-05-15",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-dunning_fixed-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "dunning",
+      "sender_name": "Beispiel Versand GmbH",
+      "sender_kind": "retailer",
+      "delivery_scope": null,
+      "document_date": "2026-05-04",
+      "references": [
+       "KD 1188204",
+       "BV-7790114",
+       "AG Musterfeld HRB 9921"
+      ],
+      "amounts": [
+       64.98
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay open invoice",
+        "due_date": "2026-05-15",
+        "time": null,
+        "amount": 64.98,
+        "quote": "Bitte überweisen Sie den Betrag bis zum 15.05.2026 auf das unten genannte Konto.",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-05-15",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "bis zum 15.05.2026"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Fri 15 May 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 2587,
+        "cache_read_tokens": 19551,
+        "cache_creation_tokens": 3305,
+        "cost_usd": 0.04300820000000001,
+        "duration_ms": 14567,
+        "wall_ms": 15723
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-dunning_fixed-A1",
+      "condition": "ordnung",
+      "family": "dunning_fixed",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-dunning_fixed-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Offenen Betrag bezahlen",
+        "expected": "2026-05-15",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-05-15",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       3
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.04300820000000001,
+      "latency_ms": 14567,
+      "tokens": {
+       "input": 4,
+       "output": 2587,
+       "cache_read": 19551,
+       "cache_creation": 3305
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-dunning_fixed-B1",
+   "family": "dunning_fixed",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-06-18",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Offenen Betrag bezahlen",
+     "expected_due": "2025-06-30",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-dunning_fixed-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "dunning",
+      "sender_name": "Muster Verlag GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2025-06-13",
+      "references": [
+       "AB-5541078"
+      ],
+      "amounts": [
+       61.9,
+       59.4,
+       2.5
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay subscription fee and reminder fee",
+        "due_date": "2025-06-30",
+        "time": null,
+        "amount": 61.9,
+        "quote": "Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2025-06-30",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "bis spätestens 30. Juni 2025"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Mon 30 Jun 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "No payment reference (Verwendungszweck) is printed, so quote the subscription number AB-5541078 when paying.",
+       "The 30 June 2025 deadline may already have passed, so check whether you have paid and contact the publisher if needed."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 2963,
+        "cache_read_tokens": 19557,
+        "cache_creation_tokens": 3518,
+        "cost_usd": 0.04762140000000001,
+        "duration_ms": 16063,
+        "wall_ms": 17609
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-dunning_fixed-B1",
+      "condition": "ordnung",
+      "family": "dunning_fixed",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-dunning_fixed-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Offenen Betrag bezahlen",
+        "expected": "2025-06-30",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-06-30",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       3
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.04762140000000001,
+      "latency_ms": 16063,
+      "tokens": {
+       "input": 4,
+       "output": 2963,
+       "cache_read": 19557,
+       "cache_creation": 3518
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-dunning_fixed-B1-photo",
+   "family": "dunning_fixed",
+   "variant": "B",
+   "modality": "photo",
+   "today": "2025-06-18",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Offenen Betrag bezahlen",
+     "expected_due": "2025-06-30",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-dunning_fixed-B1-photo",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "dunning",
+      "sender_name": "Muster Verlag GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2025-06-13",
+      "references": [
+       "AB-5541078"
+      ],
+      "amounts": [
+       61.9,
+       59.4,
+       2.5
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay subscription reminder",
+        "due_date": "2025-06-30",
+        "time": null,
+        "amount": 61.9,
+        "quote": "Bitte überweisen Sie den Betrag bis spätestens 30. Juni 2025 auf das unten genannte Konto.",
+        "confidence": "medium",
+        "spec": {
+         "type": "fixed",
+         "date": "2025-06-30",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "bis spätestens 30. Juni 2025"
+        },
+        "grounding": "model_read",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Mon 30 Jun 2025.",
+        "notes": [
+         "This was read by AI from a photo or scan — compare the date with the paper letter."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "No payment reference (Verwendungszweck) is given; use the subscription number AB-5541078 and verify the bank details against earlier subscription documents."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "transcribe",
+        "backend": "replay",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 779,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 4614,
+        "cost_usd": 0.02625,
+        "duration_ms": 10345,
+        "wall_ms": 384
+       },
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1308,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1792,
+        "cost_usd": 0.022029,
+        "duration_ms": 8028,
+        "wall_ms": 9249
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-dunning_fixed-B1-photo",
+      "condition": "ordnung",
+      "family": "dunning_fixed",
+      "variant": "B",
+      "modality": "photo",
+      "cluster": "dev-dunning_fixed-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Offenen Betrag bezahlen",
+        "expected": "2025-06-30",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-06-30",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "medium",
+        "grounding": "model_read",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       3
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "model_read": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        1
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.048279,
+      "latency_ms": 18373,
+      "tokens": {
+       "input": 4,
+       "output": 2087,
+       "cache_read": 8885,
+       "cache_creation": 6406
+      },
+      "calls": 2,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-english_letter-A1",
+   "family": "english_letter",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-02-17",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Pay invoice INV-26-0207",
+     "expected_due": "2026-03-13",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-english_letter-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "invoice",
+      "sender_name": "Beispiel Relocation Services GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2026-02-11",
+      "references": [
+       "INV-26-0207",
+       "C-4410",
+       "AG Charlottenburg HRB 20 441"
+      ],
+      "amounts": [
+       1190.0,
+       190.0,
+       1000.0
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay settling-in package invoice",
+        "due_date": "2026-03-13",
+        "time": null,
+        "amount": 1190.0,
+        "quote": "Please pay within 30 days of the date of this letter by bank transfer to the account shown",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 30,
+         "unit": "days",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "Please pay within 30 days of the date of this letter"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "bgb_193",
+         "bgb_675s"
+        ],
+        "explanation": "30 days after the letter's date (Wed 11 Feb 2026) is Fri 13 Mar 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1306,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1714,
+        "cost_usd": 0.021697,
+        "duration_ms": 7725,
+        "wall_ms": 8773
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-english_letter-A1",
+      "condition": "ordnung",
+      "family": "english_letter",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-english_letter-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Pay invoice INV-26-0207",
+        "expected": "2026-03-13",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-03-13",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       3
+      ],
+      "amounts_precision": [
+       1,
+       3
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.021697,
+      "latency_ms": 7725,
+      "tokens": {
+       "input": 2,
+       "output": 1306,
+       "cache_read": 8885,
+       "cache_creation": 1714
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-english_letter-B1",
+   "family": "english_letter",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-05-07",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Return the signed participation form",
+     "expected_due": "ambiguous",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-english_letter-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "university",
+      "sender_name": "Global Muster Research Institute",
+      "sender_kind": "university",
+      "delivery_scope": "vwvfg",
+      "document_date": "2026-05-05",
+      "references": [
+       "GMRI/ST/2026/118"
+      ],
+      "amounts": [],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Return signed participation form",
+        "due_date": "2026-08-07",
+        "time": null,
+        "amount": null,
+        "quote": "Please return the signed participation form by 07/08/2026.",
+        "confidence": "low",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-08-07",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "declaration",
+         "legal_basis": null,
+         "text": "07/08/2026"
+        },
+        "grounding": "verified",
+        "value_consistent": false,
+        "needs_check": true,
+        "rule_ids": [
+         "date_as_written",
+         "postal_buffer"
+        ],
+        "explanation": "The date given is Fri 7 Aug 2026.",
+        "notes": [
+         "The date in the letter can be read two ways (day/month) — please check it."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "The date 07/08/2026 could be read as 7 August or 8 July; it was taken as 7 August (day/month), so confirm with the institute.",
+       "1 date could not be confirmed against the letter's text."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1394,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1602,
+        "cost_usd": 0.022129000000000003,
+        "duration_ms": 9845,
+        "wall_ms": 11110
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-english_letter-B1",
+      "condition": "ordnung",
+      "family": "english_letter",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-english_letter-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Return the signed participation form",
+        "expected": "ambiguous",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-08-07",
+        "outcome": "unscored",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [
+         "date"
+        ],
+        "flagged": true,
+        "confidence": "low",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       0
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false,
+       "ambiguous_handled": true
+      },
+      "cost_usd": 0.022129000000000003,
+      "latency_ms": 9845,
+      "tokens": {
+       "input": 2,
+       "output": 1394,
+       "cache_read": 8885,
+       "cache_creation": 1602
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-fine_bussgeld-A1",
+   "family": "fine_bussgeld",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-09-18",
+   "region": "BY",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Einspruchsfrist Bußgeldbescheid",
+     "expected_due": "2026-10-01",
+     "required": true
+    },
+    {
+     "kind": "payment",
+     "title": "Geldbuße und Kosten zahlen",
+     "expected_due": null,
+     "required": false
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-fine_bussgeld-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "fine",
+      "sender_name": "Stadt Musterau – Bußgeldstelle",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2026-09-14",
+      "references": [
+       "BG-2026-114502",
+       "RO-JM 318"
+      ],
+      "amounts": [
+       98.5,
+       70.0,
+       25.0,
+       3.5
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Object to the fine notice (Einspruch)",
+        "due_date": "2026-10-01",
+        "time": null,
+        "amount": null,
+        "quote": "Dieser Bußgeldbescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach Zustellung schriftlich oder zur Niederschrift bei der oben bezeichneten Verwaltungsbehörde Einspruch einlegen.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "receipt",
+         "anchor_date": "2026-09-17",
+         "amount": 2,
+         "unit": "weeks",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "innerhalb von zwei Wochen nach Zustellung"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "vwvfg_31_3",
+         "postal_buffer"
+        ],
+        "explanation": "Two weeks after delivery on Thu 17 Sep 2026 (as stated on the letter) is Thu 1 Oct 2026.",
+        "notes": []
+       },
+       {
+        "kind": "payment",
+        "title": "Pay the fine",
+        "due_date": null,
+        "time": null,
+        "amount": 98.5,
+        "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
+        "confidence": "low",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "explicit_date",
+         "anchor_date": null,
+         "amount": 2,
+         "unit": "weeks",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "spätestens zwei Wochen nach Rechtskraft"
+        },
+        "grounding": "verified",
+        "value_consistent": false,
+        "needs_check": true,
+        "rule_ids": [],
+        "explanation": "No date could be computed: the start date is missing.",
+        "notes": [
+         "The start date of the period could not be read.",
+         "This date doesn't appear in the sentence it was taken from — please check it."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "1 date could not be confirmed against the letter's text."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 2106,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 2590,
+        "cost_usd": 0.033201,
+        "duration_ms": 11963,
+        "wall_ms": 13153
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-fine_bussgeld-A1",
+      "condition": "ordnung",
+      "family": "fine_bussgeld",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-fine_bussgeld-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Einspruchsfrist Bußgeldbescheid",
+        "expected": "2026-10-01",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-10-01",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       },
+       {
+        "index": 1,
+        "required": false,
+        "kind": "payment",
+        "title": "Geldbuße und Kosten zahlen",
+        "expected": null,
+        "matched": true,
+        "pred_index": 1,
+        "predicted": null,
+        "outcome": "unscored",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": true,
+        "confidence": "low",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       2,
+       2
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       2,
+       4
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       2
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        2
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.033201,
+      "latency_ms": 11963,
+      "tokens": {
+       "input": 2,
+       "output": 2106,
+       "cache_read": 8885,
+       "cache_creation": 2590
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-fine_bussgeld-B1",
+   "family": "fine_bussgeld",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-09-20",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Einspruchsfrist Bußgeldbescheid",
+     "expected_due": "2026-10-05",
+     "required": true
+    },
+    {
+     "kind": "payment",
+     "title": "Geldbuße und Kosten zahlen",
+     "expected_due": null,
+     "required": false
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-fine_bussgeld-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "fine",
+      "sender_name": "Kreis Musterland – Bußgeldstelle",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2026-09-15",
+      "references": [
+       "7.3-OWi-2026-88213",
+       "MS-MB 77"
+      ],
+      "amounts": [
+       98.5,
+       70.0,
+       25.0,
+       3.5
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "File objection (Einspruch) against the fine",
+        "due_date": "2026-10-05",
+        "time": null,
+        "amount": null,
+        "quote": "Sie können gegen diesen Bescheid binnen zwei Wochen nach Zustellung Einspruch einlegen – schriftlich oder zur Niederschrift beim Kreis Musterland – Bußgeldstelle.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "receipt",
+         "anchor_date": "2026-09-19",
+         "amount": 2,
+         "unit": "weeks",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "binnen zwei Wochen nach Zustellung"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "vwvfg_31_3",
+         "postal_buffer"
+        ],
+        "explanation": "Two weeks after delivery on Sat 19 Sep 2026 (as stated on the letter) is Sat 3 Oct 2026, a public holiday, Tag der Deutschen Einheit, so the deadline moves to Mon 5 Oct 2026.",
+        "notes": []
+       },
+       {
+        "kind": "payment",
+        "title": "Pay fine of €98.50",
+        "due_date": null,
+        "time": null,
+        "amount": 98.5,
+        "quote": "Bitte zahlen Sie den Gesamtbetrag spätestens zwei Wochen nach Rechtskraft unter Angabe des Aktenzeichens auf das unten genannte Konto.",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "spätestens zwei Wochen nach Rechtskraft"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 4386,
+        "cache_read_tokens": 20351,
+        "cache_creation_tokens": 3976,
+        "cost_usd": 0.0638422,
+        "duration_ms": 23989,
+        "wall_ms": 25200
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-fine_bussgeld-B1",
+      "condition": "ordnung",
+      "family": "fine_bussgeld",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-fine_bussgeld-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Einspruchsfrist Bußgeldbescheid",
+        "expected": "2026-10-05",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-10-05",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       },
+       {
+        "index": 1,
+        "required": false,
+        "kind": "payment",
+        "title": "Geldbuße und Kosten zahlen",
+        "expected": null,
+        "matched": true,
+        "pred_index": 1,
+        "predicted": null,
+        "outcome": "unscored",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [
+         "type"
+        ],
+        "flagged": false,
+        "confidence": null,
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       2,
+       2
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       2,
+       4
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       2
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        2
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.0638422,
+      "latency_ms": 23989,
+      "tokens": {
+       "input": 4,
+       "output": 4386,
+       "cache_read": 20351,
+       "cache_creation": 3976
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-invoice_relative-A1",
+   "family": "invoice_relative",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-03-23",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Rechnung 2026-0318 bezahlen",
+     "expected_due": "2026-04-07",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-invoice_relative-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "invoice",
+      "sender_name": "Elektro Mustermann GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2026-03-20",
+      "references": [
+       "2026-0318",
+       "K-20417",
+       "DE 311 208 774",
+       "Amtsgericht Musterstadt HRB 22817"
+      ],
+      "amounts": [
+       1214.99,
+       1021.0,
+       193.99,
+       374.0
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay invoice 2026-0318",
+        "due_date": "2026-04-07",
+        "time": null,
+        "amount": 1214.99,
+        "quote": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 14,
+         "unit": "days",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "bgb_193",
+         "bgb_675s"
+        ],
+        "explanation": "14 days after the letter's date (Fri 20 Mar 2026) is Fri 3 Apr 2026, a public holiday, Karfreitag, so the deadline moves to Tue 7 Apr 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 3356,
+        "cache_read_tokens": 19629,
+        "cache_creation_tokens": 3777,
+        "cost_usd": 0.0526018,
+        "duration_ms": 17965,
+        "wall_ms": 19080
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-invoice_relative-A1",
+      "condition": "ordnung",
+      "family": "invoice_relative",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-invoice_relative-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Rechnung 2026-0318 bezahlen",
+        "expected": "2026-04-07",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-04-07",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       4
+      ],
+      "amounts_precision": [
+       1,
+       4
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.0526018,
+      "latency_ms": 17965,
+      "tokens": {
+       "input": 4,
+       "output": 3356,
+       "cache_read": 19629,
+       "cache_creation": 3777
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-invoice_relative-A1-photo",
+   "family": "invoice_relative",
+   "variant": "A",
+   "modality": "photo",
+   "today": "2026-03-23",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Rechnung 2026-0318 bezahlen",
+     "expected_due": "2026-04-07",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-invoice_relative-A1-photo",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "invoice",
+      "sender_name": "Elektro Mustermann GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2026-03-20",
+      "references": [
+       "2026-0318",
+       "K-20417"
+      ],
+      "amounts": [
+       1214.99,
+       1021.0,
+       193.99,
+       374.0
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay invoice 2026-0318",
+        "due_date": "2026-04-07",
+        "time": null,
+        "amount": 1214.99,
+        "quote": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+        "confidence": "medium",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 14,
+         "unit": "days",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug."
+        },
+        "grounding": "model_read",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "bgb_193",
+         "bgb_675s"
+        ],
+        "explanation": "14 days after the letter's date (Fri 20 Mar 2026) is Fri 3 Apr 2026, a public holiday, Karfreitag, so the deadline moves to Tue 7 Apr 2026.",
+        "notes": [
+         "This was read by AI from a photo or scan — compare the date with the paper letter."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "transcribe",
+        "backend": "replay",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 823,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 4614,
+        "cost_usd": 0.02669,
+        "duration_ms": 9926,
+        "wall_ms": 1
+       },
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1704,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1873,
+        "cost_usd": 0.026313000000000003,
+        "duration_ms": 10083,
+        "wall_ms": 11270
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-invoice_relative-A1-photo",
+      "condition": "ordnung",
+      "family": "invoice_relative",
+      "variant": "A",
+      "modality": "photo",
+      "cluster": "dev-invoice_relative-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Rechnung 2026-0318 bezahlen",
+        "expected": "2026-04-07",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-04-07",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "medium",
+        "grounding": "model_read",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       4
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "model_read": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        1
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.053003,
+      "latency_ms": 20009,
+      "tokens": {
+       "input": 4,
+       "output": 2527,
+       "cache_read": 8885,
+       "cache_creation": 6487
+      },
+      "calls": 2,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-invoice_relative-B1",
+   "family": "invoice_relative",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-09-06",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Rechnung PL-25-0913 bezahlen",
+     "expected_due": "2025-10-06",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-invoice_relative-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "invoice",
+      "sender_name": "Zahnarztpraxis Dr. Beispiel",
+      "sender_kind": "doctor",
+      "delivery_scope": null,
+      "document_date": "2025-09-04",
+      "references": [
+       "PL-25-0913",
+       "Pat. 4471"
+      ],
+      "amounts": [
+       197.93
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay dental invoice",
+        "due_date": "2025-10-06",
+        "time": null,
+        "amount": 197.93,
+        "quote": "Bitte begleichen Sie den Rechnungsbetrag spätestens 30 Tage nach dem Rechnungsdatum",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 30,
+         "unit": "days",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "spätestens 30 Tage nach dem Rechnungsdatum"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188",
+         "bgb_193",
+         "bgb_675s"
+        ],
+        "explanation": "30 days after the letter's date (Thu 4 Sep 2025) is Sat 4 Oct 2025, a Saturday, so the deadline moves to Mon 6 Oct 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1380,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1880,
+        "cost_usd": 0.023101,
+        "duration_ms": 9002,
+        "wall_ms": 10078
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-invoice_relative-B1",
+      "condition": "ordnung",
+      "family": "invoice_relative",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-invoice_relative-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Rechnung PL-25-0913 bezahlen",
+        "expected": "2025-10-06",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-10-06",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.023101,
+      "latency_ms": 9002,
+      "tokens": {
+       "input": 2,
+       "output": 1380,
+       "cache_read": 8885,
+       "cache_creation": 1880
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-municipal_decision-A1",
+   "family": "municipal_decision",
+   "variant": "A",
+   "modality": "text",
+   "today": "2025-05-19",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Klagefrist",
+     "expected_due": "2025-06-20",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-municipal_decision-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt, Ordnungsamt",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2025-05-15",
+      "references": [
+       "32.1-HU-2025-0417"
+      ],
+      "amounts": [
+       250.0
+      ],
+      "remedy_type": "klage",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Comply with leash requirement",
+        "due_date": null,
+        "time": null,
+        "amount": null,
+        "quote": "außerhalb Ihres befriedeten Besitztums ab sofort an einer höchstens zwei Meter langen Leine zu führen ist.",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "other",
+         "legal_basis": null,
+         "text": "ab sofort"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       },
+       {
+        "kind": "deadline",
+        "title": "Last day to file a lawsuit (Klage) against the order",
+        "due_date": "2025-06-20",
+        "time": null,
+        "amount": null,
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Klage beim Verwaltungsgericht Musterstadt, Justizzentrum, Gerichtsstraße 5, 44135 Musterstadt, erhoben werden.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "innerhalb eines Monats nach Bekanntgabe"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "vwvfg_41_2",
+         "bgb_187_1",
+         "bgb_188",
+         "vwvfg_31_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Thu 15 May 2025 counts as delivered on Mon 19 May; one month later is Thu 19 Jun 2025, a public holiday, Fronleichnam, so the deadline moves to Fri 20 Jun 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "This decision can only be challenged in court (Klage) — get advice (e.g. a Verbraucherzentrale) in time."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 2010,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 2141,
+        "cost_usd": 0.030445,
+        "duration_ms": 11162,
+        "wall_ms": 12319
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-municipal_decision-A1",
+      "condition": "ordnung",
+      "family": "municipal_decision",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-municipal_decision-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Klagefrist",
+        "expected": "2025-06-20",
+        "matched": true,
+        "pred_index": 1,
+        "predicted": "2025-06-20",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       0,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.030445,
+      "latency_ms": 11162,
+      "tokens": {
+       "input": 2,
+       "output": 2010,
+       "cache_read": 8885,
+       "cache_creation": 2141
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-municipal_decision-B1",
+   "family": "municipal_decision",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-12-04",
+   "region": "BY",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Widerspruchsfrist",
+     "expected_due": "2026-01-07",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-municipal_decision-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Beispielkreis",
+      "sender_kind": "authority",
+      "delivery_scope": "vwvfg",
+      "document_date": "2025-12-02",
+      "references": [
+       "32-1415.3/2025-118"
+      ],
+      "amounts": [],
+      "remedy_type": "widerspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "File objection against rejection (optional)",
+        "due_date": "2026-01-07",
+        "time": null,
+        "amount": null,
+        "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "binnen eines Monats nach seiner Bekanntgabe"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "vwvfg_41_2",
+         "bgb_187_1",
+         "bgb_188",
+         "vwvfg_31_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Tue 2 Dec 2025 counts as delivered on Sat 6 Dec (this day does not move for this kind of letter); one month later is Tue 6 Jan 2026, a public holiday, Heilige Drei Könige, so the deadline moves to Wed 7 Jan 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 2989,
+        "cache_read_tokens": 19934,
+        "cache_creation_tokens": 3912,
+        "cost_usd": 0.0495328,
+        "duration_ms": 16137,
+        "wall_ms": 17205
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-municipal_decision-B1",
+      "condition": "ordnung",
+      "family": "municipal_decision",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-municipal_decision-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Widerspruchsfrist",
+        "expected": "2026-01-07",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-01-07",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.0495328,
+      "latency_ms": 16137,
+      "tokens": {
+       "input": 4,
+       "output": 2989,
+       "cache_read": 19934,
+       "cache_creation": 3912
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-price_increase-A1",
+   "family": "price_increase",
+   "variant": "A",
+   "modality": "text",
+   "today": "2025-10-31",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Sonderkündigung vor Inkrafttreten der Preiserhöhung",
+     "expected_due": "2025-12-31",
+     "required": false
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-price_increase-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "price_increase",
+      "sender_name": "Beispiel Energie AG",
+      "sender_kind": "utility",
+      "delivery_scope": null,
+      "document_date": "2025-10-28",
+      "references": [
+       "BE-3301 8812"
+      ],
+      "amounts": [
+       81.0,
+       72.0,
+       31.48,
+       34.92,
+       12.9,
+       13.9
+      ],
+      "remedy_type": "none",
+      "items": [],
+      "contract": {
+       "current_term_end": null,
+       "cancel_by": null
+      },
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1481,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1830,
+        "cost_usd": 0.023910999999999998,
+        "duration_ms": 8774,
+        "wall_ms": 9954
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-price_increase-A1",
+      "condition": "ordnung",
+      "family": "price_increase",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-price_increase-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": false,
+        "kind": "deadline",
+        "title": "Sonderkündigung vor Inkrafttreten der Preiserhöhung",
+        "expected": "2025-12-31",
+        "matched": false,
+        "pred_index": null,
+        "predicted": null,
+        "outcome": "unscored",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": null,
+        "grounding": null,
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 0,
+      "matched_required": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       2,
+       2
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       2,
+       6
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {},
+      "false_grounded": [
+       0,
+       0
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.023910999999999998,
+      "latency_ms": 8774,
+      "tokens": {
+       "input": 2,
+       "output": 1481,
+       "cache_read": 8885,
+       "cache_creation": 1830
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-price_increase-B1",
+   "family": "price_increase",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-02-22",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Sonderkündigung vor Inkrafttreten der Preiserhöhung",
+     "expected_due": "2026-03-31",
+     "required": false
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-price_increase-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "price_increase",
+      "sender_name": "NetzMuster GmbH",
+      "sender_kind": "telecom",
+      "delivery_scope": null,
+      "document_date": "2026-02-16",
+      "references": [
+       "NM-2291044"
+      ],
+      "amounts": [
+       44.99,
+       39.99
+      ],
+      "remedy_type": "none",
+      "items": [],
+      "contract": {
+       "current_term_end": null,
+       "cancel_by": null
+      },
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1500,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1792,
+        "cost_usd": 0.023949,
+        "duration_ms": 8513,
+        "wall_ms": 9615
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-price_increase-B1",
+      "condition": "ordnung",
+      "family": "price_increase",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-price_increase-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": false,
+        "kind": "deadline",
+        "title": "Sonderkündigung vor Inkrafttreten der Preiserhöhung",
+        "expected": "2026-03-31",
+        "matched": false,
+        "pred_index": null,
+        "predicted": null,
+        "outcome": "unscored",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": null,
+        "grounding": null,
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 0,
+      "matched_required": 0,
+      "true_positives": 0,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       2,
+       2
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       2,
+       2
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {},
+      "false_grounded": [
+       0,
+       0
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.023949,
+      "latency_ms": 8513,
+      "tokens": {
+       "input": 2,
+       "output": 1500,
+       "cache_read": 8885,
+       "cache_creation": 1792
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-relative_business_days-A1",
+   "family": "relative_business_days",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-03-28",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Unterlagen zum Wasserschaden einreichen",
+     "expected_due": "2026-04-10",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-relative_business_days-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "insurance",
+      "sender_name": "Beispiel Versicherung AG",
+      "sender_kind": "insurer",
+      "delivery_scope": null,
+      "document_date": "2026-03-27",
+      "references": [
+       "HR-26-0331-778",
+       "HR-66 204 1177"
+      ],
+      "amounts": [],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Submit item list, receipts and photos",
+        "due_date": "2026-04-10",
+        "time": null,
+        "amount": null,
+        "quote": "Bitte reichen Sie die fehlenden Unterlagen binnen 10 Werktagen nach dem Datum dieses Schreibens ein (Werktage sind Montag bis Samstag, ausgenommen gesetzliche Feiertage).",
+        "confidence": "medium",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 10,
+         "unit": "werktage",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "declaration",
+         "legal_basis": null,
+         "text": "binnen 10 Werktagen nach dem Datum dieses Schreibens"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "unit_werktage",
+         "bgb_193",
+         "postal_buffer"
+        ],
+        "explanation": "10 working days (Mon–Sat) after the letter's date (Fri 27 Mar 2026) is Fri 10 Apr 2026.",
+        "notes": [
+         "Holiday region unknown — Sun 5 Apr 2026 is a public holiday in some Länder (e.g. Brandenburg), where the deadline would be later. We used nationwide holidays only."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1539,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1799,
+        "cost_usd": 0.024367000000000003,
+        "duration_ms": 9152,
+        "wall_ms": 10265
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-relative_business_days-A1",
+      "condition": "ordnung",
+      "family": "relative_business_days",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-relative_business_days-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Unterlagen zum Wasserschaden einreichen",
+        "expected": "2026-04-10",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-04-10",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "medium",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.024367000000000003,
+      "latency_ms": 9152,
+      "tokens": {
+       "input": 2,
+       "output": 1539,
+       "cache_read": 8885,
+       "cache_creation": 1799
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-relative_business_days-B1",
+   "family": "relative_business_days",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-12-25",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Termin für die Ablesung mitteilen",
+     "expected_due": "2026-01-05",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-relative_business_days-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "authority_letter",
+      "sender_name": "Hausverwaltung Muster & Partner",
+      "sender_kind": "landlord",
+      "delivery_scope": null,
+      "document_date": "2025-12-22",
+      "references": [
+       "0877-03"
+      ],
+      "amounts": [
+       12.01,
+       14.01
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Reply with your preferred access date",
+        "due_date": "2026-01-05",
+        "time": null,
+        "amount": null,
+        "quote": "Bitte teilen Sie uns innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 7,
+         "unit": "business_days",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "declaration",
+         "legal_basis": null,
+         "text": "innerhalb von 7 Arbeitstagen (Mo.–Fr., ohne Feiertage) nach Briefdatum"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "unit_business_days",
+         "bgb_193",
+         "postal_buffer"
+        ],
+        "explanation": "7 business days after the letter's date (Mon 22 Dec 2025) is Mon 5 Jan 2026.",
+        "notes": []
+       },
+       {
+        "kind": "appointment",
+        "title": "Proposed access dates: meter reading and smoke alarm service",
+        "due_date": null,
+        "time": null,
+        "amount": null,
+        "quote": "Vorgeschlagene Termine: 12.01., 14.01. oder 16.01.2026, jeweils",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "none",
+         "nature": "appointment",
+         "legal_basis": null,
+         "text": "12.01., 14.01. oder 16.01.2026, jeweils zwischen 8 und 12 Uhr"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1533,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1816,
+        "cost_usd": 0.024375,
+        "duration_ms": 9698,
+        "wall_ms": 10749
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-relative_business_days-B1",
+      "condition": "ordnung",
+      "family": "relative_business_days",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-relative_business_days-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Termin für die Ablesung mitteilen",
+        "expected": "2026-01-05",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-01-05",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": false,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       2
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       0,
+       2
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.024375,
+      "latency_ms": 9698,
+      "tokens": {
+       "input": 2,
+       "output": 1533,
+       "cache_read": 8885,
+       "cache_creation": 1816
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-social_decision-A1",
+   "family": "social_decision",
+   "variant": "A",
+   "modality": "text",
+   "today": "2025-04-20",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Widerspruchsfrist",
+     "expected_due": "2025-05-19",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-social_decision-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "health_insurance",
+      "sender_name": "Muster BKK",
+      "sender_kind": "health_insurer",
+      "delivery_scope": "sgbx",
+      "document_date": "2025-04-14",
+      "references": [
+       "M482915673",
+       "HM-25-044712"
+      ],
+      "amounts": [],
+      "remedy_type": "widerspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Objection to the rejection decision",
+        "due_date": "2025-05-19",
+        "time": null,
+        "amount": null,
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "innerhalb eines Monats nach Bekanntgabe"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "sgbx_37_2",
+         "bgb_187_1",
+         "bgb_188",
+         "sgbx_26_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Mon 14 Apr 2025 counts as delivered on Fri 18 Apr (this day does not move for this kind of letter); one month later is Sun 18 May 2025, a Sunday, so the deadline moves to Mon 19 May 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1399,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1980,
+        "cost_usd": 0.023691,
+        "duration_ms": 8558,
+        "wall_ms": 9736
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-social_decision-A1",
+      "condition": "ordnung",
+      "family": "social_decision",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-social_decision-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Widerspruchsfrist",
+        "expected": "2025-05-19",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-05-19",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.023691,
+      "latency_ms": 8558,
+      "tokens": {
+       "input": 2,
+       "output": 1399,
+       "cache_read": 8885,
+       "cache_creation": 1980
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-social_decision-A1-photo",
+   "family": "social_decision",
+   "variant": "A",
+   "modality": "photo",
+   "today": "2025-04-20",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Widerspruchsfrist",
+     "expected_due": "2025-05-19",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-social_decision-A1-photo",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "authority_letter",
+      "sender_name": "Muster BKK",
+      "sender_kind": "health_insurer",
+      "delivery_scope": "sgbx",
+      "document_date": "2025-04-14",
+      "references": [
+       "M482915673",
+       "HM-25-044712"
+      ],
+      "amounts": [],
+      "remedy_type": "widerspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Object to the rejection (Widerspruch)",
+        "due_date": "2025-05-19",
+        "time": null,
+        "amount": null,
+        "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        "confidence": "medium",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "innerhalb eines Monats nach Bekanntgabe"
+        },
+        "grounding": "model_read",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "sgbx_37_2",
+         "bgb_187_1",
+         "bgb_188",
+         "sgbx_26_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Mon 14 Apr 2025 counts as delivered on Fri 18 Apr (this day does not move for this kind of letter); one month later is Sun 18 May 2025, a Sunday, so the deadline moves to Mon 19 May 2025.",
+        "notes": [
+         "This was read by AI from a photo or scan — compare the date with the paper letter."
+        ]
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "The letter is dated 14 April 2025, so the objection period may already have passed or be close to ending; check the deadline shown."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "transcribe",
+        "backend": "replay",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 920,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 4616,
+        "cost_usd": 0.027668,
+        "duration_ms": 10409,
+        "wall_ms": 1
+       },
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1688,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 1970,
+        "cost_usd": 0.026541000000000002,
+        "duration_ms": 9972,
+        "wall_ms": 11373
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-social_decision-A1-photo",
+      "condition": "ordnung",
+      "family": "social_decision",
+      "variant": "A",
+      "modality": "photo",
+      "cluster": "dev-social_decision-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Widerspruchsfrist",
+        "expected": "2025-05-19",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-05-19",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "medium",
+        "grounding": "model_read",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": false,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       0,
+       0
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       0,
+       0
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "model_read": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        0
+       ],
+       "model_read": [
+        0,
+        1
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.05420900000000001,
+      "latency_ms": 20381,
+      "tokens": {
+       "input": 4,
+       "output": 2608,
+       "cache_read": 8885,
+       "cache_creation": 6586
+      },
+      "calls": 2,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-social_decision-B1",
+   "family": "social_decision",
+   "variant": "B",
+   "modality": "text",
+   "today": "2025-10-17",
+   "region": "SN",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Widerspruchsfrist",
+     "expected_due": "2025-11-20",
+     "required": true
+    },
+    {
+     "kind": "task",
+     "title": "Kontoauszüge einreichen",
+     "expected_due": "2025-11-05",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-social_decision-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "authority_letter",
+      "sender_name": "Jobcenter Musterlingen",
+      "sender_kind": "authority",
+      "delivery_scope": "sgbx",
+      "document_date": "2025-10-15",
+      "references": [
+       "04701//0081542",
+       "912D415377"
+      ],
+      "amounts": [
+       1126.4
+      ],
+      "remedy_type": "widerspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Submit bank statements",
+        "due_date": "2025-11-05",
+        "time": null,
+        "amount": null,
+        "quote": "Bitte reichen Sie bis zum 05.11.2025 die Kontoauszüge der letzten drei Monate ein.",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2025-11-05",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "declaration",
+         "legal_basis": null,
+         "text": "bis zum 05.11.2025"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "postal_buffer"
+        ],
+        "explanation": "The date given is Wed 5 Nov 2025.",
+        "notes": []
+       },
+       {
+        "kind": "deadline",
+        "title": "Objection (Widerspruch) window",
+        "due_date": "2025-11-20",
+        "time": null,
+        "amount": null,
+        "quote": "Gegen diesen Bescheid kann jede betroffene Person innerhalb eines Monats nach Bekanntgabe Widerspruch erheben.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "innerhalb eines Monats nach Bekanntgabe"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "sgbx_37_2",
+         "bgb_187_1",
+         "bgb_188",
+         "sgbx_26_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Wed 15 Oct 2025 counts as delivered on Sun 19 Oct (this day does not move for this kind of letter); one month later is Wed 19 Nov 2025, a public holiday, Buß- und Bettag, so the deadline moves to Thu 20 Nov 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 3557,
+        "cache_read_tokens": 19830,
+        "cache_creation_tokens": 4088,
+        "cost_usd": 0.055896,
+        "duration_ms": 18933,
+        "wall_ms": 20029
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-social_decision-B1",
+      "condition": "ordnung",
+      "family": "social_decision",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-social_decision-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Widerspruchsfrist",
+        "expected": "2025-11-20",
+        "matched": true,
+        "pred_index": 1,
+        "predicted": "2025-11-20",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       },
+       {
+        "index": 1,
+        "required": true,
+        "kind": "task",
+        "title": "Kontoauszüge einreichen",
+        "expected": "2025-11-05",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-11-05",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 2,
+      "matched_required": 2,
+      "true_positives": 2,
+      "false_positives": 0,
+      "kind_ok": false,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       2
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        2
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.055896,
+      "latency_ms": 18933,
+      "tokens": {
+       "input": 4,
+       "output": 3557,
+       "cache_read": 19830,
+       "cache_creation": 4088
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-tax_assessment-A1",
+   "family": "tax_assessment",
+   "variant": "A",
+   "modality": "text",
+   "today": "2026-05-01",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Einspruchsfrist Einkommensteuerbescheid 2025",
+     "expected_due": "2026-06-05",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-tax_assessment-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterstadt-Nord",
+      "sender_kind": "tax_office",
+      "delivery_scope": "ao",
+      "document_date": "2026-04-27",
+      "references": [
+       "315/5118/4072",
+       "58 214 730 915"
+      ],
+      "amounts": [
+       888.0,
+       8214.0,
+       9102.0,
+       6.0,
+       1260.0
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Object to the assessment (optional)",
+        "due_date": "2026-06-05",
+        "time": null,
+        "amount": null,
+        "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": "§ 355 AO",
+         "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "ao_122_2_1",
+         "ao_fiction_shift",
+         "bgb_187_1",
+         "bgb_188",
+         "ao_355",
+         "ao_108_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Mon 27 Apr 2026 counts as delivered on Fri 1 May, moved to Mon 4 May; one month later is Thu 4 Jun 2026, a public holiday, Fronleichnam, so the deadline moves to Fri 5 Jun 2026.",
+        "notes": []
+       },
+       {
+        "kind": "payment",
+        "title": "Tax refund incoming",
+        "due_date": null,
+        "time": null,
+        "amount": 888.0,
+        "quote": "Der Betrag wird auf Ihr Konto DE21 4405 0199 0123 4567 89 überwiesen.",
+        "confidence": null,
+        "spec": {
+         "type": "none",
+         "date": null,
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "other",
+         "legal_basis": null,
+         "text": "Der Betrag wird auf Ihr Konto DE21 4405 0199 0123 4567 89 überwiesen."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [],
+        "explanation": "",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [
+       "The IBAN for the refund (DE21 4405 0199 0123 4567 89) should be checked to be your own account."
+      ],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1983,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 2843,
+        "cost_usd": 0.032983,
+        "duration_ms": 11778,
+        "wall_ms": 13033
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-tax_assessment-A1",
+      "condition": "ordnung",
+      "family": "tax_assessment",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-tax_assessment-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Einspruchsfrist Einkommensteuerbescheid 2025",
+        "expected": "2026-06-05",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-06-05",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       2
+      ],
+      "amounts_precision": [
+       1,
+       5
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.032983,
+      "latency_ms": 11778,
+      "tokens": {
+       "input": 2,
+       "output": 1983,
+       "cache_read": 8885,
+       "cache_creation": 2843
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-tax_assessment-B1",
+   "family": "tax_assessment",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-04-05",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Einspruchsfrist Einkommensteuerbescheid 2025",
+     "expected_due": "2026-05-07",
+     "required": true
+    },
+    {
+     "kind": "payment",
+     "title": "Nachzahlung Einkommensteuer",
+     "expected_due": "2026-04-30",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-tax_assessment-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "sender_kind": "tax_office",
+      "delivery_scope": "ao",
+      "document_date": "2026-03-26",
+      "references": [
+       "026 812 40517"
+      ],
+      "amounts": [
+       634.0,
+       11405.0,
+       10771.0
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay additional income tax 2025",
+        "due_date": "2026-04-30",
+        "time": null,
+        "amount": 634.0,
+        "quote": "Bitte zahlen Sie 634,00 € bis zum 30.04.2026.",
+        "confidence": "high",
+        "spec": {
+         "type": "fixed",
+         "date": "2026-04-30",
+         "time": null,
+         "anchor": null,
+         "anchor_date": null,
+         "amount": null,
+         "unit": null,
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "bis zum 30.04.2026"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "date_as_written",
+         "bgb_675s"
+        ],
+        "explanation": "The date given is Thu 30 Apr 2026.",
+        "notes": []
+       },
+       {
+        "kind": "deadline",
+        "title": "Objection period (Einspruch)",
+        "due_date": "2026-04-30",
+        "time": null,
+        "amount": null,
+        "quote": "Frist: ein Monat nach Bekanntgabe dieses Bescheids.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "ein Monat nach Bekanntgabe dieses Bescheids"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "ao_122_2_1",
+         "bgb_187_1",
+         "bgb_188",
+         "ao_108_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Thu 26 Mar 2026 counts as delivered on Mon 30 Mar; one month later is Thu 30 Apr 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 2,
+        "output_tokens": 1853,
+        "cache_read_tokens": 8885,
+        "cache_creation_tokens": 2091,
+        "cost_usd": 0.028675000000000003,
+        "duration_ms": 10838,
+        "wall_ms": 11948
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-tax_assessment-B1",
+      "condition": "ordnung",
+      "family": "tax_assessment",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-tax_assessment-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Einspruchsfrist Einkommensteuerbescheid 2025",
+        "expected": "2026-05-07",
+        "matched": true,
+        "pred_index": 1,
+        "predicted": "2026-04-30",
+        "outcome": "wrong",
+        "direction": "early",
+        "days_off": -7,
+        "cause": "reading",
+        "reading_diffs": [
+         "posting_date"
+        ],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       },
+       {
+        "index": 1,
+        "required": true,
+        "kind": "payment",
+        "title": "Nachzahlung Einkommensteuer",
+        "expected": "2026-04-30",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-04-30",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 2,
+      "matched_required": 2,
+      "true_positives": 2,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       3
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 2
+      },
+      "false_grounded": [
+       1,
+       2
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        1,
+        2
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.028675000000000003,
+      "latency_ms": 10838,
+      "tokens": {
+       "input": 2,
+       "output": 1853,
+       "cache_read": 8885,
+       "cache_creation": 2091
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-year_boundary-A1",
+   "family": "year_boundary",
+   "variant": "A",
+   "modality": "text",
+   "today": "2024-12-19",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "deadline",
+     "title": "Einspruchsfrist Änderungsbescheid 2022",
+     "expected_due": "2025-01-20",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-year_boundary-A1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "sender_kind": "tax_office",
+      "delivery_scope": "ao",
+      "document_date": "2024-12-17",
+      "references": [
+       "026 812 40517"
+      ],
+      "amounts": [
+       6918.0
+      ],
+      "remedy_type": "einspruch",
+      "items": [
+       {
+        "kind": "deadline",
+        "title": "Objection period for amended 2022 assessment",
+        "due_date": "2025-01-20",
+        "time": null,
+        "amount": null,
+        "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "deemed_delivery",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "de_admin_post",
+         "shift_rule": "auto",
+         "nature": "objection",
+         "legal_basis": null,
+         "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat. Sie beginnt mit Ablauf des Tages, an dem Ihnen dieser Bescheid bekannt gegeben worden ist."
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "posting_day",
+         "ao_122_2_1",
+         "bgb_187_1",
+         "bgb_188",
+         "ao_108_3",
+         "postal_buffer"
+        ],
+        "explanation": "Letter dated Tue 17 Dec 2024 counts as delivered on Fri 20 Dec; one month later is Mon 20 Jan 2025.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 3126,
+        "cache_read_tokens": 19716,
+        "cache_creation_tokens": 3801,
+        "cost_usd": 0.0504152,
+        "duration_ms": 16738,
+        "wall_ms": 17835
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-year_boundary-A1",
+      "condition": "ordnung",
+      "family": "year_boundary",
+      "variant": "A",
+      "modality": "text",
+      "cluster": "dev-year_boundary-A1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "deadline",
+        "title": "Einspruchsfrist Änderungsbescheid 2022",
+        "expected": "2025-01-20",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2025-01-20",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       1,
+       1
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       1,
+       1
+      ],
+      "amounts_precision": [
+       1,
+       1
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.0504152,
+      "latency_ms": 16738,
+      "tokens": {
+       "input": 4,
+       "output": 3126,
+       "cache_read": 19716,
+       "cache_creation": 3801
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  },
+  {
+   "id": "dev-year_boundary-B1",
+   "family": "year_boundary",
+   "variant": "B",
+   "modality": "text",
+   "today": "2026-02-04",
+   "region": "NW",
+   "expected": [
+    {
+     "kind": "payment",
+     "title": "Rechnung RE-2026-0142 bezahlen",
+     "expected_due": "2026-03-02",
+     "required": true
+    }
+   ],
+   "conditions": {
+    "ordnung": {
+     "prediction": {
+      "entry_id": "dev-year_boundary-B1",
+      "condition": "ordnung",
+      "model": "sonnet",
+      "kind": "invoice",
+      "sender_name": "Muster Möbelwerkstatt GmbH",
+      "sender_kind": "company",
+      "delivery_scope": null,
+      "document_date": "2026-01-30",
+      "references": [
+       "RE-2026-0142",
+       "K-10877",
+       "DE 298 441 207",
+       "Amtsgericht Neu-Musterdorf HRB 4471"
+      ],
+      "amounts": [
+       1487.5,
+       1250.0,
+       237.5
+      ],
+      "remedy_type": "none",
+      "items": [
+       {
+        "kind": "payment",
+        "title": "Pay invoice RE-2026-0142",
+        "due_date": "2026-03-02",
+        "time": null,
+        "amount": 1487.5,
+        "quote": "Bitte überweisen Sie den Rechnungsbetrag innerhalb eines Monats nach",
+        "confidence": "high",
+        "spec": {
+         "type": "relative",
+         "date": null,
+         "time": null,
+         "anchor": "document_date",
+         "anchor_date": null,
+         "amount": 1,
+         "unit": "months",
+         "delivery_rule": "none",
+         "shift_rule": "auto",
+         "nature": "payment",
+         "legal_basis": null,
+         "text": "innerhalb eines Monats nach Rechnungsdatum"
+        },
+        "grounding": "verified",
+        "value_consistent": true,
+        "needs_check": false,
+        "rule_ids": [
+         "bgb_187_1",
+         "bgb_188_3",
+         "bgb_193",
+         "bgb_675s"
+        ],
+        "explanation": "One month after the letter's date (Fri 30 Jan 2026) is Sat 28 Feb 2026, a Saturday, so the deadline moves to Mon 2 Mar 2026.",
+        "notes": []
+       }
+      ],
+      "contract": null,
+      "warnings": [],
+      "signals": [],
+      "hidden_text": false,
+      "tools": null,
+      "calls": [
+       {
+        "purpose": "extract",
+        "backend": "claude",
+        "ok": true,
+        "error": null,
+        "input_tokens": 4,
+        "output_tokens": 3763,
+        "cache_read_tokens": 19669,
+        "cache_creation_tokens": 4102,
+        "cost_usd": 0.0579798,
+        "duration_ms": 20744,
+        "wall_ms": 21941
+       }
+      ],
+      "failed": null,
+      "error": null,
+      "fingerprint": "3c580fb7e9e05651"
+     },
+     "score": {
+      "entry_id": "dev-year_boundary-B1",
+      "condition": "ordnung",
+      "family": "year_boundary",
+      "variant": "B",
+      "modality": "text",
+      "cluster": "dev-year_boundary-B1",
+      "items": [
+       {
+        "index": 0,
+        "required": true,
+        "kind": "payment",
+        "title": "Rechnung RE-2026-0142 bezahlen",
+        "expected": "2026-03-02",
+        "matched": true,
+        "pred_index": 0,
+        "predicted": "2026-03-02",
+        "outcome": "correct",
+        "direction": null,
+        "days_off": null,
+        "cause": null,
+        "reading_diffs": [],
+        "flagged": false,
+        "confidence": "high",
+        "grounding": "verified",
+        "region_ignored": false,
+        "backing": null,
+        "tool_had_truth": null,
+        "tool_date_count": 0,
+        "chose_later_tool_date": null
+       }
+      ],
+      "required": 1,
+      "matched_required": 1,
+      "true_positives": 1,
+      "false_positives": 0,
+      "kind_ok": true,
+      "sender_ok": true,
+      "document_date_ok": true,
+      "remedy_ok": true,
+      "references": [
+       2,
+       2
+      ],
+      "amounts": [
+       1,
+       1
+      ],
+      "references_precision": [
+       2,
+       4
+      ],
+      "amounts_precision": [
+       1,
+       3
+      ],
+      "contract_dates": [
+       0,
+       0
+      ],
+      "grounding": {
+       "verified": 1
+      },
+      "false_grounded": [
+       0,
+       1
+      ],
+      "false_grounded_by_level": {
+       "verified": [
+        0,
+        1
+       ],
+       "model_read": [
+        0,
+        0
+       ]
+      },
+      "adversarial": {
+       "scam_false_alarm": false
+      },
+      "cost_usd": 0.0579798,
+      "latency_ms": 20744,
+      "tokens": {
+       "input": 4,
+       "output": 3763,
+       "cache_read": 19669,
+       "cache_creation": 4102
+      },
+      "calls": 1,
+      "failed": null,
+      "error": null,
+      "tool_calls": null,
+      "tool_refusals": 0,
+      "tool_dates": []
+     }
+    }
+   }
+  }
+ ]
+}

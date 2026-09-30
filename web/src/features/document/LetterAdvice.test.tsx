@@ -404,7 +404,7 @@ describe("the advice card of a high-stakes letter", () => {
       title: "New monthly rent",
       amount: 670,
       due_date: "2026-12-01",
-      recurrence: { interval: 1, unit: "months", working_day: null },
+      recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null },
       computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_558b"] }),
     });
     renderWithProviders(<VerdictCard detail={makeDetail({ document: doc, items: [rent], advice: ADVICE_BY_KIND.rent_increase })} primary={rent} onAskArrival={() => {}} />, {
@@ -424,7 +424,7 @@ describe("the advice card of a high-stakes letter", () => {
       title: "New monthly rent",
       amount: 670,
       due_date: "2026-12-01",
-      recurrence: { interval: 1, unit: "months", working_day: null },
+      recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null },
       computation: makeReceipt({ rule_ids: ["date_as_written", "bgb_558b"] }),
     });
     const decided = makeItem({ id: "consent", origin: "rule", status: "done", title: "Decide whether to agree to the rent increase", computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });

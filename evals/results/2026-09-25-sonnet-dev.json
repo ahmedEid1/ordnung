@@ -3,7 +3,7 @@
  "meta": {
   "date": "2026-09-25",
   "generated_at": "2026-09-25T16:05:43+00:00",
-  "model": "sonnet",
+  "model": "claude-sonnet-5",
   "split": "dev",
   "conditions": [
    "ordnung",
@@ -49,7 +49,8 @@
    "version": 1,
    "manifest_sha256": "82c0ca53d06b4f28d6e832817bdaa3c626ef5c3a0c8f150a34ccf61a81597ee5"
   },
-  "commit": "3f3ac91"
+  "commit": "3f3ac91",
+  "model_alias": "sonnet"
  },
  "metrics": {
   "ordnung": {

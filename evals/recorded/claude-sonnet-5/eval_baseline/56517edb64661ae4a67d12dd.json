@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"5e941738b0f8f28779e4efd6c72a258e8f8a1189451f1c59afaf86bdb2e560a8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-F1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-05-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"TSV Beispielstadt 1898 e.V.\",\"document_date\":\"2027-05-21\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"M-1898-2207\"}],\"amounts\":[180,3,183],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue 2027 membership fee plus dunning fee\",\"quote\":\"Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.\",\"computation\":\"The club states an explicit calendar due date, inclusive: 'bis einschließlich 4. Juni 2027'. This is a private-law deadline set directly by the creditor, not a statutory period counted from a delivery date, so no §§187/188 BGB counting is needed. Checking the weekday: 2026-01-01 is a Thursday; 2026 has 365 days (365 mod 7 = 1), so 2027-01-01 is a Friday. 4 June 2027 is the 155th day of 2027; (155-1) mod 7 = 0, so it falls on the same weekday as 1 January, i.e. Friday — an ordinary business day, so no weekend/holiday shift under §193 BGB is triggered anyway. Due date: 4 June 2027.\",\"due_date\":\"2027-06-04\",\"confidence\":\"high\",\"amount\":183}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "TSV Beispielstadt 1898 e.V.",
+      "document_date": "2027-05-21",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "M-1898-2207"
+        }
+      ],
+      "amounts": [
+        180,
+        3,
+        183
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue 2027 membership fee plus dunning fee",
+          "quote": "Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.",
+          "computation": "The club states an explicit calendar due date, inclusive: 'bis einschließlich 4. Juni 2027'. This is a private-law deadline set directly by the creditor, not a statutory period counted from a delivery date, so no §§187/188 BGB counting is needed. Checking the weekday: 2026-01-01 is a Thursday; 2026 has 365 days (365 mod 7 = 1), so 2027-01-01 is a Friday. 4 June 2027 is the 155th day of 2027; (155-1) mod 7 = 0, so it falls on the same weekday as 1 January, i.e. Friday — an ordinary business day, so no weekend/holiday shift under §193 BGB is triggered anyway. Due date: 4 June 2027.",
+          "due_date": "2027-06-04",
+          "confidence": "high",
+          "amount": 183
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2741,
+      "cache_read_tokens": 13156,
+      "cache_creation_tokens": 4245,
+      "cost_usd": 0.0470292,
+      "duration_ms": 23764,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

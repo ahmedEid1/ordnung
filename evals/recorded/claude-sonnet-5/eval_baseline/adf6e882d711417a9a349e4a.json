@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"c9730465cd89646da089c750b56b9ae5e22cd54bae56791fb63b85c515146bb6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-F2"
+    ],
+    "prompt_head": "Today is Friday, 2026-03-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Beispiel International Summer School\",\"document_date\":\"2026-03-03\",\"references\":[{\"label\":\"Participant no.\",\"value\":\"ISS-26-0277\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit signed code of conduct and emergency contact form\",\"quote\":\"Please send us the signed code of conduct and your emergency contact form by 05/06/2026; we cannot confirm your room until we have both.\",\"computation\":\"The letter prints the deadline as the numeric date '05/06/2026', which is genuinely ambiguous: read as day/month/year (the convention normally used in Germany, where the sender is based) it means 5 June 2026; read as month/day/year (a convention an English-language international summer school addressing participants abroad might also use) it means 6 May 2026. Nothing else in the letter disambiguates it — the document date '03/03/2026' is day 3 of month 3 either way, so it gives no clue about the sender's convention. No statutory delivery or counting rule applies here since this is a private company's administrative request, not an authority's legally defined deadline, so the printed date (on whichever reading) stands as written with no weekend/holiday shift. Following the instruction to use the earliest plausible reading when a date is genuinely ambiguous, the earliest of the two candidate dates, 6 May 2026, is used, with low confidence and a warning flagging the alternative reading of 5 June 2026.\",\"due_date\":\"2026-05-06\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The submission deadline is printed only as the numeric date '05/06/2026', which is ambiguous between day/month/year (5 June 2026) and month/day/year (6 May 2026); nothing else in the letter resolves this, so the earlier reading (6 May 2026) is used with low confidence — double-check with the sender which date they mean.\",\"The letter states an address in Hamburg for the recipient but the person's region context given is Nordrhein-Westfalen; if the Hamburg address is not the current one, confirm the recipient details are correct.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Beispiel International Summer School",
+      "document_date": "2026-03-03",
+      "references": [
+        {
+          "label": "Participant no.",
+          "value": "ISS-26-0277"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit signed code of conduct and emergency contact form",
+          "quote": "Please send us the signed code of conduct and your emergency contact form by 05/06/2026; we cannot confirm your room until we have both.",
+          "computation": "The letter prints the deadline as the numeric date '05/06/2026', which is genuinely ambiguous: read as day/month/year (the convention normally used in Germany, where the sender is based) it means 5 June 2026; read as month/day/year (a convention an English-language international summer school addressing participants abroad might also use) it means 6 May 2026. Nothing else in the letter disambiguates it — the document date '03/03/2026' is day 3 of month 3 either way, so it gives no clue about the sender's convention. No statutory delivery or counting rule applies here since this is a private company's administrative request, not an authority's legally defined deadline, so the printed date (on whichever reading) stands as written with no weekend/holiday shift. Following the instruction to use the earliest plausible reading when a date is genuinely ambiguous, the earliest of the two candidate dates, 6 May 2026, is used, with low confidence and a warning flagging the alternative reading of 5 June 2026.",
+          "due_date": "2026-05-06",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The submission deadline is printed only as the numeric date '05/06/2026', which is ambiguous between day/month/year (5 June 2026) and month/day/year (6 May 2026); nothing else in the letter resolves this, so the earlier reading (6 May 2026) is used with low confidence — double-check with the sender which date they mean.",
+        "The letter states an address in Hamburg for the recipient but the person's region context given is Nordrhein-Westfalen; if the Hamburg address is not the current one, confirm the recipient details are correct."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2254,
+      "cache_read_tokens": 14888,
+      "cache_creation_tokens": 3445,
+      "cost_usd": 0.039305599999999996,
+      "duration_ms": 24935,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE97 3705 0198 0005 5590 00"
+        },
+        "result": "{\"iban\":\"DE97 3705 0198 0005 5590 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005559000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,8 +1,8 @@
 /**
  * The notice terms of a contract, entered or corrected by hand on its card (`PATCH /api/contracts/{id}`):
  * the notice period and how it runs, the contract's own day of the month for notice where the rules read
- * one, and whether a fixed-term job can be left earlier by notice — the rules engine then works out the
- * dates from them.
+ * one, whether it names the statutory notice periods (a job's or a lease's, or one read so by mistake) and
+ * whether a fixed-term job can be left earlier by notice — the rules engine then works out the dates from them.
  */
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useUpdateContract } from "@/api/hooks";
@@ -12,7 +12,7 @@ import { Checkbox, Input, Select } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { NOTICE_BASIS_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
-import { earlyNoticeCounts, noticeDayCounts, termsUnclear } from "./model";
+import { earlyNoticeCounts, noticeDayCounts, statutoryNoticeCounts, termsUnclear } from "./model";
 
 /** The longest notice period the form takes per unit (longer ones are misreadings). */
 export const NOTICE_MAX: Record<NoticeUnit, number> = { days: 730, weeks: 104, months: 24 };
@@ -36,6 +36,17 @@ export function noticeValueError(raw: string, unit: NoticeUnit): string | null {
   if (n < 1) return `At least 1 ${unit.replace(/s$/, "")}`;
   if (n > NOTICE_MAX[unit]) return `Up to ${NOTICE_MAX[unit]} ${unit}`;
   return null;
+}
+
+/**
+ * What the statutory notice periods are for this contract, in the form's words (`_STATUTORY_NOTE` in
+ * `src/ordnung/rules/contracts.py`): no statute gives other contracts one, so there the period decides.
+ */
+export function statutoryHint(c: Pick<Contract, "category">): string {
+  if (c.category === "employment")
+    return "The law's “gesetzliche Kündigungsfristen”: for you, 4 weeks to the 15th or the end of a month (§ 622 BGB) — longer if the contract extends your employer's longer periods to you.";
+  if (c.category === "rent") return "The law's “gesetzliche Kündigungsfristen”: for you as the tenant, by the 3rd working day of a month for the end of the month after next (§ 573c BGB).";
+  return "No law gives this kind of contract a notice period of its own — the period you enter decides.";
 }
 
 /** What is wrong with a typed day of the month for notice — null when it is fine or left empty (no day). */
@@ -84,9 +95,14 @@ export function NoticePeriodForm({
   );
   const [day, setDay] = useState(c.notice_day ? String(c.notice_day) : "");
   const [early, setEarly] = useState(c.notice_before_end);
+  const [statutory, setStatutory] = useState(c.notice_statutory);
   // the contract's own day of the month, where the rules read one: with the end of a month as the basis
   const byDay = basis === "end_of_month" && noticeDayCounts(c);
   const fixedTermJob = earlyNoticeCounts(c);
+  // a job's or a lease's statutory periods give the dates; elsewhere shown only to clear a misreading
+  const statutoryShown = statutoryNoticeCounts(c) || c.notice_statutory;
+  // the law's periods, named by the contract, need no period or basis of their own (`_plan_employment`, `_plan_rent`)
+  const byStatute = statutory && statutoryNoticeCounts(c);
   const [errors, setErrors] = useState<{ value?: string; basis?: string; day?: string }>({});
   const invalid = Boolean(errors.value || errors.basis || errors.day);
   const ids = {
@@ -114,27 +130,30 @@ export function NoticePeriodForm({
         ? dayGiven
           ? null
           : "Enter the notice period, or the day it must arrive by"
-        : job
+        : job || byStatute
           ? null
           : noticeValueError(value, unit);
-    const next = { value: valueError ?? undefined, basis: basis ? undefined : "Choose how it can be cancelled", day: (byDay && noticeDayError(day)) || undefined };
+    const basisError = basis || byStatute ? undefined : "Choose how it can be cancelled";
+    const next = { value: valueError ?? undefined, basis: basisError, day: (byDay && noticeDayError(day)) || undefined };
     setErrors(next);
     if (next.value) return valueRef.current?.focus();
-    if (next.basis || !basis) return basisRef.current?.focus();
+    if (next.basis) return basisRef.current?.focus();
     if (next.day) return dayRef.current?.focus();
     const patch: ContractPatch = {
       ...(value.trim() ? { notice_value: Number(value.trim()), notice_unit: unit } : { notice_value: null, notice_unit: null }),
-      notice_basis: basis === BY_LAW ? null : basis,
-      // saved without a day, the terms clear the letter's (the API's `_update`)
+      notice_basis: basis === BY_LAW || !basis ? null : basis,
+      // saved without a day or the statutory periods, the terms clear the letter's (the API's `_update`)
       notice_day: dayGiven ? Number(day.trim()) : null,
+      ...(statutoryShown ? { notice_statutory: statutory } : {}),
       ...(fixedTermJob ? { notice_before_end: early } : {}),
     };
-    // the old terms, with the letter's day of the month, which saving without one clears
+    // the old terms, with the letter's day of the month and statutory periods, which saving without them clears
     const before: ContractPatch = {
       notice_value: c.notice_value,
       notice_unit: c.notice_unit,
       notice_basis: c.notice_basis,
       notice_day: c.notice_day,
+      ...(statutoryShown ? { notice_statutory: c.notice_statutory } : {}),
       ...(fixedTermJob ? { notice_before_end: c.notice_before_end } : {}),
     };
     // The call's promise, not mutate's callbacks: those never come once this form has gone, and the
@@ -251,6 +270,18 @@ export function NoticePeriodForm({
             To end at that month's end — leave it empty if the contract names no day.
           </p>
         </div>
+      ) : null}
+      {statutoryShown ? (
+        <Checkbox
+          checked={statutory}
+          onChange={(e) => {
+            setStatutory(e.target.checked);
+            setErrors((x) => ({ ...x, value: undefined, basis: undefined }));
+          }}
+          label="The contract names the statutory notice periods"
+          description={statutoryHint(c)}
+          className="mt-3"
+        />
       ) : null}
       {fixedTermJob ? (
         <Checkbox

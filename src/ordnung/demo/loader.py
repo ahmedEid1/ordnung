@@ -26,6 +26,7 @@ import itertools
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -370,9 +371,12 @@ def recording_backend(
     if not is_demo_dir(data_dir):
         raise DemoError(f"Recording is only allowed into a demo folder, and {data_dir} is not one.")
     if live is None:
+        from ordnung.llm.base import DEFAULT_MODEL
         from ordnung.llm.claude_cli import ClaudeCLIBackend
 
-        live = ClaudeCLIBackend(concurrency=1)
+        # the demo's settings are the defaults (``_seed``): its recordings name the default model,
+        # never a request's alias, unless ORDNUNG_CLAUDE_MODEL pins another
+        live = ClaudeCLIBackend(concurrency=1, model_setting=lambda: DEFAULT_MODEL)
     recorder = RecordingBackend(live, fixtures, allowed_doc_ids=set(allowed_doc_ids))
     return ReplayBackend(fixtures, fallback=recorder)
 
@@ -510,9 +514,17 @@ def tray_states(manifest: Manifest) -> list[tuple[SampleDocument, ...]]:
 
 
 async def _ask_all(ctx: AppContext, questions: Sequence[str]) -> int:
+    """Ask every question; one that ends without an answer (Ask yields an ``error`` event instead of
+    raising, or no ``done`` event) fails the build — a recording lost to a sign-in gap once passed the
+    rebuild with two answers missing."""
     for question in questions:
-        async for _ in ask_stream(ctx, question):
-            pass
+        done = False
+        async for event in ask_stream(ctx, question):
+            if event.type == "error":
+                raise DemoError(f"Ask gave no answer to {question!r}: {event.error}")
+            done = done or event.type == "done"
+        if not done:
+            raise DemoError(f"Ask gave no answer to {question!r}: the stream ended without one")
     return len(questions)
 
 
@@ -545,15 +557,32 @@ async def _exercise_asks(
     return states
 
 
+#: The result the CLI gives a tool call its tool server did not answer — it was still starting (the
+#: first calls of a turn, now and then): bare, unlike a tool's own input error ("…: invalid arguments").
+_TOOL_NOT_READY = re.compile(r"^Error executing tool \S+$")
+
+
 def _stale_asks(store: Store, asks: Sequence[tuple[Path, list[StreamEvent]]], state: int) -> list[str]:
     """Recorded Ask answers whose tool results Ordnung's tools no longer give on this ledger: a change
     to the MCP output (ADR 0008) must be recorded again, or the replay checks answers against stale
-    evidence."""
+    evidence. A take whose tool server did not answer a call (:data:`_TOOL_NOT_READY`) is discarded on
+    the spot, so the next recording asks again instead of failing on the same file every time."""
     from ordnung.assistant.mcp_server import LedgerTools, stale_tool_results
 
-    tools = LedgerTools(store)
+    tools = None
     problems = []
     for path, events in asks:
+        if any(
+            event.type == "tool_result" and _TOOL_NOT_READY.match((event.text or "").strip())
+            for event in events
+        ):
+            path.unlink(missing_ok=True)
+            problems.append(
+                f"tray state {state}: the recorded Ask answer {path.name} holds a tool call its tool server "
+                "did not answer (it was still starting) — discarded; record it again"
+            )
+            continue
+        tools = tools or LedgerTools(store)
         stale = stale_tool_results(tools, events)
         if stale:
             problems.append(

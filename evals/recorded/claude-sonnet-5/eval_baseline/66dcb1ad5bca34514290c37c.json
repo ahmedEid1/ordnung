@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"680fe4bc2003490a4b2108c3f16379937e8ed6906dbbee11a63cc466505a7461\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-social_decision-A1"
+    ],
+    "prompt_head": "Today is Sunday, 2025-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Muster BKK\",\"document_date\":\"2025-04-14\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"M482915673\"},{\"label\":\"Unser Zeichen\",\"value\":\"HM-25-044712\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against denial of orthopedic insoles coverage\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\",\"computation\":\"Letter dated Monday 14.04.2025, sent by a statutory health insurer (Krankenkasse), a social-law body governed by § 37 Abs. 2 SGB X. No separate posting date is stated, so the printed date counts as the posting day. Delivery is deemed on the 4th day after posting (letter posted after 1 Jan 2025): 14.04.2025 + 4 days = 18.04.2025 (Friday). This falls on Good Friday (Karfreitag), a nationwide holiday, but for social-law bodies (unlike tax offices) the delivery day does NOT shift for weekends/holidays. So delivery = 18.04.2025. The one-month Widerspruch period under § 84 SGG starts the next day; the day of delivery is not counted (§ 26 Abs. 1 SGB X with § 187 Abs. 1 BGB). One month later, same day number: 18.05.2025 (Sunday). Since the end of the period falls on a Sunday, it moves to the next working day (§ 26 Abs. 3 SGB X, § 193 BGB): Monday 19.05.2025. No holiday falls on that Monday in NW.\",\"due_date\":\"2025-05-19\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Muster BKK",
+      "document_date": "2025-04-14",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "M482915673"
+        },
+        {
+          "label": "Unser Zeichen",
+          "value": "HM-25-044712"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against denial of orthopedic insoles coverage",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+          "computation": "Letter dated Monday 14.04.2025, sent by a statutory health insurer (Krankenkasse), a social-law body governed by § 37 Abs. 2 SGB X. No separate posting date is stated, so the printed date counts as the posting day. Delivery is deemed on the 4th day after posting (letter posted after 1 Jan 2025): 14.04.2025 + 4 days = 18.04.2025 (Friday). This falls on Good Friday (Karfreitag), a nationwide holiday, but for social-law bodies (unlike tax offices) the delivery day does NOT shift for weekends/holidays. So delivery = 18.04.2025. The one-month Widerspruch period under § 84 SGG starts the next day; the day of delivery is not counted (§ 26 Abs. 1 SGB X with § 187 Abs. 1 BGB). One month later, same day number: 18.05.2025 (Sunday). Since the end of the period falls on a Sunday, it moves to the next working day (§ 26 Abs. 3 SGB X, § 193 BGB): Monday 19.05.2025. No holiday falls on that Monday in NW.",
+          "due_date": "2025-05-19",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2221,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2131,
+      "cost_usd": 0.031844,
+      "duration_ms": 22955,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

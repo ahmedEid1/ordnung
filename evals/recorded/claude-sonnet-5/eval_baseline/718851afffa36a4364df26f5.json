@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d2fec5d14fc6e5706d1e6be2b87bd397b5fa6e39987c5c19518a2fa94156b91a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-contract_confirmation-B1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-06-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"amounts\":[24.99],\"contract\":{\"current_term_end\":\"2026-06-15\",\"cancel_by\":\"2026-05-15\"},\"document_date\":\"2025-06-12\",\"items\":[{\"kind\":\"milestone\",\"title\":\"SIM card activation\",\"quote\":\"Ihre SIM-Karte wird am 16.06.2025 freigeschaltet.\",\"computation\":\"The letter states the activation date explicitly as 16.06.2025; this is the calendar date given, no counting needed.\",\"due_date\":\"2025-06-16\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"contract\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MM-7730921\"}],\"remedy_type\":\"none\",\"sender_name\":\"Muster Mobil GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        24.99
+      ],
+      "contract": {
+        "current_term_end": "2026-06-15",
+        "cancel_by": "2026-05-15"
+      },
+      "document_date": "2025-06-12",
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "SIM card activation",
+          "quote": "Ihre SIM-Karte wird am 16.06.2025 freigeschaltet.",
+          "computation": "The letter states the activation date explicitly as 16.06.2025; this is the calendar date given, no counting needed.",
+          "due_date": "2025-06-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "contract",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MM-7730921"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Muster Mobil GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2381,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2020,
+      "cost_usd": 0.0325184,
+      "duration_ms": 25484,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

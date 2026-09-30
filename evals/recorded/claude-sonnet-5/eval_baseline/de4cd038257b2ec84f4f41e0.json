@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f3cd471b1eaf68281be70b33652650bc34202c62263f8dc694f149367ba3fcfe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-10-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-C1"
+    ],
+    "prompt_head": "Today is Friday, 2026-10-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Beispielförde – Fachdienst Straßenverkehr, Fahrerlaubnisse\",\"document_date\":\"2026-09-29\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"FD 3.40-FB-2026-0093\"},{\"label\":\"Amtliches Kennzeichen\",\"value\":\"BF-MU 412\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Fahrtenbuchauflage\",\"quote\":\"Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.\",\"computation\":\"Letter dated (posted) Tue 29.09.2026. Sender is a Kreis (general administrative authority, not a tax office), so the 4-day delivery fiction applies (posted on/after 1 Jan 2025) but the delivery day is NOT moved even if it falls on a weekend/holiday. 29.09.2026 + 4 days = Sat 03.10.2026 = deemed delivery (Bekanntgabe). One-month Widerspruch period per §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted; the period ends on the day in the following month bearing the same number, i.e. 03.11.2026. That day is a Tuesday, not a Saturday/Sunday/public holiday in SH, so no further shift under § 31 Abs. 3 VwVfG/LVwG is needed.\",\"due_date\":\"2026-11-03\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of Fahrtenbuch-keeping obligation (six months)\",\"quote\":\"Ich ordne daher an, dass Sie für dieses Fahrzeug für die Dauer von sechs Monaten ein Fahrtenbuch zu führen haben. Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.\",\"computation\":\"The six-month duty to keep a Fahrtenbuch does not start on a fixed calendar date but only once the notice becomes final and binding (Bestandskraft), i.e. once the one-month Widerspruch period (ending 03.11.2026, see the deadline item above) has expired without a Widerspruch being filed, or, if a Widerspruch is filed, only after that procedure is concluded. Since it is unknown today whether a Widerspruch will be filed, the exact start (and therefore the six-month end date) cannot be determined; the earliest possible start, if no Widerspruch is filed, would be shortly after 03.11.2026.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact start date of the six-month Fahrtenbuch obligation cannot be fixed now because it depends on when the notice becomes bestandskräftig (final), which in turn depends on whether a Widerspruch is filed by 03.11.2026; due_date for that item was left null rather than guessed.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Beispielförde – Fachdienst Straßenverkehr, Fahrerlaubnisse",
+      "document_date": "2026-09-29",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "FD 3.40-FB-2026-0093"
+        },
+        {
+          "label": "Amtliches Kennzeichen",
+          "value": "BF-MU 412"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Fahrtenbuchauflage",
+          "quote": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.",
+          "computation": "Letter dated (posted) Tue 29.09.2026. Sender is a Kreis (general administrative authority, not a tax office), so the 4-day delivery fiction applies (posted on/after 1 Jan 2025) but the delivery day is NOT moved even if it falls on a weekend/holiday. 29.09.2026 + 4 days = Sat 03.10.2026 = deemed delivery (Bekanntgabe). One-month Widerspruch period per §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day itself is not counted; the period ends on the day in the following month bearing the same number, i.e. 03.11.2026. That day is a Tuesday, not a Saturday/Sunday/public holiday in SH, so no further shift under § 31 Abs. 3 VwVfG/LVwG is needed.",
+          "due_date": "2026-11-03",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of Fahrtenbuch-keeping obligation (six months)",
+          "quote": "Ich ordne daher an, dass Sie für dieses Fahrzeug für die Dauer von sechs Monaten ein Fahrtenbuch zu führen haben. Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.",
+          "computation": "The six-month duty to keep a Fahrtenbuch does not start on a fixed calendar date but only once the notice becomes final and binding (Bestandskraft), i.e. once the one-month Widerspruch period (ending 03.11.2026, see the deadline item above) has expired without a Widerspruch being filed, or, if a Widerspruch is filed, only after that procedure is concluded. Since it is unknown today whether a Widerspruch will be filed, the exact start (and therefore the six-month end date) cannot be determined; the earliest possible start, if no Widerspruch is filed, would be shortly after 03.11.2026.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact start date of the six-month Fahrtenbuch obligation cannot be fixed now because it depends on when the notice becomes bestandskräftig (final), which in turn depends on whether a Widerspruch is filed by 03.11.2026; due_date for that item was left null rather than guessed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4243,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2174,
+      "cost_usd": 0.052236000000000005,
+      "duration_ms": 41855,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -12,6 +12,7 @@ import pytest
 
 from ordnung import doctor
 from ordnung.doctor import DoctorReport, parse_version, run_doctor, run_doctor_sync
+from ordnung.llm.claude_cli import ProbeResult
 
 
 def fake_claude(bin_dir: Path, *, version: str = "2.1.5 (Claude Code)", auth: object | None = None) -> Path:
@@ -120,20 +121,36 @@ def test_an_api_key_in_the_environment_is_flagged(
 async def test_the_probe_is_one_live_call_only_when_asked(
     isolated_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The live call runs on the model the caller names (the one every call runs on) and the row says
+    which; when it fails, the fix points at that model after the sign-in — a bare probe's at the
+    sign-in alone."""
     fake_claude(isolated_path)
     calls: list[str | None] = []
+    answer = {"ok": True}
 
-    async def probe(binary: str | None = None, timeout_s: float = 60) -> tuple[bool, str]:
-        calls.append(binary)
-        return True, "OK"
+    async def probe(
+        binary: str | None = None, timeout_s: float = 60, *, model: str | None = None
+    ) -> ProbeResult:
+        calls.append(model)
+        return ProbeResult(answer["ok"], "OK" if answer["ok"] else "No such model", model or "haiku")
 
     monkeypatch.setattr(doctor.claude_cli, "probe", probe)
-    report = await run_doctor(data_dir, probe=True)
+    report = await run_doctor(data_dir, probe=True, model="claude-opus-5-5")
     probe_check = report.check("claude_probe")
-    assert probe_check is not None and probe_check.status == "ok"
-    assert len(calls) == 1
+    assert probe_check is not None and probe_check.status == "ok" and probe_check.fix is None
+    assert probe_check.detail == "OK (on claude-opus-5-5)"
+    assert calls == ["claude-opus-5-5"]
     await run_doctor(data_dir)
     assert len(calls) == 1
+
+    answer["ok"] = False
+    failed = (await run_doctor(data_dir, probe=True, model="claude-opus-5-5")).check("claude_probe")
+    assert failed is not None and failed.status == "fail"
+    assert failed.detail == "No such model (on claude-opus-5-5)"
+    assert failed.fix is not None and failed.fix.startswith(doctor.LOGIN_HINT)
+    assert "`claude-opus-5-5`" in failed.fix and "Settings → Claude" in failed.fix
+    bare = (await run_doctor(data_dir, probe=True)).check("claude_probe")
+    assert bare is not None and bare.fix == doctor.LOGIN_HINT and bare.detail == "No such model (on haiku)"
 
 
 def test_a_data_folder_that_does_not_exist_yet_is_fine(tmp_path: Path) -> None:

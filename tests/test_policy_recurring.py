@@ -1,4 +1,4 @@
-"""Verification of the recurring-obligations policy (ordnung.recurrence, points 1-8) after the redesign.
+"""Verification of the recurring-obligations policy (ordnung.recurrence, points 1-8 and 10) after the redesign.
 
 Each test is a realistic history through the Store/API that the written policy decides, found to
 break a policy point (or to be a user-facing bug) by verifying the redesign; each pins the fix.
@@ -6,6 +6,7 @@ break a policy point (or to be a user-facing bug) by verifying the redesign; eac
 
 from __future__ import annotations
 
+import textwrap
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
@@ -17,10 +18,15 @@ import pytest
 from fixtures_llm import APPOINTMENT_LETTER, INVOICE_LETTER, TAX_LETTER, TAX_PAYMENT_QUOTE, Letter
 from ordnung import clock
 from ordnung.db.store import Store
-from ordnung.ingest.verify import REASON_TEXT, UNVERIFIED_NOTE, WORKING_DAY_NOT_IN_QUOTE
+from ordnung.ingest.verify import (
+    DAY_OF_MONTH_NOT_IN_QUOTE,
+    REASON_TEXT,
+    UNVERIFIED_NOTE,
+    WORKING_DAY_NOT_IN_QUOTE,
+)
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Recurrence
-from ordnung.recurrence import LAW_DEFAULT_WARNING, LAW_REPLACED_WARNING, rolled
+from ordnung.recurrence import LAST_WORKING_DAY_STEP, LAW_DEFAULT_WARNING, LAW_REPLACED_WARNING, rolled
 from ordnung.rules import RuleContext
 from ordnung.tick import DailyTick
 from test_api_support import Api, ApiRouter, api_for
@@ -223,7 +229,7 @@ async def test_a_paid_ahead_payment_stays_ahead_when_the_date_is_read_with_other
         await api.read_all()
         [after] = await _payments(api, doc_id)
         assert after["date_spec"]["date"] == "2026-10-15"  # the same first occurrence
-        assert after["recurrence"] == {**MONTHLY, "working_day": None}  # the same rule
+        assert after["recurrence"] == {**MONTHLY, "working_day": None, "day_of_month": None}  # the same rule
         assert (after["status"], after["due_date"]) == ("open", "2027-01-15")
 
 
@@ -283,7 +289,7 @@ async def test_a_leases_working_day_read_from_the_letter_dates_every_month(data_
     async with api_for(data_dir, router=_read_with_working_day(LEASE, 3)) as api:
         await _live_in(api, "NW")
         doc_id, rent = await _rent_of(api, LEASE)
-        assert rent["recurrence"] == {**MONTHLY, "working_day": 3}
+        assert rent["recurrence"] == {**MONTHLY, "working_day": 3, "day_of_month": None}
         assert (rent["due_date"], rent["send_by"], rent["due_date_source"]) == (
             "2026-10-05",
             "2026-10-02",
@@ -697,3 +703,258 @@ async def test_reading_the_letter_again_to_fix_the_amount_keeps_the_payment_paid
         [after] = await _payments(api, doc_id)
         assert after["amount"] == 1234.56
         assert (after["status"], after["due_date"]) == ("open", "2027-01-15")
+
+
+# --------------------------------------------------------------------------------------------------
+# point 10: a day of the month dates each month; point 8: the last working day
+# --------------------------------------------------------------------------------------------------
+
+GYM_QUOTE = (
+    "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per "
+    "SEPA-Lastschrift eingezogen."
+)
+SALARY_QUOTE = (
+    "Die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes "
+    "Konto überwiesen."
+)
+
+
+def _monthly(
+    marker: str,
+    quote: str,
+    recurrence: dict[str, Any],
+    *,
+    document_date: str | None,
+    start_date: str | None,
+    kind: str = "contract",
+    direction: str = "out",
+    category: str = "gym",
+    words: str = "zum 1. eines Monats",
+) -> Letter:
+    """A SPECIMEN contract whose monthly payment has no first date, only the day ``recurrence`` gives it
+    (the demo's gym fee: "zum 1. eines Monats", a direct debit; its salary: "am letzten Bankarbeitstag")."""
+    title = "Monthly salary" if direction == "in" else "Monthly fee"
+    action = "Check that the salary arrives." if direction == "in" else "Keep the direct debit covered."
+    contract: dict[str, Any] = {"name": marker, "category": category, "quotes": [quote]}
+    if start_date is not None:
+        contract["start_date"] = start_date
+    return Letter(
+        marker=marker,
+        pages=(("SPECIMEN", marker, *textwrap.wrap(quote, 70)),),
+        payload={
+            "kind": kind,
+            "area": "other",
+            "title": marker,
+            "sender": {"name": f"{marker} GmbH", "kind": "employer" if direction == "in" else "gym"},
+            "document_date": document_date,
+            "summary": "A contract with a monthly payment.",
+            "explanation": "It is paid every month.",
+            "items": [
+                {
+                    "kind": "payment",
+                    "title": title,
+                    "action": action,
+                    "date": {"type": "none", "nature": "payment", "text": words},
+                    "amount": 29.9 if direction == "out" else None,  # the demo's salary names no amount
+                    "currency": "EUR",
+                    "direction": direction,
+                    "recurrence": {**MONTHLY, **recurrence},
+                    "quote": quote,
+                }
+            ],
+            "contract": contract,
+            "case_title": marker,
+        },
+    )
+
+
+async def _monthly_of(api: Api, letter: Letter) -> tuple[str, dict[str, Any]]:
+    doc_id = (await api.upload((f"{letter.marker}.pdf", letter.pdf())))["documents"][0]["id"]
+    await api.read_all()
+    [item] = await _payments(api, doc_id)
+    return doc_id, item
+
+
+async def test_a_fee_due_on_a_day_of_the_month_is_dated_from_its_letter(data_dir: Path) -> None:
+    """The demo's gym fee: "zum 1. eines Monats per SEPA-Lastschrift", with no start month. Ordnung listed it
+    with its amount and no date. The reading's day of the month (``recurrence.day_of_month`` 1) dates it:
+    the first 1st on or after the letter's date (2 Jan 2025) is Sat 1 Feb 2025, and on Mon 28 Sep 2026 the
+    current one is Thu 1 Oct — collected, so no send-by day, and ``high``: the quote names the 1st. Paid, it
+    moves to Sun 1 Nov (a direct debit on a Sunday, kept as written), then Tue 1 Dec as the days pass."""
+    clock.set_today("2026-09-28")
+    gym = _monthly(
+        "Beitragsvereinbarung FitWell",
+        GYM_QUOTE,
+        {"day_of_month": 1},
+        document_date="2025-01-02",
+        start_date="2025-01-15",
+    )
+    async with api_for(data_dir, router=_with(gym)) as api:
+        await _live_in(api, "NW")
+        doc_id, fee = await _monthly_of(api, gym)
+        assert (fee["due_date"], fee["send_by"], fee["due_date_source"]) == ("2026-10-01", None, "computed")
+        receipt = fee["computation"]
+        assert (
+            receipt["summary"]
+            == "Repeats every month on the 1st since Sat 1 Feb 2025; next on Thu 1 Oct 2026."
+        )
+        assert (receipt["confidence"], receipt["warnings"]) == ("high", [])
+        assert fee["evidence"][0]["value_consistent"]
+        document = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+        assert document["status"] == "processed"
+
+        paid = await _patch(api, fee["id"], status="done")
+        assert (paid["status"], paid["due_date"], paid["date_spec"]["type"]) == ("open", "2026-11-01", "none")
+        await _tick(api, "2026-11-02")
+        assert (await _item(api, fee["id"]))["due_date"] == "2026-12-01"
+
+
+async def test_a_day_of_the_month_without_a_letter_date_starts_with_its_contract(data_dir: Path) -> None:
+    """Without a letter date the day of the month starts with the contract: the first 1st on or after 15 Nov
+    2026 is Tue 1 Dec."""
+    clock.set_today("2026-09-28")
+    starts = _monthly(
+        "Kletterhalle Nordwand", GYM_QUOTE, {"day_of_month": 1}, document_date=None, start_date="2026-11-15"
+    )
+    async with api_for(data_dir, router=_with(starts)) as api:
+        _, fee = await _monthly_of(api, starts)
+        assert fee["due_date"] == "2026-12-01"
+        assert (
+            fee["computation"]["summary"]
+            == "Repeats every month on the 1st since Tue 1 Dec 2026; next on Tue 1 Dec 2026."
+        )
+
+
+async def test_a_day_of_the_month_with_no_date_at_all_stays_undated(data_dir: Path) -> None:
+    """No letter date and no contract start: nothing starts the day of the month, so the fee stays undated
+    (point 10) — Ordnung never invents a start. A date the person gives then starts it (point 2) and stands
+    in for its occurrence (point 7): the 1st dates the months after."""
+    clock.set_today("2026-09-28")
+    undated = _monthly(
+        "Yogastudio Lotusblatt", GYM_QUOTE, {"day_of_month": 1}, document_date=None, start_date=None
+    )
+    async with api_for(data_dir, router=_with(undated)) as api:
+        _, fee = await _monthly_of(api, undated)
+        assert (fee["due_date"], fee["computation"]) == (None, None)
+        dated = await _patch(api, fee["id"], due_date="2026-10-03")
+        assert (dated["due_date"], dated["date_spec"]["date"]) == ("2026-10-03", "2026-10-03")
+        await _tick(api, "2026-10-04")
+        assert (await _item(api, fee["id"]))["due_date"] == "2026-11-01"
+
+
+async def test_a_fee_the_person_dated_stays_one_when_read_again_with_its_day_of_the_month(
+    data_dir: Path,
+) -> None:
+    """A gym fee read before prompt 12 — no day of the month, its quote without the day — stayed undated, and
+    the person gave it its date, Thu 1 Oct. "Read again" (as the README advises for such letters) reads the
+    day, the 1st, and quotes the sentence that names it: the same obligation, so the person's to-do takes the
+    new reading's slot and keeps their date — never a second "Monthly fee" beside it."""
+    clock.set_today("2026-09-28")
+    gym = _monthly(
+        "Beitragsvereinbarung Sportwerk",
+        GYM_QUOTE,
+        {"day_of_month": 1},
+        document_date="2025-01-02",
+        start_date=None,
+    )
+    router = _with(gym)
+    [fee] = router.payloads[gym.marker]["items"]
+    read_then = {
+        **fee,
+        "quote": "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig",
+        "recurrence": MONTHLY,
+    }
+    router.payloads[gym.marker]["items"] = [read_then]
+    async with api_for(data_dir, router=router) as api:
+        doc_id, undated = await _monthly_of(api, gym)
+        assert undated["due_date"] is None
+        dated = await _patch(api, undated["id"], due_date="2026-10-01")
+        assert dated["user_modified"]
+
+        router.payloads[gym.marker]["items"] = [fee]
+        assert (await api.client.post(f"/api/documents/{doc_id}/reprocess")).status_code == 202
+        await api.read_all()
+        [after] = await _payments(api, doc_id)
+        assert (after["id"], after["due_date"]) == (undated["id"], "2026-10-01")
+
+
+async def test_a_day_of_the_month_its_quote_does_not_name_is_graded_lower(data_dir: Path) -> None:
+    """As a working day is (point 8): the day still dates the fee, one level lower, with a note to check it,
+    and the letter asks "Please check"."""
+    clock.set_today("2026-09-28")
+    quote = "Der Monatsbeitrag von 29,90 € wird per SEPA-Lastschrift eingezogen."
+    gym = _monthly(
+        "Beitragsvereinbarung Muster",
+        quote,
+        {"day_of_month": 20},
+        document_date="2025-01-02",
+        start_date=None,
+    )
+    async with api_for(data_dir, router=_with(gym)) as api:
+        doc_id, fee = await _monthly_of(api, gym)
+        assert fee["due_date"] == "2026-10-20"
+        note = REASON_TEXT[DAY_OF_MONTH_NOT_IN_QUOTE]
+        assert (fee["computation"]["confidence"], fee["computation"]["warnings"]) == ("medium", [note])
+        assert not fee["evidence"][0]["value_consistent"]
+        document = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+        assert document["status"] == "needs_review"
+        paid = await _patch(api, fee["id"], status="done")
+        assert (paid["due_date"], paid["computation"]["warnings"]) == ("2026-11-20", [note])
+
+
+async def test_a_month_end_day_is_every_months_last_day(data_dir: Path) -> None:
+    """ "zum Monatsende" is the 31st: each month's last day — Sat 31 Oct, Mon 30 Nov, Thu 31 Dec, Sun 28 Feb —
+    never the 30th a short month clipped it to."""
+    clock.set_today("2026-10-02")
+    quote = "Der Beitrag wird jeweils zum Monatsende abgebucht."
+    fee = _monthly(
+        "Sportverein Monatsende",
+        quote,
+        {"day_of_month": 31},
+        document_date="2026-09-10",
+        start_date=None,
+        words="zum Monatsende",
+    )
+    async with api_for(data_dir, router=_with(fee)) as api:
+        _, item = await _monthly_of(api, fee)
+        assert item["due_date"] == "2026-10-31"
+        assert item["computation"]["summary"].startswith(
+            "Repeats every month on the last day since Wed 30 Sep 2026;"
+        )
+        dates = []
+        for _ in range(4):
+            item = await _patch(api, item["id"], status="done")
+            dates.append(item["due_date"])
+        assert dates == ["2026-11-30", "2026-12-31", "2027-01-31", "2027-02-28"]
+
+
+async def test_a_salary_on_the_last_bank_working_day_is_dated_every_month(data_dir: Path) -> None:
+    """The demo's salary: "spätestens am letzten Bankarbeitstag des Monats", money coming in with no date.
+    The reading's last working day (``recurrence.working_day`` -1) dates it: Wed 30 Sep 2026, then Fri 30
+    Oct (the 31st is a Saturday), Mon 30 Nov, and Wed 30 Dec (the 31st is a bank closing day). Money coming
+    in has no send-by day; each receipt says which day is the month's last working day."""
+    clock.set_today("2026-09-28")
+    salary = _monthly(
+        "Arbeitsvertrag Werkstudent",
+        SALARY_QUOTE,
+        {"working_day": -1},
+        document_date="2026-03-20",
+        start_date="2026-04-01",
+        kind="employment",
+        direction="in",
+        category="employment",
+        words="spätestens am letzten Bankarbeitstag des Monats",
+    )
+    async with api_for(data_dir, router=_with(salary)) as api:
+        await _live_in(api, "NW")
+        _, pay = await _monthly_of(api, salary)
+        assert (pay["due_date"], pay["send_by"], pay["due_date_source"]) == ("2026-09-30", None, "computed")
+        receipt = pay["computation"]
+        assert receipt["summary"] == "Repeats every month on the last working day; next on Wed 30 Sep 2026."
+        assert (receipt["confidence"], receipt["warnings"]) == ("high", [])
+        assert LAST_WORKING_DAY_STEP.format(month=date(2026, 9, 30)) in [s["label"] for s in receipt["steps"]]
+        dates = []
+        for _ in range(3):
+            pay = await _patch(api, pay["id"], status="done")
+            dates.append(pay["due_date"])
+        assert dates == ["2026-10-30", "2026-11-30", "2026-12-30"]

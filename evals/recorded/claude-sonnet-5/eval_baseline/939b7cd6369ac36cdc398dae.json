@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1b11f8e7033820ef420ffd19e76f118ceef9693dcf78d8df1edf826308f9cf02\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-02-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-F1"
+    ],
+    "prompt_head": "Today is Monday, 2025-02-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"cancellation_confirmation\",\"sender_name\":\"Beispiel Immobilienverwaltung GmbH\",\"document_date\":\"2025-02-19\",\"references\":[{\"label\":\"Mietvertrag-Nr.\",\"value\":\"MV-3317-08\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Apartment handover (Wohnungsabnahme) inspection\",\"quote\":\"Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.\",\"computation\":\"The letter proposes a specific calendar date and time for the handover appointment: Saturday 15.03.2025, 09:30. This is a fixed date as printed, so no period calculation is needed. Note the wording 'schlagen wir vor' (we propose) means this is a suggested date, not yet confirmed as binding by the tenant.\",\"due_date\":\"2025-03-15\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of tenancy / lease termination date\",\"quote\":\"wir bestätigen den Eingang Ihrer Kündigung vom 20.12.2024 zum 31.03.2025.\",\"computation\":\"The landlord confirms receipt of the tenant's notice of termination (sent 20.12.2024) effective as of the fixed calendar date 31.03.2025, i.e. the tenancy ends and the apartment must be vacated/returned by this date. This is a fixed date stated in the letter, no period calculation required.\",\"due_date\":\"2025-03-31\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Hand over all keys at the inspection appointment\",\"quote\":\"Bitte übergeben Sie uns dabei alle Schlüssel (laut Übergabeprotokoll fünf Stück), und lesen Sie die Zählerstände gemeinsam mit uns ab.\",\"computation\":\"This task ('dabei' = at the proposed appointment) is tied to the same date as the handover appointment: Saturday 15.03.2025.\",\"due_date\":\"2025-03-15\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The inspection appointment (15.03.2025) is only proposed ('schlagen wir vor') by the landlord, not confirmed as final — the tenant should check whether this date suits them or needs to be rearranged.\",\"No payment, IBAN transfer or demand for money is requested in this letter; the IBAN shown is only the company's general bank contact detail in the letterhead.\"]}",
+    "data": {
+      "kind": "cancellation_confirmation",
+      "sender_name": "Beispiel Immobilienverwaltung GmbH",
+      "document_date": "2025-02-19",
+      "references": [
+        {
+          "label": "Mietvertrag-Nr.",
+          "value": "MV-3317-08"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Apartment handover (Wohnungsabnahme) inspection",
+          "quote": "Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.",
+          "computation": "The letter proposes a specific calendar date and time for the handover appointment: Saturday 15.03.2025, 09:30. This is a fixed date as printed, so no period calculation is needed. Note the wording 'schlagen wir vor' (we propose) means this is a suggested date, not yet confirmed as binding by the tenant.",
+          "due_date": "2025-03-15",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of tenancy / lease termination date",
+          "quote": "wir bestätigen den Eingang Ihrer Kündigung vom 20.12.2024 zum 31.03.2025.",
+          "computation": "The landlord confirms receipt of the tenant's notice of termination (sent 20.12.2024) effective as of the fixed calendar date 31.03.2025, i.e. the tenancy ends and the apartment must be vacated/returned by this date. This is a fixed date stated in the letter, no period calculation required.",
+          "due_date": "2025-03-31",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Hand over all keys at the inspection appointment",
+          "quote": "Bitte übergeben Sie uns dabei alle Schlüssel (laut Übergabeprotokoll fünf Stück), und lesen Sie die Zählerstände gemeinsam mit uns ab.",
+          "computation": "This task ('dabei' = at the proposed appointment) is tied to the same date as the handover appointment: Saturday 15.03.2025.",
+          "due_date": "2025-03-15",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The inspection appointment (15.03.2025) is only proposed ('schlagen wir vor') by the landlord, not confirmed as final — the tenant should check whether this date suits them or needs to be rearranged.",
+        "No payment, IBAN transfer or demand for money is requested in this letter; the IBAN shown is only the company's general bank contact detail in the letterhead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2694,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2278,
+      "cost_usd": 0.037344,
+      "duration_ms": 23128,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

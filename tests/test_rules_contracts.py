@@ -708,6 +708,120 @@ def test_a_job_notice_cant_end_sooner_than_its_end_date() -> None:
     )
 
 
+# ------------------------------------------ the statutory notice periods a contract names (migration 0005)
+
+NOT_FOUND = "No notice period found"
+
+
+def test_a_job_that_names_the_statutory_notice_periods_states_them() -> None:
+    """Demo: the working-student contract's § 7 reads "unter Einhaltung der gesetzlichen Kündigungsfristen
+    (§ 622 BGB)". Read as no period, it warned "No notice period found" at medium confidence; the contract
+    names the statutory periods, which for the employee are four weeks to the 15th or the end of a month (§ 622
+    Abs. 1 BGB — the longer ones of Abs. 2 bind only the employer): the same dates, no warning, a note saying
+    so, and the confidence of a stated period."""
+    assumed = compute_contract(terms(**WERKSTUDENT), ctx(today=SAM_TODAY))
+    assert any(w.startswith(NOT_FOUND) for w in assumed.warnings) and assumed.confidence == "medium"
+    named = compute_contract(terms(**WERKSTUDENT, notice_statutory=True), ctx(today=SAM_TODAY))
+    assert (named.cancel_by, named.safe_date, named.send_by, named.earliest_exit, named.current_term_end) == (
+        "2026-10-03",
+        "2026-10-02",
+        "2026-09-28",
+        "2026-10-31",
+        "2027-03-31",
+    )
+    assert not any(w.startswith(NOT_FOUND) for w in named.warnings)
+    assert named.confidence == "high"
+    note = next(n for n in named.notes if "statutory notice periods" in n)
+    assert "four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB)" in note
+    assert "§ 622 Abs. 2 BGB bind only your employer" in note
+    stated = compute_contract(terms(**WERKSTUDENT, notice_value=4, notice_unit="weeks"), ctx(today=SAM_TODAY))
+    assert named.model_copy(update={"notes": stated.notes}) == stated
+
+
+def test_a_job_of_two_years_that_names_the_statutory_periods_is_asked_to_check_for_the_longer_ones() -> None:
+    """An employee since 2016 whose contract names the statutory periods: the longer periods of § 622 Abs. 2
+    BGB (four months to a month's end after ten years) bind the employer, and bind them too when the contract
+    extends them to the employee — often in the same clause, as § 622 Abs. 6 BGB allows. The four weeks
+    still give the dates, but with a warning to check the contract, one confidence level lower, and a note
+    that doesn't say flatly the longer periods don't bind them. Under two years in the job, Abs. 2 adds
+    nothing: no warning."""
+    job = {
+        "category": "employment",
+        "is_consumer": False,
+        "start_date": "2016-04-01",
+        "notice_statutory": True,
+    }
+    long = compute_contract(terms(**job), ctx())
+    assert (long.cancel_by, long.earliest_exit) == ("2026-10-03", "2026-10-31")
+    assert long.confidence == "medium" and not any(w.startswith(NOT_FOUND) for w in long.warnings)
+    assert any("§ 622 Abs. 6 BGB" in w and "check" in w for w in long.warnings)
+    note = next(n for n in long.notes if "statutory notice periods" in n)
+    assert "unless your contract extends them to you (§ 622 Abs. 6 BGB)" in note
+    under_two = compute_contract(terms(**{**job, "start_date": "2024-10-15"}), ctx())
+    assert under_two.confidence == "high" and not any("§ 622 Abs. 6 BGB" in w for w in under_two.warnings)
+
+
+def test_a_period_the_contract_states_wins_over_the_statutory_ones() -> None:
+    """An open-ended job with both: the stated period decides, and no note claims the statutory one."""
+    named = compute_contract(terms(category="employment", notice_statutory=True), ctx())
+    assert (named.cancel_by, named.earliest_exit, named.confidence) == ("2026-10-03", "2026-10-31", "high")
+    assert any("statutory notice periods" in n for n in named.notes)
+    stated = compute_contract(
+        terms(category="employment", notice_statutory=True, notice_value=3, notice_unit="months"), ctx()
+    )
+    assert (stated.cancel_by, stated.earliest_exit) == ("2026-09-30", "2026-12-31")
+    assert not any("statutory notice periods" in n for n in stated.notes)
+
+
+def test_a_job_that_ends_by_itself_gets_no_note_on_notice() -> None:
+    """A fixed-term job whose contract doesn't let it be ended earlier ends by itself: nothing to give notice
+    with, so no note about the periods."""
+    job = {**WERKSTUDENT, "notice_before_end": False, "notice_statutory": True}
+    result = compute_contract(terms(**job), ctx(today=SAM_TODAY))
+    assert result.summary == "This contract ends by itself on Wed 31 Mar 2027 — no cancellation needed."
+    assert not any("statutory notice periods" in n for n in result.notes)
+
+
+def test_a_lease_that_names_the_statutory_notice_periods() -> None:
+    """A tenant's statutory notice (§ 573c Abs. 1 BGB) is what the lease rule applies anyway: the same dates,
+    and a note that the lease names them. A period the lease states too gets the § 573c Abs. 4 warning."""
+    lease = {"category": "rent", "party_kind": "landlord", "start_date": "2024-10-01"}
+    plain = compute_contract(terms(**lease), ctx())
+    named = compute_contract(terms(**lease, notice_statutory=True), ctx())
+    note = next(n for n in named.notes if "statutory notice periods" in n)
+    assert "§ 573c Abs. 1 BGB" in note and "don't bind you" in note
+    assert named.model_copy(update={"notes": plain.notes}) == plain
+    stated = compute_contract(
+        terms(**lease, notice_statutory=True, notice_value=6, notice_unit="months"), ctx()
+    )
+    assert any("§ 573c Abs. 4 BGB" in w for w in stated.warnings)
+    assert not any("statutory notice periods" in n for n in stated.notes)
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        pytest.param(
+            {"category": "gym", "concluded_date": "2025-06-01", "start_date": "2025-06-01"}, id="309new"
+        ),
+        pytest.param(
+            {"category": "gym", "concluded_date": "2021-06-01", "start_date": "2021-06-01"}, id="309old"
+        ),
+        pytest.param(
+            {"category": "mobile", "start_date": "2024-11-15", "initial_term_months": 24}, id="tkg56"
+        ),
+        pytest.param(
+            {"category": "insurance", "start_date": "2023-12-01", "renewal_term_months": 12}, id="vvg11"
+        ),
+        pytest.param({"category": "streaming", "notice_basis": "any_time"}, id="as_written"),
+    ],
+)
+def test_the_statutory_notice_periods_change_nothing_where_no_statute_gives_one(kw: dict[str, Any]) -> None:
+    """The consumer, phone and insurance rules only cap what a contract may ask: no statute gives such a
+    contract a period of its own, so a missing period is assumed as before (or missing, as written)."""
+    assert compute_contract(terms(**kw, notice_statutory=True), ctx()) == compute_contract(terms(**kw), ctx())
+
+
 # ------------------------------------------------------------------------ research examples
 
 

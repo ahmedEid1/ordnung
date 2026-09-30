@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7e615cc5f1683809c13c30cbd69646e8ffe6821a68e6f301bea4caa61f130177\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-F1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Example Liberal Arts College, Office of Global Education\",\"document_date\":\"2025-04-03\",\"references\":[{\"label\":\"Student ID\",\"value\":\"ELAC-25-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed exchange enrollment confirmation\",\"quote\":\"To hold your place, your signed enrollment confirmation must reach our office by\\nApril 29, 2025.\",\"computation\":\"The letter states a fixed calendar date by which the signed confirmation must arrive at the college's office: April 29, 2025. This is a private (US) institution's own deadline, not a German authority's notice, so no statutory deemed-delivery or BGB period-counting rules apply — the printed date is the deadline as written. April 29, 2025 is a Tuesday, so no weekend/holiday shift is needed.\",\"due_date\":\"2025-04-29\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender is a US college, so German deemed-delivery and BGB deadline-counting rules do not apply; the printed date (April 29, 2025) is taken as the literal deadline, and the person should confirm their document actually needs to arrive (not just be sent) by that date.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Example Liberal Arts College, Office of Global Education",
+      "document_date": "2025-04-03",
+      "references": [
+        {
+          "label": "Student ID",
+          "value": "ELAC-25-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed exchange enrollment confirmation",
+          "quote": "To hold your place, your signed enrollment confirmation must reach our office by\nApril 29, 2025.",
+          "computation": "The letter states a fixed calendar date by which the signed confirmation must arrive at the college's office: April 29, 2025. This is a private (US) institution's own deadline, not a German authority's notice, so no statutory deemed-delivery or BGB period-counting rules apply — the printed date is the deadline as written. April 29, 2025 is a Tuesday, so no weekend/holiday shift is needed.",
+          "due_date": "2025-04-29",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender is a US college, so German deemed-delivery and BGB deadline-counting rules do not apply; the printed date (April 29, 2025) is taken as the literal deadline, and the person should confirm their document actually needs to arrive (not just be sent) by that date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1582,
+      "cache_read_tokens": 14864,
+      "cache_creation_tokens": 3020,
+      "cost_usd": 0.0308808,
+      "duration_ms": 14593,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

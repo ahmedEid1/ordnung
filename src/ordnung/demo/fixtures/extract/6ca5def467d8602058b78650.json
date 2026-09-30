@@ -1,0 +1,223 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"b99f7dd5b88171870999c4d7b2dbe973c53894867497373cd65e8587bb32d200\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_q6fqvndrg5rr"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe GmbH (transport)\n- Stadtwerke M"
+  },
+  "response": {
+    "text": "{\"area\":\"work\",\"case_title\":\"Working student employment contract – Muster Tech GmbH\",\"kind\":\"employment\",\"title\":\"Fixed-term working student employment contract (Muster Tech GmbH)\",\"summary\":\"Muster Tech GmbH offers Sam Rivera a fixed-term working student position (Werkstudent) in Data Engineering, running from 1 April 2026 to 31 March 2027, paid €16.50 gross per hour for up to 20 hours a week, signed on 20 March 2026.\",\"explanation\":\"This is your signed employment contract, so there is nothing to send back. Keep it for your records. Note the obligations it creates: hand in a current enrollment certificate at the start of each semester, tell your employer right away if you finish or pause your studies, and report any sick leave immediately. The contract ends automatically on 31 March 2027 without notice; after the 3-month probation period either side could end it earlier with the statutory notice period, always in writing.\",\"language\":\"de\",\"document_date\":\"2026-03-20\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Tech GmbH\",\"kind\":\"employer\",\"address\":\"Innovationsweg 42, 12345 Musterstadt\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"42424\"}]},\"references\":[{\"label\":\"Personalnummer\",\"value\":\"10482\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"42424\"}],\"contract\":{\"name\":\"Befristeter Arbeitsvertrag für Werkstudierende\",\"category\":\"employment\",\"concluded_date\":\"2026-03-20\",\"start_date\":\"2026-04-01\",\"end_date\":\"2027-03-31\",\"initial_term_months\":null,\"renewal_term_months\":null,\"notice_basis\":null,\"notice_day\":null,\"notice_before_end\":true,\"notice_statutory\":true,\"notice_unit\":null,\"notice_value\":null,\"cost_amount\":null,\"cost_interval\":null,\"customer_number\":\"10482\",\"is_basic_supply\":false,\"is_consumer\":true,\"quotes\":[\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet. Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf. Die Befristung erfolgt ohne Sachgrund gemäß § 14 Abs. 2 TzBfG.\",\"Nach Ablauf der Probezeit kann das Arbeitsverhältnis von beiden Seiten unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB) ordentlich gekündigt werden. Das Recht zur außerordentlichen Kündigung bleibt unberührt.\",\"Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen.\",\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).\"]},\"change\":null,\"payment\":null,\"remedy\":{\"type\":\"none\"},\"items\":[{\"kind\":\"payment\",\"title\":\"Receive monthly salary\",\"direction\":\"in\",\"amount\":null,\"currency\":\"EUR\",\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"quote\":\"Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.\",\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"working_day\":-1},\"action\":\"Check that your monthly salary, based on the hours you worked, arrives in your account.\",\"consequence\":null},{\"kind\":\"task\",\"title\":\"Submit proof of enrollment each semester\",\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.\",\"action\":\"Give your employer a current certificate of enrollment (Immatrikulationsbescheinigung) at the start of each semester.\",\"consequence\":null},{\"kind\":\"task\",\"title\":\"Report end or interruption of studies immediately\",\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.\",\"action\":\"Tell your employer immediately if you finish or interrupt your studies.\",\"consequence\":null},{\"kind\":\"task\",\"title\":\"Report inability to work immediately\",\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"declaration\",\"text\":\"zeigt eine Arbeitsunfähigkeit und deren voraussichtliche Dauer unverzüglich an\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Der Arbeitnehmer zeigt eine Arbeitsunfähigkeit und deren voraussichtliche Dauer unverzüglich an.\",\"action\":\"Notify your employer immediately if you are unable to work, including how long you expect it to last.\",\"consequence\":null}],\"key_facts\":[{\"label\":\"Personnel number (Personalnummer)\",\"value\":\"10482\",\"quote\":\"Personalnummer 10482 · Bereich Data Engineering\"},{\"label\":\"Start date\",\"value\":\"01.04.2026\",\"quote\":\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.\"},{\"label\":\"End date\",\"value\":\"31.03.2027\",\"quote\":\"Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet.\"},{\"label\":\"Probation period (Probezeit)\",\"value\":\"3 Monate\",\"quote\":\"Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit.\"},{\"label\":\"Notice during probation\",\"value\":\"zwei Wochen\",\"quote\":\"Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB).\"},{\"label\":\"Weekly working hours (wöchentliche Arbeitszeit)\",\"value\":\"20 Stunden\",\"quote\":\"Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden.\"},{\"label\":\"Hourly wage (Vergütung je Arbeitsstunde)\",\"value\":\"16,50 € brutto\",\"quote\":\"Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde.\"},{\"label\":\"Annual leave (Erholungsurlaub)\",\"value\":\"25 Arbeitstage\",\"quote\":\"Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche.\"},{\"label\":\"Exclusion period for claims (Ausschlussfrist)\",\"value\":\"drei Monate nach Fälligkeit\",\"quote\":\"Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden.\"}],\"warnings\":[],\"urgency\":\"normal\",\"tax_relevant\":true,\"tax_note\":\"This employment contract establishes taxable income (Werkstudenten wage); keep it together with payslips for your tax return and social security records.\",\"high_stakes_kind\":null,\"explanation_language_note\":\"\"}",
+    "data": {
+      "area": "work",
+      "case_title": "Working student employment contract – Muster Tech GmbH",
+      "kind": "employment",
+      "title": "Fixed-term working student employment contract (Muster Tech GmbH)",
+      "summary": "Muster Tech GmbH offers Sam Rivera a fixed-term working student position (Werkstudent) in Data Engineering, running from 1 April 2026 to 31 March 2027, paid €16.50 gross per hour for up to 20 hours a week, signed on 20 March 2026.",
+      "explanation": "This is your signed employment contract, so there is nothing to send back. Keep it for your records. Note the obligations it creates: hand in a current enrollment certificate at the start of each semester, tell your employer right away if you finish or pause your studies, and report any sick leave immediately. The contract ends automatically on 31 March 2027 without notice; after the 3-month probation period either side could end it earlier with the statutory notice period, always in writing.",
+      "language": "de",
+      "document_date": "2026-03-20",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Tech GmbH",
+        "kind": "employer",
+        "address": "Innovationsweg 42, 12345 Musterstadt",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE424242072"
+          },
+          {
+            "label": "Amtsgericht Musterstadt HRB",
+            "value": "42424"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "10482"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE424242072"
+        },
+        {
+          "label": "Amtsgericht Musterstadt HRB",
+          "value": "42424"
+        }
+      ],
+      "contract": {
+        "name": "Befristeter Arbeitsvertrag für Werkstudierende",
+        "category": "employment",
+        "concluded_date": "2026-03-20",
+        "start_date": "2026-04-01",
+        "end_date": "2027-03-31",
+        "initial_term_months": null,
+        "renewal_term_months": null,
+        "notice_basis": null,
+        "notice_day": null,
+        "notice_before_end": true,
+        "notice_statutory": true,
+        "notice_unit": null,
+        "notice_value": null,
+        "cost_amount": null,
+        "cost_interval": null,
+        "customer_number": "10482",
+        "is_basic_supply": false,
+        "is_consumer": true,
+        "quotes": [
+          "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet. Es endet mit Ablauf des 31.03.2027, ohne dass es einer Kündigung bedarf. Die Befristung erfolgt ohne Sachgrund gemäß § 14 Abs. 2 TzBfG.",
+          "Nach Ablauf der Probezeit kann das Arbeitsverhältnis von beiden Seiten unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB) ordentlich gekündigt werden. Das Recht zur außerordentlichen Kündigung bleibt unberührt.",
+          "Die Kündigung bedarf der Schriftform (§ 623 BGB); die elektronische Form ist ausgeschlossen.",
+          "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit. Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB)."
+        ]
+      },
+      "change": null,
+      "payment": null,
+      "remedy": {
+        "type": "none"
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Receive monthly salary",
+          "direction": "in",
+          "amount": null,
+          "currency": "EUR",
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "quote": "Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des Monats auf ein vom Arbeitnehmer benanntes Konto überwiesen.",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "working_day": -1
+          },
+          "action": "Check that your monthly salary, based on the hours you worked, arrives in your account.",
+          "consequence": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit proof of enrollment each semester",
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.",
+          "action": "Give your employer a current certificate of enrollment (Immatrikulationsbescheinigung) at the start of each semester.",
+          "consequence": null
+        },
+        {
+          "kind": "task",
+          "title": "Report end or interruption of studies immediately",
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Er legt zu Beginn jedes Semesters eine aktuelle Immatrikulationsbescheinigung vor und teilt das Ende oder eine Unterbrechung des Studiums unverzüglich mit.",
+          "action": "Tell your employer immediately if you finish or interrupt your studies.",
+          "consequence": null
+        },
+        {
+          "kind": "task",
+          "title": "Report inability to work immediately",
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "declaration",
+            "text": "zeigt eine Arbeitsunfähigkeit und deren voraussichtliche Dauer unverzüglich an",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Der Arbeitnehmer zeigt eine Arbeitsunfähigkeit und deren voraussichtliche Dauer unverzüglich an.",
+          "action": "Notify your employer immediately if you are unable to work, including how long you expect it to last.",
+          "consequence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Personnel number (Personalnummer)",
+          "value": "10482",
+          "quote": "Personalnummer 10482 · Bereich Data Engineering"
+        },
+        {
+          "label": "Start date",
+          "value": "01.04.2026",
+          "quote": "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet."
+        },
+        {
+          "label": "End date",
+          "value": "31.03.2027",
+          "quote": "Das Arbeitsverhältnis beginnt am 01.04.2026 und ist bis zum 31.03.2027 befristet."
+        },
+        {
+          "label": "Probation period (Probezeit)",
+          "value": "3 Monate",
+          "quote": "Die ersten drei Monate des Arbeitsverhältnisses gelten als Probezeit."
+        },
+        {
+          "label": "Notice during probation",
+          "value": "zwei Wochen",
+          "quote": "Während der Probezeit kann das Arbeitsverhältnis von beiden Seiten mit einer Frist von zwei Wochen gekündigt werden (§ 622 Abs. 3 BGB)."
+        },
+        {
+          "label": "Weekly working hours (wöchentliche Arbeitszeit)",
+          "value": "20 Stunden",
+          "quote": "Die regelmäßige wöchentliche Arbeitszeit beträgt 20 Stunden."
+        },
+        {
+          "label": "Hourly wage (Vergütung je Arbeitsstunde)",
+          "value": "16,50 € brutto",
+          "quote": "Der Arbeitnehmer erhält eine Vergütung von 16,50 € brutto je geleisteter Arbeitsstunde."
+        },
+        {
+          "label": "Annual leave (Erholungsurlaub)",
+          "value": "25 Arbeitstage",
+          "quote": "Der Arbeitnehmer hat Anspruch auf 25 Arbeitstage Erholungsurlaub im Kalenderjahr, bezogen auf eine Fünf-Tage-Woche."
+        },
+        {
+          "label": "Exclusion period for claims (Ausschlussfrist)",
+          "value": "drei Monate nach Fälligkeit",
+          "quote": "Ansprüche aus dem Arbeitsverhältnis verfallen, wenn sie nicht innerhalb von drei Monaten nach Fälligkeit in Textform gegenüber der anderen Vertragspartei geltend gemacht werden."
+        }
+      ],
+      "warnings": [],
+      "urgency": "normal",
+      "tax_relevant": true,
+      "tax_note": "This employment contract establishes taxable income (Werkstudenten wage); keep it together with payslips for your tax return and social security records.",
+      "high_stakes_kind": null,
+      "explanation_language_note": ""
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6583,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 3769,
+      "cost_usd": 0.08270060000000001,
+      "duration_ms": 51662,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

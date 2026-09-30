@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"bdc948415f55747d91054c895cfe4430ede34211676a6eb7e4e44e40149c2121\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbergen\",\"document_date\":\"2027-04-09\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"amounts\":[46],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against interest assessment\",\"quote\":\"Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.\",\"computation\":\"The letter is internally inconsistent about the date the notice was given to the post: the letterhead shows 'Datum 09.04.2027' (a Friday) while the body refers to 'diesem Bescheid vom 06.04.2027' (a Tuesday). Per the rule for contradictory dates, the earliest plausible date is used: Aufgabe zur Post = 06.04.2027 (Tuesday). Bekanntgabe = 4th day after that = 10.04.2027, which is a Saturday; under § 122 Abs. 2 Satz 4 AO the fictitious delivery day moves to the next business day, i.e. Monday 12.04.2027. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) begins the day after Bekanntgabe (§ 108 AO i.V.m. § 187 Abs. 1 BGB) and ends on the day of the following month bearing the same number (§ 188 Abs. 2 BGB): 12.05.2027 (Wednesday), which is not a Saturday, Sunday or NRW public holiday, so it stands as the deadline. (For comparison, using the letterhead date 09.04.2027 as Aufgabe zur Post instead would give Bekanntgabe on 13.04.2027 and a deadline of 13.05.2027 — one day later; the earlier date is used per the rule on contradictory letter dates.)\",\"due_date\":\"2027-05-12\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter's own date ('Datum 09.04.2027') does not match the date given for the underlying Bescheid within the text ('Bescheid vom 06.04.2027'); this affects the exact day the notification period (Bekanntgabe) starts, so the Einspruch deadline could fall on 12.05.2027 or 13.05.2027 depending on which date was actually the day of mailing — verify the actual postal dispatch date with the Finanzamt if in doubt.\",\"The 46,00 € interest amount is stated as being paid out automatically with the refund ('Der Betrag wird mit der Erstattung ausgezahlt'); no action or specific payout date is given, so no separate payment item was created for it.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbergen",
+      "document_date": "2027-04-09",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "amounts": [
+        46
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against interest assessment",
+          "quote": "Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.",
+          "computation": "The letter is internally inconsistent about the date the notice was given to the post: the letterhead shows 'Datum 09.04.2027' (a Friday) while the body refers to 'diesem Bescheid vom 06.04.2027' (a Tuesday). Per the rule for contradictory dates, the earliest plausible date is used: Aufgabe zur Post = 06.04.2027 (Tuesday). Bekanntgabe = 4th day after that = 10.04.2027, which is a Saturday; under § 122 Abs. 2 Satz 4 AO the fictitious delivery day moves to the next business day, i.e. Monday 12.04.2027. The one-month Einspruchsfrist (§ 355 Abs. 1 AO) begins the day after Bekanntgabe (§ 108 AO i.V.m. § 187 Abs. 1 BGB) and ends on the day of the following month bearing the same number (§ 188 Abs. 2 BGB): 12.05.2027 (Wednesday), which is not a Saturday, Sunday or NRW public holiday, so it stands as the deadline. (For comparison, using the letterhead date 09.04.2027 as Aufgabe zur Post instead would give Bekanntgabe on 13.04.2027 and a deadline of 13.05.2027 — one day later; the earlier date is used per the rule on contradictory letter dates.)",
+          "due_date": "2027-05-12",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's own date ('Datum 09.04.2027') does not match the date given for the underlying Bescheid within the text ('Bescheid vom 06.04.2027'); this affects the exact day the notification period (Bekanntgabe) starts, so the Einspruch deadline could fall on 12.05.2027 or 13.05.2027 depending on which date was actually the day of mailing — verify the actual postal dispatch date with the Finanzamt if in doubt.",
+        "The 46,00 € interest amount is stated as being paid out automatically with the refund ('Der Betrag wird mit der Erstattung ausgezahlt'); no action or specific payout date is given, so no separate payment item was created for it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9474,
+      "cache_read_tokens": 8193,
+      "cache_creation_tokens": 10269,
+      "cost_usd": 0.1374626,
+      "duration_ms": 86679,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

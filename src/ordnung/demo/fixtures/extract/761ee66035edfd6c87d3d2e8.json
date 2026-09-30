@@ -1,0 +1,154 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"df8aa5e0ce95eab334f44a26251afbe7d62c7eee98e518dc19f779e851e7981e\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_vy5abr6ejqnb"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Stadtwerke Musterstadt GmbH (utility)\n- Wohnbau Musterstadt eG (landlord)\n</untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"title\":\"Deutschlandticket Subscription Confirmation – MVB\",\"summary\":\"Musterstadt Verkehrsbetriebe GmbH (MVB) confirms Sam Rivera's Deutschlandticket subscription (Abonummer DT-2025-3304719), starting 1 January 2026 at €63.00 per month, collected by SEPA direct debit at the start of each month.\",\"explanation\":\"This is an order confirmation (Auftragsbestätigung) for a Deutschlandticket subscription, not a bill requiring immediate action. The ticket starts on 1 January 2026 and costs €63.00 per month, debited automatically at the start of each month. The subscription runs indefinitely and can be cancelled monthly, but the cancellation must reach MVB by the 10th of a month to end that same month. If MVB raises the price later, you'll get at least six weeks' notice and may then decide to cancel; the app will show the cancellation window when that happens. No action is needed right now beyond keeping the linked account funded.\",\"language\":\"de\",\"document_date\":\"2025-12-10\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\",\"kind\":\"transport\",\"address\":\"Bahnhofstraße 20, 12345 Musterstadt\",\"email\":\"abo@mvb-musterstadt.example\",\"phone\":\"0123 6300-63\",\"website\":\"www.mvb-musterstadt.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE330471969\"},{\"label\":\"Amtsgericht\",\"value\":\"Musterstadt HRB 3304\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE58ZZZ00000330471\"}]},\"area\":\"mobility\",\"case_title\":\"Deutschlandticket Subscription with MVB\",\"urgency\":\"low\",\"tax_relevant\":false,\"high_stakes_kind\":null,\"warnings\":[],\"references\":[{\"label\":\"Abonummer\",\"value\":\"DT-2025-3304719\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE330471969\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE58ZZZ00000330471\"}],\"payment\":null,\"remedy\":{\"type\":\"none\"},\"contract\":{\"name\":\"Deutschlandticket Abonnement\",\"category\":\"transport\",\"concluded_date\":\"2025-12-10\",\"start_date\":\"2026-01-01\",\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":0,\"cost_amount\":63,\"cost_interval\":\"monthly\",\"customer_number\":\"DT-2025-3304719\",\"notice_basis\":\"end_of_month\",\"notice_day\":10,\"notice_value\":null,\"notice_unit\":null,\"notice_statutory\":false,\"notice_before_end\":false,\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Ticket   Deutschlandticket, persönlich und nicht übertragbar, 2. Klasse\",\"Gültig ab   01.01.2026\",\"Preis   63,00 € pro Monat\",\"Das Abonnement läuft auf unbestimmte Zeit und ist monatlich kündbar. Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen.\"]},\"change\":null,\"key_facts\":[{\"label\":\"Price (Preis)\",\"value\":\"63,00 € pro Monat\",\"quote\":\"Preis   63,00 € pro Monat\"},{\"label\":\"Valid from (Gültig ab)\",\"value\":\"01.01.2026\",\"quote\":\"Gültig ab   01.01.2026\"},{\"label\":\"Cancellation deadline (Kündigung)\",\"value\":\"bis zum 10. eines Monats zum Ende dieses Monats\",\"quote\":\"Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen.\"},{\"label\":\"Price change notice period\",\"value\":\"mindestens sechs Wochen im Voraus\",\"quote\":\"Über Preisänderungen informieren wir Sie mindestens sechs Wochen im Voraus; Sie können dann zum Zeitpunkt des Inkrafttretens der Preisänderung kündigen.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the monthly Deutschlandticket subscription fee\",\"action\":\"Ensure your linked bank account has sufficient funds for the automatic monthly direct debit.\",\"consequence\":null,\"amount\":63,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\",\"date\":{\"type\":\"none\"},\"quote\":\"Preis   63,00 € pro Monat\",\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":1}}]}",
+    "data": {
+      "kind": "contract",
+      "title": "Deutschlandticket Subscription Confirmation – MVB",
+      "summary": "Musterstadt Verkehrsbetriebe GmbH (MVB) confirms Sam Rivera's Deutschlandticket subscription (Abonummer DT-2025-3304719), starting 1 January 2026 at €63.00 per month, collected by SEPA direct debit at the start of each month.",
+      "explanation": "This is an order confirmation (Auftragsbestätigung) for a Deutschlandticket subscription, not a bill requiring immediate action. The ticket starts on 1 January 2026 and costs €63.00 per month, debited automatically at the start of each month. The subscription runs indefinitely and can be cancelled monthly, but the cancellation must reach MVB by the 10th of a month to end that same month. If MVB raises the price later, you'll get at least six weeks' notice and may then decide to cancel; the app will show the cancellation window when that happens. No action is needed right now beyond keeping the linked account funded.",
+      "language": "de",
+      "document_date": "2025-12-10",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Musterstadt Verkehrsbetriebe GmbH",
+        "kind": "transport",
+        "address": "Bahnhofstraße 20, 12345 Musterstadt",
+        "email": "abo@mvb-musterstadt.example",
+        "phone": "0123 6300-63",
+        "website": "www.mvb-musterstadt.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE330471969"
+          },
+          {
+            "label": "Amtsgericht",
+            "value": "Musterstadt HRB 3304"
+          },
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE58ZZZ00000330471"
+          }
+        ]
+      },
+      "area": "mobility",
+      "case_title": "Deutschlandticket Subscription with MVB",
+      "urgency": "low",
+      "tax_relevant": false,
+      "high_stakes_kind": null,
+      "warnings": [],
+      "references": [
+        {
+          "label": "Abonummer",
+          "value": "DT-2025-3304719"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE330471969"
+        },
+        {
+          "label": "Gläubiger-ID",
+          "value": "DE58ZZZ00000330471"
+        }
+      ],
+      "payment": null,
+      "remedy": {
+        "type": "none"
+      },
+      "contract": {
+        "name": "Deutschlandticket Abonnement",
+        "category": "transport",
+        "concluded_date": "2025-12-10",
+        "start_date": "2026-01-01",
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": 0,
+        "cost_amount": 63,
+        "cost_interval": "monthly",
+        "customer_number": "DT-2025-3304719",
+        "notice_basis": "end_of_month",
+        "notice_day": 10,
+        "notice_value": null,
+        "notice_unit": null,
+        "notice_statutory": false,
+        "notice_before_end": false,
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "Ticket   Deutschlandticket, persönlich und nicht übertragbar, 2. Klasse",
+          "Gültig ab   01.01.2026",
+          "Preis   63,00 € pro Monat",
+          "Das Abonnement läuft auf unbestimmte Zeit und ist monatlich kündbar. Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen."
+        ]
+      },
+      "change": null,
+      "key_facts": [
+        {
+          "label": "Price (Preis)",
+          "value": "63,00 € pro Monat",
+          "quote": "Preis   63,00 € pro Monat"
+        },
+        {
+          "label": "Valid from (Gültig ab)",
+          "value": "01.01.2026",
+          "quote": "Gültig ab   01.01.2026"
+        },
+        {
+          "label": "Cancellation deadline (Kündigung)",
+          "value": "bis zum 10. eines Monats zum Ende dieses Monats",
+          "quote": "Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen."
+        },
+        {
+          "label": "Price change notice period",
+          "value": "mindestens sechs Wochen im Voraus",
+          "quote": "Über Preisänderungen informieren wir Sie mindestens sechs Wochen im Voraus; Sie können dann zum Zeitpunkt des Inkrafttretens der Preisänderung kündigen."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the monthly Deutschlandticket subscription fee",
+          "action": "Ensure your linked bank account has sufficient funds for the automatic monthly direct debit.",
+          "consequence": null,
+          "amount": 63,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal",
+          "date": {
+            "type": "none"
+          },
+          "quote": "Preis   63,00 € pro Monat",
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "day_of_month": 1
+          }
+        }
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6530,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2507,
+      "cost_usd": 0.0771226,
+      "duration_ms": 55688,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

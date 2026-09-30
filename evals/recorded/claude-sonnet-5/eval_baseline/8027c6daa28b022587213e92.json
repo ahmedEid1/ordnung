@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3cd8814705728dcf830365494a6285e8f3932f05c5dfa09863cc80c9bc907491\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-appointment-A1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Stadt Musterstadt – Bürgeramt\",\"document_date\":\"2026-04-27\",\"references\":[{\"label\":\"Vorgangsnummer\",\"value\":\"T-2026-044817\"}],\"amounts\":[70],\"items\":[{\"kind\":\"appointment\",\"title\":\"Passport application appointment at Bürgeramt\",\"quote\":\"hiermit bestätigen wir Ihren Termin am Dienstag, 12.05.2026, um 09:30 Uhr im Bürgeramt Mitte, Schalter 4.\",\"computation\":\"The letter directly states the confirmed appointment date and time: Tuesday, 12.05.2026 at 09:30. No period calculation is needed; the due date is the stated appointment date itself.\",\"due_date\":\"2026-05-12\",\"confidence\":\"high\",\"amount\":70}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Stadt Musterstadt – Bürgeramt",
+      "document_date": "2026-04-27",
+      "references": [
+        {
+          "label": "Vorgangsnummer",
+          "value": "T-2026-044817"
+        }
+      ],
+      "amounts": [
+        70
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Passport application appointment at Bürgeramt",
+          "quote": "hiermit bestätigen wir Ihren Termin am Dienstag, 12.05.2026, um 09:30 Uhr im Bürgeramt Mitte, Schalter 4.",
+          "computation": "The letter directly states the confirmed appointment date and time: Tuesday, 12.05.2026 at 09:30. No period calculation is needed; the due date is the stated appointment date itself.",
+          "due_date": "2026-05-12",
+          "confidence": "high",
+          "amount": 70
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2265,
+      "cache_read_tokens": 12501,
+      "cache_creation_tokens": 5164,
+      "cost_usd": 0.0458182,
+      "duration_ms": 22278,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

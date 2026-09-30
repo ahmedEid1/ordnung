@@ -476,6 +476,7 @@ _CONTRACT_TERM_FIELDS = (
     "notice_basis",
     "notice_day",
     "notice_before_end",
+    "notice_statutory",
     "end_date",
     "cost_amount",
     "cost_interval",
@@ -510,7 +511,9 @@ def _contract_values(extraction: DocumentExtraction | None) -> dict[str, Any] | 
 
 
 #: The notice terms, which the person enters on the contract's card together (``_entered_terms``).
-_NOTICE_TERMS = frozenset({"notice_value", "notice_unit", "notice_basis", "notice_day", "notice_before_end"})
+_NOTICE_TERMS = frozenset(
+    {"notice_value", "notice_unit", "notice_basis", "notice_day", "notice_before_end", "notice_statutory"}
+)
 
 
 def _unedited(existing: Contract, values: dict[str, Any], previous: dict[str, Any] | None) -> dict[str, Any]:

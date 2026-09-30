@@ -96,7 +96,7 @@ describe("the headline and its badge (R2-document-verdict-5, -9)", () => {
 describe("To-dos & dates: a to-do set aside (R2-document-verdict-2)", () => {
   const invoice = makeItem({ id: "inv", kind: "payment", direction: "out", title: "Pay TechMarkt Online invoice", amount: 89.99, due_date: "2026-09-03", send_by: "2026-09-02" });
   const deposit = makeItem({ id: "dep", kind: "payment", direction: "out", title: "Security deposit (Kaution)", amount: 1560, due_date: "2025-10-01" });
-  const rent = makeItem({ id: "rent", kind: "payment", direction: "out", title: "Monthly rent", amount: 640, due_date: "2026-10-03", recurrence: { interval: 1, unit: "months", working_day: null } });
+  const rent = makeItem({ id: "rent", kind: "payment", direction: "out", title: "Monthly rent", amount: 640, due_date: "2026-10-03", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
 
   it("says an invoice its reminder replaced for what it is: no countdown, not counted, a link to the reminder", () => {
     const reminder = makeDoc({ id: "doc_rem", doc_date: "2026-09-10" });

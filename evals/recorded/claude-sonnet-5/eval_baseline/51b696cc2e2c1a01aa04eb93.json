@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"44b3b7ec38a217200862bade992fe0117e0fa12ff2409f22db0b041ede978c79\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-09-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-09-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document"
+  },
+  "response": {
+    "text": "{\"amounts\":[90,25,3.5,118.5],\"contract\":null,\"document_date\":\"2026-09-18\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"The attached Zustellungsurkunde (page 2) shows actual personal delivery on 22.09.2026 (a Tuesday) - this is a formal delivery (förmliche Zustellung nach § 182 ZPO / VwZG) with a documented delivery date, so that date, not a delivery fiction, is the start of the period. Per § 187 Abs. 1 BGB the day of delivery itself is not counted; per § 188 Abs. 2 BGB a period stated in weeks ends with the expiry of the day of the last week that bears the same name as the day on which the triggering event (Zustellung) fell, i.e. a Tuesday. Two weeks after 22.09.2026 (Tuesday) is 06.10.2026 (Tuesday). That day is neither a weekend day nor a public holiday in Thüringen, so § 193 BGB does not shift it.\",\"due_date\":\"2026-10-06\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and delivery costs (Gesamtbetrag)\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"This obligation is conditional on the Bescheid becoming final (rechtskräftig), i.e. on no Einspruch being filed within the deadline computed above (which ends 06.10.2026). If no Einspruch is filed, Rechtskraft occurs on the day after that deadline expires, i.e. 07.10.2026 (Wednesday). Treating 07.10.2026 as the triggering event and applying §§ 187 Abs. 1, 188 Abs. 2 BGB the same way (period ends on the day of the second week bearing the same name as the event day), the two-week payment period ends on 21.10.2026 (Wednesday), which is not a weekend day or Thüringen public holiday. This date is only reachable if the Einspruch is not exercised and depends on an assumed Rechtskraft date not stated explicitly in the letter, so confidence is low.\",\"due_date\":\"2026-10-21\",\"confidence\":\"low\",\"amount\":118.5}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 311/26-4471\"},{\"label\":\"Kennzeichen\",\"value\":\"MRO-OR 55\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Landratsamt Musterrode – Bußgeldstelle\",\"warnings\":[\"The payment deadline is only triggered once the Bescheid becomes rechtskräftig (i.e. only if no Einspruch is filed); the exact Rechtskraft date and thus the payment due date (21.10.2026) is an inferred estimate, not a date stated verbatim in the letter.\",\"Please verify the IBAN (DE85 8205 1000 0000 6551 00) shown for the Sparkasse Musterrode independently before making any payment, as is generally advisable for payments to public authorities.\"]}",
+    "data": {
+      "amounts": [
+        90,
+        25,
+        3.5,
+        118.5
+      ],
+      "contract": null,
+      "document_date": "2026-09-18",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "The attached Zustellungsurkunde (page 2) shows actual personal delivery on 22.09.2026 (a Tuesday) - this is a formal delivery (förmliche Zustellung nach § 182 ZPO / VwZG) with a documented delivery date, so that date, not a delivery fiction, is the start of the period. Per § 187 Abs. 1 BGB the day of delivery itself is not counted; per § 188 Abs. 2 BGB a period stated in weeks ends with the expiry of the day of the last week that bears the same name as the day on which the triggering event (Zustellung) fell, i.e. a Tuesday. Two weeks after 22.09.2026 (Tuesday) is 06.10.2026 (Tuesday). That day is neither a weekend day nor a public holiday in Thüringen, so § 193 BGB does not shift it.",
+          "due_date": "2026-10-06",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and delivery costs (Gesamtbetrag)",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "This obligation is conditional on the Bescheid becoming final (rechtskräftig), i.e. on no Einspruch being filed within the deadline computed above (which ends 06.10.2026). If no Einspruch is filed, Rechtskraft occurs on the day after that deadline expires, i.e. 07.10.2026 (Wednesday). Treating 07.10.2026 as the triggering event and applying §§ 187 Abs. 1, 188 Abs. 2 BGB the same way (period ends on the day of the second week bearing the same name as the event day), the two-week payment period ends on 21.10.2026 (Wednesday), which is not a weekend day or Thüringen public holiday. This date is only reachable if the Einspruch is not exercised and depends on an assumed Rechtskraft date not stated explicitly in the letter, so confidence is low.",
+          "due_date": "2026-10-21",
+          "confidence": "low",
+          "amount": 118.5
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 311/26-4471"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MRO-OR 55"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Landratsamt Musterrode – Bußgeldstelle",
+      "warnings": [
+        "The payment deadline is only triggered once the Bescheid becomes rechtskräftig (i.e. only if no Einspruch is filed); the exact Rechtskraft date and thus the payment due date (21.10.2026) is an inferred estimate, not a date stated verbatim in the letter.",
+        "Please verify the IBAN (DE85 8205 1000 0000 6551 00) shown for the Sparkasse Musterrode independently before making any payment, as is generally advisable for payments to public authorities."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5313,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2695,
+      "cost_usd": 0.0645384,
+      "duration_ms": 47743,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

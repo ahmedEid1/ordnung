@@ -56,12 +56,15 @@ ITEM_KINDS = {"deadline", "payment", "appointment", "task", "expiry"}
 NATURES = {"objection", "payment", "declaration", "notice", "appointment", "other"}
 REMEDIES = {"einspruch", "widerspruch", "klage", "none", "unclear"}
 WARNINGS = {"scam", "injection", "hidden_text", "conflicting_dates", "missing_date"}
+#: The template variants of each split: dev (prompts may be tuned on it), test (published), holdout (written after
+#: extraction prompt 11, recorded once with frozen prompts). Adversarial letters are one-offs in test and holdout.
+SPLIT_VARIANTS = {"dev": ("A", "B"), "test": ("C", "D"), "holdout": ("E", "F")}
 
 
 @dataclass
 class Case:
     id: str
-    split: str  # dev | test
+    split: str  # dev | test | holdout
     family: str
     variant: str
     letter: Letter
@@ -85,10 +88,11 @@ class Case:
             due = item["expected_due"]
             if due not in (None, "ambiguous"):
                 assert date.fromisoformat(due) >= self.today, (self.id, "deadline before today", due)
-        if self.split == "dev":
-            assert self.variant in ("A", "B"), self.id
-        elif self.family != "adversarial":
-            assert self.variant in ("C", "D"), self.id
+        assert self.id.startswith(f"{self.split}-"), self.id
+        if self.family == "adversarial":
+            assert self.split != "dev", self.id
+        else:
+            assert self.variant in SPLIT_VARIANTS[self.split], self.id
 
 
 def today_after(anchor: date, case_id: str, lo: int = 2, hi: int = 6) -> date:

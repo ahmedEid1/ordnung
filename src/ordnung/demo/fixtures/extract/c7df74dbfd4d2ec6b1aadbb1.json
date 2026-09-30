@@ -1,0 +1,130 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"0b61646ac28280c6e0332ca43dfec19a275af239ac49c46211f557f3fa1bbb14\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"area\":\"other\",\"case_title\":\"Examplian Passport of Sam Rivera\",\"change\":null,\"contract\":null,\"document_date\":\"2017-02-11\",\"explanation\":\"This is a scan of Sam Rivera's Examplian passport, issued by the Ministry of Interior. It shows the passport number, personal details, and the validity dates. The passport is valid until the date of expiry shown; it is good practice to apply for a renewal a few months before that date, since many authorities and airlines require a passport to remain valid for a minimum period beyond a trip or an application. No other action is required right now.\",\"high_stakes_kind\":null,\"items\":[{\"kind\":\"expiry\",\"title\":\"Passport expires\",\"action\":\"Apply for a passport renewal before it expires\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"normal\",\"date\":{\"type\":\"fixed\",\"date\":\"2027-02-10\",\"text\":\"10 FEB / FÉV 2027\",\"nature\":\"other\",\"anchor\":null,\"anchor_date\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"none\",\"unit\":null,\"amount\":null,\"time\":null,\"legal_basis\":null},\"quote\":\"Date of expiry / Date d'expiration\\n10 FEB / FÉV 2027\",\"recurrence\":null}],\"key_facts\":[{\"label\":\"Passport number (N° du passeport)\",\"value\":\"X1234567\",\"quote\":\"Passport No. / N° du passeport\\nX1234567\"},{\"label\":\"Nationality (Nationalité)\",\"value\":\"EXAMPLIAN\",\"quote\":\"Nationality / Nationalité\\nEXAMPLIAN\"},{\"label\":\"Date of birth (Date de naissance)\",\"value\":\"14 MAR 2000\",\"quote\":\"Date of birth / Date de naissance\\n14 MAR / MARS 2000\"},{\"label\":\"Place of birth (Lieu de naissance)\",\"value\":\"EXAMPLIA CITY\",\"quote\":\"Place of birth / Lieu de naissance\\nEXAMPLIA CITY\"},{\"label\":\"Date of issue (Date de délivrance)\",\"value\":\"11 FEB 2017\",\"quote\":\"Date of issue / Date de délivrance\\n11 FEB / FÉV 2017\"},{\"label\":\"Date of expiry (Date d'expiration)\",\"value\":\"10 FEB 2027\",\"quote\":\"Date of expiry / Date d'expiration\\n10 FEB / FÉV 2027\"},{\"label\":\"Issuing authority (Autorité)\",\"value\":\"MINISTRY OF INTERIOR\",\"quote\":\"Authority / Autorité\\nMINISTRY OF INTERIOR\"}],\"kind\":\"identity_document\",\"language\":\"en\",\"payment\":null,\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Passport No.\",\"value\":\"X1234567\"}],\"remedy\":null,\"sender\":{\"name\":\"Ministry of Interior\",\"kind\":\"authority\",\"address\":null,\"email\":null,\"phone\":null,\"website\":null,\"identifiers\":[]},\"summary\":\"Sam Rivera's Examplian passport (No. X1234567), issued by the Ministry of Interior on 11 February 2017 and valid until 10 February 2027.\",\"tax_note\":null,\"tax_relevant\":false,\"title\":\"Examplian Passport – Sam Rivera\",\"urgency\":\"low\",\"warnings\":[]}",
+    "data": {
+      "area": "other",
+      "case_title": "Examplian Passport of Sam Rivera",
+      "change": null,
+      "contract": null,
+      "document_date": "2017-02-11",
+      "explanation": "This is a scan of Sam Rivera's Examplian passport, issued by the Ministry of Interior. It shows the passport number, personal details, and the validity dates. The passport is valid until the date of expiry shown; it is good practice to apply for a renewal a few months before that date, since many authorities and airlines require a passport to remain valid for a minimum period beyond a trip or an application. No other action is required right now.",
+      "high_stakes_kind": null,
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Passport expires",
+          "action": "Apply for a passport renewal before it expires",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "normal",
+          "date": {
+            "type": "fixed",
+            "date": "2027-02-10",
+            "text": "10 FEB / FÉV 2027",
+            "nature": "other",
+            "anchor": null,
+            "anchor_date": null,
+            "delivery_rule": "none",
+            "shift_rule": "none",
+            "unit": null,
+            "amount": null,
+            "time": null,
+            "legal_basis": null
+          },
+          "quote": "Date of expiry / Date d'expiration\n10 FEB / FÉV 2027",
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Passport number (N° du passeport)",
+          "value": "X1234567",
+          "quote": "Passport No. / N° du passeport\nX1234567"
+        },
+        {
+          "label": "Nationality (Nationalité)",
+          "value": "EXAMPLIAN",
+          "quote": "Nationality / Nationalité\nEXAMPLIAN"
+        },
+        {
+          "label": "Date of birth (Date de naissance)",
+          "value": "14 MAR 2000",
+          "quote": "Date of birth / Date de naissance\n14 MAR / MARS 2000"
+        },
+        {
+          "label": "Place of birth (Lieu de naissance)",
+          "value": "EXAMPLIA CITY",
+          "quote": "Place of birth / Lieu de naissance\nEXAMPLIA CITY"
+        },
+        {
+          "label": "Date of issue (Date de délivrance)",
+          "value": "11 FEB 2017",
+          "quote": "Date of issue / Date de délivrance\n11 FEB / FÉV 2017"
+        },
+        {
+          "label": "Date of expiry (Date d'expiration)",
+          "value": "10 FEB 2027",
+          "quote": "Date of expiry / Date d'expiration\n10 FEB / FÉV 2027"
+        },
+        {
+          "label": "Issuing authority (Autorité)",
+          "value": "MINISTRY OF INTERIOR",
+          "quote": "Authority / Autorité\nMINISTRY OF INTERIOR"
+        }
+      ],
+      "kind": "identity_document",
+      "language": "en",
+      "payment": null,
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Passport No.",
+          "value": "X1234567"
+        }
+      ],
+      "remedy": null,
+      "sender": {
+        "name": "Ministry of Interior",
+        "kind": "authority",
+        "address": null,
+        "email": null,
+        "phone": null,
+        "website": null,
+        "identifiers": []
+      },
+      "summary": "Sam Rivera's Examplian passport (No. X1234567), issued by the Ministry of Interior on 11 February 2017 and valid until 10 February 2027.",
+      "tax_note": null,
+      "tax_relevant": false,
+      "title": "Examplian Passport – Sam Rivera",
+      "urgency": "low",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2409,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2021,
+      "cost_usd": 0.0339686,
+      "duration_ms": 19931,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

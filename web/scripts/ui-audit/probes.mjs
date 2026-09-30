@@ -462,8 +462,10 @@ function layoutProbeInPage(opts) {
     let block = el.parentElement;
     while (block && block !== document.body && (cs(block).display === "inline" || cs(block).display === "contents")) block = block.parentElement;
     if (!block) return false;
-    const own = clean(el.textContent);
-    const around = clean(block.textContent);
+    // the whole texts, never cut to a report's length: a link of 90+ characters (a long letter title after
+    // "From") would be as long as its cut sentence and count as standing alone
+    const own = clean(el.textContent, Infinity);
+    const around = clean(block.textContent, Infinity);
     return around.length > own.length + 3;
   };
   // a "stretched" link (its ::after absolutely placed over its whole row: `after:absolute after:inset-0`) is

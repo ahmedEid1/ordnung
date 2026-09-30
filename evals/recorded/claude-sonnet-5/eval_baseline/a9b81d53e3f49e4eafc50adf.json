@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"12d1e7989d55b3df4d26306bfe57376d2a222c8cfb169eefd42df834d7e7dcaf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Muster Abrechnungszentrum für Zahnärzte GmbH\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"ZA-26-118503\"},{\"label\":\"Patientennummer\",\"value\":\"40931\"}],\"amounts\":[412.8,5,417.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding dental billing invoice (2nd reminder)\",\"quote\":\"Wir erwarten Ihre Zahlung bis 21.08.2026.\",\"computation\":\"The letter states an explicit calendar due date of 21.08.2026. This is a private company's dunning letter (Abrechnungszentrum acting for a dentist), not a public authority, so no statutory delivery fiction applies and the date is used as written. 21 August 2026 falls on a Friday (a normal business day), so no weekend/holiday shift under § 193 BGB is needed.\",\"due_date\":\"2026-08-21\",\"confidence\":\"high\",\"amount\":417.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This due date (21.08.2026) has already passed relative to today's date (2026-09-30); the account is now further overdue beyond what the letter anticipated.\",\"If you dispute the underlying dental invoice, the letter asks you to call rather than write, which leaves no written record — consider following up in writing as well.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Muster Abrechnungszentrum für Zahnärzte GmbH",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "ZA-26-118503"
+        },
+        {
+          "label": "Patientennummer",
+          "value": "40931"
+        }
+      ],
+      "amounts": [
+        412.8,
+        5,
+        417.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding dental billing invoice (2nd reminder)",
+          "quote": "Wir erwarten Ihre Zahlung bis 21.08.2026.",
+          "computation": "The letter states an explicit calendar due date of 21.08.2026. This is a private company's dunning letter (Abrechnungszentrum acting for a dentist), not a public authority, so no statutory delivery fiction applies and the date is used as written. 21 August 2026 falls on a Friday (a normal business day), so no weekend/holiday shift under § 193 BGB is needed.",
+          "due_date": "2026-08-21",
+          "confidence": "high",
+          "amount": 417.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This due date (21.08.2026) has already passed relative to today's date (2026-09-30); the account is now further overdue beyond what the letter anticipated.",
+        "If you dispute the underlying dental invoice, the letter asks you to call rather than write, which leaves no written record — consider following up in writing as well."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1683,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2074,
+      "cost_usd": 0.026236000000000002,
+      "duration_ms": 16350,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

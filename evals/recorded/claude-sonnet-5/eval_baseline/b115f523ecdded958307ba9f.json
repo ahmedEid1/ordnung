@@ -1,0 +1,93 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f474718d3532d58dcf09d9d60bb9bb1a629395e4978abbe2e60569d441469e20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-contract_confirmation-E1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-03-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispiel Glasfaser GmbH\",\"document_date\":\"2025-03-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BG-220-4471\"},{\"label\":\"Auftragsnummer\",\"value\":\"A-25-031977\"}],\"amounts\":[39.95],\"items\":[{\"kind\":\"milestone\",\"title\":\"Fiber connection installation (provisioning)\",\"quote\":\"Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.\",\"computation\":\"The letter states a fixed calendar date for the service provisioning/installation: 08.04.2025. No counting is required; this is the appointment date as printed.\",\"due_date\":\"2025-04-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-04-08\",\"cancel_by\":\"2026-03-08\"},\"warnings\":[\"The minimum term ('Mindestvertragslaufzeit 12 Monate ab Bereitstellung') runs from the provisioning date 08.04.2025, so the first term ends 08.04.2026; the one-month notice period counted back from that date lands on Sunday 08.03.2026 — German courts hold that notice deadlines are not shifted to the next business day, so to be safe the cancellation should reach the provider no later than Friday 06.03.2026.\",\"The contract summary references the AGB and Leistungsbeschreibung as being available only in the online customer account, so full terms (including exact renewal/cancellation mechanics) could not be verified from this letter alone.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispiel Glasfaser GmbH",
+      "document_date": "2025-03-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BG-220-4471"
+        },
+        {
+          "label": "Auftragsnummer",
+          "value": "A-25-031977"
+        }
+      ],
+      "amounts": [
+        39.95
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Fiber connection installation (provisioning)",
+          "quote": "Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.",
+          "computation": "The letter states a fixed calendar date for the service provisioning/installation: 08.04.2025. No counting is required; this is the appointment date as printed.",
+          "due_date": "2025-04-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-04-08",
+        "cancel_by": "2026-03-08"
+      },
+      "warnings": [
+        "The minimum term ('Mindestvertragslaufzeit 12 Monate ab Bereitstellung') runs from the provisioning date 08.04.2025, so the first term ends 08.04.2026; the one-month notice period counted back from that date lands on Sunday 08.03.2026 — German courts hold that notice deadlines are not shifted to the next business day, so to be safe the cancellation should reach the provider no later than Friday 06.03.2026.",
+        "The contract summary references the AGB and Leistungsbeschreibung as being available only in the online customer account, so full terms (including exact renewal/cancellation mechanics) could not be verified from this letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5098,
+      "cache_read_tokens": 29201,
+      "cache_creation_tokens": 8678,
+      "cost_usd": 0.09154419999999999,
+      "duration_ms": 47787,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-04-08",
+            "amount": -1,
+            "unit": "months",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 188, § 193 BGB - Kündigungsfrist ein Monat vor Ablauf der Mindestvertragslaufzeit",
+            "text": "Erste Kündigungsmöglichkeit zum Ablauf von 12 Monaten ab Bereitstellung; Kündigungsfrist ein Monat"
+          }
+        },
+        "result": "{\"due_date\":\"2026-03-08\",\"weekday\":\"Sunday\",\"send_by\":\"2026-03-02\",\"safe_date\":\"2026-03-06\",\"summary\":\"One month before Wed 8 Apr 2026 is Sun 8 Mar 2026, a Sunday; notice deadlines don't move, so aim for Fri 6 Mar 2026.\",\"confidence\":\"medium\",\"warnings\":[\"Holiday region unknown — Sun 8 Mar 2026 is a public holiday in some Länder (e.g. Berlin, Mecklenburg-Vorpommern), where the deadline would be earlier — act a working day before it to be safe. We used nationwide holidays only.\"],\"steps\":[{\"label\":\"One month before Wed 8 Apr 2026: it must arrive by Sun 8 Mar 2026\",\"date\":\"2026-03-08\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 8 Mar 2026 is a Sunday, but notice deadlines never move to the next working day\",\"date\":\"2026-03-08\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 6 Mar 2026\",\"date\":\"2026-03-06\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Mon 2 Mar 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-03-02\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-03-25\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass region — the Land of the office or company where the deadline is met. A regional holiday may make this date earlier.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

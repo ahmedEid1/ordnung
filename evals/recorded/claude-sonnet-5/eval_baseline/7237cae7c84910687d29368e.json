@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"346d331cc425cdad6d1e0f46bdf0cdabc2aa601e120c6716240e6c4eaac99ed1\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-09-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz\",\"document_date\":\"2025-09-01\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.3-LSG-2025-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of exemption\",\"quote\":\"Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Markstraße 1, 25813 Musterwik.\",\"computation\":\"Letter dated Monday 01.09.2025; assumed posted same day (no separate dispatch date given). The letter states the notice counts as given (Bekanntgabe) on the fourth day after posting to the mail under Land administrative procedure law: 01.09.2025 + 4 days = 05.09.2025 (Friday), which is a normal business day, so Bekanntgabe = 05.09.2025. The one-month Widerspruchsfrist starts the day after Bekanntgabe (§ 187 Abs. 1 BGB) and, per § 188 Abs. 2 BGB, ends on the day of the following month that numerically corresponds to the Bekanntgabe day, i.e. 05.10.2025. That date is a Sunday, so under § 193 BGB the deadline shifts to the next working day: Monday 06.10.2025, which is not a public holiday in Schleswig-Holstein (the nearest holiday, Tag der Deutschen Einheit, falls on 03.10.2025). Final due date: 06.10.2025.\",\"due_date\":\"2025-10-06\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact posting (mailing) date is not printed separately from the document date; the deadline calculation assumes the letter was posted on 01.09.2025 (the document date itself) — if it was actually posted later, the Widerspruch deadline shifts accordingly.\",\"The letter states the notice is deemed delivered on the 4th day after posting under Land law, which differs from the commonly cited 3rd-day rule in § 41 Abs. 2 VwVfG (federal default); this was taken at face value as stated by the authority.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz",
+      "document_date": "2025-09-01",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.3-LSG-2025-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of exemption",
+          "quote": "Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Markstraße 1, 25813 Musterwik.",
+          "computation": "Letter dated Monday 01.09.2025; assumed posted same day (no separate dispatch date given). The letter states the notice counts as given (Bekanntgabe) on the fourth day after posting to the mail under Land administrative procedure law: 01.09.2025 + 4 days = 05.09.2025 (Friday), which is a normal business day, so Bekanntgabe = 05.09.2025. The one-month Widerspruchsfrist starts the day after Bekanntgabe (§ 187 Abs. 1 BGB) and, per § 188 Abs. 2 BGB, ends on the day of the following month that numerically corresponds to the Bekanntgabe day, i.e. 05.10.2025. That date is a Sunday, so under § 193 BGB the deadline shifts to the next working day: Monday 06.10.2025, which is not a public holiday in Schleswig-Holstein (the nearest holiday, Tag der Deutschen Einheit, falls on 03.10.2025). Final due date: 06.10.2025.",
+          "due_date": "2025-10-06",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact posting (mailing) date is not printed separately from the document date; the deadline calculation assumes the letter was posted on 01.09.2025 (the document date itself) — if it was actually posted later, the Widerspruch deadline shifts accordingly.",
+        "The letter states the notice is deemed delivered on the 4th day after posting under Land law, which differs from the commonly cited 3rd-day rule in § 41 Abs. 2 VwVfG (federal default); this was taken at face value as stated by the authority."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4379,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2282,
+      "cost_usd": 0.053546399999999994,
+      "duration_ms": 40317,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"633ef5e995ce98ce6d3b35ba883aeeefbd31ac0ec00ac021e057cf551076fc39\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-invoice_relative-E2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-05-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Autohaus Beispiel & Co. KG\",\"document_date\":\"2025-05-13\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"WR-25-04417\"},{\"label\":\"Kundennummer\",\"value\":\"K 55120\"}],\"amounts\":[405.08],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay workshop invoice\",\"quote\":\"Zahlungsbedingungen: 21 Tage netto ab Rechnungsdatum.\",\"computation\":\"Invoice date is 13.05.2025. The period runs 'ab Rechnungsdatum' (from the invoice date), so under § 187 Abs. 1 BGB the day of the invoice date itself is not counted; counting starts on 14.05.2025. 21 days later: 14.05.2025 + 21 days = 03.06.2025 would be day 20, so day 21 falls on 04.06.2025 (17 remaining days of May from the 15th to the 31st, plus 4 days into June). 04.06.2025 is a Wednesday, not a Saturday, Sunday or public holiday in NRW, so no extension under § 193 BGB is needed.\",\"due_date\":\"2025-06-04\",\"confidence\":\"high\",\"amount\":405.08}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Autohaus Beispiel & Co. KG",
+      "document_date": "2025-05-13",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "WR-25-04417"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K 55120"
+        }
+      ],
+      "amounts": [
+        405.08
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay workshop invoice",
+          "quote": "Zahlungsbedingungen: 21 Tage netto ab Rechnungsdatum.",
+          "computation": "Invoice date is 13.05.2025. The period runs 'ab Rechnungsdatum' (from the invoice date), so under § 187 Abs. 1 BGB the day of the invoice date itself is not counted; counting starts on 14.05.2025. 21 days later: 14.05.2025 + 21 days = 03.06.2025 would be day 20, so day 21 falls on 04.06.2025 (17 remaining days of May from the 15th to the 31st, plus 4 days into June). 04.06.2025 is a Wednesday, not a Saturday, Sunday or public holiday in NRW, so no extension under § 193 BGB is needed.",
+          "due_date": "2025-06-04",
+          "confidence": "high",
+          "amount": 405.08
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1389,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2044,
+      "cost_usd": 0.0226944,
+      "duration_ms": 13422,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

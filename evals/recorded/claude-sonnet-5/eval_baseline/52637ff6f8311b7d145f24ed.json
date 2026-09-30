@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ca42718b796fa5c47f9642a908b8497efeb15b7ae590668749bbfc4a80e93e48\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-F1"
+    ],
+    "prompt_head": "Today is Monday, 2026-08-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Agentur für Arbeit Musterbergen (Bundesagentur für Arbeit)\",\"document_date\":\"2026-08-27\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"912A507733\"}],\"amounts\":[1318.2],\"items\":[{\"kind\":\"expiry\",\"title\":\"Unemployment benefit (Arbeitslosengeld) revoked from this date\",\"quote\":\"Die Bewilligung von Arbeitslosengeld wird deshalb ab diesem Tag aufgehoben (§ 48 Abs. 1 SGB X).\",\"computation\":\"The letter states the benefit approval is revoked as of the day the person starts insured employment, which is explicitly given as 01.09.2026 ('Sie nehmen am 01.09.2026 eine versicherungspflichtige Beschäftigung auf ... wird deshalb ab diesem Tag aufgehoben'). No further calculation needed; the date is stated directly.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Final unemployment benefit payment for August 2026\",\"quote\":\"Für den August 2026 zahlen wir Ihnen noch 1.318,20 €.\",\"computation\":\"The letter promises a final payment of 1.318,20 € for August 2026 but does not state a specific payment date or bank transfer date, so no exact due date can be derived from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1318.2},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the revocation decision\",\"quote\":\"Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Agentur für Arbeit Musterbergen, Bahnhofstraße 12, 35037 Musterbergen).\",\"computation\":\"The letter is dated 27.08.2026 (Thursday); since no separate posting date is given, the posting date is assumed to equal the letter date. Per § 37 Abs. 2 SGB X as quoted in the letter, a postally sent decision is deemed notified (Bekanntgabe) on the 4th day after posting: 28.08 (day1, Fri), 29.08 (day2, Sat), 30.08 (day3, Sun), 31.08 (day4, Mon) → Bekanntgabe = 31.08.2026, a Monday, not a weekend/holiday, so the fiction date stands unchanged. The one-month Widerspruch period runs per §§ 187 Abs.1, 188 Abs.2 BGB from the day after Bekanntgabe (01.09.2026) and ends on the day of the following month numerically corresponding to 31.08, i.e. 31.09.2026 — since September has no 31st day, per § 188 Abs. 3 BGB the period ends on the last day of that month, 30.09.2026 (Wednesday), which is not a Saturday, Sunday or public holiday in NRW, so it is the final deadline.\",\"due_date\":\"2026-09-30\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated separately from the letter date; the Widerspruch deadline was calculated assuming posting occurred on the letter's date (27.08.2026) — if it was posted later, the deadline shifts accordingly and should be verified against the envelope postmark if available.\",\"The letter gives no specific date for the promised final payment of 1.318,20 € for August 2026, so that payment date could not be determined.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Agentur für Arbeit Musterbergen (Bundesagentur für Arbeit)",
+      "document_date": "2026-08-27",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "912A507733"
+        }
+      ],
+      "amounts": [
+        1318.2
+      ],
+      "items": [
+        {
+          "kind": "expiry",
+          "title": "Unemployment benefit (Arbeitslosengeld) revoked from this date",
+          "quote": "Die Bewilligung von Arbeitslosengeld wird deshalb ab diesem Tag aufgehoben (§ 48 Abs. 1 SGB X).",
+          "computation": "The letter states the benefit approval is revoked as of the day the person starts insured employment, which is explicitly given as 01.09.2026 ('Sie nehmen am 01.09.2026 eine versicherungspflichtige Beschäftigung auf ... wird deshalb ab diesem Tag aufgehoben'). No further calculation needed; the date is stated directly.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Final unemployment benefit payment for August 2026",
+          "quote": "Für den August 2026 zahlen wir Ihnen noch 1.318,20 €.",
+          "computation": "The letter promises a final payment of 1.318,20 € for August 2026 but does not state a specific payment date or bank transfer date, so no exact due date can be derived from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1318.2
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the revocation decision",
+          "quote": "Er muss uns innerhalb eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift erreichen (Agentur für Arbeit Musterbergen, Bahnhofstraße 12, 35037 Musterbergen).",
+          "computation": "The letter is dated 27.08.2026 (Thursday); since no separate posting date is given, the posting date is assumed to equal the letter date. Per § 37 Abs. 2 SGB X as quoted in the letter, a postally sent decision is deemed notified (Bekanntgabe) on the 4th day after posting: 28.08 (day1, Fri), 29.08 (day2, Sat), 30.08 (day3, Sun), 31.08 (day4, Mon) → Bekanntgabe = 31.08.2026, a Monday, not a weekend/holiday, so the fiction date stands unchanged. The one-month Widerspruch period runs per §§ 187 Abs.1, 188 Abs.2 BGB from the day after Bekanntgabe (01.09.2026) and ends on the day of the following month numerically corresponding to 31.08, i.e. 31.09.2026 — since September has no 31st day, per § 188 Abs. 3 BGB the period ends on the last day of that month, 30.09.2026 (Wednesday), which is not a Saturday, Sunday or public holiday in NRW, so it is the final deadline.",
+          "due_date": "2026-09-30",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated separately from the letter date; the Widerspruch deadline was calculated assuming posting occurred on the letter's date (27.08.2026) — if it was posted later, the deadline shifts accordingly and should be verified against the envelope postmark if available.",
+        "The letter gives no specific date for the promised final payment of 1.318,20 € for August 2026, so that payment date could not be determined."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5770,
+      "cache_read_tokens": 8323,
+      "cache_creation_tokens": 6457,
+      "cost_usd": 0.08520059999999999,
+      "duration_ms": 52010,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

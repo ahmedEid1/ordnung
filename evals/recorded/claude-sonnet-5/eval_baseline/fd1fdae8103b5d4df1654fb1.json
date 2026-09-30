@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"80126615c4a204ecaa4d0fd389d644fb1c0bf07d601acb0fa13324092809a608\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2025-12-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-municipal_decision-B1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2025-12-02\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Ausnahmegenehmigung\",\"quote\":\"Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.\",\"computation\":\"Letter dated Tue 02.12.2025, posted by a general authority (Landratsamt, not Finanzamt) after 1 Jan 2025, so it is deemed delivered on the 4th calendar day after posting: 02.12.2025 + 4 days = 06.12.2025 (Saturday). For general authorities the delivery day itself is not moved even though it falls on a Saturday (§ 41 Abs. 2 VwVfG / Art. 41 BayVwVfG). The one-month Widerspruch period (§ 70 VwGO) then runs from that delivery day to the numerically same day of the following month: 06.12.2025 + 1 month = 06.01.2026. 06.01.2026 (Epiphany/Heilige Drei Könige) is a public holiday in Bavaria, so under § 31 Abs. 3 VwVfG the period end moves to the next working day, Wednesday 07.01.2026.\",\"due_date\":\"2026-01-07\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32-1415.3/2025-118\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Landratsamt Beispielkreis\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2025-12-02",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Ausnahmegenehmigung",
+          "quote": "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen.",
+          "computation": "Letter dated Tue 02.12.2025, posted by a general authority (Landratsamt, not Finanzamt) after 1 Jan 2025, so it is deemed delivered on the 4th calendar day after posting: 02.12.2025 + 4 days = 06.12.2025 (Saturday). For general authorities the delivery day itself is not moved even though it falls on a Saturday (§ 41 Abs. 2 VwVfG / Art. 41 BayVwVfG). The one-month Widerspruch period (§ 70 VwGO) then runs from that delivery day to the numerically same day of the following month: 06.12.2025 + 1 month = 06.01.2026. 06.01.2026 (Epiphany/Heilige Drei Könige) is a public holiday in Bavaria, so under § 31 Abs. 3 VwVfG the period end moves to the next working day, Wednesday 07.01.2026.",
+          "due_date": "2026-01-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32-1415.3/2025-118"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Landratsamt Beispielkreis",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2812,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2309,
+      "cost_usd": 0.038466,
+      "duration_ms": 27136,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

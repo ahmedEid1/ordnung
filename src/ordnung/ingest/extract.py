@@ -14,6 +14,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from pydantic import ValidationError
@@ -24,7 +25,7 @@ from ordnung.llm.base import LLMRequest, LLMResponse
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import extraction_schema
-from ordnung.models import DocumentExtraction, Page, Party
+from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, Page, Party, Recurrence
 from ordnung.trace.spans import NO_SPAN, Span
 
 LANGUAGE_NAMES: dict[str, str] = {
@@ -203,9 +204,58 @@ def validation_problems(exc: ValidationError) -> str:
 
 
 def parse_extraction(data: dict[str, Any] | None, text: str) -> DocumentExtraction:
-    """Validate a model answer (structured ``data`` or JSON inside ``text``)."""
+    """Validate a model answer (structured ``data`` or JSON inside ``text``), completed by
+    :func:`with_rent_series`."""
     payload = data if data is not None else extract_json(text)
-    return DocumentExtraction.model_validate(payload if payload is not None else {})
+    return with_rent_series(DocumentExtraction.model_validate(payload if payload is not None else {}))
+
+
+def _eur(amount: float) -> str:
+    """``€670`` / ``€670.50``, as the app writes a whole or a broken amount."""
+    return f"€{amount:,.0f}" if float(amount).is_integer() else f"€{amount:,.2f}"
+
+
+def with_rent_series(extraction: DocumentExtraction) -> DocumentExtraction:
+    """The reading with the rent a statement's adjusted advance payments start (§ 560 Abs. 4 BGB) when
+    the model put the increase into ``change`` alone: a payment every month of the new amount from the
+    day it takes effect, quoting the change's sentence — the item the prompt asks for and the ledger's
+    point 9 needs (:mod:`ordnung.recurrence`: October's rent is replaced from November whichever way
+    the model wrote the letter up). Only for a monthly price increase with an effective day and a new
+    amount on a letter that states a rent contract, never for a rent increase that needs the person's
+    consent (§ 558b BGB: the high-stakes kind the model names), and never beside a recurring payment
+    that carries the new amount already."""
+    change, contract = extraction.change, extraction.contract
+    if (
+        change is None
+        or change.type != "price_increase"
+        or change.cost_interval != "monthly"
+        or not change.effective_date
+        or not change.new_amount
+        or contract is None
+        or contract.category != "rent"
+        or extraction.high_stakes_kind == "rent_increase"
+    ):
+        return extraction
+    try:
+        date.fromisoformat(change.effective_date)
+    except ValueError:
+        return extraction
+    if any(
+        item.kind == "payment" and item.recurrence is not None and item.amount == change.new_amount
+        for item in extraction.items
+    ):
+        return extraction
+    series = ExtractedItem(
+        kind="payment",
+        title=f"New monthly total rent {_eur(change.new_amount)}",
+        date=DateSpec(type="fixed", date=change.effective_date, nature="payment", text=change.quote),
+        amount=change.new_amount,
+        currency="EUR",
+        direction="out",
+        recurrence=Recurrence(interval=1, unit="months"),
+        quote=change.quote,
+    )
+    return extraction.model_copy(update={"items": [*extraction.items, series]})
 
 
 def _parse_answer(response: LLMResponse) -> DocumentExtraction:

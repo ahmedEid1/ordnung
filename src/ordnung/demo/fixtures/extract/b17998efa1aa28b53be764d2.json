@@ -1,0 +1,126 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"8ce1ddca9663da5bb30828ab52f9c8876f65f8034dbf1921b6f5dd8cb1851b79\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hkgxvjmpcfd5"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe G"
+  },
+  "response": {
+    "text": "{\"area\":\"work\",\"case_title\":\"August 2026 payslip from Muster Tech GmbH\",\"kind\":\"payslip\",\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"language\":\"de\",\"document_date\":\"2026-08-31\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Tech GmbH\",\"kind\":\"employer\",\"address\":\"Innovationsweg 42, 12345 Musterstadt\",\"phone\":\"0123 4242-0\",\"website\":\"www.mustertech.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"42424\"}]},\"summary\":\"Muster Tech GmbH's payslip (Verdienstabrechnung) for August 2026 shows Sam Rivera's gross pay of €1,419.00 and net pay of €1,285.20, paid out on 31 August 2026.\",\"explanation\":\"This is your monthly payslip (Verdienstabrechnung) from your employer, Muster Tech GmbH, for August 2026. It shows your gross salary, deductions (income tax, pension insurance), and the net amount of €1,285.20 already transferred to your bank account. As a working student (Werkstudent), you're exempt from health, long-term care and unemployment insurance contributions. Keep this payslip; it can serve as proof of income for tax returns, rental applications, or similar purposes. No action is needed unless you spot an error, in which case contact your employer's payroll department.\",\"items\":[],\"key_facts\":[{\"label\":\"Gross salary (Gesamtbrutto)\",\"value\":\"1.419,00 €\",\"quote\":\"Gesamtbrutto   1.419,00 €\"},{\"label\":\"Net salary (Nettoverdienst)\",\"value\":\"1.285,20 €\",\"quote\":\"Nettoverdienst   1.285,20 €\"},{\"label\":\"Payout amount (Auszahlungsbetrag)\",\"value\":\"1.285,20 €\",\"quote\":\"Auszahlungsbetrag   1.285,20 €\"},{\"label\":\"Payment date and account (Überweisung)\",\"value\":\"31.08.2026, IBAN DE41 1234 6700 0071 2345 00\",\"quote\":\"Überweisung am 31.08.2026 an IBAN DE41 1234 6700 0071 2345 00 (Musterbank eG)   1.285,20 €\"},{\"label\":\"Tax class (Steuerklasse)\",\"value\":\"1\",\"quote\":\"Steuerklasse   1 · Kinderfreibeträge 0,0\"},{\"label\":\"Billing period (Abrechnungszeitraum)\",\"value\":\"01.08.2026 – 31.08.2026\",\"quote\":\"Abrechnungszeitraum 01.08.2026 – 31.08.2026\"},{\"label\":\"Employer's pension contribution (Arbeitgeberanteil Rentenversicherung)\",\"value\":\"131,97 €\",\"quote\":\"Arbeitgeberanteil Rentenversicherung: 131,97 €.\"}],\"references\":[{\"label\":\"Personalnummer\",\"value\":\"10482\"},{\"label\":\"Steuer-ID\",\"value\":\"57 216 480 354\"},{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"42424\"}],\"warnings\":[],\"urgency\":\"low\",\"tax_relevant\":true,\"tax_note\":\"Payslips document taxable income and social security contributions and are useful when filing your annual tax return (Einkommensteuererklärung).\",\"remedy\":null,\"contract\":null,\"change\":null,\"high_stakes_kind\":null,\"payment\":null}",
+    "data": {
+      "area": "work",
+      "case_title": "August 2026 payslip from Muster Tech GmbH",
+      "kind": "payslip",
+      "title": "August 2026 payslip from Muster Tech GmbH",
+      "language": "de",
+      "document_date": "2026-08-31",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Tech GmbH",
+        "kind": "employer",
+        "address": "Innovationsweg 42, 12345 Musterstadt",
+        "phone": "0123 4242-0",
+        "website": "www.mustertech.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE424242072"
+          },
+          {
+            "label": "Amtsgericht Musterstadt HRB",
+            "value": "42424"
+          }
+        ]
+      },
+      "summary": "Muster Tech GmbH's payslip (Verdienstabrechnung) for August 2026 shows Sam Rivera's gross pay of €1,419.00 and net pay of €1,285.20, paid out on 31 August 2026.",
+      "explanation": "This is your monthly payslip (Verdienstabrechnung) from your employer, Muster Tech GmbH, for August 2026. It shows your gross salary, deductions (income tax, pension insurance), and the net amount of €1,285.20 already transferred to your bank account. As a working student (Werkstudent), you're exempt from health, long-term care and unemployment insurance contributions. Keep this payslip; it can serve as proof of income for tax returns, rental applications, or similar purposes. No action is needed unless you spot an error, in which case contact your employer's payroll department.",
+      "items": [],
+      "key_facts": [
+        {
+          "label": "Gross salary (Gesamtbrutto)",
+          "value": "1.419,00 €",
+          "quote": "Gesamtbrutto   1.419,00 €"
+        },
+        {
+          "label": "Net salary (Nettoverdienst)",
+          "value": "1.285,20 €",
+          "quote": "Nettoverdienst   1.285,20 €"
+        },
+        {
+          "label": "Payout amount (Auszahlungsbetrag)",
+          "value": "1.285,20 €",
+          "quote": "Auszahlungsbetrag   1.285,20 €"
+        },
+        {
+          "label": "Payment date and account (Überweisung)",
+          "value": "31.08.2026, IBAN DE41 1234 6700 0071 2345 00",
+          "quote": "Überweisung am 31.08.2026 an IBAN DE41 1234 6700 0071 2345 00 (Musterbank eG)   1.285,20 €"
+        },
+        {
+          "label": "Tax class (Steuerklasse)",
+          "value": "1",
+          "quote": "Steuerklasse   1 · Kinderfreibeträge 0,0"
+        },
+        {
+          "label": "Billing period (Abrechnungszeitraum)",
+          "value": "01.08.2026 – 31.08.2026",
+          "quote": "Abrechnungszeitraum 01.08.2026 – 31.08.2026"
+        },
+        {
+          "label": "Employer's pension contribution (Arbeitgeberanteil Rentenversicherung)",
+          "value": "131,97 €",
+          "quote": "Arbeitgeberanteil Rentenversicherung: 131,97 €."
+        }
+      ],
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "10482"
+        },
+        {
+          "label": "Steuer-ID",
+          "value": "57 216 480 354"
+        },
+        {
+          "label": "SV-Nummer",
+          "value": "65 140300 R 005"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE424242072"
+        },
+        {
+          "label": "Amtsgericht Musterstadt HRB",
+          "value": "42424"
+        }
+      ],
+      "warnings": [],
+      "urgency": "low",
+      "tax_relevant": true,
+      "tax_note": "Payslips document taxable income and social security contributions and are useful when filing your annual tax return (Einkommensteuererklärung).",
+      "remedy": null,
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null,
+      "payment": null
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5256,
+      "cache_read_tokens": 20580,
+      "cache_creation_tokens": 6334,
+      "cost_usd": 0.08201999999999998,
+      "duration_ms": 37885,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

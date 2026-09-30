@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"283452533b6bd9e5f1d36683e0e112b1a06732e637397a47f0a01d3e98a154a0\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_50t54msvdfcy"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Hochschule Musterstadt (university)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (ins"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"Enrolment Certificate – Winter Semester 2026/27\",\"document_date\":\"2026-09-01\",\"explanation\":\"This is an official confirmation from Hochschule Musterstadt that you are enrolled as a full-time student for the winter semester 2026/27 (1 October 2026 – 31 March 2027). It is a record for your files and can be used whenever you need to prove your student status (e.g. for a bank, health insurance, transport ticket, child benefit, or landlord). There is nothing you need to do; just keep it for your records.\",\"high_stakes_kind\":null,\"items\":[],\"key_facts\":[{\"label\":\"Student ID (Matrikelnummer)\",\"value\":\"4711123\",\"quote\":\"Matrikelnummer / Student ID   4711123\"},{\"label\":\"Programme (Studiengang)\",\"value\":\"Data Science, Master of Science (M.Sc.)\",\"quote\":\"Studiengang / Programme   Data Science, Master of Science (M.Sc.)\"},{\"label\":\"Term (Semester)\",\"value\":\"Wintersemester 2026/27 (01.10.2026 – 31.03.2027)\",\"quote\":\"Semester / Term   Wintersemester 2026/27 (01.10.2026 – 31.03.2027)\"},{\"label\":\"Semester of study (Fachsemester)\",\"value\":\"5\",\"quote\":\"Fachsemester / Semester of study   5\"},{\"label\":\"Mode of study (Studienform)\",\"value\":\"Vollzeitstudium, Präsenzstudium / full-time\",\"quote\":\"Studienform / Mode of study   Vollzeitstudium, Präsenzstudium / full-time\"},{\"label\":\"Leave of absence (Urlaubssemester)\",\"value\":\"nein / no\",\"quote\":\"Urlaubssemester / Leave of absence   nein / no\"}],\"kind\":\"university\",\"language\":\"de\",\"recipient_name\":\"Sam Rivera\",\"references\":[{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}],\"remedy\":{\"type\":\"none\"},\"sender\":{\"name\":\"Hochschule Musterstadt\",\"kind\":\"university\",\"address\":\"Hochschulallee 1, 12347 Musterstadt\",\"phone\":\"0123 7788-2210\",\"website\":\"www.hs-musterstadt.example\"},\"summary\":\"Hochschule Musterstadt confirms that Sam Rivera (Matrikelnummer 4711123) is enrolled as a full-time student in the Data Science M.Sc. programme for the winter semester 2026/27 (1 October 2026 – 31 March 2027), 5th semester of study.\",\"tax_note\":null,\"tax_relevant\":false,\"title\":\"Certificate of Enrolment – Winter Semester 2026/27\",\"urgency\":\"low\",\"warnings\":[]}",
+    "data": {
+      "area": "study",
+      "case_title": "Enrolment Certificate – Winter Semester 2026/27",
+      "document_date": "2026-09-01",
+      "explanation": "This is an official confirmation from Hochschule Musterstadt that you are enrolled as a full-time student for the winter semester 2026/27 (1 October 2026 – 31 March 2027). It is a record for your files and can be used whenever you need to prove your student status (e.g. for a bank, health insurance, transport ticket, child benefit, or landlord). There is nothing you need to do; just keep it for your records.",
+      "high_stakes_kind": null,
+      "items": [],
+      "key_facts": [
+        {
+          "label": "Student ID (Matrikelnummer)",
+          "value": "4711123",
+          "quote": "Matrikelnummer / Student ID   4711123"
+        },
+        {
+          "label": "Programme (Studiengang)",
+          "value": "Data Science, Master of Science (M.Sc.)",
+          "quote": "Studiengang / Programme   Data Science, Master of Science (M.Sc.)"
+        },
+        {
+          "label": "Term (Semester)",
+          "value": "Wintersemester 2026/27 (01.10.2026 – 31.03.2027)",
+          "quote": "Semester / Term   Wintersemester 2026/27 (01.10.2026 – 31.03.2027)"
+        },
+        {
+          "label": "Semester of study (Fachsemester)",
+          "value": "5",
+          "quote": "Fachsemester / Semester of study   5"
+        },
+        {
+          "label": "Mode of study (Studienform)",
+          "value": "Vollzeitstudium, Präsenzstudium / full-time",
+          "quote": "Studienform / Mode of study   Vollzeitstudium, Präsenzstudium / full-time"
+        },
+        {
+          "label": "Leave of absence (Urlaubssemester)",
+          "value": "nein / no",
+          "quote": "Urlaubssemester / Leave of absence   nein / no"
+        }
+      ],
+      "kind": "university",
+      "language": "de",
+      "recipient_name": "Sam Rivera",
+      "references": [
+        {
+          "label": "Matrikelnummer",
+          "value": "4711123"
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "sender": {
+        "name": "Hochschule Musterstadt",
+        "kind": "university",
+        "address": "Hochschulallee 1, 12347 Musterstadt",
+        "phone": "0123 7788-2210",
+        "website": "www.hs-musterstadt.example"
+      },
+      "summary": "Hochschule Musterstadt confirms that Sam Rivera (Matrikelnummer 4711123) is enrolled as a full-time student in the Data Science M.Sc. programme for the winter semester 2026/27 (1 October 2026 – 31 March 2027), 5th semester of study.",
+      "tax_note": null,
+      "tax_relevant": false,
+      "title": "Certificate of Enrolment – Winter Semester 2026/27",
+      "urgency": "low",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1815,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2355,
+      "cost_usd": 0.029364599999999998,
+      "duration_ms": 15307,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

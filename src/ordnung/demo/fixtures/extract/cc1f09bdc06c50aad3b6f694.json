@@ -1,0 +1,192 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"d67fd54ac806da52bf6cae8c87b41f230cbad250b771807365fcd6e290811022\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Musterstadt Verkehrsbetriebe GmbH (transport)\n- Stadtwerke Musterstadt GmbH (utility)\n- Wohnbau"
+  },
+  "response": {
+    "text": "{\"area\":\"insurance\",\"case_title\":\"Private liability insurance – policy amendment (Nachtrag)\",\"title\":\"Policy amendment – private liability insurance\",\"kind\":\"insurance\",\"language\":\"de\",\"document_date\":\"2026-01-19\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Muster Versicherung AG\",\"kind\":\"insurer\",\"address\":\"Versicherungsring 20 · 12352 Beispielstadt\",\"phone\":\"0123 7070-0\",\"email\":null,\"website\":\"www.muster-versicherung.example\",\"identifiers\":[{\"label\":\"Amtsgericht\",\"value\":\"Beispielstadt HRB 1887\"},{\"label\":\"Versicherungsteuer-Nr.\",\"value\":\"812/V/4471\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE71ZZZ00000447122\"}]},\"summary\":\"Muster Versicherung AG sent Sam Rivera an updated policy document (Nachtrag Nr. 1) for his private liability insurance (Privat-Haftpflichtversicherung), reflecting a change of address and bank details. The annual premium of €59.90 will be collected by direct debit on 1 December 2026, and the contract renews automatically each year unless cancelled at least three months before the end of the insurance year.\",\"explanation\":\"This is not a bill needing action from you — it just confirms your new address and bank account are now on file and restates your liability insurance terms. Your bank will automatically be charged €59.90 on 1 December 2026 by SEPA direct debit, so make sure the account has sufficient funds. The contract keeps renewing yearly; if you ever want to end it, you must cancel in text form at least three months before the insurance year ends (30 November). No response is required now unless the address or bank details are wrong.\",\"contract\":{\"name\":\"Privat-Haftpflichtversicherung\",\"category\":\"insurance\",\"concluded_date\":\"2023-11-24\",\"start_date\":\"2023-12-01\",\"end_date\":null,\"initial_term_months\":12,\"renewal_term_months\":12,\"notice_before_end\":false,\"notice_basis\":\"end_of_term\",\"notice_day\":null,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_statutory\":false,\"cost_amount\":59.9,\"cost_interval\":\"yearly\",\"customer_number\":\"K 2231 0917\",\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Vertragsdauer   1 Jahr mit automatischer Verlängerung um jeweils ein Jahr\",\"Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird.\"]},\"change\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\",\"consequence\":null,\"amount\":59.9,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"low\",\"location\":null,\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-01\",\"text\":\"Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\",\"nature\":\"payment\",\"shift_rule\":\"none\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"legal_basis\":null,\"time\":null},\"recurrence\":{\"interval\":1,\"unit\":\"years\",\"day_of_month\":1,\"working_day\":null},\"quote\":\"Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\"}],\"key_facts\":[{\"label\":\"Annual premium (Jahresbeitrag)\",\"value\":\"59,90 €\",\"quote\":\"jährlich zum 01.12.   50,34 €   9,56 €   59,90 €\"},{\"label\":\"Net premium (Nettobeitrag)\",\"value\":\"50,34 €\",\"quote\":\"jährlich zum 01.12.   50,34 €   9,56 €   59,90 €\"},{\"label\":\"Insurance tax (Versicherungsteuer)\",\"value\":\"19 % / 9,56 €\",\"quote\":\"jährlich zum 01.12.   50,34 €   9,56 €   59,90 €\"},{\"label\":\"Coverage sum (Deckungssummen)\",\"value\":\"10.000.000 € pauschal\",\"quote\":\"Deckungssummen   10.000.000 € pauschal für Personen-, Sach- und Vermögensschäden;\"},{\"label\":\"Rental damage coverage (Mietsachschäden)\",\"value\":\"1.000.000 €\",\"quote\":\"Mietsachschäden 1.000.000 €; fremde Schlüssel 50.000 €; keine\"},{\"label\":\"Third-party keys coverage (fremde Schlüssel)\",\"value\":\"50.000 €\",\"quote\":\"Mietsachschäden 1.000.000 €; fremde Schlüssel 50.000 €; keine\"},{\"label\":\"Cancellation notice period (Kündigung)\",\"value\":\"drei Monate vor Ablauf des Versicherungsjahres\",\"quote\":\"Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird.\"},{\"label\":\"SEPA mandate reference (Mandatsreferenz)\",\"value\":\"PHV71-4471220-01\",\"quote\":\"Der Beitrag wird jährlich zur Hauptfälligkeit per SEPA-Lastschrift von Ihrem Konto bei der Musterbank eG eingezogen (Mandatsreferenz PHV71-4471220-01).\"}],\"references\":[{\"label\":\"Vers.-Nr.\",\"value\":\"PHV 71-4471220\"},{\"label\":\"Kundennummer\",\"value\":\"K 2231 0917\"},{\"label\":\"Amtsgericht\",\"value\":\"Beispielstadt HRB 1887\"},{\"label\":\"Versicherungsteuer-Nr.\",\"value\":\"812/V/4471\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE71ZZZ00000447122\"}],\"payment\":null,\"remedy\":null,\"high_stakes_kind\":null,\"urgency\":\"low\",\"tax_relevant\":true,\"tax_note\":\"Private liability insurance premiums can generally be claimed as special expenses (Sonderausgaben/Vorsorgeaufwendungen) in the German tax return.\",\"warnings\":[]}",
+    "data": {
+      "area": "insurance",
+      "case_title": "Private liability insurance – policy amendment (Nachtrag)",
+      "title": "Policy amendment – private liability insurance",
+      "kind": "insurance",
+      "language": "de",
+      "document_date": "2026-01-19",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Muster Versicherung AG",
+        "kind": "insurer",
+        "address": "Versicherungsring 20 · 12352 Beispielstadt",
+        "phone": "0123 7070-0",
+        "email": null,
+        "website": "www.muster-versicherung.example",
+        "identifiers": [
+          {
+            "label": "Amtsgericht",
+            "value": "Beispielstadt HRB 1887"
+          },
+          {
+            "label": "Versicherungsteuer-Nr.",
+            "value": "812/V/4471"
+          },
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE71ZZZ00000447122"
+          }
+        ]
+      },
+      "summary": "Muster Versicherung AG sent Sam Rivera an updated policy document (Nachtrag Nr. 1) for his private liability insurance (Privat-Haftpflichtversicherung), reflecting a change of address and bank details. The annual premium of €59.90 will be collected by direct debit on 1 December 2026, and the contract renews automatically each year unless cancelled at least three months before the end of the insurance year.",
+      "explanation": "This is not a bill needing action from you — it just confirms your new address and bank account are now on file and restates your liability insurance terms. Your bank will automatically be charged €59.90 on 1 December 2026 by SEPA direct debit, so make sure the account has sufficient funds. The contract keeps renewing yearly; if you ever want to end it, you must cancel in text form at least three months before the insurance year ends (30 November). No response is required now unless the address or bank details are wrong.",
+      "contract": {
+        "name": "Privat-Haftpflichtversicherung",
+        "category": "insurance",
+        "concluded_date": "2023-11-24",
+        "start_date": "2023-12-01",
+        "end_date": null,
+        "initial_term_months": 12,
+        "renewal_term_months": 12,
+        "notice_before_end": false,
+        "notice_basis": "end_of_term",
+        "notice_day": null,
+        "notice_value": 3,
+        "notice_unit": "months",
+        "notice_statutory": false,
+        "cost_amount": 59.9,
+        "cost_interval": "yearly",
+        "customer_number": "K 2231 0917",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "Vertragsdauer   1 Jahr mit automatischer Verlängerung um jeweils ein Jahr",
+          "Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird."
+        ]
+      },
+      "change": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Annual liability insurance premium direct debit",
+          "action": "Make sure the linked bank account has enough funds for the automatic direct debit.",
+          "consequence": null,
+          "amount": 59.9,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "low",
+          "location": null,
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-01",
+            "text": "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.",
+            "nature": "payment",
+            "shift_rule": "none",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "legal_basis": null,
+            "time": null
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "years",
+            "day_of_month": 1,
+            "working_day": null
+          },
+          "quote": "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Annual premium (Jahresbeitrag)",
+          "value": "59,90 €",
+          "quote": "jährlich zum 01.12.   50,34 €   9,56 €   59,90 €"
+        },
+        {
+          "label": "Net premium (Nettobeitrag)",
+          "value": "50,34 €",
+          "quote": "jährlich zum 01.12.   50,34 €   9,56 €   59,90 €"
+        },
+        {
+          "label": "Insurance tax (Versicherungsteuer)",
+          "value": "19 % / 9,56 €",
+          "quote": "jährlich zum 01.12.   50,34 €   9,56 €   59,90 €"
+        },
+        {
+          "label": "Coverage sum (Deckungssummen)",
+          "value": "10.000.000 € pauschal",
+          "quote": "Deckungssummen   10.000.000 € pauschal für Personen-, Sach- und Vermögensschäden;"
+        },
+        {
+          "label": "Rental damage coverage (Mietsachschäden)",
+          "value": "1.000.000 €",
+          "quote": "Mietsachschäden 1.000.000 €; fremde Schlüssel 50.000 €; keine"
+        },
+        {
+          "label": "Third-party keys coverage (fremde Schlüssel)",
+          "value": "50.000 €",
+          "quote": "Mietsachschäden 1.000.000 €; fremde Schlüssel 50.000 €; keine"
+        },
+        {
+          "label": "Cancellation notice period (Kündigung)",
+          "value": "drei Monate vor Ablauf des Versicherungsjahres",
+          "quote": "Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird."
+        },
+        {
+          "label": "SEPA mandate reference (Mandatsreferenz)",
+          "value": "PHV71-4471220-01",
+          "quote": "Der Beitrag wird jährlich zur Hauptfälligkeit per SEPA-Lastschrift von Ihrem Konto bei der Musterbank eG eingezogen (Mandatsreferenz PHV71-4471220-01)."
+        }
+      ],
+      "references": [
+        {
+          "label": "Vers.-Nr.",
+          "value": "PHV 71-4471220"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K 2231 0917"
+        },
+        {
+          "label": "Amtsgericht",
+          "value": "Beispielstadt HRB 1887"
+        },
+        {
+          "label": "Versicherungsteuer-Nr.",
+          "value": "812/V/4471"
+        },
+        {
+          "label": "Gläubiger-ID",
+          "value": "DE71ZZZ00000447122"
+        }
+      ],
+      "payment": null,
+      "remedy": null,
+      "high_stakes_kind": null,
+      "urgency": "low",
+      "tax_relevant": true,
+      "tax_note": "Private liability insurance premiums can generally be claimed as special expenses (Sonderausgaben/Vorsorgeaufwendungen) in the German tax return.",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 8323,
+      "cache_read_tokens": 20691,
+      "cache_creation_tokens": 8516,
+      "cost_usd": 0.1214402,
+      "duration_ms": 66300,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

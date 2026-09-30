@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c9730465cd89646da089c750b56b9ae5e22cd54bae56791fb63b85c515146bb6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-F2"
+    ],
+    "prompt_head": "Today is Friday, 2026-03-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Beispiel International Summer School\",\"document_date\":\"2026-03-03\",\"references\":[{\"label\":\"Participant no.\",\"value\":\"ISS-26-0277\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit signed code of conduct and emergency contact form\",\"quote\":\"Please send us the signed code of conduct and your emergency contact form by 05/06/2026; we cannot confirm your room until we have both.\",\"computation\":\"The letter is written in English for an international audience and gives the deadline only as the numeric date '05/06/2026', without weekday or spelled-out month. This is ambiguous between the German/European convention (DD/MM/YYYY = 5 June 2026) and the US convention (MM/DD/YYYY = 6 May 2026), which the sender may also use given the 'International Summer School' framing. Since the deadline cannot be determined with certainty, the earliest plausible reading is used per the safety rule: 6 May 2026 (MM/DD/YYYY reading). This is a private deadline set by the school, not a statutory period, so no delivery-fiction or weekend/holiday-shift rules apply; the date is used as printed.\",\"due_date\":\"2026-05-06\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The deadline '05/06/2026' is ambiguous: it could mean 5 June 2026 (DD/MM/YYYY, the German convention) or 6 May 2026 (MM/DD/YYYY, the US convention often used in English-language international correspondence). I used the earliest plausible reading, 6 May 2026, with low confidence — please confirm the intended date with the Summer School Office directly.\",\"The letter is dated 03/03/2026, which (per the system context) is already in the past relative to today; double-check whether this letter has already been superseded or whether the documents were already sent.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Beispiel International Summer School",
+      "document_date": "2026-03-03",
+      "references": [
+        {
+          "label": "Participant no.",
+          "value": "ISS-26-0277"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit signed code of conduct and emergency contact form",
+          "quote": "Please send us the signed code of conduct and your emergency contact form by 05/06/2026; we cannot confirm your room until we have both.",
+          "computation": "The letter is written in English for an international audience and gives the deadline only as the numeric date '05/06/2026', without weekday or spelled-out month. This is ambiguous between the German/European convention (DD/MM/YYYY = 5 June 2026) and the US convention (MM/DD/YYYY = 6 May 2026), which the sender may also use given the 'International Summer School' framing. Since the deadline cannot be determined with certainty, the earliest plausible reading is used per the safety rule: 6 May 2026 (MM/DD/YYYY reading). This is a private deadline set by the school, not a statutory period, so no delivery-fiction or weekend/holiday-shift rules apply; the date is used as printed.",
+          "due_date": "2026-05-06",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The deadline '05/06/2026' is ambiguous: it could mean 5 June 2026 (DD/MM/YYYY, the German convention) or 6 May 2026 (MM/DD/YYYY, the US convention often used in English-language international correspondence). I used the earliest plausible reading, 6 May 2026, with low confidence — please confirm the intended date with the Summer School Office directly.",
+        "The letter is dated 03/03/2026, which (per the system context) is already in the past relative to today; double-check whether this letter has already been superseded or whether the documents were already sent."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2168,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1771,
+      "cost_usd": 0.029873999999999998,
+      "duration_ms": 20676,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

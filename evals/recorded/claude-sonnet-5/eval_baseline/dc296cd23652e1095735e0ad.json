@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"44b3b7ec38a217200862bade992fe0117e0fa12ff2409f22db0b041ede978c79\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-09-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-09-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landratsamt Musterrode – Bußgeldstelle\",\"document_date\":\"2026-09-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 311/26-4471\"},{\"label\":\"Kennzeichen\",\"value\":\"MRO-OR 55\"}],\"amounts\":[118.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"This is a formal delivery (Postzustellungsurkunde, § 182 ZPO); page 2 shows the delivery envelope stamped 'Zugestellt: 22.09.2026' (Tuesday), so that date, not the letter date (18.09.2026), is the delivery day under the rule that a formally-served letter is deemed delivered on the date written on the envelope. Under § 67 OWiG the objection period is two weeks from delivery; per §§ 187 Abs.1, 188 Abs.2 BGB the delivery day itself is not counted and the two-week period ends on the same weekday two weeks later: 22.09.2026 + 14 days = 06.10.2026 (Tuesday). That day is not a Saturday, Sunday or Thuringian public holiday (03.10.2026, German Unity Day, falls on a Saturday that year and does not affect this date), so no shift under § 43 Abs. 2 StPO is needed. The Einspruch must reach the Landratsamt Musterrode – Bußgeldstelle by this date.\",\"due_date\":\"2026-10-06\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and delivery costs once the notice is final\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"Payment is due two weeks after the Bußgeldbescheid becomes final (rechtskräftig). Assuming no Einspruch is filed, the notice becomes final the day after the two-week objection period expires, i.e. on 07.10.2026 (Wednesday), the day after the Einspruch deadline of 06.10.2026 computed above. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day of finality itself is not counted and the two-week payment period ends on the same weekday two weeks later: 07.10.2026 + 14 days = 21.10.2026 (Wednesday), which is not a weekend day or a Thuringian public holiday, so no shift is needed. This date is only valid if no Einspruch is filed by 06.10.2026; filing an appeal would prevent Rechtskraft and reset this calculation.\",\"due_date\":\"2026-10-21\",\"confidence\":\"medium\",\"amount\":118.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"Page 2 is a scan of the delivery envelope (Postzustellungsurkunde) stamped 'Zugestellt: 22.09.2026', which sets the legal delivery date for both the Einspruch deadline and the downstream payment deadline; verify this stamped date against the original document.\",\"The payment due date (2026-10-21) is calculated on the assumption that no Einspruch is filed and the notice becomes final the day after the objection period ends (07.10.2026); if an Einspruch is filed, Rechtskraft (and thus the payment deadline) does not occur as calculated.\",\"Double-check the IBAN given for payment (DE85 8205 1000 0000 6551 00, Sparkasse Musterrode) against any official payment slip before transferring money, as fake collection accounts are a known scam pattern for fine/authority letters.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landratsamt Musterrode – Bußgeldstelle",
+      "document_date": "2026-09-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 311/26-4471"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MRO-OR 55"
+        }
+      ],
+      "amounts": [
+        118.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "This is a formal delivery (Postzustellungsurkunde, § 182 ZPO); page 2 shows the delivery envelope stamped 'Zugestellt: 22.09.2026' (Tuesday), so that date, not the letter date (18.09.2026), is the delivery day under the rule that a formally-served letter is deemed delivered on the date written on the envelope. Under § 67 OWiG the objection period is two weeks from delivery; per §§ 187 Abs.1, 188 Abs.2 BGB the delivery day itself is not counted and the two-week period ends on the same weekday two weeks later: 22.09.2026 + 14 days = 06.10.2026 (Tuesday). That day is not a Saturday, Sunday or Thuringian public holiday (03.10.2026, German Unity Day, falls on a Saturday that year and does not affect this date), so no shift under § 43 Abs. 2 StPO is needed. The Einspruch must reach the Landratsamt Musterrode – Bußgeldstelle by this date.",
+          "due_date": "2026-10-06",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and delivery costs once the notice is final",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "Payment is due two weeks after the Bußgeldbescheid becomes final (rechtskräftig). Assuming no Einspruch is filed, the notice becomes final the day after the two-week objection period expires, i.e. on 07.10.2026 (Wednesday), the day after the Einspruch deadline of 06.10.2026 computed above. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day of finality itself is not counted and the two-week payment period ends on the same weekday two weeks later: 07.10.2026 + 14 days = 21.10.2026 (Wednesday), which is not a weekend day or a Thuringian public holiday, so no shift is needed. This date is only valid if no Einspruch is filed by 06.10.2026; filing an appeal would prevent Rechtskraft and reset this calculation.",
+          "due_date": "2026-10-21",
+          "confidence": "medium",
+          "amount": 118.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "Page 2 is a scan of the delivery envelope (Postzustellungsurkunde) stamped 'Zugestellt: 22.09.2026', which sets the legal delivery date for both the Einspruch deadline and the downstream payment deadline; verify this stamped date against the original document.",
+        "The payment due date (2026-10-21) is calculated on the assumption that no Einspruch is filed and the notice becomes final the day after the objection period ends (07.10.2026); if an Einspruch is filed, Rechtskraft (and thus the payment deadline) does not occur as calculated.",
+        "Double-check the IBAN given for payment (DE85 8205 1000 0000 6551 00, Sparkasse Musterrode) against any official payment slip before transferring money, as fake collection accounts are a known scam pattern for fine/authority letters."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5284,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2697,
+      "cost_usd": 0.064738,
+      "duration_ms": 45793,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

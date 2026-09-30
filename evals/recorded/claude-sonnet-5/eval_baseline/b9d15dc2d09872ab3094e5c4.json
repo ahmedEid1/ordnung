@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4c1b8e449aa78f44072236abbe71c7f34143d958f6855e8e397bad43b8192328\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[4806],\"contract\":null,\"document_date\":\"2027-01-25\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection (Einspruch) deadline against loss carryforward assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter dated (and posted, no separate 'Tag der Aufgabe zur Post' given) Mon 25.01.2027. Standard clause confirms deemed delivery on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): counting from 25.01 (not counted) → 26.01 (1), 27.01 (2), 28.01 (3), 29.01 (4) → Fri 29.01.2027, which is not a Saturday/Sunday/holiday, so it stays as the deemed delivery day. One-month Einspruch period (§ 355 Abs. 1 AO, §§ 187 Abs. 1, 188 Abs. 2 BGB): ends on the day of the following month with the same number as the event day (29); February 2027 has only 28 days, so the period ends on the last day of February, Sun 28.02.2027. Because this is a Saturday/Sunday, under § 108 Abs. 3 AO the deadline moves to the next working day: Mon 01.03.2027 (no NRW public holiday on that date).\",\"due_date\":\"2027-03-01\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterbergen\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        4806
+      ],
+      "contract": null,
+      "document_date": "2027-01-25",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection (Einspruch) deadline against loss carryforward assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter dated (and posted, no separate 'Tag der Aufgabe zur Post' given) Mon 25.01.2027. Standard clause confirms deemed delivery on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): counting from 25.01 (not counted) → 26.01 (1), 27.01 (2), 28.01 (3), 29.01 (4) → Fri 29.01.2027, which is not a Saturday/Sunday/holiday, so it stays as the deemed delivery day. One-month Einspruch period (§ 355 Abs. 1 AO, §§ 187 Abs. 1, 188 Abs. 2 BGB): ends on the day of the following month with the same number as the event day (29); February 2027 has only 28 days, so the period ends on the last day of February, Sun 28.02.2027. Because this is a Saturday/Sunday, under § 108 Abs. 3 AO the deadline moves to the next working day: Mon 01.03.2027 (no NRW public holiday on that date).",
+          "due_date": "2027-03-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterbergen",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3145,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2047,
+      "cost_usd": 0.040748,
+      "duration_ms": 28710,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

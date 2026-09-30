@@ -288,6 +288,24 @@ describe("Switch and Checkbox", () => {
     expect(screen.getByText(/seven days before/)).toHaveClass("text-pretty");
     expect(screen.getByText(/Nothing about this letter/)).toHaveClass("text-pretty");
   });
+
+  it("the checkbox is a 24 px target (WCAG 2.5.8) that its words toggle too", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Checkbox label="Keep private" description="Nothing about this letter is sent to Claude." />);
+    const box = screen.getByRole("checkbox", { name: /^Keep private/ });
+    // the input itself fills a 24 × 24 cell (a native 16 px box can't be given a larger hit area), drawn as a
+    // 16 px box beneath it that never takes the pointer
+    expect(box).toHaveClass("size-6", "absolute", "inset-0", "appearance-none");
+    const cell = box.parentElement!;
+    expect(cell).toHaveClass("size-6");
+    for (const drawn of Array.from(cell.children).filter((c) => c !== box)) expect(drawn).toHaveClass("pointer-events-none");
+    // the whole row is its label
+    expect(box.closest("label")).toBe(screen.getByText("Keep private").closest("label"));
+    await user.click(screen.getByText("Keep private"));
+    expect(box).toBeChecked();
+    await user.click(box);
+    expect(box).not.toBeChecked();
+  });
 });
 
 describe("Tabs", () => {

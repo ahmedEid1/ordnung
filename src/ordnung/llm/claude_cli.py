@@ -9,6 +9,13 @@ Design notes
 * **No tools unless asked.** Extraction and transcription run with ``--tools ""``: the model sees the
   document as content blocks and can do nothing but answer. Ask gets only Ordnung's read-only MCP tools.
   No call ever uses ``--dangerously-skip-permissions``.
+* **The model** is decided in one place, :meth:`ClaudeCLIBackend.model_for`: ``ORDNUNG_CLAUDE_MODEL``
+  (an override for every call while it is set, as ``ORDNUNG_CLAUDE_BIN`` picks the binary; nothing in
+  the repo sets it), else the model the person chose (``AppSettings.model``,
+  :data:`ordnung.llm.base.DEFAULT_MODEL` until changed — a pinned id, because an alias such as
+  ``sonnet`` moves with releases; the demo recorder pins the default the same way), else the
+  request's own (the doctor probe's; the benchmarks build their backend without a setting and send
+  the run's model on each request).
 * **Isolation.** ``--setting-sources ""`` ignores the user's hooks/settings, ``--strict-mcp-config``
   keeps the user's own MCP servers out, ``--system-prompt`` replaces the coding-assistant prompt, and
   ``--no-session-persistence`` keeps calls out of the user's history. Never ``--bare`` (it disables
@@ -31,9 +38,9 @@ import shutil
 import signal
 import tempfile
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from ordnung.llm.base import (
     INTERACTIVE_PURPOSES,
@@ -243,11 +250,22 @@ class ClaudeCLIBackend:
         concurrency: int = 2,
         interactive_concurrency: int = 1,
         max_retries: int = 2,
+        model_setting: Callable[[], str | None] | None = None,
     ) -> None:
         self.binary = find_claude(binary)
         self._background = asyncio.Semaphore(max(1, concurrency))
         self._interactive = asyncio.Semaphore(max(1, interactive_concurrency))
         self.max_retries = max_retries
+        #: Reads the model the person chose (``AppSettings.model``) when a call is made, so a new
+        #: choice counts from the next call; ``None`` where there is no setting (the doctor probe,
+        #: the benchmarks).
+        self.model_setting = model_setting
+
+    def model_for(self, req: LLMRequest) -> str:
+        """The model this call runs on: ``ORDNUNG_CLAUDE_MODEL``, else the person's setting, else
+        the request's own (see the module notes)."""
+        chosen = self.model_setting() if self.model_setting is not None else None
+        return os.environ.get("ORDNUNG_CLAUDE_MODEL") or chosen or req.model
 
     def _lane(self, req: LLMRequest) -> asyncio.Semaphore:
         return self._interactive if req.purpose in INTERACTIVE_PURPOSES else self._background
@@ -260,7 +278,8 @@ class ClaudeCLIBackend:
             )
         return self.binary
 
-    def build_args(self, req: LLMRequest, *, partial: bool = False) -> list[str]:
+    def build_args(self, req: LLMRequest, *, partial: bool = False, model: str | None = None) -> list[str]:
+        """argv for ``req``; ``model`` is the one :meth:`model_for` decided (a run decides it once)."""
         args = [
             self._require_binary(),
             "-p",
@@ -270,7 +289,7 @@ class ClaudeCLIBackend:
             "stream-json",
             "--verbose",
             "--model",
-            req.model,
+            model or self.model_for(req),
             "--no-session-persistence",
             "--setting-sources",
             "",
@@ -332,7 +351,8 @@ class ClaudeCLIBackend:
 
     async def _run(self, req: LLMRequest, *, partial: bool) -> AsyncIterator[StreamEvent]:
         """Spawn the CLI, feed stdin, translate stdout events. Ends with a ``done`` event or raises."""
-        args = self.build_args(req, partial=partial)
+        model = self.model_for(req)  # decided once: the argv and the answer name the same model
+        args = self.build_args(req, partial=partial, model=model)
         line, _nbytes = build_user_message(req)
         started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix="ordnung-llm-") as cwd:
@@ -410,7 +430,12 @@ class ClaudeCLIBackend:
         yield StreamEvent(
             type="done",
             response=LLMResponse(
-                text=text, data=data, usage=usage, model=served_model(result, req.model), backend=self.name
+                text=text,
+                data=data,
+                usage=usage,
+                # the model that answered; the one the call named when the CLI doesn't say
+                model=served_model(result, model),
+                backend=self.name,
             ),
         )
 
@@ -497,19 +522,29 @@ async def auth_status(binary: str | None = None) -> dict[str, Any] | None:
     return await run_cli_json([path, "auth", "status"])
 
 
-async def probe(binary: str | None = None, timeout_s: float = 60) -> tuple[bool, str]:
-    """One tiny live call (used by ``ordnung doctor --probe``)."""
+class ProbeResult(NamedTuple):
+    """What :func:`probe` found: whether Claude answered, its reply (or the error), the model it ran on."""
+
+    ok: bool
+    text: str
+    model: str
+
+
+async def probe(binary: str | None = None, timeout_s: float = 60, *, model: str | None = None) -> ProbeResult:
+    """One tiny live call (``ordnung doctor --probe``, Settings' "Run check") on ``model`` — the one
+    the person chose, so a name Claude Code refuses fails here and not on the next letter — else
+    ``haiku`` (``ORDNUNG_CLAUDE_MODEL`` wins over both, as for every call)."""
     backend = ClaudeCLIBackend(binary=binary, concurrency=1, max_retries=0)
+    request = LLMRequest(
+        purpose="doctor",
+        prompt="Reply with exactly: OK",
+        system="You are a health check. Reply with exactly: OK",
+        model=model or "haiku",
+        timeout_s=timeout_s,
+    )
+    ran_on = backend.model_for(request)
     try:
-        resp = await backend.complete(
-            LLMRequest(
-                purpose="doctor",
-                prompt="Reply with exactly: OK",
-                system="You are a health check. Reply with exactly: OK",
-                model="haiku",
-                timeout_s=timeout_s,
-            )
-        )
+        resp = await backend.complete(request)
     except LLMError as exc:
-        return False, str(exc)
-    return ("OK" in resp.text.upper()), resp.text.strip()[:80]
+        return ProbeResult(False, str(exc), ran_on)
+    return ProbeResult("OK" in resp.text.upper(), resp.text.strip()[:80], ran_on)

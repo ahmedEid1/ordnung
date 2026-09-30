@@ -428,3 +428,336 @@ def company(name: str, street: str, postcode: str, city: str, *, monogram: str, 
         legal=legal,
         country=country,
     )
+
+
+# --------------------------------------------------------------------------------------------------
+# holdout split (variants E, F and the holdout adversarial letters): new senders and recipients,
+# none of them shared with the dev or test letters
+# --------------------------------------------------------------------------------------------------
+
+H_RP = Person("Johanna Beispielkamp", "Weinbergstraße 5", "54470", "Musterweiler")
+H_SL = Person("Luca Musterhofer", "Saarufer 31", "66119", "Beispielbrück")
+H_ST = Person("Greta Beispielmann", "Elbwiese 2b", "39104", "Musterstedt")
+H_BW = Person("Anton Musterle", "Kelterweg 9", "70599", "Beispielingen")
+H_SH = Person("Merle Beispielsen", "Deichstraße 44", "25813", "Musterwik")
+H_NW = Person("Hakan Beispielkötter", "Zechenweg 3", "45879", "Musterhagen")
+H_HH = Person("Clara Musterbrook", "Grindelhof 21", "20146", "Hamburg")
+H_BY = Person("Veronika Beispielhuber", "Almweg 6", "83684", "Beispielsee")
+H_TH = Person("Ole Musterrößler", "Am Anger 14", "99084", "Musterrode")
+H_MV = Person("Ida Beispielow", "Strandstraße 8", "18055", "Beispielmünde")
+H_NI = Person("Maja Musterjohann", "Heideweg 27", "29221", "Beispielstedt")
+H_HB = Person("Jan Beispielmeyer", "Schlachte 40", "28195", "Bremen")
+H_GEN = Person("Lina Mustermeier", "Birkenallee 15", "37073", "Neu-Beispielstadt")
+H_GEN2 = Person("Tarek Beispiel", "Am Mühlbach 2", "35039", "Musterbergen")
+H_EN = Person("Aisha Okafor", "Birkenallee 15", "37073", "Neu-Beispielstadt", country="Germany")
+H_EN2 = Person("Liam Fitzgerald", "Grindelhof 21", "20146", "Hamburg", country="GERMANY")
+H_RECIPIENT_IBAN = _iban("26050001", "44102938")
+
+# tax offices (AO)
+H_FA_RP = Org(
+    name="Finanzamt Musterweiler",
+    kind="tax_office",
+    street="Moselstraße 12",
+    postcode="54470",
+    city="Musterweiler",
+    region="RP",
+    head=("Steuerverwaltung Rheinland-Pfalz",),
+    phone="Telefon 06531 880-0",
+    email="poststelle@fa-musterweiler.example",
+    bank="Landesbank Muster Rheinland",
+    iban=_iban("57050000", "5500112"),
+    bic="MURPDE5KXXX",
+    style="band",
+    accent=(95, 30, 50),
+    hours=("Service-Center:", "Mo–Do 8–16 Uhr", "Fr 8–12 Uhr"),
+)
+H_FA_SL = Org(
+    name="Finanzamt Beispielbrück",
+    kind="tax_office",
+    street="Am Hafenbecken 3",
+    postcode="66111",
+    city="Beispielbrück",
+    region="SL",
+    head=("Saarland · Steuerverwaltung", "Veranlagungsstelle Arbeitnehmer"),
+    phone="0681 3000-0",
+    email="poststelle@fa-beispielbrueck.example",
+    bank="Saarländische Musterbank",
+    iban=_iban("59050000", "8812001"),
+    style="authority",
+    accent=(0, 70, 120),
+)
+H_FA_ST = Org(
+    name="Finanzamt Musterstedt",
+    kind="tax_office",
+    street="Domplatz 9",
+    postcode="39104",
+    city="Musterstedt",
+    region="ST",
+    head=("Land Sachsen-Anhalt · Steuerverwaltung",),
+    phone="0391 885-0",
+    email="poststelle@fa-musterstedt.example",
+    bank="Mitteldeutsche Musterbank",
+    iban=_iban("81050000", "4420003"),
+    style="logo",
+    accent=(20, 80, 60),
+    monogram="FA",
+)
+H_FA_X = Org(
+    name="Finanzamt Neu-Beispielstadt",
+    kind="tax_office",
+    street="Postfach 31 07",
+    postcode="37002",
+    city="Neu-Beispielstadt",
+    phone="Tel. 0551 4077-0",
+    email="service@fa-neu-beispielstadt.example",
+    bank="Musterbank Süd",
+    iban=_iban("26050001", "3107000"),
+    style="minimal",
+    accent=(60, 60, 110),
+)
+H_FA_X2 = Org(
+    name="Finanzamt Musterbergen",
+    kind="tax_office",
+    street="Lahnufer 18",
+    postcode="35037",
+    city="Musterbergen",
+    head=("Steuerverwaltung",),
+    phone="06421 698-0",
+    email="poststelle@fa-musterbergen.example",
+    bank="Musterbank Mitte",
+    iban=_iban("53350000", "6980002"),
+    style="authority",
+    accent=(90, 60, 20),
+)
+
+# municipal / Land authorities (Land VwVfG; only Länder with the verified 4-day rule)
+H_STADT_BW = Org(
+    name="Stadt Beispielingen",
+    kind="authority",
+    street="Marktstraße 2",
+    postcode="70597",
+    city="Beispielingen",
+    region="BW",
+    head=(
+        "Land Baden-Württemberg · Stadt Beispielingen",
+        "Amt für öffentliche Ordnung – Straßenverkehrsbehörde",
+    ),
+    phone="0711 216-0",
+    email="ordnungsamt@beispielingen.example",
+    bank="Kreissparkasse Beispielingen",
+    iban=_iban("61150020", "77000"),
+    style="authority",
+    accent=(140, 100, 0),
+)
+H_KREIS_SH = Org(
+    name="Kreis Nordmuster",
+    kind="authority",
+    street="Kreishaus, Marktstraße 1",
+    postcode="25813",
+    city="Musterwik",
+    region="SH",
+    head=("Land Schleswig-Holstein · Der Landrat", "Fachdienst Naturschutz"),
+    phone="04841 67-0",
+    email="naturschutz@kreis-nordmuster.example",
+    bank="Nord-Ostsee Musterkasse",
+    iban=_iban("21750000", "670100"),
+    style="band",
+    accent=(0, 60, 110),
+)
+H_STADT_NW = Org(
+    name="Stadt Musterhagen",
+    kind="authority",
+    street="Rathausplatz 7",
+    postcode="45875",
+    city="Musterhagen",
+    region="NW",
+    head=("Land Nordrhein-Westfalen", "Die Bürgermeisterin · Untere Bauaufsichtsbehörde"),
+    phone="0209 169-0",
+    email="bauaufsicht@musterhagen.example",
+    bank="Sparkasse Musterhagen",
+    iban=_iban("42050001", "169000"),
+    style="minimal",
+    accent=(120, 20, 40),
+)
+H_BA_HH = Org(
+    name="Bezirksamt Beispielbüttel",
+    kind="authority",
+    street="Grindelberg 62",
+    postcode="20144",
+    city="Hamburg",
+    region="HH",
+    head=("Freie und Hansestadt Hamburg", "Fachamt Wohnraumschutz"),
+    phone="040 42801-0",
+    email="wohnraumschutz@beispielbuettel.hamburg.example",
+    bank="Hamburger Musterkasse",
+    iban=_iban("20050000", "1042800"),
+    style="authority",
+    accent=(160, 20, 30),
+)
+
+# social law (SGB X)
+H_KK = Org(
+    name="Beispiel Ersatzkasse",
+    kind="health_insurer",
+    street="Versichertenplatz 1",
+    postcode="22083",
+    city="Musterhude",
+    head=("Kranken- und Pflegeversicherung",),
+    phone="0800 400 1234",
+    email="service@beispiel-ersatzkasse.example",
+    web="www.beispiel-ersatzkasse.example",
+    bank="Musterbank",
+    iban=_iban("20040000", "4001234"),
+    style="logo",
+    accent=(0, 85, 125),
+    monogram="BE",
+    legal=("Körperschaft des öffentlichen Rechts",),
+)
+H_PK = Org(
+    name="Pflegekasse bei der Beispiel Ersatzkasse",
+    kind="health_insurer",
+    street="Versichertenplatz 1",
+    postcode="22083",
+    city="Musterhude",
+    head=("Soziale Pflegeversicherung",),
+    phone="0800 400 1250",
+    email="pflege@beispiel-ersatzkasse.example",
+    bank="Musterbank",
+    iban=_iban("20040000", "4001250"),
+    style="band",
+    accent=(0, 85, 125),
+    legal=("Körperschaft des öffentlichen Rechts",),
+)
+H_JC_BY = Org(
+    name="Jobcenter Beispielsee",
+    kind="authority",
+    street="Seestraße 40",
+    postcode="83684",
+    city="Beispielsee",
+    region="BY",
+    head=("Freistaat Bayern · Jobcenter Landkreis Beispielsee", "Team Leistung 2"),
+    phone="08022 9170-0",
+    email="jobcenter-beispielsee@jobcenter.example",
+    bank="Bundesbank Muster",
+    iban=_iban("70000000", "70001522"),
+    style="minimal",
+    accent=(170, 30, 40),
+)
+H_ELG_MV = Org(
+    name="Landesamt für Soziales Beispielmünde – Elterngeldstelle",
+    kind="authority",
+    street="Am Hafen 5",
+    postcode="18055",
+    city="Beispielmünde",
+    region="MV",
+    head=("Land Mecklenburg-Vorpommern", "Elterngeld und Elternzeit"),
+    phone="0381 331-0",
+    email="elterngeld@lafs-beispielmuende.example",
+    bank="Landeszentralbank Muster",
+    iban=_iban("13000000", "13001088"),
+    style="authority",
+    accent=(0, 75, 140),
+)
+H_AA_X = Org(
+    name="Agentur für Arbeit Musterbergen",
+    kind="authority",
+    street="Bahnhofstraße 12",
+    postcode="35037",
+    city="Musterbergen",
+    head=("Bundesagentur für Arbeit (Musterausgabe)", "Operativer Service"),
+    phone="0800 4 5555 00",
+    email="musterbergen@arbeitsagentur.example",
+    bank="Bundesbank Muster",
+    iban=_iban("76000000", "76001900"),
+    style="band",
+    accent=(160, 20, 35),
+)
+H_UK_X = Org(
+    name="Unfallkasse Musterland",
+    kind="authority",
+    street="Postfach 11 22",
+    postcode="35001",
+    city="Musterbergen",
+    head=("Gesetzliche Unfallversicherung (fiktiv)",),
+    phone="06421 4040-0",
+    email="post@unfallkasse-musterland.example",
+    bank="Musterbank",
+    iban=_iban("53350000", "4040000"),
+    style="logo",
+    accent=(0, 90, 70),
+    monogram="UK",
+    legal=("Körperschaft des öffentlichen Rechts",),
+)
+H_RV_X = Org(
+    name="Muster-Rentenversicherung Nordwest",
+    kind="authority",
+    street="Rentenweg 1",
+    postcode="26121",
+    city="Beispielburg",
+    head=("Gesetzliche Rentenversicherung (fiktiv)", "Abteilung Rehabilitation"),
+    phone="Servicetelefon 0800 1000 490",
+    email="reha@muster-rv-nordwest.example",
+    style="band",
+    accent=(0, 70, 130),
+)
+
+# fines (OWiG)
+H_BG_TH = Org(
+    name="Landratsamt Musterrode – Bußgeldstelle",
+    kind="authority",
+    street="Anger 2",
+    postcode="99084",
+    city="Musterrode",
+    region="TH",
+    head=("Freistaat Thüringen", "Bußgeldstelle des Landkreises"),
+    phone="0361 655-0",
+    email="bussgeld@lra-musterrode.example",
+    bank="Sparkasse Musterrode",
+    iban=_iban("82051000", "655100"),
+    style="authority",
+    accent=(150, 25, 35),
+)
+H_BG_X = Org(
+    name="Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+    kind="authority",
+    street="Postfach 50 50",
+    postcode="35004",
+    city="Musterbergen",
+    phone="06421 5050-0",
+    email="zbs@rp-musterbergen.example",
+    bank="Musterbank",
+    iban=_iban("53350000", "505050"),
+    style="minimal",
+    accent=(40, 60, 100),
+)
+H_BG_MV = Org(
+    name="Landkreis Beispielmünde – Bußgeldbehörde",
+    kind="authority",
+    street="Kreishaus, Ostseeallee 3",
+    postcode="18055",
+    city="Beispielmünde",
+    region="MV",
+    head=("Land Mecklenburg-Vorpommern · Der Landrat", "Straßenverkehrsamt"),
+    phone="0381 403-0",
+    email="bussgeld@lk-beispielmuende.example",
+    bank="Ostseesparkasse Muster",
+    iban=_iban("13050000", "403000"),
+    style="band",
+    accent=(0, 60, 100),
+)
+H_BG_RP = Org(
+    name="Kreisverwaltung Musterweiler – Bußgeldstelle",
+    kind="authority",
+    street="Kurfürstenstraße 16",
+    postcode="54470",
+    city="Musterweiler",
+    region="RP",
+    head=("Land Rheinland-Pfalz · Kreisverwaltung Musterweiler",),
+    phone="06531 84-0",
+    email="bussgeldstelle@kv-musterweiler.example",
+    bank="Kreissparkasse Musterweiler",
+    iban=_iban("58751230", "840000"),
+    style="logo",
+    accent=(100, 30, 60),
+    monogram="KV",
+)

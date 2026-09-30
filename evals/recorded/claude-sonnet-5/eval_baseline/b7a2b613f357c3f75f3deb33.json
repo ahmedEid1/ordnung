@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8f811aaf63b7492e4495629006f8b412869a7a8aeb25b658bf58fede91d62487\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-04-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"ZFB Zentrale Forderungsbeitreibung s.r.o.\",\"document_date\":\"2025-04-07\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZFB-25-0407-118\"}],\"amounts\":[149.9,96,22.8,268.7],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total claimed debt to collection agency\",\"quote\":\"Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.\",\"computation\":\"Letter dated 07.04.2025 (Monday). The letter states the period as 'binnen 4 Tagen' and also gives an explicit calendar date: 07.04. + 4 days = 11.04.2025 (Friday), matching the stated date. 11.04.2025 is a Friday and not a public holiday in NRW, so no weekend/holiday shift applies. Using the explicit date printed in the letter as the due date.\",\"due_date\":\"2025-04-11\",\"confidence\":\"high\",\"amount\":268.7}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a fake/predatory debt-collection scam: an extremely short 4-day payment deadline is atypical for legitimate German Inkasso procedure.\",\"The payment is demanded to a Slovak IBAN (SK20...) made out to a private individual name ('R. Horváth') rather than to the company account of the alleged creditor or agency — a classic red flag for fraudulent payment instructions; do not transfer money without independently verifying the claim and the recipient.\",\"The letter threatens to obtain a 'Vollstreckungsbescheid' (enforcement order) directly and without further notice; under German law a creditor/agency cannot unilaterally issue such an order — it can only be granted by a court after a formal Mahnverfahren, so this threat appears designed to intimidate.\",\"The statement 'Einwände gegen die Forderung werden nicht mehr bearbeitet' attempts to discourage the recipient from disputing the debt; consumers always retain the right to object to a claimed debt regardless of what a collection letter states — this is a pressure tactic, not a legally binding statement.\",\"No evidence of the underlying contract (e.g., order confirmation, sign-up date, service usage) is provided to substantiate the claimed 'Glücksmuster Premium' subscription debt; the claim's legitimacy cannot be verified from this letter alone.\",\"The sender is a foreign (Slovak) collection firm pursuing a German consumer without any listed German address or supervisory registration details, which is unusual for a legitimate German-market debt collector and should be verified (e.g., via the Bundesamt für Justiz Inkassoregister) before taking any action.\",\"Recommend not paying and not using the contact details in this letter to verify anything; instead verify independently (e.g., contact a consumer protection agency such as Verbraucherzentrale) before responding.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "ZFB Zentrale Forderungsbeitreibung s.r.o.",
+      "document_date": "2025-04-07",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZFB-25-0407-118"
+        }
+      ],
+      "amounts": [
+        149.9,
+        96,
+        22.8,
+        268.7
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total claimed debt to collection agency",
+          "quote": "Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.",
+          "computation": "Letter dated 07.04.2025 (Monday). The letter states the period as 'binnen 4 Tagen' and also gives an explicit calendar date: 07.04. + 4 days = 11.04.2025 (Friday), matching the stated date. 11.04.2025 is a Friday and not a public holiday in NRW, so no weekend/holiday shift applies. Using the explicit date printed in the letter as the due date.",
+          "due_date": "2025-04-11",
+          "confidence": "high",
+          "amount": 268.7
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a fake/predatory debt-collection scam: an extremely short 4-day payment deadline is atypical for legitimate German Inkasso procedure.",
+        "The payment is demanded to a Slovak IBAN (SK20...) made out to a private individual name ('R. Horváth') rather than to the company account of the alleged creditor or agency — a classic red flag for fraudulent payment instructions; do not transfer money without independently verifying the claim and the recipient.",
+        "The letter threatens to obtain a 'Vollstreckungsbescheid' (enforcement order) directly and without further notice; under German law a creditor/agency cannot unilaterally issue such an order — it can only be granted by a court after a formal Mahnverfahren, so this threat appears designed to intimidate.",
+        "The statement 'Einwände gegen die Forderung werden nicht mehr bearbeitet' attempts to discourage the recipient from disputing the debt; consumers always retain the right to object to a claimed debt regardless of what a collection letter states — this is a pressure tactic, not a legally binding statement.",
+        "No evidence of the underlying contract (e.g., order confirmation, sign-up date, service usage) is provided to substantiate the claimed 'Glücksmuster Premium' subscription debt; the claim's legitimacy cannot be verified from this letter alone.",
+        "The sender is a foreign (Slovak) collection firm pursuing a German consumer without any listed German address or supervisory registration details, which is unusual for a legitimate German-market debt collector and should be verified (e.g., via the Bundesamt für Justiz Inkassoregister) before taking any action.",
+        "Recommend not paying and not using the contact details in this letter to verify anything; instead verify independently (e.g., contact a consumer protection agency such as Verbraucherzentrale) before responding."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3374,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2206,
+      "cost_usd": 0.04319239999999999,
+      "duration_ms": 38684,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

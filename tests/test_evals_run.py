@@ -322,13 +322,13 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
     ]
     assert all(r.attachments and r.attachments[0].media_type == "image/jpeg" for r in photo_baseline)
 
-    path = tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json"
+    path = tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json"
     assert outcome.runs[0].results_path == path
     results = json.loads(path.read_text(encoding="utf-8"))
     assert set(results) == {"schema", "meta", "metrics", "comparisons", "gallery", "entries"}
     meta = results["meta"]
     assert (meta["model"], meta["split"], meta["entries"], meta["photos"], meta["scored_items"]) == (
-        "sonnet",
+        eval_run.DEFAULT_MODEL,
         "dev",
         3,
         1,
@@ -447,7 +447,7 @@ async def test_live_run_records_and_replay_reproduces(
     ids = ["dev-invoice_relative-A1-photo", "dev-tax_assessment-A1"]
     live = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, live=True, write_docs=False))
     assert live.ok
-    recorded = sorted(p.parent.name for p in (tmp_path / "recorded" / "sonnet").rglob("*.json"))
+    recorded = sorted(p.parent.name for p in (tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.json"))
     assert (
         recorded.count("eval_baseline") == 6
         and recorded.count("extract") == 2
@@ -495,7 +495,7 @@ def test_replay_miss_is_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
     assert eval_run.run_cli([*args, "--allow-errors", "--quiet"]) == 0
     results = json.loads(
-        (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
+        (tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json").read_text(encoding="utf-8")
     )
     assert results["metrics"]["llm_only"]["errors"] == 1
     assert results["metrics"]["llm_only"]["taxonomy"]["missed"] == 1
@@ -504,10 +504,10 @@ def test_replay_miss_is_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[s
 #: Letters that state a posting day later than their date: the label counts from the stated posting
 #: day (§ 122 Abs. 2 AO), Ordnung deliberately keeps the letter's date (earliest plausible date,
 #: docs/deadline-rules.md § 5) — VERIFICATION.md predicts exactly these early deviations.
-POSTING_DAY_POLICY = {"dev-tax_assessment-B1", "test-tax_assessment-D1"}
+POSTING_DAY_POLICY = {"dev-tax_assessment-B1", "test-tax_assessment-D1", "holdout-tax_assessment-F1"}
 
 
-@pytest.mark.parametrize("split", ["dev", "test"])
+@pytest.mark.parametrize("split", ["dev", "test", "holdout"])
 async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_path: Path, split: str) -> None:
     """If the model read every DateSpec exactly like the truth, which dates would still be wrong?
 
@@ -663,7 +663,7 @@ def test_prompt_text_changed_without_a_version_bump_refuses_to_replay(
     from evals.conditions import ordnung_prompt_hashes
 
     current = ordnung_prompt_hashes()
-    root = tmp_path / "recorded" / "sonnet"
+    root = tmp_path / "recorded" / eval_run.DEFAULT_MODEL
     eval_run.write_prompts_lock(root, current)
     assert eval_run.stale_prompts(root, current) == []
     version, _ = current["extract_system"]
@@ -877,7 +877,9 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     assert live.ok and not live.runs[0].errors
     failed = live.runs[0].predictions["llm_only"]["dev-tax_assessment-A1"]
     assert failed.failed and "no structured output" in failed.failed
-    assert len(list((tmp_path / "recorded" / "sonnet").rglob("*.failure.json"))) == 3  # all baselines
+    assert (
+        len(list((tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.failure.json"))) == 3
+    )  # all baselines
     calls = len(fake.calls)
 
     replay = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, resume=False, write_docs=False))
@@ -894,7 +896,7 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: FakeBackend(Responder()))
     fresh = make_config(tmp_path, ids=ids, live=True, refresh=True, resume=False, write_docs=False)
     assert (await eval_run.run_benchmark(fresh)).ok
-    assert not list((tmp_path / "recorded" / "sonnet").rglob("*.failure.json"))
+    assert not list((tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.failure.json"))
 
 
 def _outcome(accuracy: float, late: float) -> eval_run.RunOutcome:
@@ -954,7 +956,7 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
     assert "python -m evals.run --live --split dev --conditions llm_rules_tool" in flat
     assert "--add-condition llm_rules_tool=evals/results/<new run>.json" in flat
     results = json.loads(
-        (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
+        (tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json").read_text(encoding="utf-8")
     )
     assert results["meta"]["conditions"] == ["ordnung", "llm_only", "llm_rules_text"]
     assert set(results["metrics"]) == {"ordnung", "llm_only", "llm_rules_text"}
@@ -1099,6 +1101,171 @@ async def test_prompt_now_is_shown_beside_the_published_run(tmp_path: Path) -> N
     assert report.main(again) == 0 and "Labels in English." in docs.read_text(encoding="utf-8")
     with pytest.raises(SystemExit):
         report.main([str(held_path), "--prompt-note", str(note_path)])
+
+
+# --------------------------------------------------------------------------------------------------
+# The holdout split: recorded once, shown beside the published run
+# --------------------------------------------------------------------------------------------------
+
+HOLDOUT_IDS = [
+    "holdout-contract_confirmation-E1",
+    "holdout-invoice_relative-E1-photo",
+    "holdout-tax_assessment-F1",
+]
+
+
+async def _holdout_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overrides: Any
+) -> eval_run.RunOutcome:
+    """A small synthetic holdout run: every condition, three holdout letters, the fake model (no real output yet)."""
+    few = [e for e in load_manifest(MANIFEST) if e.id in HOLDOUT_IDS]
+    assert len(few) == len(HOLDOUT_IDS)
+    monkeypatch.setattr(eval_run, "select_entries", lambda *args, **kwargs: list(few))
+    config = make_config(tmp_path, split="holdout", ids=None, **overrides)
+    return await eval_run.run_benchmark(config, backend=FakeBackend(Responder()))
+
+
+async def test_a_holdout_run_never_rewrites_the_published_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The holdout split is recorded once with every condition: the results file is written under the split's
+    name, docs/evals.md never is — not by a complete live run, and not when asked for with --docs."""
+    docs = tmp_path / "docs" / "evals.md"
+    outcome = await _holdout_run(tmp_path, monkeypatch, live=True, write_docs=True)
+    run = outcome.runs[0]
+    assert outcome.ok and run.results is not None and run.results_path is not None
+    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout.json"
+    assert run.results["meta"]["split"] == "holdout" and not run.results["meta"]["partial"]
+    assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
+    assert outcome.docs_path is None and not docs.exists()
+    assert eval_run.build_parser().parse_args(["--split", "holdout"]).split == "holdout"
+    with pytest.raises(SystemExit):
+        eval_run.run_cli(["--split", "holdout", "--docs", "--quiet"])
+    assert "a holdout run never rewrites docs/evals.md" in capsys.readouterr().err
+
+
+async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--holdout-note`` (a second model, an interruption) is kept in the holdout run's file, like
+    ``--prompt-note``, and opens the held-out section; it goes with ``--holdout-run``."""
+    published = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    assert published is not None and holdout is not None
+    published_path, holdout_path = tmp_path / "published.json", tmp_path / "holdout.json"
+    report.write_json(published_path, published)
+    report.write_json(holdout_path, holdout)
+    note = tmp_path / "note.md"
+    note.write_text("Recorded on two models,\n  once each: the table shows the second.\n", encoding="utf-8")
+    docs, chart = tmp_path / "evals.md", tmp_path / "chart.png"
+    args = [str(published_path), "--docs", str(docs), "--chart", str(chart)]
+    with pytest.raises(SystemExit):
+        report.main([*args, "--holdout-note", str(note)])
+    assert "--holdout-note goes with --holdout-run" in capsys.readouterr().err
+    assert report.main([*args, "--holdout-run", str(holdout_path), "--holdout-note", str(note)]) == 0
+    stored = report.load_results(holdout_path)["meta"]["holdout_note"]
+    assert stored == "Recorded on two models, once each: the table shows the second."
+    section = docs.read_text(encoding="utf-8").split("## Held-out run: the holdout split", 1)[1]
+    assert section.split("\n## ", 1)[0].index(stored) < section.index("| Condition |")
+    # the page renders from the file alone afterwards
+    assert report.main([*args, "--holdout-run", str(holdout_path)]) == 0
+    assert stored in docs.read_text(encoding="utf-8")
+
+
+async def test_the_holdout_run_is_shown_beside_the_published_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    published = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    assert published is not None and holdout is not None
+    assert "## Held-out run: the holdout split" not in report.render_markdown([published])
+    page = report.render_markdown([published], holdout_run=holdout)
+    section = page.split("## Held-out run: the holdout split", 1)[1].split("\n## ", 1)[0]
+    # beside the headline, stated plainly, with a row per condition and the published accuracy next to it
+    assert (
+        page.index("## Headline") < page.index("## Held-out run: the holdout split") < page.index("## Method")
+    )
+    assert (
+        "The holdout letters were written after prompt version 11 and before any holdout recording, and are\n"
+        "recorded once with frozen prompts" in section
+    )
+    for condition in eval_run.CONDITIONS:
+        assert (
+            f"| **{report._label(condition)}** | {report.rate(holdout['metrics'][condition]['due_date_accuracy'])}"
+            in section
+        )
+    assert f"| Published run, {published['meta']['split']} split |" in section
+    assert f"{holdout['meta']['entries']} letters ({holdout['meta']['photos']} phone photos" in section
+    assert "Ordnung − LLM only: accuracy" in section  # paired differences on the holdout letters
+    # tax F1 states a posting day later than its date: Ordnung counts from the letter date (early, by design)
+    assert "Ordnung got 1 dated item(s) of the holdout split wrong" in section
+    assert "`holdout-tax_assessment-F1`" in section
+    assert "Every condition was also recorded once on the fresh holdout split" in page.split("\n\n")[1]
+    assert "--split holdout" in page.split("## Reproduce", 1)[1]
+    # a holdout run recorded with another model is replayed with its own model, not the published run's
+    opus = {**holdout, "meta": {**holdout["meta"], "model": "opus"}}
+    opus_page = report.render_markdown([published], holdout_run=opus)
+    assert "(the published run used `claude-sonnet-5`)" in opus_page
+    assert "python -m evals.run --split holdout --model opus " in opus_page.split("## Reproduce", 1)[1]
+    assert "--split holdout --model sonnet" not in opus_page
+    # the page's own text documents the split
+    method = report.method_section()
+    assert "E/F the holdout split" in method and "recorded once with frozen prompts" in method
+    # a run of Ordnung alone qualifies too: the page says what was recorded and renders what the file holds
+    alone = {
+        **holdout,
+        "meta": {**holdout["meta"], "conditions": ["ordnung"]},
+        "metrics": {"ordnung": holdout["metrics"]["ordnung"]},
+        "comparisons": {},
+    }
+    alone_page = report.render_markdown([published], holdout_run=alone)
+    alone_section = alone_page.split("## Held-out run: the holdout split", 1)[1].split("\n## ", 1)[0]
+    assert "Ordnung was also recorded once on the fresh holdout split" in alone_page.split("\n\n")[1]
+    assert "Every condition" not in alone_page.split("\n\n")[1]
+    assert "| **Ordnung** |" in alone_section and "| **LLM only** |" not in alone_section
+    assert "Paired differences" not in alone_section and "`holdout-tax_assessment-F1`" in alone_section
+    assert "> Run on 2026-09-25 from " in alone_section
+    assert f", model `{eval_run.DEFAULT_MODEL}`, commit `" in alone_section
+    # only one complete run on the holdout split with Ordnung in it qualifies
+    not_holdout = {**holdout, "meta": {**holdout["meta"], "split": "test"}}
+    filtered = {**holdout, "meta": {**holdout["meta"], "partial": True}}
+    no_ordnung = {**holdout, "metrics": {c: m for c, m in holdout["metrics"].items() if c != "ordnung"}}
+    for bad in (not_holdout, filtered, no_ordnung):
+        with pytest.raises(ValueError):
+            report.render_markdown([published], holdout_run=bad)
+    # the command line renders it from the results files, and never makes a holdout run the headline
+    published_path, holdout_path, docs = (
+        tmp_path / "published.json",
+        tmp_path / "holdout.json",
+        tmp_path / "page.md",
+    )
+    published_path.write_text(json.dumps(published), encoding="utf-8")
+    holdout_path.write_text(json.dumps(holdout), encoding="utf-8")
+    chart = ["--docs", str(docs), "--chart", str(tmp_path / "chart.png")]
+    assert report.main([str(published_path), "--holdout-run", str(holdout_path), *chart]) == 0
+    assert "## Held-out run: the holdout split" in docs.read_text(encoding="utf-8")
+    for argv in (
+        [str(holdout_path), *chart],
+        [str(published_path), "--holdout-run", str(published_path), *chart],
+    ):
+        with pytest.raises(SystemExit):
+            report.main(argv)
 
 
 # --------------------------------------------------------------------------------------------------

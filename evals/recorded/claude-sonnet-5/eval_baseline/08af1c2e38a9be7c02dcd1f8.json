@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2b619a538243a88ad9447870db50ff694eaa6d95f46a617440c2cfdff52f0313\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterhagen – Die Bürgermeisterin, Untere Bauaufsichtsbehörde\",\"document_date\":\"2027-09-27\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"63.4-NU-2027-0391\"}],\"amounts\":[1500],\"items\":[{\"kind\":\"deadline\",\"title\":\"End residential use of the garden house\",\"quote\":\"Die Wohnnutzung ist bis zum 30.11.2027 vollständig aufzugeben.\",\"computation\":\"The letter states a fixed calendar date, 'bis zum 30.11.2027', which is used as written. 30 Nov 2027 falls on a Tuesday and is not a public holiday in NRW, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2027-11-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage with the Verwaltungsgericht\",\"quote\":\"Die Klage ist binnen eines Monats nach der Bekanntgabe dieser Verfügung beim Verwaltungsgericht Musterkirchen, Justizplatz 1, 45879 Musterkirchen, schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle einzureichen\",\"computation\":\"Letter dated Mon 27.09.2027, sent by a general municipal authority (not a tax office), so the delivery day does not move even onto a weekend/holiday. Under the Bekanntgabefiktion for letters posted on/after 1 Jan 2025, delivery occurs on the 4th day after posting: 27.09.2027 + 4 days = 01.10.2027 (Friday), a working day, so it stands. The one-month Klage period (§74 VwGO) ends on the day with the same number one month later: 01.10.2027 → 01.11.2027. However 01.11.2027 (Monday) is Allerheiligen, a public holiday in NRW where the court sits, so under §57 Abs. 2 VwGO i.V.m. §222 Abs. 2 ZPO the period end moves to the next working day: 02.11.2027 (Tuesday).\",\"due_date\":\"2027-11-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterhagen – Die Bürgermeisterin, Untere Bauaufsichtsbehörde",
+      "document_date": "2027-09-27",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "63.4-NU-2027-0391"
+        }
+      ],
+      "amounts": [
+        1500
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "End residential use of the garden house",
+          "quote": "Die Wohnnutzung ist bis zum 30.11.2027 vollständig aufzugeben.",
+          "computation": "The letter states a fixed calendar date, 'bis zum 30.11.2027', which is used as written. 30 Nov 2027 falls on a Tuesday and is not a public holiday in NRW, so no weekend/holiday adjustment is needed.",
+          "due_date": "2027-11-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage with the Verwaltungsgericht",
+          "quote": "Die Klage ist binnen eines Monats nach der Bekanntgabe dieser Verfügung beim Verwaltungsgericht Musterkirchen, Justizplatz 1, 45879 Musterkirchen, schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle einzureichen",
+          "computation": "Letter dated Mon 27.09.2027, sent by a general municipal authority (not a tax office), so the delivery day does not move even onto a weekend/holiday. Under the Bekanntgabefiktion for letters posted on/after 1 Jan 2025, delivery occurs on the 4th day after posting: 27.09.2027 + 4 days = 01.10.2027 (Friday), a working day, so it stands. The one-month Klage period (§74 VwGO) ends on the day with the same number one month later: 01.10.2027 → 01.11.2027. However 01.11.2027 (Monday) is Allerheiligen, a public holiday in NRW where the court sits, so under §57 Abs. 2 VwGO i.V.m. §222 Abs. 2 ZPO the period end moves to the next working day: 02.11.2027 (Tuesday).",
+          "due_date": "2027-11-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4724,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2319,
+      "cost_usd": 0.057626,
+      "duration_ms": 42263,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

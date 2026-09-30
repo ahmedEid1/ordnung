@@ -1,0 +1,150 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"9316a9d3bb126c80a6ffef6dbdd0481f895b24a855a4abdebdf9709c5ac9131b\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_jcbakmxv29p8"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe G"
+  },
+  "response": {
+    "text": "{\"area\":\"money\",\"case_title\":\"Invoice from TechMarkt Online GmbH for headphones purchase\",\"kind\":\"invoice\",\"language\":\"de\",\"document_date\":\"2026-08-20\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"TechMarkt Online GmbH\",\"kind\":\"retailer\",\"address\":\"Handelsstraße 88, 12353 Beispielburg\",\"email\":\"kundenservice@techmarkt-online.example\",\"phone\":\"0123 6655440\",\"website\":\"techmarkt-online.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielburg HRB 48213\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"},{\"label\":\"WEEE-Reg.-Nr.\",\"value\":\"DE 00000000\"}]},\"summary\":\"TechMarkt Online GmbH billed Sam Rivera €89.99 (invoice TM-2026-0048213, dated 20 August 2026) for one MusterSound Q30 Bluetooth headphones, payable within 14 days of the invoice date.\",\"explanation\":\"This is a standard online-shop invoice for a purchase you already received (delivered 20 August 2026). You bought on account (Kauf auf Rechnung), so you now need to transfer the invoiced amount to the seller's account by the deadline shown, quoting the reference number so the payment is matched to your order. If you miss it, the seller can send a reminder (Mahnung) and eventually charge late fees or interest. Keep this invoice for warranty purposes; the seller's terms mention a statutory right of withdrawal (Widerrufsrecht) if you want to return the item, details of which are in their AGB online.\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},{\"label\":\"Bestellnummer\",\"value\":\"302-5512094\"},{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"}],\"payment\":{\"iban\":\"DE70123478000048213000\",\"iban_valid\":null,\"payee\":\"TechMarkt Online GmbH\",\"reference\":\"TM-2026-0048213\"},\"key_facts\":[{\"label\":\"Invoice amount (Rechnungsbetrag)\",\"value\":\"89,99 €\",\"quote\":\"Rechnungsbetrag   89,99 €\"},{\"label\":\"Net amount (Nettobetrag)\",\"value\":\"75,62 €\",\"quote\":\"Nettobetrag   75,62 €\"},{\"label\":\"VAT (Umsatzsteuer)\",\"value\":\"14,37 €\",\"quote\":\"zzgl. 19 % Umsatzsteuer   14,37 €\"},{\"label\":\"Invoice date (Rechnungsdatum)\",\"value\":\"20.08.2026\",\"quote\":\"Rechnungsdatum 20.08.2026\"},{\"label\":\"Delivery date (Lieferdatum)\",\"value\":\"20.08.2026\",\"quote\":\"Lieferdatum   20.08.2026\"},{\"label\":\"Payment term\",\"value\":\"14 Tage nach Rechnungsdatum\",\"quote\":\"Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the invoice for the Bluetooth headphones\",\"date\":{\"type\":\"relative\",\"anchor\":\"document_date\",\"amount\":14,\"unit\":\"days\",\"nature\":\"payment\",\"text\":\"Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.\",\"shift_rule\":\"auto\"},\"quote\":\"Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.\",\"amount\":89.99,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Transfer €89.99 to the seller's account using the reference TM-2026-0048213, by the deadline shown.\",\"consequence\":\"Late payment may lead to a reminder and additional fees or interest.\",\"priority\":\"normal\"}],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"tax_note\":null,\"urgency\":\"high\",\"warnings\":[],\"high_stakes_kind\":null,\"contract\":null,\"change\":null,\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\"}",
+    "data": {
+      "area": "money",
+      "case_title": "Invoice from TechMarkt Online GmbH for headphones purchase",
+      "kind": "invoice",
+      "language": "de",
+      "document_date": "2026-08-20",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "TechMarkt Online GmbH",
+        "kind": "retailer",
+        "address": "Handelsstraße 88, 12353 Beispielburg",
+        "email": "kundenservice@techmarkt-online.example",
+        "phone": "0123 6655440",
+        "website": "techmarkt-online.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE482133778"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Beispielburg HRB 48213"
+          },
+          {
+            "label": "Steuernummer",
+            "value": "212/5812/0048"
+          },
+          {
+            "label": "WEEE-Reg.-Nr.",
+            "value": "DE 00000000"
+          }
+        ]
+      },
+      "summary": "TechMarkt Online GmbH billed Sam Rivera €89.99 (invoice TM-2026-0048213, dated 20 August 2026) for one MusterSound Q30 Bluetooth headphones, payable within 14 days of the invoice date.",
+      "explanation": "This is a standard online-shop invoice for a purchase you already received (delivered 20 August 2026). You bought on account (Kauf auf Rechnung), so you now need to transfer the invoiced amount to the seller's account by the deadline shown, quoting the reference number so the payment is matched to your order. If you miss it, the seller can send a reminder (Mahnung) and eventually charge late fees or interest. Keep this invoice for warranty purposes; the seller's terms mention a statutory right of withdrawal (Widerrufsrecht) if you want to return the item, details of which are in their AGB online.",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "TM-2026-0048213"
+        },
+        {
+          "label": "Bestellnummer",
+          "value": "302-5512094"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-7719034"
+        }
+      ],
+      "payment": {
+        "iban": "DE70123478000048213000",
+        "iban_valid": null,
+        "payee": "TechMarkt Online GmbH",
+        "reference": "TM-2026-0048213"
+      },
+      "key_facts": [
+        {
+          "label": "Invoice amount (Rechnungsbetrag)",
+          "value": "89,99 €",
+          "quote": "Rechnungsbetrag   89,99 €"
+        },
+        {
+          "label": "Net amount (Nettobetrag)",
+          "value": "75,62 €",
+          "quote": "Nettobetrag   75,62 €"
+        },
+        {
+          "label": "VAT (Umsatzsteuer)",
+          "value": "14,37 €",
+          "quote": "zzgl. 19 % Umsatzsteuer   14,37 €"
+        },
+        {
+          "label": "Invoice date (Rechnungsdatum)",
+          "value": "20.08.2026",
+          "quote": "Rechnungsdatum 20.08.2026"
+        },
+        {
+          "label": "Delivery date (Lieferdatum)",
+          "value": "20.08.2026",
+          "quote": "Lieferdatum   20.08.2026"
+        },
+        {
+          "label": "Payment term",
+          "value": "14 Tage nach Rechnungsdatum",
+          "quote": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug."
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the invoice for the Bluetooth headphones",
+          "date": {
+            "type": "relative",
+            "anchor": "document_date",
+            "amount": 14,
+            "unit": "days",
+            "nature": "payment",
+            "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+            "shift_rule": "auto"
+          },
+          "quote": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+          "amount": 89.99,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Transfer €89.99 to the seller's account using the reference TM-2026-0048213, by the deadline shown.",
+          "consequence": "Late payment may lead to a reminder and additional fees or interest.",
+          "priority": "normal"
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "tax_note": null,
+      "urgency": "high",
+      "warnings": [],
+      "high_stakes_kind": null,
+      "contract": null,
+      "change": null,
+      "title": "Invoice from TechMarkt Online GmbH – €89.99"
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 6057,
+      "cache_read_tokens": 20408,
+      "cache_creation_tokens": 6803,
+      "cost_usd": 0.0918716,
+      "duration_ms": 47141,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

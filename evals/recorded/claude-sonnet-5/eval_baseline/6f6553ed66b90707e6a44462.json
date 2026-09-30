@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1895a27dcb843ad404a99d9481342356db1067e2e095978f5474db0c8f52934b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-D1"
+    ],
+    "prompt_head": "Today is Friday, 2026-09-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Example Student Health Plan, Inc.\",\"document_date\":\"2026-09-08\",\"references\":[{\"label\":\"Member ID\",\"value\":\"ESHP-88120-04\"},{\"label\":\"Claim no.\",\"value\":\"CLM-2026-55181\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit itemized bill and proof of payment for ER claim\",\"quote\":\"Your claim documents must be received by September 30, 2026.\",\"computation\":\"The letter (dated September 8, 2026) states a fixed calendar date by which the requested itemized bill and proof of payment must be received: September 30, 2026. This is a private US company (not a German authority), so no statutory deemed-delivery rule applies; the date is simply the printed deadline. September 30, 2026 is a Wednesday, so no weekend/holiday shift under §193 BGB is needed even if such rules were applied.\",\"due_date\":\"2026-09-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender is a private US company handling a health-insurance claim for an emergency room visit; if the claim documents are not received by the stated deadline the claim will simply be closed rather than referred elsewhere, so no unusual payment demand or pressure was found, but the person should verify the claims email address (claims@eshp.example) is the one on their actual policy documents before sending sensitive medical or payment records.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Example Student Health Plan, Inc.",
+      "document_date": "2026-09-08",
+      "references": [
+        {
+          "label": "Member ID",
+          "value": "ESHP-88120-04"
+        },
+        {
+          "label": "Claim no.",
+          "value": "CLM-2026-55181"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit itemized bill and proof of payment for ER claim",
+          "quote": "Your claim documents must be received by September 30, 2026.",
+          "computation": "The letter (dated September 8, 2026) states a fixed calendar date by which the requested itemized bill and proof of payment must be received: September 30, 2026. This is a private US company (not a German authority), so no statutory deemed-delivery rule applies; the date is simply the printed deadline. September 30, 2026 is a Wednesday, so no weekend/holiday shift under §193 BGB is needed even if such rules were applied.",
+          "due_date": "2026-09-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender is a private US company handling a health-insurance claim for an emergency room visit; if the claim documents are not received by the stated deadline the claim will simply be closed rather than referred elsewhere, so no unusual payment demand or pressure was found, but the person should verify the claims email address (claims@eshp.example) is the one on their actual policy documents before sending sensitive medical or payment records."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2603,
+      "cache_read_tokens": 14889,
+      "cache_creation_tokens": 3872,
+      "cost_usd": 0.044503799999999996,
+      "duration_ms": 25137,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

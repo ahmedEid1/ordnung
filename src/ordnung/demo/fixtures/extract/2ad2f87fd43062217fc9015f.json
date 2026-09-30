@@ -1,0 +1,99 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"ea80f2c37670382982acb8f83f9e668150c483b98cb8f1e700e8aa9f616a739c\",\"language\":\"en\",\"pages\":[[1,\"transcript\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_xa0f5gvpe0w2"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"area\":\"health\",\"case_title\":\"Dental Appointment – Dr. Anna Beispiel\",\"kind\":\"appointment\",\"language\":\"de\",\"document_date\":null,\"sender\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\",\"kind\":\"doctor\",\"address\":\"Lindenallee 8, 12345 Musterstadt\",\"phone\":\"0123 334455\",\"website\":\"zahnarzt-beispiel.example\",\"identifiers\":[]},\"recipient_name\":\"Sam Rivera\",\"title\":\"Dental checkup and cleaning appointment\",\"summary\":\"Dr. Anna Beispiel's dental practice confirms an appointment for Sam Rivera on 8 October 2026 at 09:15 for a checkup and professional teeth cleaning (PZR).\",\"explanation\":\"This is a reminder of your upcoming dental appointment. Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte). If you cannot make it, cancel at least 24 hours in advance to avoid inconveniencing the practice; some practices charge a fee for late cancellations, though this letter does not mention one.\",\"urgency\":\"normal\",\"tax_relevant\":false,\"tax_note\":null,\"items\":[{\"kind\":\"appointment\",\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\",\"priority\":\"normal\",\"direction\":null,\"amount\":null,\"currency\":null,\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-08\",\"time\":\"09:15\",\"text\":\"Do 08.10.2026 · 09:15 Uhr\",\"nature\":\"appointment\",\"shift_rule\":\"none\",\"anchor\":null,\"anchor_date\":null,\"delivery_rule\":\"none\",\"legal_basis\":null,\"amount_value\":null},\"quote\":\"Do 08.10.2026 · 09:15 Uhr\",\"recurrence\":null}],\"key_facts\":[{\"label\":\"Appointment date and time\",\"value\":\"Do 08.10.2026 · 09:15 Uhr\",\"quote\":\"Do 08.10.2026 · 09:15 Uhr\"},{\"label\":\"Cancellation notice\",\"value\":\"at least 24 hours before\",\"quote\":\"Termine, die Sie nicht wahrnehmen können, sagen Sie bitte mindestens 24 Stunden vorher ab.\"}],\"references\":[],\"payment\":null,\"remedy\":null,\"contract\":null,\"change\":null,\"high_stakes_kind\":null,\"warnings\":[],\"transcript\":null}",
+    "data": {
+      "area": "health",
+      "case_title": "Dental Appointment – Dr. Anna Beispiel",
+      "kind": "appointment",
+      "language": "de",
+      "document_date": null,
+      "sender": {
+        "name": "Zahnarztpraxis Dr. Anna Beispiel",
+        "kind": "doctor",
+        "address": "Lindenallee 8, 12345 Musterstadt",
+        "phone": "0123 334455",
+        "website": "zahnarzt-beispiel.example",
+        "identifiers": []
+      },
+      "recipient_name": "Sam Rivera",
+      "title": "Dental checkup and cleaning appointment",
+      "summary": "Dr. Anna Beispiel's dental practice confirms an appointment for Sam Rivera on 8 October 2026 at 09:15 for a checkup and professional teeth cleaning (PZR).",
+      "explanation": "This is a reminder of your upcoming dental appointment. Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte). If you cannot make it, cancel at least 24 hours in advance to avoid inconveniencing the practice; some practices charge a fee for late cancellations, though this letter does not mention one.",
+      "urgency": "normal",
+      "tax_relevant": false,
+      "tax_note": null,
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Dental checkup and cleaning (PZR)",
+          "action": "Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)",
+          "consequence": "Cancel at least 24 hours in advance if you cannot attend",
+          "location": "Lindenallee 8, 12345 Musterstadt",
+          "priority": "normal",
+          "direction": null,
+          "amount": null,
+          "currency": null,
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-08",
+            "time": "09:15",
+            "text": "Do 08.10.2026 · 09:15 Uhr",
+            "nature": "appointment",
+            "shift_rule": "none",
+            "anchor": null,
+            "anchor_date": null,
+            "delivery_rule": "none",
+            "legal_basis": null,
+            "amount_value": null
+          },
+          "quote": "Do 08.10.2026 · 09:15 Uhr",
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Appointment date and time",
+          "value": "Do 08.10.2026 · 09:15 Uhr",
+          "quote": "Do 08.10.2026 · 09:15 Uhr"
+        },
+        {
+          "label": "Cancellation notice",
+          "value": "at least 24 hours before",
+          "quote": "Termine, die Sie nicht wahrnehmen können, sagen Sie bitte mindestens 24 Stunden vorher ab."
+        }
+      ],
+      "references": [],
+      "payment": null,
+      "remedy": null,
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null,
+      "warnings": [],
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1737,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1929,
+      "cost_usd": 0.0268806,
+      "duration_ms": 13728,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

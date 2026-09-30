@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"2884b2ce50c8d8d92831f279a5900a6d498935e3ae43fcfad731f95edef1dc47\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Pflegeheim am Park gGmbH\",\"document_date\":\"2027-04-16\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"P-2291\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Respond to offer of permanent contract extension\",\"quote\":\"Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.\",\"computation\":\"Letter dated Friday 16.04.2027; period is 'binnen 6 Werktagen ab Datum dieses Schreibens'. Applying the default rule for periods running 'ab' a stated date (analogous to §187 Abs.1 BGB), the day of the letter itself is not counted and counting starts the next day. Werktage per the letter = Monday–Saturday, excluding statutory holidays; Sundays are skipped. Counting: Sat 17.04. = Werktag 1; Sun 18.04. skipped; Mon 19.04. = Werktag 2 (no NRW holiday that day - Easter Monday 2027 fell on 29.03., not in April); Tue 20.04. = Werktag 3; Wed 21.04. = Werktag 4; Thu 22.04. = Werktag 5; Fri 23.04. = Werktag 6. Hence the 6th Werktag, and the deadline for the employee's decision, is Friday 23.04.2027. Note: if 'ab Datum' were instead read as including the letter's own date as the first Werktag, the deadline would fall one day earlier, on Thursday 22.04.2027 — see warnings.\",\"due_date\":\"2027-04-23\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The phrase 'binnen 6 Werktagen ab Datum dieses Schreibens' is ambiguous as to whether the letter's own date (16.04.2027, a Friday and itself a Werktag) counts as the first workday; this record applies the standard legal default of excluding the starting day (deadline 23.04.2027), but if the employer intends to include it, the effective deadline would be one day earlier (22.04.2027) — worth confirming directly with the employer to avoid missing the window.\",\"This is an offer to convert a fixed-term contract into a permanent one; no monetary demand or authority remedy procedure is involved, so no Rechtsbehelfsbelehrung applies.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Pflegeheim am Park gGmbH",
+      "document_date": "2027-04-16",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "P-2291"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Respond to offer of permanent contract extension",
+          "quote": "Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens; als Werktage zählen dabei Montag bis Samstag, gesetzliche Feiertage nicht.",
+          "computation": "Letter dated Friday 16.04.2027; period is 'binnen 6 Werktagen ab Datum dieses Schreibens'. Applying the default rule for periods running 'ab' a stated date (analogous to §187 Abs.1 BGB), the day of the letter itself is not counted and counting starts the next day. Werktage per the letter = Monday–Saturday, excluding statutory holidays; Sundays are skipped. Counting: Sat 17.04. = Werktag 1; Sun 18.04. skipped; Mon 19.04. = Werktag 2 (no NRW holiday that day - Easter Monday 2027 fell on 29.03., not in April); Tue 20.04. = Werktag 3; Wed 21.04. = Werktag 4; Thu 22.04. = Werktag 5; Fri 23.04. = Werktag 6. Hence the 6th Werktag, and the deadline for the employee's decision, is Friday 23.04.2027. Note: if 'ab Datum' were instead read as including the letter's own date as the first Werktag, the deadline would fall one day earlier, on Thursday 22.04.2027 — see warnings.",
+          "due_date": "2027-04-23",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The phrase 'binnen 6 Werktagen ab Datum dieses Schreibens' is ambiguous as to whether the letter's own date (16.04.2027, a Friday and itself a Werktag) counts as the first workday; this record applies the standard legal default of excluding the starting day (deadline 23.04.2027), but if the employer intends to include it, the effective deadline would be one day earlier (22.04.2027) — worth confirming directly with the employer to avoid missing the window.",
+        "This is an offer to convert a fixed-term contract into a permanent one; no monetary demand or authority remedy procedure is involved, so no Rechtsbehelfsbelehrung applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3806,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1986,
+      "cost_usd": 0.04663239999999999,
+      "duration_ms": 36172,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

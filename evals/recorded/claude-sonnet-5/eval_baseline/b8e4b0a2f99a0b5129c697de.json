@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"361b73671c39126e46bd6cabfc665bc544d4aeefbf4da7fa6c847523597e3482\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-02-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-appointment-D1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-02-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Kreis Beispielförde – Zulassungsstelle\",\"document_date\":\"2026-02-24\",\"references\":[{\"label\":\"Buchungsnummer\",\"value\":\"ZUL-26-07731\"}],\"amounts\":[37.6],\"items\":[{\"kind\":\"appointment\",\"title\":\"Vehicle re-registration appointment (Samstagsservice)\",\"quote\":\"wir bestätigen Ihren Termin im Samstagsservice am 7. März 2026 (Samstag) um 10:00 Uhr, Schalter 2.\",\"computation\":\"The letter states a fixed calendar date and time for the appointment: 7 March 2026 at 10:00, counter 2. Appointments keep the date as printed and are not subject to delivery-fiction or period-counting rules.\",\"due_date\":\"2026-03-07\",\"confidence\":\"high\",\"amount\":37.6}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The stated fee of approx. 37.60 € is only an estimate ('ca.'); the exact amount will be confirmed at the appointment and should be verified/paid via the official SEPA mandate for Kfz-Steuer, not any other payment instructions.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Kreis Beispielförde – Zulassungsstelle",
+      "document_date": "2026-02-24",
+      "references": [
+        {
+          "label": "Buchungsnummer",
+          "value": "ZUL-26-07731"
+        }
+      ],
+      "amounts": [
+        37.6
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Vehicle re-registration appointment (Samstagsservice)",
+          "quote": "wir bestätigen Ihren Termin im Samstagsservice am 7. März 2026 (Samstag) um 10:00 Uhr, Schalter 2.",
+          "computation": "The letter states a fixed calendar date and time for the appointment: 7 March 2026 at 10:00, counter 2. Appointments keep the date as printed and are not subject to delivery-fiction or period-counting rules.",
+          "due_date": "2026-03-07",
+          "confidence": "high",
+          "amount": 37.6
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The stated fee of approx. 37.60 € is only an estimate ('ca.'); the exact amount will be confirmed at the appointment and should be verified/paid via the official SEPA mandate for Kfz-Steuer, not any other payment instructions."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 849,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1895,
+      "cost_usd": 0.01718,
+      "duration_ms": 8201,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

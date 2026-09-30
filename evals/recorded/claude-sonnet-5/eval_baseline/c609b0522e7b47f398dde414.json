@@ -1,0 +1,92 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"6a12ce144dccdd4269cc6d60517bebfb0778daf7fe8870461666118f15fd3381\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-C2"
+    ],
+    "prompt_head": "Today is Friday, 2025-12-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Muster Bank AG\",\"document_date\":\"2025-12-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"7712 0045 88\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit ID copy and self-disclosure form (KYC update)\",\"quote\":\"Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.\",\"computation\":\"This is a private-company (bank) letter, so no statutory 'deemed delivery' rule applies; the period runs from the letter's own date, 18.12.2025 (Thursday), as stated ('nach dem Datum dieses Schreibens'). Under § 187 Abs. 1 BGB the day of the event (18.12.) is not counted; counting starts 19.12.2025. The letter defines 'Werktage' itself as Monday to Saturday, excluding public holidays. Counting 8 such working days from 19.12.2025 in NRW: 19 (Fri), 20 (Sat) = 2; 21 (Sun) skipped; 22, 23, 24 (Mon-Wed) = 5; 25 (Thu, 1. Weihnachtstag) and 26 (Fri, 2. Weihnachtstag) skipped; 27 (Sat) = 6; 28 (Sun) skipped; 29 (Mon) = 7; 30 (Tue) = 8th working day. So the documents must reach the bank by Tuesday 30.12.2025. Confirmed by the deadline tool and the working-day calculator.\",\"due_date\":\"2025-12-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter threatens to block the securities account ('Depot') for purchases if the documents are not submitted in time, but does not say through which channel (post, email, portal) the ID copy and form should be sent; verify the correct, secure channel with the bank directly (e.g. via the phone number or online banking already known to you) before sending a copy of your ID and personal data.\",\"Sender, branch and account details in this letter (Muster Bank AG, Musterfurt, IBAN DE70 3705 0198 0001 0000 01) appear to be placeholder/template values rather than a real institution; confirm the sender's identity through an independent channel before acting.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Muster Bank AG",
+      "document_date": "2025-12-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "7712 0045 88"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit ID copy and self-disclosure form (KYC update)",
+          "quote": "Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein.",
+          "computation": "This is a private-company (bank) letter, so no statutory 'deemed delivery' rule applies; the period runs from the letter's own date, 18.12.2025 (Thursday), as stated ('nach dem Datum dieses Schreibens'). Under § 187 Abs. 1 BGB the day of the event (18.12.) is not counted; counting starts 19.12.2025. The letter defines 'Werktage' itself as Monday to Saturday, excluding public holidays. Counting 8 such working days from 19.12.2025 in NRW: 19 (Fri), 20 (Sat) = 2; 21 (Sun) skipped; 22, 23, 24 (Mon-Wed) = 5; 25 (Thu, 1. Weihnachtstag) and 26 (Fri, 2. Weihnachtstag) skipped; 27 (Sat) = 6; 28 (Sun) skipped; 29 (Mon) = 7; 30 (Tue) = 8th working day. So the documents must reach the bank by Tuesday 30.12.2025. Confirmed by the deadline tool and the working-day calculator.",
+          "due_date": "2025-12-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter threatens to block the securities account ('Depot') for purchases if the documents are not submitted in time, but does not say through which channel (post, email, portal) the ID copy and form should be sent; verify the correct, secure channel with the bank directly (e.g. via the phone number or online banking already known to you) before sending a copy of your ID and personal data.",
+        "Sender, branch and account details in this letter (Muster Bank AG, Musterfurt, IBAN DE70 3705 0198 0001 0000 01) appear to be placeholder/template values rather than a real institution; confirm the sender's identity through an independent channel before acting."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3497,
+      "cache_read_tokens": 25634,
+      "cache_creation_tokens": 5903,
+      "cost_usd": 0.0637208,
+      "duration_ms": 33482,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 8,
+            "unit": "werktage",
+            "anchor": "document_date",
+            "anchor_date": "2025-12-18",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "Geldwäschegesetz - Selbstauskunft",
+            "text": "Bitte reichen Sie die Unterlagen binnen 8 Werktagen (Montag bis Samstag, ohne Feiertage) nach dem Datum dieses Schreibens ein."
+          },
+          "document_date": "2025-12-18",
+          "sender_kind": "bank",
+          "sender_name": "Muster Bank AG",
+          "region": "NW",
+          "recipient_region": "NW",
+          "today": "2025-12-19"
+        },
+        "result": "{\"due_date\":\"2025-12-30\",\"weekday\":\"Tuesday\",\"summary\":\"8 working days (Mon–Sat) after the letter's date (Thu 18 Dec 2025) is Tue 30 Dec 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 18 Dec 2025\",\"date\":\"2025-12-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"8 working days (Mon–Sat) later: Tue 30 Dec 2025\",\"date\":\"2025-12-30\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2025-12-19\",\"letter_date\":\"2025-12-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2025-12-18",
+          "days": 8,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2025-12-18\",\"days\":8,\"day_type\":\"werktage\",\"date\":\"2025-12-30\",\"weekday\":\"Tuesday\",\"skipped\":[{\"date\":\"2025-12-21\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2025-12-25\",\"weekday\":\"Thursday\",\"reason\":\"Erster Weihnachtstag\"},{\"date\":\"2025-12-26\",\"weekday\":\"Friday\",\"reason\":\"Zweiter Weihnachtstag\"},{\"date\":\"2025-12-28\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

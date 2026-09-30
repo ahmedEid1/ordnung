@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a76a67a0095537f3ef549ce52825f8dfc6e53041a42e2fcefd82cc230284b4e6\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2027-04-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Jobcenter Beispielsee\",\"document_date\":\"2027-04-23\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"08154//0042731\"},{\"label\":\"Kundennummer\",\"value\":\"731D882405\"}],\"amounts\":[1087.6],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit payslips for February–April 2027\",\"quote\":\"Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.\",\"computation\":\"The letter states an explicit calendar date: 14.05.2027. Checking the weekday (2027-01-01 is a Friday, so by day-count 14.05.2027 falls on a Friday), which is a normal business day in Bavaria, so no weekend/holiday shift under §193 BGB is needed. Due date = 14.05.2027 as printed.\",\"due_date\":\"2027-05-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) deadline\",\"quote\":\"Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.\",\"computation\":\"Letter dated Friday 23.04.2027; assuming dispatch by post on this date, the delivery (Bekanntgabe) fiction of § 37 Abs. 2 SGB X applies: deemed delivered on the 3rd day after posting, i.e. 26.04.2027 (24th is Sat, 25th is Sun, landing on Monday 26.04.2027, which is itself not a Saturday/Sunday/holiday, so no further shift). The one-month Widerspruch period of § 84 SGG begins the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same date as the Bekanntgabe day, i.e. 26.05.2027. That day is a Wednesday and not a Bavarian public holiday (Fronleichnam 2027 falls one day later, on 27.05.2027), so no shift is required. Due date = 26.05.2027.\",\"due_date\":\"2027-05-26\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The Widerspruch deadline assumes the letter was actually posted on its printed date (23.04.2027); if postal dispatch was delayed, the delivery-fiction date and thus the 26.05.2027 deadline would shift accordingly.\",\"The letter warns that without the requested payslips for the affected months, the Jobcenter may determine no entitlement existed for those months (§ 41a Abs. 3 SGB II) — make sure the 14.05.2027 submission deadline is met.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Jobcenter Beispielsee",
+      "document_date": "2027-04-23",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "08154//0042731"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "731D882405"
+        }
+      ],
+      "amounts": [
+        1087.6
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit payslips for February–April 2027",
+          "quote": "Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.",
+          "computation": "The letter states an explicit calendar date: 14.05.2027. Checking the weekday (2027-01-01 is a Friday, so by day-count 14.05.2027 falls on a Friday), which is a normal business day in Bavaria, so no weekend/holiday shift under §193 BGB is needed. Due date = 14.05.2027 as printed.",
+          "due_date": "2027-05-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) deadline",
+          "quote": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.",
+          "computation": "Letter dated Friday 23.04.2027; assuming dispatch by post on this date, the delivery (Bekanntgabe) fiction of § 37 Abs. 2 SGB X applies: deemed delivered on the 3rd day after posting, i.e. 26.04.2027 (24th is Sat, 25th is Sun, landing on Monday 26.04.2027, which is itself not a Saturday/Sunday/holiday, so no further shift). The one-month Widerspruch period of § 84 SGG begins the day after Bekanntgabe (§ 187 Abs. 1 BGB) and ends, per § 188 Abs. 2 BGB, on the day of the following month bearing the same date as the Bekanntgabe day, i.e. 26.05.2027. That day is a Wednesday and not a Bavarian public holiday (Fronleichnam 2027 falls one day later, on 27.05.2027), so no shift is required. Due date = 26.05.2027.",
+          "due_date": "2027-05-26",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The Widerspruch deadline assumes the letter was actually posted on its printed date (23.04.2027); if postal dispatch was delayed, the delivery-fiction date and thus the 26.05.2027 deadline would shift accordingly.",
+        "The letter warns that without the requested payslips for the affected months, the Jobcenter may determine no entitlement existed for those months (§ 41a Abs. 3 SGB II) — make sure the 14.05.2027 submission deadline is met."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7370,
+      "cache_read_tokens": 8429,
+      "cache_creation_tokens": 7465,
+      "cost_usd": 0.10525379999999998,
+      "duration_ms": 71455,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

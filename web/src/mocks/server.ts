@@ -345,6 +345,13 @@ function inboxDirProblem(value: string): string | null {
   return null;
 }
 
+/** Like the API: a model id or alias as Claude Code takes it — no whitespace, not starting with a dash (it follows `--model` on argv). */
+function modelProblem(value: string): string | null {
+  if (!value) return "Enter a model id or alias, like claude-sonnet-5 or sonnet.";
+  if (!/^[^\s-]\S*$/.test(value)) return "A model name has no spaces and doesn't start with a dash — like claude-sonnet-5 or sonnet[1m].";
+  return null;
+}
+
 function folderStatus(db: MockDb, canRead: boolean): FolderStatus {
   const s = db.state.settings;
   return {
@@ -874,9 +881,9 @@ function workingDays(d: Date, n: number): Date {
 
 /**
  * The notice terms in words, as the API's `entered_notice` says them — null when they give no dates by
- * themselves: a period with its basis (a job's without one runs to the 15th or the end of a month), or the
- * day of the month notice must arrive by, with the period asked for too; a fixed-term job's early notice
- * is named.
+ * themselves: a period with its basis (a job's without one runs to the 15th or the end of a month), the
+ * day of the month notice must arrive by, with the period asked for too, or — for a job or a lease — the
+ * statutory notice periods the contract names; a fixed-term job's early notice is named.
  */
 function enteredNotice(c: Contract): string | null {
   const { notice_value: n, notice_unit: unit, notice_basis: basis, notice_day: day } = c;
@@ -886,6 +893,7 @@ function enteredNotice(c: Contract): string | null {
   if (day && basis === "end_of_month") words = `${period ?? "notice"} by the ${ordinal(day)} of the month, to the end of that month`;
   else if (period && basis) words = `${period} ${NOTICE_BASIS_COPY[basis].label}`;
   else if (period && job) words = `${period} to the 15th or the end of a month`;
+  else if (c.notice_statutory && (job || c.category === "rent")) words = "the statutory notice periods";
   else return null;
   return job && c.end_date && c.notice_before_end ? `${words}, also before the fixed term ends` : words;
 }
@@ -1028,6 +1036,10 @@ function recomputeNotice(db: MockDb, c: Contract) {
   };
 }
 
+/** The engine's note on a job whose contract names the statutory notice periods (`_STATUTORY_NOTE`). */
+const STATUTORY_JOB_NOTE =
+  "Your contract names the statutory notice periods: for you, four weeks to the 15th or the end of a month (§ 622 Abs. 1 BGB). The longer periods of § 622 Abs. 2 BGB bind only your employer, unless your contract extends them to you (§ 622 Abs. 6 BGB).";
+
 /**
  * Like the rules engine for a fixed-term job once the person entered its notice terms (`_ends_by_itself`,
  * `_plan_employment`): it ends by itself on its end date unless its contract lets it be ended earlier by
@@ -1039,9 +1051,12 @@ function recomputeJob(db: MockDb, c: Contract) {
   if (!c.computed || !c.end_date || c.end_date < db.today) return;
   const today = parseISO(db.today);
   const end = parseISO(c.end_date);
-  const fixed = (label: string) => {
+  // the engine names the statutory periods the contract names only where notice was planned
+  const others = (c.computed.notes ?? []).filter((note) => note !== STATUTORY_JOB_NOTE);
+  const fixed = (label: string, notes = others) => {
     c.computed = {
       ...c.computed!,
+      notes,
       current_term_end: c.end_date,
       cancel_by: null,
       send_by: null,
@@ -1060,7 +1075,10 @@ function recomputeJob(db: MockDb, c: Contract) {
   let n = c.notice_value ?? 4;
   let unit: NoticeUnit = c.notice_unit ?? "weeks";
   let basis = c.notice_basis;
-  if (!c.notice_value || !c.notice_unit) warnings.push("No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your contract or collective agreement for a longer one.");
+  // a contract that names the statutory periods states the four weeks (`notice_statutory`): no warning, a note
+  const statutory = c.notice_statutory && (!c.notice_value || !c.notice_unit);
+  if ((!c.notice_value || !c.notice_unit) && !statutory) warnings.push("No notice period found; we used the statutory four weeks (§ 622 Abs. 1 BGB) — check your contract or collective agreement for a longer one.");
+  const notes = statutory ? [...others, STATUTORY_JOB_NOTE] : others;
   // before the fixed term's end, § 622 Abs. 1 BGB at least: a shorter notice, or notice to any day, is usually the probation period's
   const shorter = latestReceipt(end, n, unit) > latestReceipt(end, 4, "weeks");
   if (shorter || basis === "any_time") {
@@ -1079,7 +1097,7 @@ function recomputeJob(db: MockDb, c: Contract) {
     }
   })();
   const cancelBy = deadline(exit);
-  if (exit >= end) return fixed(`Fixed term: notice can't end it sooner, so it ends on ${mockDay(end)}`);
+  if (exit >= end) return fixed(`Fixed term: notice can't end it sooner, so it ends on ${mockDay(end)}`, notes);
   const { safe, sendBy, late } = sendingDates(cancelBy, today);
   if (late) warnings.push("The usual sending time has passed — hand the signed letter over in person (with a witness) or by messenger today.");
   const steps: ContractComputation["steps"] = [
@@ -1099,6 +1117,7 @@ function recomputeJob(db: MockDb, c: Contract) {
     earliest_exit: mockIso(exit),
     confidence: warnings.some((w) => w.startsWith("No notice period")) ? "medium" : "high",
     warnings,
+    notes,
     summary: `To leave on ${mockDay(exit)}, your notice must arrive by ${mockDay(cancelBy)}${send}. If you don't give notice, it ends by itself on ${mockDay(end)}.`,
     steps,
     rule_ids: ["bgb_622", ...steps.map((s) => s.rule_id!)],
@@ -1173,6 +1192,11 @@ const routes: [string, string, Handler][] = [
         const problem = inboxDirProblem(patch.inbox_dir);
         if (problem) throw new HttpError(422, problem);
         patch.inbox_dir = patch.inbox_dir.trim();
+      }
+      if (typeof patch.model === "string") {
+        patch.model = patch.model.trim();
+        const problem = modelProblem(patch.model);
+        if (problem) throw new HttpError(422, problem);
       }
       const before = db.state.settings.inbox_dir;
       db.state.settings = { ...db.state.settings, ...patch, models, ...cleared };
@@ -1573,9 +1597,10 @@ const routes: [string, string, Handler][] = [
     ({ db, params, body }) => {
       const c = db.state.contracts.find((x) => x.id === params.id) ?? notFound("Unknown contract.");
       const notice = pick<Contract>(body, ["notice_value", "notice_unit", "notice_basis"]);
-      // like the API: notice terms the person saves replace the letter's day of the month unless they give one
-      // (an Undo sends it back)
-      const day = { ...(Object.keys(notice).length ? { notice_day: null } : {}), ...pick<Contract>(body, ["notice_day"]) };
+      // like the API: notice terms the person saves replace the letter's day of the month and statutory periods
+      // unless they give them (an Undo sends them back)
+      const cleared = Object.keys(notice).length ? { notice_day: null, notice_statutory: false } : {};
+      const day = { ...cleared, ...pick<Contract>(body, ["notice_day", "notice_statutory"]) };
       const terms = { ...notice, ...day, ...pick<Contract>(body, ["notice_before_end"]) };
       Object.assign(c, pick<Contract>(body, ["name", "category", "status", "cost_amount", "cost_interval", "end_date", "customer_number"]), terms, { updated_at: nowTs() });
       // like the API: the rules engine works the dates out again from the new terms, and the terms

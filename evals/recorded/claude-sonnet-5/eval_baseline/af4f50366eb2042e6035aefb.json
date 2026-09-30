@@ -1,0 +1,124 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7e43ee26bb18e2aa77b1fdff8c603c7342b65a1f7e83597310d53ad5453cdee9\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2026-01-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-tax_assessment-D1"
+    ],
+    "prompt_head": "Today is Monday, 2026-01-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbach\",\"document_date\":\"2025-12-31\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"156/274/61023\"}],\"amounts\":[1236],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay income tax back-payment\",\"quote\":\"Zu zahlen: 1.236,00 € – fällig am 05.02.2026\",\"computation\":\"The letter states a fixed due date for the payment: 05.02.2026 (a Thursday, a normal business day in Bayern, so no shift needed). Used as printed.\",\"due_date\":\"2026-02-05\",\"confidence\":\"high\",\"amount\":1236},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.\",\"computation\":\"The letter itself states it was posted on 02.01.2026 ('Dieser Bescheid wurde am 02.01.2026 zur Post gegeben'). Under § 122 Abs. 2 Nr. 1 AO a tax letter posted domestically counts as delivered (bekannt gegeben) on the 4th day after posting: 02.01.2026 + 4 days = 06.01.2026 (Tuesday). That day is Heilige Drei Könige, a public holiday in Bayern, so under § 108 Abs. 3 AO the deemed-delivery day shifts to the next working day, Wed 07.01.2026. The one-month Einspruch period (§ 355 AO) starts the day after (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO), i.e. 08.01.2026, and ends one month later on the day of 07.01.2026's date-equivalent: Sat 07.02.2026 (§ 188 Abs. 2 BGB). Since 07.02.2026 is a Saturday, the deadline shifts to the next business day, Mon 09.02.2026 (§ 108 Abs. 3 AO).\",\"due_date\":\"2026-02-09\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter's printed date is 31.12.2025 but it states it was actually posted later, on 02.01.2026 ('zur Post gegeben'); the Einspruch deadline above uses the later, stated posting date as it is the more specific and reliable fact, but if the envelope shows a different postmark the deadline could shift.\",\"The tax office's own account details are printed on the letter (IBAN DE32 7005 0000 0000 0123 45, a valid German IBAN with bank code 70050000); verify these against a previous, independently known Finanzamt letter before paying, as a well-formed IBAN alone does not confirm the payee.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbach",
+      "document_date": "2025-12-31",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "156/274/61023"
+        }
+      ],
+      "amounts": [
+        1236
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay income tax back-payment",
+          "quote": "Zu zahlen: 1.236,00 € – fällig am 05.02.2026",
+          "computation": "The letter states a fixed due date for the payment: 05.02.2026 (a Thursday, a normal business day in Bayern, so no shift needed). Used as printed.",
+          "due_date": "2026-02-05",
+          "confidence": "high",
+          "amount": 1236
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden.",
+          "computation": "The letter itself states it was posted on 02.01.2026 ('Dieser Bescheid wurde am 02.01.2026 zur Post gegeben'). Under § 122 Abs. 2 Nr. 1 AO a tax letter posted domestically counts as delivered (bekannt gegeben) on the 4th day after posting: 02.01.2026 + 4 days = 06.01.2026 (Tuesday). That day is Heilige Drei Könige, a public holiday in Bayern, so under § 108 Abs. 3 AO the deemed-delivery day shifts to the next working day, Wed 07.01.2026. The one-month Einspruch period (§ 355 AO) starts the day after (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO), i.e. 08.01.2026, and ends one month later on the day of 07.01.2026's date-equivalent: Sat 07.02.2026 (§ 188 Abs. 2 BGB). Since 07.02.2026 is a Saturday, the deadline shifts to the next business day, Mon 09.02.2026 (§ 108 Abs. 3 AO).",
+          "due_date": "2026-02-09",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's printed date is 31.12.2025 but it states it was actually posted later, on 02.01.2026 ('zur Post gegeben'); the Einspruch deadline above uses the later, stated posting date as it is the more specific and reliable fact, but if the envelope shows a different postmark the deadline could shift.",
+        "The tax office's own account details are printed on the letter (IBAN DE32 7005 0000 0000 0123 45, a valid German IBAN with bank code 70050000); verify these against a previous, independently known Finanzamt letter before paying, as a well-formed IBAN alone does not confirm the payee."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 3929,
+      "cache_read_tokens": 43189,
+      "cache_creation_tokens": 10254,
+      "cost_usd": 0.0889598,
+      "duration_ms": 36664,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-01-02",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 355 AO",
+            "text": "Gegen diesen Bescheid kann binnen eines Monats nach Bekanntgabe Einspruch erhoben werden."
+          },
+          "document_date": "2025-12-31",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterbach",
+          "region": "BY",
+          "recipient_region": "BY",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-02-05\",\"weekday\":\"Thursday\",\"send_by\":\"2026-01-30\",\"summary\":\"Letter dated Wed 31 Dec 2025 counts as delivered on Sun 4 Jan, moved to Mon 5 Jan; one month later is Thu 5 Feb 2026.\",\"confidence\":\"high\",\"warnings\":[\"The letter mentions Fri 2 Jan 2026 as the posting day, later than its date (Wed 31 Dec 2025). If that is when it was really posted, the deadline may be a few days later — we count from the letter's date to be safe.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Wed 31 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-31\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sun 4 Jan 2026\",\"date\":\"2026-01-04\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Sun 4 Jan 2026 is a Sunday, so delivery moves to Mon 5 Jan 2026\",\"date\":\"2026-01-05\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Mon 5 Jan 2026\",\"date\":\"2026-01-05\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 5 Feb 2026\",\"date\":\"2026-02-05\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 5 Feb 2026 is a working day, so it stays\",\"date\":\"2026-02-05\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 30 Jan 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-01-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-01-05\",\"letter_date\":\"2025-12-31\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Bayern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE32 7005 0000 0000 0123 45"
+        },
+        "result": "{\"iban\":\"DE32 7005 0000 0000 0123 45\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"70050000\"},\"account_number\":\"0000012345\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-01-02",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 355 AO",
+            "text": "Dieser Bescheid wurde am 02.01.2026 zur Post gegeben. Er gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben."
+          },
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterbach",
+          "region": "BY",
+          "recipient_region": "BY",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-02-09\",\"weekday\":\"Monday\",\"send_by\":\"2026-02-03\",\"summary\":\"Letter sent Fri 2 Jan 2026 counts as delivered on Tue 6 Jan, moved to Wed 7 Jan; one month later is Sat 7 Feb 2026, a Saturday, so the deadline moves to Mon 9 Feb 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Fri 2 Jan 2026\",\"date\":\"2026-01-02\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 6 Jan 2026\",\"date\":\"2026-01-06\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Tue 6 Jan 2026 is a public holiday, Heilige Drei Könige, so delivery moves to Wed 7 Jan 2026\",\"date\":\"2026-01-07\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Wed 7 Jan 2026\",\"date\":\"2026-01-07\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Sat 7 Feb 2026\",\"date\":\"2026-02-07\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 7 Feb 2026 is a Saturday, so the deadline moves to Mon 9 Feb 2026\",\"date\":\"2026-02-09\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Tue 3 Feb 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-02-03\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-01-05\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Bayern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a4477a1c6c76ac19cb860a1e896171adc84ffb207e4f0b51109d4a6829d1f370\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Friday, 2027-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Ersatzkasse\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"K718204553\"},{\"label\":\"Vorgang\",\"value\":\"KE-27-004120\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against MRI cost reimbursement rejection\",\"quote\":\"Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Schreibens bei der Beispiel Ersatzkasse möglich, schriftlich oder zur Niederschrift.\",\"computation\":\"The one-month objection period runs from Bekanntgabe (deemed delivery) of this letter under § 37 SGB X, which itself starts counting from the letter's own document date (typically the 4th day after posting for a public-law insurer sending by ordinary post, per current rules, then §§ 187 ff. BGB counting to the corresponding day one month later, shifted to the next business day if it falls on a weekend or holiday). However, no document date (Datum) is printed anywhere on this letter, so the start of the Bekanntgabe period cannot be fixed and the due date cannot be computed from the text alone.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter has no printed date (Ausstellungsdatum) anywhere on the page, so the one-month Widerspruch deadline cannot be calculated; check the envelope's postmark or the date on your own copy of the letter and count one month from the 4th day after that (or from the actual delivery/receipt date) to be safe.\",\"If you don't know or can't find the letter's date, treat the deadline as running from the day you actually received it (or earlier, to be safe) and file the Widerspruch as soon as possible.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Ersatzkasse",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "K718204553"
+        },
+        {
+          "label": "Vorgang",
+          "value": "KE-27-004120"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against MRI cost reimbursement rejection",
+          "quote": "Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Schreibens bei der Beispiel Ersatzkasse möglich, schriftlich oder zur Niederschrift.",
+          "computation": "The one-month objection period runs from Bekanntgabe (deemed delivery) of this letter under § 37 SGB X, which itself starts counting from the letter's own document date (typically the 4th day after posting for a public-law insurer sending by ordinary post, per current rules, then §§ 187 ff. BGB counting to the corresponding day one month later, shifted to the next business day if it falls on a weekend or holiday). However, no document date (Datum) is printed anywhere on this letter, so the start of the Bekanntgabe period cannot be fixed and the due date cannot be computed from the text alone.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed date (Ausstellungsdatum) anywhere on the page, so the one-month Widerspruch deadline cannot be calculated; check the envelope's postmark or the date on your own copy of the letter and count one month from the 4th day after that (or from the actual delivery/receipt date) to be safe.",
+        "If you don't know or can't find the letter's date, treat the deadline as running from the day you actually received it (or earlier, to be safe) and file the Widerspruch as soon as possible."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2226,
+      "cache_read_tokens": 15151,
+      "cache_creation_tokens": 3999,
+      "cost_usd": 0.0412942,
+      "duration_ms": 23286,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 84 SGG, § 37 SGB X",
+            "text": "Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Schreibens bei der Beispiel Ersatzkasse möglich, schriftlich oder zur Niederschrift."
+          },
+          "document_date": null,
+          "sender_kind": "health_insurer",
+          "sender_name": "Beispiel Ersatzkasse",
+          "recipient_region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":null,\"summary\":\"No date could be computed: the start date is missing.\",\"confidence\":\"low\",\"warnings\":[\"The letter's date is missing, so this date can't be computed.\"],\"steps\":[],\"rules\":[],\"assumed\":{\"today\":\"2027-05-07\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass document_date: the date printed on the letter, which the period counts from.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -117,7 +117,7 @@ export function ContractCard({
         data-notice-button={unclear ? "lead" : "end"}
         onClick={() => setEditingNotice(true)}
       >
-        {c.notice_value || c.notice_day ? "Change notice period" : "Add notice period"}
+        {c.notice_value || c.notice_day || c.notice_statutory ? "Change notice period" : "Add notice period"}
         <span className="sr-only"> for {c.name}</span>
       </Button>
     ) : null;

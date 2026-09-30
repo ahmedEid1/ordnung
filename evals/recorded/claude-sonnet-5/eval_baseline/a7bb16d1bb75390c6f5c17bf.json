@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c59513d46c3f93df9a891150c6acbcec1e57b1a5a740035a61aa299089143e28\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-E1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-08-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Wohnwelt GmbH\",\"document_date\":\"2026-08-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"WW-448120\"},{\"label\":\"Bestellnummer\",\"value\":\"7710-2291\"}],\"amounts\":[249],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding invoice for sideboard order\",\"quote\":\"Überweisen Sie den offenen Betrag bitte bis Freitag, 28.08.2026.\",\"computation\":\"The letter states an explicit calendar date for payment: Friday, 28.08.2026. This is a fixed date printed in the letter, not a period to be calculated, so it is taken as given. (Checking: 28 August 2026 is indeed a Friday, consistent with the letter's own labeling.)\",\"due_date\":\"2026-08-28\",\"confidence\":\"high\",\"amount\":249}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Wohnwelt GmbH",
+      "document_date": "2026-08-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "WW-448120"
+        },
+        {
+          "label": "Bestellnummer",
+          "value": "7710-2291"
+        }
+      ],
+      "amounts": [
+        249
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding invoice for sideboard order",
+          "quote": "Überweisen Sie den offenen Betrag bitte bis Freitag, 28.08.2026.",
+          "computation": "The letter states an explicit calendar date for payment: Friday, 28.08.2026. This is a fixed date printed in the letter, not a period to be calculated, so it is taken as given. (Checking: 28 August 2026 is indeed a Friday, consistent with the letter's own labeling.)",
+          "due_date": "2026-08-28",
+          "confidence": "high",
+          "amount": 249
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1100,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1998,
+      "cost_usd": 0.019620400000000003,
+      "duration_ms": 9753,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

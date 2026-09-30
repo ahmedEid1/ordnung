@@ -1,0 +1,78 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"eddef6d0e26f4254e7ac11dc467f23ddaec04d663bf17b54bcd021234376d6bc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-price_increase-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-09-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Muster Gas GmbH\",\"document_date\":\"2026-09-10\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"MG-510 2277\"},{\"label\":\"Zählpunkt\",\"value\":\"DE0005111201000000000000000123456\"}],\"amounts\":[10.94,12.36,14.5,14.5,96,109],\"items\":[{\"kind\":\"milestone\",\"title\":\"New gas prices take effect\",\"quote\":\"zum 01.11.2026 ändern sich die Preise Ihres Erdgastarifs.\",\"computation\":\"The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) apply from 01.11.2026. This is a fixed calendar date printed in the letter, taken as given.\",\"due_date\":\"2026-11-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Special right to cancel gas contract without notice period (to avoid the new price)\",\"quote\":\"Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.\",\"computation\":\"Under §41b EnWG-type price-increase clauses, the special termination right without a notice period is granted only up to the date the price change becomes effective. The price change takes effect 01.11.2026 (fixed date printed in the letter). To end the contract before the higher price applies, the cancellation (in Textform) must reach Muster Gas GmbH by the last day before that date, i.e. 31.10.2026. No statutory weekend/holiday shift rule applies to a company's (non-authority) contractual deadline in the same way as for authority deadlines, and 31.10.2026 is a Saturday; since the letter sets no explicit later date and receipt-by-Textform (e.g. email) is possible any day, the practical last day to ensure receipt is 31.10.2026.\",\"due_date\":\"2026-10-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact last day to exercise the special termination right is not stated as a calendar date by the sender; it is derived from the stated effective date of the price change (01.11.2026), so treat 31.10.2026 as the latest safe day to send the cancellation and consider sending it earlier to be safe.\",\"31.10.2026 falls on a Saturday; sending the cancellation a few working days earlier is advisable to ensure it is received by the provider in time.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Muster Gas GmbH",
+      "document_date": "2026-09-10",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "MG-510 2277"
+        },
+        {
+          "label": "Zählpunkt",
+          "value": "DE0005111201000000000000000123456"
+        }
+      ],
+      "amounts": [
+        10.94,
+        12.36,
+        14.5,
+        14.5,
+        96,
+        109
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New gas prices take effect",
+          "quote": "zum 01.11.2026 ändern sich die Preise Ihres Erdgastarifs.",
+          "computation": "The letter states the new prices (Arbeitspreis, Grundpreis, monthly Abschlag) apply from 01.11.2026. This is a fixed calendar date printed in the letter, taken as given.",
+          "due_date": "2026-11-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Special right to cancel gas contract without notice period (to avoid the new price)",
+          "quote": "Sie können den Vertrag ohne Einhaltung einer Kündigungsfrist zum Wirksamwerden der Preisänderung kündigen.",
+          "computation": "Under §41b EnWG-type price-increase clauses, the special termination right without a notice period is granted only up to the date the price change becomes effective. The price change takes effect 01.11.2026 (fixed date printed in the letter). To end the contract before the higher price applies, the cancellation (in Textform) must reach Muster Gas GmbH by the last day before that date, i.e. 31.10.2026. No statutory weekend/holiday shift rule applies to a company's (non-authority) contractual deadline in the same way as for authority deadlines, and 31.10.2026 is a Saturday; since the letter sets no explicit later date and receipt-by-Textform (e.g. email) is possible any day, the practical last day to ensure receipt is 31.10.2026.",
+          "due_date": "2026-10-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact last day to exercise the special termination right is not stated as a calendar date by the sender; it is derived from the stated effective date of the price change (01.11.2026), so treat 31.10.2026 as the latest safe day to send the cancellation and consider sending it earlier to be safe.",
+        "31.10.2026 falls on a Saturday; sending the cancellation a few working days earlier is advisable to ensure it is received by the provider in time."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3257,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2238,
+      "cost_usd": 0.042814,
+      "duration_ms": 35401,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

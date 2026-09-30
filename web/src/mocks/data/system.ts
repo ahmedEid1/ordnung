@@ -10,6 +10,7 @@ export const HEALTH: Health = {
   today: TODAY,
   backend: "replay",
   claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription." },
+  model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],
 };
@@ -19,7 +20,7 @@ export const DEMO_CHECKS: DoctorCheck[] = [
   { id: "claude_cli", label: "Claude Code installed", status: "ok", detail: "/usr/local/bin/claude", fix: null },
   { id: "claude_version", label: "Claude Code version", status: "ok", detail: "2.1.4", fix: null },
   { id: "claude_auth", label: "Claude sign-in", status: "ok", detail: "Signed in (claude.ai)", fix: null },
-  { id: "claude_probe", label: "Live test call", status: "ok", detail: "Claude answered.", fix: null },
+  { id: "claude_probe", label: "Live test call", status: "ok", detail: "OK (on claude-sonnet-5)", fix: null },
   { id: "api_key", label: "ANTHROPIC_API_KEY", status: "ok", detail: "Not set — your own Claude login is used.", fix: null },
   { id: "sqlite_fts", label: "Search (SQLite FTS5 + trigram)", status: "ok", detail: "SQLite 3.46.1", fix: null },
   { id: "fonts", label: "Letter fonts", status: "ok", detail: "DejaVu Sans", fix: null },
@@ -46,6 +47,7 @@ export const PROFILE: Profile = {
 
 export const SETTINGS: AppSettings = {
   models: { transcribe: "sonnet", extract: "sonnet", review: "sonnet", ask: "sonnet", draft: "sonnet", brief: "haiku", capture: "haiku", bank: "haiku" },
+  model: "claude-sonnet-5",
   concurrency: 2,
   inbox_dir: FOLDER_PATH,
   inbox_auto_read: false,

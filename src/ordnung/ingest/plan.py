@@ -37,6 +37,7 @@ from ordnung.ingest.verify import (
     DATE_WITHOUT_YEAR,
     PageInput,
     check_quote,
+    day_of_month_consistency,
     grade_reading,
     ground_evidence,
     parse_amounts,
@@ -71,6 +72,7 @@ from ordnung.recurrence import (
     keeps_later_date,
     remembered,
     roll_forward,
+    rule_day_of_month,
     rule_working_day,
     same_rule,
     same_schedule,
@@ -150,9 +152,15 @@ class VerifiedItem:
 
     @property
     def dated(self) -> bool:
-        """Whether the item describes a date: fixed or relative, or the working day its recurrence dates
-        each month by (:func:`~ordnung.recurrence.rule_working_day`, point 8)."""
-        return self.item.date.type != "none" or rule_working_day(self.item.recurrence) is not None
+        """Whether the item describes a date: fixed or relative, or the working day or day of the month its
+        recurrence dates each month by (:func:`~ordnung.recurrence.rule_working_day`,
+        :func:`~ordnung.recurrence.rule_day_of_month`, points 8 and 10)."""
+        rule = self.item.recurrence
+        return (
+            self.item.date.type != "none"
+            or rule_working_day(rule) is not None
+            or rule_day_of_month(rule) is not None
+        )
 
     @property
     def needs_check(self) -> bool:
@@ -218,9 +226,9 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
 
 
 def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tuple[str, ...]:
-    """Why the item's quote doesn't state its DateSpec, amount or working day — a date or amount written
-    elsewhere in the letter excepted (the same grading when a letter is read and when its dates are
-    recomputed).
+    """Why the item's quote doesn't state its DateSpec, amount, working day or day of the month — a date or
+    amount written elsewhere in the letter excepted (the same grading when a letter is read and when its
+    dates are recomputed).
 
     A working day (``recurrence.working_day``) counts only when the quote names that ordinal
     (:func:`~ordnung.ingest.verify.working_day_consistency`); otherwise the reason is
@@ -228,12 +236,15 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     ``value_consistent`` (the to-do is "Please check" and never shown as confirmed by the letter) and
     its receipt is one confidence level lower, with the reason's note (:func:`~ordnung.ingest.verify.
     grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
-    working day still dates the to-do (:mod:`ordnung.recurrence`, point 8)."""
+    working day still dates the to-do (:mod:`ordnung.recurrence`, point 8). A day of the month that dates it
+    (``recurrence.day_of_month`` without a working day, point 10) is graded the same way
+    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``)."""
     found: list[str] = []
     if item.date.type != "none" or item.amount is not None:
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
+    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence))
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 
@@ -951,8 +962,9 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
     or for a recurring one the same schedule (:func:`~ordnung.recurrence.same_schedule`: the rule and
     first occurrence) with any amount unless ``same_amount`` (reading the letter again corrects a
     misread amount). A recurring to-do the person edited also matches a reading of its rule that gives
-    no date (the letter leaves it undated; the person gave it its first occurrence). An undated to-do
-    without an amount can't be told apart from another one, so it never matches."""
+    no date (the letter leaves it undated; the person gave it its first occurrence) — also with a day of
+    the month its own rule doesn't have (read before prompt 12 gave one). An undated to-do without an
+    amount can't be told apart from another one, so it never matches."""
     new = verified.item
     if (new.date.type == "none" and new.amount is None) or item.kind != new.kind or item.date_spec is None:
         return False
@@ -962,7 +974,12 @@ def _same_obligation(item: Item, verified: VerifiedItem, *, same_amount: bool) -
         return False
     if same_schedule(item, new.recurrence, new.date):
         return True
-    return item.user_modified and new.date.type == "none" and same_rule(item.recurrence, new.recurrence)
+    if not item.user_modified or new.date.type != "none":
+        return False
+    rule = new.recurrence
+    if rule is not None and rule_day_of_month(item.recurrence) is None:
+        rule = rule.model_copy(update={"day_of_month": None})
+    return same_rule(item.recurrence, rule)
 
 
 def carry_over(store: Store, doc_id: str, verification: Verification) -> int:

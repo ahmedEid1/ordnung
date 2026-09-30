@@ -3,7 +3,7 @@
  "meta": {
   "date": "2026-09-25",
   "generated_at": "2026-09-25T16:59:35+00:00",
-  "model": "sonnet",
+  "model": "claude-sonnet-5",
   "split": "test",
   "conditions": [
    "ordnung",
@@ -121,7 +121,8 @@
     ],
     "recording_budget_usd": 15
    }
-  }
+  },
+  "model_alias": "sonnet"
  },
  "metrics": {
   "ordnung": {

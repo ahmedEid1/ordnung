@@ -29,7 +29,13 @@ from ordnung.ingest.plan import (
     verify_extraction,
     write_items,
 )
-from ordnung.ingest.verify import MODEL_READ_NOTE, REASON_TEXT, UNVERIFIED_NOTE, WORKING_DAY_NOT_IN_QUOTE
+from ordnung.ingest.verify import (
+    DAY_OF_MONTH_NOT_IN_QUOTE,
+    MODEL_READ_NOTE,
+    REASON_TEXT,
+    UNVERIFIED_NOTE,
+    WORKING_DAY_NOT_IN_QUOTE,
+)
 from ordnung.models import (
     ComputationReceipt,
     Document,
@@ -183,6 +189,30 @@ def test_a_working_day_its_quote_does_not_name_needs_a_check(quote: str, working
     assert receipt.confidence == "medium" and receipt.warnings == [REASON_TEXT[WORKING_DAY_NOT_IN_QUOTE]]
 
 
+RENT_ON_THE_FIRST = "Die Miete ist monatlich im Voraus, spätestens zum 1. eines Monats zu zahlen."
+DAY_PAGE = (1, f"Monatliche Miete: 640,00 EUR\n{RENT_ON_THE_FIRST}\n{RENT_IN_ADVANCE}", [], "text")
+
+
+def test_a_day_of_the_month_is_graded_like_a_working_day() -> None:
+    """Point 10 of ``ordnung.recurrence``: a reading's day of the month dates the rent, so the item is dated
+    and its quote must name that day ("zum 1. eines Monats"); another day, or a sentence without one, is
+    ``day_of_month_not_in_quote`` ("Please check", one level lower). A day beside a working day is not the
+    rule's (the working day wins), so it is not graded."""
+    on_the_first = rent(RENT_ON_THE_FIRST, None).model_copy(update={"recurrence": Recurrence(day_of_month=1)})
+    [verified] = verify_extraction("doc_x", extraction([on_the_first]), [DAY_PAGE]).items
+    assert verified.reasons == () and verified.dated and not verified.needs_check
+    for quote, day in ((RENT_ON_THE_FIRST, 15), (RENT_IN_ADVANCE, 1)):
+        misread = rent(quote, None).model_copy(update={"recurrence": Recurrence(day_of_month=day)})
+        result = verify_extraction("doc_x", extraction([misread]), [DAY_PAGE])
+        assert result.items[0].reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and result.needs_review
+        receipt = grade_receipt(ComputationReceipt(due_date="2026-10-01", confidence="high"), result.items[0])
+        assert receipt.confidence == "medium" and receipt.warnings == [REASON_TEXT[DAY_OF_MONTH_NOT_IN_QUOTE]]
+    both = rent(RENT_BY_WORKING_DAY, None).model_copy(
+        update={"recurrence": Recurrence(working_day=3, day_of_month=1)}
+    )
+    assert consistency_reasons(both, [LEASE_PAGE]) == ()
+
+
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
     data = extraction(
         [],
@@ -276,6 +306,25 @@ def test_a_collected_or_incoming_payment_is_stored_without_a_send_by_day() -> No
     failed = debit.model_copy(update={"action": "Die Lastschrift wurde zurückgegeben: bitte überweisen."})
     kept = compute_item(verified_item(failed), for_item(ctx, failed, None), postal_buffer_days=4)
     assert kept.send_by == "2026-10-14"
+
+
+def test_a_payment_by_standing_order_keeps_its_send_by_day() -> None:
+    """The demo's €670 rent: "Adjust your standing order to the new total rent unless you use direct debit".
+    The standing order is the person's own transfer (``ordnung.payments.asks_for_transfer``), so the rent
+    keeps a transfer's send-by day; "direct debit" named as the alternative once made it collected, without
+    one. A standing order the person is told to cancel, because the payee now collects, gets none."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    rent = PAYMENT.model_copy(
+        update={
+            "title": "New monthly total rent €670",
+            "action": "Adjust your standing order to the new total rent unless you use direct debit.",
+        }
+    )
+    kept = compute_item(verified_item(rent), for_item(ctx, rent, None), postal_buffer_days=4)
+    assert (kept.due_date, kept.send_by) == ("2026-10-15", "2026-10-14")
+    collected = rent.model_copy(update={"action": "Cancel your standing order: the rent is now debited."})
+    computed = compute_item(verified_item(collected), for_item(ctx, collected, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
 
 
 def test_rule_context_from_party_and_document(store: Store) -> None:

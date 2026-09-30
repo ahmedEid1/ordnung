@@ -80,6 +80,9 @@ describe("trace copy", () => {
     expect(quote.title).toBe("Pay the parking fine");
     expect(quote.summary).toBe("To-do · Not found (closest passage 72 %) · the quote doesn't state the date");
     expect(quote.flag?.text).toBe("Please check");
+    // a recurrence's day of the month its quote doesn't name (graded like a working day)
+    const fee = spanCopy(span({ kind: "verify", label: "Monthly gym fee", attributes: { target: "item", grounding: "verified", best_score: 100, reasons: ["day_of_month_not_in_quote"] } }));
+    expect(fee.summary).toMatch(/· the quote doesn't state the day of the month$/);
     expect(spanCopy(span({ kind: "verify", attributes: { target: "key_fact", grounding: "model_read", page: 1 } })).summary).toBe(
       "Key fact · Found in the transcript of page 1",
     );

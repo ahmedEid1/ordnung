@@ -5,7 +5,7 @@
  * without a recording gets a note (no Try again), and the question box leaves a phone room.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, expect, open, setTour, test } from "./helpers";
+import { apiGet, expect, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -126,20 +126,38 @@ test.describe("laptop", () => {
     await expect(turn.getByText(/Couldn't answer/)).toHaveCount(0);
   });
 
-  test("an Idea's web addresses become links named by their site, on the permit's letter page", async ({ page }) => {
-    // the student-permit Idea names the law and the advice service by their addresses (UI audit round 1:
-    // plain text that ran past the card at 320 px)
-    const ideas = await apiGet<{ body: string; refs: { type: string; id: string }[] }[]>(page, "/api/suggestions");
-    const idea = ideas.find((s) => s.body.includes("https://www.gesetze-im-internet.de/"));
-    expect(idea, "the student-permit Idea").toBeTruthy();
-    const letter = idea!.refs.find((r) => r.type === "document")!;
+  test("an Idea's web addresses become links named by their site, on Today and on the letter it names", async ({ page }) => {
+    // the student-permit rule names the law and the advice service by their addresses (UI audit round 1: plain
+    // text that ran past the card at 320 px). Its Idea is about the person (a student visa), so Today always
+    // shows it; it names the permit's letter only when the demo read a letter as a residence permit — the
+    // model's reading, which changes with a re-recording — so the letter page is checked when there is one
+    const ideas = await apiGet<{ title: string; status: string; body: string; refs: { type: string; id: string }[] }[]>(page, "/api/suggestions");
+    const idea = ideas.find((s) => s.status === "new" && s.body.includes("https://www.gesetze-im-internet.de/"));
+    expect(idea, "a new Idea naming the law by its address").toBeTruthy();
+    const addresses = idea!.body.match(/https:\/\/[^\s]+/g)!;
+    expect(addresses.length, "the Idea names the law and the advice service").toBeGreaterThanOrEqual(2);
+    const letters = idea!.refs.filter((r) => r.type === "document").map((r) => `/documents/${r.id}`);
+
     await page.setViewportSize({ width: 320, height: 640 });
-    await open(page, `/documents/${letter.id}`);
-    const law = page.getByRole("link", { name: /^gesetze.im.internet\.de/ });
-    await law.scrollIntoViewIfNeeded();
-    await expect(law).toHaveAttribute("target", "_blank");
-    await expect(law).toHaveAttribute("href", "https://www.gesetze-im-internet.de/aufenthg_2004/__16b.html");
-    await expect(page.getByRole("link", { name: /^studierendenwerke\.de/ })).toBeVisible();
-    expect(await sideways(page), "the page scrolls sideways").toBeLessThanOrEqual(0);
+    for (const path of ["/", ...letters]) {
+      await open(page, path);
+      const heading = page.getByRole("main").getByRole("heading", { level: 3, name: shownAs(idea!.title) });
+      // on Today a low-priority Idea may wait behind "Show more"; a cut body opens with "Read more"
+      if (!(await heading.count())) await page.getByRole("button", { name: /^Show \d+ more Ideas?$/ }).click();
+      await expect(heading).toBeVisible();
+      const card = heading.locator("xpath=ancestor::*[self::article or self::li][1]");
+      const more = card.getByRole("button", { name: "Read more" });
+      if (await more.count()) await more.click();
+      for (const address of addresses) {
+        // the link is named by its site ("gesetze-im-internet.de", its hyphens unbreakable) and opens the address in a new tab
+        const host = new URL(address).hostname.replace(/^www\./, "");
+        const link = card.getByRole("link", { name: new RegExp(`^${host.replace(/\./g, "\\.").replace(/-/g, "[-\\u2011]")}`) });
+        await link.scrollIntoViewIfNeeded();
+        await expect(link, `${address} on ${path}`).toBeVisible();
+        await expect(link).toHaveAttribute("target", "_blank");
+        await expect(link).toHaveAttribute("href", address);
+      }
+      expect(await sideways(page), `${path} scrolls sideways`).toBeLessThanOrEqual(0);
+    }
   });
 });

@@ -188,7 +188,7 @@ reads, the engine computes), **LLM only** (the model computes the date itself an
 current German law), **LLM + rules text** (the same, with a written summary of the rules in the prompt)
 and **LLM + rules tool** (the same, with Ordnung's engine as MCP tools the model may call: an agent with
 a calculator). Prompts were tuned on a dev split. Test split: 56 dated obligations in 63 synthetic
-letters (11 of them phone photos, 12 adversarial), model Sonnet, 95 % intervals (bootstrap; Wilson for a
+letters (11 of them phone photos, 12 adversarial), model Sonnet 5, 95 % intervals (bootstrap; Wilson for a
 rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 
 | Condition | Due date exactly right | Dangerously late¹ | Held-out? |
@@ -198,7 +198,8 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung** | 89.3 % [78.9–96.7] | **0 %** | yes |
 | **Ordnung**, after fixing the gap that run found² | 98.2 % [94.5–100] | **0 %** | no |
 | LLM + rules tool, with the fixed engine³ | 100 % [91.8–100] | 0 % | no |
-| **Ordnung**, with the extraction prompt the app uses now⁴ | 96.4 % [91.2–100] | **0 %** | no |
+| **Ordnung**, with the extraction prompt the app uses now⁴ | 98.2 % [94.5–100] | **0 %** | no |
+| **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -209,10 +210,21 @@ is no longer held-out.
 the third recording of this condition on the test split (the first scored 98.2 %, the second 100 %;
 after each, a review revised the tool interface, and the last version was checked on the dev split,
 where it scored 96 %, before the test split was recorded again).
-⁴ Extraction prompt version 11: labels and actions in the person's language, the letter's high-stakes
-kind, and three contract and rent terms the ledger could not hold. Each version from 9 to 11 was
-checked on the dev split first, but the test split was recorded for each of them (54, 53 and 54 of
-56), which is iteration on it. Both misses are early, on the safe side.
+⁴ Extraction prompt version 12: labels and actions in the person's language, the letter's high-stakes
+kind, three contract and rent terms the ledger could not hold and, from version 12, a monthly payment's
+day of the month or last working day, a standing order as the person's own transfer and a contract that
+names the statutory notice periods. Each version from 9 to 12 was checked on the dev split first, but the
+test split was recorded for each of them (54, 53, 54 and 54 of 56, on Sonnet 5.5), and version 12 once
+more on Sonnet 5 when the account lost access to 5.5 (55 of 56, the run this row shows): iteration on
+it. The one miss is early, on the safe side.
+⁵ 63 new letters (11 photos, 12 adversarial; 56 dated obligations), written after prompt version 11 and
+before any recording on them, recorded with prompt 12 once on Sonnet 5.5 (Ordnung alone) and once on
+Sonnet 5 with every condition, when the account lost access to 5.5 the same day and nothing else had
+changed: the row shows the Sonnet 5 run, with the same three misses as the first. The two late dates
+are two adversarial letters that print conflicting due dates: the reading took the later date with high
+confidence and no warning of the conflict (the test split's two letters of that class were read right).
+The third miss is a tax notice that prints a posting day after its own date: Ordnung counts from the
+letter's date on purpose (early).
 
 What the numbers say:
 
@@ -235,10 +247,17 @@ What the numbers say:
 - **Accuracy is not all the engine buys.** Every date comes with a receipt a person can check, the same
   letter always gives the same date, and the calendar is data rather than memory: the rules-text
   baseline got two of six invoice terms wrong because it didn't know that 14 May 2026 is Ascension Day.
+- **Held out for real: 94.6 %, and two late dates.** On 63 new letters read once (written after prompt
+  version 11, before any recording on them), Ordnung got 53 of 56 right. Both late dates are adversarial
+  letters that print two conflicting due dates: the reading took the later one with high confidence and
+  no warning of the conflict, where the test split's two letters of that class were read right — a trap
+  the test split did not show. On the same letters the rules-text prompt also scored 53 of 56, with no
+  late date, the agent with the calculator all 56 again, and the model alone 46 of 56 with two late
+  dates.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
-Ordnung, extraction prompt 11: the last Ordnung row) with the current engine without calling a model; CI
+Ordnung, extraction prompt 12: row ⁴) with the current engine without calling a model; CI
 requires Ordnung to stay at 95 % or more with no dangerously late date.
 
 ### Answering questions: can you trust what Ask says?
@@ -250,25 +269,25 @@ never against the app's own outputs.
 | Metric | Result |
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 99.4 % (159/160) |
-| Abstention on questions with no answer in the records⁵ | 100 % (8/8) |
-| Injected claim in the answer the person sees | 0 % (0/21), against 4.8 % (1/21) before the check |
+| Citation precision: the cited record holds the sentence's value | 98.1 % (101/103) |
+| Abstention on questions with no answer in the records | 87.5 % (7/8) |
+| Injected claim in the answer the person sees | 0 % (0/21), against 33.3 % (7/21) before the check |
 | Unsupported values left in final answers | 0 |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
 filed differently from the truth), not values the check let through; the current ledger closes all five:
 the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
-job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the one raw "success" before the check is a denial that
-repeats the question's injected date to say the record does not hold it; the answer the person sees
-shows it in quotation marks. This benchmark is **not held-out**: its questions come from the same
-sample life as the demo, and the check and the prompt were revised over several review rounds on these
-recordings (the first nine attack letters were written before any measurement and never tuned). CI
-replays the recordings and gates accuracy, abstention and unsupported values; any successful attack
-fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
-
-⁵ 7/8 as first scored: the gas-bill answer leads with "I found no gas contract or gas bill in your
-records", a wording the scorer's abstention reader did not know; it was added after the measurement,
-with a test.
+job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the
+seven raw "successes" before the check are warnings that repeat the injected value to flag it — none
+presents the claim as the answer; the check shows such a value as "[date only in the letter]", and none
+reaches the person. The one question counted as answered rather than declined leads with "I don't have a
+separate gas contract or bill in your records" and names the electricity contract's cost in the same
+paragraph, which the strict rule counts as an answer. This benchmark is **not held-out**: its questions come
+from the same sample life as the demo, and the check and the prompt were revised over several review
+rounds on these recordings (the first nine attack letters were written before any measurement and never
+tuned). CI replays the recordings and gates accuracy, abstention and unsupported values; any successful
+attack fails the build, but one an earlier round documented (the rent's own amount in a comparison of the
+month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 
@@ -357,8 +376,11 @@ flowchart LR
 | Web app | [`web/`](web) | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
 
 The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
-no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). More in
-[docs/architecture.md](docs/architecture.md).
+no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
+Sonnet 5 (`claude-sonnet-5`) unless you choose another model under Settings → Claude;
+`ORDNUNG_CLAUDE_MODEL` overrides both for every call. The demo records with the default model; the
+benchmarks record with the model of the run (`--model`), on a backend without the setting.
+More in [docs/architecture.md](docs/architecture.md).
 
 ## Quality
 
@@ -387,11 +409,15 @@ no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md))
 - A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
   to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
   decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
-- A recurring payment is dated only when its letter gives a first date or a working day — except a
-  lease's own monthly rent, which is due by the law's 3rd working day (§ 556b Abs. 1 BGB), from the month
-  the tenancy starts at the earliest, one confidence level lower and with a warning to check the lease. A
-  direct debit "zum 1. eines Monats" with no start month, like the demo's gym fee, is listed with its
-  amount and no due date: Ordnung doesn't invent one from a contract's start.
+- A recurring payment is dated only when its letter gives a first date, a working day (also the last,
+  "am letzten Bankarbeitstag") or a day of the month ("zum 1. eines Monats", counted from the letter's date
+  or the contract's start) — except a lease's own monthly rent, which is due by the law's 3rd working day
+  (§ 556b Abs. 1 BGB), from the month the tenancy starts at the earliest, one confidence level lower and
+  with a warning to check the lease. A payment its letter gives no day for ("monatlich im Voraus"), or a
+  day of the month on an undated letter with no contract start, is listed with its amount and no due
+  date: Ordnung doesn't invent a start. A letter read before extraction prompt version 12 holds no day of
+  the month, no last working day and no statutory notice periods; *Read again* reads it with the current
+  prompt.
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends

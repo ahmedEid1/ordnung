@@ -23,14 +23,17 @@ from ordnung.ingest.extract import (
     extraction_request,
     known_parties_text,
     language_name,
+    parse_extraction,
+    with_rent_series,
     wrap_untrusted,
 )
 from ordnung.ingest.pipeline import add_file
 from ordnung.ingest.transcribe import transcription_request
 from ordnung.llm import prompts
 from ordnung.llm.base import LLMRequest
+from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.fake import FakeBackend
-from ordnung.llm.runtime import LLMService, make_backend
+from ordnung.llm.runtime import LLMService, make_backend, request_key
 from ordnung.models import ModelSettings, Page, Party
 
 NOW = "2026-09-25T10:00:00Z"
@@ -265,6 +268,27 @@ def test_backend_by_name_is_the_same_as_make_backend(data_dir: Path) -> None:
         ctx.close()
 
 
+def test_the_live_backend_runs_on_the_model_saved_in_settings(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model saved under Settings → Claude counts from the next call, without a restart; the
+    request's own alias (``settings.models``) still keys the recordings (the service's cache is keyed
+    by the model that runs: ``tests/test_pipeline.py``)."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    ctx = build_context(data_dir, backend="claude")
+    try:
+        backend = ctx.llm.backend
+        assert isinstance(backend, ClaudeCLIBackend)
+        request = LLMRequest(purpose="extract", prompt="p", system="s", model=ctx.settings.models.extract)
+        assert request.model == "sonnet" and backend.model_for(request) == "claude-sonnet-5"
+        key = request_key(request)
+        ctx.store.save_settings(ctx.settings.model_copy(update={"model": "claude-opus-5-5"}))
+        assert backend.model_for(request) == "claude-opus-5-5"
+        assert request_key(request) == key  # the recordings are keyed by the alias
+    finally:
+        ctx.close()
+
+
 async def test_extract_requests_use_models_from_settings(data_dir: Path) -> None:
     clock.set_today(TODAY)
     router = Router()
@@ -283,3 +307,115 @@ async def test_extract_requests_use_models_from_settings(data_dir: Path) -> None
         assert json.loads(requests[0].cache_key or "")["today"] == TODAY
     finally:
         ctx.close()
+
+
+# --------------------------------------------------------------------------------------------------
+# A statement's adjusted advance payments: the rent series the reading needs
+# --------------------------------------------------------------------------------------------------
+
+_STATEMENT = {
+    "kind": "rent_lease",
+    "high_stakes_kind": "operating_costs",
+    "title": "Betriebskostenabrechnung 2025",
+    "summary": "The 2025 operating-cost statement: a back payment, and higher advance payments from November.",
+    "explanation": "Pay the back payment by 9 October; from November the rent is 670 € a month.",
+    "items": [
+        {
+            "kind": "payment",
+            "title": "Pay the back payment (Nachzahlung)",
+            "date": {"type": "fixed", "date": "2026-10-09", "nature": "payment"},
+            "amount": 184.3,
+            "quote": "Nachzahlung 184,30 € bis zum 09.10.2026",
+        }
+    ],
+    "contract": {
+        "name": "Wohnung 05-2-03",
+        "category": "rent",
+        "cost_amount": 670.0,
+        "cost_interval": "monthly",
+    },
+    "change": {
+        "type": "price_increase",
+        "effective_date": "2026-11-01",
+        "old_amount": 640.0,
+        "new_amount": 670.0,
+        "cost_interval": "monthly",
+        "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).",
+    },
+}
+
+
+def test_a_statements_new_rent_is_read_as_the_series_the_ledger_needs() -> None:
+    """A model that puts a statement's adjusted advance payments into ``change`` alone (Sonnet 5 read the
+    demo's statement so, twice) still gives the ledger the rent every month from the day it takes effect:
+    the payment the prompt asks for, quoting the change's sentence, so point 9 replaces October's rent."""
+    reading = parse_extraction(_STATEMENT, "")
+    assert [item.title for item in reading.items] == [
+        "Pay the back payment (Nachzahlung)",
+        "New monthly total rent €670",
+    ]
+    series = reading.items[-1]
+    assert (series.kind, series.amount, series.currency, series.direction) == ("payment", 670.0, "EUR", "out")
+    assert (series.date.type, series.date.date, series.date.nature) == ("fixed", "2026-11-01", "payment")
+    assert series.recurrence is not None and (series.recurrence.interval, series.recurrence.unit) == (
+        1,
+        "months",
+    )
+    assert series.quote == _STATEMENT["change"]["quote"] and series.date.text == series.quote
+    assert with_rent_series(reading) == reading  # once is enough
+    # a broken amount keeps its cents
+    cents = {**_STATEMENT, "change": {**_STATEMENT["change"], "new_amount": 670.5}}
+    assert parse_extraction(cents, "").items[-1].title == "New monthly total rent €670.50"
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        {"high_stakes_kind": "rent_increase"},  # § 558b BGB: owed once agreed; the reading's own item says so
+        {"contract": None},
+        {
+            "contract": {
+                "name": "Strom",
+                "category": "energy",
+                "cost_amount": 70.0,
+                "cost_interval": "monthly",
+            }
+        },
+        {"change": None},
+        {"change": {**_STATEMENT["change"], "type": "price_decrease"}},
+        {"change": {**_STATEMENT["change"], "cost_interval": "yearly"}},
+        {"change": {**_STATEMENT["change"], "effective_date": None}},
+        {"change": {**_STATEMENT["change"], "effective_date": "November 2026"}},
+        {"change": {**_STATEMENT["change"], "new_amount": None}},
+        {
+            "items": [
+                *_STATEMENT["items"],
+                {
+                    "kind": "payment",
+                    "title": "New monthly total rent €670",
+                    "date": {"type": "fixed", "date": "2026-11-01", "nature": "payment"},
+                    "amount": 670.0,
+                    "recurrence": {"interval": 1, "unit": "months"},
+                    "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).",
+                },
+            ]
+        },
+    ],
+    ids=[
+        "consent-needed",
+        "no-contract",
+        "not-a-rent",
+        "no-change",
+        "a-decrease",
+        "yearly",
+        "no-day",
+        "no-iso-day",
+        "no-amount",
+        "series-read-already",
+    ],
+)
+def test_no_rent_series_is_added_where_none_is_owed_or_one_is_read(case: dict[str, Any]) -> None:
+    given = {**_STATEMENT, **case}
+    reading = parse_extraction(given, "")
+    assert len(reading.items) == len(given["items"])
+    assert sum(1 for item in reading.items if item.recurrence) == (1 if "items" in case else 0)

@@ -135,6 +135,19 @@ describe("rules in plain words", () => {
       "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice",
     );
     expect(ruleInWords({ ...byId("ctr_job"), notice_before_end: false }, TODAY).text).toBe("Fixed term until 31 Mar 2027 — it ends by itself, no notice needed");
+    // the statutory notice periods the contract names ("gesetzliche Kündigungsfristen", `notice_statutory`): four
+    // weeks for the employee, as if stated; a lease's are the tenant's rule anyway, which it then names
+    const statutory: Contract = { ...byId("ctr_job"), notice_value: null, notice_unit: null, notice_statutory: true };
+    expect(ruleInWords(statutory, TODAY).text).toBe(
+      "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: the statutory notice, as the contract says: 4 weeks to the 15th or the end of a month",
+    );
+    expect(ruleInWords({ ...statutory, end_date: null }, TODAY).text).toBe("Employment: the statutory notice, as the contract says: 4 weeks to the 15th or the end of a month");
+    expect(ruleInWords({ ...statutory, notice_value: 3, notice_unit: "months" }, TODAY).text).toBe(
+      "Fixed term until 31 Mar 2027 — it ends by itself. To leave earlier: 3 months' notice, at least the legal minimum",
+    );
+    expect(ruleInWords({ ...byId("ctr_rent"), notice_value: null, notice_unit: null, notice_statutory: true }, TODAY).text).toMatch(
+      /^Open-ended, with the statutory notice as the lease says: notice given by the 3rd working day/,
+    );
     // a current account (walkthrough of phase 2: "we couldn't compute a cancellation date")
     const giro = byId("ctr_bank");
     const account: Contract = { ...giro, computed: { ...giro.computed!, regime: "bgb675h" } };
@@ -348,6 +361,10 @@ describe("contracts-only lanes", () => {
     expect(noticeEditable(endsByItself)).toBe(true);
     expect(noticeEditable({ ...byId("ctr_job"), end_date: null })).toBe(false);
     expect(noticeEditable({ ...byId("ctr_dticket"), status: "cancelled" })).toBe(false);
+    // the statutory notice periods it was read to name, a misreading too: correctable where they are set
+    expect(noticeEditable(byId("ctr_rent"))).toBe(false);
+    expect(noticeEditable({ ...byId("ctr_rent"), notice_statutory: true })).toBe(true);
+    expect(noticeEditable({ ...byId("ctr_phone"), notice_statutory: true })).toBe(true);
     expect(pleaseCheckHint(byId("ctr_phone"))).toBeNull();
     expect(pleaseCheckHint({ ...byId("ctr_phone"), computed: { ...byId("ctr_phone").computed!, confidence: "low" } })).toBe(
       "Ordnung isn't sure of these dates — check them against the contract",

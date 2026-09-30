@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"692338e6ab28ac1ccfd9e8e0f1b8b148f79ca8076937f5e6199872ff1e2341dd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Krankenversicherung a.G.\",\"document_date\":\"2025-09-30\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"BKV 7710 448 2\"},{\"label\":\"Leistungsfall\",\"value\":\"LF-25-093317\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit OP report and physiotherapy prescription\",\"quote\":\"Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;\",\"computation\":\"Letter date (Briefdatum) is 30.09.2025 (Tuesday). This is a private deadline set by the insurer counted from the letter date, not a statutory delivery-fiction period, so §187 Abs. 1 BGB applies: the day of the triggering event (30.09.2025) is not counted, counting starts 01.10.2025. The letter defines 'Arbeitstage' itself as Monday–Friday excluding statutory public holidays. Counting business days from 01.10.2025: 01.10 (Wed) = day 1, 02.10 (Thu) = day 2, 03.10 (Fri) is Tag der Deutschen Einheit, a nationwide public holiday, so it is skipped and not counted, 04.10–05.10 weekend skipped, 06.10 (Mon) = day 4, 07.10 (Tue) = day 5, 08.10 (Wed) = day 6, 09.10 (Thu) = day 7. The 7th business day is therefore 09.10.2025. Since the count already excludes weekends/holidays, no further end-of-period adjustment is needed.\",\"due_date\":\"2025-10-09\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Krankenversicherung a.G.",
+      "document_date": "2025-09-30",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "BKV 7710 448 2"
+        },
+        {
+          "label": "Leistungsfall",
+          "value": "LF-25-093317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit OP report and physiotherapy prescription",
+          "quote": "Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;",
+          "computation": "Letter date (Briefdatum) is 30.09.2025 (Tuesday). This is a private deadline set by the insurer counted from the letter date, not a statutory delivery-fiction period, so §187 Abs. 1 BGB applies: the day of the triggering event (30.09.2025) is not counted, counting starts 01.10.2025. The letter defines 'Arbeitstage' itself as Monday–Friday excluding statutory public holidays. Counting business days from 01.10.2025: 01.10 (Wed) = day 1, 02.10 (Thu) = day 2, 03.10 (Fri) is Tag der Deutschen Einheit, a nationwide public holiday, so it is skipped and not counted, 04.10–05.10 weekend skipped, 06.10 (Mon) = day 4, 07.10 (Tue) = day 5, 08.10 (Wed) = day 6, 09.10 (Thu) = day 7. The 7th business day is therefore 09.10.2025. Since the count already excludes weekends/holidays, no further end-of-period adjustment is needed.",
+          "due_date": "2025-10-09",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3294,
+      "cache_read_tokens": 13014,
+      "cache_creation_tokens": 4446,
+      "cost_usd": 0.053334799999999995,
+      "duration_ms": 28169,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -44,9 +44,10 @@ from ordnung.demo.loader import (
     tray_states,
 )
 from ordnung.ids import doc_id_for_sha
-from ordnung.llm.base import LLMError, LLMRequest, ReplayMiss, StreamEvent
+from ordnung.llm.base import DEFAULT_MODEL, LLMError, LLMRequest, ReplayMiss, StreamEvent
+from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.fake import FakeBackend
-from ordnung.llm.replay import ReplayBackend
+from ordnung.llm.replay import RecordingBackend, ReplayBackend
 from ordnung.models import TourState
 from ordnung.secretary.brief import get_brief
 
@@ -338,6 +339,23 @@ async def test_the_recorder_refuses_documents_outside_the_sample_life(
     recorded = await backend.complete(_request([life.ids["tax"]]))
     assert recorded.data == {"kind": "other"}
     assert list((tmp_path / "fixtures" / "extract").glob("*.json"))
+
+
+def test_the_recorder_names_the_default_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The demo's settings are the defaults, so its recordings are made with the default model — a
+    request's alias never reaches the CLI — unless ORDNUNG_CLAUDE_MODEL pins another."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    folder = tmp_path / "demo"
+    folder.mkdir()
+    (folder / MARKER_NAME).write_text(json.dumps({"version": ""}), encoding="utf-8")
+    backend = recording_backend(folder, tmp_path / "fixtures", set())
+    assert isinstance(backend, ReplayBackend) and isinstance(backend.fallback, RecordingBackend)
+    live = backend.fallback.inner
+    assert isinstance(live, ClaudeCLIBackend)
+    request = LLMRequest(purpose="brief", prompt="p", system="s", model="haiku")
+    assert live.model_for(request) == DEFAULT_MODEL == "claude-sonnet-5"
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-opus-5-5")
+    assert live.model_for(request) == "claude-opus-5-5"
 
 
 def test_recording_is_only_allowed_into_a_demo_folder(tmp_path: Path) -> None:
@@ -639,3 +657,50 @@ async def test_the_demo_api_uses_the_tray(
             assert tour_state.json()["step"] == 1
     finally:
         ctx.close()
+
+
+@pytest.mark.parametrize("ends", ["error", "silence"])
+def test_the_rebuild_fails_when_ask_gives_no_answer(monkeypatch: pytest.MonkeyPatch, ends: str) -> None:
+    """A recording lost to a sign-in gap once passed the rebuild with two answers missing: Ask yields an
+    ``error`` event instead of raising, and a stream may end without ``done``."""
+    from ordnung.assistant.ask import AskEvent
+    from ordnung.demo import loader
+
+    async def no_answer(ctx: object, question: str) -> Any:
+        yield AskEvent(type="text", text="thinking")
+        if ends == "error":
+            yield AskEvent(type="error", error="not signed in")
+
+    async def answered(ctx: object, question: str) -> Any:
+        yield AskEvent(type="text", text="…")
+        yield AskEvent(type="done", text="The rent is due Mon 5 Oct 2026.")
+
+    monkeypatch.setattr(loader, "ask_stream", no_answer)
+    with pytest.raises(DemoError, match="no answer to 'When is rent due"):
+        asyncio.run(loader._ask_all(None, ["When is rent due?"]))  # type: ignore[arg-type]
+    monkeypatch.setattr(loader, "ask_stream", answered)
+    assert asyncio.run(loader._ask_all(None, ["When is rent due?", "And the gym?"])) == 2  # type: ignore[arg-type]
+
+
+def test_a_take_its_tool_server_did_not_answer_is_discarded(tmp_path: Path) -> None:
+    """The CLI's tool server is sometimes still starting when the first calls of a turn come: their
+    results read "Error executing tool …", the model calls again, and the take keeps both. The stale
+    check rejected such a take on every rebuild; now the recorder discards it, and the next asks again."""
+    from ordnung.demo.loader import _stale_asks
+    from ordnung.llm.base import StreamEvent
+
+    take = tmp_path / "take.json"
+    take.write_text("{}", encoding="utf-8")
+    events = [
+        StreamEvent(type="tool_use", name="mcp__ordnung__today", input={}, tool_use_id="a"),
+        StreamEvent(type="tool_result", text="Error executing tool today", tool_use_id="a"),
+        StreamEvent(type="tool_use", name="mcp__ordnung__today", input={}, tool_use_id="b"),
+        StreamEvent(type="tool_result", text='{"today":"2026-09-28"}', tool_use_id="b"),
+        StreamEvent(type="done", text="Today is Mon 28 Sep 2026."),
+    ]
+    problems = _stale_asks(None, [(take, events)], 6)  # type: ignore[arg-type]
+    assert not take.exists()
+    assert problems == [
+        "tray state 6: the recorded Ask answer take.json holds a tool call its tool server did not answer "
+        "(it was still starting) — discarded; record it again"
+    ]

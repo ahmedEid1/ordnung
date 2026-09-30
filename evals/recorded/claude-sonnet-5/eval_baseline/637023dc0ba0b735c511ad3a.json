@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b081c1e2aa5f2c3ec3974fe85ba992d22eb92ec7cfc50c8ba96079dcc202fd02\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-07-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-tax_assessment-E1"
+    ],
+    "prompt_head": "Today is Friday, 2026-07-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterweiler\",\"document_date\":\"2026-07-28\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"40/118/27706\"},{\"label\":\"Steuer-ID\",\"value\":\"71 403 928 516\"}],\"amounts\":[6871,669],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab Bekanntgabe.\",\"computation\":\"Bescheiddatum (date of dispatch) = 28.07.2026 (Tuesday). Under § 122 Abs. 2 Nr. 1 AO (as amended, effective since 2025) a letter sent by ordinary mail is deemed delivered on the 4th day after posting, as the letter itself states ('gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'). Counting 4 days from 28.07.2026: 29.07 (Wed) = day1, 30.07 (Thu) = day2, 31.07 (Fri) = day3, 01.08.2026 (Sat) = day4. Since day 4 falls on a Saturday, the fictional delivery date shifts to the next working day under § 108 Abs. 3 AO by analogy (established BFH case law applying the weekend/holiday rule to the Bekanntgabefiktion as well): the next working day is Monday 03.08.2026 (no RP public holiday on that Monday). So Bekanntgabe (deemed notification) = 03.08.2026. The one-month Einspruchsfrist runs under §§ 108 Abs. 1 AO, 187 Abs. 1, 188 Abs. 2 BGB: because the period is triggered by an event (Bekanntgabe), the day of the event itself is not counted for the start, but under § 188 Abs. 2 BGB the period ends with expiry of the day in the following month that numerically corresponds to the day of the triggering event, i.e. the 3rd. So one month after 03.08.2026 ends 03.09.2026 (Thursday), which is not a Saturday, Sunday or RP public holiday, so no further shift applies.\",\"due_date\":\"2026-09-03\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter states the 'vierter Tag' (4th day) rule for postal delivery fiction rather than the older 'dritter Tag' (3rd day) rule; this reflects the AO § 122 Abs. 2 amendment that took effect in 2025, so it is consistent with current law, but double-check the actual envelope postmark date if available, since the deemed-delivery calculation assumes the letter was posted on the same day as the printed Bescheiddatum (28.07.2026).\",\"The refund of 669,00 € is to be paid to the IBAN already on file with the Finanzamt (DE72 2605 0001 0044 1029 38); verify this is your correct, own account, as no new bank details were requested.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterweiler",
+      "document_date": "2026-07-28",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "40/118/27706"
+        },
+        {
+          "label": "Steuer-ID",
+          "value": "71 403 928 516"
+        }
+      ],
+      "amounts": [
+        6871,
+        669
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Mit dem Einspruch können Sie diesen Bescheid anfechten, und zwar binnen eines Monats ab Bekanntgabe.",
+          "computation": "Bescheiddatum (date of dispatch) = 28.07.2026 (Tuesday). Under § 122 Abs. 2 Nr. 1 AO (as amended, effective since 2025) a letter sent by ordinary mail is deemed delivered on the 4th day after posting, as the letter itself states ('gilt er am vierten Tag nach der Aufgabe zur Post als bekannt gegeben'). Counting 4 days from 28.07.2026: 29.07 (Wed) = day1, 30.07 (Thu) = day2, 31.07 (Fri) = day3, 01.08.2026 (Sat) = day4. Since day 4 falls on a Saturday, the fictional delivery date shifts to the next working day under § 108 Abs. 3 AO by analogy (established BFH case law applying the weekend/holiday rule to the Bekanntgabefiktion as well): the next working day is Monday 03.08.2026 (no RP public holiday on that Monday). So Bekanntgabe (deemed notification) = 03.08.2026. The one-month Einspruchsfrist runs under §§ 108 Abs. 1 AO, 187 Abs. 1, 188 Abs. 2 BGB: because the period is triggered by an event (Bekanntgabe), the day of the event itself is not counted for the start, but under § 188 Abs. 2 BGB the period ends with expiry of the day in the following month that numerically corresponds to the day of the triggering event, i.e. the 3rd. So one month after 03.08.2026 ends 03.09.2026 (Thursday), which is not a Saturday, Sunday or RP public holiday, so no further shift applies.",
+          "due_date": "2026-09-03",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states the 'vierter Tag' (4th day) rule for postal delivery fiction rather than the older 'dritter Tag' (3rd day) rule; this reflects the AO § 122 Abs. 2 amendment that took effect in 2025, so it is consistent with current law, but double-check the actual envelope postmark date if available, since the deemed-delivery calculation assumes the letter was posted on the same day as the printed Bescheiddatum (28.07.2026).",
+        "The refund of 669,00 € is to be paid to the IBAN already on file with the Finanzamt (DE72 2605 0001 0044 1029 38); verify this is your correct, own account, as no new bank details were requested."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4489,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2520,
+      "cost_usd": 0.05559839999999999,
+      "duration_ms": 43348,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

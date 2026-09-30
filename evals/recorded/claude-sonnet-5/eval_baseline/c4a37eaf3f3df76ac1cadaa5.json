@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"9750a43949ec9293d3278ba4b9d745d901e2c459029fe8751e9d6f4f87a6fc2b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-english_letter-A1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-02-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Relocation Services GmbH\",\"document_date\":\"2026-02-11\",\"references\":[{\"label\":\"Invoice no.\",\"value\":\"INV-26-0207\"},{\"label\":\"Client ref.\",\"value\":\"C-4410\"}],\"amounts\":[1190],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay settling-in package invoice\",\"quote\":\"Please pay within 30 days of the date of this letter by bank transfer to the account shown below, quoting the invoice number.\",\"computation\":\"Sender is a private company, so no statutory deemed-delivery rule applies; the period runs from the letter's own date, 11 February 2026. Under § 187 Abs. 1 BGB the day of the event (11 Feb) is not counted, so counting starts 12 Feb 2026. 30 days later (§ 188 Abs. 1 BGB) falls on Friday, 13 March 2026. That day is a business day (no weekend or NW public holiday), so no shift under § 193 BGB is needed. Due date: 13 March 2026.\",\"due_date\":\"2026-03-13\",\"confidence\":\"high\",\"amount\":1190}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Relocation Services GmbH",
+      "document_date": "2026-02-11",
+      "references": [
+        {
+          "label": "Invoice no.",
+          "value": "INV-26-0207"
+        },
+        {
+          "label": "Client ref.",
+          "value": "C-4410"
+        }
+      ],
+      "amounts": [
+        1190
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay settling-in package invoice",
+          "quote": "Please pay within 30 days of the date of this letter by bank transfer to the account shown below, quoting the invoice number.",
+          "computation": "Sender is a private company, so no statutory deemed-delivery rule applies; the period runs from the letter's own date, 11 February 2026. Under § 187 Abs. 1 BGB the day of the event (11 Feb) is not counted, so counting starts 12 Feb 2026. 30 days later (§ 188 Abs. 1 BGB) falls on Friday, 13 March 2026. That day is a business day (no weekend or NW public holiday), so no shift under § 193 BGB is needed. Due date: 13 March 2026.",
+          "due_date": "2026-03-13",
+          "confidence": "high",
+          "amount": 1190
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1392,
+      "cache_read_tokens": 14982,
+      "cache_creation_tokens": 4167,
+      "cost_usd": 0.0335924,
+      "duration_ms": 14921,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 30,
+            "unit": "days",
+            "anchor": "document_date",
+            "anchor_date": "2026-02-11",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB",
+            "text": "Please pay within 30 days of the date of this letter"
+          },
+          "document_date": "2026-02-11",
+          "sender_kind": "company",
+          "sender_name": "Beispiel Relocation Services GmbH",
+          "region": "BE",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-03-13\",\"weekday\":\"Friday\",\"send_by\":\"2026-03-12\",\"summary\":\"30 days after the letter's date (Wed 11 Feb 2026) is Fri 13 Mar 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 11 Feb 2026\",\"date\":\"2026-02-11\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"30 days later: Fri 13 Mar 2026\",\"date\":\"2026-03-13\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 13 Mar 2026 is a working day, so it stays\",\"date\":\"2026-03-13\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Thu 12 Mar 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-03-12\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-02-17\",\"letter_date\":\"2026-02-11\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE41 3705 0198 0009 0199 01"
+        },
+        "result": "{\"iban\":\"DE41 3705 0198 0009 0199 01\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0009019901\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

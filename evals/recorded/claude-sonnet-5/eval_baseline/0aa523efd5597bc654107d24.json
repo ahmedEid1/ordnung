@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f3cd471b1eaf68281be70b33652650bc34202c62263f8dc694f149367ba3fcfe\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2026-10-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-C1"
+    ],
+    "prompt_head": "Today is Friday, 2026-10-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Beispielförde\",\"document_date\":\"2026-09-29\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"FD 3.40-FB-2026-0093\"},{\"label\":\"Amtliches Kennzeichen\",\"value\":\"BF-MU 412\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against Fahrtenbuchauflage\",\"quote\":\"Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.\",\"computation\":\"The notice is dated Tuesday 29.09.2026; assuming it was handed to the post on that date, the statutory delivery fiction for authority letters (§ 41 Abs. 2 VwVfG / entsprechende Vorschrift des Landesverwaltungsgesetzes SH) deems it received on the third day after posting: 02.10.2026 (a Friday, a normal working day, so no weekend/holiday shift applies). The one-month Widerspruchsfrist runs 'nachdem bekannt gegeben worden ist', an Ereignisfrist under § 187 Abs. 1 BGB: the day of Bekanntgabe (02.10.2026) itself is not counted, the period starts 03.10.2026, and per § 188 Abs. 2 BGB ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 02.11.2026 (a Monday). Neither 01.11. (Allerheiligen, not a holiday in Schleswig-Holstein) nor 02.11. is a Saturday, Sunday or SH public holiday, so § 193 BGB requires no shift.\",\"due_date\":\"2026-11-02\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start/end of six-month Fahrtenbuch obligation (depends on finality of the order)\",\"quote\":\"Ich ordne daher an, dass Sie für dieses Fahrzeug für die Dauer von sechs Monaten ein Fahrtenbuch zu führen haben. Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.\",\"computation\":\"The six-month duty to keep a logbook only begins once the order becomes 'bestandskräftig' (final/unappealable). If no Widerspruch is filed within the deadline computed above (which expires 02.11.2026), Bestandskraft would occur the following day, 03.11.2026 at the earliest, and the six-month period would then run until roughly 02.05.2027. If a Widerspruch is filed, Bestandskraft is postponed until that procedure (and any subsequent legal action) concludes, so no fixed start or end date can be given now.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The Widerspruch deadline was computed assuming the letter was posted on its printed date (29.09.2026); if it was actually mailed later, the deemed-delivery date and therefore the 02.11.2026 deadline shift accordingly — check the postmark/envelope if available.\",\"The start and end dates of the six-month Fahrtenbuch obligation cannot be fixed yet because they depend on when the order becomes legally final (Bestandskraft), i.e. on whether a Widerspruch is filed and how it is resolved.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Beispielförde",
+      "document_date": "2026-09-29",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "FD 3.40-FB-2026-0093"
+        },
+        {
+          "label": "Amtliches Kennzeichen",
+          "value": "BF-MU 412"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against Fahrtenbuchauflage",
+          "quote": "Der Widerspruch muss binnen eines Monats, nachdem Ihnen der Bescheid bekannt gegeben worden ist, schriftlich, elektronisch oder zur Niederschrift beim Kreis Beispielförde, Kreishaus, Förder Straße 3, 24103 Beispielförde, erhoben werden.",
+          "computation": "The notice is dated Tuesday 29.09.2026; assuming it was handed to the post on that date, the statutory delivery fiction for authority letters (§ 41 Abs. 2 VwVfG / entsprechende Vorschrift des Landesverwaltungsgesetzes SH) deems it received on the third day after posting: 02.10.2026 (a Friday, a normal working day, so no weekend/holiday shift applies). The one-month Widerspruchsfrist runs 'nachdem bekannt gegeben worden ist', an Ereignisfrist under § 187 Abs. 1 BGB: the day of Bekanntgabe (02.10.2026) itself is not counted, the period starts 03.10.2026, and per § 188 Abs. 2 BGB ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 02.11.2026 (a Monday). Neither 01.11. (Allerheiligen, not a holiday in Schleswig-Holstein) nor 02.11. is a Saturday, Sunday or SH public holiday, so § 193 BGB requires no shift.",
+          "due_date": "2026-11-02",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start/end of six-month Fahrtenbuch obligation (depends on finality of the order)",
+          "quote": "Ich ordne daher an, dass Sie für dieses Fahrzeug für die Dauer von sechs Monaten ein Fahrtenbuch zu führen haben. Die Auflage beginnt mit Eintritt der Bestandskraft dieses Bescheids.",
+          "computation": "The six-month duty to keep a logbook only begins once the order becomes 'bestandskräftig' (final/unappealable). If no Widerspruch is filed within the deadline computed above (which expires 02.11.2026), Bestandskraft would occur the following day, 03.11.2026 at the earliest, and the six-month period would then run until roughly 02.05.2027. If a Widerspruch is filed, Bestandskraft is postponed until that procedure (and any subsequent legal action) concludes, so no fixed start or end date can be given now.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The Widerspruch deadline was computed assuming the letter was posted on its printed date (29.09.2026); if it was actually mailed later, the deemed-delivery date and therefore the 02.11.2026 deadline shift accordingly — check the postmark/envelope if available.",
+        "The start and end dates of the six-month Fahrtenbuch obligation cannot be fixed yet because they depend on when the order becomes legally final (Bestandskraft), i.e. on whether a Widerspruch is filed and how it is resolved."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4488,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2176,
+      "cost_usd": 0.054212399999999994,
+      "duration_ms": 46594,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

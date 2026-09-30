@@ -9,6 +9,7 @@ never run the ``claude`` CLI (the recorded demo, the test fake) get the local ch
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -46,7 +47,8 @@ async def _probe(state: ApiState, uses_cli: bool) -> list[DoctorCheck]:
     data_dir = state.ctx.paths.data_dir
     if not uses_cli:
         return DoctorReport(checks=await asyncio.to_thread(local_checks, data_dir)).checks
-    report = await state.doctor(data_dir, probe=True)
+    # on the model every call runs on, so a name Claude Code refuses shows up here, next to the field
+    report = await state.doctor(data_dir, probe=True, model=state.ctx.settings.model)
     state.claude.remember(report.claude)
     return report.checks
 
@@ -63,8 +65,9 @@ async def health(
         bool, Query(description="“Run check”: all doctor checks plus one tiny live call (once a minute)")
     ] = False,
 ) -> Health | PublicHealth:
-    """Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min) and
-    the rules catalog's "law as of" date; with ``probe`` also the doctor's checks."""
+    """Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min), the
+    model ``ORDNUNG_CLAUDE_MODEL`` pins (if set) and the rules catalog's "law as of" date; with
+    ``probe`` also the doctor's checks."""
     if not request_authenticated(request):
         return PublicHealth(version=__version__)
     ctx = state.ctx
@@ -81,6 +84,7 @@ async def health(
         today=local_today(store).isoformat(),
         backend=ctx.backend_name,
         claude=claude,
+        model_pinned=os.environ.get("ORDNUNG_CLAUDE_MODEL") or None,
         rules_last_checked=LAST_CHECKED,
         checks=checks,
     )

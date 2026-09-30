@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e087bb6df63ab3f76613c3a953bdbf1d5a64fa6190bfa22a90a0126ca701042d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F1"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielmünde – Bußgeldbehörde\",\"document_date\":\"2027-02-17\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"32.4-OWI-2027-01188\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"BMÜ-IB 12\"}],\"amounts\":[115,25,3.5,143.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.\",\"computation\":\"The attached Postzustellungsurkunde (§ 182 ZPO copy on page 2) records actual delivery ('zugestellt') on 22.02.2027, which is a Monday. Because this is formal service, the recorded date (not any 3-day-fiction) is the start of the period. Per § 187 Abs. 1 BGB the day of the event (22.02.2027) is not counted; the period begins the next day, 23.02.2027 (Tuesday). Per § 188 Abs. 2 BGB a two-week period ends with the expiry of the day of the second week bearing the same name as the day it began, i.e. the second following Tuesday: 09.03.2027. That day is a normal weekday in MV (no holiday), so it stands as the deadline.\",\"due_date\":\"2027-03-09\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (Geldbuße, fees, delivery costs)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"Assuming no Einspruch is filed within the deadline above (09.03.2027), the decision becomes final (Rechtskraft) with expiry of that day, i.e. Rechtskraft eintritt am 10.03.2027. Per § 187 Abs. 1 BGB the day of that event (10.03.2027) is not counted; the two-week payment period begins the next day, 11.03.2027 (Thursday). Per § 188 Abs. 2 BGB it ends with the expiry of the day of the second week bearing the same name, i.e. the second following Thursday: 25.03.2027. This calculation is void if an Einspruch is filed in time, which would suspend both Rechtskraft and this payment obligation.\",\"due_date\":\"2027-03-25\",\"confidence\":\"medium\",\"amount\":143.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The delivery date on the attached Zustellungsurkunde copy is partly illegible in the scan ('22.02.20…'); I assumed it reads 22.02.2027, matching the stamped delivery, but this should be verified against the original document since the whole Einspruch deadline depends on it.\",\"The payment due date (25.03.2027) is only valid if no Einspruch is filed by 09.03.2027; filing an Einspruch suspends both the Rechtskraft and the payment obligation, and the letter itself does not state an explicit calendar date for 'Eintritt der Rechtskraft', so this date is a computed assumption, not one printed in the letter.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+      "document_date": "2027-02-17",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "32.4-OWI-2027-01188"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "BMÜ-IB 12"
+        }
+      ],
+      "amounts": [
+        115,
+        25,
+        3.5,
+        143.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.",
+          "computation": "The attached Postzustellungsurkunde (§ 182 ZPO copy on page 2) records actual delivery ('zugestellt') on 22.02.2027, which is a Monday. Because this is formal service, the recorded date (not any 3-day-fiction) is the start of the period. Per § 187 Abs. 1 BGB the day of the event (22.02.2027) is not counted; the period begins the next day, 23.02.2027 (Tuesday). Per § 188 Abs. 2 BGB a two-week period ends with the expiry of the day of the second week bearing the same name as the day it began, i.e. the second following Tuesday: 09.03.2027. That day is a normal weekday in MV (no holiday), so it stands as the deadline.",
+          "due_date": "2027-03-09",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (Geldbuße, fees, delivery costs)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "Assuming no Einspruch is filed within the deadline above (09.03.2027), the decision becomes final (Rechtskraft) with expiry of that day, i.e. Rechtskraft eintritt am 10.03.2027. Per § 187 Abs. 1 BGB the day of that event (10.03.2027) is not counted; the two-week payment period begins the next day, 11.03.2027 (Thursday). Per § 188 Abs. 2 BGB it ends with the expiry of the day of the second week bearing the same name, i.e. the second following Thursday: 25.03.2027. This calculation is void if an Einspruch is filed in time, which would suspend both Rechtskraft and this payment obligation.",
+          "due_date": "2027-03-25",
+          "confidence": "medium",
+          "amount": 143.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The delivery date on the attached Zustellungsurkunde copy is partly illegible in the scan ('22.02.20…'); I assumed it reads 22.02.2027, matching the stamped delivery, but this should be verified against the original document since the whole Einspruch deadline depends on it.",
+        "The payment due date (25.03.2027) is only valid if no Einspruch is filed by 09.03.2027; filing an Einspruch suspends both the Rechtskraft and the payment obligation, and the letter itself does not state an explicit calendar date for 'Eintritt der Rechtskraft', so this date is a computed assumption, not one printed in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7887,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2699,
+      "cost_usd": 0.0902944,
+      "duration_ms": 73736,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

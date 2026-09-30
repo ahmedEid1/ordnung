@@ -1,0 +1,100 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"6a56078730e2b2e6a3dac1e12ad96bdfa1fecc764ee4eb6d9b369339d74cccf0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-price_increase-B1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"NetzMuster GmbH\",\"document_date\":\"2026-02-16\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"NM-2291044\"}],\"amounts\":[39.99,44.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase takes effect\",\"quote\":\"wir investieren weiter in den Ausbau unseres Glasfasernetzes. Deshalb erhöht sich der\\nmonatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf\\n44,99 €.\",\"computation\":\"The letter states the new price of 44,99 € applies from 01.04.2026, a fixed calendar date printed in the letter. No counting or shifting needed.\",\"due_date\":\"2026-04-01\",\"confidence\":\"high\",\"amount\":44.99},{\"kind\":\"deadline\",\"title\":\"Special termination right (§ 57 TKG) deadline\",\"quote\":\"Sie können Ihren Vertrag innerhalb von drei Monaten nach\\nZugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens\\nzum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).\",\"computation\":\"The period is 3 months from 'Zugang' (actual receipt) of this notice, not from the document date, and NetzMuster GmbH is a private company so no statutory deemed-delivery rule (like the tax/administrative 3-4 day rule) applies. The actual arrival date is unknown; as the earliest plausible reading, receipt is assumed on the document date, Mon 16.02.2026 (day of the event not counted per § 187 Abs. 1 BGB). Three months later (§ 188 Abs. 1, 2 BGB) falls on Sat 16.05.2026. Termination-notice periods are not extended to the next business day when the last day is a weekend/holiday (BGH III ZR 172/04), so the deadline itself remains Sat 16.05.2026 - meaning the cancellation must actually reach NetzMuster GmbH by Fri 15.05.2026 at the latest to be safe, and should be sent by roughly 08.05.2026 to allow for postal transit. If the letter in fact arrived later than 16.02.2026, the three-month window shifts correspondingly later.\",\"due_date\":\"2026-05-16\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The three-month special-termination deadline runs from the day the letter actually arrived ('Zugang'), which is not stated; the date above assumes arrival on the printed document date (16.02.2026) as the earliest plausible reading — if it arrived later, the deadline is correspondingly later, and practically the cancellation should reach NetzMuster GmbH a day or two before the calculated Saturday, i.e. by Fri 15.05.2026.\",\"The IBAN printed (DE71 3705 0198 0001 2312 31) is NetzMuster GmbH's own account for the customer's information/payments to them, not a request to send money elsewhere; it checks out structurally but ownership cannot be verified from the letter alone.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "NetzMuster GmbH",
+      "document_date": "2026-02-16",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "NM-2291044"
+        }
+      ],
+      "amounts": [
+        39.99,
+        44.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase takes effect",
+          "quote": "wir investieren weiter in den Ausbau unseres Glasfasernetzes. Deshalb erhöht sich der\nmonatliche Grundpreis Ihres Tarifs „Muster DSL 250“ ab dem 01.04.2026 von 39,99 € auf\n44,99 €.",
+          "computation": "The letter states the new price of 44,99 € applies from 01.04.2026, a fixed calendar date printed in the letter. No counting or shifting needed.",
+          "due_date": "2026-04-01",
+          "confidence": "high",
+          "amount": 44.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Special termination right (§ 57 TKG) deadline",
+          "quote": "Sie können Ihren Vertrag innerhalb von drei Monaten nach\nZugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen, frühestens\nzum Zeitpunkt des Wirksamwerdens der Änderung (§ 57 TKG).",
+          "computation": "The period is 3 months from 'Zugang' (actual receipt) of this notice, not from the document date, and NetzMuster GmbH is a private company so no statutory deemed-delivery rule (like the tax/administrative 3-4 day rule) applies. The actual arrival date is unknown; as the earliest plausible reading, receipt is assumed on the document date, Mon 16.02.2026 (day of the event not counted per § 187 Abs. 1 BGB). Three months later (§ 188 Abs. 1, 2 BGB) falls on Sat 16.05.2026. Termination-notice periods are not extended to the next business day when the last day is a weekend/holiday (BGH III ZR 172/04), so the deadline itself remains Sat 16.05.2026 - meaning the cancellation must actually reach NetzMuster GmbH by Fri 15.05.2026 at the latest to be safe, and should be sent by roughly 08.05.2026 to allow for postal transit. If the letter in fact arrived later than 16.02.2026, the three-month window shifts correspondingly later.",
+          "due_date": "2026-05-16",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The three-month special-termination deadline runs from the day the letter actually arrived ('Zugang'), which is not stated; the date above assumes arrival on the printed document date (16.02.2026) as the earliest plausible reading — if it arrived later, the deadline is correspondingly later, and practically the cancellation should reach NetzMuster GmbH a day or two before the calculated Saturday, i.e. by Fri 15.05.2026.",
+        "The IBAN printed (DE71 3705 0198 0001 2312 31) is NetzMuster GmbH's own account for the customer's information/payments to them, not a request to send money elsewhere; it checks out structurally but ownership cannot be verified from the letter alone."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4834,
+      "cache_read_tokens": 26828,
+      "cache_creation_tokens": 7499,
+      "cost_usd": 0.0837136,
+      "duration_ms": 49245,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": null,
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 57 TKG",
+            "text": "Sie können Ihren Vertrag innerhalb von drei Monaten nach Zugang dieser Mitteilung ohne Einhaltung einer Frist und ohne Kosten kündigen"
+          },
+          "document_date": "2026-02-16",
+          "sender_kind": "telecom",
+          "sender_name": "NetzMuster GmbH",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-05-16\",\"weekday\":\"Saturday\",\"send_by\":\"2026-05-08\",\"safe_date\":\"2026-05-15\",\"summary\":\"Three months after the letter's date (Mon 16 Feb 2026) is Sat 16 May 2026, a Saturday; notice deadlines don't move, so aim for Fri 15 May 2026.\",\"confidence\":\"low\",\"warnings\":[\"We assumed the letter arrived on the date printed on it — tell us when it actually arrived.\"],\"steps\":[{\"label\":\"Counting starts the day after Mon 16 Feb 2026\",\"date\":\"2026-02-16\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Sat 16 May 2026\",\"date\":\"2026-05-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 16 May 2026 is a Saturday, but notice deadlines never move to the next working day\",\"date\":\"2026-05-16\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 15 May 2026\",\"date\":\"2026-05-15\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Fri 8 May 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-05-08\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-02-22\",\"letter_date\":\"2026-02-16\",\"received_date\":\"2026-02-16\",\"received_date_from\":\"document_date: assumed, the earliest plausible arrival\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE71 3705 0198 0001 2312 31"
+        },
+        "result": "{\"iban\":\"DE71 3705 0198 0001 2312 31\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0001231231\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

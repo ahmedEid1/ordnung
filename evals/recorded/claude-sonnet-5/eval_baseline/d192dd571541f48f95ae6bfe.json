@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d1458e8efbafb8ccd5553cb0e29d5c6499dd4e94e7f93c8b4cc27d8bcd0265bc\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-C1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-04-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract_change\",\"sender_name\":\"Beispiel Logistik GmbH\",\"document_date\":\"2026-04-28\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"40718\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed mobile-work addendum\",\"quote\":\"Wir bitten Sie, die unterschriebene Zusatzvereinbarung innerhalb von 10 Werktagen (Mo–Sa, ohne Feiertage) nach dem Datum dieses Schreibens an die Personalabteilung zurückzusenden.\",\"computation\":\"This is a private employment letter, not an administrative act, so the period runs from the day after the letter's own date (28.04.2026, a Tuesday) rather than from a statutory delivery-fiction date, i.e. counting starts 29.04.2026. The period is 10 'Werktage' defined by the letter itself as Monday–Saturday excluding public holidays. Counting each qualifying day: 29.04 (Wed, 1), 30.04 (Thu, 2), 01.05 (Fri) is Tag der Arbeit, a public holiday in NW, so it is skipped, 02.05 (Sat, 3), 03.05 (Sun) is not a Mo–Sat day, skipped, 04.05 (Mon, 4), 05.05 (Tue, 5), 06.05 (Wed, 6), 07.05 (Thu, 7), 08.05 (Fri, 8), 09.05 (Sat, 9), 10.05 (Sun) skipped, 11.05 (Mon, 10). The 10th qualifying working day is Monday 11.05.2026, which is itself not a Sunday/holiday, so no further shift is needed.\",\"due_date\":\"2026-05-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Mobile working arrangement begins\",\"quote\":\"wie besprochen erhalten Sie anbei die Zusatzvereinbarung über mobiles Arbeiten (bis zu zwei Tage pro Woche) ab dem 01.06.2026.\",\"computation\":\"The letter states the addendum for mobile working takes effect on a fixed calendar date, 01.06.2026, so no period calculation is required; this date is taken as given.\",\"due_date\":\"2026-06-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "contract_change",
+      "sender_name": "Beispiel Logistik GmbH",
+      "document_date": "2026-04-28",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "40718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed mobile-work addendum",
+          "quote": "Wir bitten Sie, die unterschriebene Zusatzvereinbarung innerhalb von 10 Werktagen (Mo–Sa, ohne Feiertage) nach dem Datum dieses Schreibens an die Personalabteilung zurückzusenden.",
+          "computation": "This is a private employment letter, not an administrative act, so the period runs from the day after the letter's own date (28.04.2026, a Tuesday) rather than from a statutory delivery-fiction date, i.e. counting starts 29.04.2026. The period is 10 'Werktage' defined by the letter itself as Monday–Saturday excluding public holidays. Counting each qualifying day: 29.04 (Wed, 1), 30.04 (Thu, 2), 01.05 (Fri) is Tag der Arbeit, a public holiday in NW, so it is skipped, 02.05 (Sat, 3), 03.05 (Sun) is not a Mo–Sat day, skipped, 04.05 (Mon, 4), 05.05 (Tue, 5), 06.05 (Wed, 6), 07.05 (Thu, 7), 08.05 (Fri, 8), 09.05 (Sat, 9), 10.05 (Sun) skipped, 11.05 (Mon, 10). The 10th qualifying working day is Monday 11.05.2026, which is itself not a Sunday/holiday, so no further shift is needed.",
+          "due_date": "2026-05-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Mobile working arrangement begins",
+          "quote": "wie besprochen erhalten Sie anbei die Zusatzvereinbarung über mobiles Arbeiten (bis zu zwei Tage pro Woche) ab dem 01.06.2026.",
+          "computation": "The letter states the addendum for mobile working takes effect on a fixed calendar date, 01.06.2026, so no period calculation is required; this date is taken as given.",
+          "due_date": "2026-06-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2233,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1890,
+      "cost_usd": 0.030518400000000005,
+      "duration_ms": 20481,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

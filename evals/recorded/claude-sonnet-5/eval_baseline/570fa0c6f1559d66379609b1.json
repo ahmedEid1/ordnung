@@ -1,0 +1,129 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"09cb7a35bbd7598a1e46ab5eb11ddb3f6e4c071e41c3efb959a58e5d88a51e8d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-11-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-11-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle\",\"document_date\":\"2025-11-05\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 25-0918-337\"},{\"label\":\"Kennzeichen\",\"value\":\"MB-TB 318\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"This is a formally served letter (Postzustellungsurkunde, § 182 ZPO, page 2 endorsed 'Zugestellt' 08.11.2025), so no deemed-delivery fiction applies; the two-week Einspruch period of § 67 Abs. 1 OWiG runs from the actual service date shown, Sat 08.11.2025. Under § 187 Abs. 1 BGB the day of service is not counted, so counting starts Sun 09.11.2025; two weeks later (§ 188 Abs. 1, 2 BGB) is Sat 22.11.2025. Since Saturdays count as non-working for this purpose (§ 43 StPO with § 46 Abs. 1 OWiG), the deadline shifts to the next working day, Mon 24.11.2025.\",\"due_date\":\"2025-11-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and delivery costs (total) once the decision is final\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"Payment is due two weeks after the Bescheid becomes rechtskräftig (final). Assuming no Einspruch is filed, it becomes final the day after the Einspruch period expires, i.e. from Tue 25.11.2025 (the day after the Einspruch deadline of Mon 24.11.2025). Counting the two-week payment period the same way (day of the triggering event, 24.11.2025, not counted; §187 BGB), two weeks later is Mon 08.12.2025, which is a working day, so it stands. This date is contingent on the decision actually becoming final on that day (no Einspruch filed); if an Einspruch is filed the payment obligation and its deadline no longer apply as stated.\",\"due_date\":\"2025-12-08\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (08.12.2025) assumes the Bescheid becomes final because no Einspruch is filed by 24.11.2025; filing an Einspruch would stop this payment obligation and start a different (court) procedure instead.\",\"The Zustellungsurkunde on page 2 shows service on 08.11.2025, three days after the letter's own printed date (05.11.2025); the Einspruch deadline was computed from the later, actual service date as that is what a formal Postzustellungsurkunde controls.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+      "document_date": "2025-11-05",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 25-0918-337"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MB-TB 318"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "This is a formally served letter (Postzustellungsurkunde, § 182 ZPO, page 2 endorsed 'Zugestellt' 08.11.2025), so no deemed-delivery fiction applies; the two-week Einspruch period of § 67 Abs. 1 OWiG runs from the actual service date shown, Sat 08.11.2025. Under § 187 Abs. 1 BGB the day of service is not counted, so counting starts Sun 09.11.2025; two weeks later (§ 188 Abs. 1, 2 BGB) is Sat 22.11.2025. Since Saturdays count as non-working for this purpose (§ 43 StPO with § 46 Abs. 1 OWiG), the deadline shifts to the next working day, Mon 24.11.2025.",
+          "due_date": "2025-11-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and delivery costs (total) once the decision is final",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "Payment is due two weeks after the Bescheid becomes rechtskräftig (final). Assuming no Einspruch is filed, it becomes final the day after the Einspruch period expires, i.e. from Tue 25.11.2025 (the day after the Einspruch deadline of Mon 24.11.2025). Counting the two-week payment period the same way (day of the triggering event, 24.11.2025, not counted; §187 BGB), two weeks later is Mon 08.12.2025, which is a working day, so it stands. This date is contingent on the decision actually becoming final on that day (no Einspruch filed); if an Einspruch is filed the payment obligation and its deadline no longer apply as stated.",
+          "due_date": "2025-12-08",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (08.12.2025) assumes the Bescheid becomes final because no Einspruch is filed by 24.11.2025; filing an Einspruch would stop this payment obligation and start a different (court) procedure instead.",
+        "The Zustellungsurkunde on page 2 shows service on 08.11.2025, three days after the letter's own printed date (05.11.2025); the Einspruch deadline was computed from the later, actual service date as that is what a formal Postzustellungsurkunde controls."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 6226,
+      "cache_read_tokens": 43498,
+      "cache_creation_tokens": 10916,
+      "cost_usd": 0.11463960000000001,
+      "duration_ms": 54774,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2025-11-08",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 67 OWiG (Einspruchsfrist)",
+            "text": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen."
+          },
+          "document_date": "2025-11-05",
+          "received_date": "2025-11-08",
+          "sender_kind": "authority",
+          "sender_name": "Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2025-11-24\",\"weekday\":\"Monday\",\"send_by\":\"2025-11-18\",\"summary\":\"Two weeks after delivery on Sat 8 Nov 2025 (as stated on the letter) is Sat 22 Nov 2025, a Saturday, so the deadline moves to Mon 24 Nov 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 8 Nov 2025\",\"date\":\"2025-11-08\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Sat 22 Nov 2025\",\"date\":\"2025-11-22\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 22 Nov 2025 is a Saturday, so the deadline moves to Mon 24 Nov 2025\",\"date\":\"2025-11-24\",\"rule_id\":\"stpo_43\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\"},{\"label\":\"Send by Tue 18 Nov 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-11-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"owig_67\",\"title\":\"Objection to a fine (Einspruch gegen Bußgeldbescheid): two weeks\",\"citation\":\"§ 67 Abs. 1 OWiG; § 43 StPO\",\"url\":\"https://www.gesetze-im-internet.de/owig_1968/__67.html\"},{\"id\":\"stpo_43\",\"title\":\"Week periods in fine and criminal proceedings\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\",\"url\":\"https://www.gesetze-im-internet.de/stpo/__43.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-11-08\",\"letter_date\":\"2025-11-05\",\"received_date\":\"2025-11-08\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE43 5335 0000 0000 5050 50"
+        },
+        "result": "{\"iban\":\"DE43 5335 0000 0000 5050 50\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"53350000\"},\"account_number\":\"0000505050\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-11-24",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "Zahlungsfrist nach Rechtskraft des Bußgeldbescheids",
+            "text": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit"
+          },
+          "document_date": "2025-11-05",
+          "sender_kind": "authority",
+          "sender_name": "Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2025-12-08\",\"weekday\":\"Monday\",\"send_by\":\"2025-12-05\",\"summary\":\"Two weeks after Mon 24 Nov 2025 is Mon 8 Dec 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 24 Nov 2025\",\"date\":\"2025-11-24\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 8 Dec 2025\",\"date\":\"2025-12-08\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 8 Dec 2025 is a working day, so it stays\",\"date\":\"2025-12-08\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Fri 5 Dec 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-12-05\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-11-08\",\"letter_date\":\"2025-11-05\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -133,6 +133,14 @@ class LLMService:
         # of them purges the cached output (a brief or review built from several letters included)
         return "|".join(sorted(set(req.doc_ids))) or None
 
+    def _cache_key(self, req: LLMRequest) -> str:
+        """The cache's key: the request's, with the model the backend runs the call on (the person's
+        choice, an environment pin) in place of the request's alias, so a new choice is a new call.
+        The replay fixtures keep the alias (:func:`ordnung.llm.replay.fixture_path`)."""
+        model_for = getattr(self.backend, "model_for", None)
+        run_on = model_for(req) if callable(model_for) else req.model
+        return request_key(req if run_on == req.model else req.model_copy(update={"model": run_on}))
+
     def _cache_get(self, key: str) -> LLMResponse | None:
         if self.sink is None:
             return None
@@ -248,7 +256,7 @@ class LLMService:
         ``repair_of`` is the log id of the call a repair retries. The answer's
         :attr:`~ordnung.llm.base.LLMResponse.call_id` is its usage-log row.
         """
-        key = request_key(req)
+        key = self._cache_key(req)
         if use_cache and req.cache_key is not None:
             cached = self._cache_get(key)
             if cached is not None:
@@ -287,11 +295,17 @@ class LLMService:
 
 
 def make_backend(
-    kind: str | None = None, *, concurrency: int = 2, fixtures: Path | None = None
+    kind: str | None = None,
+    *,
+    concurrency: int = 2,
+    fixtures: Path | None = None,
+    model_setting: Callable[[], str | None] | None = None,
 ) -> LLMBackend:
     """Create a backend by name: ``claude`` (default), ``replay``, ``replay+claude``, ``fake``.
 
-    ``ORDNUNG_BACKEND`` overrides the default. Recording is done by the demo loader only.
+    ``ORDNUNG_BACKEND`` overrides the default. ``model_setting`` reads the model the person chose
+    for the live backend (:meth:`~ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`). Recording is
+    done by the demo loader only.
     """
     from ordnung.config import fixtures_dir
     from ordnung.llm.claude_cli import ClaudeCLIBackend
@@ -304,7 +318,7 @@ def make_backend(
         return FakeBackend()
     if kind == "replay":
         return ReplayBackend(root)
-    live = ClaudeCLIBackend(concurrency=concurrency)
+    live = ClaudeCLIBackend(concurrency=concurrency, model_setting=model_setting)
     if kind in ("replay+claude", "replay-then-claude"):
         return ReplayBackend(root, fallback=live)
     if kind == "record":

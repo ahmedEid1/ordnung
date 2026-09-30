@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"42a428fdfb830e21e39606a753d7476ae619055a5f74b8e2989d3e20d085d298\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-04-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"University of Beispielstadt\",\"document_date\":\"2026-04-20\",\"references\":[{\"label\":\"Our ref.\",\"value\":\"IO-OUT-26-0415\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit signed Learning Agreement via Mobility-Online\",\"quote\":\"Please submit your signed Learning Agreement by 15 May 2026 via the Mobility-Online portal.\",\"computation\":\"The letter states a fixed calendar date, 15 May 2026, as the deadline for submission. This is an explicit date, not a period to be counted, so no delivery-date or counting rules apply. 15 May 2026 falls on a Friday, a regular business day, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "University of Beispielstadt",
+      "document_date": "2026-04-20",
+      "references": [
+        {
+          "label": "Our ref.",
+          "value": "IO-OUT-26-0415"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit signed Learning Agreement via Mobility-Online",
+          "quote": "Please submit your signed Learning Agreement by 15 May 2026 via the Mobility-Online portal.",
+          "computation": "The letter states a fixed calendar date, 15 May 2026, as the deadline for submission. This is an explicit date, not a period to be counted, so no delivery-date or counting rules apply. 15 May 2026 falls on a Friday, a regular business day, so no weekend/holiday adjustment is needed.",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 962,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1809,
+      "cost_usd": 0.0174844,
+      "duration_ms": 11099,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

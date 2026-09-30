@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6afe0b8883d507ef8a86242924aad21bb830bc4240a37b87f05d81f60bc33d45\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnungsbaugenossenschaft Beispielbau eG\",\"document_date\":\"2026-12-16\",\"references\":[{\"label\":\"Nutzungsvertrag\",\"value\":\"NV-15-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Confirm whether the window-replacement appointment can be kept\",\"quote\":\"Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.\",\"computation\":\"Letter date (Briefdatum) is 16.12.2026 (Wednesday). The period runs 'ab dem Briefdatum'; per §187 Abs. 1 BGB the day of the triggering event itself is not counted, so counting starts on 17.12.2026 (Thursday). 'Werktage' are defined by the letter as Monday through Saturday excluding statutory holidays; Sundays and holidays are skipped, 24.12. is not a statutory holiday in NRW and counts, 25.12. and 26.12. are statutory holidays in NRW and are skipped. Counting workdays: 1) Thu 17.12, 2) Fri 18.12, 3) Sat 19.12, (Sun 20.12 skipped), 4) Mon 21.12, 5) Tue 22.12, 6) Wed 23.12, 7) Thu 24.12, (Fri 25.12 holiday skipped, Sat 26.12 holiday skipped, Sun 27.12 skipped), 8) Mon 28.12, 9) Tue 29.12, 10) Wed 30.12. The 10th Werktag, and thus the deadline for the reply to reach the cooperative, is 30.12.2026.\",\"due_date\":\"2026-12-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"appointment\",\"title\":\"Window replacement work in the apartment\",\"quote\":\"Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.\",\"computation\":\"The letter states the fixed appointment date directly: 12.01.2027, starting at 7:30, lasting about six hours. No counting needed; the date is taken as printed.\",\"due_date\":\"2027-01-12\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter's own letterhead address (37083 Neu-Beispielstadt) differs from the tenant's address (37073 Neu-Beispielstadt) shown in the recipient block; this postal-code mismatch should be double-checked, though it may simply be a different building/city district.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnungsbaugenossenschaft Beispielbau eG",
+      "document_date": "2026-12-16",
+      "references": [
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV-15-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Confirm whether the window-replacement appointment can be kept",
+          "quote": "Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.",
+          "computation": "Letter date (Briefdatum) is 16.12.2026 (Wednesday). The period runs 'ab dem Briefdatum'; per §187 Abs. 1 BGB the day of the triggering event itself is not counted, so counting starts on 17.12.2026 (Thursday). 'Werktage' are defined by the letter as Monday through Saturday excluding statutory holidays; Sundays and holidays are skipped, 24.12. is not a statutory holiday in NRW and counts, 25.12. and 26.12. are statutory holidays in NRW and are skipped. Counting workdays: 1) Thu 17.12, 2) Fri 18.12, 3) Sat 19.12, (Sun 20.12 skipped), 4) Mon 21.12, 5) Tue 22.12, 6) Wed 23.12, 7) Thu 24.12, (Fri 25.12 holiday skipped, Sat 26.12 holiday skipped, Sun 27.12 skipped), 8) Mon 28.12, 9) Tue 29.12, 10) Wed 30.12. The 10th Werktag, and thus the deadline for the reply to reach the cooperative, is 30.12.2026.",
+          "due_date": "2026-12-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "appointment",
+          "title": "Window replacement work in the apartment",
+          "quote": "Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.",
+          "computation": "The letter states the fixed appointment date directly: 12.01.2027, starting at 7:30, lasting about six hours. No counting needed; the date is taken as printed.",
+          "due_date": "2027-01-12",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter's own letterhead address (37083 Neu-Beispielstadt) differs from the tenant's address (37073 Neu-Beispielstadt) shown in the recipient block; this postal-code mismatch should be double-checked, though it may simply be a different building/city district."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3201,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2040,
+      "cost_usd": 0.04079839999999999,
+      "duration_ms": 25301,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

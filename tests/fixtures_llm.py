@@ -18,7 +18,8 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 
 TODAY = "2026-09-25"
-_PDF_CACHE: dict[str, bytes] = {}  # fpdf stamps the creation time: build each letter once
+# fpdf stamps the creation time: build each letter once (by its marker and pages — two letters may share a marker)
+_PDF_CACHE: dict[tuple[str, tuple[tuple[str, ...], ...]], bytes] = {}
 
 
 def iban(country: str, bban: str) -> str:
@@ -43,14 +44,15 @@ class Letter:
 
     def pdf(self) -> bytes:
         """A text PDF with one page per entry of :attr:`pages` (the same bytes on every call)."""
-        if self.marker not in _PDF_CACHE:
-            _PDF_CACHE[self.marker] = make_pdf(
+        key = (self.marker, self.pages)
+        if key not in _PDF_CACHE:
+            _PDF_CACHE[key] = make_pdf(
                 [
                     [Line(72, 90 + 20 * row, text, size=11) for row, text in enumerate(page)]
                     for page in self.pages
                 ]
             )
-        return _PDF_CACHE[self.marker]
+        return _PDF_CACHE[key]
 
     def extraction(self) -> dict[str, Any]:
         """A fresh copy of the payload (safe to modify)."""

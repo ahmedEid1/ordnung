@@ -1,0 +1,101 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1b11a714b7a86b1ad7c8543043317733f83b6ab3a12a991f02b43d2aed0b12e8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-12-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-municipal_decision-D2"
+    ],
+    "prompt_head": "Today is Thursday, 2025-12-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterstadt – Ordnungsamt\",\"document_date\":\"2025-12-23\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.3-AB-2025-1187\"}],\"amounts\":[480],\"items\":[{\"kind\":\"deadline\",\"title\":\"Remove green waste from municipal land\",\"quote\":\"Ich fordere Sie gemäß § 14 OBG NRW auf, die Ablagerungen bis zum 20.01.2026 vollständig zu beseitigen.\",\"computation\":\"The letter states a fixed calendar date for compliance: 20.01.2026. No period to count, no delivery-fiction needed since a concrete date is printed. Due date is simply 2026-01-20 (a Tuesday, not a weekend/holiday, so no shift applies).\",\"due_date\":\"2026-01-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage with the Verwaltungsgericht (no prior Widerspruch needed)\",\"quote\":\"Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.\",\"computation\":\"Letter dated Tue 23.12.2025, sent by ordinary post from an authority (§ 41 Abs. 2 VwVfG): counts as delivered on the 4th day after posting = Sat 27.12.2025 (this deemed-delivery day does not shift for weekends). The one-month Klage period (§ 74 VwGO) starts the next day (§ 187 Abs. 1 BGB) and ends one month later on the same-numbered day (§ 188 Abs. 2 BGB): 27.01.2026, a Tuesday, which is a working day, so no further shift is needed. Confirmed via the deadline tool.\",\"due_date\":\"2026-01-27\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The €480.00 mentioned is only the city's estimated cost of a substitute performance (Ersatzvornahme) it threatens to carry out and bill later if the deadline is missed — it is not a current invoice or payment due now.\",\"This letter announces direct Klage with no prior Widerspruch (Vorverfahren entfällt); given the one-month court deadline, get advice (e.g. a lawyer or Verbraucherzentrale) well before 2026-01-27 if you intend to contest it.\",\"The IBAN printed (DE70 4405 0199 0001 0001 00) is well-formed and domestic (Sparkasse Musterstadt), but no payment is actually due from this letter — do not use it for any payment unless a separate invoice/Bescheid for Ersatzvornahme costs arrives.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterstadt – Ordnungsamt",
+      "document_date": "2025-12-23",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.3-AB-2025-1187"
+        }
+      ],
+      "amounts": [
+        480
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Remove green waste from municipal land",
+          "quote": "Ich fordere Sie gemäß § 14 OBG NRW auf, die Ablagerungen bis zum 20.01.2026 vollständig zu beseitigen.",
+          "computation": "The letter states a fixed calendar date for compliance: 20.01.2026. No period to count, no delivery-fiction needed since a concrete date is printed. Due date is simply 2026-01-20 (a Tuesday, not a weekend/holiday, so no shift applies).",
+          "due_date": "2026-01-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage with the Verwaltungsgericht (no prior Widerspruch needed)",
+          "quote": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden.",
+          "computation": "Letter dated Tue 23.12.2025, sent by ordinary post from an authority (§ 41 Abs. 2 VwVfG): counts as delivered on the 4th day after posting = Sat 27.12.2025 (this deemed-delivery day does not shift for weekends). The one-month Klage period (§ 74 VwGO) starts the next day (§ 187 Abs. 1 BGB) and ends one month later on the same-numbered day (§ 188 Abs. 2 BGB): 27.01.2026, a Tuesday, which is a working day, so no further shift is needed. Confirmed via the deadline tool.",
+          "due_date": "2026-01-27",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The €480.00 mentioned is only the city's estimated cost of a substitute performance (Ersatzvornahme) it threatens to carry out and bill later if the deadline is missed — it is not a current invoice or payment due now.",
+        "This letter announces direct Klage with no prior Widerspruch (Vorverfahren entfällt); given the one-month court deadline, get advice (e.g. a lawyer or Verbraucherzentrale) well before 2026-01-27 if you intend to contest it.",
+        "The IBAN printed (DE70 4405 0199 0001 0001 00) is well-formed and domestic (Sparkasse Musterstadt), but no payment is actually due from this letter — do not use it for any payment unless a separate invoice/Bescheid for Ersatzvornahme costs arrives."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4157,
+      "cache_read_tokens": 27718,
+      "cache_creation_tokens": 8119,
+      "cost_usd": 0.0796016,
+      "duration_ms": 39545,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§74 VwGO",
+            "text": "Die Klage muss binnen eines Monats ab Bekanntgabe des Bescheids schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle erhoben werden."
+          },
+          "document_date": "2025-12-23",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterstadt – Ordnungsamt",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "klage"
+        },
+        "result": "{\"due_date\":\"2026-01-27\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-01-21\",\"summary\":\"Letter dated Tue 23 Dec 2025 counts as delivered on Sat 27 Dec (this day does not move for this kind of letter); one month later is Tue 27 Jan 2026.\",\"confidence\":\"medium\",\"warnings\":[\"This is the deadline for a court action (Klage). Ordnung can't draft or file court actions — get advice (e.g. a Verbraucherzentrale or a lawyer) well before this date.\",\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier: then pass spec.anchor receipt with that date as spec.anchor_date and spec.delivery_rule none.\"],\"steps\":[{\"label\":\"Posting day: Tue 23 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-23\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 27 Dec 2025\",\"date\":\"2025-12-27\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"For general administrative letters this day does not move, even though it is a Saturday\",\"date\":\"2025-12-27\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Sat 27 Dec 2025\",\"date\":\"2025-12-27\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Tue 27 Jan 2026\",\"date\":\"2026-01-27\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 27 Jan 2026 is a working day, so it stays\",\"date\":\"2026-01-27\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Wed 21 Jan 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-01-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"klage_1_month\",\"title\":\"Court action (Klage): one month\",\"citation\":\"§ 74 VwGO; § 47 FGO; § 87 SGG\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__74.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-12-25\",\"letter_date\":\"2025-12-23\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE70 4405 0199 0001 0001 00"
+        },
+        "result": "{\"iban\":\"DE70 4405 0199 0001 0001 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"44050199\"},\"account_number\":\"0001000100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or e-mail says the account has changed, confirm that through contact details you already know before paying. For a euro transfer the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required since 9 October 2025): if it reports no match or only a close one, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

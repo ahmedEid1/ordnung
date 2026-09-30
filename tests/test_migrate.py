@@ -319,7 +319,13 @@ def test_the_shipped_migrations_are_numbered_without_a_gap() -> None:
     runner's policy); the integration of wave 2 of phase 2 made proof 0002 and traces 0003."""
     found = discover(MIGRATIONS_DIR)
     assert [m.version for m in found] == list(range(1, len(found) + 1))
-    assert [m.name for m in found[:4]] == ["initial", "proof_and_calls", "traces", "contract_notice_terms"]
+    assert [m.name for m in found[:5]] == [
+        "initial",
+        "proof_and_calls",
+        "traces",
+        "contract_notice_terms",
+        "contract_notice_statutory",
+    ]
 
 
 def test_an_existing_database_at_version_1_gets_every_later_migration(conn: sqlite3.Connection) -> None:
@@ -373,6 +379,7 @@ TRACE_MIGRATION = "0003_traces.sql"
 NOTICE_MIGRATION = "0004_contract_notice_terms.sql"
 #: What 0004 adds to the contracts: the day of the month for notice, and a fixed-term job's early notice.
 NEW_CONTRACT_COLUMNS = ("notice_day", "notice_before_end")
+STATUTORY_MIGRATION = "0005_contract_notice_statutory.sql"
 NEW_DRAFT_COLUMNS = ("tracking_number", "sent_profile", "answered_on", "answer_doc_id")
 #: What 0003 (the traces) adds to the usage log.
 NEW_CALL_COLUMNS = (
@@ -447,7 +454,7 @@ def test_0002_keeps_existing_letters_and_deletes_proofs_with_their_letter(
     assert conn.execute("SELECT COUNT(*) FROM proofs").fetchone() == (0,)
 
 
-def test_0002_to_0004_migrate_the_demo_database(tmp_path: Path) -> None:
+def test_0002_to_0005_migrate_the_demo_database(tmp_path: Path) -> None:
     """The shipped demo snapshot (or one built at an older version) opens and migrates with its data."""
     from ordnung.demo.loader import snapshot_dir
 
@@ -470,8 +477,8 @@ def test_0002_to_0004_migrate_the_demo_database(tmp_path: Path) -> None:
         for column in NEW_CALL_COLUMNS:
             if column in _columns(demo, "llm_calls"):
                 demo.execute(f"ALTER TABLE llm_calls DROP COLUMN {column}")
-        # … and at 0004 (the contracts' notice terms)
-        for column in NEW_CONTRACT_COLUMNS:
+        # … and at 0004 and 0005 (the contracts' notice terms)
+        for column in (*NEW_CONTRACT_COLUMNS, "notice_statutory"):
             if column in _columns(demo, "contracts"):
                 demo.execute(f"ALTER TABLE contracts DROP COLUMN {column}")
         calls = demo.execute("SELECT COUNT(*) FROM llm_calls").fetchone()
@@ -481,7 +488,7 @@ def test_0002_to_0004_migrate_the_demo_database(tmp_path: Path) -> None:
         assert demo.execute("SELECT COUNT(*) FROM llm_calls").fetchone() == calls
         assert set(NEW_DRAFT_COLUMNS) <= _columns(demo, "drafts")
         assert set(NEW_CALL_COLUMNS) <= _columns(demo, "llm_calls")
-        assert set(NEW_CONTRACT_COLUMNS) <= _columns(demo, "contracts")
+        assert {*NEW_CONTRACT_COLUMNS, "notice_statutory"} <= _columns(demo, "contracts")
         assert demo.execute("SELECT COUNT(*) FROM contracts").fetchone() == contracts
         assert {"proofs", "call_notes", "trace_spans"} <= _tables(demo)
         assert applied_versions(demo) == set(range(1, latest_version() + 1))
@@ -520,3 +527,35 @@ def test_0004_applies_before_the_others(tmp_path: Path, conn: sqlite3.Connection
     assert migrate(conn, directory=directory) == 4
     assert set(NEW_CONTRACT_COLUMNS) <= _columns(conn, "contracts")
     assert applied_versions(conn) == {1, 2, 3, 4}
+
+
+# --- 0005: a contract that names the statutory notice periods --------------------------------------------
+
+
+def test_0005_adds_the_statutory_notice_periods_and_existing_contracts_name_none(
+    tmp_path: Path, conn: sqlite3.Connection
+) -> None:
+    """A contract stored before 0005 reads as "not stated": it names no statutory notice periods."""
+    directory = tmp_path / "m"
+    _shipped(directory, "0001_initial.sql", PROOF_MIGRATION, TRACE_MIGRATION, NOTICE_MIGRATION)
+    assert migrate(conn, directory=directory) == 4
+    now = "2026-09-01T10:00:00Z"
+    conn.execute(
+        "INSERT INTO contracts (id, name, category, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        ("ctr_1", "Werkstudent", "employment", now, now),
+    )
+    _shipped(directory, STATUTORY_MIGRATION)
+    assert migrate(conn, directory=directory) == 5
+    assert conn.execute("SELECT id, notice_statutory FROM contracts").fetchall() == [("ctr_1", 0)]
+    assert applied_versions(conn) == {1, 2, 3, 4, 5}
+
+
+def test_0005_applies_before_the_others(tmp_path: Path, conn: sqlite3.Connection) -> None:
+    """It only adds a column to the contracts that no other migration adds."""
+    directory = tmp_path / "m"
+    _shipped(directory, "0001_initial.sql", STATUTORY_MIGRATION)
+    assert migrate(conn, directory=directory) == 5
+    _shipped(directory, PROOF_MIGRATION, TRACE_MIGRATION, NOTICE_MIGRATION)
+    assert migrate(conn, directory=directory) == 5
+    assert {*NEW_CONTRACT_COLUMNS, "notice_statutory"} <= _columns(conn, "contracts")
+    assert applied_versions(conn) == {1, 2, 3, 4, 5}

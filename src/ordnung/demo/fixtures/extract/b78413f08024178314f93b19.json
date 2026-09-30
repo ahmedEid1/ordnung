@@ -1,0 +1,172 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"6e2bc26d104a0a65a62be0b30eb02d4b9e8819ec7eeebccaaa06b80632cf053e\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_drnw4v8g9856"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n</untrusted_document>\n\nThe document's text follows, page by page: a line `=== Page N ===` starts "
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"title\":\"Rental agreement for Beispielweg 5, Musterstadt\",\"case_title\":\"Rental agreement with Wohnbau Musterstadt eG\",\"area\":\"residence\",\"language\":\"de\",\"document_date\":\"2025-09-15\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Wohnbau Musterstadt eG\",\"kind\":\"landlord\",\"address\":\"Genossenschaftsstraße 10, 12345 Musterstadt\",\"website\":\"www.wohnbau-musterstadt.example\",\"identifiers\":[{\"label\":\"Genossenschaftsregister\",\"value\":\"GnR 123\"}]},\"summary\":\"Wohnbau Musterstadt eG lets Sam Rivera a 2-room apartment (Wohnung Nr. 05-2-03) at Beispielweg 5, Musterstadt, starting 1 October 2025 for an indefinite term, at a total monthly rent of €640.00 (including €70 operating and €50 heating advance payments) plus a security deposit of €1,560.00.\",\"explanation\":\"This is your signed lease (Mietvertrag), not a letter needing a reply. The rent of €640.00 is due each month in advance, at the latest on the third working day of the month, to the landlord's account. You paid or still owe a security deposit of €1,560.00 (three months' net rent), payable in up to three instalments. The lease runs indefinitely; the notice period the app shows for ending it follows the statutory rule named in the contract (§ 573c BGB). Operating and heating cost advance payments are settled once a year, and the landlord may later send you a cost statement (Betriebskostenabrechnung) with an additional payment or credit.\",\"contract\":{\"name\":\"Mietvertrag Wohnung Beispielweg 5\",\"category\":\"rent\",\"is_consumer\":true,\"is_basic_supply\":false,\"concluded_date\":\"2025-09-15\",\"start_date\":\"2025-10-01\",\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":0,\"cost_amount\":640,\"cost_interval\":\"monthly\",\"customer_number\":null,\"notice_statutory\":true,\"notice_value\":null,\"notice_unit\":null,\"notice_basis\":null,\"notice_day\":null,\"notice_before_end\":false,\"quotes\":[\"Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit.\",\"Der Mieter kann das Mietverhältnis spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats kündigen (§ 573c Abs. 1 BGB).\",\"Für die Kündigung durch die Vermieterin gelten die gesetzlichen Bestimmungen (§§ 573, 573c BGB).\",\"Gesamtmiete   640,00 €\"]},\"change\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay monthly rent (Miete)\",\"action\":\"Make sure the total rent of €640.00 arrives in the landlord's account each month.\",\"consequence\":null,\"amount\":640,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\",\"location\":null,\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"spätestens bis zum dritten Werktag eines jeden Monats\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":null,\"working_day\":3},\"quote\":\"Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen.\"}],\"key_facts\":[{\"label\":\"Net rent (Grundmiete/Nettokaltmiete)\",\"value\":\"520,00 €\",\"quote\":\"Grundmiete (Nettokaltmiete)   520,00 €\"},{\"label\":\"Operating cost advance payment (Vorauszahlung Betriebskosten)\",\"value\":\"70,00 €\",\"quote\":\"Vorauszahlung Betriebskosten (ohne Heizung und Warmwasser)   70,00 €\"},{\"label\":\"Heating/hot water advance payment (Vorauszahlung Heiz- und Warmwasserkosten)\",\"value\":\"50,00 €\",\"quote\":\"Vorauszahlung Heiz- und Warmwasserkosten   50,00 €\"},{\"label\":\"Total rent (Gesamtmiete)\",\"value\":\"640,00 €\",\"quote\":\"Gesamtmiete   640,00 €\"},{\"label\":\"Security deposit (Mietsicherheit/Kaution)\",\"value\":\"1.560,00 €\",\"quote\":\"Der Mieter leistet eine Mietsicherheit (Kaution) in Höhe von 1.560,00 € (drei Nettokaltmieten).\"},{\"label\":\"Living area (Wohnfläche)\",\"value\":\"ca. 48,6 m²\",\"quote\":\"Die Wohnfläche beträgt ca. 48,6 m².\"},{\"label\":\"Energy consumption (Endenergieverbrauch)\",\"value\":\"112 kWh/(m²·a)\",\"quote\":\"Der Energieausweis (Verbrauchsausweis, Endenergieverbrauch 112 kWh/(m²·a), Energieträger Erdgas) wurde dem Mieter vor Vertragsschluss vorgelegt.\"}],\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"MV-2025-0412\"},{\"label\":\"Genossenschaftsregister\",\"value\":\"GnR 123\"}],\"payment\":{\"iban\":\"DE051234560000445660\",\"iban_valid\":null,\"payee\":\"Wohnbau Musterstadt eG\",\"reference\":\"MV-2025-0412\"},\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"high_stakes_kind\":null,\"urgency\":\"low\",\"tax_relevant\":false,\"tax_note\":null,\"warnings\":[],\"transcript\":null}",
+    "data": {
+      "kind": "rent_lease",
+      "title": "Rental agreement for Beispielweg 5, Musterstadt",
+      "case_title": "Rental agreement with Wohnbau Musterstadt eG",
+      "area": "residence",
+      "language": "de",
+      "document_date": "2025-09-15",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Wohnbau Musterstadt eG",
+        "kind": "landlord",
+        "address": "Genossenschaftsstraße 10, 12345 Musterstadt",
+        "website": "www.wohnbau-musterstadt.example",
+        "identifiers": [
+          {
+            "label": "Genossenschaftsregister",
+            "value": "GnR 123"
+          }
+        ]
+      },
+      "summary": "Wohnbau Musterstadt eG lets Sam Rivera a 2-room apartment (Wohnung Nr. 05-2-03) at Beispielweg 5, Musterstadt, starting 1 October 2025 for an indefinite term, at a total monthly rent of €640.00 (including €70 operating and €50 heating advance payments) plus a security deposit of €1,560.00.",
+      "explanation": "This is your signed lease (Mietvertrag), not a letter needing a reply. The rent of €640.00 is due each month in advance, at the latest on the third working day of the month, to the landlord's account. You paid or still owe a security deposit of €1,560.00 (three months' net rent), payable in up to three instalments. The lease runs indefinitely; the notice period the app shows for ending it follows the statutory rule named in the contract (§ 573c BGB). Operating and heating cost advance payments are settled once a year, and the landlord may later send you a cost statement (Betriebskostenabrechnung) with an additional payment or credit.",
+      "contract": {
+        "name": "Mietvertrag Wohnung Beispielweg 5",
+        "category": "rent",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "concluded_date": "2025-09-15",
+        "start_date": "2025-10-01",
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": 0,
+        "cost_amount": 640,
+        "cost_interval": "monthly",
+        "customer_number": null,
+        "notice_statutory": true,
+        "notice_value": null,
+        "notice_unit": null,
+        "notice_basis": null,
+        "notice_day": null,
+        "notice_before_end": false,
+        "quotes": [
+          "Das Mietverhältnis beginnt am 01.10.2025 und läuft auf unbestimmte Zeit.",
+          "Der Mieter kann das Mietverhältnis spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats kündigen (§ 573c Abs. 1 BGB).",
+          "Für die Kündigung durch die Vermieterin gelten die gesetzlichen Bestimmungen (§§ 573, 573c BGB).",
+          "Gesamtmiete   640,00 €"
+        ]
+      },
+      "change": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay monthly rent (Miete)",
+          "action": "Make sure the total rent of €640.00 arrives in the landlord's account each month.",
+          "consequence": null,
+          "amount": 640,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal",
+          "location": null,
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "spätestens bis zum dritten Werktag eines jeden Monats",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "day_of_month": null,
+            "working_day": 3
+          },
+          "quote": "Die Gesamtmiete ist monatlich im Voraus, spätestens bis zum dritten Werktag eines jeden Monats, kostenfrei auf das Konto der Vermieterin zu zahlen."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Net rent (Grundmiete/Nettokaltmiete)",
+          "value": "520,00 €",
+          "quote": "Grundmiete (Nettokaltmiete)   520,00 €"
+        },
+        {
+          "label": "Operating cost advance payment (Vorauszahlung Betriebskosten)",
+          "value": "70,00 €",
+          "quote": "Vorauszahlung Betriebskosten (ohne Heizung und Warmwasser)   70,00 €"
+        },
+        {
+          "label": "Heating/hot water advance payment (Vorauszahlung Heiz- und Warmwasserkosten)",
+          "value": "50,00 €",
+          "quote": "Vorauszahlung Heiz- und Warmwasserkosten   50,00 €"
+        },
+        {
+          "label": "Total rent (Gesamtmiete)",
+          "value": "640,00 €",
+          "quote": "Gesamtmiete   640,00 €"
+        },
+        {
+          "label": "Security deposit (Mietsicherheit/Kaution)",
+          "value": "1.560,00 €",
+          "quote": "Der Mieter leistet eine Mietsicherheit (Kaution) in Höhe von 1.560,00 € (drei Nettokaltmieten)."
+        },
+        {
+          "label": "Living area (Wohnfläche)",
+          "value": "ca. 48,6 m²",
+          "quote": "Die Wohnfläche beträgt ca. 48,6 m²."
+        },
+        {
+          "label": "Energy consumption (Endenergieverbrauch)",
+          "value": "112 kWh/(m²·a)",
+          "quote": "Der Energieausweis (Verbrauchsausweis, Endenergieverbrauch 112 kWh/(m²·a), Energieträger Erdgas) wurde dem Mieter vor Vertragsschluss vorgelegt."
+        }
+      ],
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "MV-2025-0412"
+        },
+        {
+          "label": "Genossenschaftsregister",
+          "value": "GnR 123"
+        }
+      ],
+      "payment": {
+        "iban": "DE051234560000445660",
+        "iban_valid": null,
+        "payee": "Wohnbau Musterstadt eG",
+        "reference": "MV-2025-0412"
+      },
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "high_stakes_kind": null,
+      "urgency": "low",
+      "tax_relevant": false,
+      "tax_note": null,
+      "warnings": [],
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6282,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 4630,
+      "cost_usd": 0.0831346,
+      "duration_ms": 51227,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

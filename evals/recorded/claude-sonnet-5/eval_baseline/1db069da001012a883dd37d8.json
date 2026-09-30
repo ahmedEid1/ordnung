@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7824777ac628edccd7619a93a913cfd09b318cfdefbc7c889b7190ca466cfea8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-03-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-contract_confirmation-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-03-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[486.2],\"contract\":{\"current_term_end\":\"2028-03-14\",\"cancel_by\":\"2028-02-14\"},\"document_date\":\"2027-03-04\",\"items\":[{\"kind\":\"payment\",\"title\":\"Annual premium direct debit\",\"quote\":\"Den Jahresbeitrag buchen wir zum Beginn des Versicherungsschutzes von Ihrem Konto ab.\",\"computation\":\"The premium is debited at the start of insurance coverage, which is stated as 15.03.2027, 0 Uhr. This is a fixed calendar date printed in the letter, so no period-counting is needed; the debit/due date is 15 March 2027.\",\"due_date\":\"2027-03-15\",\"confidence\":\"high\",\"amount\":486.2}],\"kind\":\"insurance\",\"references\":[{\"label\":\"Versicherungsscheinnummer\",\"value\":\"KF-7731-220-05\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispiel Direktversicherung AG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        486.2
+      ],
+      "contract": {
+        "current_term_end": "2028-03-14",
+        "cancel_by": "2028-02-14"
+      },
+      "document_date": "2027-03-04",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Annual premium direct debit",
+          "quote": "Den Jahresbeitrag buchen wir zum Beginn des Versicherungsschutzes von Ihrem Konto ab.",
+          "computation": "The premium is debited at the start of insurance coverage, which is stated as 15.03.2027, 0 Uhr. This is a fixed calendar date printed in the letter, so no period-counting is needed; the debit/due date is 15 March 2027.",
+          "due_date": "2027-03-15",
+          "confidence": "high",
+          "amount": 486.2
+        }
+      ],
+      "kind": "insurance",
+      "references": [
+        {
+          "label": "Versicherungsscheinnummer",
+          "value": "KF-7731-220-05"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispiel Direktversicherung AG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2609,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2110,
+      "cost_usd": 0.035640000000000005,
+      "duration_ms": 25973,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

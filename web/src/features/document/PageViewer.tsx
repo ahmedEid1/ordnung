@@ -14,10 +14,27 @@
  * - the sticky column (xl): every page in a scroll box as tall as the screen, or shorter when the
  *   pages are.
  */
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Camera, ChevronLeft, ChevronRight, ExternalLink, FileText, ScanText, TriangleAlert, Undo2, X } from "lucide-react";
+import {
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileText,
+  ScanText,
+  TriangleAlert,
+  Undo2,
+  X,
+} from "lucide-react";
 import type { PageInfo } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { cn } from "@/lib/utils";
@@ -69,8 +86,16 @@ interface BackTo {
   label: string;
 }
 
-export function PageViewer({ docId, pages, pageCount, photo, paged = false, className }: PageViewerProps) {
-  const { anchors, hovered, selected, nonce, hover, select, anchor } = useEvidence();
+export function PageViewer({
+  docId,
+  pages,
+  pageCount,
+  photo,
+  paged = false,
+  className,
+}: PageViewerProps) {
+  const { anchors, hovered, selected, nonce, hover, select, anchor } =
+    useEvidence();
   const reduced = useReducedMotion();
   const [zoom, setZoom] = useState<Zoom>("fit");
   const wide = useIsTabletUp();
@@ -87,7 +112,11 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
     () =>
       pages.length
         ? pages
-        : Array.from({ length: Math.max(1, pageCount) }, (_, i) => ({ page: i + 1, ...A4, text_source: "none" as const })),
+        : Array.from({ length: Math.max(1, pageCount) }, (_, i) => ({
+            page: i + 1,
+            ...A4,
+            text_source: "none" as const,
+          })),
     [pages, pageCount],
   );
   const groups = useMemo(() => highlightGroups(anchors), [anchors]);
@@ -98,7 +127,11 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
   const focusId = hovered ?? selected;
   const selectedAnchor = anchor(selected);
   const calloutAnchor =
-    selectedAnchor && (!hasBoxes(selectedAnchor) || selectedAnchor.evidence.grounding === "model_read") ? selectedAnchor : null;
+    selectedAnchor &&
+    (!hasBoxes(selectedAnchor) ||
+      selectedAnchor.evidence.grounding === "model_read")
+      ? selectedAnchor
+      : null;
   const behavior: ScrollBehavior = reduced ? "auto" : "smooth";
 
   // Track the most visible page in the scroll box (for "Page 2 of 3" and the thumbnail strip).
@@ -108,7 +141,11 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
     const ratios = new Map<number, number>();
     const io = new IntersectionObserver(
       (entries) => {
-        for (const e of entries) ratios.set(Number((e.target as HTMLElement).dataset.page), e.intersectionRatio);
+        for (const e of entries)
+          ratios.set(
+            Number((e.target as HTMLElement).dataset.page),
+            e.intersectionRatio,
+          );
         let best = 1;
         let max = -1;
         for (const [p, r] of ratios) if (r > max) [best, max] = [p, r];
@@ -137,18 +174,41 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
         }
         shown.current = key;
         // the panel is below or above the viewer here: remember where the person was
-        const from = document.activeElement instanceof HTMLElement && !rootRef.current?.contains(document.activeElement) ? document.activeElement : null;
+        const from =
+          document.activeElement instanceof HTMLElement &&
+          !rootRef.current?.contains(document.activeElement)
+            ? document.activeElement
+            : null;
         // measured now, before the jump (an updater would run after it)
-        const here: BackTo = { y: window.scrollY, el: from, top: from?.getBoundingClientRect().top ?? 0, label: backLabel(a) };
+        const here: BackTo = {
+          y: window.scrollY,
+          el: from,
+          top: from?.getBoundingClientRect().top ?? 0,
+          label: backLabel(a),
+        };
         setBack((b) => b ?? here);
-        const target = group ? rootRef.current?.querySelector<HTMLElement>(`[data-highlight="${CSS.escape(group.key)}"]`) : null;
-        if (target) target.scrollIntoView?.({ block: "center", inline: "center", behavior });
+        const target = group
+          ? rootRef.current?.querySelector<HTMLElement>(
+              `[data-highlight="${CSS.escape(group.key)}"]`,
+            )
+          : null;
+        if (target)
+          target.scrollIntoView?.({
+            block: "center",
+            inline: "center",
+            behavior,
+          });
         else {
           // a photo's quote sits under it: show both when they fit, else the quote (the page scrolls up to it)
           const root = rootRef.current;
-          const quote = root?.querySelector<HTMLElement>('[data-testid="evidence-quote"]');
-          const fits = root ? root.getBoundingClientRect().height <= window.innerHeight - 160 : true;
-          if (quote && !fits) quote.scrollIntoView?.({ block: "end", behavior });
+          const quote = root?.querySelector<HTMLElement>(
+            '[data-testid="evidence-quote"]',
+          );
+          const fits = root
+            ? root.getBoundingClientRect().height <= window.innerHeight - 160
+            : true;
+          if (quote && !fits)
+            quote.scrollIntoView?.({ block: "end", behavior });
           else root?.scrollIntoView?.({ block: "start", behavior });
         }
       });
@@ -187,7 +247,13 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
     if (!calloutAnchor) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
-      if (e.target instanceof Element && e.target.closest("[role=dialog],[role=menu],[role=listbox],[role=alertdialog]")) return;
+      if (
+        e.target instanceof Element &&
+        e.target.closest(
+          "[role=dialog],[role=menu],[role=listbox],[role=alertdialog]",
+        )
+      )
+        return;
       select(null);
     };
     document.addEventListener("keydown", onKey);
@@ -201,7 +267,10 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
       if (Math.abs(window.scrollY - back.y) < 120) setBack(null);
     };
     // not before the jump has moved away from there
-    const t = window.setTimeout(() => window.addEventListener("scroll", onScroll, { passive: true }), 900);
+    const t = window.setTimeout(
+      () => window.addEventListener("scroll", onScroll, { passive: true }),
+      900,
+    );
     return () => {
       window.clearTimeout(t);
       window.removeEventListener("scroll", onScroll);
@@ -213,7 +282,12 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
     // back to the control itself, where it was on the screen: the layout above it may have changed meanwhile
     // (the quote under the page opened or closed)
     const el = back.el?.isConnected ? back.el : null;
-    window.scrollTo({ top: el ? window.scrollY + el.getBoundingClientRect().top - back.top : back.y, behavior });
+    window.scrollTo({
+      top: el
+        ? window.scrollY + el.getBoundingClientRect().top - back.top
+        : back.y,
+      behavior,
+    });
     el?.focus({ preventScroll: true });
     setBack(null);
   };
@@ -226,7 +300,11 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
     const container = scrollRef.current;
     const el = pageEls.current.get(n);
     if (!container || !el) return;
-    const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 12;
+    const top =
+      el.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop -
+      12;
     container.scrollTo?.({ top: Math.max(0, top), behavior });
   };
 
@@ -245,27 +323,41 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
       ref={rootRef}
       aria-label="Letter pages"
       // clear of the sticky top bar when a fact brings it into view
-      className={cn("card @container relative flex scroll-mt-20 flex-col overflow-hidden", className)}
+      className={cn(
+        "card @container relative flex scroll-mt-20 flex-col overflow-hidden",
+        className,
+      )}
     >
       {/* toolbar: the page count and zoom never wrap; the thumbnails take the room left (none under 360 px) */}
       <div className="flex items-center gap-x-3 border-b border-line bg-surface px-3 py-2 @sm:px-4">
         <div className="flex shrink-0 items-center gap-2 text-[13px] font-medium text-ink">
           {photo ? (
-            <Camera className="size-4 text-muted" aria-label="Phone photo" role="img" />
+            <Camera
+              className="size-4 text-muted"
+              aria-label="Phone photo"
+              role="img"
+            />
           ) : (
             <FileText className="size-4 text-muted" aria-hidden />
           )}
           <span className="whitespace-nowrap tabular-nums">
-            Page {current} <span className="font-normal text-muted">of {total}</span>
+            Page {current}{" "}
+            <span className="font-normal text-muted">of {total}</span>
           </span>
           {photo ? (
-            <span className="hidden whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-accent @xl:inline" aria-hidden>
+            <span
+              className="hidden whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium text-accent @xl:inline"
+              aria-hidden
+            >
               Phone photo
             </span>
           ) : null}
         </div>
         {total > 1 ? (
-          <ol aria-label="Pages" className="hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto p-1 scrollbar-thin @min-[340px]:flex">
+          <ol
+            aria-label="Pages"
+            className="hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto p-1 scrollbar-thin @min-[340px]:flex"
+          >
             {list.map((p) => {
               const isActive = p.page === current;
               return (
@@ -277,16 +369,31 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
                     aria-label={`Go to page ${p.page}${hlPages.has(p.page) ? " (has highlights)" : ""}`}
                     className={cn(
                       "group relative block rounded-[4px] ring-1 transition-[box-shadow] duration-150",
-                      isActive ? "ring-2 ring-accent" : "ring-line-strong hover:ring-faint",
+                      isActive
+                        ? "ring-2 ring-accent"
+                        : "ring-line-strong hover:ring-faint",
                     )}
-                    style={{ width: 24, aspectRatio: `${p.width} / ${p.height}` }}
+                    style={{
+                      width: 24,
+                      aspectRatio: `${p.width} / ${p.height}`,
+                    }}
                   >
                     <span className="block size-full overflow-hidden rounded-[4px] bg-white">
-                      <img src={api.pageUrl(docId, p.page)} alt="" className="size-full object-cover dark:brightness-[0.93]" loading="lazy" decoding="async" />
+                      <img
+                        src={api.pageUrl(docId, p.page)}
+                        alt=""
+                        className="size-full object-cover dark:brightness-[0.93]"
+                        loading="lazy"
+                        decoding="async"
+                      />
                     </span>
                     {/* outside the clipped thumbnail, so the round corner never cuts it */}
                     {hlPages.has(p.page) ? (
-                      <span className="absolute -right-1 -top-1 size-2 rounded-full ring-2 ring-surface" style={{ background: MARKER_EDGE }} aria-hidden />
+                      <span
+                        className="absolute -right-1 -top-1 size-2 rounded-full ring-2 ring-surface"
+                        style={{ background: MARKER_EDGE }}
+                        aria-hidden
+                      />
                     ) : null}
                   </button>
                 </li>
@@ -327,11 +434,18 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
         className={cn(
           "relative bg-surface-2 p-3 outline-none scrollbar-thin focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent @sm:p-4 dark:bg-surface-3/40",
           // paged: the page scrolls, not this box (only sideways at 150%); the column: a scroll box of its own
-          paged ? "overflow-x-auto overflow-y-hidden" : "min-h-0 flex-1 overflow-auto overscroll-contain",
+          paged
+            ? "overflow-x-auto overflow-y-hidden"
+            : "min-h-0 flex-1 overflow-auto overscroll-contain",
         )}
         tabIndex={0}
       >
-        <div className={cn("mx-auto flex flex-col gap-4", zoom === "zoom" ? "w-[150%] max-w-none" : "w-full")}>
+        <div
+          className={cn(
+            "mx-auto flex flex-col gap-4",
+            zoom === "zoom" ? "w-[150%] max-w-none" : "w-full",
+          )}
+        >
           {visible.map((p) => (
             <figure
               key={p.page}
@@ -343,7 +457,9 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
               className="relative m-0 overflow-hidden rounded-[3px] bg-white shadow-[0_1px_2px_rgb(0_0_0/0.10),0_10px_28px_-14px_rgb(0_0_0/0.35)]"
               style={{ aspectRatio: `${p.width} / ${p.height}` }}
             >
-              {!loaded[p.page] ? <Skeleton className="absolute inset-0 rounded-none bg-surface-3/60" /> : null}
+              {!loaded[p.page] ? (
+                <Skeleton className="absolute inset-0 rounded-none bg-surface-3/60" />
+              ) : null}
               <img
                 src={api.pageUrl(docId, p.page)}
                 alt={`Page ${p.page} of ${total}`}
@@ -379,14 +495,28 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
       </div>
 
       {paged && total > 1 ? (
-        <nav aria-label="Turn pages" className="flex items-center justify-between gap-2 border-t border-line bg-surface px-2 py-1.5">
-          <Button variant="ghost" size="sm" icon={ChevronLeft} disabled={current <= 1} onClick={() => goToPage(current - 1)}>
+        <nav
+          aria-label="Turn pages"
+          className="flex items-center justify-between gap-2 border-t border-line bg-surface px-2 py-1.5"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={ChevronLeft}
+            disabled={current <= 1}
+            onClick={() => goToPage(current - 1)}
+          >
             Previous
           </Button>
           <span className="text-[13px] tabular-nums text-muted" aria-hidden>
             {current} / {total}
           </span>
-          <Button variant="ghost" size="sm" disabled={current >= total} onClick={() => goToPage(current + 1)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={current >= total}
+            onClick={() => goToPage(current + 1)}
+          >
             Next
             <ChevronRight aria-hidden />
           </Button>
@@ -402,7 +532,11 @@ export function PageViewer({ docId, pages, pageCount, photo, paged = false, clas
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
             transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-            className={paged ? "border-t border-line p-3 @sm:p-4" : "pointer-events-auto absolute inset-x-3 bottom-3 z-10 @sm:inset-x-4 @sm:bottom-4"}
+            className={
+              paged
+                ? "border-t border-line p-3 @sm:p-4"
+                : "pointer-events-auto absolute inset-x-3 bottom-3 z-10 @sm:inset-x-4 @sm:bottom-4"
+            }
             role="status"
           >
             {callout}
@@ -453,16 +587,21 @@ function Highlight({
   onSelect: (id: string) => void;
 }) {
   const ids = group.anchors.map((a) => a.id);
-  const lead = group.anchors.find((a) => a.source === "fact") ?? group.anchors[0]!;
+  const lead =
+    group.anchors.find((a) => a.source === "fact") ?? group.anchors[0]!;
   const isFocus = focusId !== null && ids.includes(focusId);
   const isSelected = selectedId !== null && ids.includes(selectedId);
   const dimmed = focusId !== null && !isFocus;
   const bounds = boxToStyle(group.bounds, 0.006, 0.004);
   const place = labelPlacement(group, groups);
-  const labelTop = place.side === "below" ? `calc(${bounds.top} + ${bounds.height})` : bounds.top;
+  const labelTop =
+    place.side === "below"
+      ? `calc(${bounds.top} + ${bounds.height})`
+      : bounds.top;
   const readByAi = group.grounding === "model_read";
   // smaller highlights on top: where two quotes share a line, the shorter one stays reachable
-  const area = (group.bounds.x1 - group.bounds.x0) * (group.bounds.y1 - group.bounds.y0);
+  const area =
+    (group.bounds.x1 - group.bounds.x0) * (group.bounds.y1 - group.bounds.y0);
   const z = 2 + Math.round((1 - Math.min(1, area * 20)) * 20);
   const hits = hitBoxes(group, groups);
   const pointer = {
@@ -478,14 +617,29 @@ function Highlight({
           key={i}
           aria-hidden
           className="pointer-events-none absolute rounded-[2px] mix-blend-multiply transition-opacity duration-200"
-          style={{ ...boxToStyle(b, 0.003, 0.0015), background: MARKER, opacity: dimmed ? 0.28 : isFocus ? 0.95 : 0.62 } as CSSProperties}
+          style={
+            {
+              ...boxToStyle(b, 0.003, 0.0015),
+              background: MARKER,
+              opacity: dimmed ? 0.28 : isFocus ? 0.95 : 0.62,
+            } as CSSProperties
+          }
         />
       ))}
       {/* the pointer targets: one per line, a finger tall, never over a neighbouring highlight's line */}
       {hits.map((h, i) => (
-        <span key={`hit${i}`} aria-hidden data-hit={group.key} className="absolute cursor-pointer" style={{ ...hitBoxStyle(h), zIndex: z }} {...pointer} />
+        <span
+          key={`hit${i}`}
+          aria-hidden
+          data-hit={group.key}
+          className="absolute cursor-pointer"
+          style={{ ...hitBoxStyle(h), zIndex: z }}
+          {...pointer}
+        />
       ))}
-      {/* the keyboard target (and its focus outline) spans the whole quote; the pointer uses the lines above */}
+      {/* the keyboard target (and its focus outline) spans the whole quote, at least a finger's 24 px each
+          way (a one-line quote at a small zoom is shorter; axe measures it as a target, though the pointer
+          uses the lines above) */}
       <button
         type="button"
         data-highlight={group.key}
@@ -495,7 +649,13 @@ function Highlight({
         onBlur={() => onHover(null)}
         onClick={() => onSelect(lead.id)}
         className="pointer-events-none absolute rounded-[3px] transition-[box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-accent"
-        style={{ ...bounds, zIndex: z, boxShadow: isFocus ? `0 0 0 1.5px ${MARKER_EDGE}` : undefined }}
+        style={{
+          ...bounds,
+          minWidth: 24,
+          minHeight: 24,
+          zIndex: z,
+          boxShadow: isFocus ? `0 0 0 1.5px ${MARKER_EDGE}` : undefined,
+        }}
       >
         {isSelected ? (
           // a thin ring that blinks in place (it grew over the neighbouring lines)
@@ -505,7 +665,9 @@ function Highlight({
             className="pointer-events-none absolute -inset-[3px] rounded-[5px]"
             style={{ outline: `2px solid ${MARKER_EDGE}` }}
             initial={reduced ? false : { opacity: 1 }}
-            animate={reduced ? { opacity: 1 } : { opacity: [1, 0.15, 1, 0.15, 1] }}
+            animate={
+              reduced ? { opacity: 1 } : { opacity: [1, 0.15, 1, 0.15, 1] }
+            }
             transition={{ duration: 1.8, ease: "easeInOut" }}
           />
         ) : null}
@@ -517,8 +679,17 @@ function Highlight({
           style={
             // never past the page's edge: right-aligned to a box in the right half, and no wider than the room
             place.align === "right"
-              ? { right: `calc(100% - ${bounds.left} - ${bounds.width})`, top: labelTop, justifyContent: "flex-end", maxWidth: `min(70%, calc(${bounds.left} + ${bounds.width}))` }
-              : { left: bounds.left, top: labelTop, maxWidth: `min(70%, calc(100% - ${bounds.left}))` }
+              ? {
+                  right: `calc(100% - ${bounds.left} - ${bounds.width})`,
+                  top: labelTop,
+                  justifyContent: "flex-end",
+                  maxWidth: `min(70%, calc(${bounds.left} + ${bounds.width}))`,
+                }
+              : {
+                  left: bounds.left,
+                  top: labelTop,
+                  maxWidth: `min(70%, calc(100% - ${bounds.left}))`,
+                }
           }
         >
           <span
@@ -527,10 +698,14 @@ function Highlight({
               place.side === "below" ? "mt-1" : "-translate-y-[calc(100%+4px)]",
             )}
           >
-            {readByAi ? <ScanText className="size-3 shrink-0 opacity-80" /> : null}
+            {readByAi ? (
+              <ScanText className="size-3 shrink-0 opacity-80" />
+            ) : null}
             <span className="truncate">
               {lead.label}
-              {lead.value ? <span className="font-normal opacity-75"> · {lead.value}</span> : null}
+              {lead.value ? (
+                <span className="font-normal opacity-75"> · {lead.value}</span>
+              ) : null}
             </span>
           </span>
         </span>
@@ -557,24 +732,46 @@ export function QuoteCallout({
   const t = TONES[c.tone];
   const Icon = grounding === "unverified" ? TriangleAlert : c.icon;
   return (
-    <div data-testid="evidence-quote" className="rounded-xl border border-line bg-surface/95 p-3.5 shadow-[var(--shadow-pop)] backdrop-blur-md">
+    <div
+      data-testid="evidence-quote"
+      className="rounded-xl border border-line bg-surface/95 p-3.5 shadow-[var(--shadow-pop)] backdrop-blur-md"
+    >
       <div className="flex items-start gap-2.5">
-        <span className={cn("grid size-7 shrink-0 place-items-center rounded-lg", t.soft, t.icon)}>
+        <span
+          className={cn(
+            "grid size-7 shrink-0 place-items-center rounded-lg",
+            t.soft,
+            t.icon,
+          )}
+        >
           <Icon className="size-4" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p className={cn("text-[12.5px] font-semibold", t.text)}>
             {c.label}
-            {page ? <span className="font-normal text-muted"> · page {page}</span> : null}
+            {page ? (
+              <span className="font-normal text-muted"> · page {page}</span>
+            ) : null}
           </p>
           <p className="mt-0.5 text-[12.5px] text-muted">{label}</p>
-          <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink wrap-break-word hyphens-auto">
-            <span className="marker box-decoration-clone px-0.5">“{quote}”</span>
+          <blockquote
+            lang="de"
+            className="mt-2 text-[13.5px] leading-relaxed text-ink wrap-break-word hyphens-auto"
+          >
+            <span className="marker box-decoration-clone px-0.5">
+              “{quote}”
+            </span>
           </blockquote>
           {grounding === "model_read" ? (
-            <p className="mt-2 text-[12px] leading-5 text-muted">This is what Claude read from the photo. Worth comparing with the paper letter.</p>
+            <p className="mt-2 text-[12px] leading-5 text-muted">
+              This is what Claude read from the photo. Worth comparing with the
+              paper letter.
+            </p>
           ) : grounding === "unverified" ? (
-            <p className="mt-2 text-[12px] leading-5 text-muted">We couldn't find this sentence on the page. Please check the letter yourself.</p>
+            <p className="mt-2 text-[12px] leading-5 text-muted">
+              We couldn't find this sentence on the page. Please check the
+              letter yourself.
+            </p>
           ) : null}
         </div>
         {onClose ? (

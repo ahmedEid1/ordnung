@@ -1,0 +1,53 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a7430a6bfef28e9d8e0dbca12a63f6817747231298ecab63fd4aa785498b23e8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "dev-contract_confirmation-A1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-02-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"MusterFit Studios GmbH\",\"document_date\":\"2026-02-10\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"MF-51230\"},{\"label\":\"Vertragsnummer\",\"value\":\"V-2026-0877\"}],\"amounts\":[34.9],\"items\":[],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-02-28\",\"cancel_by\":\"2027-01-28\"},\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "MusterFit Studios GmbH",
+      "document_date": "2026-02-10",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "MF-51230"
+        },
+        {
+          "label": "Vertragsnummer",
+          "value": "V-2026-0877"
+        }
+      ],
+      "amounts": [
+        34.9
+      ],
+      "items": [],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-02-28",
+        "cancel_by": "2027-01-28"
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1666,
+      "cache_read_tokens": 8225,
+      "cache_creation_tokens": 3091,
+      "cost_usd": 0.030677,
+      "duration_ms": 18263,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

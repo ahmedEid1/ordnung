@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7fc19fea3f4de6a07a6641d667f5ec834b7478bcc413127775cb6cc0a8534291\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-relative_business_days-D1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-05-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Versicherung AG\",\"document_date\":\"2026-05-06\",\"references\":[{\"label\":\"Schaden-Nr.\",\"value\":\"KH-26-0428-112\"},{\"label\":\"Kennzeichen\",\"value\":\"MS-MB 77\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return completed accident questionnaire\",\"quote\":\"Bitte senden Sie uns den ausgefüllten Fragebogen innerhalb von 10 Arbeitstagen (Montag bis Freitag, ohne Feiertage) nach dem Briefdatum zurück.\",\"computation\":\"Period is set as 10 Arbeitstage (Mon-Fri, excluding public holidays) 'nach dem Briefdatum' (after the letter date), not after receipt. Letter date is 06.05.2026 (Wednesday). Per §187 Abs. 1 BGB, since an event (the letter date) triggers the period, that day itself is not counted, so counting starts the next day, 07.05.2026 (Thursday) = working day 1. Counting only Mon-Fri and skipping the NRW public holiday of Christi Himmelfahrt (Ascension Day), which falls on 14.05.2026 (Easter Sunday 05.04.2026 + 39 days): day1=Thu 07.05, day2=Fri 08.05, (weekend 09-10.05 skipped), day3=Mon 11.05, day4=Tue 12.05, day5=Wed 13.05, (14.05 Thu is Christi Himmelfahrt, a holiday, skipped), day6=Fri 15.05, (weekend 16-17.05 skipped), day7=Mon 18.05, day8=Tue 19.05, day9=Wed 20.05, day10=Thu 21.05.2026. The 10th working day, 21.05.2026, is itself a normal working day (Thursday, not a weekend or holiday), so no further shift is needed.\",\"due_date\":\"2026-05-21\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Versicherung AG",
+      "document_date": "2026-05-06",
+      "references": [
+        {
+          "label": "Schaden-Nr.",
+          "value": "KH-26-0428-112"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MS-MB 77"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return completed accident questionnaire",
+          "quote": "Bitte senden Sie uns den ausgefüllten Fragebogen innerhalb von 10 Arbeitstagen (Montag bis Freitag, ohne Feiertage) nach dem Briefdatum zurück.",
+          "computation": "Period is set as 10 Arbeitstage (Mon-Fri, excluding public holidays) 'nach dem Briefdatum' (after the letter date), not after receipt. Letter date is 06.05.2026 (Wednesday). Per §187 Abs. 1 BGB, since an event (the letter date) triggers the period, that day itself is not counted, so counting starts the next day, 07.05.2026 (Thursday) = working day 1. Counting only Mon-Fri and skipping the NRW public holiday of Christi Himmelfahrt (Ascension Day), which falls on 14.05.2026 (Easter Sunday 05.04.2026 + 39 days): day1=Thu 07.05, day2=Fri 08.05, (weekend 09-10.05 skipped), day3=Mon 11.05, day4=Tue 12.05, day5=Wed 13.05, (14.05 Thu is Christi Himmelfahrt, a holiday, skipped), day6=Fri 15.05, (weekend 16-17.05 skipped), day7=Mon 18.05, day8=Tue 19.05, day9=Wed 20.05, day10=Thu 21.05.2026. The 10th working day, 21.05.2026, is itself a normal working day (Thursday, not a weekend or holiday), so no further shift is needed.",
+          "due_date": "2026-05-21",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5785,
+      "cache_read_tokens": 16706,
+      "cache_creation_tokens": 6607,
+      "cost_usd": 0.08763119999999999,
+      "duration_ms": 52559,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f8b69de5a8ad74a98281727cc244aef55bf9b596a6c97ca8a97457f3c2a1a74e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-01-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-year_boundary-C3"
+    ],
+    "prompt_head": "Today is Friday, 2025-01-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu-Musterdorf\",\"document_date\":\"2025-01-27\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"026 812 40517\"}],\"amounts\":[75],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay late-filing surcharge (Verspaetungszuschlag)\",\"quote\":\"Bitte zahlen Sie den Betrag innerhalb eines Monats nach Bekanntgabe dieses Bescheids.\",\"computation\":\"Posting day printed on letter: 27.01.2025 (Monday); no separate 'zur Post gegeben am' date is stated, so this is the posting day. The letter was posted after 1 Jan 2025, so delivery (Bekanntgabe) is deemed on the 4th calendar day after posting: 27.01.2025 + 4 days = 31.01.2025 (Friday). This is a Finanzamt, so if that 4th day fell on a weekend or holiday it would shift to the next working day, but 31.01.2025 is an ordinary Friday, so delivery stands at 31.01.2025. The one-month payment period starts the day after delivery (Sec 108 Abs. 1 AO with Secs 187, 188 BGB) and ends on the day of the following month bearing the same number; since February 2025 has no 31st day, it ends on the last day of that month: 28.02.2025. That day is a Friday, not a Saturday, Sunday or public holiday, so no shift under Sec 108 Abs. 3 AO is needed.\",\"due_date\":\"2025-02-28\",\"confidence\":\"high\",\"amount\":75},{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the surcharge assessment\",\"quote\":\"Gegen diesen Bescheid ist der Einspruch zulaessig. Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behoerde schriftlich oder elektronisch einzulegen.\",\"computation\":\"Same delivery date as above: posted 27.01.2025 (Monday), deemed delivered on the 4th calendar day, 31.01.2025 (Friday), which is not a weekend or holiday so it is not adjusted (the Finanzamt rule under Sec 108 Abs. 3 AO only shifts the delivery day itself if it falls on such a day). The one-month Einspruch period under Sec 355 Abs. 1 AO runs from the day after delivery (Sec 108 Abs. 1 AO, Secs 187, 188 BGB) and ends on the corresponding day of the following month; since 31 February does not exist, it ends on the last day of February 2025, i.e. 28.02.2025 (Friday), which is not a Saturday, Sunday or public holiday in NRW, so no further shift under Sec 108 Abs. 3 AO applies.\",\"due_date\":\"2025-02-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu-Musterdorf",
+      "document_date": "2025-01-27",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "026 812 40517"
+        }
+      ],
+      "amounts": [
+        75
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay late-filing surcharge (Verspaetungszuschlag)",
+          "quote": "Bitte zahlen Sie den Betrag innerhalb eines Monats nach Bekanntgabe dieses Bescheids.",
+          "computation": "Posting day printed on letter: 27.01.2025 (Monday); no separate 'zur Post gegeben am' date is stated, so this is the posting day. The letter was posted after 1 Jan 2025, so delivery (Bekanntgabe) is deemed on the 4th calendar day after posting: 27.01.2025 + 4 days = 31.01.2025 (Friday). This is a Finanzamt, so if that 4th day fell on a weekend or holiday it would shift to the next working day, but 31.01.2025 is an ordinary Friday, so delivery stands at 31.01.2025. The one-month payment period starts the day after delivery (Sec 108 Abs. 1 AO with Secs 187, 188 BGB) and ends on the day of the following month bearing the same number; since February 2025 has no 31st day, it ends on the last day of that month: 28.02.2025. That day is a Friday, not a Saturday, Sunday or public holiday, so no shift under Sec 108 Abs. 3 AO is needed.",
+          "due_date": "2025-02-28",
+          "confidence": "high",
+          "amount": 75
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the surcharge assessment",
+          "quote": "Gegen diesen Bescheid ist der Einspruch zulaessig. Er ist innerhalb eines Monats nach Bekanntgabe bei der erlassenden Behoerde schriftlich oder elektronisch einzulegen.",
+          "computation": "Same delivery date as above: posted 27.01.2025 (Monday), deemed delivered on the 4th calendar day, 31.01.2025 (Friday), which is not a weekend or holiday so it is not adjusted (the Finanzamt rule under Sec 108 Abs. 3 AO only shifts the delivery day itself if it falls on such a day). The one-month Einspruch period under Sec 355 Abs. 1 AO runs from the day after delivery (Sec 108 Abs. 1 AO, Secs 187, 188 BGB) and ends on the corresponding day of the following month; since 31 February does not exist, it ends on the last day of February 2025, i.e. 28.02.2025 (Friday), which is not a Saturday, Sunday or public holiday in NRW, so no further shift under Sec 108 Abs. 3 AO applies.",
+          "due_date": "2025-02-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5518,
+      "cache_read_tokens": 23222,
+      "cache_creation_tokens": 6223,
+      "cost_usd": 0.0847284,
+      "duration_ms": 52208,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude"
+  }
+}

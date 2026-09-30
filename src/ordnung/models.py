@@ -7,9 +7,11 @@ database, the API and the LLM outputs. Timestamps are ISO-8601 UTC strings.
 from __future__ import annotations
 
 from datetime import date
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Final, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
+
+from ordnung.llm.base import DEFAULT_MODEL
 
 # --------------------------------------------------------------------------------------------------
 # Enums
@@ -255,25 +257,39 @@ class ComputationReceipt(_Model):
     confidence: Confidence = "high"
 
 
+#: ``Recurrence.working_day`` of the last working day of each period ("am letzten Bankarbeitstag des Monats").
+LAST_WORKING_DAY: Final = -1
+
+
 class Recurrence(_Model):
     # How a to-do repeats: every ``interval`` ``unit``s. ``working_day``: the working day (Werktag) of
-    # each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3), for a rule in
-    # months or years (a rule in days or weeks has none); Ordnung computes each month's date from it
-    # (ordnung.recurrence, point 8). A reading gives it too (``ExtractedItem.recurrence``), graded by
-    # whether the item's quote names it (ordnung.ingest.verify.WORKING_DAY_NOT_IN_QUOTE). Its JSON schema
-    # is part of the extraction prompt's, which the benchmark's recordings pin by version
+    # each month it is due by ("spätestens am dritten Werktag eines jeden Monats" is 3; -1 is the last,
+    # "am letzten Bankarbeitstag des Monats"), and else ``day_of_month``: the day of each month it is due
+    # on ("zum 1. eines Monats" is 1; a day past a month's end is its last day, "zum Monatsende" is 31),
+    # for a rule in months or years (a rule in days or weeks has neither); Ordnung computes each month's
+    # date from them (ordnung.recurrence, points 8 and 10). A reading gives them too
+    # (``ExtractedItem.recurrence``), graded by whether the item's quote names them
+    # (ordnung.ingest.verify.WORKING_DAY_NOT_IN_QUOTE, DAY_OF_MONTH_NOT_IN_QUOTE). Its JSON schema is part of
+    # the extraction prompt's, which the benchmark's recordings pin by version
     # (evals/recorded/*/prompts.lock.json), so it has no docstring: the model reads only the field
     # descriptions, and a changed one is a changed prompt.
 
     interval: int = 1
     unit: Literal["days", "weeks", "months", "years"] = "months"
-    working_day: int | None = Field(
+    working_day: Literal[-1] | Annotated[int, Field(ge=1, le=10)] | None = Field(
         default=None,
-        ge=1,
-        le=10,
         description=(
             "the Nth working day of each period, e.g. 3 for 'spätestens am dritten Werktag eines jeden "
-            "Monats'; empty for a day of the month"
+            "Monats', -1 for the last ('am letzten Bankarbeitstag des Monats'); empty for a day of the month"
+        ),
+    )
+    day_of_month: int | None = Field(
+        default=None,
+        ge=1,
+        le=31,
+        description=(
+            "the day of each month it is due on, e.g. 1 for 'zum 1. eines Monats' or 'zum Monatsanfang', "
+            "31 for 'zum Monatsende' (a month's last day); empty for a working day"
         ),
     )
 
@@ -399,7 +415,9 @@ class ContractTerms(_Model):
     ``notice_day``: a cancellation must arrive by this day of a month to end the contract at the end of
     that month (read with ``notice_basis`` "end_of_month"; a notice period stated too applies as well).
     ``notice_before_end``: a contract with an end date whose own clause lets it be ended earlier by
-    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). The rules engine's docstrings hold the policies."""
+    ordinary notice (read for a job, § 15 Abs. 4 TzBfG). ``notice_statutory``: the contract names the
+    statutory notice periods ("unter Einhaltung der gesetzlichen Kündigungsfristen"), which count as its
+    period where a statute gives the person's. The rules engine's docstrings hold the policies."""
 
     category: ContractCategory = "other"
     party_kind: str | None = None
@@ -412,6 +430,7 @@ class ContractTerms(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = None
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     is_consumer: bool = True
     is_basic_supply: bool = False
@@ -443,6 +462,7 @@ class Contract(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = None
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     is_basic_supply: bool = False
     cost_amount: float | None = None
@@ -478,6 +498,7 @@ class Contract(_Model):
             notice_basis=self.notice_basis,
             notice_day=self.notice_day,
             notice_before_end=self.notice_before_end,
+            notice_statutory=self.notice_statutory,
             end_date=self.end_date,
             is_consumer=self.is_consumer,
             status=self.status,
@@ -849,6 +870,10 @@ class Profile(_Model):
 
 
 class ModelSettings(_Model):
+    """A request's own model per purpose. It keys the recordings (an alias, so they survive a change
+    of :attr:`AppSettings.model`); the model the CLI runs is decided at call time
+    (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`), and the cache is keyed by that one."""
+
     transcribe: str = "sonnet"
     extract: str = "sonnet"
     review: str = "sonnet"
@@ -864,6 +889,9 @@ DesktopNotifyMode = Literal["off", "discreet", "full"]
 
 class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
+    #: The model every call runs on (Settings → Claude): an id or alias as Claude Code takes it, Sonnet 5
+    #: by default; ``ORDNUNG_CLAUDE_MODEL`` overrides it for every call.
+    model: str = DEFAULT_MODEL
     concurrency: int = 2
     inbox_dir: str | None = None
     #: Files from the watched folder are read by Claude at once; off (the default), they wait for the
@@ -997,6 +1025,7 @@ class ExtractedContract(_Model):
     notice_basis: NoticeBasis | None = None
     notice_day: int | None = Field(default=None, ge=1, le=31)
     notice_before_end: bool = False
+    notice_statutory: bool = False
     end_date: str | None = None
     cost_amount: float | None = None
     cost_interval: CostInterval | None = None
@@ -1694,6 +1723,11 @@ class Health(_Model):
     today: str
     backend: str
     claude: ClaudeStatus = Field(default_factory=ClaudeStatus)
+    #: Settings → Claude shows it next to the Model field: the saved model counts once it is unset.
+    model_pinned: str | None = Field(
+        default=None,
+        description="The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)",
+    )
     rules_last_checked: str = Field(
         description="The day the rules catalog was last checked against the law (“Based on the law as of …”)"
     )

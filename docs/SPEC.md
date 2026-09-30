@@ -139,6 +139,9 @@ Key additions in v2 (to implement in models.py):
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
   `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
+- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude); the
+  per-purpose `AppSettings.models` aliases only key the recordings; the cache is keyed by the model
+  a call runs on, so a new choice is a new call (§ 7).
 - `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
   (an e-mail's attachments and what became of each) and `DocumentDetail.email` (the e-mail a letter
   came attached to); `FolderStatus`, `FolderPickup` (`GET /api/folder`).
@@ -362,6 +365,19 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   401/403 → `ClaudeAuthError`; 429 / usage-limit text → `ClaudeRateLimited(reset_at)`; 5xx/529 →
   transient (retry ×2 with backoff); `error_max_budget_usd` → `LLMError`; missing or invalid
   structured output → `ClaudeBadOutput` (1 retry); no JSON at all → `LLMError` with stderr tail.
+- **Model** (`--model M`), decided in one place (`ClaudeCLIBackend.model_for`), in this order:
+  `ORDNUNG_CLAUDE_MODEL` (an override for every call while it is set; the recorders don't use it:
+  the demo records with the default model, the benchmarks with the run's `--model` on a backend
+  without the setting) >
+  `AppSettings.model` (Settings → Claude; `claude-sonnet-5` by default — a pinned id, an alias moves
+  with releases; an id or alias as Claude Code takes it: no spaces, not starting with a dash, so a
+  Bedrock or Vertex id and `sonnet[1m]` pass; read when the call is made, so a save counts from the
+  next call) > the request's own model (`settings.models.<purpose>`, an alias that keys the
+  recordings; the doctor probe's `haiku` when no caller names the chosen model). The cache is keyed
+  by the model the call runs on: a letter read again after a new choice is read anew. The usage
+  log and the trace name the model that answered (`modelUsage`), else the one the call named. The
+  demo's settings are the defaults, so it records with the default model. `health` names the pin
+  (`model_pinned`) so Settings → Claude can say the saved model waits while the variable is set.
 - **Lanes**: interactive (ask, draft, capture, brief; semaphore 1) and background (transcribe,
   extract, review; semaphore `settings.concurrency`, default 2).
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
@@ -376,7 +392,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
   answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
-  `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe.
+  `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe on the
+  model every call runs on (the CLI reads the setting; "Run check" passes it), whose row names it
+  and whose fix on a failure points at that model after the sign-in.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -389,7 +407,12 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
-   language, region, name, known parties) → `DocumentExtraction`.
+   language, region, name, known parties) → `DocumentExtraction`, completed by code where the model
+   left out an item its own fields imply (`ingest/extract.py`, `with_rent_series`): a statement's
+   higher advance payments given in `change` alone (a monthly price increase with an effective day and
+   a new amount on a letter that states a rent contract) become the payment every month from that day
+   that the prompt asks for and `recurrence.py` point 9 needs, quoting the change's sentence — never for
+   a rent increase that needs consent (§ 558b BGB) or beside a recurring payment that holds the amount.
 5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
    page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
@@ -646,7 +669,15 @@ HTML and without remote images.
   letter, or states its due date or amount through any record linked to it (its contract, its sender), and
   adds the app's scam warning under one that cites or states a `do_not_pay` demand. Only the new rent
   carries the note — never the current rent (its amount, or a date before the increase), which is owed and
-  dated as ever — an undated one too, and a due date the person sets by hand keeps it. `explain_date`
+  dated as ever — an undated one too, and a due date the person sets by hand keeps it. A rent contract's
+  record — its `list_contracts` row, `explain_date`, its `money_summary` fixed-cost row and its reference in
+  `get_document` and `get_party` — gives its rent in force and the next rent (`rent`): each open rent of
+  `recurrence.py` point 9 that no other one replaces, as its to-do's row (its amount only when verified),
+  with `next_rent`, the row of the rent that replaces it (`recurrence.replacement`) and `from_month`, the
+  month it starts in — so "how much is my rent?" can name a statement's new total rent and its first due
+  date as Ordnung's own, past `money_summary`'s 30 days too. A rent increase's new rent the person hasn't
+  agreed to replaces nothing until they agree (§ 558b Abs. 1 BGB), so it is neither the next rent nor a rent
+  in force but `proposed_rent`, with a note that says so and its `payment_note`. `explain_date`
   keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms, and
   leaves out the wording and quotes of a to-do whose letter is private or in the trash. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
@@ -720,7 +751,9 @@ HTML and without remote images.
   label) — what was checked, not every claim. A checked answer is stored with the label (alone when
   nothing changed), so an answer stored before this check is never shown as checked; a model sentence
   that starts like the note — also with look-alike letters or across a soft line break — is left out.
-- **The prompt** (`ask_system` version 6) says what the check does: a value only a letter holds is not
+- **The prompt** (`ask_system` version 9: since 7 a to-do's own words are letter text, since 8 a year
+  standing alone in its title too, since 9 a matter's open to-dos and appointments are looked up before
+  the answer says what to do) says what the check does: a value only a letter holds is not
   stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
   record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
   term dates are left out, its cost stays), today's date is checked like any other date, each sentence
@@ -1059,7 +1092,8 @@ letters they saw, a held e-mail's held attachments included; ids that no longer 
 `skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
 `documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
 never read since, wait again; an e-mail with the attachments kept private with it; a letter's
-`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read`; a waiting letter can't
+`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read` and `model` (trimmed;
+no spaces, not starting with a dash, else 422 with the reason); a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
 or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
@@ -1186,12 +1220,15 @@ Pages:
    day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
    with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a
    quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
-   The model job that suggests Ideas once a week is *Weekly Ideas* (Settings → AI & models, "Privacy &
-   AI usage" and its activity), so "Weekly review" names only this session.
+   The model job that suggests Ideas once a week is *Weekly Ideas* ("Privacy & AI usage" and its
+   activity), so "Weekly review" names only this session.
 9. **Settings** — profile & address, region (affects holidays), language, reminders (lead times,
    browser notifications, the morning desktop notification with a preview, a test and "start
-   Ordnung when you log in"), models, privacy statement + "Privacy & AI usage" (activity, tokens,
-   API-equivalent cost, cache hits), Claude status (doctor), "How dates are computed" (rules
+   Ordnung when you log in"), AI (letters read at once, the daily note, the weekly Ideas — the model
+   is one for every job, kept under Claude), privacy statement + "Privacy & AI usage" (activity, tokens,
+   API-equivalent cost, cache hits), Claude status (doctor) with the model every call runs on
+   (Sonnet 5 by default, the server's reason under the field; the demo and the benchmarks keep their
+   recorded model), "How dates are computed" (rules
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
@@ -1286,7 +1323,9 @@ in the person's language, dates and amounts written as that language writes them
 names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
 a notice day of the month and notice before a fixed end; UI audit R1-backend-6, ADR 0010) were each
 checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
-run ("The prompt the app uses now", which says what the three test recordings mean).
+run ("The prompt the app uses now", which says what the three test recordings mean). Version 12 adds a
+recurring payment's day of the month and last working day and the statutory notice periods a contract
+names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`).
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
@@ -1379,18 +1418,26 @@ payments, so a recurring item is a schedule that always shows its next occurrenc
 the next occurrence; each occurrence is dated by the rules engine; re-reading never moves it back. A
 rule with a working day ("spätestens am dritten Werktag eines jeden Monats": `Recurrence.working_day`)
 is dated in every month by counting working days from its first — Monday to Friday for rent (a payment
-on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise —
+on a lease or under a rent contract, § 556b Abs. 1 BGB, BGH VIII ZR 129/09), *Werktage* otherwise; the
+last working day (-1, "am letzten Bankarbeitstag des Monats") is the month's last Monday to Friday that
+is no public holiday and no bank closing day (24 and 31 December), the earlier reading —
 and a lease's own monthly rent read without a day gets the law's third working day (`bgb_556b`), one
-confidence level lower and with a warning to check the lease, until the person gives it a date. The
-extraction schema carries the working day (`ExtractedItem.recurrence` is a `Recurrence`); one the
-item's quote doesn't name is graded like any value its quote doesn't state (`working_day_not_in_quote`,
-see **Verification**). A later rent on the same rent contract that restates the whole rent (a
+confidence level lower and with a warning to check the lease, until the person gives it a date. A rule
+with a day of the month ("zum 1. eines Monats": `Recurrence.day_of_month`; a day past a month's end is
+its last day, "zum Monatsende" is 31) is dated on that day in every month, from the first such day on or
+after the letter's date, or the later start of its contract — never from nothing: without a date to start
+from it stays undated until the person gives it one (`recurrence.py`, point 10). A lease's rent with a
+day of the month is dated by it, not the law's. The extraction schema carries both (`ExtractedItem.recurrence`
+is a `Recurrence`); one the item's quote doesn't name is graded like any value its quote doesn't state
+(`working_day_not_in_quote`, `day_of_month_not_in_quote`, see **Verification**). A later rent on the same rent contract that restates the whole rent (a
 statement's new total rent, a rent increase's new rent once agreed: its letter's old amount is the
 earlier rent's, or its amount is at least that) replaces the earlier one from the month it starts — the
 earlier one never moves into that month, and once its last occurrence is marked paid it closes, logged —
-and keeps its due day unless its own reading gives a working day (`recurrence.py`, point 9). A payment
+and keeps its due day unless its own reading gives a working day — a day of the month of its own doesn't
+replace it (`recurrence.py`, points 9 and 10). A payment
 that is only part of the rent (a statement's new advance payment alone, § 560 Abs. 4 BGB; a heating
-advance) runs beside it.
+advance) runs beside it. Ask's record of the rent contract names the rent in force and the next rent
+(`rent`, § 10).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
@@ -1473,6 +1520,16 @@ must-arrive-by date that locks nothing in. Both are read from the letter, so the
 corrects them (`ContractPatch.notice_day`, `notice_before_end`): "Must arrive by day __ of the month"
 where the rules read a day, and "Can be ended early by notice" for a job with an end date (whose notice
 may keep the law's basis, to the 15th or the end of a month).
+A third (migration 0005): `notice_statutory`, a contract that names the statutory notice periods instead of
+one of its own ("unter Einhaltung der gesetzlichen Kündigungsfristen (§ 622 BGB)"). Where a statute gives
+the person's period it counts as stated — a job's four weeks to the 15th or the end of a month (§ 622 Abs. 1
+BGB; the longer periods of Abs. 2 bind only the employer, unless the contract extends them to the employee,
+Abs. 6), a tenant's § 573c Abs. 1 BGB notice —: no "not found" warning, the confidence of a stated period,
+and a note in "Why these dates?" that the contract names them. After two years in a job, when Abs. 2 gives
+the employer longer periods, a warning says to check whether the contract extends them to the person. A period stated as a number wins. The consumer, phone and insurance rules only cap a period, so there
+it changes nothing. The card says it in plain words ("the statutory notice, as the contract says"), and
+the notice edit's "The contract names the statutory notice periods" sets or clears it
+(`ContractPatch.notice_statutory`; notice terms saved without it clear it, as they clear the day).
 A contract carries the person's cancellation of it once it is marked as sent (`cancellation_sent`,
 worked out on read): it is then no decision any more — no "Decide by", no cancellation Idea, no send-by
 date in the calendar — and the card says it waits for the provider's confirmation.
@@ -1485,7 +1542,12 @@ ask less, or up to three months (a flat, an insurance, an older contract).
 
 **Payments nobody transfers.** A direct debit the sender collects and money coming in get no send-by day
 (the bank transfer's § 675s BGB day means nothing there): the due day is the day, on Today, in the brief,
-Ask and "Why this date?"; money coming in is never overdue.
+Ask and "Why this date?"; money coming in is never overdue. A standing order (Dauerauftrag) the person
+sets up or changes is their own transfer, so it keeps the send-by day even when its to-do names a direct
+debit as the alternative ("Adjust your standing order … unless you use direct debit"); one they are told
+to cancel or end because the payee now collects is none — an end word near the standing order, not one
+about the debit ("set up a standing order, as we no longer collect by direct debit" is a transfer;
+`ordnung.payments`).
 `ContractTerms.concluded_date` (fallback start_date with a warning). For notice deadlines falling on
 a weekend/holiday, also show a *safe date* (previous business day). Every dated obligation gets
 `must_arrive_by` and `send_by` (postal buffer default **4** business days; channel-aware:
@@ -1513,8 +1575,11 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
 English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
 quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
-working day", "3rd business day"; 1–10), else `working_day_not_in_quote`: the working day still dates
-the item, one confidence level lower with a note. Mismatch → "Please check". UI never says "verified"; it says
+working day", "3rd business day"; 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else
+`working_day_not_in_quote`: the working day still dates the item, one confidence level lower with a note.
+A recurrence's day of the month likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st",
+"Monatsanfang" for 1, "Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch →
+"Please check". UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

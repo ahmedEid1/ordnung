@@ -21,14 +21,16 @@ import pytest
 
 from fixtures_llm import Letter
 from ordnung import clock
-from ordnung.assistant.mcp_server import LedgerTools
+from ordnung.assistant.mcp_server import NEXT_RENT_PROPOSED, LedgerTools, render_result
+from ordnung.assistant.support import TurnEvidence, check_answer
+from ordnung.payments import asks_for_transfer
 from ordnung.recurrence import KEEPS_DAY_STEP, LAW_DEFAULT_WARNING
 from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.brief import build_agenda
 from test_api_support import Api, ApiRouter, api_for
 
 DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
-DEMO_RENT = "itm_b1b5643x7qy7"  # "Monthly rent", €640, the lease's 3rd working day
+DEMO_RENT = "itm_b1b5643x7qy7"  # "Pay monthly rent (Miete)", €640, the lease's 3rd working day
 DEMO_NEW_RENT = "itm_9dvnqv1acvka"  # "New monthly total rent €670", "ab dem 01.11.2026"
 MONTHLY = {"interval": 1, "unit": "months"}
 
@@ -85,7 +87,7 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
         # its last occurrence stays, and the series is closed there
         assert (paid["status"], paid["due_date"], paid["amount"]) == ("done", "2026-10-05", 640.0)
         assert (
-            "Paid “Monthly rent” (Mon 5 Oct 2026) — replaced by “New monthly total rent €670” from Nov 2026"
+            "Paid “Pay monthly rent (Miete)” (Mon 5 Oct 2026) — replaced by “New monthly total rent €670” from Nov 2026"
             in _log(api, DEMO_RENT)
         )
 
@@ -99,10 +101,11 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
         # and the Sunday is no longer the due day
         assert not any("not a working day" in warning for warning in receipt["warnings"])
         assert LAW_DEFAULT_WARNING not in receipt["warnings"]
-        # its send-by follows how the statement says it is paid: the demo's reading ("Adjust your standing
-        # order … unless you use direct debit") names a direct debit, which the sender collects
-        # (ordnung.payments) — a transfer's send-by is tested below with a statement that asks for one
-        assert new["send_by"] is None
+        # its send-by follows how it is paid: the series the reading completes from the statement's change
+        # (ordnung.ingest.extract.with_rent_series) has no action, so the rent is the person's own transfer,
+        # as the lease's is, with a transfer's send-by day (ordnung.payments)
+        assert new["action"] is None and not asks_for_transfer(new["action"])
+        assert new["send_by"] == "2026-11-03"
 
         november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
         assert [(r["id"], r["amount"], r["due_date"]) for r in november] == [
@@ -131,7 +134,7 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
 
         reopened = await _patch(api, DEMO_RENT, status="open")  # the closed rent set open again
         assert (reopened["status"], reopened["due_date"]) == ("open", "2026-10-05")
-        assert "Reopened “Monthly rent” (Mon 5 Oct 2026)" in _log(api, DEMO_RENT)
+        assert "Reopened “Pay monthly rent (Miete)” (Mon 5 Oct 2026)" in _log(api, DEMO_RENT)
         closed = await _patch(api, DEMO_RENT, status="done")
         assert (closed["status"], closed["due_date"]) == ("done", "2026-10-05")
 
@@ -151,9 +154,12 @@ ASK_QUOTE = "Wir bitten Sie um Zustimmung zur Erhöhung der Miete auf die ortsü
 INCREASE_QUOTE = "Die neue Miete von 700,00 EUR ist ab dem 01.12.2026 zu zahlen."
 
 
-def _lease(quote: str = RENT_QUOTE, when: dict[str, Any] | None = None) -> Letter:
+def _lease(
+    quote: str = RENT_QUOTE, when: dict[str, Any] | None = None, recurrence: dict[str, Any] = MONTHLY
+) -> Letter:
     """The lease of a flat from 1 Oct 2026: its monthly rent read as the demo's is, without a day (the law's
-    3rd working day dates it) unless ``when`` gives one, and the tenancy as a rent contract."""
+    3rd working day dates it) unless ``when`` or ``recurrence`` gives one, and the tenancy as a rent
+    contract."""
     return Letter(
         marker="Wohnraummietvertrag Beispielweg 7",
         pages=(("Wohnbau Musterstadt eG", "SPECIMEN", "Wohnraummietvertrag Beispielweg 7", quote),),
@@ -175,7 +181,7 @@ def _lease(quote: str = RENT_QUOTE, when: dict[str, Any] | None = None) -> Lette
                     "amount": 640.0,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": MONTHLY,
+                    "recurrence": recurrence,
                     "quote": quote,
                 }
             ],
@@ -194,6 +200,7 @@ def _statement(
     quote: str = NEW_RENT_QUOTE,
     working_day: int | None = None,
     *,
+    day_of_month: int | None = None,
     title: str = "New monthly total rent €670",
     amount: float = 670.0,
     old_amount: float | None = 640.0,
@@ -225,7 +232,7 @@ def _statement(
                     "amount": amount,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": {**MONTHLY, "working_day": working_day},
+                    "recurrence": {**MONTHLY, "working_day": working_day, "day_of_month": day_of_month},
                     "quote": quote,
                 }
             ],
@@ -241,9 +248,9 @@ def _statement(
     )
 
 
-def _increase() -> Letter:
-    """A rent increase to the local comparative rent (§ 558 BGB), dated 24 Sep: €700 from 1 Dec, only owed
-    once the tenant agrees (§ 558b Abs. 1 BGB)."""
+def _increase(when: dict[str, Any] | None = None, recurrence: dict[str, Any] = MONTHLY) -> Letter:
+    """A rent increase to the local comparative rent (§ 558 BGB), dated 24 Sep: €700 from 1 Dec (or what
+    ``when`` and ``recurrence`` give), only owed once the tenant agrees (§ 558b Abs. 1 BGB)."""
     return Letter(
         marker="Mieterhöhungsverlangen Beispielweg 7",
         pages=(
@@ -269,7 +276,8 @@ def _increase() -> Letter:
                     "kind": "payment",
                     "title": "New monthly rent €700",
                     "action": "Transfer the new rent from December if you agree",
-                    "date": {
+                    "date": when
+                    or {
                         "type": "fixed",
                         "date": "2026-12-01",
                         "nature": "payment",
@@ -278,7 +286,7 @@ def _increase() -> Letter:
                     "amount": 700.0,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": MONTHLY,
+                    "recurrence": recurrence,
                     "quote": INCREASE_QUOTE,
                 }
             ],
@@ -315,6 +323,55 @@ async def _read_again(api: Api, doc_id: str) -> None:
     await api.read_all()
 
 
+DAY_RENT_QUOTE = "Die Miete von 640,00 EUR ist spätestens zum 5. eines Monats zu zahlen."
+
+
+async def test_a_lease_rent_due_on_a_day_of_the_month_is_dated_by_it_and_the_new_rent_keeps_it(
+    data_dir: Path,
+) -> None:
+    """Point 10: a lease whose rent is due "zum 5. eines Monats" (``recurrence.day_of_month`` 5) is dated by
+    that day — Mon 5 Oct, the first 5th from the tenancy's start — not by the law's 3rd working day, and
+    without its warning (the lease names a day). The statement's new rent keeps the lease's day (point 9):
+    Thu 5 Nov, not Sun 1 Nov as the statement words its start."""
+    lease = _lease(DAY_RENT_QUOTE, recurrence={**MONTHLY, "day_of_month": 5})
+    statement = _statement()
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        _, rent = await _read(api, lease)
+        assert (rent["due_date"], rent["send_by"]) == ("2026-10-05", "2026-10-02")
+        receipt = rent["computation"]
+        assert (
+            receipt["summary"]
+            == "Repeats every month on the 5th since Mon 5 Oct 2026; next on Mon 5 Oct 2026."
+        )
+        assert LAW_DEFAULT_WARNING not in receipt["warnings"] and "bgb_556b" not in receipt["rule_ids"]
+        assert receipt["confidence"] == "high"
+
+        _, new = await _read(api, statement)
+        assert (new["due_date"], new["send_by"]) == ("2026-11-05", "2026-11-04")
+        assert f"The lease's due day{KEEPS_DAY_STEP}Sun 1 Nov 2026 as the start" in _step_labels(new)
+        closed = await _patch(api, rent["id"], status="done")
+        assert (closed["status"], closed["due_date"]) == ("done", "2026-10-05")
+        december = await _patch(api, new["id"], status="done")
+        assert december["due_date"] == "2026-12-05"
+
+
+async def test_a_new_rent_keeps_the_leases_working_day_over_a_day_of_the_month_of_its_own(
+    data_dir: Path,
+) -> None:
+    """Point 10: a statement's new rent read with a day of the month from the day it starts ("ab dem
+    01.11.2026" as ``day_of_month`` 1) still keeps the lease's due day, its 3rd working day (point 9): Wed 4
+    Nov, not Sun 1 Nov — a letter that changes the rent changes the amount, not when rent is due."""
+    lease, statement = _lease(), _statement(day_of_month=1)
+    clock.set_today("2026-09-28")
+    async with api_for(data_dir, router=_router(lease, statement)) as api:
+        await _read(api, lease)
+        _, new = await _read(api, statement)
+        assert (new["due_date"], new["send_by"]) == ("2026-11-04", "2026-11-03")
+        assert new["recurrence"]["day_of_month"] == 1  # as it was read
+        assert new["computation"]["summary"].startswith("Repeats every month on the 3rd working day;")
+
+
 async def test_the_new_rent_keeps_the_leases_day_and_its_send_by(data_dir: Path) -> None:
     """The statement's new rent, "ab dem 01.11.2026", paid by transfer: due by the lease's day — the law's
     3rd working day, which the lease leaves it (so it carries the same warning to check the lease) — Wed 4
@@ -330,7 +387,7 @@ async def test_the_new_rent_keeps_the_leases_day_and_its_send_by(data_dir: Path)
             "2026-11-04",
             "2026-11-03",
         )
-        assert new["recurrence"] == {**MONTHLY, "working_day": None}  # the reading stays as it was read
+        assert new["recurrence"] == {**MONTHLY, "working_day": None, "day_of_month": None}  # as it was read
         assert f"The lease's due day{KEEPS_DAY_STEP}Sun 1 Nov 2026 as the start" in _step_labels(new)
         assert LAW_DEFAULT_WARNING in new["computation"]["warnings"]
 
@@ -369,6 +426,104 @@ async def test_a_rent_increase_not_yet_agreed_leaves_the_old_rent_running(data_d
             "“Monthly rent” ends with the payment marked paid (Wed 4 Nov 2026) — replaced by “New monthly rent "
             "€700” from Dec 2026" in _log(api, rent["id"])
         )
+
+
+async def test_a_rent_increase_without_a_date_stays_undated_on_a_day_of_the_month(data_dir: Path) -> None:
+    """Point 8 for point 10: a § 558 increase's new rent read with a day of the month (the 3rd) but no date
+    is started neither by its letter's date (24 Sep: Sat 3 Oct, which § 558b BGB moved to Tue 1 Dec) nor by
+    the tenancy's start — only a date its letter gives starts it —, so it stays undated beside the old rent,
+    which moves on as ever: no December with two rents once it is paid."""
+    lease = _lease()
+    increase = _increase(
+        {"type": "none", "nature": "payment", "text": "jeweils zum 3. eines Monats"},
+        {**MONTHLY, "day_of_month": 3},
+    )
+    clock.set_today("2026-09-29")
+    async with api_for(data_dir, router=_router(lease, increase)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, increase)
+        assert new["contract_id"] == rent["contract_id"]
+        assert (new["due_date"], new["computation"]["due_date"]) == (None, None)
+        assert RENT_INCREASE_PAYMENT_WARNING in new["computation"]["warnings"]
+        paid = await _patch(api, rent["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-11-04")
+
+
+def _rents_in_force(api: Api, contract_id: str, today: date) -> list[dict[str, Any]]:
+    """Ask's record of a rent contract's rent in force and next rent (``list_contracts``)."""
+    rows = LedgerTools(api.ctx.store, today=today).list_contracts().record["contracts"]
+    return list(next(row for row in rows if row["id"] == contract_id).get("rent", []))
+
+
+async def test_asks_record_names_a_rent_increase_not_yet_agreed_as_proposed(data_dir: Path) -> None:
+    """Ask's record of the rent contract names a § 558 increase's new rent the person hasn't agreed to as the
+    proposed rent — with the note that they decide first (it replaces nothing yet) —, never as the next rent;
+    once they paid it (paying can count as agreeing) it is the next rent, which replaces the old one; "Undo"
+    makes it proposed again. The answer check keeps the new rent cited to the contract and adds the app's
+    § 558b note."""
+    lease, increase = _lease(), _increase()
+    today = date(2026, 9, 29)
+    clock.set_today(today.isoformat())
+    async with api_for(data_dir, router=_router(lease, increase)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, increase)
+        contract = rent["contract_id"]
+        (row,) = _rents_in_force(api, contract, today)
+        assert (row["id"], row["amount"], row["due_date"]) == (rent["id"], 640.0, "2026-10-05")
+        assert "next_rent" not in row
+        proposed = row["proposed_rent"]
+        assert (proposed["id"], proposed["amount"], proposed["from_month"], proposed["due_date"]) == (
+            new["id"],
+            700.0,
+            "2026-12",
+            "2026-12-03",
+        )
+        assert proposed["note"] == NEXT_RENT_PROPOSED
+        assert proposed["payment_note"] == RENT_INCREASE_PAYMENT_WARNING
+
+        tools = LedgerTools(api.ctx.store, today=today)
+        evidence = TurnEvidence.from_results([render_result(tools.list_contracts())], today=today)
+        answer = f"From Dec 2026 your landlord asks for 700.00 € a month [contract:{contract}]."
+        checked = check_answer(answer, evidence, citable=evidence.seen_ids)
+        assert checked.text == answer and "§ 558b Abs. 1 BGB" in (checked.note() or "")
+
+        await _patch(api, new["id"], status="done")  # paid: agreed, as far as Ordnung can tell
+        (row,) = _rents_in_force(api, contract, today)
+        assert (row["id"], row["next_rent"]["id"], row["next_rent"]["from_month"]) == (
+            rent["id"],
+            new["id"],
+            "2026-12",
+        )
+        assert "proposed_rent" not in row and "note" not in row["next_rent"]
+        await _patch(api, new["id"], status="open")  # the toast's "Undo"
+        (row,) = _rents_in_force(api, contract, today)
+        assert "next_rent" not in row and row["proposed_rent"]["id"] == new["id"]
+
+
+async def test_asks_record_gives_the_rent_the_ledger_replaces_it_by_beside_a_proposed_one(
+    data_dir: Path,
+) -> None:
+    """A § 558 increase to €700 from December the person hasn't agreed to, and a statement's new total rent of
+    €660 from January (it restates the €640): the ledger's next rent is the €660 — the €700 replaces nothing
+    until agreed —, so Ask's record gives the €640 as the one rent in force, the €660 as its next rent and the
+    €700 as the proposed rent; neither is a second rent in force."""
+    lease, increase = _lease(), _increase()
+    statement = _statement(
+        "Ihre Gesamtmiete beträgt ab dem 01.01.2027 somit 660,00 EUR (bisher 640,00 EUR).",
+        title="New monthly total rent €660",
+        amount=660.0,
+        starts="2027-01-01",
+    )
+    today = date(2026, 9, 29)
+    clock.set_today(today.isoformat())
+    async with api_for(data_dir, router=_router(lease, increase, statement)) as api:
+        _, rent = await _read(api, lease)
+        _, proposed = await _read(api, increase)
+        _, owed = await _read(api, statement)
+        (row,) = _rents_in_force(api, rent["contract_id"], today)
+        assert row["id"] == rent["id"]
+        assert (row["next_rent"]["id"], row["next_rent"]["from_month"]) == (owed["id"], "2027-01")
+        assert (row["proposed_rent"]["id"], row["proposed_rent"]["from_month"]) == (proposed["id"], "2026-12")
 
 
 async def test_a_new_rent_that_names_its_own_working_day_keeps_it(data_dir: Path) -> None:
@@ -538,6 +693,10 @@ async def test_a_payment_that_is_only_part_of_the_rent_runs_beside_it(
         assert not any("replaced by" in message for message in _log(api, rent["id"]))
         november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
         assert {r["id"] for r in november} == {rent["id"], new["id"]}
+        # and Ask's record of the rent contract gives both as rents in force, neither the other's next rent
+        rows = _rents_in_force(api, rent["contract_id"], date(2026, 9, 28))
+        assert {row["id"] for row in rows} == {rent["id"], new["id"]}
+        assert not any("next_rent" in row for row in rows)
 
 
 async def test_a_rent_added_by_hand_starts_on_the_date_the_person_gives(data_dir: Path) -> None:

@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"42a428fdfb830e21e39606a753d7476ae619055a5f74b8e2989d3e20d085d298\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "test-english_letter-C1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-04-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"University of Beispielstadt\",\"document_date\":\"2026-04-20\",\"references\":[{\"label\":\"Our ref.\",\"value\":\"IO-OUT-26-0415\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit signed Learning Agreement\",\"quote\":\"Please submit your signed Learning Agreement by 15 May 2026 via the Mobility-Online portal.\",\"computation\":\"The letter states a fixed calendar date, 15 May 2026, as the submission deadline. This falls on a Friday. Since it is a specific date printed by the sender (not a period to be counted, and the sender is a university, not an authority subject to statutory deemed-delivery or period-counting rules), the due date is simply the date as written, with no weekend/holiday shift needed since 15 May 2026 is a Friday (a business day).\",\"due_date\":\"2026-05-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "University of Beispielstadt",
+      "document_date": "2026-04-20",
+      "references": [
+        {
+          "label": "Our ref.",
+          "value": "IO-OUT-26-0415"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit signed Learning Agreement",
+          "quote": "Please submit your signed Learning Agreement by 15 May 2026 via the Mobility-Online portal.",
+          "computation": "The letter states a fixed calendar date, 15 May 2026, as the submission deadline. This falls on a Friday. Since it is a specific date printed by the sender (not a period to be counted, and the sender is a university, not an authority subject to statutory deemed-delivery or period-counting rules), the due date is simply the date as written, with no weekend/holiday shift needed since 15 May 2026 is a Friday (a business day).",
+          "due_date": "2026-05-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1078,
+      "cache_read_tokens": 14921,
+      "cache_creation_tokens": 3153,
+      "cost_usd": 0.026384199999999997,
+      "duration_ms": 11968,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2026-05-15",
+            "nature": "declaration",
+            "shift_rule": "none",
+            "legal_basis": null,
+            "text": "Please submit your signed Learning Agreement by 15 May 2026 via the Mobility-Online portal."
+          },
+          "document_date": "2026-04-20",
+          "sender_kind": "university",
+          "sender_name": "University of Beispielstadt",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-05-15\",\"weekday\":\"Friday\",\"send_by\":\"2026-05-08\",\"summary\":\"The date given is Fri 15 May 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Fri 15 May 2026\",\"date\":\"2026-05-15\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Fri 8 May 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-05-08\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-04-25\",\"letter_date\":\"2026-04-20\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

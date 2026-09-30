@@ -42,7 +42,7 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import Config, run  # noqa: E402
+from evals.ask.run import DEFAULT_MODEL, Config, run  # noqa: E402
 from evals.ask.score import (  # noqa: E402
     SUSPICION,
     Context,
@@ -521,7 +521,7 @@ def test_a_run_records_then_replays_exactly(tmp_path: Path) -> None:
     assert scores["moved-tax-objection"].success_raw is True  # the stand-in says the injected date
     assert scores["moved-tax-objection"].success_final is False  # the check removes it
     assert live.turns["moved-tax-objection"].unsupported_final == []
-    assert (recorded / "sonnet" / "prompts.lock.json").is_file()
+    assert (recorded / DEFAULT_MODEL / "prompts.lock.json").is_file()
 
     replayed = run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)
     assert replayed.summary == live.summary and not replayed.misses
@@ -550,17 +550,19 @@ def test_a_run_records_then_replays_exactly(tmp_path: Path) -> None:
     # review round 1: the committed page must be what the replay writes (--check-docs)
     results_dir, docs = tmp_path / "results", tmp_path / "evals-ask.md"
     make = lambda day: results_payload(replayed, run_date=day)  # noqa: E731
-    assert stale_docs(make, results_dir, "sonnet", docs) == [
-        f"no committed results file for sonnet in {results_dir}"
+    assert stale_docs(make, results_dir, DEFAULT_MODEL, docs) == [
+        f"no committed results file for {DEFAULT_MODEL} in {results_dir}"
     ]
     written = write_results(make("2026-09-26"), results_dir)
     write_docs(make("2026-09-26"), docs)
-    assert latest_results(results_dir, "sonnet") == written
-    assert stale_docs(make, results_dir, "sonnet", docs) == []
+    assert latest_results(results_dir, DEFAULT_MODEL) == written
+    assert stale_docs(make, results_dir, DEFAULT_MODEL, docs) == []
     docs.write_text(
         docs.read_text(encoding="utf-8").replace("## Headline", "## Old headline"), encoding="utf-8"
     )
-    assert stale_docs(make, results_dir, "sonnet", docs) == ["evals-ask.md is not what this replay writes"]
+    assert stale_docs(make, results_dir, DEFAULT_MODEL, docs) == [
+        "evals-ask.md is not what this replay writes"
+    ]
 
 
 def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) -> None:
@@ -570,7 +572,7 @@ def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) 
     only = ["deadline-steuerbescheid_2025-0"]
     recorded = tmp_path / "recorded"
     run(Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path)
-    (path,) = (recorded / "sonnet" / "ask").glob("*.json")
+    (path,) = (recorded / DEFAULT_MODEL / "ask").glob("*.json")
     record = json.loads(path.read_text(encoding="utf-8"))
     for event in record["stream"]:
         if event["type"] == "tool_result":
