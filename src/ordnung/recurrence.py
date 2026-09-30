@@ -91,7 +91,8 @@ limits, not bugs):
    dated on that day in each of its months (point 5, moved as its DateSpec says), like point 8's: its first
    occurrence is the first such day on or after the date its DateSpec gives, else on or after its letter's
    date, or the later start of its contract when the letter is read or its dates are recomputed
-   (:func:`first_scheduled`); points 3 and 4 then move it on. Nothing else starts it: a day of the month
+   (:func:`first_scheduled`) — a rent increase's new rent only on or after a date its letter gives (point
+   8); points 3 and 4 then move it on. Nothing else starts it: a day of the month
    with no date at all (no DateSpec date, no letter date, no contract start) stays undated until the person
    gives it one (point 2), and a date the person gives stands in for its occurrence (point 7), the day of
    the month dating the months after. A day of the month equal to its first occurrence's day is the same
@@ -330,7 +331,8 @@ def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
     the month (point 9) starts on that day of the month the rules engine's date names. With a day of the
     month (point 10), the first such day on or after the date the rules engine gives its DateSpec, else its
     letter's date (``ctx.document_date``), else its current date less the days a weekend or holiday can
-    move it (the occurrence it stands for); ``None`` without any of them."""
+    move it (the occurrence it stands for); ``None`` without any of them, and — as with a working day — for
+    a rent increase's new rent without a date."""
     rule, spec, given = schedule_rule(item, ctx), item.date_spec, None
     by_working_day = rule is not None and rule.working_day is not None
     day = rule.day_of_month if rule is not None else None
@@ -341,6 +343,8 @@ def first_occurrence(item: Item, ctx: RuleContext) -> date | None:
         given = _given(item, ctx)
     if rule is not None and day is not None:
         due = _parse(item.due_date)
+        if given is None and due is None and ctx.letter_kind == "rent_increase":
+            return None  # only a date its letter gives starts a rent increase's new rent (point 8)
         start = given or ctx.document_date or (due - timedelta(days=_SHIFT_DAYS) if due else None)
         return None if start is None else _starting(start, rule)
     start = given or _parse(item.due_date)
@@ -649,9 +653,12 @@ def first_scheduled(
     without a letter date starts there), and is graded by ``reasons``, what its quote leaves out
     (:func:`~ordnung.ingest.plan.consistency_reasons`); :func:`rolled` then moves it on if it has passed. So
     is a rent that keeps an earlier rent's due day (``ctx.rent_due``, point 9). ``None`` for any other item,
-    and for a day of the month with no date to start from."""
+    for a day of the month with no date to start from, and for a rent increase's new rent its letter gives no
+    date (its contract's start never starts it, point 8)."""
     rule, first, start = schedule_rule(item, ctx), first_occurrence(item, ctx), _parse(starts)
     if rule is None or (rule.working_day is None and rule.day_of_month is None and ctx.rent_due is None):
+        return None
+    if first is None and ctx.letter_kind == "rent_increase":
         return None
     undated = item.due_date is None and (item.date_spec is None or item.date_spec.type == "none")
     # a day of the month without a letter date starts with its contract (point 10), never from nothing

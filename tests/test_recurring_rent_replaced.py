@@ -246,9 +246,9 @@ def _statement(
     )
 
 
-def _increase() -> Letter:
-    """A rent increase to the local comparative rent (§ 558 BGB), dated 24 Sep: €700 from 1 Dec, only owed
-    once the tenant agrees (§ 558b Abs. 1 BGB)."""
+def _increase(when: dict[str, Any] | None = None, recurrence: dict[str, Any] = MONTHLY) -> Letter:
+    """A rent increase to the local comparative rent (§ 558 BGB), dated 24 Sep: €700 from 1 Dec (or what
+    ``when`` and ``recurrence`` give), only owed once the tenant agrees (§ 558b Abs. 1 BGB)."""
     return Letter(
         marker="Mieterhöhungsverlangen Beispielweg 7",
         pages=(
@@ -274,7 +274,8 @@ def _increase() -> Letter:
                     "kind": "payment",
                     "title": "New monthly rent €700",
                     "action": "Transfer the new rent from December if you agree",
-                    "date": {
+                    "date": when
+                    or {
                         "type": "fixed",
                         "date": "2026-12-01",
                         "nature": "payment",
@@ -283,7 +284,7 @@ def _increase() -> Letter:
                     "amount": 700.0,
                     "currency": "EUR",
                     "direction": "out",
-                    "recurrence": MONTHLY,
+                    "recurrence": recurrence,
                     "quote": INCREASE_QUOTE,
                 }
             ],
@@ -423,6 +424,27 @@ async def test_a_rent_increase_not_yet_agreed_leaves_the_old_rent_running(data_d
             "“Monthly rent” ends with the payment marked paid (Wed 4 Nov 2026) — replaced by “New monthly rent "
             "€700” from Dec 2026" in _log(api, rent["id"])
         )
+
+
+async def test_a_rent_increase_without_a_date_stays_undated_on_a_day_of_the_month(data_dir: Path) -> None:
+    """Point 8 for point 10: a § 558 increase's new rent read with a day of the month (the 3rd) but no date
+    is started neither by its letter's date (24 Sep: Sat 3 Oct, which § 558b BGB moved to Tue 1 Dec) nor by
+    the tenancy's start — only a date its letter gives starts it —, so it stays undated beside the old rent,
+    which moves on as ever: no December with two rents once it is paid."""
+    lease = _lease()
+    increase = _increase(
+        {"type": "none", "nature": "payment", "text": "jeweils zum 3. eines Monats"},
+        {**MONTHLY, "day_of_month": 3},
+    )
+    clock.set_today("2026-09-29")
+    async with api_for(data_dir, router=_router(lease, increase)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, increase)
+        assert new["contract_id"] == rent["contract_id"]
+        assert (new["due_date"], new["computation"]["due_date"]) == (None, None)
+        assert RENT_INCREASE_PAYMENT_WARNING in new["computation"]["warnings"]
+        paid = await _patch(api, rent["id"], status="done")
+        assert (paid["status"], paid["due_date"]) == ("open", "2026-11-04")
 
 
 def _rents_in_force(api: Api, contract_id: str, today: date) -> list[dict[str, Any]]:
