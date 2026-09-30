@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement, type ComponentProps, type ReactElement, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStableId } from "./internal";
 
@@ -152,7 +152,11 @@ export function Switch({ checked, onCheckedChange, label, description, className
   );
 }
 
-/** Checkbox with label. */
+/**
+ * Checkbox with label. The input itself is a 24 × 24 px cell (WCAG 2.5.8 target size — a native checkbox
+ * can't be given a hit area larger than its box, so the 16 px box is drawn under it), and the whole row is
+ * its label: the words toggle it too, as before.
+ */
 export function Checkbox({
   label,
   description,
@@ -162,12 +166,24 @@ export function Checkbox({
 }: Omit<ComponentProps<"input">, "type"> & { label: ReactNode; description?: ReactNode }) {
   const cid = useStableId(id, "cb");
   return (
-    <div className={cn("flex items-start gap-2.5", className)}>
-      <input id={cid} type="checkbox" className="mt-0.5 size-4 shrink-0 rounded accent-[var(--color-accent)]" {...rest} />
-      <label htmlFor={cid} className="cursor-pointer text-base">
+    <label className={cn("flex cursor-pointer items-start gap-1.5 text-base", className)}>
+      {/* the input covers the cell and takes the pointer (the box and the check under it let it through) */}
+      <span className="relative grid size-6 shrink-0 place-items-center">
+        <input id={cid} type="checkbox" className="peer absolute inset-0 m-0 size-6 cursor-pointer appearance-none rounded-md outline-none disabled:cursor-not-allowed" {...rest} />
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none size-4 rounded border border-control-border bg-surface transition-colors",
+            "peer-checked:border-accent peer-checked:bg-accent peer-disabled:opacity-60",
+            "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent",
+          )}
+        />
+        <Check className="pointer-events-none absolute size-3 text-on-accent opacity-0 peer-checked:opacity-100" strokeWidth={3} aria-hidden />
+      </span>
+      <span className="min-w-0">
         <span className="font-medium text-ink">{label}</span>
         {description ? <span className="mt-0.5 block text-sm leading-5 text-pretty text-muted">{description}</span> : null}
-      </label>
-    </div>
+      </span>
+    </label>
   );
 }
