@@ -1144,6 +1144,42 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
     assert "a holdout run never rewrites docs/evals.md" in capsys.readouterr().err
 
 
+async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--holdout-note`` (a second model, an interruption) is kept in the holdout run's file, like
+    ``--prompt-note``, and opens the held-out section; it goes with ``--holdout-run``."""
+    published = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    assert published is not None and holdout is not None
+    published_path, holdout_path = tmp_path / "published.json", tmp_path / "holdout.json"
+    report.write_json(published_path, published)
+    report.write_json(holdout_path, holdout)
+    note = tmp_path / "note.md"
+    note.write_text("Recorded on two models,\n  once each: the table shows the second.\n", encoding="utf-8")
+    docs, chart = tmp_path / "evals.md", tmp_path / "chart.png"
+    args = [str(published_path), "--docs", str(docs), "--chart", str(chart)]
+    with pytest.raises(SystemExit):
+        report.main([*args, "--holdout-note", str(note)])
+    assert "--holdout-note goes with --holdout-run" in capsys.readouterr().err
+    assert report.main([*args, "--holdout-run", str(holdout_path), "--holdout-note", str(note)]) == 0
+    stored = report.load_results(holdout_path)["meta"]["holdout_note"]
+    assert stored == "Recorded on two models, once each: the table shows the second."
+    section = docs.read_text(encoding="utf-8").split("## Held-out run: the holdout split", 1)[1]
+    assert section.split("\n## ", 1)[0].index(stored) < section.index("| Condition |")
+    # the page renders from the file alone afterwards
+    assert report.main([*args, "--holdout-run", str(holdout_path)]) == 0
+    assert stored in docs.read_text(encoding="utf-8")
+
+
 async def test_the_holdout_run_is_shown_beside_the_published_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

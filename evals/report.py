@@ -889,7 +889,8 @@ def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -
         misses = f"Ordnung got {wrong} dated item(s) of the holdout split wrong; from the failure gallery:\n\n{misses}"
     else:
         misses = f"Ordnung got {wrong} dated item(s) of the holdout split wrong (see the results file)."
-    body = "\n\n".join(part for part in (table, paired, misses) if part)
+    note = " ".join(str(meta.get("holdout_note") or "").split())
+    body = "\n\n".join(part for part in (note, table, paired, misses) if part)
     return f"""## Held-out run: the holdout split
 
 The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
@@ -1530,7 +1531,7 @@ rules engine of the checked-out commit; this run's numbers come from commit `{me
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
 [--prompt-run evals/results/<later run>.json --prompt-note <why>.md] [--holdout-run
-evals/results/<holdout run>.json]`. A run on the holdout split never rewrites this page itself.{later}"""
+evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself.{later}"""
 
 
 def render_pending_markdown() -> str:
@@ -1948,6 +1949,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="the run on the holdout split (recorded once; Ordnung alone or every condition), shown in its "
         "own section",
     )
+    parser.add_argument(
+        "--holdout-note",
+        type=Path,
+        metavar="FILE",
+        help="with --holdout-run: a written note on that recording (a second model, an interruption), stored "
+        "in its results file and shown with it",
+    )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:
         parser.error("give results files or --pending")
@@ -1980,6 +1988,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     prompt_note = next(
         (run["meta"]["prompt_note"] for run in prompt_runs if run["meta"].get("prompt_note")), None
     )
+    if args.holdout_note and not args.holdout_run:
+        parser.error("--holdout-note goes with --holdout-run")
+    if args.holdout_note:  # kept in the results file, like --prompt-note
+        results = load_results(args.holdout_run)
+        note = " ".join(args.holdout_note.read_text(encoding="utf-8").split())
+        write_json(args.holdout_run, {**results, "meta": {**results["meta"], "holdout_note": note}})
     holdout_run = load_results(args.holdout_run) if args.holdout_run else None
     try:
         docs, chart = write_docs(

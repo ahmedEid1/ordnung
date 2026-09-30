@@ -390,5 +390,5 @@ rules engine of the checked-out commit; this run's numbers come from commit `17f
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
 [--prompt-run evals/results/<later run>.json --prompt-note <why>.md] [--holdout-run
-evals/results/<holdout run>.json]`. A run on the holdout split never rewrites this page itself.
+evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model claude-sonnet-5 --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).
