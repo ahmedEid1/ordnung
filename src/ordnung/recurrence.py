@@ -55,8 +55,9 @@ limits, not bugs):
    gives it a date, which replaces the law's for every month (point 2; a later one says so on its
    receipt: :func:`over_the_law`). The same schedule read with the working day the law gave it is the
    same schedule (point 6). A rule in days or weeks has no working day. A working day the reading gives
-   dates the item even when the item's quote doesn't name it, but then one confidence level lower, with
-   a note to check it, and the item is "Please check" (``WORKING_DAY_NOT_IN_QUOTE``:
+   dates the item even when the item's quote doesn't name it, but then — unless the letter's one sentence
+   about when the payment is due states it (:func:`~ordnung.ingest.plan.day_evidence`) — one confidence
+   level lower, with a note to check it, and the item is "Please check" (``WORKING_DAY_NOT_IN_QUOTE``:
    :func:`~ordnung.ingest.plan.consistency_reasons`).
 9. A later rent replaces the one it changes, from the month it starts (:func:`replacement`). The rents of a
    rent contract are its to-dos linked to it that pay out every month (not dismissed: :func:`is_rent`); each

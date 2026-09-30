@@ -37,6 +37,7 @@ from ordnung.ingest.verify import (
     REASON_TEXT,
     WORKING_DAY_NOT_IN_QUOTE,
     DateMention,
+    DueDay,
     Located,
     PageInput,
     amount_matches,
@@ -48,6 +49,8 @@ from ordnung.ingest.verify import (
     parse_amounts,
     parse_dates,
     parse_periods,
+    payment_day_sentence,
+    payment_days_stated,
     regrade,
     spec_consistency,
     working_day_consistency,
@@ -755,6 +758,9 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("am Monatsbeginn", {1}),
         ("at the beginning of each month", {1}),
         ("on the first day of the month", {1}),
+        ("jeweils zum Monatsersten", {1}),
+        ("am Ersten eines jeden Monats", {1}),
+        ("zum ersten Tag des Monats", {1}),
         # a month's end is its last day: 31
         ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
         ("zum Letzten eines Monats", {31}),
@@ -770,6 +776,7 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("zum letzten Werktag", set()),
         ("§ 7. Kündigung", set()),
         ("am 32. eines Monats", set()),
+        ("am ersten Werktag eines Monats", set()),
         ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
     ],
 )
@@ -791,3 +798,94 @@ def test_a_day_of_the_month_is_named_or_flagged() -> None:
     assert "day of the month" in graded.warnings[0] and "please check" in graded.warnings[0]
     again = regrade(ComputationReceipt(due_date="2026-11-02"), graded)
     assert (again.confidence, again.warnings) == ("medium", graded.warnings)
+
+
+# --------------------------------------------------------------------------------------------------
+# A recurring payment's due day stated elsewhere in its letter
+# --------------------------------------------------------------------------------------------------
+
+TICKET_LETTER = (
+    "Preis   63,00 € pro Monat\n"
+    "Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID\n"
+    "Das Abonnement ist monatlich kündbar. Die Kündigung muss bis zum\n"
+    "10. eines Monats zum Ende dieses Monats bei uns eingehen.\n"
+)
+TICKET_DEBIT = "Zahlungsweise SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID"
+
+
+def test_payment_days_stated_finds_the_sentences_about_when_a_payment_is_due() -> None:
+    """Only sentences about paying count — never a notice period's day (the ticket's "bis zum 10." to
+    cancel, though its line breaks inside the phrase), a date with a month name, or a day without a
+    payment; a phrase a line break cuts ("am" / "3. Werktag") is read whole."""
+    assert payment_days_stated(TICKET_LETTER) == [(TICKET_DEBIT, {("day_of_month", 1)})]
+    lease = "Die Miete ist monatlich im Voraus, spätestens am\n3. Werktag eines jeden Monats zu zahlen."
+    assert payment_days_stated(lease) == [(" ".join(lease.split()), {("working_day", 3)})]
+    assert payment_days_stated("Die erste Abbuchung erfolgt am 1. Oktober 2026.") == []
+    assert payment_days_stated("The first debit is on October 1st.") == []
+    assert payment_days_stated("Der Beitrag wird monatlich abgebucht.") == []
+    assert payment_days_stated("Notice must reach us by the 10th of each month.") == []
+    assert payment_days_stated("Wir haben am 1. eines Monats geöffnet.") == []
+    # a month's end is a due day; a contract that ends then is not ("Ihr Vertrag endet …", below)
+    month_end = "Die Kaltmiete ist zum Ende eines jeden Monats zu zahlen."
+    assert payment_days_stated(month_end) == [(month_end, {("day_of_month", 31)})]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden.",  # "Mieter" is no rent
+        "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden.",  # "Anzahl" is no payment
+        "Der Einzug in die Wohnung erfolgt zum 15. des Monats.",  # moving in, not a debit
+        "Die Installation erfolgt am 3. Werktag.",  # no instalment
+        "Mahngebühren werden ab dem 15. eines Monats fällig.",  # late fees from a day on
+        "Bei Zahlungsverzug berechnen wir Zinsen ab dem 3. Werktag.",
+        "Late fees apply from the 15th of each month.",
+        "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht.",  # a contract's end
+        "Die Laufzeit beginnt zum Monatsersten; der Beitrag wird monatlich abgebucht.",
+        "Your membership ends at the end of the month; the fee is debited monthly.",
+    ],
+)
+def test_a_day_in_a_sentence_not_about_paying_its_due_day_is_no_due_day(sentence: str) -> None:
+    """Payment words count as whole words or as parts only paying has ("Zahlung", "Kaltmiete", "Beitrag"),
+    never inside another word ("Mieter", "Anzahl", "Installation") nor "Einzug" alone; and a day of late fees
+    or of a contract's start or end is no payment's due day, though the sentence mentions paying."""
+    assert payment_days_stated(sentence) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "due"),
+    [
+        (
+            "Die Kaltmiete ist spätestens am dritten\nWerktag eines jeden Monats zu zahlen.",
+            ("working_day", 3),
+        ),
+        ("Die Miete ist am letzten\nBankarbeitstag eines Monats fällig.", ("working_day", -1)),
+        ("Der Beitrag wird zum ersten\nTag eines jeden Monats abgebucht.", ("day_of_month", 1)),
+        ("Der Beitrag wird am 3.\nWerktag eines Monats abgebucht.", ("working_day", 3)),
+        ("Die Abbuchung erfolgt jeweils zum Monats-\nanfang.", ("day_of_month", 1)),
+        ("Der Monatsbeitrag wird per Lastschrifteinzug zum\nMonatsende abgebucht.", ("day_of_month", 31)),
+        ("Die Nettomiete ist am dritten (3.)\nWerktag eines Monats zu überweisen.", ("working_day", 3)),
+    ],
+)
+def test_a_due_day_a_line_break_cuts_is_read_whole(text: str, due: DueDay) -> None:
+    """A text layer breaks lines anywhere: between an ordinal word and its noun ("am dritten" / "Werktag"),
+    before the noun of a day ("Werktag", "Monatsende"), or inside a hyphenated word ("Monats-" / "anfang",
+    joined as the quote grounding joins it)."""
+    [(sentence, days)] = payment_days_stated(text)
+    assert days == {due} and "\n" not in sentence
+    assert "Monats- anfang" not in sentence
+
+
+def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> None:
+    first: DueDay = ("day_of_month", 1)
+    assert payment_day_sentence([TICKET_LETTER], first, "Preis 63,00 € pro Monat") == TICKET_DEBIT
+    assert payment_day_sentence(["Seite 1", TICKET_LETTER], first) == TICKET_DEBIT  # on any page
+    assert payment_day_sentence([TICKET_LETTER], ("day_of_month", 15)) is None  # another day
+    assert payment_day_sentence([TICKET_LETTER], ("working_day", 1)) is None  # not a working day
+    assert payment_day_sentence(["Preis 63,00 € pro Monat"], first) is None  # no day stated
+    two_days = f"{TICKET_LETTER}Die Servicegebühr wird jeweils zum 15. abgebucht."
+    assert payment_day_sentence([two_days], first) is None  # two different days: which one is it?
+    twice = f"{TICKET_LETTER}Der Beitrag wird zum Monatsersten eingezogen."
+    assert payment_day_sentence([twice], first) == TICKET_DEBIT  # the same day twice is one day
+    # a quote naming another day contradicts the letter's
+    assert payment_day_sentence([TICKET_LETTER], first, "Der Beitrag wird zum 15. abgebucht.") is None

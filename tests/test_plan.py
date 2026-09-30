@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date
 from typing import Any
 
@@ -29,12 +30,14 @@ from ordnung.ingest.plan import (
     verify_extraction,
     write_items,
 )
+from ordnung.ingest.text import Word
 from ordnung.ingest.verify import (
     DAY_OF_MONTH_NOT_IN_QUOTE,
     MODEL_READ_NOTE,
     REASON_TEXT,
     UNVERIFIED_NOTE,
     WORKING_DAY_NOT_IN_QUOTE,
+    PageInput,
 )
 from ordnung.models import (
     ComputationReceipt,
@@ -168,18 +171,26 @@ def test_a_working_day_its_quote_names_is_consistent() -> None:
     assert consistency_reasons(rent(RENT_BY_WORKING_DAY, None), [LEASE_PAGE]) == ()  # no working day read
 
 
+NO_DAY_LEASE_PAGE = (1, f"Monatliche Miete: 640,00 EUR\n{RENT_IN_ADVANCE}", [], "text")
+
+
 @pytest.mark.parametrize(
-    ("quote", "working_day"),
+    ("quote", "working_day", "page"),
     [
-        (RENT_IN_ADVANCE, 3),  # the letter names it, but not in this item's sentence: only the quote counts
-        (RENT_BY_WORKING_DAY, 1),  # the quote names another working day
+        (RENT_IN_ADVANCE, 3, NO_DAY_LEASE_PAGE),  # the letter names no working day at all
+        (RENT_IN_ADVANCE, 1, LEASE_PAGE),  # the letter names another working day (the 3rd)
+        (RENT_BY_WORKING_DAY, 1, LEASE_PAGE),  # the quote names another working day
     ],
 )
-def test_a_working_day_its_quote_does_not_name_needs_a_check(quote: str, working_day: int) -> None:
-    """The working day is the reading's claim about the item's sentence: one the sentence doesn't name is
-    ``working_day_not_in_quote``, so the value is not consistent with its quote and the letter says a date
-    could not be confirmed ("Please check"); its receipt is graded one level lower, with the reason's note."""
-    result = verify_extraction("doc_x", extraction([rent(quote, working_day)]), [LEASE_PAGE])
+def test_a_working_day_its_quote_does_not_name_needs_a_check(
+    quote: str, working_day: int, page: tuple[int, str, list[Any], str]
+) -> None:
+    """The working day is the reading's claim about the item's sentence: one the sentence doesn't name — nor
+    the letter's sentence about when the rent is due (:func:`test_a_due_day_the_letter_states_elsewhere_is_
+    grounded_on_that_sentence`) — is ``working_day_not_in_quote``, so the value is not consistent with its
+    quote and the letter says a date could not be confirmed ("Please check"); its receipt is graded one level
+    lower, with the reason's note."""
+    result = verify_extraction("doc_x", extraction([rent(quote, working_day)]), [page])
     [verified] = result.items
     assert verified.reasons == (WORKING_DAY_NOT_IN_QUOTE,)
     assert not verified.evidence.value_consistent and verified.evidence.grounding == "verified"
@@ -195,13 +206,13 @@ DAY_PAGE = (1, f"Monatliche Miete: 640,00 EUR\n{RENT_ON_THE_FIRST}\n{RENT_IN_ADV
 
 def test_a_day_of_the_month_is_graded_like_a_working_day() -> None:
     """Point 10 of ``ordnung.recurrence``: a reading's day of the month dates the rent, so the item is dated
-    and its quote must name that day ("zum 1. eines Monats"); another day, or a sentence without one, is
-    ``day_of_month_not_in_quote`` ("Please check", one level lower). A day beside a working day is not the
-    rule's (the working day wins), so it is not graded."""
+    and its quote must name that day ("zum 1. eines Monats"); another day, or a sentence without one (when the
+    letter states another day), is ``day_of_month_not_in_quote`` ("Please check", one level lower). A day beside
+    a working day is not the rule's (the working day wins), so it is not graded."""
     on_the_first = rent(RENT_ON_THE_FIRST, None).model_copy(update={"recurrence": Recurrence(day_of_month=1)})
     [verified] = verify_extraction("doc_x", extraction([on_the_first]), [DAY_PAGE]).items
     assert verified.reasons == () and verified.dated and not verified.needs_check
-    for quote, day in ((RENT_ON_THE_FIRST, 15), (RENT_IN_ADVANCE, 1)):
+    for quote, day in ((RENT_ON_THE_FIRST, 15), (RENT_IN_ADVANCE, 15)):
         misread = rent(quote, None).model_copy(update={"recurrence": Recurrence(day_of_month=day)})
         result = verify_extraction("doc_x", extraction([misread]), [DAY_PAGE])
         assert result.items[0].reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and result.needs_review
@@ -211,6 +222,116 @@ def test_a_day_of_the_month_is_graded_like_a_working_day() -> None:
         update={"recurrence": Recurrence(working_day=3, day_of_month=1)}
     )
     assert consistency_reasons(both, [LEASE_PAGE]) == ()
+
+
+TICKET_PRICE = "Preis   63,00 € pro Monat"
+TICKET_DEBIT = "Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID"
+TICKET_NOTICE = "Die Kündigung muss bis zum 10. eines Monats zum Ende dieses Monats bei uns eingehen."
+
+
+def ticket_page(*lines: str, source: str = "text") -> tuple[int, str, list[Word], str]:
+    """A page with a box per word (one text line per line), as the text layer gives it."""
+    words = [
+        Word(word, 0.1 * column, 0.05 * row, 0.1 * column + 0.08, 0.05 * row + 0.03)
+        for row, line in enumerate(lines)
+        for column, word in enumerate(line.split())
+    ]
+    return (1, "\n".join(lines), words, source)
+
+
+def ticket(day: int | None = 1, *, working_day: int | None = None) -> ExtractedItem:
+    """The demo's Deutschlandticket as its reading gives it: the price line quoted, the debit's day not."""
+    reading = item(TICKET_PRICE, money=63.0, type="none", nature="payment")
+    return reading.model_copy(update={"recurrence": Recurrence(day_of_month=day, working_day=working_day)})
+
+
+@pytest.mark.parametrize("source", ["text", "transcript"])
+def test_a_due_day_the_letter_states_elsewhere_is_grounded_on_that_sentence(source: str) -> None:
+    """A monthly debit whose quote (the price line) doesn't name its day, while the letter's payment terms do
+    ("Abbuchung zum Monatsanfang": the 1st, the reading's day): the day counts as stated, and that sentence
+    is the to-do's evidence too, grounded as any quote is (boxes on a text page, ``model_read`` on a
+    transcript) — no "Please check", no unconfirmed date, the receipt keeps its grade. The notice period's
+    "bis zum 10. eines Monats" is no payment's day."""
+    page = ticket_page(TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE, source=source)
+    result = verify_extraction("doc_x", extraction([ticket()]), [page])
+    [verified] = result.items
+    assert verified.reasons == () and verified.evidence.value_consistent
+    assert verified.dated and not verified.needs_check and not result.needs_review
+    assert result.warnings == []
+    day = verified.day_evidence
+    assert day is not None and day.quote == " ".join(TICKET_DEBIT.split()) and day.value_consistent
+    grounding = "verified" if source == "text" else "model_read"
+    assert day.grounding == grounding and day.page == 1 and bool(day.boxes) == (source == "text")
+    assert verified.all_evidence == [verified.evidence, day]
+    receipt = grade_receipt(ComputationReceipt(due_date="2026-10-01", confidence="high"), verified)
+    assert receipt.warnings == ([] if source == "text" else [MODEL_READ_NOTE])
+    assert consistency_reasons(ticket(), [page]) == ()  # recomputing its dates grades it the same way
+
+
+def test_a_working_day_the_letter_states_elsewhere_is_grounded_on_that_sentence() -> None:
+    [verified] = verify_extraction("doc_x", extraction([rent(RENT_IN_ADVANCE, 3)]), [LEASE_PAGE]).items
+    assert verified.reasons == () and not verified.needs_check
+    assert verified.day_evidence is not None and verified.day_evidence.quote == RENT_BY_WORKING_DAY
+    assert verified.day_evidence.grounding == "verified"
+
+
+@pytest.mark.parametrize(
+    ("lines", "reading", "reason"),
+    [
+        # the letter states no day
+        ((TICKET_PRICE, TICKET_NOTICE), ticket(), DAY_OF_MONTH_NOT_IN_QUOTE),
+        # the letter states another day than the reading's
+        ((TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE), ticket(15), DAY_OF_MONTH_NOT_IN_QUOTE),
+        # the letter states a day of the month, the reading a working day
+        ((TICKET_PRICE, TICKET_DEBIT), ticket(None, working_day=1), WORKING_DAY_NOT_IN_QUOTE),
+        # the letter states two different days: which one is the reading's?
+        (
+            (TICKET_PRICE, TICKET_DEBIT, "Die Servicegebühr wird jeweils zum 15. eines Monats abgebucht."),
+            ticket(),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        # the reading's day, but in a sentence that is not about paying: a tenant's duty, a count, moving in,
+        # an installation, late fees from that day on, a contract's end
+        (
+            (TICKET_PRICE, "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Der Einzug in die Wohnung erfolgt zum 15. des Monats."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Die Installation erfolgt am 3. Werktag."),
+            ticket(None, working_day=3),
+            WORKING_DAY_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Mahngebühren werden ab dem 15. eines Monats fällig."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht."),
+            ticket(31),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+    ],
+)
+def test_a_due_day_the_letter_does_not_state_alone_still_needs_a_check(
+    lines: tuple[str, ...], reading: ExtractedItem, reason: str
+) -> None:
+    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(*lines)])
+    [verified] = result.items
+    assert verified.reasons == (reason,) and verified.day_evidence is None and verified.needs_check
+    assert result.warnings == ["1 date could not be confirmed against the letter's text."]
+    assert consistency_reasons(reading, [ticket_page(*lines)]) == (reason,)
 
 
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
@@ -720,9 +841,11 @@ def add_doc(store: Store) -> Document:
     return store.add_document(sha256="e" * 64, filename="bill.pdf", mime="application/pdf", file_path="b.pdf")
 
 
-def write(store: Store, doc_id: str, items: list[ExtractedItem]) -> list[Item]:
+def write(
+    store: Store, doc_id: str, items: list[ExtractedItem], pages: Sequence[PageInput] = (TEXT_PAGE,)
+) -> list[Item]:
     data = extraction(items)
-    verification = verify_extraction(doc_id, data, [TEXT_PAGE])
+    verification = verify_extraction(doc_id, data, pages)
     ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
     computed = [compute_item(v, ctx, postal_buffer_days=4) for v in verification.items]
     return write_items(
@@ -756,6 +879,23 @@ def test_write_items_upserts_by_slot_and_keeps_user_edits(store: Store) -> None:
 
     write(store, document.id, [])  # the edited and the paid to-do stay; nothing else was read
     assert {i.id for i in store.list_items(doc_id=document.id)} == {objection.id, payment.id}
+
+
+def test_a_due_day_grounded_elsewhere_is_stored_as_the_to_dos_evidence(store: Store) -> None:
+    """The to-do keeps its own sentence first and the one stating its day after it; neither needs a check."""
+    document = add_doc(store)
+    page = ticket_page(TICKET_PRICE, TICKET_DEBIT, TICKET_NOTICE)
+    [stored] = write(store, document.id, [ticket()], [page])
+    assert [e.quote for e in stored.evidence] == [TICKET_PRICE, " ".join(TICKET_DEBIT.split())]
+    assert [e.grounding for e in stored.evidence] == ["verified", "verified"]
+    assert all(e.value_consistent for e in stored.evidence) and stored.evidence[1].boxes
+    assert stored.grounding == "verified" and not needs_check(stored)
+    [unstated] = write(store, add_doc_named(store, "other.pdf").id, [ticket()], [ticket_page(TICKET_PRICE)])
+    assert len(unstated.evidence) == 1 and needs_check(unstated)
+
+
+def add_doc_named(store: Store, filename: str) -> Document:
+    return store.add_document(sha256="f" * 64, filename=filename, mime="application/pdf", file_path=filename)
 
 
 def test_a_to_do_the_person_acted_on_moves_to_a_reworded_reading(store: Store) -> None:
