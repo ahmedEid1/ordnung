@@ -21,7 +21,8 @@ import pytest
 
 from fixtures_llm import Letter
 from ordnung import clock
-from ordnung.assistant.mcp_server import LedgerTools
+from ordnung.assistant.mcp_server import NEXT_RENT_PROPOSED, LedgerTools, render_result
+from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.recurrence import KEEPS_DAY_STEP, LAW_DEFAULT_WARNING
 from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.secretary.brief import build_agenda
@@ -371,6 +372,51 @@ async def test_a_rent_increase_not_yet_agreed_leaves_the_old_rent_running(data_d
         )
 
 
+def _rents_in_force(api: Api, contract_id: str, today: date) -> list[dict[str, Any]]:
+    """Ask's record of a rent contract's rent in force and next rent (``list_contracts``)."""
+    rows = LedgerTools(api.ctx.store, today=today).list_contracts().record["contracts"]
+    return list(next(row for row in rows if row["id"] == contract_id).get("rent", []))
+
+
+async def test_asks_record_names_a_rent_increase_not_yet_agreed_as_proposed(data_dir: Path) -> None:
+    """Ask's record of the rent contract names a § 558 increase's new rent as the next rent before the person
+    agreed — proposed, with the note that they decide first (it replaces nothing yet) — and, once they paid it
+    (paying can count as agreeing), as the rent that replaces the old one; "Undo" makes it proposed again. The
+    answer check keeps the new rent cited to the contract and adds the app's § 558b note."""
+    lease, increase = _lease(), _increase()
+    today = date(2026, 9, 29)
+    clock.set_today(today.isoformat())
+    async with api_for(data_dir, router=_router(lease, increase)) as api:
+        _, rent = await _read(api, lease)
+        _, new = await _read(api, increase)
+        contract = rent["contract_id"]
+        (row,) = _rents_in_force(api, contract, today)
+        assert (row["id"], row["amount"], row["due_date"]) == (rent["id"], 640.0, "2026-10-05")
+        upcoming = row["next_rent"]
+        assert (upcoming["id"], upcoming["amount"], upcoming["from_month"], upcoming["due_date"]) == (
+            new["id"],
+            700.0,
+            "2026-12",
+            "2026-12-03",
+        )
+        assert (upcoming["proposed"], upcoming["note"]) == (True, NEXT_RENT_PROPOSED)
+        assert upcoming["payment_note"] == RENT_INCREASE_PAYMENT_WARNING
+
+        tools = LedgerTools(api.ctx.store, today=today)
+        evidence = TurnEvidence.from_results([render_result(tools.list_contracts())], today=today)
+        answer = f"From Dec 2026 your landlord asks for 700.00 € a month [contract:{contract}]."
+        checked = check_answer(answer, evidence, citable=evidence.seen_ids)
+        assert checked.text == answer and "§ 558b Abs. 1 BGB" in (checked.note() or "")
+
+        await _patch(api, new["id"], status="done")  # paid: agreed, as far as Ordnung can tell
+        (row,) = _rents_in_force(api, contract, today)
+        assert (row["id"], row["next_rent"]["id"]) == (rent["id"], new["id"])
+        assert (row["next_rent"]["proposed"], row["next_rent"]["note"]) == (None, None)
+        await _patch(api, new["id"], status="open")  # the toast's "Undo"
+        (row,) = _rents_in_force(api, contract, today)
+        assert row["next_rent"]["proposed"] is True
+
+
 async def test_a_new_rent_that_names_its_own_working_day_keeps_it(data_dir: Path) -> None:
     """ "spätestens am fünften Werktag" in the statement's own sentence: the new rent is due by its 5th
     working day, Fri 6 Nov — not the lease's 3rd — and still replaces the old rent from November."""
@@ -538,6 +584,10 @@ async def test_a_payment_that_is_only_part_of_the_rent_runs_beside_it(
         assert not any("replaced by" in message for message in _log(api, rent["id"]))
         november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
         assert {r["id"] for r in november} == {rent["id"], new["id"]}
+        # and Ask's record of the rent contract gives both as rents in force, neither the other's next rent
+        rows = _rents_in_force(api, rent["contract_id"], date(2026, 9, 28))
+        assert {row["id"] for row in rows} == {rent["id"], new["id"]}
+        assert not any("next_rent" in row for row in rows)
 
 
 async def test_a_rent_added_by_hand_starts_on_the_date_the_person_gives(data_dir: Path) -> None:

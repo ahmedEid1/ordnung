@@ -46,7 +46,6 @@ if TYPE_CHECKING:
         CallSheet,
         ComputationReceipt,
         Contract,
-        ContractComputation,
         Document,
         Item,
         KeyFact,
@@ -204,8 +203,9 @@ class LedgerTools:
         return ToolAnswer({"hits": hits}, letters.by_id)
 
     def get_document(self, doc_id: str, page: int | None = None) -> ToolAnswer:
-        """A letter's facts, its to-dos & dates, the special cancellation window it opened as a price
-        increase (:func:`_special_cancellation`), and its page text (one page, or all up to the limit)."""
+        """A letter's facts, its to-dos & dates, the contracts it names (a rent contract with its rent:
+        :func:`_linked_contract`), the special cancellation window it opened as a price increase
+        (:func:`_special_cancellation`), and its page text (one page, or all up to the limit)."""
         doc = self.store.get_document(doc_id)
         if doc is None or doc.deleted_at is not None:
             return _not_found("document", doc_id)
@@ -230,7 +230,9 @@ class LedgerTools:
             "payment": {"iban_valid": doc.payment.iban_valid} if doc.payment else None,
             "scam_warning": bool(ledger.scam_reasons(doc)) or None,
             "items": items,
-            "contracts": [_contract_ref(c, letters) for c in ledger.contracts if _cites_document(c, doc.id)],
+            "contracts": [
+                _linked_contract(ledger, c, letters) for c in ledger.contracts if _cites_document(c, doc.id)
+            ],
             "special_cancellation": special,
         }
         letters.add(
@@ -328,9 +330,7 @@ class LedgerTools:
             ledger = self.ledger()
             window = _contract_window(ledger, contract)
             special = _special_cancellation(ledger, window, steps=True) if window is not None else None
-            return _explain_contract(
-                contract, ledger.computation(contract), today=ledger.today, special=special
-            )
+            return _explain_contract(ledger, contract, special=special)
         raise ToolInputError("explain_date takes an item id (itm_…) or a contract id (ctr_…)")
 
     # ---------------------------------------------------------------------------------- contracts
@@ -419,7 +419,9 @@ class LedgerTools:
             "region": party.region,
             "documents": [_flagged_ref(ledger, doc, letters) for doc in documents[:MAX_PARTY_ROWS]],
             "open_items": [_item_row(ledger, item, letters) for item in items[:MAX_PARTY_ROWS]],
-            "contracts": [_contract_ref(c, letters) for c in ledger.contracts if c.party_id == party.id],
+            "contracts": [
+                _linked_contract(ledger, c, letters) for c in ledger.contracts if c.party_id == party.id
+            ],
         }
 
     def _party_name(self, letters: LetterText, party_id: str | None) -> None:
@@ -529,7 +531,9 @@ class LedgerTools:
         paying — a rent increase's new rent (only owed once the person agrees, and paying it can count as
         agreeing, § 558b Abs. 1 BGB) or a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3
         BGB) — is listed apart too (``decide_before_paying``, with its ``payment_note``), never among the
-        upcoming payments and never in the totals (review round 1).
+        upcoming payments and never in the totals (review round 1). A rent contract's fixed-cost row gives its
+        rent in force and the next rent that replaces it (``rent``, :func:`_rents`), which may start after the
+        upcoming payments' 30 days; neither changes the totals.
         """
         from ordnung.views import money_summary, payments_due_this_month
 
@@ -557,6 +561,8 @@ class LedgerTools:
                     contract.id, monthly_cost=contract.monthly_cost(), currency=contract.cost_currency
                 )
                 row["terms_unverified"] = TERMS_UNVERIFIED
+            if (rent := _rents(ledger, contract, letters)) is not None:
+                row["rent"] = rent
             fixed.append(row)
         unverified_due = sum(
             1
@@ -1201,6 +1207,62 @@ def _contract_ref(contract: Contract, letters: LetterText) -> dict[str, Any]:
     return {"id": contract.id, "category": contract.category, "status": contract.status}
 
 
+def _linked_contract(ledger: Ledger, contract: Contract, letters: LetterText) -> dict[str, Any]:
+    """A contract a letter or a person's record names (``get_document``, ``get_party``): its reference, with a
+    rent contract's rent in force and the next rent (:func:`_rents`)."""
+    row = _contract_ref(contract, letters)
+    if (rent := _rents(ledger, contract, letters)) is not None:
+        row["rent"] = rent
+    return row
+
+
+NEXT_RENT_PROPOSED = (
+    "Proposed, not agreed: the landlord asks for this higher rent (§ 558 BGB). It replaces the current rent "
+    "only once the person agrees (§ 558b Abs. 1 BGB) — until then the current rent stays due, so the person "
+    "decides first (see payment_note)."
+)
+
+
+def _rents(ledger: Ledger, contract: Contract, letters: LetterText) -> list[dict[str, Any]] | None:
+    """A rent contract's rent in force and the next rent that replaces it (``rent``; ``None`` for any other
+    contract, or one without an open rent), as point 9 of :mod:`ordnung.recurrence` reads its rents
+    (:func:`~ordnung.recurrence.is_rent`, :func:`~ordnung.recurrence.replacement`): each open or snoozed rent
+    that no other one replaces, as its to-do's row (:func:`_item_row`: its amount only when verified) — one
+    that runs beside it, such as a parking space's, has a row of its own — with ``next_rent``, the row of the
+    rent that replaces it and the month it starts in (``from_month``). A rent increase's new rent the person
+    hasn't agreed to yet is the next rent too, ``proposed``, with the note that it needs their decision
+    (:data:`NEXT_RENT_PROPOSED`, § 558b Abs. 1 BGB): the ledger keeps the current rent running until then.
+    The Ask benchmark's "How much is my rent?" gave October's rent but said the new one from November was only
+    in the letter: no record of the contract held it, and its first payment is past ``money_summary``'s 30
+    days."""
+    if contract.category != "rent":
+        return None
+    from ordnung.ingest.plan import item_contexts
+    from ordnung.recurrence import ROLLING_STATUSES, is_rent, replacement
+
+    store, today, contexts = ledger.store, ledger.today, item_contexts()
+    rents = [item for item in ledger.items if item.status in ROLLING_STATUSES and is_rent(item, contract)]
+    replaced = {
+        rent.id: replacement(store, rent, contexts(store, rent, today), contexts, proposed=True)
+        for rent in rents
+    }
+    newer = {found.newer.id for found in replaced.values() if found is not None}
+    rows = []
+    for rent in rents:
+        if rent.id in newer:
+            continue
+        row = _item_row(ledger, rent, letters)
+        if (found := replaced[rent.id]) is not None:
+            row["next_rent"] = {
+                **_item_row(ledger, found.newer, letters),
+                "from_month": f"{found.starts:%Y-%m}",
+                "proposed": not found.owed or None,
+                "note": None if found.owed else NEXT_RENT_PROPOSED,
+            }
+        rows.append(row)
+    return rows or None
+
+
 def _terms_verified(contract: Contract) -> bool:
     """Every quote the contract was read from was verified, or the person entered it (no quotes)."""
     return all(is_verified(evidence.grounding) for evidence in contract.evidence)
@@ -1212,7 +1274,7 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
     A fixed-term job or flat let gets a summary that says it may still need notice
     (:func:`ordnung.views.fixed_term_summary`), never the engine's "no cancellation needed". The special
     cancellation window a price increase opened comes with it (``special_cancellation``,
-    :func:`_contract_window`)."""
+    :func:`_contract_window`), and a rent contract's rent in force and next rent (``rent``, :func:`_rents`)."""
     from ordnung.views import continuation, fixed_term_summary
 
     comp = ledger.computation(contract)
@@ -1258,6 +1320,8 @@ def _contract_row(ledger: Ledger, contract: Contract, letters: LetterText) -> di
     if cost is not None and currency_code(contract.cost_currency) is None:
         letters.add(contract.id, cost_currency=contract.cost_currency)
     _terms_into(row, contract, letters, cost=cost)
+    if (rent := _rents(ledger, contract, letters)) is not None:
+        row["rent"] = rent
     return row
 
 
@@ -1347,15 +1411,12 @@ themselves, which § 575 Abs. 1 S. 2 BGB limits for residential leases)."""
 
 
 def _explain_contract(
-    contract: Contract,
-    comp: ContractComputation,
-    *,
-    today: date,
-    special: dict[str, Any] | None = None,
+    ledger: Ledger, contract: Contract, *, special: dict[str, Any] | None = None
 ) -> ToolAnswer:
     """The engine's computation and rules; for a fixed-term job or flat let also ``if_not_cancelled``,
     which its summary points to (ending it earlier, what makes it open-ended); ``special``: the special
-    cancellation window a price increase opened, with its steps and rules (:func:`_special_cancellation`).
+    cancellation window a price increase opened, with its steps and rules (:func:`_special_cancellation`);
+    for a rent contract its rent in force and next rent (``rent``, :func:`_rents`).
 
     The steps repeat the terms they start from ("The first term runs from … to …"): for a contract whose
     terms were read by AI or not found on the page (``terms_unverified``) they go to the letter text with
@@ -1363,6 +1424,7 @@ def _explain_contract(
     ``list_contracts`` (review round 1)."""
     from ordnung.views import continuation, fixed_term_summary
 
+    comp, today = ledger.computation(contract), ledger.today
     letters = LetterText()
     computation = comp.model_dump()
     if not _terms_verified(contract):
@@ -1383,6 +1445,8 @@ def _explain_contract(
         record["special_cancellation"] = special
     record |= {"rules": rules, "disclaimer": _disclaimer()}
     _terms_into(record, contract, letters)
+    if (rent := _rents(ledger, contract, letters)) is not None:
+        record["rent"] = rent
     return ToolAnswer(record, letters.by_id)
 
 
@@ -1590,8 +1654,8 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         page: Annotated[int | None, Field(description="Only this page's text (for long letters)")] = None,
     ) -> str:
         """One letter: kind, dates, its to-dos & dates (with ids, due dates and verified amounts) and
-        contracts as Ordnung's record; title, summary, key facts, warnings and the page text as
-        letter text (shortened for long letters)."""
+        contracts (a rent contract with its rent) as Ordnung's record; title, summary, key facts, warnings
+        and the page text as letter text (shortened for long letters)."""
         return answer(lambda: tools.get_document(doc_id, page))
 
     @tool
@@ -1615,15 +1679,18 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         status: Annotated[str, Field(description="active, cancelled, ended or all")] = "active",
     ) -> str:
         """Contracts with costs, terms and the rules engine's dates: cancel_by (must arrive by),
-        send_by (post by), current term end, next renewal, earliest exit."""
+        send_by (post by), current term end, next renewal, earliest exit. A rent contract's rent is the rent
+        in force (its to-do: id, amount, next due date) with next_rent, the rent that replaces it: its
+        to-do, amount, from_month (the month it starts in) and first due date — proposed when it is a rent
+        increase the person hasn't agreed to yet (see its note and payment_note)."""
         return answer(lambda: tools.list_contracts(status))
 
     @tool
     def get_party(
         party_id_or_name: Annotated[str, Field(description="A party id (pty_…) or a name")],
     ) -> str:
-        """A person or organisation with their letters, open to-dos & dates and contracts; name,
-        contact details and identifiers as letter text."""
+        """A person or organisation with their letters, open to-dos & dates and contracts (a rent
+        contract with its rent); name, contact details and identifiers as letter text."""
         return answer(lambda: tools.get_party(party_id_or_name))
 
     @tool
@@ -1640,7 +1707,7 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         sender using contact details they already know — a real sender whose bank details changed shows
         the same signs; if it is genuine, it is due on its due_date), payments to decide on before paying
         (decide_before_paying: see each one's payment_note — not counted in the totals) and fixed costs per
-        month."""
+        month (a rent contract's with its rent in force and next_rent, which may start after the 30 days)."""
         return answer(tools.money_summary)
 
     @tool
@@ -1648,8 +1715,8 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         item_or_contract_id: Annotated[str, Field(description="An item id (itm_…) or contract id (ctr_…)")],
     ) -> str:
         """Why a date is what it is: the stored calculation receipt (steps, rules, citations,
-        confidence) of a to-do's due date, or a contract's cancellation dates. Quote it; never
-        recalculate dates yourself."""
+        confidence) of a to-do's due date, or a contract's cancellation dates (a rent contract's with its
+        rent). Quote it; never recalculate dates yourself."""
         return answer(lambda: tools.explain_date(item_or_contract_id))
 
     @tool

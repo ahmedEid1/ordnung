@@ -7,8 +7,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -53,6 +55,7 @@ from ordnung.ingest.attachments import EMAIL_MIME, email_source
 from ordnung.models import DocumentExtraction, Evidence, ExtractedChange, Identifier
 from ordnung.secretary.triggers import Ledger
 from ordnung.views import my_numbers
+from test_recurring_rent_replaced import DEMO_DB, DEMO_NEW_RENT, DEMO_RENT
 
 
 def _evidence(doc_id: str, quote: str, grounding: str) -> list[Evidence]:
@@ -1340,6 +1343,72 @@ def test_the_totals_note_never_counts_a_payment_listed_to_decide_on(
     after = tools.money_summary().record
     assert after["totals_leave_out"] == before
     assert after["due_this_month"] == 94.99
+
+
+# --------------------------------------------------------------------------------------------------
+# a rent contract's rent in force and the next rent (point 9 of ordnung.recurrence)
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def demo_store(tmp_path: Path) -> Iterator[Store]:
+    """A copy of the demo's ledger: the lease's "Monthly rent" (€640) and the operating-cost statement's "New
+    monthly total rent €670" that replaces it from November."""
+    data = tmp_path / "demo"
+    shutil.copytree(DEMO_DB, data)
+    store = Store.open(Paths(data))
+    yield store
+    store.close()
+
+
+def test_a_rent_contracts_record_names_the_rent_in_force_and_the_next_rent(demo_store: Store) -> None:
+    """The Ask benchmark's rent question: the answer gave October's €640 but said the new amount from
+    November was only in the statement — no record of the rent contract held the €670 rent that replaces the
+    €640 (point 9 of ordnung.recurrence), and its first payment, Wed 4 Nov, is past money_summary's 30 days.
+    Every tool that gives the rent contract gives its rent in force and the next rent — its to-do, amount,
+    month it starts in and due date —, so the answer check keeps them cited to the contract."""
+    tools = LedgerTools(demo_store, today=TODAY)
+    monthly = demo_store.get_item(DEMO_RENT)
+    assert monthly is not None and monthly.contract_id is not None
+    lease = monthly.contract_id
+    contract = demo_store.get_contract(lease)
+    assert contract is not None and contract.source_doc_id and contract.party_id
+    rows = _contract_rows(tools)
+    (rent,) = rows[lease]["rent"]
+    assert (rent["id"], rent["amount"], rent["due_date"], rent["send_by"]) == (
+        DEMO_RENT,
+        640.0,
+        "2026-10-05",
+        "2026-10-02",
+    )
+    upcoming = rent["next_rent"]
+    assert (upcoming["id"], upcoming["amount"], upcoming["from_month"], upcoming["due_date"]) == (
+        DEMO_NEW_RENT,
+        670.0,
+        "2026-11",
+        "2026-11-04",
+    )
+    assert upcoming["proposed"] is None and upcoming["note"] is None  # owed: a statement asks no consent
+    assert not any("rent" in row for cid, row in rows.items() if cid != lease)
+    # the same wherever the rent contract is given
+    fixed = {row["id"]: row for row in tools.money_summary().record["fixed_cost_contracts"]}
+    (landlord,) = tools.get_party(contract.party_id).record["parties"]
+    for linked in (
+        fixed[lease],
+        tools.explain_date(lease).record,
+        *[c for c in tools.get_document(contract.source_doc_id).record["contracts"] if c["id"] == lease],
+        *[c for c in landlord["contracts"] if c["id"] == lease],
+    ):
+        assert linked["rent"] == [rent]
+    # the answer check keeps the next rent cited to the contract, as the record's value
+    evidence = TurnEvidence.from_results([render_result(tools.list_contracts())], today=TODAY)
+    answer = f"From Nov 2026 your rent is 670.00 € a month, first due Wed 4 Nov 2026 [contract:{lease}]."
+    assert check_answer(answer, evidence, citable=evidence.seen_ids).text == answer
+    # once October's rent is paid and its series closed there, the €670 is the rent in force
+    demo_store.update_item(DEMO_RENT, status="done")
+    (rent,) = _contract_rows(tools)[lease]["rent"]
+    assert (rent["id"], rent["amount"], rent["due_date"]) == (DEMO_NEW_RENT, 670.0, "2026-11-04")
+    assert "next_rent" not in rent
 
 
 # --------------------------------------------------------------------------------------------------
