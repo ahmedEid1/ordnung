@@ -1,0 +1,161 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "8+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"5255c775dbcde88446ad2721bfc588be2349fefb742d65ba72939522273c0f87\",\"question\":\"How much does my Deutschlandticket subscription cost?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_vy5abr6ejqnb"
+    ],
+    "prompt_head": "The person asks:\nHow much does my Deutschlandticket subscription cost?\n"
+  },
+  "response": {
+    "text": "Your Deutschlandticket subscription with Musterstadt Verkehrsbetriebe GmbH costs 63.00 € per month, collected by SEPA direct debit at the start of each month [item:itm_wpght3d75cxs].\n\n- Next debit due Thu 1 Oct 2026 [item:itm_wpght3d75cxs].\n- It's an open-ended subscription cancellable monthly.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 270,
+      "cache_read_tokens": 20282,
+      "cache_creation_tokens": 4450,
+      "cost_usd": 0.0245684,
+      "duration_ms": 12147,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Deutschlandticket"
+      },
+      "tool_use_id": "toolu_01UJ2HH1opMboRbi8Kp4sWZp"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_vy5abr6ejqnb\",\"kind\":\"contract\",\"date\":\"2025-12-10\",\"party_id\":\"pty_wmevpbzhrm3e\"},{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_vy5abr6ejqnb\":{\"title\":\"Deutschlandticket Subscription Confirmation – MVB\",\"snippet\":\"Musterstadt Verkehrsbetriebe GmbH (MVB) confirms Sam Rivera's Deutschlandticket subscription (Abonummer DT-2025-3304719), starting 1…\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01UJ2HH1opMboRbi8Kp4sWZp"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_vy5abr6ejqnb"
+      },
+      "tool_use_id": "toolu_017BKKBrYuUN1oMXSZ1SB4Z7"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_vy5abr6ejqnb\",\"kind\":\"contract\",\"date\":\"2025-12-10\",\"status\":\"please check\",\"direction\":\"incoming\",\"received_date\":\"2025-12-12\",\"language\":\"de\",\"party_id\":\"pty_wmevpbzhrm3e\",\"case_id\":\"cas_te0bf05y7k8e\",\"urgency\":\"low\",\"pages\":1,\"items\":[{\"id\":\"itm_wpght3d75cxs\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"amount\":63.0,\"currency\":\"EUR\"}],\"contracts\":[{\"id\":\"ctr_cmeadtk38mac\",\"category\":\"transport\",\"status\":\"active\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_wpght3d75cxs\":{\"title\":\"Pay the monthly Deutschlandticket subscription fee\",\"action\":\"Ensure your linked bank account has sufficient funds for the automatic monthly direct debit.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"doc_vy5abr6ejqnb\":{\"title\":\"Deutschlandticket Subscription Confirmation – MVB\",\"summary\":\"Musterstadt Verkehrsbetriebe GmbH (MVB) confirms Sam Rivera's Deutschlandticket subscription (Abonummer DT-2025-3304719), starting 1 January 2026 at €63.00 per month, collected by SEPA direct debit at the start of each month.\",\"explanation\":\"This is an order confirmation (Auftragsbestätigung) for a Deutschlandticket subscription, not a bill requiring immediate action. The ticket starts on 1 January 2026 and costs €63.00 per month, debited automatically at the start of each month. The subscription runs indefinitely and can be cancelled monthly, but the cancellation must reach MVB by the 10th of a month to end that same month. If MVB raises the price later, you'll get at least six weeks' notice and may then decide to cancel; the app will show the cancellation window when that happens. No action is needed right now beyond keeping the linked account funded.\",\"key_facts\":[{\"label\":\"Price (Preis)\",\"value\":\"63,00 € pro Monat\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Valid from (Gültig ab)\",\"value\":\"01.01.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Cancellation deadline (Kündigung)\",\"value\":\"bis zum 10. eines Monats zum Ende dieses Monats\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Price change notice period\",\"value\":\"mindestens sechs Wochen im Voraus\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Abonummer\",\"value\":\"DT-2025-3304719\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE330471969\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE58ZZZ00000330471\"}],\"warnings\":[\"1 date could not be confirmed against the letter's text.\"],\"text\":\"=== Page 1 ===\\nMusterstadt Verkehrsbetriebe GmbH\\nMVB Musterstadt Verkehrsbetriebe   Bahnhofstraße 20\\n12345 Musterstadt\\nBus & Tram für Musterstadt\\nTelefon 0123 6300-63\\nwww.mvb-musterstadt.example\\n\\nAbonummer   DT-2025-3304719\\nKundenkonto   sam.rivera@example.org\\nMVB Abo-Service · Bahnhofstraße 20 · 12345 Musterstadt   0123 6300-63\\nAbo-Service\\nDatum   10.12.2025\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nIhr Deutschlandticket im Abonnement – Auftragsbestätigung\\n\\nSehr geehrter Herr Rivera,\\n\\nvielen Dank für Ihre Bestellung des Deutschlandtickets als Handyticket im Abonnement. Wir bestätigen\\nIhnen die folgenden Vertragsdaten:\\n\\nTicket   Deutschlandticket, persönlich und nicht übertragbar, 2. Klasse\\nGültig ab   01.01.2026\\nPreis   63,00 € pro Monat\\nGeltungsbereich   bundesweit in allen Verkehrsmitteln des Nahverkehrs\\nTicketmedium   Handyticket in der App „MVB mobil“ (Anmeldung mit Ihrer E-Mail-Adresse)\\nZahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID\\nDE58ZZZ00000330471\\n\\nLaufzeit und Kündigung\\nDas Abonnement läuft auf unbestimmte Zeit und ist monatlich kündbar. Die Kündigung muss bis zum\\n10. eines Monats zum Ende dieses Monats bei uns eingehen. Sie können online in Ihrem Kundenkonto\\n(Button „Abo kündigen“), per E-Mail an abo@mvb-musterstadt.example oder schriftlich kündigen.\\n\\nPreisänderungen\\nDer Preis des Deutschlandtickets wird von Bund und Ländern festgelegt. Über Preisänderungen\\ninformieren wir Sie mindestens sechs Wochen im Voraus; Sie können dann zum Zeitpunkt des\\nInkrafttretens der Preisänderung kündigen.\\n\\nGute Fahrt wünscht Ihnen\\nIhr MVB-Aboservice\\n\\nMusterstadt Verkehrsbetriebe GmbH (MVB)   Geschäftsführung: Olaf Beispiel   Sparkasse Musterstadt\\nBahnhofstraße 20 · 12345 Musterstadt   Sitz: Musterstadt · Amtsgericht Musterstadt HRB 3304   IBAN DE47 1234 5600 0000 6300 00\\nAbo-Service 0123 6300-63   USt-IdNr. DE330471969   BIC MUSKDEM1XXX\\nGläubiger-ID DE58ZZZ00000330471\"},\"ctr_cmeadtk38mac\":{\"name\":\"Deutschlandticket Abonnement\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_017BKKBrYuUN1oMXSZ1SB4Z7"
+    },
+    {
+      "type": "text",
+      "text": "Your Deutschland"
+    },
+    {
+      "type": "text",
+      "text": "ticket subscription with"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt Ver"
+    },
+    {
+      "type": "text",
+      "text": "kehrsbetrieb"
+    },
+    {
+      "type": "text",
+      "text": "e GmbH costs "
+    },
+    {
+      "type": "text",
+      "text": "63.00 € per month,"
+    },
+    {
+      "type": "text",
+      "text": " collected by SEPA dire"
+    },
+    {
+      "type": "text",
+      "text": "ct debit at"
+    },
+    {
+      "type": "text",
+      "text": " the start of each month [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_wpght3d"
+    },
+    {
+      "type": "text",
+      "text": "75cxs].\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " Next deb"
+    },
+    {
+      "type": "text",
+      "text": "it due"
+    },
+    {
+      "type": "text",
+      "text": " Th"
+    },
+    {
+      "type": "text",
+      "text": "u 1 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_wpght3d75c"
+    },
+    {
+      "type": "text",
+      "text": "xs].\n- It's an"
+    },
+    {
+      "type": "text",
+      "text": " open"
+    },
+    {
+      "type": "text",
+      "text": "-ended subscription c"
+    },
+    {
+      "type": "text",
+      "text": "ancellable monthly."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your Deutschlandticket subscription with Musterstadt Verkehrsbetriebe GmbH costs 63.00 € per month, collected by SEPA direct debit at the start of each month [item:itm_wpght3d75cxs].\n\n- Next debit due Thu 1 Oct 2026 [item:itm_wpght3d75cxs].\n- It's an open-ended subscription cancellable monthly.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 270,
+          "cache_read_tokens": 20282,
+          "cache_creation_tokens": 4450,
+          "cost_usd": 0.0245684,
+          "duration_ms": 12147,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

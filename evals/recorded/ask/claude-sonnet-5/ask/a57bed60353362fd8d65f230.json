@@ -1,0 +1,255 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "8+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"5255c775dbcde88446ad2721bfc588be2349fefb742d65ba72939522273c0f87\",\"question\":\"By when do I have to return the overdue library books?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6"
+    ],
+    "prompt_head": "The person asks:\nBy when do I have to return the overdue library books?\n"
+  },
+  "response": {
+    "text": "You need to return the two overdue library books by **Fri 2 Oct 2026** [item:itm_ghq58jjdz149].\n\n- This is per the first reminder (1. Mahnung) from Stadtbibliothek Musterstadt [doc:doc_5c5axexztnw6].\n- There's also an accrued library fee due the same day, Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].\n- If you return them late, the fee keeps increasing per the letter, and once it reaches a certain threshold your library account gets blocked — you can return items anytime via the return box.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 448,
+      "cache_read_tokens": 27562,
+      "cache_creation_tokens": 4490,
+      "cost_usd": 0.027968399999999997,
+      "duration_ms": 14847,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "library books"
+      },
+      "tool_use_id": "toolu_017Kr5BLQtp6zSvCif6AbvrA"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_017Kr5BLQtp6zSvCif6AbvrA"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Bibliothek"
+      },
+      "tool_use_id": "toolu_01CyknwMb6GgKqtQ4Rmy9jLW"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"party_id\":\"pty_d2ymm5s3htd0\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"snippet\":\"First reminder: overdue library loan (1. Mahnung) 20_stadtbibliothek_mahnung.pdf\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01CyknwMb6GgKqtQ4Rmy9jLW"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "status": "missed"
+      },
+      "tool_use_id": "toolu_01EFp9TsYLs28EtW7aVRCS96"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01EFp9TsYLs28EtW7aVRCS96"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_5c5axexztnw6"
+      },
+      "tool_use_id": "toolu_01LAvxKT6ndaUn2kCM4de7p5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_5c5axexztnw6\",\"kind\":\"dunning\",\"date\":\"2026-09-22\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-24\",\"language\":\"de\",\"party_id\":\"pty_d2ymm5s3htd0\",\"case_id\":\"cas_h84pnj14nk0s\",\"urgency\":\"critical\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay the accrued library fee\",\"action\":\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\",\"consequence\":\"Unpaid and growing fees can lead to your library account being blocked once the balance reaches €10.00.\"},\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"summary\":\"Stadtbibliothek Musterstadt sent a first reminder (1. Mahnung) that two borrowed items are overdue, with accrued fees of €4.50, and asks Sam Rivera to return them by 2 October 2026.\",\"explanation\":\"The library is reminding you that two items you borrowed are past their due date, and fees of €4.50 have already built up. Return the items by the stated deadline and pay the fee at the service desk or the payment machine when you return them. If you keep the items longer, the fee grows by €0.50 per item for each day the library is open, and once your fee balance reaches €10.00 the library will block your account so you cannot borrow anything else until it is settled. If you have a hold-free item, you may also be able to extend the loan period online.\",\"key_facts\":[{\"label\":\"Total fees due (Summe der Gebühren)\",\"value\":\"4,50 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Return deadline\",\"value\":\"02.10.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Late fee increase after deadline\",\"value\":\"0,50 € pro Medium und Öffnungstag\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Account block threshold\",\"value\":\"10,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Item 1 (Einführung in die Statistik mit R) due date\",\"value\":\"08.09.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Item 2 (Deutsch im Alltag B2 – Übungsbuch) due date\",\"value\":\"15.09.2026\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"}],\"payment\":{\"iban\":\"DE51123456000000100017\",\"payee\":\"Stadtkasse Musterstadt\"},\"text\":\"=== Page 1 ===\\nStadtbibliothek\\nMusterstadt\\n\\nBenutzer-Nr.   0481 1123 5\\nIhr Kontakt   Ausleihe / Service\\nStadtbibliothek Musterstadt · Bibliotheksplatz 2 · 12345 Musterstadt   0123 400-7700\\nTelefon\\nDatum   22.09.2026\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nErinnerung: Leihfrist überschritten (1. Mahnung)\\n\\nSehr geehrter Herr Rivera,\\n\\ndie Leihfrist für die folgenden Medien ist abgelaufen:\\n\\nTitel   Mediennummer   Leihfrist bis   Gebühr\\n\\nEinführung in die Statistik mit R   30031 004 812   08.09.2026   2,50 €\\n\\nDeutsch im Alltag B2 – Übungsbuch   30031 017 455   15.09.2026   2,00 €\\n\\nSumme der Gebühren   4,50 €\\n\\nBitte geben Sie die Medien bis zum 02.10.2026 zurück. Die bisher entstandenen Gebühren in\\nHöhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten\\nbezahlen.\\n\\nNach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem\\nGebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt.\\n\\nDie Rückgabe ist rund um die Uhr über die Rückgabebox am Eingang Bibliotheksplatz möglich. Sofern\\nkeine Vormerkung vorliegt, können Sie die Leihfrist auch online in Ihrem Bibliothekskonto verlängern.\\n\\nMit freundlichen Grüßen\\nIhre Stadtbibliothek Musterstadt\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nStadtbibliothek Musterstadt   Öffnungszeiten:   Stadtkasse Musterstadt\\nBibliotheksplatz 2 · 12345 Musterstadt   Di–Fr 10–19 Uhr, Sa 10–14 Uhr   IBAN DE51 1234 5600 0000 1000 17\\nTelefon 0123 400-7700   Rückgabebox rund um die Uhr   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LAvxKT6ndaUn2kCM4de7p5"
+    },
+    {
+      "type": "text",
+      "text": "You need"
+    },
+    {
+      "type": "text",
+      "text": " to return the two overdue library"
+    },
+    {
+      "type": "text",
+      "text": " books by **Fri 2"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026**"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_gh"
+    },
+    {
+      "type": "text",
+      "text": "q58jjdz149]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- This"
+    },
+    {
+      "type": "text",
+      "text": " is per"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " first reminder ("
+    },
+    {
+      "type": "text",
+      "text": "1. Mahnung)"
+    },
+    {
+      "type": "text",
+      "text": " from Stadtbibli"
+    },
+    {
+      "type": "text",
+      "text": "othek Musterstadt"
+    },
+    {
+      "type": "text",
+      "text": " [do"
+    },
+    {
+      "type": "text",
+      "text": "c:do"
+    },
+    {
+      "type": "text",
+      "text": "c_5c5axexzt"
+    },
+    {
+      "type": "text",
+      "text": "nw6].\n- There's"
+    },
+    {
+      "type": "text",
+      "text": " also an accrued library"
+    },
+    {
+      "type": "text",
+      "text": " fee due"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " same day"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " Fri 2 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_kgsfgw"
+    },
+    {
+      "type": "text",
+      "text": "ac9wzx].\n-"
+    },
+    {
+      "type": "text",
+      "text": " If you return"
+    },
+    {
+      "type": "text",
+      "text": " them"
+    },
+    {
+      "type": "text",
+      "text": " late, the fee keeps"
+    },
+    {
+      "type": "text",
+      "text": " increasing per the"
+    },
+    {
+      "type": "text",
+      "text": " letter,"
+    },
+    {
+      "type": "text",
+      "text": " and once it reaches a"
+    },
+    {
+      "type": "text",
+      "text": " cert"
+    },
+    {
+      "type": "text",
+      "text": "ain threshold your library"
+    },
+    {
+      "type": "text",
+      "text": " account g"
+    },
+    {
+      "type": "text",
+      "text": "ets blocked — you"
+    },
+    {
+      "type": "text",
+      "text": " can return items"
+    },
+    {
+      "type": "text",
+      "text": " anytime via the return box."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You need to return the two overdue library books by **Fri 2 Oct 2026** [item:itm_ghq58jjdz149].\n\n- This is per the first reminder (1. Mahnung) from Stadtbibliothek Musterstadt [doc:doc_5c5axexztnw6].\n- There's also an accrued library fee due the same day, Fri 2 Oct 2026 [item:itm_kgsfgwac9wzx].\n- If you return them late, the fee keeps increasing per the letter, and once it reaches a certain threshold your library account gets blocked — you can return items anytime via the return box.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 448,
+          "cache_read_tokens": 27562,
+          "cache_creation_tokens": 4490,
+          "cost_usd": 0.027968399999999997,
+          "duration_ms": 14847,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
