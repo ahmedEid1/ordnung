@@ -753,10 +753,13 @@ def keeps_later_date(
 
 @dataclass(frozen=True)
 class Replacement:
-    """What ends a rent's series (point 9): the later rent and the first day of the month it starts in."""
+    """What ends a rent's series (point 9): the later rent and the first day of the month it starts in;
+    ``owed`` is false for a rent increase's new rent the person hasn't agreed to yet (:func:`_owed`), which
+    only :func:`replacement` with ``proposed`` gives and which ends nothing."""
 
     newer: Item
     starts: date
+    owed: bool = True
 
     def describe(self) -> str:
         """``replaced by “New monthly total rent €670” from Nov 2026``."""
@@ -890,11 +893,14 @@ def _owed(store: Store, rent: _Rent) -> bool:
     return rent.ctx.letter_kind != "rent_increase" or _last_payment(store, rent.item) is not None
 
 
-def replacement(store: Store, item: Item, ctx: RuleContext, context: ItemContext) -> Replacement | None:
+def replacement(
+    store: Store, item: Item, ctx: RuleContext, context: ItemContext, *, proposed: bool = False
+) -> Replacement | None:
     """Point 9: the later rent that replaces the rent ``item`` (in its context ``ctx``), and the month it
     starts in — the earliest a rent on its contract starts in after it, of the rents owed that restate the
     whole of it (:meth:`_Rent.restates`); ``None`` for a rent nothing replaces and for any other to-do.
-    ``context`` gives the other rents' contexts."""
+    ``context`` gives the other rents' contexts. ``proposed``: of the rents owed or not yet (a rent increase's
+    new rent the person hasn't agreed to: ``owed`` false) — the next rent Ask's record names."""
     contract = _rent_contract(store, item)
     rent = _rent(store, item, contract, ctx)
     if rent is None or contract is None:
@@ -902,12 +908,12 @@ def replacement(store: Store, item: Item, ctx: RuleContext, context: ItemContext
     later = [
         other
         for other in _other_rents(store, item, contract, ctx.today, context)
-        if _earlier(rent.start, other.start) and other.restates(rent) and _owed(store, other)
+        if _earlier(rent.start, other.start) and other.restates(rent) and (proposed or _owed(store, other))
     ]
     first = min(later, key=lambda other: other.order) if later else None
     if first is None or first.start is None:
         return None
-    return Replacement(first.item, first.start)
+    return Replacement(first.item, first.start, owed=not proposed or _owed(store, first))
 
 
 def rent_due(store: Store, item: Item, ctx: RuleContext, context: ItemContext) -> RentDue | None:

@@ -646,7 +646,15 @@ HTML and without remote images.
   letter, or states its due date or amount through any record linked to it (its contract, its sender), and
   adds the app's scam warning under one that cites or states a `do_not_pay` demand. Only the new rent
   carries the note — never the current rent (its amount, or a date before the increase), which is owed and
-  dated as ever — an undated one too, and a due date the person sets by hand keeps it. `explain_date`
+  dated as ever — an undated one too, and a due date the person sets by hand keeps it. A rent contract's
+  record — its `list_contracts` row, `explain_date`, its `money_summary` fixed-cost row and its reference in
+  `get_document` and `get_party` — gives its rent in force and the next rent (`rent`): each open rent of
+  `recurrence.py` point 9 that no other one replaces, as its to-do's row (its amount only when verified),
+  with `next_rent`, the row of the rent that replaces it (`recurrence.replacement`) and `from_month`, the
+  month it starts in — so "how much is my rent?" can name a statement's new total rent and its first due
+  date as Ordnung's own, past `money_summary`'s 30 days too. A rent increase's new rent the person hasn't
+  agreed to is the next rent as well, `proposed`, with a note that it replaces nothing until they agree
+  (§ 558b Abs. 1 BGB) and its `payment_note`. `explain_date`
   keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms, and
   leaves out the wording and quotes of a to-do whose letter is private or in the trash. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in
@@ -1399,7 +1407,8 @@ earlier one never moves into that month, and once its last occurrence is marked 
 and keeps its due day unless its own reading gives a working day — a day of the month of its own doesn't
 replace it (`recurrence.py`, points 9 and 10). A payment
 that is only part of the rent (a statement's new advance payment alone, § 560 Abs. 4 BGB; a heating
-advance) runs beside it.
+advance) runs beside it. Ask's record of the rent contract names the rent in force and the next rent
+(`rent`, § 10).
 
 **Confidence rubric** (`ComputationReceipt.confidence`, starts `low`): +quote located, +DateSpec
 consistent with its quote (`spec_consistency`), +anchor date stated in the document (or confirmed by
