@@ -53,8 +53,9 @@ test.describe("phone 320 px", () => {
 });
 
 interface CheckedLetter {
-  document: { filename: string; title: string | null; warnings: string[] };
+  document: { filename: string; title: string | null; warnings: string[]; hidden_text: boolean };
   items: { title: string; status: string; evidence: { grounding: string; value_consistent: boolean }[] }[];
+  scam_signs: string[];
 }
 
 /** The reading's own count of the dates it couldn't confirm ("1 date could not be confirmed against the letter's text."). */
@@ -67,6 +68,8 @@ interface ThingsToCheck {
   toCheck: string[];
   own: string[];
   counted: boolean;
+  /** A scam letter's warnings are its signs: the page folds them into the scam alert, under no "Please check". */
+  scam: boolean;
 }
 
 /**
@@ -77,14 +80,19 @@ async function thingsToCheck(page: Page): Promise<ThingsToCheck[]> {
   const docs = await apiGet<{ id: string }[]>(page, "/api/documents");
   return Promise.all(
     docs.map(async ({ id }) => {
-      const { document, items } = await apiGet<CheckedLetter>(page, `/api/documents/${id}`);
+      const { document, items, scam_signs } = await apiGet<CheckedLetter>(page, `/api/documents/${id}`);
       const toCheck = items.filter((i) => i.status === "open" && i.evidence.some((e) => e.grounding === "unverified" || !e.value_consistent));
+      // the hidden-text warning has a banner of its own (Warnings.tsx), so it is no "Please check" either
+      const own = document.warnings
+        .map((w) => w.trim())
+        .filter((w) => w && !UNCONFIRMED_COUNT.test(w) && !(document.hidden_text && /hidden text/i.test(w)));
       return {
         id,
         file: document.filename,
         toCheck: toCheck.map((i) => i.title),
-        own: document.warnings.map((w) => w.trim()).filter((w) => w && !UNCONFIRMED_COUNT.test(w)),
+        own,
         counted: document.warnings.some((w) => UNCONFIRMED_COUNT.test(w.trim())),
+        scam: scam_signs.length > 0,
       };
     }),
   );
@@ -105,7 +113,7 @@ const withoutPleaseCheck = (w: string) => {
 // plus one for the reading's own warnings, if it has any — and the count nowhere.
 test("a letter whose reading counts unconfirmed dates says 'Please check' once per thing to check", async ({ page }) => {
   const all = await thingsToCheck(page);
-  const counted = all.filter((l) => l.counted).sort((a, b) => b.toCheck.length + b.own.length - (a.toCheck.length + a.own.length));
+  const counted = all.filter((l) => l.counted && !l.scam).sort((a, b) => b.toCheck.length + b.own.length - (a.toCheck.length + a.own.length));
   const letter = counted[0];
   expect(
     letter && letter.toCheck.length > 0 ? `${letter.file}: ${letter.toCheck.length} to-do(s) to check, ${letter.own.length} own warning(s)` : null,
