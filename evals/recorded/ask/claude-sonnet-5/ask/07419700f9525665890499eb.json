@@ -1,0 +1,236 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "9+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2d698bfda0ef6a3a85def9cda6b66b9e4db847a6afe17b1bc53b51bdc9a58d9d\",\"question\":\"When do I need to be at the Ausländerbehörde?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I need to be at the Ausländerbehörde?\n"
+  },
+  "response": {
+    "text": "Your appointment at the Ausländerbehörde is on **Wed 14 Oct 2026 at 10:30**, at Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14 [item:itm_64wce6sh2rpp].\n\nBring with you:\n- Original passport\n- Current enrolment certificate for winter semester 2026/27\n- Proof of financial means\n- Proof of health insurance\n- A biometric photo\n- Your rental agreement or landlord confirmation\n- The fee, payable only by girocard (cash not accepted) [item:itm_64wce6sh2rpp]\n\nThis is for your residence permit extension, per the invitation letter from Stadt Musterstadt [doc:doc_d9hwr1mp3bsj] [party:pty_w9e8zww4fzse].",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 453,
+      "cache_read_tokens": 12841,
+      "cache_creation_tokens": 2845,
+      "cost_usd": 0.0184862,
+      "duration_ms": 7542,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Ausländerbehörde"
+      },
+      "tool_use_id": "toolu_014bCDk7UBpKxna53yKUwWWU"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "kind": "appointment",
+        "status": "open"
+      },
+      "tool_use_id": "toolu_017t8RPs5QKwK6tm78AQDSwH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_64wce6sh2rpp\":{\"title\":\"Attend appointment at the immigration office (Ausländerbehörde)\",\"action\":\"Go to the appointment with your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, your rental agreement or landlord confirmation, and the €100 fee (girocard only, cash not accepted).\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_017t8RPs5QKwK6tm78AQDSwH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"authority_letter\",\"date\":\"2026-09-16\",\"party_id\":\"pty_w9e8zww4fzse\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to appointment for residence permit extension (Aufenthaltserlaubnis)\",\"snippet\":\"The Ausländerbehörde (immigration office) of Stadt Musterstadt invites Sam Rivera to an appointment on 14 October…\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_014bCDk7UBpKxna53yKUwWWU"
+    },
+    {
+      "type": "text",
+      "text": "Your appointment at the"
+    },
+    {
+      "type": "text",
+      "text": " Ausländerbehörde"
+    },
+    {
+      "type": "text",
+      "text": " is on **Wed 14"
+    },
+    {
+      "type": "text",
+      "text": " Oct 2026 "
+    },
+    {
+      "type": "text",
+      "text": "at 10:30**"
+    },
+    {
+      "type": "text",
+      "text": ", at Stadt Mus"
+    },
+    {
+      "type": "text",
+      "text": "terstadt, Aus"
+    },
+    {
+      "type": "text",
+      "text": "länderbehörde,"
+    },
+    {
+      "type": "text",
+      "text": " Musterplatz 1,"
+    },
+    {
+      "type": "text",
+      "text": " 2. Obergesch"
+    },
+    {
+      "type": "text",
+      "text": "oss, Raum 2"
+    },
+    {
+      "type": "text",
+      "text": ".14 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_64wce6sh"
+    },
+    {
+      "type": "text",
+      "text": "2rpp]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nBring with"
+    },
+    {
+      "type": "text",
+      "text": " you:\n- Original passport"
+    },
+    {
+      "type": "text",
+      "text": "\n- Current enrolment"
+    },
+    {
+      "type": "text",
+      "text": " certificate for winter semester"
+    },
+    {
+      "type": "text",
+      "text": " 2026/27\n-"
+    },
+    {
+      "type": "text",
+      "text": " Proof of financial means\n-"
+    },
+    {
+      "type": "text",
+      "text": " Proof of health insurance"
+    },
+    {
+      "type": "text",
+      "text": "\n- A biometric photo"
+    },
+    {
+      "type": "text",
+      "text": "\n- Your rental agre"
+    },
+    {
+      "type": "text",
+      "text": "ement or landlord confirm"
+    },
+    {
+      "type": "text",
+      "text": "ation\n- The fee,"
+    },
+    {
+      "type": "text",
+      "text": " payable only"
+    },
+    {
+      "type": "text",
+      "text": " by girocard (cash not"
+    },
+    {
+      "type": "text",
+      "text": " accepted) [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_64wce6sh"
+    },
+    {
+      "type": "text",
+      "text": "2rpp]\n\nThis is"
+    },
+    {
+      "type": "text",
+      "text": " for your"
+    },
+    {
+      "type": "text",
+      "text": " residence permit extension,"
+    },
+    {
+      "type": "text",
+      "text": " per the invitation letter from"
+    },
+    {
+      "type": "text",
+      "text": " Stadt Musterst"
+    },
+    {
+      "type": "text",
+      "text": "adt [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_d9hwr1"
+    },
+    {
+      "type": "text",
+      "text": "mp3bsj"
+    },
+    {
+      "type": "text",
+      "text": "] [party:pty_w"
+    },
+    {
+      "type": "text",
+      "text": "9e8zww4fz"
+    },
+    {
+      "type": "text",
+      "text": "se]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your appointment at the Ausländerbehörde is on **Wed 14 Oct 2026 at 10:30**, at Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14 [item:itm_64wce6sh2rpp].\n\nBring with you:\n- Original passport\n- Current enrolment certificate for winter semester 2026/27\n- Proof of financial means\n- Proof of health insurance\n- A biometric photo\n- Your rental agreement or landlord confirmation\n- The fee, payable only by girocard (cash not accepted) [item:itm_64wce6sh2rpp]\n\nThis is for your residence permit extension, per the invitation letter from Stadt Musterstadt [doc:doc_d9hwr1mp3bsj] [party:pty_w9e8zww4fzse].",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 453,
+          "cache_read_tokens": 12841,
+          "cache_creation_tokens": 2845,
+          "cost_usd": 0.0184862,
+          "duration_ms": 7542,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

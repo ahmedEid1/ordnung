@@ -1,0 +1,225 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "9+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2d698bfda0ef6a3a85def9cda6b66b9e4db847a6afe17b1bc53b51bdc9a58d9d\",\"question\":\"How much do I have to pay for the TechMarkt payment reminder, and by when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_1ndcj96tf28z"
+    ],
+    "prompt_head": "The person asks:\nHow much do I have to pay for the TechMarkt payment reminder, and by when?\n"
+  },
+  "response": {
+    "text": "You need to pay **94.99 €**, due by **Wed 30 Sep 2026** [item:itm_c05nsrmyz6av].\n\n- This is the total after a reminder fee was added to the original invoice [doc:doc_1ndcj96tf28z].\n- Best send it soon — Ordnung notes it should be posted/transferred by Tue 29 Sep 2026 so it arrives in time [item:itm_c05nsrmyz6av].\n- If you already paid the original invoice, you don't need to pay this again — just double-check first.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 328,
+      "cache_read_tokens": 20558,
+      "cache_creation_tokens": 4443,
+      "cost_usd": 0.0251756,
+      "duration_ms": 9484,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "TechMarkt"
+      },
+      "tool_use_id": "toolu_01PyCxmKbSHXfUHkxmjYG6eU"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"party_id\":\"pty_adyabnsvdbpg\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"snippet\":\"…www.techmarkt-online.example · 0123 6655440 Rechnungs-Nr. TM-2026-0048213 Rechnungsdatum 20.08.2026 TechMarkt…\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"snippet\":\"…www.techmarkt-online.example · 0123 6655440 Kundennummer K-7719034 Rechnungs-Nr. TM-2026-0048213 TechMarkt Online…\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01PyCxmKbSHXfUHkxmjYG6eU"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_1ndcj96tf28z"
+      },
+      "tool_use_id": "toolu_016b6GTdqDC3Q32GoYooT8TX"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_1ndcj96tf28z\",\"kind\":\"dunning\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_adyabnsvdbpg\",\"case_id\":\"cas_95a95m88gh32\",\"urgency\":\"critical\",\"pages\":1,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_c05nsrmyz6av\":{\"title\":\"Pay the reminder amount for invoice TM-2026-0048213\",\"action\":\"Transfer the total amount of €94.99 to TechMarkt Online GmbH's account using the reference TM-2026-0048213, unless you already paid the original invoice.\",\"consequence\":\"If the payment does not arrive on time, TechMarkt Online GmbH will hand the claim over to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"summary\":\"TechMarkt Online GmbH sent a first payment reminder (1. Mahnung) for invoice TM-2026-0048213, which was due on 3 September 2026. With a €5.00 reminder fee added, the total of €94.99 must now be paid by 30 September 2026.\",\"explanation\":\"This is a first dunning notice for an unpaid invoice, now including a €5 reminder fee. Pay the total amount shown to the given account by the stated deadline. If you already paid, you can disregard this letter. If you miss the deadline, the company says it will hand the claim over to a debt collection agency (Inkassodienstleister), which would add further costs. Check first whether the original invoice was already settled before paying again.\",\"key_facts\":[{\"label\":\"Invoice number (Rechnungs-Nr.)\",\"value\":\"TM-2026-0048213\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Invoice date (Rechnungsdatum)\",\"value\":\"20.08.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Original due date (fällig am)\",\"value\":\"03.09.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Open amount (offener Betrag)\",\"value\":\"89,99 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Reminder fee (Mahngebühr)\",\"value\":\"5,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Total amount (Gesamtbetrag)\",\"value\":\"94,99 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New payment deadline\",\"value\":\"30.09.2026\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"},{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Amtsgericht Beispielburg HRB\",\"value\":\"48213\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"}],\"payment\":{\"iban\":\"DE70123478000048213000\",\"payee\":\"TechMarkt Online GmbH\",\"reference\":\"TM-2026-0048213\"},\"warnings\":[\"This is a payment reminder about “Invoice from TechMarkt Online GmbH – €89.99”, which is still open. Pay the amount asked here once — not both.\"],\"text\":\"=== Page 1 ===\\nTechMarktonline   Technik. Morgen da.\\nwww.techmarkt-online.example · 0123 6655440\\n\\nKundennummer K-7719034\\nRechnungs-Nr.   TM-2026-0048213\\nTechMarkt Online GmbH · Handelsstraße 88 · 12353 Beispielburg   0123 6655440\\nService\\nDatum   10.09.2026\\nHerrn\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nZahlungserinnerung – 1. Mahnung zur Rechnung TM-2026-0048213\\n\\nSehr geehrter Herr Rivera,\\n\\nsicher ist es im Alltag untergegangen: Für die unten aufgeführte Rechnung konnten wir bis heute keinen\\nZahlungseingang feststellen. Die Zahlung war am 03.09.2026 fällig.\\n\\nRechnungs-Nr.   Rechnungsdatum   fällig am   offener Betrag\\n\\nTM-2026-0048213   20.08.2026   03.09.2026   89,99 €\\n\\nMahngebühr   5,00 €\\n\\nGesamtbetrag   94,99 €\\n\\nBitte überweisen Sie den Gesamtbetrag von 94,99 € bis spätestens 30.09.2026 auf unser\\nKonto.\\n\\nEmpfänger: TechMarkt Online GmbH · IBAN DE70 1234 7800 0048 2130 00 · BIC BEKRDEM1XXX ·\\nVerwendungszweck: TM-2026-0048213\\n\\nSollten Sie die Zahlung inzwischen veranlasst haben, betrachten Sie dieses Schreiben bitte als\\ngegenstandslos. Geht der Betrag nicht fristgerecht ein, müssen wir die Forderung an unseren\\nInkassodienstleister übergeben; dadurch entstehen Ihnen weitere Kosten.\\n\\nMit freundlichen Grüßen\\nIhr TechMarkt Online Team – Forderungsmanagement\\n\\nTechMarkt Online GmbH   Geschäftsführer: Jan Exempel, Aylin Muster   USt-IdNr. DE482133778   Beispiel Kreditbank AG\\nHandelsstraße 88 · 12353 Beispielburg   Sitz: Beispielburg   WEEE-Reg.-Nr. DE 00000000   IBAN DE70 1234 7800 0048 2130 00\\nkundenservice@techmarkt-online.example   Amtsgericht Beispielburg HRB 48213   Steuernummer 212/5812/0048   BIC BEKRDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_016b6GTdqDC3Q32GoYooT8TX"
+    },
+    {
+      "type": "text",
+      "text": "You need to pay **94."
+    },
+    {
+      "type": "text",
+      "text": "99 €**"
+    },
+    {
+      "type": "text",
+      "text": ", due by"
+    },
+    {
+      "type": "text",
+      "text": " **W"
+    },
+    {
+      "type": "text",
+      "text": "ed 30 Sep "
+    },
+    {
+      "type": "text",
+      "text": "2026** [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_c05nsrmy"
+    },
+    {
+      "type": "text",
+      "text": "z6av]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- This is the total"
+    },
+    {
+      "type": "text",
+      "text": " after"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " re"
+    },
+    {
+      "type": "text",
+      "text": "minder fee was added to the"
+    },
+    {
+      "type": "text",
+      "text": " original invoice [doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_1ndcj"
+    },
+    {
+      "type": "text",
+      "text": "96t"
+    },
+    {
+      "type": "text",
+      "text": "f28z"
+    },
+    {
+      "type": "text",
+      "text": "].\n- Best send"
+    },
+    {
+      "type": "text",
+      "text": " it so"
+    },
+    {
+      "type": "text",
+      "text": "on —"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung notes it"
+    },
+    {
+      "type": "text",
+      "text": " should be posted/"
+    },
+    {
+      "type": "text",
+      "text": "trans"
+    },
+    {
+      "type": "text",
+      "text": "ferred by"
+    },
+    {
+      "type": "text",
+      "text": " Tue 29 Sep"
+    },
+    {
+      "type": "text",
+      "text": " 2026 so"
+    },
+    {
+      "type": "text",
+      "text": " it arrives in time [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_c05ns"
+    },
+    {
+      "type": "text",
+      "text": "rmyz6av]."
+    },
+    {
+      "type": "text",
+      "text": "\n- If you already paid the original"
+    },
+    {
+      "type": "text",
+      "text": " invoice, you"
+    },
+    {
+      "type": "text",
+      "text": " don"
+    },
+    {
+      "type": "text",
+      "text": "'t need to pay this"
+    },
+    {
+      "type": "text",
+      "text": " again —"
+    },
+    {
+      "type": "text",
+      "text": " just"
+    },
+    {
+      "type": "text",
+      "text": " double"
+    },
+    {
+      "type": "text",
+      "text": "-check first."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You need to pay **94.99 €**, due by **Wed 30 Sep 2026** [item:itm_c05nsrmyz6av].\n\n- This is the total after a reminder fee was added to the original invoice [doc:doc_1ndcj96tf28z].\n- Best send it soon — Ordnung notes it should be posted/transferred by Tue 29 Sep 2026 so it arrives in time [item:itm_c05nsrmyz6av].\n- If you already paid the original invoice, you don't need to pay this again — just double-check first.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 328,
+          "cache_read_tokens": 20558,
+          "cache_creation_tokens": 4443,
+          "cost_usd": 0.0251756,
+          "duration_ms": 9484,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
