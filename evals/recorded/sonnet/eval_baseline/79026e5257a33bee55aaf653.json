@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"44b3b7ec38a217200862bade992fe0117e0fa12ff2409f22db0b041ede978c79\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-09-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-09-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landratsamt Musterrode – Bußgeldstelle\",\"document_date\":\"2026-09-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 311/26-4471\"},{\"label\":\"Kennzeichen\",\"value\":\"MRO-OR 55\"}],\"amounts\":[118.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file objection (Einspruch) against the fine notice\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"Formal service (Zustellungsurkunde) on 22.09.2026, so no deemed-delivery rule applies. Period of two weeks, § 187(1) BGB: the service day is not counted, and the period ends on the same weekday two weeks later, Tuesday 06.10.2026 (§ 188(2) BGB). This is not a weekend or a holiday (3 October is a Saturday), so there is no shift. The objection must reach the Bußgeldstelle by that day.\",\"due_date\":\"2026-10-06\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay fine and costs (only once the notice is final)\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"Payment is due two weeks after the notice becomes final. If no objection is filed, it becomes final after the objection period ends on 06.10.2026, so on 07.10.2026. Two weeks from 07.10.2026 (§ 187(1) BGB) ends on Wednesday 21.10.2026. This is not a weekend or a holiday in Thüringen. The date applies only if no objection is filed.\",\"due_date\":\"2026-10-21\",\"confidence\":\"medium\",\"amount\":118.5}],\"remedy_type\":\"einspruch\",\"warnings\":[\"The payment deadline depends on when the notice becomes final (Rechtskraft). It is only valid if no objection is filed. Confirm the date with the Bußgeldstelle.\",\"The decision carries 1 point in the Fahreignungsregister.\",\"Before paying, check that the IBAN and payee match the official Bußgeldstelle details. Use the Aktenzeichen as the payment reference.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landratsamt Musterrode – Bußgeldstelle",
+      "document_date": "2026-09-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 311/26-4471"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MRO-OR 55"
+        }
+      ],
+      "amounts": [
+        118.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file objection (Einspruch) against the fine notice",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "Formal service (Zustellungsurkunde) on 22.09.2026, so no deemed-delivery rule applies. Period of two weeks, § 187(1) BGB: the service day is not counted, and the period ends on the same weekday two weeks later, Tuesday 06.10.2026 (§ 188(2) BGB). This is not a weekend or a holiday (3 October is a Saturday), so there is no shift. The objection must reach the Bußgeldstelle by that day.",
+          "due_date": "2026-10-06",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine and costs (only once the notice is final)",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "Payment is due two weeks after the notice becomes final. If no objection is filed, it becomes final after the objection period ends on 06.10.2026, so on 07.10.2026. Two weeks from 07.10.2026 (§ 187(1) BGB) ends on Wednesday 21.10.2026. This is not a weekend or a holiday in Thüringen. The date applies only if no objection is filed.",
+          "due_date": "2026-10-21",
+          "confidence": "medium",
+          "amount": 118.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": [
+        "The payment deadline depends on when the notice becomes final (Rechtskraft). It is only valid if no objection is filed. Confirm the date with the Bußgeldstelle.",
+        "The decision carries 1 point in the Fahreignungsregister.",
+        "Before paying, check that the IBAN and payee match the official Bußgeldstelle details. Use the Aktenzeichen as the payment reference."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1509,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2842,
+      "cost_usd": 0.027736399999999998,
+      "duration_ms": 11240,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

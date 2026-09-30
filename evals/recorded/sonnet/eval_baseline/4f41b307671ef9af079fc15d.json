@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"abfb4df7ff6c7f98d10a20d2a108c5c5de81a019dbb0dc8b512d4a292c8f4421\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2025-03-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2025-03-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Landkreis Beispielstedt – Gesundheitsamt\",\"document_date\":\"2025-03-11\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"53.2-SEU-25-1182\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"School entrance health examination for Paula\",\"quote\":\"Wir laden Sie und Paula deshalb zur Schuleingangsuntersuchung ein: am 02.04.2025 um 08:40 Uhr im Gesundheitsamt, Am Kreishaus 5, Raum 014.\",\"computation\":\"Appointment with a fixed calendar date printed in the letter: 02.04.2025 at 08:40, Gesundheitsamt, Am Kreishaus 5, Room 014. No period to count. Bring the yellow children's examination booklet, vaccination record, and glasses or hearing aids if any. If the date does not suit, call 05141 916-530.\",\"due_date\":\"2025-04-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Landkreis Beispielstedt – Gesundheitsamt",
+      "document_date": "2025-03-11",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "53.2-SEU-25-1182"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "School entrance health examination for Paula",
+          "quote": "Wir laden Sie und Paula deshalb zur Schuleingangsuntersuchung ein: am 02.04.2025 um 08:40 Uhr im Gesundheitsamt, Am Kreishaus 5, Raum 014.",
+          "computation": "Appointment with a fixed calendar date printed in the letter: 02.04.2025 at 08:40, Gesundheitsamt, Am Kreishaus 5, Room 014. No period to count. Bring the yellow children's examination booklet, vaccination record, and glasses or hearing aids if any. If the date does not suit, call 05141 916-530.",
+          "due_date": "2025-04-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 553,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 3985,
+      "cost_usd": 0.0226996,
+      "duration_ms": 5594,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

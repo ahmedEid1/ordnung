@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1b11f8e7033820ef420ffd19e76f118ceef9693dcf78d8df1edf826308f9cf02\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-02-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-F1"
+    ],
+    "prompt_head": "Today is Monday, 2025-02-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Beispiel Immobilienverwaltung GmbH\",\"document_date\":\"2025-02-19\",\"references\":[{\"label\":\"Mietvertrag-Nr.\",\"value\":\"MV-3317-08\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Apartment handover inspection (Wohnungsabnahme); hand over all five keys and read meters\",\"quote\":\"Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.\",\"computation\":\"The letter proposes a fixed appointment on 15.03.2025 at 09:30. Appointments keep their date and never move, even though it is a Saturday. The date is printed in the letter, so it is used as written.\",\"due_date\":\"2025-03-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The appointment is only a proposal (\\\"schlagen wir ... vor\\\"); if it does not suit you, contact the property manager soon to agree another date before the tenancy ends on 31.03.2025.\",\"The appointment date (15.03.2025) has already passed relative to today's date given in the system context (2026-09-30), and the two dates given for today conflict (2025-02-24 in the user message vs 2026-09-30).\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Beispiel Immobilienverwaltung GmbH",
+      "document_date": "2025-02-19",
+      "references": [
+        {
+          "label": "Mietvertrag-Nr.",
+          "value": "MV-3317-08"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Apartment handover inspection (Wohnungsabnahme); hand over all five keys and read meters",
+          "quote": "Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.",
+          "computation": "The letter proposes a fixed appointment on 15.03.2025 at 09:30. Appointments keep their date and never move, even though it is a Saturday. The date is printed in the letter, so it is used as written.",
+          "due_date": "2025-03-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The appointment is only a proposal (\"schlagen wir ... vor\"); if it does not suit you, contact the property manager soon to agree another date before the tenancy ends on 31.03.2025.",
+        "The appointment date (15.03.2025) has already passed relative to today's date given in the system context (2026-09-30), and the two dates given for today conflict (2025-02-24 in the user message vs 2026-09-30)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 614,
+      "cache_read_tokens": 10924,
+      "cache_creation_tokens": 4041,
+      "cost_usd": 0.0244968,
+      "duration_ms": 6886,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"692338e6ab28ac1ccfd9e8e0f1b8b148f79ca8076937f5e6199872ff1e2341dd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Krankenversicherung a.G.\",\"document_date\":\"2025-09-30\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"BKV 7710 448 2\"},{\"label\":\"Leistungsfall\",\"value\":\"LF-25-093317\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit operation report and physiotherapy prescription\",\"quote\":\"Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum; Arbeitstage sind für uns Montag bis Freitag ohne gesetzliche Feiertage.\",\"computation\":\"Letter date Tue 2025-09-30 (day 0). Working days Mon–Fri excluding public holidays: Wed 10-01 =1, Thu 10-02 =2, Fri 10-03 = German Unity Day (holiday, not counted), Sat/Sun skipped, Mon 10-06 =3, Tue 10-07 =4, Wed 10-08 =5, Thu 10-09 =6, Fri 10-10 =7. Due Friday 2025-10-10, a working day, so no further adjustment.\",\"due_date\":\"2025-10-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"If the documents are not received by the deadline, the insurer will reimburse only the positions already documented, so send them promptly.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Krankenversicherung a.G.",
+      "document_date": "2025-09-30",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "BKV 7710 448 2"
+        },
+        {
+          "label": "Leistungsfall",
+          "value": "LF-25-093317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit operation report and physiotherapy prescription",
+          "quote": "Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum; Arbeitstage sind für uns Montag bis Freitag ohne gesetzliche Feiertage.",
+          "computation": "Letter date Tue 2025-09-30 (day 0). Working days Mon–Fri excluding public holidays: Wed 10-01 =1, Thu 10-02 =2, Fri 10-03 = German Unity Day (holiday, not counted), Sat/Sun skipped, Mon 10-06 =3, Tue 10-07 =4, Wed 10-08 =5, Thu 10-09 =6, Fri 10-10 =7. Due Friday 2025-10-10, a working day, so no further adjustment.",
+          "due_date": "2025-10-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "If the documents are not received by the deadline, the insurer will reimburse only the positions already documented, so send them promptly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 881,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 1893,
+      "cost_usd": 0.0169968,
+      "duration_ms": 6472,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

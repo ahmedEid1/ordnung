@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"346d331cc425cdad6d1e0f46bdf0cdabc2aa601e120c6716240e6c4eaac99ed1\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-09-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz\",\"document_date\":\"2025-09-01\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.3-LSG-2025-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file Widerspruch against the refusal of the exemption for the boat jetty\",\"quote\":\"Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.\",\"computation\":\"Letter dated Monday 01.09.2025; the posting date is assumed to be the letter date. The letter states that a posted decision counts as announced on the fourth day after posting, so Bekanntgabe is 05.09.2025 (Friday). The one-month period (§ 187 Abs. 1, § 188 Abs. 2 BGB) starts the next day, 06.09.2025, and would end on 05.10.2025. That is a Sunday, so under § 193 BGB the period ends on Monday 06.10.2025. If a three-day rule applied instead, Bekanntgabe would be 04.09.2025 and the month would end on Saturday 04.10.2025, which moves to Monday 06.10.2025. The result is the same either way.\",\"due_date\":\"2025-10-06\",\"confidence\":\"high\"}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The deadline assumes the letter was posted on 01.09.2025; if it was posted later, the deadline moves later, so keep the envelope or postmark and file early.\",\"The two dates given for today conflict (2025-09-05 in the request, 2026-09-30 in the environment). I used 2025-09-05, so the deadline of 2025-10-06 is still open. If today is really 2026-09-30, the deadline has already passed.\",\"The Widerspruch must reach the Kreis in writing, by qualified electronic signature or as a record taken at the office. A plain email is not enough.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz",
+      "document_date": "2025-09-01",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.3-LSG-2025-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file Widerspruch against the refusal of the exemption for the boat jetty",
+          "quote": "Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.",
+          "computation": "Letter dated Monday 01.09.2025; the posting date is assumed to be the letter date. The letter states that a posted decision counts as announced on the fourth day after posting, so Bekanntgabe is 05.09.2025 (Friday). The one-month period (§ 187 Abs. 1, § 188 Abs. 2 BGB) starts the next day, 06.09.2025, and would end on 05.10.2025. That is a Sunday, so under § 193 BGB the period ends on Monday 06.10.2025. If a three-day rule applied instead, Bekanntgabe would be 04.09.2025 and the month would end on Saturday 04.10.2025, which moves to Monday 06.10.2025. The result is the same either way.",
+          "due_date": "2025-10-06",
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The deadline assumes the letter was posted on 01.09.2025; if it was posted later, the deadline moves later, so keep the envelope or postmark and file early.",
+        "The two dates given for today conflict (2025-09-05 in the request, 2026-09-30 in the environment). I used 2025-09-05, so the deadline of 2025-10-06 is still open. If today is really 2026-09-30, the deadline has already passed.",
+        "The Widerspruch must reach the Kreis in writing, by qualified electronic signature or as a record taken at the office. A plain email is not enough."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1682,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 4517,
+      "cost_usd": 0.0361176,
+      "duration_ms": 14302,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

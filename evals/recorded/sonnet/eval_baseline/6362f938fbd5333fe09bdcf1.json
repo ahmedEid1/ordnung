@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a49c29794f4b6aaa7bc2a1ffc91a31a39c9780e17533b5fd272f5f0fc6c636c1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-invoice_relative-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-11-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Beispielwerke Versorgung GmbH\",\"document_date\":\"2026-11-27\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"JA-26-339120\"},{\"label\":\"Kunden-Nr.\",\"value\":\"400 218 775\"}],\"amounts\":[169.24],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay gas annual bill balance\",\"quote\":\"Bitte gleichen Sie diese Rechnung binnen 30 Kalendertagen nach dem Rechnungsdatum aus; Teilzahlungen sind nach Absprache möglich.\",\"computation\":\"Start: invoice date 27.11.2026 (not counted). +30 calendar days = 27.12.2026, which is a Sunday (29.11.2026 is Sunday, +28 days = Sunday). Private payment deadline: § 193 BGB moves it to next working day, Monday 28.12.2026 (not a holiday in NW).\",\"due_date\":\"2026-12-28\",\"confidence\":\"medium\",\"amount\":169.24,\"title_note\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The 30th day (27.12.2026) is a Sunday; the date was moved to Monday 28.12.2026 under § 193 BGB, but paying by Friday 25.12.2026 (a holiday) or earlier, e.g. 24.12., is safest.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Beispielwerke Versorgung GmbH",
+      "document_date": "2026-11-27",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "JA-26-339120"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "400 218 775"
+        }
+      ],
+      "amounts": [
+        169.24
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay gas annual bill balance",
+          "quote": "Bitte gleichen Sie diese Rechnung binnen 30 Kalendertagen nach dem Rechnungsdatum aus; Teilzahlungen sind nach Absprache möglich.",
+          "computation": "Start: invoice date 27.11.2026 (not counted). +30 calendar days = 27.12.2026, which is a Sunday (29.11.2026 is Sunday, +28 days = Sunday). Private payment deadline: § 193 BGB moves it to next working day, Monday 28.12.2026 (not a holiday in NW).",
+          "due_date": "2026-12-28",
+          "confidence": "medium",
+          "amount": 169.24,
+          "title_note": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The 30th day (27.12.2026) is a Sunday; the date was moved to Monday 28.12.2026 under § 193 BGB, but paying by Friday 25.12.2026 (a holiday) or earlier, e.g. 24.12., is safest."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 892,
+      "cache_read_tokens": 5462,
+      "cache_creation_tokens": 2076,
+      "cost_usd": 0.0183204,
+      "duration_ms": 8069,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

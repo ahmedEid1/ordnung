@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"5e941738b0f8f28779e4efd6c72a258e8f8a1189451f1c59afaf86bdb2e560a8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-F1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-05-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"TSV Beispielstadt 1898 e.V.\",\"document_date\":\"2027-05-21\",\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"M-1898-2207\"}],\"amounts\":[183],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding 2027 membership fee plus reminder fee\",\"quote\":\"Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.\",\"computation\":\"A calendar date is given: 4 June 2027. It is a Friday and not a public holiday in NRW (Corpus Christi is 27 May 2027), so no adjustment is needed. The amount is 180.00 fee + 3.00 reminder cost = 183.00.\",\"due_date\":\"2027-06-04\",\"confidence\":\"high\",\"amount\":183}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"If payment is not received by the deadline, the letter says your playing right (Spielrecht) is suspended under § 5 of the club's Beitragsordnung until the amount is paid.\",\"Check that the IBAN in the letter matches the club's known bank details before you transfer the money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "TSV Beispielstadt 1898 e.V.",
+      "document_date": "2027-05-21",
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "M-1898-2207"
+        }
+      ],
+      "amounts": [
+        183
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding 2027 membership fee plus reminder fee",
+          "quote": "Wir bitten Sie, den Rückstand bis einschließlich 4. Juni 2027 auf das unten genannte Vereinskonto zu überweisen.",
+          "computation": "A calendar date is given: 4 June 2027. It is a Friday and not a public holiday in NRW (Corpus Christi is 27 May 2027), so no adjustment is needed. The amount is 180.00 fee + 3.00 reminder cost = 183.00.",
+          "due_date": "2027-06-04",
+          "confidence": "high",
+          "amount": 183
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "If payment is not received by the deadline, the letter says your playing right (Spielrecht) is suspended under § 5 of the club's Beitragsordnung until the amount is paid.",
+        "Check that the IBAN in the letter matches the club's known bank details before you transfer the money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 761,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 2039,
+      "cost_usd": 0.0163808,
+      "duration_ms": 6512,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"9316a9d3bb126c80a6ffef6dbdd0481f895b24a855a4abdebdf9709c5ac9131b\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_jcbakmxv29p8"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Muster Tech GmbH (employer)\n- Muster Versicherung AG (insurer)\n- Musterstadt Verkehrsbetriebe G"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"title\":\"TechMarkt Online invoice – headphones €89.99\",\"summary\":\"TechMarkt Online GmbH invoiced you €89.99 for MusterSound Q30 Bluetooth headphones (invoice dated 20 August 2026). Payment is due within 14 days of the invoice date.\",\"explanation\":\"This is an invoice for a purchase on account (Kauf auf Rechnung). Pay €89.99 to the IBAN shown, using the invoice number as the payment reference. The deadline is 14 days from the invoice date, shown by the app. It appears to be already past or very close, so pay promptly if you haven't, to avoid reminders and fees. The goods remain the seller's property until paid. Keep the invoice as a receipt for warranty or returns.\",\"case_title\":\"Headphones purchase TechMarkt Online\",\"area\":\"money\",\"document_date\":\"2026-08-20\",\"language\":\"de\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"TechMarkt Online GmbH\",\"kind\":\"retailer\",\"address\":\"Handelsstraße 88, 12353 Beispielburg\",\"email\":\"kundenservice@techmarkt-online.example\",\"phone\":\"0123 6655440\",\"website\":\"www.techmarkt-online.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielburg HRB 48213\"}]},\"items\":[{\"kind\":\"payment\",\"title\":\"Pay TechMarkt invoice\",\"date\":{\"type\":\"relative\",\"anchor\":\"document_date\",\"amount\":14,\"unit\":\"days\",\"text\":\"Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"quote\":\"Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.\",\"amount\":89.99,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Transfer €89.99 to TechMarkt Online GmbH with the invoice number as reference.\",\"consequence\":\"The goods remain the seller's property until paid in full; late payment may lead to reminders.\",\"priority\":\"high\"}],\"key_facts\":[{\"label\":\"Invoice total (Rechnungsbetrag)\",\"value\":\"89,99 €\",\"quote\":\"Rechnungsbetrag   89,99 €\"},{\"label\":\"VAT 19% (Umsatzsteuer)\",\"value\":\"14,37 €\",\"quote\":\"zzgl. 19 % Umsatzsteuer   14,37 €\"},{\"label\":\"Net amount (Nettobetrag)\",\"value\":\"75,62 €\",\"quote\":\"Nettobetrag   75,62 €\"},{\"label\":\"Payment method (Zahlungsart)\",\"value\":\"Kauf auf Rechnung\",\"quote\":\"Zahlungsart: Kauf auf Rechnung\"},{\"label\":\"Delivery date (Lieferdatum)\",\"value\":\"20.08.2026\",\"quote\":\"Leistungsdatum entspricht dem Lieferdatum.\"}],\"payment\":{\"iban\":\"DE70123478000048213000\",\"iban_valid\":null,\"payee\":\"TechMarkt Online GmbH\",\"reference\":\"TM-2026-0048213\"},\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"},{\"label\":\"Bestellnummer\",\"value\":\"302-5512094\"}],\"remedy\":null,\"contract\":null,\"change\":null,\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"warnings\":[],\"high_stakes_kind\":null,\"transcript\":null}",
+    "data": {
+      "kind": "invoice",
+      "title": "TechMarkt Online invoice – headphones €89.99",
+      "summary": "TechMarkt Online GmbH invoiced you €89.99 for MusterSound Q30 Bluetooth headphones (invoice dated 20 August 2026). Payment is due within 14 days of the invoice date.",
+      "explanation": "This is an invoice for a purchase on account (Kauf auf Rechnung). Pay €89.99 to the IBAN shown, using the invoice number as the payment reference. The deadline is 14 days from the invoice date, shown by the app. It appears to be already past or very close, so pay promptly if you haven't, to avoid reminders and fees. The goods remain the seller's property until paid. Keep the invoice as a receipt for warranty or returns.",
+      "case_title": "Headphones purchase TechMarkt Online",
+      "area": "money",
+      "document_date": "2026-08-20",
+      "language": "de",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "TechMarkt Online GmbH",
+        "kind": "retailer",
+        "address": "Handelsstraße 88, 12353 Beispielburg",
+        "email": "kundenservice@techmarkt-online.example",
+        "phone": "0123 6655440",
+        "website": "www.techmarkt-online.example",
+        "identifiers": [
+          {
+            "label": "USt-IdNr.",
+            "value": "DE482133778"
+          },
+          {
+            "label": "Steuernummer",
+            "value": "212/5812/0048"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Beispielburg HRB 48213"
+          }
+        ]
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay TechMarkt invoice",
+          "date": {
+            "type": "relative",
+            "anchor": "document_date",
+            "amount": 14,
+            "unit": "days",
+            "text": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "quote": "Zahlbar innerhalb von 14 Tagen nach Rechnungsdatum ohne Abzug.",
+          "amount": 89.99,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Transfer €89.99 to TechMarkt Online GmbH with the invoice number as reference.",
+          "consequence": "The goods remain the seller's property until paid in full; late payment may lead to reminders.",
+          "priority": "high"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Invoice total (Rechnungsbetrag)",
+          "value": "89,99 €",
+          "quote": "Rechnungsbetrag   89,99 €"
+        },
+        {
+          "label": "VAT 19% (Umsatzsteuer)",
+          "value": "14,37 €",
+          "quote": "zzgl. 19 % Umsatzsteuer   14,37 €"
+        },
+        {
+          "label": "Net amount (Nettobetrag)",
+          "value": "75,62 €",
+          "quote": "Nettobetrag   75,62 €"
+        },
+        {
+          "label": "Payment method (Zahlungsart)",
+          "value": "Kauf auf Rechnung",
+          "quote": "Zahlungsart: Kauf auf Rechnung"
+        },
+        {
+          "label": "Delivery date (Lieferdatum)",
+          "value": "20.08.2026",
+          "quote": "Leistungsdatum entspricht dem Lieferdatum."
+        }
+      ],
+      "payment": {
+        "iban": "DE70123478000048213000",
+        "iban_valid": null,
+        "payee": "TechMarkt Online GmbH",
+        "reference": "TM-2026-0048213"
+      },
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "TM-2026-0048213"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K-7719034"
+        },
+        {
+          "label": "Bestellnummer",
+          "value": "302-5512094"
+        }
+      ],
+      "remedy": null,
+      "contract": null,
+      "change": null,
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "warnings": [],
+      "high_stakes_kind": null,
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1674,
+      "cache_read_tokens": 8885,
+      "cache_creation_tokens": 2449,
+      "cost_usd": 0.028317,
+      "duration_ms": 9839,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

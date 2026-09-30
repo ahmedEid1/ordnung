@@ -1,0 +1,154 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"d67fd54ac806da52bf6cae8c87b41f230cbad250b771807365fcd6e290811022\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_tszxajp80vd5"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Musterstadt Verkehrsbetriebe GmbH (transport)\n- Stadtwerke Musterstadt GmbH (utility)\n- Wohnbau"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"title\":\"Personal liability insurance policy update (Nachtrag Nr. 1)\",\"summary\":\"Muster Versicherung AG sent an updated policy for your personal liability insurance (Privat-Haftpflichtversicherung) after your change of address and bank details. The next annual premium of €59.90 will be debited on 1 December 2026.\",\"explanation\":\"This is an updated insurance certificate that replaces the one from 24 November 2023. It confirms your new address and bank account. Cover is €10,000,000 with no deductible. The contract renews each year on 1 December unless you cancel in text form at least three months before the end of the insurance year (30 November). The premium of €59.90 is collected automatically by direct debit on 1 December 2026. Check that the details are correct. No action is needed unless something is wrong.\",\"case_title\":\"Personal liability insurance – Muster Versicherung\",\"area\":\"insurance\",\"language\":\"de\",\"document_date\":\"2026-01-19\",\"recipient_name\":\"Sam Rivera\",\"urgency\":\"normal\",\"tax_relevant\":true,\"tax_note\":\"Liability insurance premiums can be claimed as other provision expenses (Vorsorgeaufwendungen) in the tax return.\",\"high_stakes_kind\":null,\"sender\":{\"name\":\"Muster Versicherung AG\",\"kind\":\"insurer\",\"address\":\"Versicherungsring 20, 12352 Beispielstadt\",\"phone\":\"0123 7070-0\",\"website\":\"www.muster-versicherung.example\",\"identifiers\":[{\"label\":\"Versicherungsteuer-Nr.\",\"value\":\"812/V/4471\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE71ZZZ00000447122\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielstadt HRB 1887\"}]},\"references\":[{\"label\":\"Vers.-Nr.\",\"value\":\"PHV 71-4471220\"},{\"label\":\"Kundennummer\",\"value\":\"K 2231 0917\"},{\"label\":\"Mandatsreferenz\",\"value\":\"PHV71-4471220-01\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Annual premium debit\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-12-01\",\"text\":\"am 01.12.2026\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"quote\":\"Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\",\"amount\":59.9,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Make sure your account has enough money for the direct debit.\",\"consequence\":null,\"priority\":\"normal\"}],\"contract\":{\"name\":\"Privat-Haftpflichtversicherung, Tarif Basis Single\",\"category\":\"insurance\",\"start_date\":\"2023-12-01\",\"initial_term_months\":12,\"renewal_term_months\":12,\"notice_value\":3,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"notice_before_end\":false,\"notice_statutory\":false,\"cost_amount\":59.9,\"cost_interval\":\"yearly\",\"customer_number\":\"K 2231 0917\",\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird.\",\"Vertragsdauer   1 Jahr mit automatischer Verlängerung um jeweils ein Jahr\",\"Versicherungsbeginn   01.12.2023, 00:00 Uhr\"]},\"key_facts\":[{\"label\":\"Annual premium (Jahresbeitrag)\",\"value\":\"59,90 €\",\"quote\":\"Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\"},{\"label\":\"Coverage (Deckungssummen)\",\"value\":\"10.000.000 € pauschal\",\"quote\":\"Deckungssummen   10.000.000 € pauschal für Personen-, Sach- und Vermögensschäden;\"},{\"label\":\"Insurance year (Versicherungsjahr)\",\"value\":\"01.12. – 30.11.\",\"quote\":\"Versicherungsjahr   01.12. – 30.11.\"},{\"label\":\"Main due date (Hauptfälligkeit)\",\"value\":\"01.12. eines jeden Jahres\",\"quote\":\"Hauptfälligkeit   01.12. eines jeden Jahres\"},{\"label\":\"Reason for update (Grund des Nachtrags)\",\"value\":\"Änderung der Anschrift und der Bankverbindung\",\"quote\":\"Grund des Nachtrags: Änderung der Anschrift und der Bankverbindung.\"}],\"remedy\":null,\"change\":{\"type\":\"terms_change\",\"quote\":\"Grund des Nachtrags: Änderung der Anschrift und der Bankverbindung.\"},\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "title": "Personal liability insurance policy update (Nachtrag Nr. 1)",
+      "summary": "Muster Versicherung AG sent an updated policy for your personal liability insurance (Privat-Haftpflichtversicherung) after your change of address and bank details. The next annual premium of €59.90 will be debited on 1 December 2026.",
+      "explanation": "This is an updated insurance certificate that replaces the one from 24 November 2023. It confirms your new address and bank account. Cover is €10,000,000 with no deductible. The contract renews each year on 1 December unless you cancel in text form at least three months before the end of the insurance year (30 November). The premium of €59.90 is collected automatically by direct debit on 1 December 2026. Check that the details are correct. No action is needed unless something is wrong.",
+      "case_title": "Personal liability insurance – Muster Versicherung",
+      "area": "insurance",
+      "language": "de",
+      "document_date": "2026-01-19",
+      "recipient_name": "Sam Rivera",
+      "urgency": "normal",
+      "tax_relevant": true,
+      "tax_note": "Liability insurance premiums can be claimed as other provision expenses (Vorsorgeaufwendungen) in the tax return.",
+      "high_stakes_kind": null,
+      "sender": {
+        "name": "Muster Versicherung AG",
+        "kind": "insurer",
+        "address": "Versicherungsring 20, 12352 Beispielstadt",
+        "phone": "0123 7070-0",
+        "website": "www.muster-versicherung.example",
+        "identifiers": [
+          {
+            "label": "Versicherungsteuer-Nr.",
+            "value": "812/V/4471"
+          },
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE71ZZZ00000447122"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Beispielstadt HRB 1887"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Vers.-Nr.",
+          "value": "PHV 71-4471220"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "K 2231 0917"
+        },
+        {
+          "label": "Mandatsreferenz",
+          "value": "PHV71-4471220-01"
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Annual premium debit",
+          "date": {
+            "type": "fixed",
+            "date": "2026-12-01",
+            "text": "am 01.12.2026",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "quote": "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.",
+          "amount": 59.9,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Make sure your account has enough money for the direct debit.",
+          "consequence": null,
+          "priority": "normal"
+        }
+      ],
+      "contract": {
+        "name": "Privat-Haftpflichtversicherung, Tarif Basis Single",
+        "category": "insurance",
+        "start_date": "2023-12-01",
+        "initial_term_months": 12,
+        "renewal_term_months": 12,
+        "notice_value": 3,
+        "notice_unit": "months",
+        "notice_basis": "end_of_term",
+        "notice_before_end": false,
+        "notice_statutory": false,
+        "cost_amount": 59.9,
+        "cost_interval": "yearly",
+        "customer_number": "K 2231 0917",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird.",
+          "Vertragsdauer   1 Jahr mit automatischer Verlängerung um jeweils ein Jahr",
+          "Versicherungsbeginn   01.12.2023, 00:00 Uhr"
+        ]
+      },
+      "key_facts": [
+        {
+          "label": "Annual premium (Jahresbeitrag)",
+          "value": "59,90 €",
+          "quote": "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht."
+        },
+        {
+          "label": "Coverage (Deckungssummen)",
+          "value": "10.000.000 € pauschal",
+          "quote": "Deckungssummen   10.000.000 € pauschal für Personen-, Sach- und Vermögensschäden;"
+        },
+        {
+          "label": "Insurance year (Versicherungsjahr)",
+          "value": "01.12. – 30.11.",
+          "quote": "Versicherungsjahr   01.12. – 30.11."
+        },
+        {
+          "label": "Main due date (Hauptfälligkeit)",
+          "value": "01.12. eines jeden Jahres",
+          "quote": "Hauptfälligkeit   01.12. eines jeden Jahres"
+        },
+        {
+          "label": "Reason for update (Grund des Nachtrags)",
+          "value": "Änderung der Anschrift und der Bankverbindung",
+          "quote": "Grund des Nachtrags: Änderung der Anschrift und der Bankverbindung."
+        }
+      ],
+      "remedy": null,
+      "change": {
+        "type": "terms_change",
+        "quote": "Grund des Nachtrags: Änderung der Anschrift und der Bankverbindung."
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2033,
+      "cache_read_tokens": 8885,
+      "cache_creation_tokens": 2730,
+      "cost_usd": 0.033031000000000005,
+      "duration_ms": 11625,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

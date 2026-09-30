@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"e7725f7631659d4c4ba4c4dd3aea4b5406d1eebe926ae3c6a077cdd4180e78df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Schlüsseldienst Beispiel 24h\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"SD-4471\"}],\"amounts\":[266.56],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay locksmith invoice SD-4471\",\"quote\":\"Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.\",\"computation\":\"The letter has no date and the day of receipt is not stated. The period is one week after receipt (§ 187 (1), § 188 (2) BGB: it ends on the same weekday as the receipt day). If the invoice arrived today, Thursday 2026-12-10, the week ends Thursday 2026-12-17. That is not a weekend or a NRW public holiday, so no adjustment is needed. This is the earliest plausible reading. If the invoice arrived later, the deadline moves later by the same amount. This is also a request, not a statutory deadline.\",\"due_date\":\"2026-12-17\",\"confidence\":\"low\",\"amount\":266.56}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter is undated and does not say when it arrived, so the due date is only an estimate. It assumes the invoice arrived on 2026-12-10, so adjust it to your actual receipt date.\",\"The invoice includes a Sunday/holiday and night surcharge. Check that the 06.12.2026 21:40 call-out matches what you agreed, and compare the total with the price you were quoted before the door was opened.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Schlüsseldienst Beispiel 24h",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "SD-4471"
+        }
+      ],
+      "amounts": [
+        266.56
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay locksmith invoice SD-4471",
+          "quote": "Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.",
+          "computation": "The letter has no date and the day of receipt is not stated. The period is one week after receipt (§ 187 (1), § 188 (2) BGB: it ends on the same weekday as the receipt day). If the invoice arrived today, Thursday 2026-12-10, the week ends Thursday 2026-12-17. That is not a weekend or a NRW public holiday, so no adjustment is needed. This is the earliest plausible reading. If the invoice arrived later, the deadline moves later by the same amount. This is also a request, not a statutory deadline.",
+          "due_date": "2026-12-17",
+          "confidence": "low",
+          "amount": 266.56
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter is undated and does not say when it arrived, so the due date is only an estimate. It assumes the invoice arrived on 2026-12-10, so adjust it to your actual receipt date.",
+        "The invoice includes a Sunday/holiday and night surcharge. Check that the 06.12.2026 21:40 call-out matches what you agreed, and compare the total with the price you were quoted before the door was opened."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1102,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 3963,
+      "cost_usd": 0.028101599999999997,
+      "duration_ms": 10701,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4c1b8e449aa78f44072236abbe71c7f34143d958f6855e8e397bad43b8192328\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-year_boundary-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbergen\",\"document_date\":\"2027-01-25\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"amounts\":[4806],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file an Einspruch against the loss carryforward assessment\",\"quote\":\"Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.\",\"computation\":\"Letter dated 2027-01-25 (Monday), assumed posted that day. Deemed delivered on the fourth day after posting: 2027-01-29 (Friday). The one-month period starts the next day and ends on the same-numbered day of the next month: 2027-02-29 does not exist, so it ends on the last day of February, 2027-02-28. That is a Sunday, so under § 108 AO and § 193 BGB the period runs to the next working day, Monday 2027-03-01. This is not a public holiday in NW.\",\"due_date\":\"2027-03-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter does not say which day it was posted; the date assumes it was posted on the letter date, 2027-01-25. If it reached you later, the period starts from the later day, but filing by 2027-03-01 is safe.\",\"The letter itself is dated 2027-01-25, which is after the stated current date in the letter context only if your clock differs; check that the date is correct.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbergen",
+      "document_date": "2027-01-25",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "amounts": [
+        4806
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file an Einspruch against the loss carryforward assessment",
+          "quote": "Sie können diesen Bescheid binnen eines Monats nach seiner Bekanntgabe mit dem Einspruch anfechten, der schriftlich, elektronisch oder zur Niederschrift bei der erlassenden Stelle einzulegen ist.",
+          "computation": "Letter dated 2027-01-25 (Monday), assumed posted that day. Deemed delivered on the fourth day after posting: 2027-01-29 (Friday). The one-month period starts the next day and ends on the same-numbered day of the next month: 2027-02-29 does not exist, so it ends on the last day of February, 2027-02-28. That is a Sunday, so under § 108 AO and § 193 BGB the period runs to the next working day, Monday 2027-03-01. This is not a public holiday in NW.",
+          "due_date": "2027-03-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not say which day it was posted; the date assumes it was posted on the letter date, 2027-01-25. If it reached you later, the period starts from the later day, but filing by 2027-03-01 is safe.",
+        "The letter itself is dated 2027-01-25, which is after the stated current date in the letter context only if your clock differs; check that the date is correct."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1000,
+      "cache_read_tokens": 12744,
+      "cache_creation_tokens": 4443,
+      "cost_usd": 0.030328800000000003,
+      "duration_ms": 9765,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

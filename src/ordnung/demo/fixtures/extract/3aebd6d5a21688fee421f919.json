@@ -1,0 +1,178 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"e3015f549e9b9af9446b78dfc8a098e58e52739b2282385eaa48db98ff81f197\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_wc0nyn4ykedf"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FunkNetz Mobil GmbH (telecom)\n</untrusted_document>\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween th"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"title\":\"FitWell Studios gym membership contract\",\"summary\":\"Membership contract with FitWell Studios GmbH (Musterstadt-Mitte) for the FitWell Flex 12 student plan at €29.90 per month, starting 15 January 2025 with a 12-month minimum term. After that it runs indefinitely and can be cancelled at any time with one month's notice.\",\"explanation\":\"This is your gym membership contract. The 12-month minimum term ended in January 2026, so the membership now runs indefinitely. You can cancel at any time with one month's notice, in text form (for example by email) or with the \\\"Vertrag kündigen\\\" button on the website. The fee of €29.90 is debited on the 1st of each month. The student rate requires a valid enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester, so submit it to keep the rate. The membership can be paused (ruht) for illness, pregnancy or a stay abroad of more than four weeks if you apply with proof.\",\"case_title\":\"FitWell gym membership\",\"area\":\"leisure\",\"language\":\"de\",\"document_date\":\"2025-01-02\",\"urgency\":\"low\",\"recipient_name\":\"Sam Rivera\",\"tax_relevant\":false,\"sender\":{\"name\":\"FitWell Studios GmbH\",\"kind\":\"gym\",\"address\":\"Sportparkstraße 3, 12345 Musterstadt\",\"email\":\"hallo@fitwell-studios.example\",\"phone\":\"0123 889900\",\"website\":\"www.fitwell-studios.example\",\"identifiers\":[{\"label\":\"Gläubiger-ID\",\"value\":\"DE25ZZZ00000104570\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE310457828\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 31045\"}]},\"contract\":{\"name\":\"FitWell Flex 12 (Studenten)\",\"category\":\"gym\",\"concluded_date\":\"2025-01-02\",\"start_date\":\"2025-01-15\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"any_time\",\"notice_statutory\":false,\"notice_before_end\":false,\"cost_amount\":29.9,\"cost_interval\":\"monthly\",\"customer_number\":\"FW-10457\",\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Die Mitgliedschaft beginnt am 15.01.2025 und hat eine Erstlaufzeit von 12 Monaten.\",\"Nach Ablauf der Erstlaufzeit läuft die Mitgliedschaft auf unbestimmte Zeit weiter und kann jederzeit mit einer Frist von einem Monat gekündigt werden.\"]},\"items\":[{\"kind\":\"payment\",\"title\":\"Monthly membership fee\",\"action\":\"Make sure the account has enough funds; €29.90 is debited by SEPA direct debit on the 1st of each month.\",\"amount\":29.9,\"currency\":\"EUR\",\"direction\":\"out\",\"date\":{\"type\":\"none\",\"text\":\"zum 1. eines Monats\",\"nature\":\"payment\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":1,\"working_day\":null},\"quote\":\"Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.\",\"priority\":\"normal\"},{\"kind\":\"task\",\"title\":\"Submit enrolment certificate\",\"action\":\"Show a valid enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester to keep the student rate.\",\"consequence\":\"The student rate may no longer apply.\",\"date\":{\"type\":\"none\",\"text\":\"zu Beginn jedes Semesters\",\"nature\":\"declaration\"},\"quote\":\"Der Studententarif setzt die Vorlage einer gültigen Immatrikulationsbescheinigung zu Beginn jedes Semesters voraus.\",\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Monthly fee (Monatsbeitrag)\",\"value\":\"29,90 €\",\"quote\":\"Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.\"},{\"label\":\"Joining fee (Aufnahmegebühr)\",\"value\":\"19,90 €\",\"quote\":\"Die Aufnahmegebühr von 19,90 € wird mit dem ersten Beitrag eingezogen.\"},{\"label\":\"Membership number (Mitgliedsnummer)\",\"value\":\"FW-10457\",\"quote\":\"Mitgliedsnummer FW-10457 · Studio Musterstadt-Mitte\"},{\"label\":\"Cancellation form (Kündigung)\",\"value\":\"Text form, e.g. email to kuendigung@fitwell-studios.example, or website button\",\"quote\":\"Die Kündigung bedarf der Textform (z. B. E-Mail an kuendigung@fitwell-studios.example); sie kann auch über den Button „Vertrag kündigen“ auf unserer Website erklärt werden.\"},{\"label\":\"Pausing (Ruhen der Mitgliedschaft)\",\"value\":\"On request with proof for illness, pregnancy or a stay abroad of more than four weeks\",\"quote\":\"Bei Krankheit, Schwangerschaft oder einem Auslandsaufenthalt von mehr als vier Wochen ruht die Mitgliedschaft auf Antrag gegen Nachweis; für diese Zeit sind keine Beiträge zu zahlen.\"}],\"references\":[{\"label\":\"Mitgliedsnummer\",\"value\":\"FW-10457\"},{\"label\":\"Mandatsreferenz\",\"value\":\"FW-10457-M1\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE25ZZZ00000104570\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE310457828\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 31045\"}],\"payment\":{\"iban\":\"DE05123467000029900150\",\"payee\":\"FitWell Studios GmbH\",\"reference\":\"FW-10457\",\"iban_valid\":null},\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "title": "FitWell Studios gym membership contract",
+      "summary": "Membership contract with FitWell Studios GmbH (Musterstadt-Mitte) for the FitWell Flex 12 student plan at €29.90 per month, starting 15 January 2025 with a 12-month minimum term. After that it runs indefinitely and can be cancelled at any time with one month's notice.",
+      "explanation": "This is your gym membership contract. The 12-month minimum term ended in January 2026, so the membership now runs indefinitely. You can cancel at any time with one month's notice, in text form (for example by email) or with the \"Vertrag kündigen\" button on the website. The fee of €29.90 is debited on the 1st of each month. The student rate requires a valid enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester, so submit it to keep the rate. The membership can be paused (ruht) for illness, pregnancy or a stay abroad of more than four weeks if you apply with proof.",
+      "case_title": "FitWell gym membership",
+      "area": "leisure",
+      "language": "de",
+      "document_date": "2025-01-02",
+      "urgency": "low",
+      "recipient_name": "Sam Rivera",
+      "tax_relevant": false,
+      "sender": {
+        "name": "FitWell Studios GmbH",
+        "kind": "gym",
+        "address": "Sportparkstraße 3, 12345 Musterstadt",
+        "email": "hallo@fitwell-studios.example",
+        "phone": "0123 889900",
+        "website": "www.fitwell-studios.example",
+        "identifiers": [
+          {
+            "label": "Gläubiger-ID",
+            "value": "DE25ZZZ00000104570"
+          },
+          {
+            "label": "USt-IdNr.",
+            "value": "DE310457828"
+          },
+          {
+            "label": "Handelsregister",
+            "value": "Amtsgericht Musterstadt HRB 31045"
+          }
+        ]
+      },
+      "contract": {
+        "name": "FitWell Flex 12 (Studenten)",
+        "category": "gym",
+        "concluded_date": "2025-01-02",
+        "start_date": "2025-01-15",
+        "initial_term_months": 12,
+        "renewal_term_months": 0,
+        "notice_value": 1,
+        "notice_unit": "months",
+        "notice_basis": "any_time",
+        "notice_statutory": false,
+        "notice_before_end": false,
+        "cost_amount": 29.9,
+        "cost_interval": "monthly",
+        "customer_number": "FW-10457",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "Die Mitgliedschaft beginnt am 15.01.2025 und hat eine Erstlaufzeit von 12 Monaten.",
+          "Nach Ablauf der Erstlaufzeit läuft die Mitgliedschaft auf unbestimmte Zeit weiter und kann jederzeit mit einer Frist von einem Monat gekündigt werden."
+        ]
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Monthly membership fee",
+          "action": "Make sure the account has enough funds; €29.90 is debited by SEPA direct debit on the 1st of each month.",
+          "amount": 29.9,
+          "currency": "EUR",
+          "direction": "out",
+          "date": {
+            "type": "none",
+            "text": "zum 1. eines Monats",
+            "nature": "payment"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "day_of_month": 1,
+            "working_day": null
+          },
+          "quote": "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per SEPA-Lastschrift eingezogen.",
+          "priority": "normal"
+        },
+        {
+          "kind": "task",
+          "title": "Submit enrolment certificate",
+          "action": "Show a valid enrolment certificate (Immatrikulationsbescheinigung) at the start of each semester to keep the student rate.",
+          "consequence": "The student rate may no longer apply.",
+          "date": {
+            "type": "none",
+            "text": "zu Beginn jedes Semesters",
+            "nature": "declaration"
+          },
+          "quote": "Der Studententarif setzt die Vorlage einer gültigen Immatrikulationsbescheinigung zu Beginn jedes Semesters voraus.",
+          "priority": "normal"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Monthly fee (Monatsbeitrag)",
+          "value": "29,90 €",
+          "quote": "Der Monatsbeitrag von 29,90 € ist monatlich im Voraus fällig und wird zum 1. eines Monats per SEPA-Lastschrift eingezogen."
+        },
+        {
+          "label": "Joining fee (Aufnahmegebühr)",
+          "value": "19,90 €",
+          "quote": "Die Aufnahmegebühr von 19,90 € wird mit dem ersten Beitrag eingezogen."
+        },
+        {
+          "label": "Membership number (Mitgliedsnummer)",
+          "value": "FW-10457",
+          "quote": "Mitgliedsnummer FW-10457 · Studio Musterstadt-Mitte"
+        },
+        {
+          "label": "Cancellation form (Kündigung)",
+          "value": "Text form, e.g. email to kuendigung@fitwell-studios.example, or website button",
+          "quote": "Die Kündigung bedarf der Textform (z. B. E-Mail an kuendigung@fitwell-studios.example); sie kann auch über den Button „Vertrag kündigen“ auf unserer Website erklärt werden."
+        },
+        {
+          "label": "Pausing (Ruhen der Mitgliedschaft)",
+          "value": "On request with proof for illness, pregnancy or a stay abroad of more than four weeks",
+          "quote": "Bei Krankheit, Schwangerschaft oder einem Auslandsaufenthalt von mehr als vier Wochen ruht die Mitgliedschaft auf Antrag gegen Nachweis; für diese Zeit sind keine Beiträge zu zahlen."
+        }
+      ],
+      "references": [
+        {
+          "label": "Mitgliedsnummer",
+          "value": "FW-10457"
+        },
+        {
+          "label": "Mandatsreferenz",
+          "value": "FW-10457-M1"
+        },
+        {
+          "label": "Gläubiger-ID",
+          "value": "DE25ZZZ00000104570"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE310457828"
+        },
+        {
+          "label": "Handelsregister",
+          "value": "Amtsgericht Musterstadt HRB 31045"
+        }
+      ],
+      "payment": {
+        "iban": "DE05123467000029900150",
+        "payee": "FitWell Studios GmbH",
+        "reference": "FW-10457",
+        "iban_valid": null
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2414,
+      "cache_read_tokens": 8885,
+      "cache_creation_tokens": 2933,
+      "cost_usd": 0.037653,
+      "duration_ms": 12932,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

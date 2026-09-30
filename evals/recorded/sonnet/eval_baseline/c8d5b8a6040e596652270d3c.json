@@ -1,0 +1,82 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"64df879ee5e61b888f8362c97feecc3bd6fce6b9a0eb2302ef63991472c44dda\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> "
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz\",\"document_date\":\"2026-04-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS 22/2026-0187\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Widerspruch against the housing-protection order\",\"quote\":\"Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.\",\"computation\":\"Letter dated 2026-04-02 (Thu), sent by ordinary post. Deemed delivered on the 4th day after posting (§ 41 Abs. 2 VwVfG): Mon 2026-04-06 (Easter Monday, the day does not move). The period starts the next day (§ 187 Abs. 1 BGB). One month later ends Wed 2026-05-06 (§ 188 Abs. 2 BGB). That is a working day in Hamburg, so there is no shift.\",\"due_date\":\"2026-05-06\",\"confidence\":\"high\"}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"Today (2026-09-30) is after the computed Widerspruch deadline of 2026-05-06. If you did not file in time, the order may be final, so get legal advice promptly. Late filing may still be possible in special cases, such as actual service on a later date or a request for reinstatement.\",\"The order requires you to stop short-term holiday rentals, and a Zwangsgeld (coercive fine) may be imposed if you do not comply.\",\"If the letter was formally served (yellow envelope or a 'zugestellt am' date), the period runs from that date instead of the deemed delivery date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz",
+      "document_date": "2026-04-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS 22/2026-0187"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Widerspruch against the housing-protection order",
+          "quote": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.",
+          "computation": "Letter dated 2026-04-02 (Thu), sent by ordinary post. Deemed delivered on the 4th day after posting (§ 41 Abs. 2 VwVfG): Mon 2026-04-06 (Easter Monday, the day does not move). The period starts the next day (§ 187 Abs. 1 BGB). One month later ends Wed 2026-05-06 (§ 188 Abs. 2 BGB). That is a working day in Hamburg, so there is no shift.",
+          "due_date": "2026-05-06",
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "Today (2026-09-30) is after the computed Widerspruch deadline of 2026-05-06. If you did not file in time, the order may be final, so get legal advice promptly. Late filing may still be possible in special cases, such as actual service on a later date or a request for reinstatement.",
+        "The order requires you to stop short-term holiday rentals, and a Zwangsgeld (coercive fine) may be imposed if you do not comply.",
+        "If the letter was formally served (yellow envelope or a 'zugestellt am' date), the period runs from that date instead of the deemed delivery date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1236,
+      "cache_read_tokens": 15116,
+      "cache_creation_tokens": 4789,
+      "cost_usd": 0.0345472,
+      "duration_ms": 10943,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-04-02",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§ 70 VwGO",
+            "text": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel eingehen"
+          },
+          "document_date": "2026-04-02",
+          "recipient_region": "HH",
+          "region": "HH",
+          "remedy_type": "widerspruch",
+          "sender_kind": "authority",
+          "sender_name": "Bezirksamt Beispielbüttel"
+        },
+        "result": "{\"due_date\":\"2026-05-06\",\"weekday\":\"Wednesday\",\"send_by\":\"2026-04-29\",\"summary\":\"Letter dated Thu 2 Apr 2026 counts as delivered on Mon 6 Apr (this day does not move for this kind of letter); one month later is Wed 6 May 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Thu 2 Apr 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-04-02\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Mon 6 Apr 2026\",\"date\":\"2026-04-06\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"For general administrative letters this day does not move, even though it is a public holiday, Ostermontag\",\"date\":\"2026-04-06\",\"rule_id\":\"vwvfg_41_2\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\"},{\"label\":\"Counting starts the day after Mon 6 Apr 2026\",\"date\":\"2026-04-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 6 May 2026\",\"date\":\"2026-05-06\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 6 May 2026 is a working day, so it stays\",\"date\":\"2026-05-06\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Wed 29 Apr 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-04-29\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"vwvfg_41_2\",\"title\":\"Authority letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 41 Abs. 2 VwVfG (and the Länder VwVfGs); OVG NRW 19 A 4216/99\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__41.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwgo_70\",\"title\":\"Objection to an authority (Widerspruch): one month\",\"citation\":\"§ 70 Abs. 1 VwGO\",\"url\":\"https://www.gesetze-im-internet.de/vwgo/__70.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-04-08\",\"letter_date\":\"2026-04-02\",\"delivery_law\":\"general administrative law (§ 41 VwVfG)\",\"holiday_calendar\":\"Hamburg\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

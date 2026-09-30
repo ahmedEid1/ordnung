@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e7725f7631659d4c4ba4c4dd3aea4b5406d1eebe926ae3c6a077cdd4180e78df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Schlüsseldienst Beispiel 24h\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"SD-4471\"}],\"amounts\":[266.56],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay locksmith invoice SD-4471\",\"quote\":\"Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.\",\"computation\":\"The period is one week from receipt of the invoice. The letter has no date and the receipt date is not stated. The sender is a company, so no deemed-delivery rule applies. The final day therefore cannot be determined. If the invoice was received on day X, the last day is X + 7 days (§§ 187, 188 BGB). If that day is a weekend or a NW public holiday, it moves to the next working day.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":266.56}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice has no date and the receipt date is unknown, so the due date cannot be fixed. Note the day it reached you and add 7 days. For example, receipt on 2026-12-10 gives 2026-12-17.\",\"The payment request is only a request ('bitten um Ausgleich') and is not a statutory deadline. Late payment is not automatically penalised without a reminder.\",\"Emergency locksmith invoices are often overpriced. Check that the price was agreed beforehand and that the surcharges are justified. The letter lists a 'Sonn- und Feiertag, Nacht' surcharge, and 06.12.2026 was a Sunday. You may dispute the amount or pay under reservation.\",\"The invoice arithmetic is correct: 224.00 net + 42.56 VAT = 266.56.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Schlüsseldienst Beispiel 24h",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "SD-4471"
+        }
+      ],
+      "amounts": [
+        266.56
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay locksmith invoice SD-4471",
+          "quote": "Wir bitten um Ausgleich innerhalb einer Woche, nachdem Ihnen diese Rechnung zugegangen ist.",
+          "computation": "The period is one week from receipt of the invoice. The letter has no date and the receipt date is not stated. The sender is a company, so no deemed-delivery rule applies. The final day therefore cannot be determined. If the invoice was received on day X, the last day is X + 7 days (§§ 187, 188 BGB). If that day is a weekend or a NW public holiday, it moves to the next working day.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 266.56
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice has no date and the receipt date is unknown, so the due date cannot be fixed. Note the day it reached you and add 7 days. For example, receipt on 2026-12-10 gives 2026-12-17.",
+        "The payment request is only a request ('bitten um Ausgleich') and is not a statutory deadline. Late payment is not automatically penalised without a reminder.",
+        "Emergency locksmith invoices are often overpriced. Check that the price was agreed beforehand and that the surcharges are justified. The letter lists a 'Sonn- und Feiertag, Nacht' surcharge, and 06.12.2026 was a Sunday. You may dispute the amount or pay under reservation.",
+        "The invoice arithmetic is correct: 224.00 net + 42.56 VAT = 266.56."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1196,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2156,
+      "cost_usd": 0.0218624,
+      "duration_ms": 10138,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

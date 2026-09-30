@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"26d45be22e0f1562c505eb79d448516a90fe6d9cd0f1c3ec00d8dc6bd538dac3\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2025-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreisverwaltung Musterweiler – Bußgeldstelle\",\"document_date\":\"2025-04-14\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"BGS 2025/10744\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"MWL-JB 77\"}],\"amounts\":[128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.\",\"computation\":\"Formal service (Zustellungsurkunde) noted on the envelope as 17.04.2025 (Thursday); the postal 3-day fiction does not apply to formal service. Period starts the day after service (§ 187 Abs. 1 BGB, § 50 OWiG/§ 43 StPO): 18.04.2025. Two weeks end on the same weekday as the service day (§ 188 Abs. 2 BGB): Thursday 01.05.2025. That is Labour Day, a public holiday in Rheinland-Pfalz, so the period ends on the next working day (§ 193 BGB, § 43 Abs. 2 StPO): Friday 02.05.2025.\",\"due_date\":\"2025-05-02\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay fine, fee and costs (only if no objection is filed)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"Without an objection the notice becomes final when the objection period ends on 02.05.2025 (Friday). Two weeks after that: 16.05.2025 (Friday), not a weekend or holiday. If the Rechtskraft date is counted as 03.05.2025, the date would be 17.05 (Saturday), which moves to 19.05.2025. I use the earliest plausible date. The amount is 100.00 fine + 25.00 fee + 3.50 service costs = 128.50.\",\"due_date\":\"2025-05-16\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date depends on when the notice becomes final (Rechtskraft), which the letter does not state. It is calculated here assuming no objection is filed; the Bußgeldstelle may confirm a different date, so check any payment reminder.\",\"The service date 17.04.2025 is read from a partly legible handwritten note on the envelope scan ('25 zugestellt 17.04.20'). Check it against the original envelope.\",\"If you object, the court is not bound by the fine set here and may also decide to your disadvantage.\",\"Before paying, check that the IBAN matches the official Kreisverwaltung details.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreisverwaltung Musterweiler – Bußgeldstelle",
+      "document_date": "2025-04-14",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "BGS 2025/10744"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "MWL-JB 77"
+        }
+      ],
+      "amounts": [
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.",
+          "computation": "Formal service (Zustellungsurkunde) noted on the envelope as 17.04.2025 (Thursday); the postal 3-day fiction does not apply to formal service. Period starts the day after service (§ 187 Abs. 1 BGB, § 50 OWiG/§ 43 StPO): 18.04.2025. Two weeks end on the same weekday as the service day (§ 188 Abs. 2 BGB): Thursday 01.05.2025. That is Labour Day, a public holiday in Rheinland-Pfalz, so the period ends on the next working day (§ 193 BGB, § 43 Abs. 2 StPO): Friday 02.05.2025.",
+          "due_date": "2025-05-02",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine, fee and costs (only if no objection is filed)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "Without an objection the notice becomes final when the objection period ends on 02.05.2025 (Friday). Two weeks after that: 16.05.2025 (Friday), not a weekend or holiday. If the Rechtskraft date is counted as 03.05.2025, the date would be 17.05 (Saturday), which moves to 19.05.2025. I use the earliest plausible date. The amount is 100.00 fine + 25.00 fee + 3.50 service costs = 128.50.",
+          "due_date": "2025-05-16",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date depends on when the notice becomes final (Rechtskraft), which the letter does not state. It is calculated here assuming no objection is filed; the Bußgeldstelle may confirm a different date, so check any payment reminder.",
+        "The service date 17.04.2025 is read from a partly legible handwritten note on the envelope scan ('25 zugestellt 17.04.20'). Check it against the original envelope.",
+        "If you object, the court is not bound by the fine set here and may also decide to your disadvantage.",
+        "Before paying, check that the IBAN matches the official Kreisverwaltung details."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2256,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 5403,
+      "cost_usd": 0.04540160000000001,
+      "duration_ms": 17981,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

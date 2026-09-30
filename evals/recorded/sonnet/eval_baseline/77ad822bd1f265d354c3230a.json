@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"26d45be22e0f1562c505eb79d448516a90fe6d9cd0f1c3ec00d8dc6bd538dac3\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2025-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreisverwaltung Musterweiler – Bußgeldstelle\",\"document_date\":\"2025-04-14\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"BGS 2025/10744\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"MWL-JB 77\"}],\"amounts\":[128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file objection (Einspruch) against the fine notice\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.\",\"computation\":\"Formal delivery (Postzustellungsurkunde): date on envelope 17.04.2025 (Thursday); no days added. Day of delivery not counted. Two weeks later = Thursday 01.05.2025, which is a public holiday (Labour Day), so the period ends on the next working day: Friday 02.05.2025 (not a holiday in RP).\",\"due_date\":\"2025-05-02\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay fine, fee and delivery costs (if no objection)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"Without an objection the notice becomes final when the objection period ends on 02.05.2025. Two weeks after that = Friday 16.05.2025, a working day in RP. Total 100.00 + 25.00 + 3.50 = 128.50 EUR. If an objection is filed, the payment is not due on this date.\",\"due_date\":\"2025-05-16\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The delivery date on the scanned envelope is partly garbled (\\\"25 zugestellt 17.04.20\\\"); it was read as 17.04.2025, so check the original envelope.\",\"The payment date depends on the notice becoming final, which assumes no objection is filed and the objection period ends on 02.05.2025.\",\"The court is not bound by the fine set here and may decide to your disadvantage after an objection.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreisverwaltung Musterweiler – Bußgeldstelle",
+      "document_date": "2025-04-14",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "BGS 2025/10744"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "MWL-JB 77"
+        }
+      ],
+      "amounts": [
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file objection (Einspruch) against the fine notice",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.",
+          "computation": "Formal delivery (Postzustellungsurkunde): date on envelope 17.04.2025 (Thursday); no days added. Day of delivery not counted. Two weeks later = Thursday 01.05.2025, which is a public holiday (Labour Day), so the period ends on the next working day: Friday 02.05.2025 (not a holiday in RP).",
+          "due_date": "2025-05-02",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine, fee and delivery costs (if no objection)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "Without an objection the notice becomes final when the objection period ends on 02.05.2025. Two weeks after that = Friday 16.05.2025, a working day in RP. Total 100.00 + 25.00 + 3.50 = 128.50 EUR. If an objection is filed, the payment is not due on this date.",
+          "due_date": "2025-05-16",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The delivery date on the scanned envelope is partly garbled (\"25 zugestellt 17.04.20\"); it was read as 17.04.2025, so check the original envelope.",
+        "The payment date depends on the notice becoming final, which assumes no objection is filed and the objection period ends on 02.05.2025.",
+        "The court is not bound by the fine set here and may decide to your disadvantage after an objection."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1309,
+      "cache_read_tokens": 5462,
+      "cache_creation_tokens": 2670,
+      "cost_usd": 0.024866400000000004,
+      "duration_ms": 9092,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

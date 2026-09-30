@@ -1,0 +1,56 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7e615cc5f1683809c13c30cbd69646e8ffe6821a68e6f301bea4caa61f130177\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-english_letter-F1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"university\",\"sender_name\":\"Example Liberal Arts College\",\"document_date\":\"2025-04-03\",\"references\":[{\"label\":\"Student ID\",\"value\":\"ELAC-25-40917\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed enrollment confirmation\",\"quote\":\"To hold your place, your signed enrollment confirmation must reach our office by\\nApril 29, 2025.\",\"computation\":\"The letter gives a calendar date, April 29, 2025, so that is the due date as written. It is a Tuesday, so no weekend or holiday adjustment is needed. The confirmation must reach the college's office in the USA, so allow for postal transit time.\",\"due_date\":\"2025-04-29\",\"confidence\":\"high\"}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The confirmation must reach the office in the USA, not just be sent by that date, so allow for international postal time or use the college's email.\"]}",
+    "data": {
+      "kind": "university",
+      "sender_name": "Example Liberal Arts College",
+      "document_date": "2025-04-03",
+      "references": [
+        {
+          "label": "Student ID",
+          "value": "ELAC-25-40917"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed enrollment confirmation",
+          "quote": "To hold your place, your signed enrollment confirmation must reach our office by\nApril 29, 2025.",
+          "computation": "The letter gives a calendar date, April 29, 2025, so that is the due date as written. It is a Tuesday, so no weekend or holiday adjustment is needed. The confirmation must reach the college's office in the USA, so allow for postal transit time.",
+          "due_date": "2025-04-29",
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The confirmation must reach the office in the USA, not just be sent by that date, so allow for international postal time or use the college's email."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 486,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 3441,
+      "cost_usd": 0.0198536,
+      "duration_ms": 7382,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

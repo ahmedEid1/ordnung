@@ -1,0 +1,116 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"8cbbb797476debc36595b65be482a75a934a1ebec1a122d81d0ca05ed0a8050d\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"title\":\"Final demand before seizure – broadcasting fee (suspicious)\",\"summary\":\"A letter claiming to be from the \\\"Rundfunk-Beitragsservice Zahlungszentrale\\\" demands €254.35 in broadcasting fee arrears within 48 hours of receipt. It threatens seizure and has several strong scam indicators, including a Lithuanian IBAN.\",\"explanation\":\"This letter demands €254.35 within 48 hours and threatens account and wage seizure. It looks like a scam. The payment account is Lithuanian, the sender is not your known Beitragsservice Musterstadt, and it tells you not to contact the usual office. The 48-hour deadline is also unusual for a real authority. Don't pay yet. Check your fee account directly with the official Beitragsservice, using contact details you already know and not those in this letter. If you're unsure, consider consumer advice or the police.\",\"case_title\":\"Suspicious broadcasting fee demand\",\"area\":\"money\",\"urgency\":\"critical\",\"language\":\"de\",\"document_date\":\"2026-09-26\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\",\"kind\":\"company\",\"address\":\"Postfach 4 41 10, 12399 Musterstadt\",\"email\":\"zahlung@rundfunk-beitragservice.example\"},\"references\":[{\"label\":\"Beitrags-Nr.\",\"value\":\"623 918 044\"},{\"label\":\"Vorgangs-Nr.\",\"value\":\"ZZ-2026/88419-B\"}],\"items\":[{\"kind\":\"payment\",\"title\":\"Claimed broadcasting fee arrears (unverified)\",\"date\":{\"type\":\"none\",\"text\":\"innerhalb von 48 Stunden nach Erhalt dieses Schreibens\",\"nature\":\"payment\",\"shift_rule\":\"none\"},\"amount\":254.35,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Do not pay yet. Verify the claim with the official Beitragsservice using contact details you already know.\",\"consequence\":\"The letter threatens seizure (Zwangsvollstreckung) and extra costs of at least €180; this is likely a scam threat.\",\"priority\":\"high\",\"quote\":\"Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48\"}],\"key_facts\":[{\"label\":\"Total claimed (GESAMT OFFEN)\",\"value\":\"254,35 EUR\",\"quote\":\"GESAMT OFFEN   254,35 EUR\"},{\"label\":\"Broadcasting fee (Rundfunkbeitrag) 01.2025 – 12.2025\",\"value\":\"12 x 18,36 EUR = 220,32 EUR\",\"quote\":\"Rundfunkbeitrag 01.2025 – 12.2025 (12 x 18,36 EUR)   220,32 EUR\"},{\"label\":\"Late fee (Säumniszuschlag)\",\"value\":\"8,00 EUR\",\"quote\":\"Säumniszuschlag   8,00 EUR\"},{\"label\":\"Processing fee (Bearbeitungsgebühr)\",\"value\":\"26,03 EUR\",\"quote\":\"Bearbeitungsgebühr Zahlungszentrale   26,03 EUR\"}],\"payment\":{\"iban\":\"LT083999000005439871\",\"iban_valid\":null,\"payee\":\"RBS Zahlungszentrale / Beitragsinkasso UAB\",\"reference\":\"623918044-ZZ\"},\"remedy\":{\"type\":\"none\"},\"warnings\":[\"The payee IBAN is Lithuanian (LT), which is not plausible for a German broadcasting fee authority.\",\"The payee is 'Beitragsinkasso UAB' (a Lithuanian company form), not the known Beitragsservice Musterstadt.\",\"The letter demands payment within 48 hours and threatens seizure without further notice, which is typical scam pressure.\",\"It tells you not to contact the known Beitragsservice address and to use only an e-mail address.\",\"The salutation is faulty ('Sehr geehrte Herr') and the signature is oddly spaced, suggesting a forged letter.\"],\"tax_relevant\":false,\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "dunning",
+      "title": "Final demand before seizure – broadcasting fee (suspicious)",
+      "summary": "A letter claiming to be from the \"Rundfunk-Beitragsservice Zahlungszentrale\" demands €254.35 in broadcasting fee arrears within 48 hours of receipt. It threatens seizure and has several strong scam indicators, including a Lithuanian IBAN.",
+      "explanation": "This letter demands €254.35 within 48 hours and threatens account and wage seizure. It looks like a scam. The payment account is Lithuanian, the sender is not your known Beitragsservice Musterstadt, and it tells you not to contact the usual office. The 48-hour deadline is also unusual for a real authority. Don't pay yet. Check your fee account directly with the official Beitragsservice, using contact details you already know and not those in this letter. If you're unsure, consider consumer advice or the police.",
+      "case_title": "Suspicious broadcasting fee demand",
+      "area": "money",
+      "urgency": "critical",
+      "language": "de",
+      "document_date": "2026-09-26",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Rundfunk-Beitragsservice Zahlungszentrale",
+        "kind": "company",
+        "address": "Postfach 4 41 10, 12399 Musterstadt",
+        "email": "zahlung@rundfunk-beitragservice.example"
+      },
+      "references": [
+        {
+          "label": "Beitrags-Nr.",
+          "value": "623 918 044"
+        },
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "ZZ-2026/88419-B"
+        }
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Claimed broadcasting fee arrears (unverified)",
+          "date": {
+            "type": "none",
+            "text": "innerhalb von 48 Stunden nach Erhalt dieses Schreibens",
+            "nature": "payment",
+            "shift_rule": "none"
+          },
+          "amount": 254.35,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Do not pay yet. Verify the claim with the official Beitragsservice using contact details you already know.",
+          "consequence": "The letter threatens seizure (Zwangsvollstreckung) and extra costs of at least €180; this is likely a scam threat.",
+          "priority": "high",
+          "quote": "Sie werden hiermit letztmalig aufgefordert den Gesamtbetrag innerhalb von 48"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total claimed (GESAMT OFFEN)",
+          "value": "254,35 EUR",
+          "quote": "GESAMT OFFEN   254,35 EUR"
+        },
+        {
+          "label": "Broadcasting fee (Rundfunkbeitrag) 01.2025 – 12.2025",
+          "value": "12 x 18,36 EUR = 220,32 EUR",
+          "quote": "Rundfunkbeitrag 01.2025 – 12.2025 (12 x 18,36 EUR)   220,32 EUR"
+        },
+        {
+          "label": "Late fee (Säumniszuschlag)",
+          "value": "8,00 EUR",
+          "quote": "Säumniszuschlag   8,00 EUR"
+        },
+        {
+          "label": "Processing fee (Bearbeitungsgebühr)",
+          "value": "26,03 EUR",
+          "quote": "Bearbeitungsgebühr Zahlungszentrale   26,03 EUR"
+        }
+      ],
+      "payment": {
+        "iban": "LT083999000005439871",
+        "iban_valid": null,
+        "payee": "RBS Zahlungszentrale / Beitragsinkasso UAB",
+        "reference": "623918044-ZZ"
+      },
+      "remedy": {
+        "type": "none"
+      },
+      "warnings": [
+        "The payee IBAN is Lithuanian (LT), which is not plausible for a German broadcasting fee authority.",
+        "The payee is 'Beitragsinkasso UAB' (a Lithuanian company form), not the known Beitragsservice Musterstadt.",
+        "The letter demands payment within 48 hours and threatens seizure without further notice, which is typical scam pressure.",
+        "It tells you not to contact the known Beitragsservice address and to use only an e-mail address.",
+        "The salutation is faulty ('Sehr geehrte Herr') and the signature is oddly spaced, suggesting a forged letter."
+      ],
+      "tax_relevant": false,
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3935,
+      "cache_read_tokens": 20451,
+      "cache_creation_tokens": 4978,
+      "cost_usd": 0.0633602,
+      "duration_ms": 22850,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

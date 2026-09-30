@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1b11f8e7033820ef420ffd19e76f118ceef9693dcf78d8df1edf826308f9cf02\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-02-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-F1"
+    ],
+    "prompt_head": "Today is Monday, 2025-02-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispiel Immobilienverwaltung GmbH\",\"document_date\":\"2025-02-19\",\"references\":[{\"label\":\"Mietvertrag-Nr.\",\"value\":\"MV-3317-08\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Apartment handover inspection (bring all five keys, read meters)\",\"quote\":\"Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.\",\"computation\":\"The letter gives a fixed calendar date and time: Saturday 15.03.2025, 09:30. 15 March 2025 is a Saturday, which matches the letter. An appointment keeps its date, so no period counting or weekend adjustment applies. The appointment is a proposal, so the tenant should confirm it or ask for another date.\",\"due_date\":\"2025-03-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The appointment is only a proposal (\\\"schlagen wir ... vor\\\"); the letter does not say how to confirm it or ask for a different date, so contact the management company (mieter@beispiel-immo.example or 06421 33 90 10) if it does not suit you.\",\"Bring all five keys listed in the handover protocol, and return the apartment broom-clean and without fittings that were not there at the start of the tenancy.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispiel Immobilienverwaltung GmbH",
+      "document_date": "2025-02-19",
+      "references": [
+        {
+          "label": "Mietvertrag-Nr.",
+          "value": "MV-3317-08"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Apartment handover inspection (bring all five keys, read meters)",
+          "quote": "Für die Abnahme der Wohnung Am Mühlbach 2, 2. OG rechts, schlagen wir folgenden Termin vor: Samstag, 15.03.2025, 09:30 Uhr, Treffpunkt vor der Wohnungstür.",
+          "computation": "The letter gives a fixed calendar date and time: Saturday 15.03.2025, 09:30. 15 March 2025 is a Saturday, which matches the letter. An appointment keeps its date, so no period counting or weekend adjustment applies. The appointment is a proposal, so the tenant should confirm it or ask for another date.",
+          "due_date": "2025-03-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The appointment is only a proposal (\"schlagen wir ... vor\"); the letter does not say how to confirm it or ask for a different date, so contact the management company (mieter@beispiel-immo.example or 06421 33 90 10) if it does not suit you.",
+        "Bring all five keys listed in the handover protocol, and return the apartment broom-clean and without fittings that were not there at the start of the tenancy."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1125,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 4041,
+      "cost_usd": 0.028643599999999998,
+      "duration_ms": 11582,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

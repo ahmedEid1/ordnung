@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e087bb6df63ab3f76613c3a953bdbf1d5a64fa6190bfa22a90a0126ca701042d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F1"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielmünde – Bußgeldbehörde\",\"document_date\":\"2027-02-17\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"32.4-OWI-2027-01188\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"BMÜ-IB 12\"}],\"amounts\":[143.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.\",\"computation\":\"Formal service (Zustellungsurkunde), so no deemed delivery. The envelope is stamped as served on 22.02.2027. Under § 187(1) BGB the day of service is not counted. The two-week period ends under § 188(2) BGB on the same weekday two weeks later: Monday 08.03.2027. 8 March is a public holiday in Mecklenburg-Vorpommern (Internationaler Frauentag), so under § 193 BGB the deadline moves to the next working day, Tuesday 09.03.2027.\",\"due_date\":\"2027-03-09\",\"confidence\":\"medium\"},{\"kind\":\"payment\",\"title\":\"Pay fine and costs (only if no objection is filed)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"The notice becomes final if no Einspruch is filed by 09.03.2027, so it takes effect at the end of that day. Two weeks later is Tuesday 23.03.2027. This is a working day, so there is no shift. If an Einspruch is filed or the delivery date differs, this date changes. The amount is 115.00 + 25.00 + 3.50 = 143.50 EUR.\",\"due_date\":\"2027-03-23\",\"amount\":143.5,\"confidence\":\"low\"}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The handwritten delivery date on the envelope scan is fragmentary ('27 zugestellt 22.02.20'). It was read as 22.02.2027, so check the envelope stamp yourself.\",\"8 March 2027 is a public holiday in Mecklenburg-Vorpommern, so the objection deadline is 09.03.2027. To be safe, file the objection by 08.03.2027 or earlier.\",\"The payment due date depends on the notice becoming final. It only applies if no objection is filed, and the exact finality date is set by the authority.\",\"The notice warns that a court is not bound by the fine and may decide to your disadvantage after an objection.\",\"Before paying, check that the IBAN on the letter matches the authority's official details. It is a German IBAN with a bank named 'Muster', and the letter looks like sample data.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+      "document_date": "2027-02-17",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "32.4-OWI-2027-01188"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "BMÜ-IB 12"
+        }
+      ],
+      "amounts": [
+        143.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.",
+          "computation": "Formal service (Zustellungsurkunde), so no deemed delivery. The envelope is stamped as served on 22.02.2027. Under § 187(1) BGB the day of service is not counted. The two-week period ends under § 188(2) BGB on the same weekday two weeks later: Monday 08.03.2027. 8 March is a public holiday in Mecklenburg-Vorpommern (Internationaler Frauentag), so under § 193 BGB the deadline moves to the next working day, Tuesday 09.03.2027.",
+          "due_date": "2027-03-09",
+          "confidence": "medium"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine and costs (only if no objection is filed)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "The notice becomes final if no Einspruch is filed by 09.03.2027, so it takes effect at the end of that day. Two weeks later is Tuesday 23.03.2027. This is a working day, so there is no shift. If an Einspruch is filed or the delivery date differs, this date changes. The amount is 115.00 + 25.00 + 3.50 = 143.50 EUR.",
+          "due_date": "2027-03-23",
+          "amount": 143.5,
+          "confidence": "low"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The handwritten delivery date on the envelope scan is fragmentary ('27 zugestellt 22.02.20'). It was read as 22.02.2027, so check the envelope stamp yourself.",
+        "8 March 2027 is a public holiday in Mecklenburg-Vorpommern, so the objection deadline is 09.03.2027. To be safe, file the objection by 08.03.2027 or earlier.",
+        "The payment due date depends on the notice becoming final. It only applies if no objection is filed, and the exact finality date is set by the authority.",
+        "The notice warns that a court is not bound by the fine and may decide to your disadvantage after an objection.",
+        "Before paying, check that the IBAN on the letter matches the authority's official details. It is a German IBAN with a bank named 'Muster', and the letter looks like sample data."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1609,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2848,
+      "cost_usd": 0.0287604,
+      "duration_ms": 11546,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

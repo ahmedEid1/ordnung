@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"2884b2ce50c8d8d92831f279a5900a6d498935e3ae43fcfad731f95edef1dc47\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Pflegeheim am Park gGmbH\",\"document_date\":\"2027-04-16\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"P-2291\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Respond to offer of permanent contract\",\"quote\":\"Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens;\",\"computation\":\"Letter dated Fri 2027-04-16. Under §187 BGB the letter date itself is not counted. Working days are Mon–Sat, excluding public holidays. Sat 04-17 = 1, Mon 04-19 = 2, Tue 04-20 = 3, Wed 04-21 = 4, Thu 04-22 = 5, Fri 04-23 = 6. There are no public holidays in this period in NRW or Hesse. The last day is Fri 2027-04-23, which is a working day, so no shift under §193 BGB.\",\"due_date\":\"2027-04-23\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not say how or to whom the decision must be sent; confirm with HR (personal@pflegeheim-park.example) and answer in writing before the deadline.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Pflegeheim am Park gGmbH",
+      "document_date": "2027-04-16",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "P-2291"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Respond to offer of permanent contract",
+          "quote": "Ihre Entscheidung erbitten wir binnen 6 Werktagen ab Datum dieses Schreibens;",
+          "computation": "Letter dated Fri 2027-04-16. Under §187 BGB the letter date itself is not counted. Working days are Mon–Sat, excluding public holidays. Sat 04-17 = 1, Mon 04-19 = 2, Tue 04-20 = 3, Wed 04-21 = 4, Thu 04-22 = 5, Fri 04-23 = 6. There are no public holidays in this period in NRW or Hesse. The last day is Fri 2027-04-23, which is a working day, so no shift under §193 BGB.",
+          "due_date": "2027-04-23",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not say how or to whom the decision must be sent; confirm with HR (personal@pflegeheim-park.example) and answer in writing before the deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 881,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 1929,
+      "cost_usd": 0.0171408,
+      "duration_ms": 6798,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

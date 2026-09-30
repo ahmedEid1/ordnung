@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"12d1e7989d55b3df4d26306bfe57376d2a222c8cfb169eefd42df834d7e7dcaf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-dunning_fixed-E2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-08-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Muster Abrechnungszentrum für Zahnärzte GmbH\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"ZA-26-118503\"},{\"label\":\"Patientennummer\",\"value\":\"40931\"}],\"amounts\":[417.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding dental invoice incl. reminder fee\",\"quote\":\"Wir erwarten Ihre Zahlung bis 21.08.2026.\",\"computation\":\"Calendar date printed in the letter: 21.08.2026 (a Friday, so no weekend/holiday adjustment). Amount: 412.80 invoice + 5.00 reminder fee = 417.80.\",\"due_date\":\"2026-08-21\",\"amount\":417.8,\"confidence\":\"high\"}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The payment deadline 21.08.2026 has already passed (today is 2026-08-13 per the prompt, but a conflicting date of 2026-09-30 is also given); check whether payment is still open and pay promptly or call the billing centre if you dispute the invoice.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Muster Abrechnungszentrum für Zahnärzte GmbH",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "ZA-26-118503"
+        },
+        {
+          "label": "Patientennummer",
+          "value": "40931"
+        }
+      ],
+      "amounts": [
+        417.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding dental invoice incl. reminder fee",
+          "quote": "Wir erwarten Ihre Zahlung bis 21.08.2026.",
+          "computation": "Calendar date printed in the letter: 21.08.2026 (a Friday, so no weekend/holiday adjustment). Amount: 412.80 invoice + 5.00 reminder fee = 417.80.",
+          "due_date": "2026-08-21",
+          "amount": 417.8,
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The payment deadline 21.08.2026 has already passed (today is 2026-08-13 per the prompt, but a conflicting date of 2026-09-30 is also given); check whether payment is still open and pay promptly or call the billing centre if you dispute the invoice."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 571,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 2019,
+      "cost_usd": 0.014400799999999998,
+      "duration_ms": 4742,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

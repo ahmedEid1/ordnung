@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0b066725ee0b2980002b43733be63ad1f392072abfcaad0cc37f3ec1f1a6b49e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-E2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-03-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Pflegekasse bei der Beispiel Ersatzkasse\",\"document_date\":\"2025-03-28\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"P440918267\"},{\"label\":\"Az.\",\"value\":\"PG-25-018844\"}],\"amounts\":[347],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file objection (Widerspruch) against Pflegegrad 2 decision\",\"quote\":\"Halten Sie die Entscheidung für falsch, legen Sie innerhalb eines Monats nach Bekanntgabe des Bescheids Widerspruch ein – schriftlich oder zur Niederschrift bei der Pflegekasse bei der Beispiel Ersatzkasse.\",\"computation\":\"Letter dated Fri 28.03.2025, no separate posting date. Pflegekasse is a social-law body (§ 37 Abs. 2 SGB X): deemed delivered on the 4th day after posting = Tue 01.04.2025; the delivery day does not move. Period of one month starts the day after delivery (day of delivery not counted) and ends on 01.05.2025. That is Thursday, 1 May, a nationwide public holiday, so under § 26 Abs. 3 SGB X / § 193 BGB the period ends on the next working day, Friday 02.05.2025 (a working day in NW).\",\"due_date\":\"2025-05-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Pflegekasse bei der Beispiel Ersatzkasse",
+      "document_date": "2025-03-28",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "P440918267"
+        },
+        {
+          "label": "Az.",
+          "value": "PG-25-018844"
+        }
+      ],
+      "amounts": [
+        347
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file objection (Widerspruch) against Pflegegrad 2 decision",
+          "quote": "Halten Sie die Entscheidung für falsch, legen Sie innerhalb eines Monats nach Bekanntgabe des Bescheids Widerspruch ein – schriftlich oder zur Niederschrift bei der Pflegekasse bei der Beispiel Ersatzkasse.",
+          "computation": "Letter dated Fri 28.03.2025, no separate posting date. Pflegekasse is a social-law body (§ 37 Abs. 2 SGB X): deemed delivered on the 4th day after posting = Tue 01.04.2025; the delivery day does not move. Period of one month starts the day after delivery (day of delivery not counted) and ends on 01.05.2025. That is Thursday, 1 May, a nationwide public holiday, so under § 26 Abs. 3 SGB X / § 193 BGB the period ends on the next working day, Friday 02.05.2025 (a working day in NW).",
+          "due_date": "2025-05-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 993,
+      "cache_read_tokens": 10924,
+      "cache_creation_tokens": 4369,
+      "cost_usd": 0.0295988,
+      "duration_ms": 9570,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

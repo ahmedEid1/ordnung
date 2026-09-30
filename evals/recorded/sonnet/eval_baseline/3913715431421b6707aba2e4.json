@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"bdc948415f55747d91054c895cfe4430ede34211676a6eb7e4e44e40149c2121\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterbergen\",\"document_date\":\"2027-04-09\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"031/860/42219\"}],\"amounts\":[46],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file Einspruch against the interest assessment\",\"quote\":\"Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.\",\"computation\":\"The letter is dated 09.04.2027 but says 'Bescheid vom 06.04.2027', so the posting day is unclear. Earliest plausible posting day is 06.04.2027. Deemed delivery is the 4th day after posting, which is 10.04.2027 (Saturday). The one-month period (§ 355 AO, § 188 BGB) ends on 10.05.2027, a Monday, so no weekend shift applies. If the letter was posted on 09.04.2027, the deemed delivery day would be 13.04.2027 and the deadline 13.05.2027. I use the earlier date to be safe.\",\"due_date\":\"2027-05-10\",\"confidence\":\"medium\"}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter is dated 09.04.2027 but refers to a Bescheid dated 06.04.2027, so the posting day is unclear. The earliest plausible deadline (10.05.2027) is used; if it was posted on 09.04.2027 the deadline would be 13.05.2027.\",\"No payment is required: the €46.00 interest is paid out to you with the refund. Consider whether you need to object at all.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterbergen",
+      "document_date": "2027-04-09",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "031/860/42219"
+        }
+      ],
+      "amounts": [
+        46
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file Einspruch against the interest assessment",
+          "quote": "Einspruch ist binnen eines Monats nach Bekanntgabe möglich, schriftlich oder elektronisch beim Finanzamt Musterbergen; als Tag der Bekanntgabe eines einfachen Briefs gilt der vierte Tag nach Aufgabe zur Post.",
+          "computation": "The letter is dated 09.04.2027 but says 'Bescheid vom 06.04.2027', so the posting day is unclear. Earliest plausible posting day is 06.04.2027. Deemed delivery is the 4th day after posting, which is 10.04.2027 (Saturday). The one-month period (§ 355 AO, § 188 BGB) ends on 10.05.2027, a Monday, so no weekend shift applies. If the letter was posted on 09.04.2027, the deemed delivery day would be 13.04.2027 and the deadline 13.05.2027. I use the earlier date to be safe.",
+          "due_date": "2027-05-10",
+          "confidence": "medium"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter is dated 09.04.2027 but refers to a Bescheid dated 06.04.2027, so the posting day is unclear. The earliest plausible deadline (10.05.2027) is used; if it was posted on 09.04.2027 the deadline would be 13.05.2027.",
+        "No payment is required: the €46.00 interest is paid out to you with the refund. Consider whether you need to object at all."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1409,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2100,
+      "cost_usd": 0.023768400000000002,
+      "duration_ms": 11647,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

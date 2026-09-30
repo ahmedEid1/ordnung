@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f474718d3532d58dcf09d9d60bb9bb1a629395e4978abbe2e60569d441469e20\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-contract_confirmation-E1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-03-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispiel Glasfaser GmbH\",\"document_date\":\"2025-03-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BG-220-4471\"},{\"label\":\"Auftragsnummer\",\"value\":\"A-25-031977\"}],\"amounts\":[39.95],\"items\":[{\"kind\":\"appointment\",\"title\":\"Fibre connection provisioning (technician will call beforehand)\",\"quote\":\"Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.\",\"computation\":\"Fixed calendar date printed in the letter: 08.04.2025.\",\"due_date\":\"2025-04-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2026-04-07\",\"cancel_by\":\"2026-03-06\"},\"warnings\":[\"Term runs 12 months from provisioning on 08.04.2025, so it ends on 07.04.2026 (if provisioning is delayed, the dates shift accordingly).\",\"One month's notice would fall on Saturday 07.03.2026; to be safe the cancellation should reach the provider by Friday 06.03.2026.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispiel Glasfaser GmbH",
+      "document_date": "2025-03-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BG-220-4471"
+        },
+        {
+          "label": "Auftragsnummer",
+          "value": "A-25-031977"
+        }
+      ],
+      "amounts": [
+        39.95
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Fibre connection provisioning (technician will call beforehand)",
+          "quote": "Wir stellen Ihren Anschluss am 08.04.2025 bereit; der Techniker meldet sich vorher bei Ihnen.",
+          "computation": "Fixed calendar date printed in the letter: 08.04.2025.",
+          "due_date": "2025-04-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2026-04-07",
+        "cancel_by": "2026-03-06"
+      },
+      "warnings": [
+        "Term runs 12 months from provisioning on 08.04.2025, so it ends on 07.04.2026 (if provisioning is delayed, the dates shift accordingly).",
+        "One month's notice would fall on Saturday 07.03.2026; to be safe the cancellation should reach the provider by Friday 06.03.2026."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1201,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2288,
+      "cost_usd": 0.0224404,
+      "duration_ms": 10277,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"7824777ac628edccd7619a93a913cfd09b318cfdefbc7c889b7190ca466cfea8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-03-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-contract_confirmation-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-03-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Direktversicherung AG\",\"document_date\":\"2027-03-04\",\"references\":[{\"label\":\"Versicherungsscheinnummer\",\"value\":\"KF-7731-220-05\"}],\"amounts\":[486.2],\"items\":[{\"kind\":\"payment\",\"title\":\"Annual premium debited\",\"quote\":\"Den Jahresbeitrag buchen wir zum Beginn des Versicherungsschutzes von Ihrem Konto ab.\",\"computation\":\"Insurance starts 15.03.2027, 0 Uhr. Premium is debited at the start of cover, so on 2027-03-15 (a Monday, not a holiday). Make sure the account is covered.\",\"due_date\":\"2027-03-15\",\"confidence\":\"high\",\"amount\":486.2}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-03-14\",\"cancel_by\":\"2028-02-14\"},\"warnings\":[\"The letter says nothing about a SEPA mandate; check that you authorised the direct debit, since the letter says the premium will be debited from your account.\",\"Cancellation date assumes the insurance year runs 15.03.2027 to 14.03.2028 and one month is counted back from 14.03.2028; to be safe, send the cancellation in text form earlier.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Direktversicherung AG",
+      "document_date": "2027-03-04",
+      "references": [
+        {
+          "label": "Versicherungsscheinnummer",
+          "value": "KF-7731-220-05"
+        }
+      ],
+      "amounts": [
+        486.2
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Annual premium debited",
+          "quote": "Den Jahresbeitrag buchen wir zum Beginn des Versicherungsschutzes von Ihrem Konto ab.",
+          "computation": "Insurance starts 15.03.2027, 0 Uhr. Premium is debited at the start of cover, so on 2027-03-15 (a Monday, not a holiday). Make sure the account is covered.",
+          "due_date": "2027-03-15",
+          "confidence": "high",
+          "amount": 486.2
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-03-14",
+        "cancel_by": "2028-02-14"
+      },
+      "warnings": [
+        "The letter says nothing about a SEPA mandate; check that you authorised the direct debit, since the letter says the premium will be debited from your account.",
+        "Cancellation date assumes the insurance year runs 15.03.2027 to 14.03.2028 and one month is counted back from 14.03.2028; to be safe, send the cancellation in text form earlier."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 990,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2257,
+      "cost_usd": 0.0202064,
+      "duration_ms": 7891,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"93ea6f007b4da58c660b5bad86687ebfb9372dfbe58268193be01b8ed9571332\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-price_increase-F1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-04-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Beispiel Kabel & Web GmbH\",\"document_date\":\"2027-04-19\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KW-88-104577\"}],\"amounts\":[34.99,37.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase takes effect (34.99 € to 37.99 € per month)\",\"quote\":\"zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.\",\"computation\":\"Calendar date printed in the letter: 01.06.2027.\",\"due_date\":\"2027-06-01\",\"confidence\":\"high\",\"amount\":37.99},{\"kind\":\"deadline\",\"title\":\"Last day for extraordinary cancellation due to price increase\",\"quote\":\"innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.\",\"computation\":\"The period runs from receipt (Zugang). The receipt date is not stated, and no statutory delivery fiction applies to a private company's letter. The letter is dated 19.04.2027, so the earliest possible receipt is 19.04.2027. Under §§ 187 Abs. 1 and 188 Abs. 2 BGB, three months from 19.04.2027 end on 19.07.2027, which is a Monday and not a holiday. If the letter arrived later, the deadline moves later, for example 22.04.2027 gives 22.07.2027. I used the earliest plausible date to be safe. The cancellation is effective at the earliest on 01.06.2027.\",\"due_date\":\"2027-07-19\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not say when it was received, so the cancellation deadline is calculated from the letter date (19.04.2027). Your actual deadline is three months after the day it reached you, so note your receipt date. If in doubt, cancel by 19.07.2027.\",\"The cancellation must reach the provider within the period, so send it in a way you can prove, such as a registered letter or a fax or email with a confirmation.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Beispiel Kabel & Web GmbH",
+      "document_date": "2027-04-19",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KW-88-104577"
+        }
+      ],
+      "amounts": [
+        34.99,
+        37.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase takes effect (34.99 € to 37.99 € per month)",
+          "quote": "zum 01.06.2027 erhöht sich der monatliche Grundpreis Ihres Tarifs „Web & TV 250“ von 34,99 € auf 37,99 €.",
+          "computation": "Calendar date printed in the letter: 01.06.2027.",
+          "due_date": "2027-06-01",
+          "confidence": "high",
+          "amount": 37.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Last day for extraordinary cancellation due to price increase",
+          "quote": "innerhalb von drei Monaten, nachdem Ihnen diese Mitteilung zugegangen ist.",
+          "computation": "The period runs from receipt (Zugang). The receipt date is not stated, and no statutory delivery fiction applies to a private company's letter. The letter is dated 19.04.2027, so the earliest possible receipt is 19.04.2027. Under §§ 187 Abs. 1 and 188 Abs. 2 BGB, three months from 19.04.2027 end on 19.07.2027, which is a Monday and not a holiday. If the letter arrived later, the deadline moves later, for example 22.04.2027 gives 22.07.2027. I used the earliest plausible date to be safe. The cancellation is effective at the earliest on 01.06.2027.",
+          "due_date": "2027-07-19",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not say when it was received, so the cancellation deadline is calculated from the letter date (19.04.2027). Your actual deadline is three months after the day it reached you, so note your receipt date. If in doubt, cancel by 19.07.2027.",
+        "The cancellation must reach the provider within the period, so send it in a way you can prove, such as a registered letter or a fax or email with a confirmation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1318,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 1986,
+      "cost_usd": 0.0217388,
+      "duration_ms": 11111,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

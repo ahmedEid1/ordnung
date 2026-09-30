@@ -1,0 +1,149 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"6a63cc06961af32a7a636df1251a4f7a361172d0989fda5b4b1aab1113ac7094\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_d9hwr1mp3bsj"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"residence_permit\",\"title\":\"Residence permit expiring 30 Nov 2026 – appointment 14 Oct 2026\",\"summary\":\"The Musterstadt Immigration Office (Ausländerbehörde) wrote that your student residence permit is valid until 30 November 2026. It reserved an appointment on 14 October 2026 at 10:30 to apply for an extension, with a €100.00 fee.\",\"explanation\":\"Your residence permit for studies expires on 30 November 2026. To stay longer, you must apply for an extension before it expires. The office has booked you an appointment on 14 October 2026 at 10:30 in room 2.14. Bring all listed original documents and pay the €100.00 fee by girocard (no cash). If you apply before expiry, your permit counts as continuing until the office decides. Check that your passport is valid long enough. If you can't attend, cancel at least three working days before.\",\"case_title\":\"Residence permit extension\",\"area\":\"residence\",\"urgency\":\"high\",\"document_date\":\"2026-09-16\",\"language\":\"German\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Stadt Musterstadt, Ausländerbehörde\",\"kind\":\"immigration_office\",\"address\":\"Musterplatz 1, 12345 Musterstadt\",\"email\":\"abh@musterstadt.example\",\"phone\":\"0123 400-3214\",\"website\":\"www.musterstadt.example\"},\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\"}],\"items\":[{\"kind\":\"appointment\",\"title\":\"Residence permit extension appointment\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-14\",\"time\":\"10:30\",\"text\":\"Mittwoch, 14.10.2026, 10:30 Uhr\",\"nature\":\"appointment\",\"shift_rule\":\"none\"},\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2nd floor, Room 2.14\",\"action\":\"Attend with passport, enrolment certificate, proof of funds, health insurance proof, biometric photo, tenancy agreement or landlord confirmation, and pay the fee.\",\"consequence\":\"If the extension is not applied for before expiry, the permit ends on 30 November 2026.\",\"priority\":\"high\",\"quote\":\"Termin: Mittwoch, 14.10.2026, 10:30 Uhr\"},{\"kind\":\"payment\",\"title\":\"Extension fee\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-14\",\"text\":\"Zahlung vor Ort mit girocard\",\"nature\":\"payment\",\"shift_rule\":\"none\"},\"amount\":100,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Pay the fee on site by girocard; cash is not possible.\",\"quote\":\"die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)\"},{\"kind\":\"deadline\",\"title\":\"Cancel appointment if you cannot attend\",\"date\":{\"type\":\"relative\",\"anchor\":\"explicit_date\",\"anchor_date\":\"2026-10-14\",\"amount\":-3,\"unit\":\"werktage\",\"text\":\"spätestens drei Werktage vorher\",\"nature\":\"declaration\"},\"action\":\"Cancel the appointment at least three working days beforehand.\",\"quote\":\"Können Sie den Termin nicht wahrnehmen, sagen Sie ihn bitte spätestens drei Werktage vorher ab.\",\"priority\":\"normal\"},{\"kind\":\"expiry\",\"title\":\"Residence permit expires\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-11-30\",\"text\":\"bis zum 30.11.2026 gültig\",\"nature\":\"other\"},\"action\":\"Apply for extension before this date.\",\"consequence\":\"Permit lapses if no extension is applied for in time.\",\"priority\":\"high\",\"quote\":\"Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig.\"}],\"key_facts\":[{\"label\":\"Permit valid until\",\"value\":\"30.11.2026\",\"quote\":\"Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig.\"},{\"label\":\"Appointment (Termin)\",\"value\":\"14.10.2026, 10:30 Uhr\",\"quote\":\"Termin: Mittwoch, 14.10.2026, 10:30 Uhr\"},{\"label\":\"Fee (Gebühr)\",\"value\":\"100,00 €\",\"quote\":\"die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)\"},{\"label\":\"Continued validity on timely application\",\"value\":\"§ 81 Abs. 4 AufenthG\",\"quote\":\"Wird der Antrag auf Verlängerung vor Ablauf der Aufenthaltserlaubnis gestellt, gilt diese bis zur Entscheidung der Ausländerbehörde als fortbestehend (§ 81 Abs. 4 AufenthG).\"}],\"remedy\":{\"type\":\"none\"},\"tax_relevant\":false,\"warnings\":[\"Check that your passport is valid long enough, as a permit generally cannot be issued beyond passport validity.\"]}",
+    "data": {
+      "kind": "residence_permit",
+      "title": "Residence permit expiring 30 Nov 2026 – appointment 14 Oct 2026",
+      "summary": "The Musterstadt Immigration Office (Ausländerbehörde) wrote that your student residence permit is valid until 30 November 2026. It reserved an appointment on 14 October 2026 at 10:30 to apply for an extension, with a €100.00 fee.",
+      "explanation": "Your residence permit for studies expires on 30 November 2026. To stay longer, you must apply for an extension before it expires. The office has booked you an appointment on 14 October 2026 at 10:30 in room 2.14. Bring all listed original documents and pay the €100.00 fee by girocard (no cash). If you apply before expiry, your permit counts as continuing until the office decides. Check that your passport is valid long enough. If you can't attend, cancel at least three working days before.",
+      "case_title": "Residence permit extension",
+      "area": "residence",
+      "urgency": "high",
+      "document_date": "2026-09-16",
+      "language": "German",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Stadt Musterstadt, Ausländerbehörde",
+        "kind": "immigration_office",
+        "address": "Musterplatz 1, 12345 Musterstadt",
+        "email": "abh@musterstadt.example",
+        "phone": "0123 400-3214",
+        "website": "www.musterstadt.example"
+      },
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "32.2-AE-24-08815"
+        }
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Residence permit extension appointment",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-14",
+            "time": "10:30",
+            "text": "Mittwoch, 14.10.2026, 10:30 Uhr",
+            "nature": "appointment",
+            "shift_rule": "none"
+          },
+          "location": "Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2nd floor, Room 2.14",
+          "action": "Attend with passport, enrolment certificate, proof of funds, health insurance proof, biometric photo, tenancy agreement or landlord confirmation, and pay the fee.",
+          "consequence": "If the extension is not applied for before expiry, the permit ends on 30 November 2026.",
+          "priority": "high",
+          "quote": "Termin: Mittwoch, 14.10.2026, 10:30 Uhr"
+        },
+        {
+          "kind": "payment",
+          "title": "Extension fee",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-14",
+            "text": "Zahlung vor Ort mit girocard",
+            "nature": "payment",
+            "shift_rule": "none"
+          },
+          "amount": 100,
+          "currency": "EUR",
+          "direction": "out",
+          "action": "Pay the fee on site by girocard; cash is not possible.",
+          "quote": "die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)"
+        },
+        {
+          "kind": "deadline",
+          "title": "Cancel appointment if you cannot attend",
+          "date": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-10-14",
+            "amount": -3,
+            "unit": "werktage",
+            "text": "spätestens drei Werktage vorher",
+            "nature": "declaration"
+          },
+          "action": "Cancel the appointment at least three working days beforehand.",
+          "quote": "Können Sie den Termin nicht wahrnehmen, sagen Sie ihn bitte spätestens drei Werktage vorher ab.",
+          "priority": "normal"
+        },
+        {
+          "kind": "expiry",
+          "title": "Residence permit expires",
+          "date": {
+            "type": "fixed",
+            "date": "2026-11-30",
+            "text": "bis zum 30.11.2026 gültig",
+            "nature": "other"
+          },
+          "action": "Apply for extension before this date.",
+          "consequence": "Permit lapses if no extension is applied for in time.",
+          "priority": "high",
+          "quote": "Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Permit valid until",
+          "value": "30.11.2026",
+          "quote": "Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig."
+        },
+        {
+          "label": "Appointment (Termin)",
+          "value": "14.10.2026, 10:30 Uhr",
+          "quote": "Termin: Mittwoch, 14.10.2026, 10:30 Uhr"
+        },
+        {
+          "label": "Fee (Gebühr)",
+          "value": "100,00 €",
+          "quote": "die Gebühr in Höhe von 100,00 € (Zahlung vor Ort mit girocard; Barzahlung ist nicht möglich)"
+        },
+        {
+          "label": "Continued validity on timely application",
+          "value": "§ 81 Abs. 4 AufenthG",
+          "quote": "Wird der Antrag auf Verlängerung vor Ablauf der Aufenthaltserlaubnis gestellt, gilt diese bis zur Entscheidung der Ausländerbehörde als fortbestehend (§ 81 Abs. 4 AufenthG)."
+        }
+      ],
+      "remedy": {
+        "type": "none"
+      },
+      "tax_relevant": false,
+      "warnings": [
+        "Check that your passport is valid long enough, as a permit generally cannot be issued beyond passport validity."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2111,
+      "cache_read_tokens": 8885,
+      "cache_creation_tokens": 2810,
+      "cost_usd": 0.034131,
+      "duration_ms": 12132,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

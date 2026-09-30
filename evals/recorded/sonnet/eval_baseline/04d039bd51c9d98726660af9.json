@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"64df879ee5e61b888f8362c97feecc3bd6fce6b9a0eb2302ef63991472c44dda\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> "
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz\",\"document_date\":\"2026-04-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS 22/2026-0187\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day for objection (Widerspruch) to the housing protection order\",\"quote\":\"Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.\",\"computation\":\"Letter dated Thu 2026-04-02; assumed posted that day. Under § 41 (2) VwVfG (Hamburg), a posted administrative act counts as delivered on the third day after posting: 2026-04-05 (Sunday, Easter Sunday; the fiction still applies). Period of one month under § 31 VwVfG / § 187 (1), § 188 (2) BGB starts the day after delivery and ends on the day of the following month with the same number: 2026-05-05. That is a Tuesday and not a public holiday in Hamburg, so no extension under § 193 BGB. The objection must reach the office by then.\",\"due_date\":\"2026-05-05\",\"confidence\":\"medium\"}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The date of posting is not stated; the deadline assumes posting on 2026-04-02 (letter date). If it was posted later, the deadline moves later. If it arrived later than the fiction date, the deemed date still applies unless you can prove otherwise.\",\"The order sets no separate date for ending the short-term rentals; it appears to apply immediately, and a Zwangsgeld (coercive fine) may be set if it is not followed. An objection may not automatically suspend the order, so check this.\",\"The objection must reach the Bezirksamt by the deadline; sending it on the last day by post is risky. Submit in writing, electronically with a qualified signature, or record it in person.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz",
+      "document_date": "2026-04-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS 22/2026-0187"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day for objection (Widerspruch) to the housing protection order",
+          "quote": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.",
+          "computation": "Letter dated Thu 2026-04-02; assumed posted that day. Under § 41 (2) VwVfG (Hamburg), a posted administrative act counts as delivered on the third day after posting: 2026-04-05 (Sunday, Easter Sunday; the fiction still applies). Period of one month under § 31 VwVfG / § 187 (1), § 188 (2) BGB starts the day after delivery and ends on the day of the following month with the same number: 2026-05-05. That is a Tuesday and not a public holiday in Hamburg, so no extension under § 193 BGB. The objection must reach the office by then.",
+          "due_date": "2026-05-05",
+          "confidence": "medium"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The date of posting is not stated; the deadline assumes posting on 2026-04-02 (letter date). If it was posted later, the deadline moves later. If it arrived later than the fiction date, the deemed date still applies unless you can prove otherwise.",
+        "The order sets no separate date for ending the short-term rentals; it appears to apply immediately, and a Zwangsgeld (coercive fine) may be set if it is not followed. An objection may not automatically suspend the order, so check this.",
+        "The objection must reach the Bezirksamt by the deadline; sending it on the last day by post is risky. Submit in writing, electronically with a qualified signature, or record it in person."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1486,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 4395,
+      "cost_usd": 0.0336696,
+      "duration_ms": 13148,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

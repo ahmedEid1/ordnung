@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8cd85ed649dc6414c12b3683bc85ceb08152a0314c4d8573f32fd62e3b8295d7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-07-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-E1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-07-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Ersatzkasse\",\"document_date\":\"2025-06-25\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"K718204553\"},{\"label\":\"Vorgang\",\"value\":\"FK-25-061930\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection (Widerspruch) against rejection of taxi travel cost request\",\"quote\":\"Halten Sie die Entscheidung für falsch, legen Sie innerhalb eines Monats nach Bekanntgabe des Bescheids Widerspruch ein – schriftlich oder zur Niederschrift bei der Beispiel Ersatzkasse.\",\"computation\":\"Letter dated 25.06.2025 with no separate posting date, so posting day = 25.06.2025. Health insurer (social-law body, § 37 Abs. 2 SGB X): deemed delivered on the 4th day after posting = 29.06.2025 (Sunday); for non-tax bodies the delivery day does not move. Period of one month starts the day after delivery (day of delivery not counted): ends on the same day number one month later = 29.07.2025 (Tuesday), not a public holiday in NW or elsewhere. No weekend adjustment needed.\",\"due_date\":\"2025-07-29\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Ersatzkasse",
+      "document_date": "2025-06-25",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "K718204553"
+        },
+        {
+          "label": "Vorgang",
+          "value": "FK-25-061930"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection (Widerspruch) against rejection of taxi travel cost request",
+          "quote": "Halten Sie die Entscheidung für falsch, legen Sie innerhalb eines Monats nach Bekanntgabe des Bescheids Widerspruch ein – schriftlich oder zur Niederschrift bei der Beispiel Ersatzkasse.",
+          "computation": "Letter dated 25.06.2025 with no separate posting date, so posting day = 25.06.2025. Health insurer (social-law body, § 37 Abs. 2 SGB X): deemed delivered on the 4th day after posting = 29.06.2025 (Sunday); for non-tax bodies the delivery day does not move. Period of one month starts the day after delivery (day of delivery not counted): ends on the same day number one month later = 29.07.2025 (Tuesday), not a public holiday in NW or elsewhere. No weekend adjustment needed.",
+          "due_date": "2025-07-29",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 847,
+      "cache_read_tokens": 10924,
+      "cache_creation_tokens": 4387,
+      "cost_usd": 0.0282108,
+      "duration_ms": 7936,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

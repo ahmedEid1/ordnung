@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"09cb7a35bbd7598a1e46ab5eb11ddb3f6e4c071e41c3efb959a58e5d88a51e8d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-11-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-11-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle\",\"document_date\":\"2025-11-05\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 25-0918-337\"},{\"label\":\"Kennzeichen\",\"value\":\"MB-TB 318\"}],\"amounts\":[128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Objection (Einspruch) to fine notice must reach the fine office\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"Formal delivery (Zustellungsurkunde) date on envelope: 08.11.2025 (Saturday); no days added. Day of delivery not counted; two weeks later is Saturday 22.11.2025. Saturday → next working day Monday 24.11.2025 (§ 43 Abs. 2 StPO; no holiday in NW).\",\"due_date\":\"2025-11-24\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay fine and costs (EUR 128.50)\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"Payment period starts when the notice becomes final. Without objection that is the end of the objection period, 24.11.2025. Two weeks later: Monday 08.12.2025 (a working day). If an objection is filed, this date does not apply.\",\"due_date\":\"2025-12-08\",\"amount\":128.5,\"confidence\":\"medium\"}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment date depends on when the notice becomes final; 2025-12-08 assumes no objection is filed.\",\"The system context gave two different 'today' dates (2025-11-08 and 2026-09-30); the user-stated 2025-11-08 was used. If today is actually 2026-09-30, both deadlines have already passed.\",\"Check that the payee IBAN (DE43 5335 0000 0000 5050 50) matches the official notice before paying.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+      "document_date": "2025-11-05",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 25-0918-337"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MB-TB 318"
+        }
+      ],
+      "amounts": [
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Objection (Einspruch) to fine notice must reach the fine office",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "Formal delivery (Zustellungsurkunde) date on envelope: 08.11.2025 (Saturday); no days added. Day of delivery not counted; two weeks later is Saturday 22.11.2025. Saturday → next working day Monday 24.11.2025 (§ 43 Abs. 2 StPO; no holiday in NW).",
+          "due_date": "2025-11-24",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay fine and costs (EUR 128.50)",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "Payment period starts when the notice becomes final. Without objection that is the end of the objection period, 24.11.2025. Two weeks later: Monday 08.12.2025 (a working day). If an objection is filed, this date does not apply.",
+          "due_date": "2025-12-08",
+          "amount": 128.5,
+          "confidence": "medium"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment date depends on when the notice becomes final; 2025-12-08 assumes no objection is filed.",
+        "The system context gave two different 'today' dates (2025-11-08 and 2026-09-30); the user-stated 2025-11-08 was used. If today is actually 2026-09-30, both deadlines have already passed.",
+        "Check that the payee IBAN (DE43 5335 0000 0000 5050 50) matches the official notice before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1215,
+      "cache_read_tokens": 5462,
+      "cache_creation_tokens": 2687,
+      "cost_usd": 0.0239944,
+      "duration_ms": 8613,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

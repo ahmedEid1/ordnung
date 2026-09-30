@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7b5e09a1c5167a759dbcd3c6803fc630c4876900569d6d8958410fec370696df\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-11-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Paketzentrum Musterstadt – Zollabwicklung\",\"document_date\":\"2026-11-05\",\"references\":[{\"label\":\"Sendungsnummer\",\"value\":\"DE 4471 2290 5518\"}],\"amounts\":[38.9],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay import charges (as demanded; likely scam)\",\"quote\":\"Überweisen Sie 38,90 € bis 09.11.2026.\",\"computation\":\"Calendar date printed in the letter: 09.11.2026 (a Monday). No period to count. Not recommended to pay before verifying the sender; see warnings.\",\"due_date\":\"2026-11-09\",\"confidence\":\"medium\",\"amount\":38.9}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"Likely scam (fake customs/parcel fee): real import VAT and customs charges are collected by Deutsche Post/DHL, other carriers or German customs (Zoll), not by an unknown 'Intl. Parcel Clearing Ltd.'.\",\"The payee is a private-sounding company, not an authority, and the letter gives no customs reference number or tariff details.\",\"Pressure tactic: a very short deadline and a threat to return or destroy the parcel.\",\"Questions are accepted only via WhatsApp, and the email domain (clearance-mail.example) is not an official one.\",\"Do not pay or call the number before checking the shipment number directly with the real carrier or on the official Zoll website.\",\"The letter is addressed generically ('Sehr geehrte Empfängerin, sehr geehrter Empfänger') and gives no order or sender information, which suggests a mass mailing.\",\"The letter's sender address is in Musterstadt (44147) while the recipient lives in 37073, in a different region; check the details.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Paketzentrum Musterstadt – Zollabwicklung",
+      "document_date": "2026-11-05",
+      "references": [
+        {
+          "label": "Sendungsnummer",
+          "value": "DE 4471 2290 5518"
+        }
+      ],
+      "amounts": [
+        38.9
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay import charges (as demanded; likely scam)",
+          "quote": "Überweisen Sie 38,90 € bis 09.11.2026.",
+          "computation": "Calendar date printed in the letter: 09.11.2026 (a Monday). No period to count. Not recommended to pay before verifying the sender; see warnings.",
+          "due_date": "2026-11-09",
+          "confidence": "medium",
+          "amount": 38.9
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "Likely scam (fake customs/parcel fee): real import VAT and customs charges are collected by Deutsche Post/DHL, other carriers or German customs (Zoll), not by an unknown 'Intl. Parcel Clearing Ltd.'.",
+        "The payee is a private-sounding company, not an authority, and the letter gives no customs reference number or tariff details.",
+        "Pressure tactic: a very short deadline and a threat to return or destroy the parcel.",
+        "Questions are accepted only via WhatsApp, and the email domain (clearance-mail.example) is not an official one.",
+        "Do not pay or call the number before checking the shipment number directly with the real carrier or on the official Zoll website.",
+        "The letter is addressed generically ('Sehr geehrte Empfängerin, sehr geehrter Empfänger') and gives no order or sender information, which suggests a mass mailing.",
+        "The letter's sender address is in Musterstadt (44147) while the recipient lives in 37073, in a different region; check the details."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 766,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 1981,
+      "cost_usd": 0.0161988,
+      "duration_ms": 7132,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

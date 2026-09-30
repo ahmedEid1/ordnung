@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"692338e6ab28ac1ccfd9e8e0f1b8b148f79ca8076937f5e6199872ff1e2341dd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"Beispiel Krankenversicherung a.G.\",\"document_date\":\"2025-09-30\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"BKV 7710 448 2\"},{\"label\":\"Leistungsfall\",\"value\":\"LF-25-093317\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit operation report and physiotherapy prescription\",\"quote\":\"Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;\",\"computation\":\"Private insurer, so no deemed-delivery rule; period counts from the letter date 30.09.2025 (Tuesday), which is not counted. Arbeitstage are Mon-Fri excluding public holidays. 1 Oct (Wed)=1, 2 Oct (Thu)=2, 3 Oct (Fri) is German Unity Day and is skipped, 6 Oct (Mon)=3, 7 Oct=4, 8 Oct=5, 9 Oct=6, 10 Oct (Fri)=7. Due 2025-10-10.\",\"due_date\":\"2025-10-10\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"If the documents are not received by the deadline, the insurer will reimburse only the positions already documented.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "Beispiel Krankenversicherung a.G.",
+      "document_date": "2025-09-30",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "BKV 7710 448 2"
+        },
+        {
+          "label": "Leistungsfall",
+          "value": "LF-25-093317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit operation report and physiotherapy prescription",
+          "quote": "Wir benötigen die Unterlagen spätestens am 7. Arbeitstag nach dem Briefdatum;",
+          "computation": "Private insurer, so no deemed-delivery rule; period counts from the letter date 30.09.2025 (Tuesday), which is not counted. Arbeitstage are Mon-Fri excluding public holidays. 1 Oct (Wed)=1, 2 Oct (Thu)=2, 3 Oct (Fri) is German Unity Day and is skipped, 6 Oct (Mon)=3, 7 Oct=4, 8 Oct=5, 9 Oct=6, 10 Oct (Fri)=7. Due 2025-10-10.",
+          "due_date": "2025-10-10",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "If the documents are not received by the deadline, the insurer will reimburse only the positions already documented."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 840,
+      "cache_read_tokens": 5462,
+      "cache_creation_tokens": 1897,
+      "cost_usd": 0.017084400000000003,
+      "duration_ms": 10921,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

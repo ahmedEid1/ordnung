@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"44b3b7ec38a217200862bade992fe0117e0fa12ff2409f22db0b041ede978c79\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2026-09-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-09-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landratsamt Musterrode – Bußgeldstelle\",\"document_date\":\"2026-09-18\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 311/26-4471\"},{\"label\":\"Kennzeichen\",\"value\":\"MRO-OR 55\"}],\"amounts\":[118.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file objection (Einspruch) against the fine notice\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"Formal delivery (Postzustellungsurkunde): the envelope says delivered 22.09.2026 (Tuesday); no extra days are added. The delivery day is not counted. Two weeks later is the same weekday: Tuesday 06.10.2026. That is not a weekend or a Thuringian holiday, so there is no shift. The objection must reach the Bußgeldstelle by that day.\",\"due_date\":\"2026-10-06\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine of 118.50 EUR once the notice is final\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"The payment period starts when the notice becomes final (rechtskräftig). If no objection is filed, that is after the objection period ends on 06.10.2026. Earliest plausible start is 06.10.2026, and two weeks later is Tuesday 20.10.2026. The exact date of finality is not stated in the letter, so this is an estimate.\",\"due_date\":\"2026-10-20\",\"confidence\":\"low\",\"amount\":118.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline depends on the date the notice becomes final, which the letter does not state; 2026-10-20 is the earliest plausible estimate, so check for a later confirmation of finality before paying.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landratsamt Musterrode – Bußgeldstelle",
+      "document_date": "2026-09-18",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 311/26-4471"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MRO-OR 55"
+        }
+      ],
+      "amounts": [
+        118.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file objection (Einspruch) against the fine notice",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "Formal delivery (Postzustellungsurkunde): the envelope says delivered 22.09.2026 (Tuesday); no extra days are added. The delivery day is not counted. Two weeks later is the same weekday: Tuesday 06.10.2026. That is not a weekend or a Thuringian holiday, so there is no shift. The objection must reach the Bußgeldstelle by that day.",
+          "due_date": "2026-10-06",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine of 118.50 EUR once the notice is final",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "The payment period starts when the notice becomes final (rechtskräftig). If no objection is filed, that is after the objection period ends on 06.10.2026. Earliest plausible start is 06.10.2026, and two weeks later is Tuesday 20.10.2026. The exact date of finality is not stated in the letter, so this is an estimate.",
+          "due_date": "2026-10-20",
+          "confidence": "low",
+          "amount": 118.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline depends on the date the notice becomes final, which the letter does not state; 2026-10-20 is the earliest plausible estimate, so check for a later confirmation of finality before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1332,
+      "cache_read_tokens": 10924,
+      "cache_creation_tokens": 5347,
+      "cost_usd": 0.0369008,
+      "duration_ms": 11410,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"346d331cc425cdad6d1e0f46bdf0cdabc2aa601e120c6716240e6c4eaac99ed1\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-09-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz\",\"document_date\":\"2025-09-01\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.3-LSG-2025-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file Widerspruch against the rejection of the exemption for the boat jetty\",\"quote\":\"Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.\",\"computation\":\"Letter dated Mon 01.09.2025, no separate posting date, so posting day = 01.09.2025. Posted after 1 Jan 2025, so it counts as delivered on the 4th day after posting: Fri 05.09.2025. The Kreis is a general authority, so the delivery day does not move (and it is a working day anyway). The start day is not counted. One month later is Sun 05.10.2025. A Sunday end moves to the next working day: Mon 06.10.2025. It is not a public holiday in Schleswig-Holstein (3 Oct is the Friday before). The objection must reach the Kreis Nordmuster by 06.10.2025.\",\"due_date\":\"2025-10-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz",
+      "document_date": "2025-09-01",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.3-LSG-2025-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file Widerspruch against the rejection of the exemption for the boat jetty",
+          "quote": "Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.",
+          "computation": "Letter dated Mon 01.09.2025, no separate posting date, so posting day = 01.09.2025. Posted after 1 Jan 2025, so it counts as delivered on the 4th day after posting: Fri 05.09.2025. The Kreis is a general authority, so the delivery day does not move (and it is a working day anyway). The start day is not counted. One month later is Sun 05.10.2025. A Sunday end moves to the next working day: Mon 06.10.2025. It is not a public holiday in Schleswig-Holstein (3 Oct is the Friday before). The objection must reach the Kreis Nordmuster by 06.10.2025.",
+          "due_date": "2025-10-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1085,
+      "cache_read_tokens": 10924,
+      "cache_creation_tokens": 4525,
+      "cost_usd": 0.0311428,
+      "duration_ms": 9850,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

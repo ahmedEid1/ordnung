@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6afe0b8883d507ef8a86242924aad21bb830bc4240a37b87f05d81f60bc33d45\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-relative_business_days-E1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-12-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Wohnungsbaugenossenschaft Beispielbau eG\",\"document_date\":\"2026-12-16\",\"references\":[{\"label\":\"Nutzungsvertrag\",\"value\":\"NV-15-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply about the window replacement appointment\",\"quote\":\"Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.\",\"computation\":\"Period starts from the letter date 16.12.2026 (Wed); day of the letter not counted (§187 BGB), so counting begins 17.12. Werktage Mon-Sat excluding public holidays: 17.12 (1), 18.12 (2), 19.12 Sat (3), 20.12 Sun skipped, 21.12 (4), 22.12 (5), 23.12 (6), 24.12 (7), 25.12 and 26.12 Christmas holidays skipped, 27.12 Sun skipped, 28.12 (8), 29.12 (9), 30.12 (10). Last day Wed 30.12.2026, a working day, so no shift under §193 BGB.\",\"due_date\":\"2026-12-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"appointment\",\"title\":\"Window replacement in your apartment (starts 7:30, about six hours)\",\"quote\":\"Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.\",\"computation\":\"Appointment date printed in the letter: 12.01.2027, 7:30.\",\"due_date\":\"2027-01-12\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives no reply address; use the phone number or email in the footer (technik@beispielbau.example) and reply in time, since without a reply a replacement appointment will be set.\",\"The reply deadline counts 24.12 as a working day (Werktag) and skips 25.12 and 26.12 as holidays; if the landlord counts differently, the date could be earlier, so reply early.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Wohnungsbaugenossenschaft Beispielbau eG",
+      "document_date": "2026-12-16",
+      "references": [
+        {
+          "label": "Nutzungsvertrag",
+          "value": "NV-15-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply about the window replacement appointment",
+          "quote": "Teilen Sie uns bitte innerhalb von 10 Werktagen ab dem Briefdatum mit (Werktage sind Montag bis Samstag außer gesetzlichen Feiertagen), ob Sie den Termin wahrnehmen können.",
+          "computation": "Period starts from the letter date 16.12.2026 (Wed); day of the letter not counted (§187 BGB), so counting begins 17.12. Werktage Mon-Sat excluding public holidays: 17.12 (1), 18.12 (2), 19.12 Sat (3), 20.12 Sun skipped, 21.12 (4), 22.12 (5), 23.12 (6), 24.12 (7), 25.12 and 26.12 Christmas holidays skipped, 27.12 Sun skipped, 28.12 (8), 29.12 (9), 30.12 (10). Last day Wed 30.12.2026, a working day, so no shift under §193 BGB.",
+          "due_date": "2026-12-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "appointment",
+          "title": "Window replacement in your apartment (starts 7:30, about six hours)",
+          "quote": "Für Ihre Wohnung ist der 12.01.2027 vorgesehen; die Arbeiten beginnen um 7:30 Uhr und dauern etwa sechs Stunden.",
+          "computation": "Appointment date printed in the letter: 12.01.2027, 7:30.",
+          "due_date": "2027-01-12",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives no reply address; use the phone number or email in the footer (technik@beispielbau.example) and reply in time, since without a reply a replacement appointment will be set.",
+        "The reply deadline counts 24.12 as a working day (Werktag) and skips 25.12 and 26.12 as holidays; if the landlord counts differently, the date could be earlier, so reply early."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1294,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 1983,
+      "cost_usd": 0.0214868,
+      "duration_ms": 11096,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"2b619a538243a88ad9447870db50ff694eaa6d95f46a617440c2cfdff52f0313\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-10-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-10-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterhagen – Die Bürgermeisterin · Untere Bauaufsichtsbehörde\",\"document_date\":\"2027-09-27\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"63.4-NU-2027-0391\"}],\"amounts\":[1500],\"items\":[{\"kind\":\"deadline\",\"title\":\"File court action (Klage) against the prohibition order at Verwaltungsgericht Musterkirchen\",\"quote\":\"Die Klage ist binnen eines Monats nach der Bekanntgabe dieser Verfügung beim Verwaltungsgericht Musterkirchen, Justizplatz 1, 45879 Musterkirchen, schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle einzureichen;\",\"computation\":\"Letter dated Mon 27.09.2027, assumed posted that day. Under § 41 Abs. 2 VwVfG NRW a posted notice is deemed delivered on the third day after posting: 30.09.2027 (Thursday). Period of one month (§ 57 VwGO, § 188 Abs. 2 BGB) starts the next day and ends on the same-numbered day: 30.10.2027. That is a Saturday, so under § 193 BGB / § 57 Abs. 2 VwGO, § 222 ZPO it moves to the next working day. Mon 01.11.2027 is Allerheiligen, a public holiday in NRW. So the deadline is Tue 02.11.2027.\",\"due_date\":\"2027-11-02\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Stop residential use of the garden house completely\",\"quote\":\"Die Wohnnutzung ist bis zum 30.11.2027 vollständig aufzugeben.\",\"computation\":\"Calendar date printed in the letter: 30.11.2027 (Tuesday), so no adjustment is needed. If not complied with, a Zwangsgeld of 1,500.00 € becomes due.\",\"due_date\":\"2027-11-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The Klage deadline assumes the letter was posted on 27.09.2027. If it was posted later or delivered later, the deadline may shift, and if it was delivered later you must be able to prove that. Check the postmark and the envelope, and file early.\",\"The letter threatens a Zwangsgeld of 1,500.00 € if the residential use is not ended by 30.11.2027. Filing a Klage does not necessarily stop the order from taking effect, so consider getting legal advice quickly.\",\"The prompt gave two different 'today' dates (2027-10-03 and 2026-09-30). I used 2027-10-03 as instructed.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterhagen – Die Bürgermeisterin · Untere Bauaufsichtsbehörde",
+      "document_date": "2027-09-27",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "63.4-NU-2027-0391"
+        }
+      ],
+      "amounts": [
+        1500
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File court action (Klage) against the prohibition order at Verwaltungsgericht Musterkirchen",
+          "quote": "Die Klage ist binnen eines Monats nach der Bekanntgabe dieser Verfügung beim Verwaltungsgericht Musterkirchen, Justizplatz 1, 45879 Musterkirchen, schriftlich oder zur Niederschrift des Urkundsbeamten der Geschäftsstelle einzureichen;",
+          "computation": "Letter dated Mon 27.09.2027, assumed posted that day. Under § 41 Abs. 2 VwVfG NRW a posted notice is deemed delivered on the third day after posting: 30.09.2027 (Thursday). Period of one month (§ 57 VwGO, § 188 Abs. 2 BGB) starts the next day and ends on the same-numbered day: 30.10.2027. That is a Saturday, so under § 193 BGB / § 57 Abs. 2 VwGO, § 222 ZPO it moves to the next working day. Mon 01.11.2027 is Allerheiligen, a public holiday in NRW. So the deadline is Tue 02.11.2027.",
+          "due_date": "2027-11-02",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Stop residential use of the garden house completely",
+          "quote": "Die Wohnnutzung ist bis zum 30.11.2027 vollständig aufzugeben.",
+          "computation": "Calendar date printed in the letter: 30.11.2027 (Tuesday), so no adjustment is needed. If not complied with, a Zwangsgeld of 1,500.00 € becomes due.",
+          "due_date": "2027-11-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The Klage deadline assumes the letter was posted on 27.09.2027. If it was posted later or delivered later, the deadline may shift, and if it was delivered later you must be able to prove that. Check the postmark and the envelope, and file early.",
+        "The letter threatens a Zwangsgeld of 1,500.00 € if the residential use is not ended by 30.11.2027. Filing a Klage does not necessarily stop the order from taking effect, so consider getting legal advice quickly.",
+        "The prompt gave two different 'today' dates (2027-10-03 and 2026-09-30). I used 2027-10-03 as instructed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1601,
+      "cache_read_tokens": 3054,
+      "cache_creation_tokens": 2260,
+      "cost_usd": 0.0256648,
+      "duration_ms": 11072,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

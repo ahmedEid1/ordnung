@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"64df879ee5e61b888f8362c97feecc3bd6fce6b9a0eb2302ef63991472c44dda\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-F2"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-04-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> "
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz\",\"document_date\":\"2026-04-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS 22/2026-0187\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day for the objection (Widerspruch) against the housing-protection order to reach the Bezirksamt\",\"quote\":\"Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.\",\"computation\":\"Letter dated Thu 2026-04-02, no separate posting date. Posted after 1 Jan 2025, so it is deemed delivered on the 4th day after posting: Mon 2026-04-06 (Easter Monday). A city district office is a general authority, so the delivery day does not move. Period of one month starts 2026-04-07 and ends on the same day number one month later: Wed 2026-05-06. That is not a weekend or a Hamburg holiday, so there is no shift.\",\"due_date\":\"2026-05-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The order to stop short-term holiday letting has no fixed compliance date in the letter, and non-compliance may lead to a Zwangsgeld (coercive fine); an objection does not necessarily suspend the duty, so check with the office or a lawyer.\",\"The objection must actually reach the Bezirksamt by the deadline; sending it on that day is not enough.\",\"If today is later than 2026-05-06 (the system gave conflicting 'today' dates, 2026-04-08 and 2026-09-30), the objection period has probably expired, and you should seek legal advice promptly.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Freie und Hansestadt Hamburg, Bezirksamt Beispielbüttel, Fachamt Wohnraumschutz",
+      "document_date": "2026-04-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS 22/2026-0187"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day for the objection (Widerspruch) against the housing-protection order to reach the Bezirksamt",
+          "quote": "Ihr Widerspruch muss spätestens einen Monat nach Bekanntgabe dieses Bescheids beim Bezirksamt Beispielbüttel, Grindelberg 62, 20144 Hamburg, eingehen – schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift.",
+          "computation": "Letter dated Thu 2026-04-02, no separate posting date. Posted after 1 Jan 2025, so it is deemed delivered on the 4th day after posting: Mon 2026-04-06 (Easter Monday). A city district office is a general authority, so the delivery day does not move. Period of one month starts 2026-04-07 and ends on the same day number one month later: Wed 2026-05-06. That is not a weekend or a Hamburg holiday, so there is no shift.",
+          "due_date": "2026-05-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The order to stop short-term holiday letting has no fixed compliance date in the letter, and non-compliance may lead to a Zwangsgeld (coercive fine); an objection does not necessarily suspend the duty, so check with the office or a lawyer.",
+        "The objection must actually reach the Bezirksamt by the deadline; sending it on that day is not enough.",
+        "If today is later than 2026-05-06 (the system gave conflicting 'today' dates, 2026-04-08 and 2026-09-30), the objection period has probably expired, and you should seek legal advice promptly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1179,
+      "cache_read_tokens": 5462,
+      "cache_creation_tokens": 2168,
+      "cost_usd": 0.0215584,
+      "duration_ms": 9124,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

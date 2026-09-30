@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c514f1ea0d39a5215bd5afbaaac08de0f20791000e83df7835fa4c8204c4048a\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2026-08-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-appointment-E1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-08-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Verbandsgemeindeverwaltung Musterweiler – Standesamt\",\"document_date\":\"2026-08-07\",\"references\":[{\"label\":\"Vorgangs-Nr.\",\"value\":\"STA-2026-0417\"}],\"amounts\":[80],\"items\":[{\"kind\":\"appointment\",\"title\":\"Marriage registration appointment at the registry office\",\"quote\":\"Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.\",\"computation\":\"The letter gives a fixed calendar date and time: Tuesday 01.09.2026, 10:15. Appointments keep their printed date. 2026-09-01 is a Tuesday, which matches the letter.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay registration fee on site (cash or card)\",\"quote\":\"Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.\",\"computation\":\"The fee is paid on site at the appointment on 2026-09-01. No separate period applies.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\",\"amount\":80},{\"kind\":\"task\",\"title\":\"Bring valid IDs and certified birth register copies no older than six months\",\"quote\":\"Bitte kommen Sie beide persönlich und bringen Sie Ihre gültigen Ausweise sowie beglaubigte Abschriften aus dem Geburtenregister mit, die nicht älter als sechs Monate sind.\",\"computation\":\"Both partners must attend in person on the appointment date, 2026-09-01. The birth register copies must be no older than six months on that date, so issued on or after 2026-03-01.\",\"due_date\":\"2026-09-01\",\"confidence\":\"high\"}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The appointment date (2026-09-01) has already passed as of today (2026-09-30); contact the Standesamt on 06531 71-120 to rebook.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Verbandsgemeindeverwaltung Musterweiler – Standesamt",
+      "document_date": "2026-08-07",
+      "references": [
+        {
+          "label": "Vorgangs-Nr.",
+          "value": "STA-2026-0417"
+        }
+      ],
+      "amounts": [
+        80
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Marriage registration appointment at the registry office",
+          "quote": "Dienstag, 01.09.2026, 10:15 Uhr, Rathaus Musterweiler, Zimmer 12 im Erdgeschoss.",
+          "computation": "The letter gives a fixed calendar date and time: Tuesday 01.09.2026, 10:15. Appointments keep their printed date. 2026-09-01 is a Tuesday, which matches the letter.",
+          "due_date": "2026-09-01",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay registration fee on site (cash or card)",
+          "quote": "Die Gebühr für die Anmeldung beträgt 80,00 €; Sie können vor Ort bar oder mit Karte zahlen.",
+          "computation": "The fee is paid on site at the appointment on 2026-09-01. No separate period applies.",
+          "due_date": "2026-09-01",
+          "confidence": "high",
+          "amount": 80
+        },
+        {
+          "kind": "task",
+          "title": "Bring valid IDs and certified birth register copies no older than six months",
+          "quote": "Bitte kommen Sie beide persönlich und bringen Sie Ihre gültigen Ausweise sowie beglaubigte Abschriften aus dem Geburtenregister mit, die nicht älter als sechs Monate sind.",
+          "computation": "Both partners must attend in person on the appointment date, 2026-09-01. The birth register copies must be no older than six months on that date, so issued on or after 2026-03-01.",
+          "due_date": "2026-09-01",
+          "confidence": "high"
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The appointment date (2026-09-01) has already passed as of today (2026-09-30); contact the Standesamt on 06531 71-120 to rebook."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 874,
+      "cache_read_tokens": 6108,
+      "cache_creation_tokens": 3941,
+      "cost_usd": 0.0257336,
+      "duration_ms": 8381,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8f811aaf63b7492e4495629006f8b412869a7a8aeb25b658bf58fede91d62487\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-04-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"ZFB Zentrale Forderungsbeitreibung s.r.o.\",\"document_date\":\"2025-04-07\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZFB-25-0407-118\"}],\"amounts\":[268.7],\"items\":[{\"kind\":\"payment\",\"title\":\"Demanded payment of total claim (likely scam, do not pay without checking)\",\"quote\":\"Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.\",\"computation\":\"The letter prints a calendar date, 11.04.2025, and it matches 4 days from the letter date of 07.04.2025. The sender is a private company, so no deemed-delivery rule applies. 11.04.2025 is a Friday and not a public holiday in NRW, so there is no shift. The due date is as printed.\",\"due_date\":\"2025-04-11\",\"confidence\":\"high\",\"amount\":268.7}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"Strong scam or pressure indicators: a 4-day deadline, threats of wage garnishment and credit bureau entries, and the claim that objections will no longer be processed.\",\"The payee is a private individual (R. Horváth) with a Slovak IBAN (SK20...) on a 'Sonderkonto', not the collection company's own account. This is a typical fraud pattern.\",\"A genuine debt collector cannot apply for a Vollstreckungsbescheid 'without further notice'. A court must first issue a Mahnbescheid, and you can object to it. The statement that objections are not processed is legally wrong.\",\"The letter is addressed to 'Sehr geehrter Schuldner' and does not name the creditor's contract, the subscription dates or an invoice. The collection costs (96.00 EUR) and address-research costs (22.80 EUR) look inflated and unexplained.\",\"Do not pay yet. Check whether you ever had a 'Glücksmuster Premium' subscription. If you did not, ask in writing for proof of the claim and the assignment. Consider contacting a consumer advice centre (Verbraucherzentrale), and report it to the police if it is fraud.\",\"The 11.04.2025 date is being reported as printed. The letter's pressure is not a legal deadline, and your rights to dispute the claim are unaffected.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "ZFB Zentrale Forderungsbeitreibung s.r.o.",
+      "document_date": "2025-04-07",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZFB-25-0407-118"
+        }
+      ],
+      "amounts": [
+        268.7
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Demanded payment of total claim (likely scam, do not pay without checking)",
+          "quote": "Der Betrag ist binnen 4 Tagen, das heißt bis spätestens 11.04.2025, auf das Sonderkonto IBAN SK20 1100 0000 0029 4512 3456 (Empfänger: R. Horváth, Verwendungszweck ZFB-25-0407-118) zu überweisen.",
+          "computation": "The letter prints a calendar date, 11.04.2025, and it matches 4 days from the letter date of 07.04.2025. The sender is a private company, so no deemed-delivery rule applies. 11.04.2025 is a Friday and not a public holiday in NRW, so there is no shift. The due date is as printed.",
+          "due_date": "2025-04-11",
+          "confidence": "high",
+          "amount": 268.7
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "Strong scam or pressure indicators: a 4-day deadline, threats of wage garnishment and credit bureau entries, and the claim that objections will no longer be processed.",
+        "The payee is a private individual (R. Horváth) with a Slovak IBAN (SK20...) on a 'Sonderkonto', not the collection company's own account. This is a typical fraud pattern.",
+        "A genuine debt collector cannot apply for a Vollstreckungsbescheid 'without further notice'. A court must first issue a Mahnbescheid, and you can object to it. The statement that objections are not processed is legally wrong.",
+        "The letter is addressed to 'Sehr geehrter Schuldner' and does not name the creditor's contract, the subscription dates or an invoice. The collection costs (96.00 EUR) and address-research costs (22.80 EUR) look inflated and unexplained.",
+        "Do not pay yet. Check whether you ever had a 'Glücksmuster Premium' subscription. If you did not, ask in writing for proof of the claim and the assignment. Consider contacting a consumer advice centre (Verbraucherzentrale), and report it to the police if it is fraud.",
+        "The 11.04.2025 date is being reported as printed. The letter's pressure is not a legal deadline, and your rights to dispute the claim are unaffected."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1253,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2353,
+      "cost_usd": 0.023220400000000002,
+      "duration_ms": 9500,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

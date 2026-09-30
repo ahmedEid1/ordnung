@@ -1,0 +1,129 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"2b0aaebbbfd5786de7cbbd597f37ac143f601f5a4b11d5d46c3a89ed6ec4d5b1\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- Beitragsservice Musterstadt (public_broadcaster)\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"title\":\"Library reminder: overdue books (1st reminder)\",\"summary\":\"Stadtbibliothek Musterstadt reminds you that two borrowed items are overdue, with fees of €4.50 so far. Please return them by 2 October 2026.\",\"explanation\":\"Two library items are past their loan period. Fees of €4.50 have built up so far. Return the items by 2 October 2026, at the service desk or in the return box, which is open around the clock. You can pay the fees when you return them. After that date, fees rise by €0.50 per item per opening day. Once fees reach €10.00, your account is blocked for further loans. If nobody has reserved the items, you can also extend the loan online.\",\"case_title\":\"Overdue library books\",\"area\":\"leisure\",\"document_date\":\"2026-09-22\",\"language\":\"German\",\"recipient_name\":\"Sam Rivera\",\"sender\":{\"name\":\"Stadtbibliothek Musterstadt\",\"kind\":\"authority\",\"address\":\"Bibliotheksplatz 2, 12345 Musterstadt\",\"phone\":\"0123 400-7700\"},\"items\":[{\"kind\":\"deadline\",\"title\":\"Return overdue media\",\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-02\",\"text\":\"bis zum 02.10.2026\",\"nature\":\"declaration\",\"shift_rule\":\"auto\"},\"quote\":\"Bitte geben Sie die Medien bis zum 02.10.2026 zurück.\",\"action\":\"Return both items to the library by the date shown (service desk or return box), or extend the loan online if no one has reserved them.\",\"consequence\":\"After this date fees rise by €0.50 per item per opening day, and at €10.00 your account is blocked for further loans.\",\"priority\":\"high\"},{\"kind\":\"payment\",\"title\":\"Pay overdue fees\",\"date\":{\"type\":\"none\",\"text\":\"bei der Rückgabe\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"quote\":\"Die bisher entstandenen Gebühren in Höhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten bezahlen.\",\"action\":\"Pay the €4.50 fees when returning the items, at the service desk or the payment machine.\",\"amount\":4.5,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Total fees so far (Summe der Gebühren)\",\"value\":\"4,50 €\",\"quote\":\"Summe der Gebühren   4,50 €\"},{\"label\":\"Fee increase after deadline\",\"value\":\"0,50 € pro Medium und Öffnungstag\",\"quote\":\"Nach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt.\"},{\"label\":\"Account blocked at fees of\",\"value\":\"10,00 €\",\"quote\":\"Nach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt.\"},{\"label\":\"Due date of 'Einführung in die Statistik mit R'\",\"value\":\"08.09.2026\",\"quote\":\"Einführung in die Statistik mit R   30031 004 812   08.09.2026   2,50 €\"},{\"label\":\"Due date of 'Deutsch im Alltag B2 – Übungsbuch'\",\"value\":\"15.09.2026\",\"quote\":\"Deutsch im Alltag B2 – Übungsbuch   30031 017 455   15.09.2026   2,00 €\"},{\"label\":\"Opening hours (Öffnungszeiten)\",\"value\":\"Di–Fr 10–19 Uhr, Sa 10–14 Uhr\",\"quote\":\"Bibliotheksplatz 2 · 12345 Musterstadt   Di–Fr 10–19 Uhr, Sa 10–14 Uhr   IBAN DE51 1234 5600 0000 1000 17\"}],\"references\":[{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"}],\"payment\":{\"iban\":\"DE51123456000000100017\",\"payee\":\"Stadtkasse Musterstadt\",\"reference\":null},\"remedy\":{\"type\":\"none\"},\"urgency\":\"high\",\"tax_relevant\":false,\"warnings\":[],\"high_stakes_kind\":null}",
+    "data": {
+      "kind": "dunning",
+      "title": "Library reminder: overdue books (1st reminder)",
+      "summary": "Stadtbibliothek Musterstadt reminds you that two borrowed items are overdue, with fees of €4.50 so far. Please return them by 2 October 2026.",
+      "explanation": "Two library items are past their loan period. Fees of €4.50 have built up so far. Return the items by 2 October 2026, at the service desk or in the return box, which is open around the clock. You can pay the fees when you return them. After that date, fees rise by €0.50 per item per opening day. Once fees reach €10.00, your account is blocked for further loans. If nobody has reserved the items, you can also extend the loan online.",
+      "case_title": "Overdue library books",
+      "area": "leisure",
+      "document_date": "2026-09-22",
+      "language": "German",
+      "recipient_name": "Sam Rivera",
+      "sender": {
+        "name": "Stadtbibliothek Musterstadt",
+        "kind": "authority",
+        "address": "Bibliotheksplatz 2, 12345 Musterstadt",
+        "phone": "0123 400-7700"
+      },
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return overdue media",
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-02",
+            "text": "bis zum 02.10.2026",
+            "nature": "declaration",
+            "shift_rule": "auto"
+          },
+          "quote": "Bitte geben Sie die Medien bis zum 02.10.2026 zurück.",
+          "action": "Return both items to the library by the date shown (service desk or return box), or extend the loan online if no one has reserved them.",
+          "consequence": "After this date fees rise by €0.50 per item per opening day, and at €10.00 your account is blocked for further loans.",
+          "priority": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Pay overdue fees",
+          "date": {
+            "type": "none",
+            "text": "bei der Rückgabe",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "quote": "Die bisher entstandenen Gebühren in Höhe von 4,50 € können Sie bei der Rückgabe an der Servicetheke oder am Kassenautomaten bezahlen.",
+          "action": "Pay the €4.50 fees when returning the items, at the service desk or the payment machine.",
+          "amount": 4.5,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "normal"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Total fees so far (Summe der Gebühren)",
+          "value": "4,50 €",
+          "quote": "Summe der Gebühren   4,50 €"
+        },
+        {
+          "label": "Fee increase after deadline",
+          "value": "0,50 € pro Medium und Öffnungstag",
+          "quote": "Nach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt."
+        },
+        {
+          "label": "Account blocked at fees of",
+          "value": "10,00 €",
+          "quote": "Nach Ablauf dieser Frist erhöhen sich die Gebühren um 0,50 € pro Medium und Öffnungstag; ab einem Gebührenstand von 10,00 € wird Ihr Benutzerkonto für weitere Ausleihen gesperrt."
+        },
+        {
+          "label": "Due date of 'Einführung in die Statistik mit R'",
+          "value": "08.09.2026",
+          "quote": "Einführung in die Statistik mit R   30031 004 812   08.09.2026   2,50 €"
+        },
+        {
+          "label": "Due date of 'Deutsch im Alltag B2 – Übungsbuch'",
+          "value": "15.09.2026",
+          "quote": "Deutsch im Alltag B2 – Übungsbuch   30031 017 455   15.09.2026   2,00 €"
+        },
+        {
+          "label": "Opening hours (Öffnungszeiten)",
+          "value": "Di–Fr 10–19 Uhr, Sa 10–14 Uhr",
+          "quote": "Bibliotheksplatz 2 · 12345 Musterstadt   Di–Fr 10–19 Uhr, Sa 10–14 Uhr   IBAN DE51 1234 5600 0000 1000 17"
+        }
+      ],
+      "references": [
+        {
+          "label": "Benutzer-Nr.",
+          "value": "0481 1123 5"
+        }
+      ],
+      "payment": {
+        "iban": "DE51123456000000100017",
+        "payee": "Stadtkasse Musterstadt",
+        "reference": null
+      },
+      "remedy": {
+        "type": "none"
+      },
+      "urgency": "high",
+      "tax_relevant": false,
+      "warnings": [],
+      "high_stakes_kind": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1845,
+      "cache_read_tokens": 8885,
+      "cache_creation_tokens": 2471,
+      "cost_usd": 0.030115000000000003,
+      "duration_ms": 10406,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

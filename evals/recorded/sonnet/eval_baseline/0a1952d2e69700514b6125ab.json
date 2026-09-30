@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "sonnet",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"346d331cc425cdad6d1e0f46bdf0cdabc2aa601e120c6716240e6c4eaac99ed1\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-09-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-municipal_decision-E2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz\",\"document_date\":\"2025-09-01\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.3-LSG-2025-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Last day to file Widerspruch against the refusal of the exemption\",\"quote\":\"Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.\",\"computation\":\"Letter dated 2025-09-01; assumed posted that day. Per the letter and Schleswig-Holstein administrative procedure law, it counts as announced on the 4th day after posting: 2025-09-05 (Friday). The one-month period starts the next day and ends on the same day number of the next month: 2025-10-05, a Sunday. Under § 31 VwVfG / § 193 BGB the deadline moves to the next working day, Monday 2025-10-06. It is not a public holiday in SH.\",\"due_date\":\"2025-10-06\",\"confidence\":\"medium\"}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter does not state the day it was posted. The calculation assumes it was posted on the letter date, 2025-09-01. If it was posted later, the deadline moves later. To be safe, file by 2025-10-06 or earlier.\",\"Widerspruch must be in writing, sent electronically with a qualified signature, or recorded in person at the Kreis. A plain email does not meet the form requirement.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Kreis Nordmuster – Der Landrat, Fachdienst Naturschutz",
+      "document_date": "2025-09-01",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.3-LSG-2025-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Last day to file Widerspruch against the refusal of the exemption",
+          "quote": "Möchten Sie die Entscheidung anfechten, erheben Sie Widerspruch – innerhalb eines Monats, gerechnet ab der Bekanntgabe, schriftlich, elektronisch mit qualifizierter Signatur oder zur Niederschrift beim Kreis Nordmuster, Kreishaus, Marktstraße 1, 25813 Musterwik.",
+          "computation": "Letter dated 2025-09-01; assumed posted that day. Per the letter and Schleswig-Holstein administrative procedure law, it counts as announced on the 4th day after posting: 2025-09-05 (Friday). The one-month period starts the next day and ends on the same day number of the next month: 2025-10-05, a Sunday. Under § 31 VwVfG / § 193 BGB the deadline moves to the next working day, Monday 2025-10-06. It is not a public holiday in SH.",
+          "due_date": "2025-10-06",
+          "confidence": "medium"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the day it was posted. The calculation assumes it was posted on the letter date, 2025-09-01. If it was posted later, the deadline moves later. To be safe, file by 2025-10-06 or earlier.",
+        "Widerspruch must be in writing, sent electronically with a qualified signature, or recorded in person at the Kreis. A plain email does not meet the form requirement."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1142,
+      "cache_read_tokens": 6372,
+      "cache_creation_tokens": 2429,
+      "cost_usd": 0.0224144,
+      "duration_ms": 8650,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
