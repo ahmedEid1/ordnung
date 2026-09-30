@@ -66,6 +66,7 @@ from ordnung.ingest.pipeline import HIDDEN_TEXT_WARNING, NO_TEXT_ERROR, injectio
 from ordnung.ingest.plan import (
     ComputedDate,
     VerifiedItem,
+    checked_evidence,
     compute_item,
     end_date_grounding,
     remedy_text,
@@ -410,8 +411,8 @@ def _ordnung_item(verified: VerifiedItem, computed: ComputedDate) -> PredictedIt
         confidence=receipt.confidence if receipt else None,
         spec=item.date.model_dump(mode="json"),
         grounding=verified.evidence.grounding,
-        value_consistent=verified.evidence.value_consistent,
-        needs_check=verified.needs_check,
+        value_consistent=checked_evidence(verified, computed).value_consistent,
+        needs_check=verified.needs_check or computed.conflict,
         rule_ids=list(receipt.rule_ids) if receipt else [],
         explanation=receipt.summary if receipt else "",
         notes=list(receipt.warnings) if receipt else [],

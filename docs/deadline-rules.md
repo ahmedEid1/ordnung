@@ -66,6 +66,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Any other letter from a court (not filed as a court order) | No 4-day fiction (counts from the letter's date or the entered delivery day) and never `high`, whatever kind it was filed as. |
 | Whether an operating-cost statement came too late | Resolved in the landlord's favour: called late only when it certainly arrived after the deadline (section 7). |
 | Letter's period differs from the statute (e.g. "6 weeks" for a tax objection) | Computes both and uses the earlier date. |
+| The letter gives two different dates for the same payment or deadline (a period in the text and another date in the payment box; two dates for the letter itself) | Keeps the earlier date, names both in a warning and says why in the receipt; `low`, "Please check" (`conflicting_dates`). A reminder repeating the original due date, a payment date next to an objection deadline, or an early-payment discount date (*Skonto*) is no conflict. |
 | Notice period missing from a contract | Assumes the longest notice the law allows (earliest deadline). |
 | Notice deadline on a weekend/holiday | No shift (BGH III ZR 172/04) + a `safe_date` on the working day before. |
 | 3rd *Werktag* for a tenancy notice is a Saturday | Keeps the Saturday (see section 8). |
@@ -1110,7 +1111,7 @@ action, contracts, sending and form, price increases).
 | `bgb_556b` | Rent is due by the 3rd working day of the month (Saturday doesn't count) | § 556b Abs. 1 BGB; BGH VIII ZR 129/09 | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__556b.html) |
 | `bgb_355`, `bgb_356_4`, `bgb_356a` | Withdrawal: 14 days; without instructions; withdrawal button | § 355, § 356 Abs. 2–4 BGB; Art. 10 RL 2011/83/EU; § 356a BGB | `bgb_356a` 2026-06-19 | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/bgb/__355.html) |
 | `ao_222` | Tax payment deferral (Stundung) | § 222 AO | — | [gesetze-im-internet.de](https://www.gesetze-im-internet.de/ao_1977/__222.html) |
-| `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days`, `termination_end` | Ordnung's own policies | — | — | — |
+| `date_as_written`, `safe_date`, `postal_buffer`, `contract_as_written`, `unit_business_days`, `termination_end`, `conflicting_dates` | Ordnung's own policies | — | — | — |
 
 ---
 

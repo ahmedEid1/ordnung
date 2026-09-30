@@ -29,6 +29,7 @@ from typing import Any, Literal
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.ingest.conflicts import Rival, find_rivals, settle
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -143,12 +144,15 @@ def slot_keys(items: Sequence[ExtractedItem]) -> list[str]:
 
 @dataclass(frozen=True)
 class VerifiedItem:
-    """An extracted item with its evidence and the problems found between its values and quote."""
+    """An extracted item with its evidence and the problems found between its values and quote.
+    ``rivals``: the letter's other statements that date the same obligation
+    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle."""
 
     item: ExtractedItem
     evidence: Evidence
     reasons: tuple[str, ...]
     slot_key: str
+    rivals: tuple[Rival, ...] = ()
 
     @property
     def dated(self) -> bool:
@@ -249,14 +253,22 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
 
 
 def _verify_item(
-    doc_id: str, item: ExtractedItem, key: str, pages: Sequence[PageInput], *, index: int, trace: Span
+    doc_id: str,
+    item: ExtractedItem,
+    key: str,
+    pages: Sequence[PageInput],
+    *,
+    others: Sequence[ExtractedItem],
+    index: int,
+    trace: Span,
 ) -> VerifiedItem:
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
         reasons = consistency_reasons(item, pages)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
-    return VerifiedItem(item=item, evidence=evidence, reasons=reasons, slot_key=key)
+    rivals = find_rivals(item, others, pages)
+    return VerifiedItem(item=item, evidence=evidence, reasons=reasons, slot_key=key, rivals=rivals)
 
 
 def _grounded(
@@ -291,7 +303,7 @@ def verify_extraction(
     """
     with trace.span("verify", "Check quotes", key="quotes", stage="verify") as step:
         items = [
-            _verify_item(doc_id, item, key, pages, index=index, trace=step)
+            _verify_item(doc_id, item, key, pages, others=extraction.items, index=index, trace=step)
             for index, (item, key) in enumerate(
                 zip(extraction.items, slot_keys(extraction.items), strict=True)
             )
@@ -522,12 +534,15 @@ def own_context(store: Store, item: Item, today: date) -> RuleContext:
 
 @dataclass(frozen=True)
 class ComputedDate:
-    """The rules engine's result for one item."""
+    """The rules engine's result for one item. ``conflict``: the letter gives the item another date
+    too; the earlier one was kept (:func:`~ordnung.ingest.conflicts.settle`) and the item is "Please
+    check" (:func:`checked_evidence`)."""
 
     receipt: ComputationReceipt | None
     due_date: str | None
     send_by: str | None
     source: DueDateSource
+    conflict: bool = False
 
 
 def grade_receipt(receipt: ComputationReceipt, verified: VerifiedItem) -> ComputationReceipt:
@@ -549,10 +564,27 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
     ctx = replace(ctx, quote=verified.item.quote)
     receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
-    source: DueDateSource = (
-        "none" if receipt.due_date is None else ("fixed" if spec.type == "fixed" else "computed")
+    fixed = spec.type == "fixed"
+    settled = settle(receipt, verified.item, verified.rivals, ctx, postal_buffer_days=postal_buffer_days)
+    if settled is not None:
+        receipt, fixed = settled.receipt, settled.fixed
+    source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
+    return ComputedDate(
+        receipt=receipt,
+        due_date=receipt.due_date,
+        send_by=receipt.send_by,
+        source=source,
+        conflict=settled is not None,
     )
-    return ComputedDate(receipt=receipt, due_date=receipt.due_date, send_by=receipt.send_by, source=source)
+
+
+def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:
+    """The item's evidence as stored: not ``value_consistent`` when the letter gives the item two dates
+    (``computed.conflict``) — its quote states only one of them, so the to-do is "Please check"
+    (:func:`needs_check`)."""
+    if not computed.conflict:
+        return verified.evidence
+    return verified.evidence.model_copy(update={"value_consistent": False})
 
 
 def is_statement(kind: str | None, extraction: DocumentExtraction | None, *, chosen: bool = False) -> bool:
@@ -943,7 +975,7 @@ def _item_fields(
         "party_id": links.party.id if links.party else None,
         "case_id": links.case.id if links.case else None,
         "contract_id": links.contract.id if links.contract else None,
-        "evidence": [verified.evidence],
+        "evidence": [checked_evidence(verified, computed)],
         "grounding": verified.evidence.grounding,
         "due_date_source": computed.source,
         "origin": "extracted",

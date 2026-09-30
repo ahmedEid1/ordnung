@@ -277,6 +277,18 @@ def parse_dates(text: str) -> list[DateMention]:
     return mentions
 
 
+def date_spans(folded: str) -> list[tuple[int, int, DateMention]]:
+    """The dates of :func:`parse_dates` with where each stands, ``(start, end, mention)``, in ``folded``:
+    a text already folded (:func:`~ordnung.ingest.normalize.fold_punctuation`), whose offsets these are
+    (an ambiguous slash date gives both readings at the same span)."""
+    return [
+        (match.start(), match.end(), mention)
+        for match in _DATE_PATTERN.finditer(folded)
+        for mention in _date_readings(match)
+        if _valid(mention)
+    ]
+
+
 def _date_readings(match: re.Match[str]) -> list[DateMention]:
     g = match.groupdict()
     raw = match.group().strip()

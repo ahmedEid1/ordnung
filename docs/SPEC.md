@@ -431,6 +431,17 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    contradicts is dropped, a failing IBAN is said once in Ordnung's words; UI audit R1-backend-7).
 7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
 
+**Two dates for one obligation** (`ingest/conflicts.py`, code only). At **verify**, each dated to-do
+(not a recurring one, money coming in, or one whose sentence speaks of a discount) is checked against
+the letter's other statements of the same nature — a payment's date or period ("Zahlbar bis",
+"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, and for a period counted from the letter a
+date the letter gives for itself ("mit diesem Bescheid vom …") — never its own sentence, another
+to-do's date, a statement naming another amount or in the past tense, or an early-payment discount
+(*Skonto*: paying after it is not late). At **compute** the engine dates each; a same date, or a
+written date before the letter's own (a reminder's original due date), is no conflict. Otherwise the
+to-do keeps the **earlier** date, its receipt names both and says why (`conflicting_dates`), and it is
+`low` and "Please check" — also when the letter's dates are recomputed.
+
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
 ("Reading the text"); a scanned PDF shows both.
