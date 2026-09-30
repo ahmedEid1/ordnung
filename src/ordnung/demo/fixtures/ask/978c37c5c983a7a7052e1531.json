@@ -2,22 +2,22 @@
   "request": {
     "purpose": "ask",
     "model": "sonnet",
-    "prompt_version": "9+1",
-    "cache_key": "ask:{\"history\":null,\"ledger\":\"2d698bfda0ef6a3a85def9cda6b66b9e4db847a6afe17b1bc53b51bdc9a58d9d\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
     "attachments": [],
     "doc_ids": [],
     "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
   },
   "response": {
-    "text": "Here are your October deadlines:\n\n**To-dos:**\n- Return overdue library books to Stadtbibliothek Musterstadt, due Fri 2 Oct 2026 [item:itm_ghq58jjdz149] — fees keep rising the longer it's late, per the letter.\n- Decide whether to object (Widerspruch) to Muster BKK's contribution notice, due Wed 14 Oct 2026, send by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg].\n- Decide whether to file an objection (Einspruch) against the Finanzamt Musterstadt assessment, due Wed 21 Oct 2026, send by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a]. If in doubt, consider getting advice before this one.\n\n**Contract deadlines:**\n- FunkNetz Mobil (FunkNetz Smart M) cancellation: must arrive by Wed 14 Oct 2026, so send by Thu 8 Oct 2026; current term ends Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2].\n- Stadtwerke Musterstadt energy contract (MusterStrom Flex): a price increase takes effect Sun 1 Nov 2026 — to cancel without notice before that, it must arrive by Sat 31 Oct 2026, so send by Mon 26 Oct 2026 (safe by Fri 30 Oct 2026) [contract:ctr_bbzemyapzvm5].\n\nYou can draft cancellation/objection letters or mark items done from within Ordnung.",
+    "text": "Here are the deadlines coming up in October:\n\n**To-dos**\n- **Return overdue library books** to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0] — due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Late fees keep rising until the account is blocked.\n- **Decide on objecting (Widerspruch)** to Muster BKK's [party:pty_eatxsexnt9s3] contribution notice — due Wed 14 Oct 2026, so post by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. Contributions are owed at the assessed amount even if you object.\n- **Decide on objecting (Einspruch)** to the tax assessment from Finanzamt Musterstadt [party:pty_mcq97yavgqjy] — due Wed 21 Oct 2026, so post by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a]. If missed, the assessment becomes final.\n\n**Contract cancellation deadlines**\n- **FunkNetz Smart M** mobile contract with FunkNetz Mobil GmbH [party:pty_gjsv4q2d3ajw] — cancel by Wed 14 Oct 2026, send by Thu 8 Oct 2026 [contract:ctr_fyt9k994t9q2]; current term ends Sat 14 Nov 2026.\n- **MusterStrom Flex** energy contract with Stadtwerke Musterstadt GmbH [party:pty_fh8cf155ffm3] — a price increase takes effect Sun 1 Nov 2026; to cancel without notice before it applies, it must arrive by Sat 31 Oct 2026, so send by Mon 26 Oct 2026 (safe by Fri 30 Oct 2026) [contract:ctr_bbzemyapzvm5].\n\nFor the objections, if you're unsure, it may be worth getting advice before the deadline.",
     "data": null,
     "usage": {
       "input_tokens": 4,
-      "output_tokens": 738,
-      "cache_read_tokens": 12836,
-      "cache_creation_tokens": 3042,
-      "cost_usd": 0.0221232,
-      "duration_ms": 9844,
+      "output_tokens": 829,
+      "cache_read_tokens": 13000,
+      "cache_creation_tokens": 3007,
+      "cost_usd": 0.022926000000000002,
+      "duration_ms": 9981,
       "turns": 2
     },
     "model": "claude-sonnet-5",
@@ -30,32 +30,40 @@
       "type": "tool_use",
       "name": "mcp__ordnung__list_items",
       "input": {
+        "kind": "deadline",
         "from_date": "2026-10-01",
-        "to_date": "2026-10-31",
-        "kind": "deadline"
+        "to_date": "2026-10-31"
       },
-      "tool_use_id": "toolu_011zY3ZwPaw37kWmzN5XkmWB"
+      "tool_use_id": "toolu_01JuPk2hJsVtqz7iejwzsbiz"
     },
     {
       "type": "tool_result",
       "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"}],\"contract_deadlines\":[{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"current_term_end\":\"2026-11-14\",\"confidence\":\"high\"},{\"id\":\"ctr_bbzemyapzvm5\",\"category\":\"energy\",\"status\":\"active\",\"party_id\":\"pty_fh8cf155ffm3\",\"special_cancellation\":{\"doc_id\":\"doc_asph8a6ddy4e\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"effective_date\":\"2026-11-01\",\"cancel_by\":\"2026-10-31\",\"send_by\":\"2026-10-26\",\"safe_date\":\"2026-10-30\",\"confidence\":\"high\",\"summary\":\"The price goes up on Sun 1 Nov 2026: cancel without notice so it arrives by Sat 31 Oct 2026, and the new price never applies.\"}}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_mtehckcf6q7a\":{\"title\":\"Decide whether to file an objection (Einspruch) against the assessment\",\"action\":\"Review the assessment and, if you disagree with it, file an objection (Einspruch) with Finanzamt Musterstadt in writing, electronically, or to record, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the assessment becomes final (bestandskräftig) and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"ctr_bbzemyapzvm5\":{\"name\":\"MusterStrom Flex\"}}\n</untrusted_document>",
-      "tool_use_id": "toolu_011zY3ZwPaw37kWmzN5XkmWB"
+      "tool_use_id": "toolu_01JuPk2hJsVtqz7iejwzsbiz"
     },
     {
       "type": "text",
-      "text": "Here are your October deadl"
+      "text": "Here are the deadlines"
     },
     {
       "type": "text",
-      "text": "ines:\n\n**To"
+      "text": " coming up in October:"
     },
     {
       "type": "text",
-      "text": "-dos:**\n-"
+      "text": "\n\n**To"
     },
     {
       "type": "text",
-      "text": " Return overdue library books to"
+      "text": "-dos**\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Return overdue library"
+    },
+    {
+      "type": "text",
+      "text": " books** to"
     },
     {
       "type": "text",
@@ -67,67 +75,71 @@
     },
     {
       "type": "text",
-      "text": "adt, due"
+      "text": "adt [party:p"
     },
     {
       "type": "text",
-      "text": " F"
+      "text": "ty_d2ymm5"
     },
     {
       "type": "text",
-      "text": "ri 2 Oct "
+      "text": "s3htd0] — due"
     },
     {
       "type": "text",
-      "text": "2026 [item:itm"
+      "text": " Fri 2 O"
     },
     {
       "type": "text",
-      "text": "_ghq58jjd"
+      "text": "ct 2026 [item:"
     },
     {
       "type": "text",
-      "text": "z149] — f"
+      "text": "itm_ghq58j"
     },
     {
       "type": "text",
-      "text": "ees keep r"
+      "text": "jdz149]. Late"
     },
     {
       "type": "text",
-      "text": "ising the"
+      "text": " fees keep rising until the"
     },
     {
       "type": "text",
-      "text": " longer it's late"
+      "text": " account is blocked.\n-"
     },
     {
       "type": "text",
-      "text": ", per"
+      "text": " **Decide on"
     },
     {
       "type": "text",
-      "text": " the let"
+      "text": " objecting (Widersp"
     },
     {
       "type": "text",
-      "text": "ter.\n- Decide wh"
+      "text": "ruch)** to"
     },
     {
       "type": "text",
-      "text": "ether to object (Widersp"
+      "text": " Muster BKK's ["
     },
     {
       "type": "text",
-      "text": "ruch) to Muster B"
+      "text": "party:pty_eatx"
     },
     {
       "type": "text",
-      "text": "KK's contribution notice"
+      "text": "sexnt9s3]"
     },
     {
       "type": "text",
-      "text": ", due W"
+      "text": " contribution notice — due"
+    },
+    {
+      "type": "text",
+      "text": " W"
     },
     {
       "type": "text",
@@ -135,55 +147,19 @@
     },
     {
       "type": "text",
-      "text": "2026, send by Th"
+      "text": "2026,"
     },
     {
       "type": "text",
-      "text": "u 8 Oct "
+      "text": " so"
     },
     {
       "type": "text",
-      "text": "2026 [item:it"
+      "text": " post"
     },
     {
       "type": "text",
-      "text": "m_tj3z83"
-    },
-    {
-      "type": "text",
-      "text": "ve4hfg]."
-    },
-    {
-      "type": "text",
-      "text": "\n- Decide whether to"
-    },
-    {
-      "type": "text",
-      "text": " file an objection (Einsp"
-    },
-    {
-      "type": "text",
-      "text": "ruch) against"
-    },
-    {
-      "type": "text",
-      "text": " the Finanzamt"
-    },
-    {
-      "type": "text",
-      "text": " Musterstadt assessment"
-    },
-    {
-      "type": "text",
-      "text": ", due Wed 21 "
-    },
-    {
-      "type": "text",
-      "text": "Oct 2026, send"
-    },
-    {
-      "type": "text",
-      "text": " by Thu 15 "
+      "text": " by Thu 8 "
     },
     {
       "type": "text",
@@ -191,67 +167,127 @@
     },
     {
       "type": "text",
-      "text": ":itm_mtehck"
+      "text": ":itm_tj3z"
     },
     {
       "type": "text",
-      "text": "c"
+      "text": "83ve4hfg]"
     },
     {
       "type": "text",
-      "text": "f6q7a]. If"
+      "text": ". Contributions are"
     },
     {
       "type": "text",
-      "text": " in"
+      "text": " ow"
     },
     {
       "type": "text",
-      "text": " do"
+      "text": "ed at"
     },
     {
       "type": "text",
-      "text": "ubt, consider get"
+      "text": " the assessed amount even if"
     },
     {
       "type": "text",
-      "text": "ting advice before"
+      "text": " you object.\n- **Dec"
     },
     {
       "type": "text",
-      "text": " this"
+      "text": "ide on objecting (Ein"
     },
     {
       "type": "text",
-      "text": " one"
+      "text": "spruch)** to the"
     },
     {
       "type": "text",
-      "text": ".\n\n**Contract dead"
+      "text": " tax assessment from Fin"
     },
     {
       "type": "text",
-      "text": "lines:**\n- Fun"
+      "text": "anzamt Musterst"
     },
     {
       "type": "text",
-      "text": "kNetz Mobil"
+      "text": "adt [party:pty_"
     },
     {
       "type": "text",
-      "text": " (FunkNetz"
+      "text": "mcq97yavgq"
     },
     {
       "type": "text",
-      "text": " Smart M) c"
+      "text": "jy] — due Wed"
     },
     {
       "type": "text",
-      "text": "ancellation: must"
+      "text": " 21 Oct 2"
     },
     {
       "type": "text",
-      "text": " arrive by W"
+      "text": "026, so post by Thu"
+    },
+    {
+      "type": "text",
+      "text": " 15 Oct 2"
+    },
+    {
+      "type": "text",
+      "text": "026 [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "mtehckcf6q"
+    },
+    {
+      "type": "text",
+      "text": "7a]. If"
+    },
+    {
+      "type": "text",
+      "text": " missed, the assessment bec"
+    },
+    {
+      "type": "text",
+      "text": "omes final.\n\n**Cont"
+    },
+    {
+      "type": "text",
+      "text": "ract cancellation deadl"
+    },
+    {
+      "type": "text",
+      "text": "ines**\n- **Funk"
+    },
+    {
+      "type": "text",
+      "text": "Netz Smart M**"
+    },
+    {
+      "type": "text",
+      "text": " mobile contract with"
+    },
+    {
+      "type": "text",
+      "text": " FunkNetz M"
+    },
+    {
+      "type": "text",
+      "text": "obil GmbH [party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_gjsv"
+    },
+    {
+      "type": "text",
+      "text": "4q2d3ajw"
+    },
+    {
+      "type": "text",
+      "text": "] — cancel by W"
     },
     {
       "type": "text",
@@ -259,23 +295,15 @@
     },
     {
       "type": "text",
-      "text": "2026, so"
+      "text": "2026,"
     },
     {
       "type": "text",
-      "text": " send by Thu 8 "
+      "text": " send by Th"
     },
     {
       "type": "text",
-      "text": "Oct 2026;"
-    },
-    {
-      "type": "text",
-      "text": " current term ends S"
-    },
-    {
-      "type": "text",
-      "text": "at 14 Nov "
+      "text": "u 8 Oct "
     },
     {
       "type": "text",
@@ -287,47 +315,59 @@
     },
     {
       "type": "text",
-      "text": "994t9q2]."
+      "text": "994t9q2]; current"
     },
     {
       "type": "text",
-      "text": "\n- Stadtwer"
+      "text": " term ends S"
     },
     {
       "type": "text",
-      "text": "ke Musterstad"
+      "text": "at 14 Nov "
     },
     {
       "type": "text",
-      "text": "t energ"
+      "text": "2026.\n- **Mus"
     },
     {
       "type": "text",
-      "text": "y cont"
+      "text": "terStrom Flex**"
     },
     {
       "type": "text",
-      "text": "ract (MusterStrom"
+      "text": " energy contract with Stad"
     },
     {
       "type": "text",
-      "text": " Flex): a price incre"
+      "text": "twerke Musterst"
     },
     {
       "type": "text",
-      "text": "ase takes effect S"
+      "text": "adt GmbH [party"
     },
     {
       "type": "text",
-      "text": "un 1 Nov "
+      "text": ":pty_fh8c"
     },
     {
       "type": "text",
-      "text": "2026 "
+      "text": "f155ffm3] —"
     },
     {
       "type": "text",
-      "text": "— to"
+      "text": " a price incre"
+    },
+    {
+      "type": "text",
+      "text": "ase takes effect"
+    },
+    {
+      "type": "text",
+      "text": " Sun 1 Nov"
+    },
+    {
+      "type": "text",
+      "text": " 2026; to"
     },
     {
       "type": "text",
@@ -335,11 +375,11 @@
     },
     {
       "type": "text",
-      "text": " that,"
+      "text": " it appl"
     },
     {
       "type": "text",
-      "text": " it"
+      "text": "ies, it"
     },
     {
       "type": "text",
@@ -351,11 +391,7 @@
     },
     {
       "type": "text",
-      "text": "026, so"
-    },
-    {
-      "type": "text",
-      "text": " send by M"
+      "text": "026, so send by M"
     },
     {
       "type": "text",
@@ -383,43 +419,51 @@
     },
     {
       "type": "text",
-      "text": "apzvm5].\n\nYou"
+      "text": "apzvm5].\n\nFor"
     },
     {
       "type": "text",
-      "text": " can draft c"
+      "text": " the obj"
     },
     {
       "type": "text",
-      "text": "ancellation/"
+      "text": "ections, if"
     },
     {
       "type": "text",
-      "text": "objection letters or"
+      "text": " you're"
     },
     {
       "type": "text",
-      "text": " mark items"
+      "text": " unsure,"
     },
     {
       "type": "text",
-      "text": " done from within"
+      "text": " it may"
     },
     {
       "type": "text",
-      "text": " Ordnung."
+      "text": " be worth getting advice before"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " deadline."
     },
     {
       "type": "done",
       "response": {
-        "text": "Here are your October deadlines:\n\n**To-dos:**\n- Return overdue library books to Stadtbibliothek Musterstadt, due Fri 2 Oct 2026 [item:itm_ghq58jjdz149] — fees keep rising the longer it's late, per the letter.\n- Decide whether to object (Widerspruch) to Muster BKK's contribution notice, due Wed 14 Oct 2026, send by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg].\n- Decide whether to file an objection (Einspruch) against the Finanzamt Musterstadt assessment, due Wed 21 Oct 2026, send by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a]. If in doubt, consider getting advice before this one.\n\n**Contract deadlines:**\n- FunkNetz Mobil (FunkNetz Smart M) cancellation: must arrive by Wed 14 Oct 2026, so send by Thu 8 Oct 2026; current term ends Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2].\n- Stadtwerke Musterstadt energy contract (MusterStrom Flex): a price increase takes effect Sun 1 Nov 2026 — to cancel without notice before that, it must arrive by Sat 31 Oct 2026, so send by Mon 26 Oct 2026 (safe by Fri 30 Oct 2026) [contract:ctr_bbzemyapzvm5].\n\nYou can draft cancellation/objection letters or mark items done from within Ordnung.",
+        "text": "Here are the deadlines coming up in October:\n\n**To-dos**\n- **Return overdue library books** to Stadtbibliothek Musterstadt [party:pty_d2ymm5s3htd0] — due Fri 2 Oct 2026 [item:itm_ghq58jjdz149]. Late fees keep rising until the account is blocked.\n- **Decide on objecting (Widerspruch)** to Muster BKK's [party:pty_eatxsexnt9s3] contribution notice — due Wed 14 Oct 2026, so post by Thu 8 Oct 2026 [item:itm_tj3z83ve4hfg]. Contributions are owed at the assessed amount even if you object.\n- **Decide on objecting (Einspruch)** to the tax assessment from Finanzamt Musterstadt [party:pty_mcq97yavgqjy] — due Wed 21 Oct 2026, so post by Thu 15 Oct 2026 [item:itm_mtehckcf6q7a]. If missed, the assessment becomes final.\n\n**Contract cancellation deadlines**\n- **FunkNetz Smart M** mobile contract with FunkNetz Mobil GmbH [party:pty_gjsv4q2d3ajw] — cancel by Wed 14 Oct 2026, send by Thu 8 Oct 2026 [contract:ctr_fyt9k994t9q2]; current term ends Sat 14 Nov 2026.\n- **MusterStrom Flex** energy contract with Stadtwerke Musterstadt GmbH [party:pty_fh8cf155ffm3] — a price increase takes effect Sun 1 Nov 2026; to cancel without notice before it applies, it must arrive by Sat 31 Oct 2026, so send by Mon 26 Oct 2026 (safe by Fri 30 Oct 2026) [contract:ctr_bbzemyapzvm5].\n\nFor the objections, if you're unsure, it may be worth getting advice before the deadline.",
         "usage": {
           "input_tokens": 4,
-          "output_tokens": 738,
-          "cache_read_tokens": 12836,
-          "cache_creation_tokens": 3042,
-          "cost_usd": 0.0221232,
-          "duration_ms": 9844,
+          "output_tokens": 829,
+          "cache_read_tokens": 13000,
+          "cache_creation_tokens": 3007,
+          "cost_usd": 0.022926000000000002,
+          "duration_ms": 9981,
           "turns": 2
         },
         "model": "claude-sonnet-5",
