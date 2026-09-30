@@ -639,3 +639,26 @@ async def test_the_demo_api_uses_the_tray(
             assert tour_state.json()["step"] == 1
     finally:
         ctx.close()
+
+
+@pytest.mark.parametrize("ends", ["error", "silence"])
+def test_the_rebuild_fails_when_ask_gives_no_answer(monkeypatch: pytest.MonkeyPatch, ends: str) -> None:
+    """A recording lost to a sign-in gap once passed the rebuild with two answers missing: Ask yields an
+    ``error`` event instead of raising, and a stream may end without ``done``."""
+    from ordnung.assistant.ask import AskEvent
+    from ordnung.demo import loader
+
+    async def no_answer(ctx: object, question: str) -> Any:
+        yield AskEvent(type="text", text="thinking")
+        if ends == "error":
+            yield AskEvent(type="error", error="not signed in")
+
+    async def answered(ctx: object, question: str) -> Any:
+        yield AskEvent(type="text", text="…")
+        yield AskEvent(type="done", text="The rent is due Mon 5 Oct 2026.")
+
+    monkeypatch.setattr(loader, "ask_stream", no_answer)
+    with pytest.raises(DemoError, match="no answer to 'When is rent due"):
+        asyncio.run(loader._ask_all(None, ["When is rent due?"]))  # type: ignore[arg-type]
+    monkeypatch.setattr(loader, "ask_stream", answered)
+    assert asyncio.run(loader._ask_all(None, ["When is rent due?", "And the gym?"])) == 2  # type: ignore[arg-type]

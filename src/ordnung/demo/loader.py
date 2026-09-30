@@ -510,9 +510,17 @@ def tray_states(manifest: Manifest) -> list[tuple[SampleDocument, ...]]:
 
 
 async def _ask_all(ctx: AppContext, questions: Sequence[str]) -> int:
+    """Ask every question; one that ends without an answer (Ask yields an ``error`` event instead of
+    raising, or no ``done`` event) fails the build — a recording lost to a sign-in gap once passed the
+    rebuild with two answers missing."""
     for question in questions:
-        async for _ in ask_stream(ctx, question):
-            pass
+        done = False
+        async for event in ask_stream(ctx, question):
+            if event.type == "error":
+                raise DemoError(f"Ask gave no answer to {question!r}: {event.error}")
+            done = done or event.type == "done"
+        if not done:
+            raise DemoError(f"Ask gave no answer to {question!r}: the stream ended without one")
     return len(questions)
 
 
