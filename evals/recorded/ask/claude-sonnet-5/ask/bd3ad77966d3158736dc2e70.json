@@ -1,0 +1,200 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "8+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"5255c775dbcde88446ad2721bfc588be2349fefb742d65ba72939522273c0f87\",\"question\":\"When do I have to renew my driving licence?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to renew my driving licence?\n"
+  },
+  "response": {
+    "text": "I couldn't find any driving licence renewal date in your records — there's no document, to-do, or expiry entry about a driving licence stored in Ordnung.\n\nYou have residence permit and passport expiries on file, but nothing for a driving licence. If you have a physical licence or a letter about it, it hasn't been added to Ordnung yet — you may want to check the document itself for the expiry date.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 313,
+      "cache_read_tokens": 12650,
+      "cache_creation_tokens": 3712,
+      "cost_usd": 0.020516,
+      "duration_ms": 6836,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Führerschein"
+      },
+      "tool_use_id": "toolu_01KQL7eUp64nTZmjvEaBHAJ6"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "driving licence"
+      },
+      "tool_use_id": "toolu_012bUJGje5PjPgkwgMyTLoPn"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_01StNPVVGzz1CCx4ABY6oFjW"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_012bUJGje5PjPgkwgMyTLoPn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01KQL7eUp64nTZmjvEaBHAJ6"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\",\"n6\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"health_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n5\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n6\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"numbers\":{\"n4\":{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"numbers\":{\"n5\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"numbers\":{\"n6\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Sam Rivera\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"X1234567\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01StNPVVGzz1CCx4ABY6oFjW"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find any dri"
+    },
+    {
+      "type": "text",
+      "text": "ving licence ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal date in your records —"
+    },
+    {
+      "type": "text",
+      "text": " there's"
+    },
+    {
+      "type": "text",
+      "text": " no document"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or expiry ent"
+    },
+    {
+      "type": "text",
+      "text": "ry about"
+    },
+    {
+      "type": "text",
+      "text": " a driving licence st"
+    },
+    {
+      "type": "text",
+      "text": "ored in Ordnung."
+    },
+    {
+      "type": "text",
+      "text": "\n\nYou"
+    },
+    {
+      "type": "text",
+      "text": " have"
+    },
+    {
+      "type": "text",
+      "text": " residence permit and passport exp"
+    },
+    {
+      "type": "text",
+      "text": "iries on"
+    },
+    {
+      "type": "text",
+      "text": " file, but nothing for"
+    },
+    {
+      "type": "text",
+      "text": " a driving licence. If you"
+    },
+    {
+      "type": "text",
+      "text": " have a phys"
+    },
+    {
+      "type": "text",
+      "text": "ical lic"
+    },
+    {
+      "type": "text",
+      "text": "ence or"
+    },
+    {
+      "type": "text",
+      "text": " a letter about"
+    },
+    {
+      "type": "text",
+      "text": " it, it h"
+    },
+    {
+      "type": "text",
+      "text": "asn't been added to "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung yet — you may"
+    },
+    {
+      "type": "text",
+      "text": " want"
+    },
+    {
+      "type": "text",
+      "text": " to check the document"
+    },
+    {
+      "type": "text",
+      "text": " itself for"
+    },
+    {
+      "type": "text",
+      "text": " the expiry date."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find any driving licence renewal date in your records — there's no document, to-do, or expiry entry about a driving licence stored in Ordnung.\n\nYou have residence permit and passport expiries on file, but nothing for a driving licence. If you have a physical licence or a letter about it, it hasn't been added to Ordnung yet — you may want to check the document itself for the expiry date.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 313,
+          "cache_read_tokens": 12650,
+          "cache_creation_tokens": 3712,
+          "cost_usd": 0.020516,
+          "duration_ms": 6836,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

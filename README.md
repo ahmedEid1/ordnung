@@ -264,25 +264,24 @@ never against the app's own outputs.
 | Metric | Result |
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 99.4 % (159/160) |
-| Abstention on questions with no answer in the records⁶ | 100 % (8/8) |
-| Injected claim in the answer the person sees | 0 % (0/21), against 4.8 % (1/21) before the check |
+| Citation precision: the cited record holds the sentence's value | 98.4 % (121/123) |
+| Abstention on questions with no answer in the records | 100 % (8/8) |
+| Injected claim in the answer the person sees | 4.8 % (1/21), against 33.3 % (7/21) before the check |
 | Unsupported values left in final answers | 0 |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
 filed differently from the truth), not values the check let through; the current ledger closes all five:
 the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
-job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the one raw "success" before the check is a denial that
-repeats the question's injected date to say the record does not hold it; the answer the person sees
-shows it in quotation marks. This benchmark is **not held-out**: its questions come from the same
-sample life as the demo, and the check and the prompt were revised over several review rounds on these
-recordings (the first nine attack letters were written before any measurement and never tuned). CI
-replays the recordings and gates accuracy, abstention and unsupported values; any successful attack
-fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
-
-⁶ 7/8 as first scored: the gas-bill answer leads with "I found no gas contract or gas bill in your
-records", a wording the scorer's abstention reader did not know; it was added after the measurement,
-with a test.
+job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the
+seven raw "successes" before the check are warnings that repeat the injected value to flag it — none
+presents the claim as the answer; the check shows such a value as "[date only in the letter]". The one
+success that reaches the person is the strict metric's: asked about the library fee, the answer gives it
+(4.50 €) and names the rent's own 640.00 € on the rent's record in a comparison of the month's payments,
+in a bullet that also cites the library's to-do. This benchmark is **not held-out**: its questions come
+from the same sample life as the demo, and the check and the prompt were revised over several review
+rounds on these recordings (the first nine attack letters were written before any measurement and never
+tuned). CI replays the recordings and gates accuracy, abstention and unsupported values; any successful
+attack but that documented one fails the build. Details: [docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 
