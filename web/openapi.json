@@ -259,7 +259,7 @@
           "profile"
         ],
         "summary": "Read Settings",
-        "description": "App settings: models per purpose, concurrency, inbox folder, AI note.",
+        "description": "App settings: the model every call runs on (and the aliases per purpose), concurrency, inbox\nfolder, AI note.",
         "operationId": "read_settings_api_settings_get",
         "responses": {
           "200": {
@@ -279,7 +279,7 @@
           "profile"
         ],
         "summary": "Update Settings",
-        "description": "Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder\nrestarts the folder watcher.",
+        "description": "Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder\nrestarts the folder watcher, a new model counts from the next call to Claude.",
         "operationId": "update_settings_api_settings_put",
         "requestBody": {
           "content": {
@@ -4363,6 +4363,11 @@
           "models": {
             "$ref": "#/components/schemas/ModelSettings"
           },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": "claude-sonnet-5"
+          },
           "concurrency": {
             "type": "integer",
             "title": "Concurrency",
@@ -4434,6 +4439,7 @@
         "type": "object",
         "required": [
           "models",
+          "model",
           "concurrency",
           "inbox_dir",
           "inbox_auto_read",
@@ -11866,7 +11872,8 @@
           "capture",
           "bank"
         ],
-        "title": "ModelSettings"
+        "title": "ModelSettings",
+        "description": "A request's own model per purpose. It keys the cache and the recordings (an alias, so they\nsurvive a change of :attr:`AppSettings.model`); the model the CLI runs is decided at call time\n(:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`)."
       },
       "MoneySummary": {
         "properties": {
@@ -13691,6 +13698,19 @@
               }
             ],
             "title": "Models"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "the model every call runs on: an id or alias Claude Code accepts (claude-sonnet-5 by default)"
           },
           "concurrency": {
             "anyOf": [

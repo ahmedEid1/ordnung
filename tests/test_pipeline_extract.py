@@ -29,8 +29,9 @@ from ordnung.ingest.pipeline import add_file
 from ordnung.ingest.transcribe import transcription_request
 from ordnung.llm import prompts
 from ordnung.llm.base import LLMRequest
+from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.fake import FakeBackend
-from ordnung.llm.runtime import LLMService, make_backend
+from ordnung.llm.runtime import LLMService, make_backend, request_key
 from ordnung.models import ModelSettings, Page, Party
 
 NOW = "2026-09-25T10:00:00Z"
@@ -261,6 +262,26 @@ def test_backend_by_name_is_the_same_as_make_backend(data_dir: Path) -> None:
     ctx = build_context(data_dir, backend="replay")
     try:
         assert ctx.backend_name == make_backend("replay").name
+    finally:
+        ctx.close()
+
+
+def test_the_live_backend_runs_on_the_model_saved_in_settings(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A model saved under Settings → Claude counts from the next call, without a restart; the
+    request's own alias (``settings.models``) still keys the cache and the recordings."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    ctx = build_context(data_dir, backend="claude")
+    try:
+        backend = ctx.llm.backend
+        assert isinstance(backend, ClaudeCLIBackend)
+        request = LLMRequest(purpose="extract", prompt="p", system="s", model=ctx.settings.models.extract)
+        assert request.model == "sonnet" and backend.model_for(request) == "claude-sonnet-5"
+        key = request_key(request)
+        ctx.store.save_settings(ctx.settings.model_copy(update={"model": "claude-opus-5-5"}))
+        assert backend.model_for(request) == "claude-opus-5-5"
+        assert request_key(request) == key  # the recordings and the cache are keyed by the alias
     finally:
         ctx.close()
 

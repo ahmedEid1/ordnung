@@ -516,3 +516,34 @@ def test_the_environment_can_pin_the_model(fake: FakeClaude, monkeypatch: pytest
     monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
     argv = ClaudeCLIBackend().build_args(request)
     assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"
+
+
+def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The model the person chose (Settings → Claude) is read when the call is made, so a new choice
+    counts from the next call; it beats the request's alias, and only ORDNUNG_CLAUDE_MODEL beats it."""
+    request = LLMRequest(purpose="brief", prompt="Today?", system="Answer.", model="haiku")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    chosen = {"model": "claude-opus-5-5"}
+    backend = ClaudeCLIBackend(model_setting=lambda: chosen["model"])
+    assert backend.model_for(request) == "claude-opus-5-5"
+    argv = backend.build_args(request)
+    assert argv[argv.index("--model") + 1] == "claude-opus-5-5"
+    chosen["model"] = "sonnet"  # saved meanwhile: the next call uses it, nothing is rebuilt
+    assert backend.build_args(request)[argv.index("--model") + 1] == "sonnet"
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5")
+    assert backend.model_for(request) == "claude-sonnet-5"
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL")
+    # no setting at all (the doctor probe, the benchmarks): the request's own model
+    assert ClaudeCLIBackend().model_for(request) == "haiku"
+
+
+async def test_the_answer_names_the_model_the_call_ran_on(fake: FakeClaude) -> None:
+    """When the CLI's result carries no ``modelUsage``, the answer (and so the usage log and the trace)
+    names the model the call was made with — the chosen one, not the request's alias."""
+    fake.play({"lines": [json.dumps({"type": "result", "subtype": "success", "result": "OK"})]})
+    request = LLMRequest(purpose="brief", prompt="Today?", system="Answer.", model="haiku")
+    backend = ClaudeCLIBackend(max_retries=0, model_setting=lambda: "claude-opus-5-5")
+    response = await backend.complete(request)
+    assert response.text == "OK" and response.model == "claude-opus-5-5"

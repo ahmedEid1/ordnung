@@ -9,9 +9,12 @@ Design notes
 * **No tools unless asked.** Extraction and transcription run with ``--tools ""``: the model sees the
   document as content blocks and can do nothing but answer. Ask gets only Ordnung's read-only MCP tools.
   No call ever uses ``--dangerously-skip-permissions``.
-* **The model.** Each request names a model id (:data:`ordnung.llm.base.DEFAULT_MODEL`, a pinned id:
-  an alias such as ``sonnet`` moves with releases, recordings are made with one model);
-  ``ORDNUNG_CLAUDE_MODEL`` overrides it for every call, as ``ORDNUNG_CLAUDE_BIN`` picks the binary.
+* **The model** is decided in one place, :meth:`ClaudeCLIBackend.model_for`: ``ORDNUNG_CLAUDE_MODEL``
+  (the benchmarks and the demo recorder pin one id for every call, as ``ORDNUNG_CLAUDE_BIN`` picks the
+  binary), else the model the person chose (``AppSettings.model``, :data:`ordnung.llm.base.DEFAULT_MODEL`
+  until changed — a pinned id, because an alias such as ``sonnet`` moves with releases), else the
+  request's own (the doctor probe's ``haiku``; a backend built without a setting, as the benchmarks
+  build theirs).
 * **Isolation.** ``--setting-sources ""`` ignores the user's hooks/settings, ``--strict-mcp-config``
   keeps the user's own MCP servers out, ``--system-prompt`` replaces the coding-assistant prompt, and
   ``--no-session-persistence`` keeps calls out of the user's history. Never ``--bare`` (it disables
@@ -34,7 +37,7 @@ import shutil
 import signal
 import tempfile
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
 
@@ -246,11 +249,22 @@ class ClaudeCLIBackend:
         concurrency: int = 2,
         interactive_concurrency: int = 1,
         max_retries: int = 2,
+        model_setting: Callable[[], str | None] | None = None,
     ) -> None:
         self.binary = find_claude(binary)
         self._background = asyncio.Semaphore(max(1, concurrency))
         self._interactive = asyncio.Semaphore(max(1, interactive_concurrency))
         self.max_retries = max_retries
+        #: Reads the model the person chose (``AppSettings.model``) when a call is made, so a new
+        #: choice counts from the next call; ``None`` where there is no setting (the doctor probe,
+        #: the benchmarks).
+        self.model_setting = model_setting
+
+    def model_for(self, req: LLMRequest) -> str:
+        """The model this call runs on: ``ORDNUNG_CLAUDE_MODEL``, else the person's setting, else
+        the request's own (see the module notes)."""
+        chosen = self.model_setting() if self.model_setting is not None else None
+        return os.environ.get("ORDNUNG_CLAUDE_MODEL") or chosen or req.model
 
     def _lane(self, req: LLMRequest) -> asyncio.Semaphore:
         return self._interactive if req.purpose in INTERACTIVE_PURPOSES else self._background
@@ -263,7 +277,8 @@ class ClaudeCLIBackend:
             )
         return self.binary
 
-    def build_args(self, req: LLMRequest, *, partial: bool = False) -> list[str]:
+    def build_args(self, req: LLMRequest, *, partial: bool = False, model: str | None = None) -> list[str]:
+        """argv for ``req``; ``model`` is the one :meth:`model_for` decided (a run decides it once)."""
         args = [
             self._require_binary(),
             "-p",
@@ -273,7 +288,7 @@ class ClaudeCLIBackend:
             "stream-json",
             "--verbose",
             "--model",
-            os.environ.get("ORDNUNG_CLAUDE_MODEL") or req.model,  # a pinned id beats the request's alias
+            model or self.model_for(req),
             "--no-session-persistence",
             "--setting-sources",
             "",
@@ -335,7 +350,8 @@ class ClaudeCLIBackend:
 
     async def _run(self, req: LLMRequest, *, partial: bool) -> AsyncIterator[StreamEvent]:
         """Spawn the CLI, feed stdin, translate stdout events. Ends with a ``done`` event or raises."""
-        args = self.build_args(req, partial=partial)
+        model = self.model_for(req)  # decided once: the argv and the answer name the same model
+        args = self.build_args(req, partial=partial, model=model)
         line, _nbytes = build_user_message(req)
         started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix="ordnung-llm-") as cwd:
@@ -413,7 +429,12 @@ class ClaudeCLIBackend:
         yield StreamEvent(
             type="done",
             response=LLMResponse(
-                text=text, data=data, usage=usage, model=served_model(result, req.model), backend=self.name
+                text=text,
+                data=data,
+                usage=usage,
+                # the model that answered; the one the call named when the CLI doesn't say
+                model=served_model(result, model),
+                backend=self.name,
             ),
         )
 
