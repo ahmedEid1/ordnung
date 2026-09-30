@@ -106,32 +106,37 @@ function asLedgerRow({ created_at: _created, updated_at: _updated, ...row }: Con
   return row;
 }
 
-// Prompt 11 reads the Deutschlandticket's own day ("by the 10th of a month"), so the rules no longer assume its
-// notice period. The contract whose reading gave no notice terms at all is the current account (its letter's
-// "jederzeit kostenfrei kündigen" is left unread, and § 675h BGB applies only to a notice known to run "any time"),
-// so the rules can't work out how it ends: "Please check" and "Add notice period", as in UI audit round 1. The
-// ticket's day could be cleared through the API instead, but not put back as it was: saving it again records it
-// as the person's, a change to the ledger that the Ask answers recorded for later tests don't replay against —
-// the account's empty terms come back exactly, and the test checks that they did: a contract that doesn't come
-// back as it was would otherwise show up only as "No recorded answer" in some later file.
+// The contract is the current account: § 675h BGB gives a current account's dates once its notice is known to
+// run "any time", and the toast and the card say so ("cancel any time with one month's notice", "Current
+// account: …"). What its reading gives changes with every re-recording of the demo — no notice terms at all
+// (UI audit round 1), or "any time" and no period from its letter's "jederzeit kostenfrei kündigen" (prompt 11)
+// — and the law fills in the period of the other contracts read without one (the lease, the job), so the
+// precondition is set up through the API the card's form uses: with the account's terms cleared, nothing is
+// left for a rule to work with (no start date, no term: "as written", low confidence, no dates), and the card
+// asks "Please check" and offers "Add notice period". The account is the one demo contract this is done to
+// safely: terms that give no dates by themselves record no quote "confirmed by the person" (`notice_evidence`
+// in `api/routes/contracts.py`), so the reading's terms go back exactly — unlike the Deutschlandticket's day of
+// the month, which saving again records as the person's. That matters beyond this test: the Ask answers
+// recorded for later tests replay against the ledger, and a contract that doesn't come back as it was would
+// show up only as "No recorded answer" in some later file — so the test checks that it did.
 test("at 320 px: the notice period entered on the card of a contract whose letter gave none", async ({ page }) => {
   const bank = await contractOf(page, "bank");
   const snapshot = asLedgerRow(bank);
-  const before = {
-    notice_value: bank.notice_value,
-    notice_unit: bank.notice_unit,
-    notice_basis: bank.notice_basis,
-    notice_day: bank.notice_day,
-    notice_before_end: bank.notice_before_end,
-  };
-  expect(before, "the current account's reading gave no notice terms").toEqual({
-    notice_value: null,
-    notice_unit: null,
-    notice_basis: null,
-    notice_day: null,
-    notice_before_end: false,
+  const noticeTerms = (c: Contract) => ({
+    notice_value: c.notice_value,
+    notice_unit: c.notice_unit,
+    notice_basis: c.notice_basis,
+    notice_day: c.notice_day,
+    notice_before_end: c.notice_before_end,
   });
+  const before = noticeTerms(bank);
+  const none = { notice_value: null, notice_unit: null, notice_basis: null, notice_day: null, notice_before_end: false };
   try {
+    // no notice terms at all, whatever the reading gave: cleared through the API when it gave any
+    const cleared = JSON.stringify(before) === JSON.stringify(none) ? bank : await apiPatch<Contract>(page, `/api/contracts/${bank.id}`, none);
+    expect(noticeTerms(cleared), "the current account has no notice terms").toEqual(none);
+    expect(cleared.evidence.some((e) => e.grounding === "user"), "terms that give no dates record no quote confirmed by the person").toBe(false);
+    expect(cleared.computed?.confidence, "the rules can't work out how the account ends").toBe("low");
     await page.setViewportSize({ width: 320, height: 640 });
     await open(page, "/contracts", "Contracts");
     const card = page.locator("article", { has: page.getByRole("heading", { level: 3, name: shownAs(bank.name, { whole: true }) }) });
