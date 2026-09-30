@@ -12,7 +12,7 @@
           "system"
         ],
         "summary": "Health",
-        "description": "Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min) and\nthe rules catalog's \"law as of\" date; with ``probe`` also the doctor's checks.",
+        "description": "Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min), the\nmodel ``ORDNUNG_CLAUDE_MODEL`` pins (if set) and the rules catalog's \"law as of\" date; with\n``probe`` also the doctor's checks.",
         "operationId": "health_api_health_get",
         "parameters": [
           {
@@ -9315,6 +9315,18 @@
           "claude": {
             "$ref": "#/components/schemas/ClaudeStatus"
           },
+          "model_pinned": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Pinned",
+            "description": "The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)"
+          },
           "rules_last_checked": {
             "type": "string",
             "title": "Rules Last Checked",
@@ -9338,6 +9350,7 @@
           "today",
           "backend",
           "claude",
+          "model_pinned",
           "rules_last_checked",
           "checks"
         ],

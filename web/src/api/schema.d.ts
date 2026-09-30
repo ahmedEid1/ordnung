@@ -13,8 +13,9 @@ export interface paths {
         };
         /**
          * Health
-         * @description Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min) and
-         *     the rules catalog's "law as of" date; with ``probe`` also the doctor's checks.
+         * @description Version, data folder, demo mode, the app's today, backend, Claude status (cached 10 min), the
+         *     model ``ORDNUNG_CLAUDE_MODEL`` pins (if set) and the rules catalog's "law as of" date; with
+         *     ``probe`` also the doctor's checks.
          */
         get: operations["health_api_health_get"];
         put?: never;
@@ -3349,6 +3350,11 @@ export interface components {
             /** Backend */
             backend: string;
             claude: components["schemas"]["ClaudeStatus"];
+            /**
+             * Model Pinned
+             * @description The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)
+             */
+            model_pinned: string | null;
             /**
              * Rules Last Checked
              * @description The day the rules catalog was last checked against the law (“Based on the law as of …”)

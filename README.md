@@ -372,7 +372,8 @@ flowchart LR
 The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
 no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
 Sonnet 5 (`claude-sonnet-5`) unless you choose another model under Settings → Claude;
-`ORDNUNG_CLAUDE_MODEL` overrides both for every call (the benchmarks and the demo record with it).
+`ORDNUNG_CLAUDE_MODEL` overrides both for every call. The demo records with the default model; the
+benchmarks record with the model of the run (`--model`), on a backend without the setting.
 More in [docs/architecture.md](docs/architecture.md).
 
 ## Quality

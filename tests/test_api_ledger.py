@@ -427,7 +427,9 @@ async def test_profile_is_merged_and_validated(data_dir: Path) -> None:
 
 async def test_the_model_setting_is_trimmed_and_checked(data_dir: Path) -> None:
     """Settings → Claude → Model: Sonnet 5 until changed; an id or alias as Claude Code takes it,
-    trimmed; anything else is refused with the reason (shown under the field), nothing saved."""
+    trimmed — a Bedrock id (``:``), a Vertex id (``@``), an inference-profile ARN (``/``) and the
+    1M-context aliases (``[1m]``) included; a blank, a name with spaces or one starting with a dash
+    (it follows ``--model`` on argv) is refused with the reason (shown under the field), nothing saved."""
     async with api_for(data_dir) as api:
         assert (await api.client.get("/api/settings")).json()["model"] == "claude-sonnet-5"
         saved = await api.client.put("/api/settings", json={"model": " claude-opus-5-5 "})
@@ -436,14 +438,23 @@ async def test_the_model_setting_is_trimmed_and_checked(data_dir: Path) -> None:
         for bad, reason in (
             ("", "Enter a model id or alias"),
             ("   ", "Enter a model id or alias"),
-            ("claude opus 5 5", "letters, digits, dots and dashes only"),
-            ("claude/opus", "letters, digits, dots and dashes only"),
-            ("-sonnet", "letters, digits, dots and dashes only"),
+            ("claude opus 5 5", "no spaces and doesn't start with a dash"),
+            ("-sonnet", "no spaces and doesn't start with a dash"),
+            ("--model", "no spaces and doesn't start with a dash"),
         ):
             refused = await api.client.put("/api/settings", json={"model": bad})
             assert refused.status_code == 422 and reason in refused.json()["detail"], bad
         assert api.ctx.store.get_settings().model == "claude-opus-5-5"
-        assert (await api.client.put("/api/settings", json={"model": "sonnet"})).json()["model"] == "sonnet"
+        for accepted in (
+            "sonnet",
+            "sonnet[1m]",
+            "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+            "claude-sonnet-4-5@20250929",
+            "arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/abc123",
+        ):
+            assert (await api.client.put("/api/settings", json={"model": accepted})).json()[
+                "model"
+            ] == accepted
     assert model_problem("claude-3-7-sonnet-20250219") is None and model_problem("opus") is None
 
 

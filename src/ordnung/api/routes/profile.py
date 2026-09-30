@@ -37,9 +37,10 @@ router = APIRouter(tags=["profile"])
 _READ_ONLY_SETTINGS = ("demo", "simulated_today")
 #: The shape the Profile form accepts (``EMAIL`` in ``web/src/features/settings/ProfileSection.tsx``).
 _EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
-#: A model id or alias as Claude Code takes it (``claude-sonnet-5``, ``claude-opus-5-5``, ``sonnet``):
-#: letters, digits, dots and dashes, nothing else (the static demo's mock API checks the same).
-_MODEL = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]*")
+#: A model id or alias as Claude Code takes it — ``claude-sonnet-5``, ``sonnet[1m]``, a Bedrock id with
+#: ``:``, a Vertex id with ``@``, an inference-profile ARN with ``/``: no whitespace, and not starting
+#: with a dash, because it follows ``--model`` on the CLI's argv (the static demo's mock API checks the same).
+_MODEL = re.compile(r"[^\s-]\S*")
 #: Profile fields the rules engine uses for to-do dates (holidays, German rules, send-by buffer).
 _DATE_FIELDS = ("region", "country", "postal_buffer_days")
 
@@ -245,7 +246,7 @@ def model_problem(value: str) -> str | None:
         return "Enter a model id or alias, like claude-sonnet-5 or sonnet."
     if not _MODEL.fullmatch(value):
         return (
-            "A model is named with letters, digits, dots and dashes only — no spaces — like claude-sonnet-5."
+            "A model name has no spaces and doesn't start with a dash — like claude-sonnet-5 or sonnet[1m]."
         )
     return None
 

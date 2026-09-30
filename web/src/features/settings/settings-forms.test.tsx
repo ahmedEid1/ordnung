@@ -317,28 +317,34 @@ describe("Reminders", () => {
 });
 
 describe("AI & models", () => {
-  it("calls the model job that suggests Ideas “Weekly Ideas” — “Weekly review” is the weekly session's name", async () => {
+  it("offers no model per job — one model does everything, chosen under Claude connection — and “Weekly review” names only the session", async () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=ai" });
-    expect(await screen.findByRole("radiogroup", { name: "Model for weekly Ideas" })).toBeInTheDocument();
-    expect(screen.getByText("Weekly Ideas")).toBeInTheDocument();
-    expect(screen.getByRole("radiogroup", { name: "Model for understanding letters" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 2, name: "AI & models" })).toBeInTheDocument();
+    expect(screen.getByText(/One model does every job — Sonnet 5 unless you choose another under Claude connection → Model\./)).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByText(/which model does which job/)).toBeNull();
+    const model = screen.getByRole("link", { name: /^Model/ });
+    expect(model).toHaveAttribute("href", "/settings?section=claude");
+    expect(model).toHaveTextContent("claude-sonnet-5 — change it in Claude connection");
+    expect(screen.getByRole("link", { name: /Language for explanations/ })).toHaveAttribute("href", "/settings?section=region");
     expect(screen.queryByText(/weekly review/i)).toBeNull();
     expect(LLM_PURPOSE_LABELS.review).toBe("Weekly Ideas");
   });
 
-  it("a job that is switched off can't get a model until it's on again", async () => {
-    useMockApi();
+  it("switching the daily note off is saved with the other choices, for the next note", async () => {
+    const { srv, calls } = useMockApi();
     const user = userEvent.setup();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=ai" });
-    const brief = await screen.findByRole("radiogroup", { name: "Model for daily note" });
-    expect(within(brief).getByRole("radio", { name: "Haiku" })).toBeEnabled();
-    await user.click(screen.getByRole("switch", { name: /Let Claude write the daily note/ }));
-    for (const radio of within(brief).getAllByRole("radio")) expect(radio).toBeDisabled();
-    expect(screen.getByText(/^Off — Today shows a plain note/)).toBeInTheDocument();
-    // the other jobs are untouched
-    expect(within(screen.getByRole("radiogroup", { name: "Model for weekly Ideas" })).getByRole("radio", { name: "Haiku" })).toBeEnabled();
-    expect(screen.getByRole("link", { name: /Language for explanations/ })).toHaveAttribute("href", "/settings?section=region");
+    const brief = await screen.findByRole("switch", { name: /Let Claude write the daily note/ });
+    expect(brief).toBeChecked();
+    await user.click(brief);
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText(/They apply to the next letter or question\./)).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PUT" && c.path === "/settings")?.body).toEqual({ concurrency: 2, llm_brief: false, llm_review: true });
+    expect(srv.db.state.settings.llm_brief).toBe(false);
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
   });
 });
 

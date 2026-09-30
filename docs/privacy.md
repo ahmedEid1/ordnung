@@ -31,8 +31,8 @@ files `0600`), so other accounts on a shared computer can't read your letters or
 
 Every model call goes through the `claude` CLI you installed and signed in to, and names the
 model it runs on: Sonnet 5 (`claude-sonnet-5`) unless you choose another under **Settings →
-Claude** (`ORDNUNG_CLAUDE_MODEL` pins one for every call — the benchmarks and the demo record with
-it). Anthropic's handling of that data (retention, training use) is governed by **your** account
+Claude** (`ORDNUNG_CLAUDE_MODEL`, while it is set, overrides both for every call). Anthropic's
+handling of that data (retention, training use) is governed by **your** account
 type and settings — see Anthropic's
 [consumer terms & privacy settings](https://www.anthropic.com/legal/privacy) or, if you use an API
 key, the [commercial terms](https://www.anthropic.com/legal/commercial-terms). Check your Claude

@@ -110,10 +110,10 @@ test("at 1024 px next to the open app sidebar the sections are pills above the p
   const nav = page.getByRole("navigation", { name: "Settings sections" });
   const heading = page.getByRole("heading", { level: 2, name: "AI & models" });
   expect((await nav.boundingBox())!.y + (await nav.boundingBox())!.height).toBeLessThan((await heading.boundingBox())!.y);
-  // the pane gets the column's width: the model pickers sit beside their jobs
-  const row = page.getByRole("radiogroup", { name: "Model for understanding letters" });
-  const label = page.getByText("Understanding letters", { exact: true });
-  expect(Math.abs((await row.boundingBox())!.y - (await label.boundingBox())!.y)).toBeLessThan(24);
+  // the pane gets the column's width: a switch sits beside its label
+  const toggle = page.getByRole("switch", { name: /Let Claude write the daily note/ });
+  const label = page.getByText("Let Claude write the daily note", { exact: true });
+  expect(Math.abs((await toggle.boundingBox())!.y - (await label.boundingBox())!.y)).toBeLessThan(24);
   // …and every pill is on screen (they wrap, no sideways scrolling)
   for (const pill of await nav.getByRole("link").all()) expect(await reachable(pill)).toBe(true);
 

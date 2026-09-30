@@ -1723,6 +1723,11 @@ class Health(_Model):
     today: str
     backend: str
     claude: ClaudeStatus = Field(default_factory=ClaudeStatus)
+    #: Settings → Claude shows it next to the Model field: the saved model counts once it is unset.
+    model_pinned: str | None = Field(
+        default=None,
+        description="The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)",
+    )
     rules_last_checked: str = Field(
         description="The day the rules catalog was last checked against the law (“Based on the law as of …”)"
     )

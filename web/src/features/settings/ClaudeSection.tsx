@@ -78,9 +78,11 @@ function useSaveModel(onRefused: (reason: string) => void) {
 /**
  * "Model": the model every call to Claude runs on — Sonnet 5 unless another is named. Saved
  * trimmed; the server's reason for refusing a name goes under the field (like the folder's path).
- * The demo and the benchmarks replay recordings, so the card says they keep their recorded model.
+ * While `ORDNUNG_CLAUDE_MODEL` pins one (`health.model_pinned`), the card says so and that the saved
+ * model waits — else a save would claim an effect it doesn't have. The demo and the benchmarks
+ * replay recordings, so the card says they keep their recorded model.
  */
-function ModelCard({ settings }: { settings: AppSettings }) {
+function ModelCard({ settings, pinned }: { settings: AppSettings; pinned: string | null }) {
   const saved = settings.model;
   const [model, setModel] = useState(saved);
   const [refused, setRefused] = useState<string | null>(null);
@@ -93,7 +95,9 @@ function ModelCard({ settings }: { settings: AppSettings }) {
     save.mutateAsync({ model: model.trim() }).then((s) => {
       setModel(s.model);
       setRefused(null);
-      return `Every call to Claude runs on ${s.model} from now on.`;
+      return pinned
+        ? `${s.model} counts once ORDNUNG_CLAUDE_MODEL is unset — until then every call runs on ${pinned}.`
+        : `Every call to Claude runs on ${s.model} from now on.`;
     });
   return (
     <SettingsCard
@@ -114,9 +118,18 @@ function ModelCard({ settings }: { settings: AppSettings }) {
         />
       }
     >
+      {pinned ? (
+        <p className="mb-4 flex items-start gap-2 rounded-xl border border-warn/30 bg-warn-soft/70 px-3.5 py-2.5 text-[13px] leading-5 text-ink/90">
+          <CircleAlert className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+          <span>
+            Pinned to <code className={code}>{pinned}</code> by <code className={code}>ORDNUNG_CLAUDE_MODEL</code> while Ordnung runs: every call uses it, and the model saved
+            here counts once the variable is unset.
+          </span>
+        </p>
+      ) : null}
       <Field
         label="Model"
-        hint={`Sonnet 5 by default: ${DEFAULT_MODEL}. Any model id or alias Claude Code accepts, for example claude-opus-5-5 or sonnet.`}
+        hint={`Sonnet 5 by default: ${DEFAULT_MODEL}. Any model id or alias Claude Code accepts, for example claude-opus-5-5, sonnet or sonnet[1m].`}
         error={refused ?? undefined}
         id="claude-model"
       >
@@ -252,7 +265,7 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
           </dl>
         </SettingsCard>
 
-        <ModelCard settings={settings} />
+        <ModelCard settings={settings} pinned={health.model_pinned} />
 
         {(state === "missing" || state === "signed_out") && replay ? (
           <details className="card group overflow-clip">

@@ -345,10 +345,10 @@ function inboxDirProblem(value: string): string | null {
   return null;
 }
 
-/** Like the API: a model id or alias as Claude Code takes it — letters, digits, dots and dashes. */
+/** Like the API: a model id or alias as Claude Code takes it — no whitespace, not starting with a dash (it follows `--model` on argv). */
 function modelProblem(value: string): string | null {
   if (!value) return "Enter a model id or alias, like claude-sonnet-5 or sonnet.";
-  if (!/^[A-Za-z0-9][A-Za-z0-9.-]*$/.test(value)) return "A model is named with letters, digits, dots and dashes only — no spaces — like claude-sonnet-5.";
+  if (!/^[^\s-]\S*$/.test(value)) return "A model name has no spaces and doesn't start with a dash — like claude-sonnet-5 or sonnet[1m].";
   return null;
 }
 

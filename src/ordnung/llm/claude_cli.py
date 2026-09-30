@@ -10,11 +10,12 @@ Design notes
   document as content blocks and can do nothing but answer. Ask gets only Ordnung's read-only MCP tools.
   No call ever uses ``--dangerously-skip-permissions``.
 * **The model** is decided in one place, :meth:`ClaudeCLIBackend.model_for`: ``ORDNUNG_CLAUDE_MODEL``
-  (the benchmarks and the demo recorder pin one id for every call, as ``ORDNUNG_CLAUDE_BIN`` picks the
-  binary), else the model the person chose (``AppSettings.model``, :data:`ordnung.llm.base.DEFAULT_MODEL`
-  until changed — a pinned id, because an alias such as ``sonnet`` moves with releases), else the
-  request's own (the doctor probe's ``haiku``; a backend built without a setting, as the benchmarks
-  build theirs).
+  (an override for every call while it is set, as ``ORDNUNG_CLAUDE_BIN`` picks the binary; nothing in
+  the repo sets it), else the model the person chose (``AppSettings.model``,
+  :data:`ordnung.llm.base.DEFAULT_MODEL` until changed — a pinned id, because an alias such as
+  ``sonnet`` moves with releases; the demo recorder pins the default the same way), else the
+  request's own (the doctor probe's; the benchmarks build their backend without a setting and send
+  the run's model on each request).
 * **Isolation.** ``--setting-sources ""`` ignores the user's hooks/settings, ``--strict-mcp-config``
   keeps the user's own MCP servers out, ``--system-prompt`` replaces the coding-assistant prompt, and
   ``--no-session-persistence`` keeps calls out of the user's history. Never ``--bare`` (it disables
@@ -39,7 +40,7 @@ import tempfile
 import time
 from collections.abc import AsyncIterator, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from ordnung.llm.base import (
     INTERACTIVE_PURPOSES,
@@ -521,19 +522,29 @@ async def auth_status(binary: str | None = None) -> dict[str, Any] | None:
     return await run_cli_json([path, "auth", "status"])
 
 
-async def probe(binary: str | None = None, timeout_s: float = 60) -> tuple[bool, str]:
-    """One tiny live call (used by ``ordnung doctor --probe``)."""
+class ProbeResult(NamedTuple):
+    """What :func:`probe` found: whether Claude answered, its reply (or the error), the model it ran on."""
+
+    ok: bool
+    text: str
+    model: str
+
+
+async def probe(binary: str | None = None, timeout_s: float = 60, *, model: str | None = None) -> ProbeResult:
+    """One tiny live call (``ordnung doctor --probe``, Settings' "Run check") on ``model`` — the one
+    the person chose, so a name Claude Code refuses fails here and not on the next letter — else
+    ``haiku`` (``ORDNUNG_CLAUDE_MODEL`` wins over both, as for every call)."""
     backend = ClaudeCLIBackend(binary=binary, concurrency=1, max_retries=0)
+    request = LLMRequest(
+        purpose="doctor",
+        prompt="Reply with exactly: OK",
+        system="You are a health check. Reply with exactly: OK",
+        model=model or "haiku",
+        timeout_s=timeout_s,
+    )
+    ran_on = backend.model_for(request)
     try:
-        resp = await backend.complete(
-            LLMRequest(
-                purpose="doctor",
-                prompt="Reply with exactly: OK",
-                system="You are a health check. Reply with exactly: OK",
-                model="haiku",
-                timeout_s=timeout_s,
-            )
-        )
+        resp = await backend.complete(request)
     except LLMError as exc:
-        return False, str(exc)
-    return ("OK" in resp.text.upper()), resp.text.strip()[:80]
+        return ProbeResult(False, str(exc), ran_on)
+    return ProbeResult("OK" in resp.text.upper(), resp.text.strip()[:80], ran_on)

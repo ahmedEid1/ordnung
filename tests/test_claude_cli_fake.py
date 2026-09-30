@@ -328,15 +328,22 @@ async def test_a_stream_reports_errors_as_an_event(fake: FakeClaude) -> None:
     assert "not signed in" in (events[0].error or "")
 
 
-async def test_the_doctor_probe(fake: FakeClaude) -> None:
+async def test_the_doctor_probe(fake: FakeClaude, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The probe runs on the model it is given — the one every call runs on, so a name Claude Code
+    refuses fails at "Run check" and not on the next letter — else ``haiku``, and says which."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     result = {"type": "result", "subtype": "success", "is_error": False, "result": "OK"}
     fake.play({"lines": [json.dumps(result)]})
-    assert await claude_cli.probe() == (True, "OK")
+    assert await claude_cli.probe() == (True, "OK", "haiku")
     argv = fake.calls[0]["argv"]
     assert argv[argv.index("--model") + 1] == "haiku" and "--json-schema" not in argv
+    fake.play({"lines": [json.dumps(result)]})
+    assert await claude_cli.probe(model="claude-opus-5-5") == (True, "OK", "claude-opus-5-5")
+    argv = fake.calls[1]["argv"]
+    assert argv[argv.index("--model") + 1] == "claude-opus-5-5"
     fake.play({"transcript": "auth_error.jsonl", "exit": 1})
-    ok, message = await claude_cli.probe()
-    assert not ok and "not signed in" in message
+    ok, message, model = await claude_cli.probe(model="claude-opus-5-5")
+    assert not ok and "not signed in" in message and model == "claude-opus-5-5"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -507,8 +514,8 @@ def test_tool_trace_pairs_by_id_and_falls_back_to_order() -> None:
 
 
 def test_the_environment_can_pin_the_model(fake: FakeClaude, monkeypatch: pytest.MonkeyPatch) -> None:
-    """ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries — the
-    benchmarks and the demo record with one model, and an alias moves with releases."""
+    """ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries (an
+    alias moves with releases)."""
     request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     argv = ClaudeCLIBackend().build_args(request)
