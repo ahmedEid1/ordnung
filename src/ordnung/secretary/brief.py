@@ -4,13 +4,16 @@
 month, contract decisions, new Ideas); :func:`agenda_text` turns it into plain English without any
 model, so a note is always available. :func:`brief_text` asks the model for 2–3 friendly sentences
 in the person's language and accepts them only if every date and amount they mention is in the
-agenda (and no § appears) — otherwise the code-generated text is used. Model calls are cached per
-day and agenda hash; the latest brief of a day is kept in meta ``brief:<date>``.
+agenda (and no § appears) and no send-by day is called a due date — otherwise the code-generated
+text is used. Model calls are cached per day and agenda hash; the latest brief of a day is kept in
+meta ``brief:<date>``.
 """
 
 from __future__ import annotations
 
 import logging
+import re
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
@@ -19,12 +22,22 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
+from ordnung.ingest.normalize import fold_punctuation
+from ordnung.ingest.verify import parse_amounts, parse_dates
 from ordnung.llm.base import LLMError, LLMRequest
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import brief_schema
 from ordnung.models import AppSettings, BriefOutput, Item, Profile, RefLink, Suggestion
-from ordnung.secretary.review import Facts, correct_weekdays, language_name, stable_hash, untrusted_json
+from ordnung.secretary.review import (
+    Facts,
+    correct_weekdays,
+    language_name,
+    split_sentences,
+    stable_hash,
+    strip_weekdays,
+    untrusted_json,
+)
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -33,6 +46,7 @@ from ordnung.secretary.triggers import (
     is_decision,
     is_overdue,
     money,
+    paid_at_appointment,
     parse_day,
     priority_rank,
 )
@@ -48,13 +62,21 @@ BRIEF_META_PREFIX = "brief:"
 
 
 class AgendaEntry(BaseModel):
-    """One line of the agenda (an item, a contract decision or an Idea)."""
+    """One line of the agenda (an item, a contract decision or an Idea).
+
+    ``date`` is the day the entry is listed and sorted by (a to-do's day to act, which may be its
+    send-by day; a decision's send-by day; an Idea's day) and stays internal: what the model sees and
+    the note is checked against are ``due`` (a to-do's due date) and ``send_by`` (the day to send a
+    transfer or letter by, when it comes before the due date and is not past; a decision's send-by day).
+    """
 
     id: str
     ref: RefLink
     title: str
     kind: str
     date: str | None = None
+    due: str | None = None
+    send_by: str | None = None
     amount: float | None = None
     currency: str | None = None  # of the amount when it is not in euros
     party: str | None = None
@@ -120,6 +142,15 @@ def _other_currency(currency: str | None) -> str | None:
     return None if code == "EUR" else code
 
 
+def _send_by(ledger: Ledger, item: Item) -> str | None:
+    """``item``'s send-by day when it is one to name: before the due date and not past (a missed one
+    means "act today"), and not a payment made in person at an appointment (paid on the day)."""
+    due, send = parse_day(item.due_date), parse_day(item.send_by)
+    if due is None or send is None or not ledger.today <= send < due:
+        return None
+    return None if paid_at_appointment(item, ledger.items) else send.isoformat()
+
+
 def _item_entry(ledger: Ledger, item: Item, day: date | None) -> AgendaEntry:
     doc = ledger.document(item.doc_id)
     return AgendaEntry(
@@ -128,6 +159,8 @@ def _item_entry(ledger: Ledger, item: Item, day: date | None) -> AgendaEntry:
         title=item.title,
         kind=item.kind,
         date=day.isoformat() if day else item.due_date,
+        due=item.due_date,
+        send_by=_send_by(ledger, item),
         amount=item.amount,
         currency=_other_currency(item.currency),
         party=ledger.party_name(item.party_id or (doc.party_id if doc else None)),
@@ -167,6 +200,7 @@ def _decisions(ledger: Ledger) -> list[AgendaEntry]:
                     title=contract.name,
                     kind="contract",
                     date=send.isoformat(),
+                    send_by=send.isoformat(),
                     amount=contract.monthly_cost(),
                     currency=_other_currency(contract.cost_currency),
                     party=ledger.party_name(contract.party_id),
@@ -230,8 +264,11 @@ def build_agenda(store: Store, today: date) -> Agenda:
 
 def _describe(entry: AgendaEntry, today: date, *, with_date: bool = True) -> str:
     details = []
-    day = parse_day(entry.date)
-    if with_date and day is not None:
+    day, due = parse_day(entry.date), parse_day(entry.due)
+    if with_date and day is not None and entry.send_by == entry.date and due is not None:
+        # listed on its send-by day: say so, and when it is due
+        details.extend([f"send by {day_label(day, today)}", f"due {day_label(due, today)}"])
+    elif with_date and day is not None:
         details.append(day_label(day, today))
     if entry.amount is not None and entry.kind == "payment":
         details.append(money(entry.amount, entry.currency))
@@ -293,11 +330,23 @@ def agenda_text(agenda: Agenda) -> str:
 
 
 def _model_payload(agenda: Agenda) -> dict[str, object]:
-    """The agenda as the model sees it: private entries removed, internal fields dropped."""
+    """The agenda as the model sees it: private entries removed, internal fields dropped. Its dates are
+    labelled: a to-do's ``due`` date and ``send_by`` day, a decision's ``send_by`` day and an Idea's
+    ``act_by`` day (the internal ``date`` a to-do is listed by is one of them, or today)."""
 
     def rows(entries: list[AgendaEntry]) -> list[dict[str, object]]:
-        fields = {"id", "title", "kind", "date", "amount", "currency", "party"}
+        fields = {"id", "title", "kind", "due", "send_by", "amount", "currency", "party"}
         return [entry.model_dump(include=fields, exclude_none=True) for entry in entries if not entry.private]
+
+    def ideas(entries: list[AgendaEntry]) -> list[dict[str, object]]:
+        return [
+            {
+                **entry.model_dump(include={"id", "title", "kind"}),
+                **({"act_by": entry.date} if entry.date else {}),
+            }
+            for entry in entries
+            if not entry.private
+        ]
 
     other = agenda.payments_total_other_currencies
     return {
@@ -309,7 +358,7 @@ def _model_payload(agenda: Agenda) -> dict[str, object]:
         "payments_total": agenda.payments_total,
         **({"payments_total_other_currencies": other} if other else {}),
         "decisions_send_by": rows(agenda.decisions),
-        "new_ideas": rows(agenda.new_ideas),
+        "new_ideas": ideas(agenda.new_ideas),
     }
 
 
@@ -349,11 +398,182 @@ def brief_request(agenda: Agenda, profile: Profile, settings: AppSettings) -> LL
     )
 
 
+#: Words that call a date a due date, in English and German ("due", "payable", "fällig", "Fälligkeit",
+#: "zahlbar", "Zahlungsziel"); "due to" means "because of", and "overdue"/"überfällig" describe a
+#: to-do ("the overdue library books") rather than name its date.
+_DUE_WORD = re.compile(
+    r"\bdue\b(?!\s+to\b)|\bpayable\b|\bfällig\w*|\bzahlbar\w*|\bzahlungsziel\w*",
+    re.IGNORECASE,
+)
+#: Words of a clause about sending: a date there is a send-by day, not one a due word elsewhere labels.
+_SEND_WORD = re.compile(
+    r"\b(?:by|send|sent|transfer\w*|post|mail|bis|spätestens|überweis\w*|absend\w*|abschick\w*|schick\w*"
+    r"|senden|sende)\b",
+    re.IGNORECASE,
+)
+#: Where a sentence's clauses end: ", " (not the comma of "640,00"), ";", ": ", brackets, a spaced dash
+#: (typographic dashes are folded to "-") and a few conjunctions ("and"/"und" do not end one).
+_CLAUSE_END = re.compile(
+    r",\s|;|:\s|[()\[\]]|\s-+\s|\b(?:but|so|then|while|whereas|aber|doch|sondern|dann|während)\b",
+    re.IGNORECASE,
+)
+_AND = re.compile(r"\b(?:and|und|as well as|sowie)\b", re.IGNORECASE)
+_PLURAL = re.compile(r"\b(?:are|were|sind|waren)\b", re.IGNORECASE)
+_WORD = re.compile(r"[^\W\d_]{4,}")
+#: Words of titles that name no to-do: months, weekdays and a few common ones.
+_NOT_NAMES = frozenset(
+    {
+        *("january", "february", "march", "april", "june", "july", "august", "september", "october"),
+        *("november", "december", "januar", "februar", "märz", "juni", "juli", "oktober", "dezember"),
+        *("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "montag"),
+        *("dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"),
+        *("your", "with", "from", "this", "that", "payment", "monthly"),
+    }
+)
+
+
+@dataclass(frozen=True)
+class _Mention:
+    """A date written in a clause, with where it is."""
+
+    text: str
+    day: int
+    month: int
+    year: int | None
+    start: int
+    end: int
+
+    def is_day(self, iso: str | None) -> bool:
+        """Whether this mention writes the day ``iso`` (by day and month when it has no year)."""
+        value = parse_day(iso)
+        if value is None:
+            return False
+        if self.year is not None:
+            return (self.year, self.month, self.day) == (value.year, value.month, value.day)
+        return (self.month, self.day) == (value.month, value.day)
+
+
+def _mentions(clause: str) -> list[_Mention]:
+    found: list[_Mention] = []
+    cursor = 0
+    for mention in parse_dates(clause):
+        start = clause.find(mention.text, cursor)
+        start = cursor if start < 0 else start
+        cursor = start + len(mention.text)
+        found.append(_Mention(mention.text, mention.day, mention.month, mention.year, start, cursor))
+    return found
+
+
+def _todos(agenda: Agenda) -> list[AgendaEntry]:
+    """The agenda's to-dos and contract decisions (not Ideas), each once."""
+    seen: dict[str, AgendaEntry] = {}
+    sections = (
+        agenda.overdue,
+        agenda.today,
+        agenda.next_7_days,
+        agenda.payments_this_month,
+        agenda.decisions,
+    )
+    for entry in (entry for section in sections for entry in section):
+        seen.setdefault(entry.id, entry)
+    return list(seen.values())
+
+
+def _own_words(todos: list[AgendaEntry]) -> dict[str, set[str]]:
+    """Per to-do, the words of its title and party that no other to-do has ("rent", "TechMarkt")."""
+    words = {
+        todo.id: {word.casefold() for word in _WORD.findall(f"{todo.title} {todo.party or ''}")} - _NOT_NAMES
+        for todo in todos
+    }
+    counts: dict[str, int] = {}
+    for found in words.values():
+        for word in found:
+            counts[word] = counts.get(word, 0) + 1
+    return {key: {word for word in found if counts[word] == 1} for key, found in words.items()}
+
+
+def _named(text: str, todos: list[AgendaEntry], words: dict[str, set[str]]) -> list[AgendaEntry]:
+    """The to-dos ``text`` talks about: by amount, or by a word of their own."""
+    cents = {round(amount * 100) for amount in parse_amounts(text)}
+    said = {word.casefold() for word in _WORD.findall(text)}
+    return [
+        todo
+        for todo in todos
+        if (todo.amount is not None and round(todo.amount * 100) in cents) or words[todo.id] & said
+    ]
+
+
+def _mislabelled(mention: _Mention, named: list[AgendaEntry], todos: list[AgendaEntry]) -> bool:
+    """Whether calling ``mention`` due is wrong: a to-do the text names has it as its send-by day and
+    not as its due date; when none it names has that day, when it is only ever a send-by day."""
+    about = [todo for todo in named if mention.is_day(todo.due) or mention.is_day(todo.send_by)]
+    if about:
+        return any(mention.is_day(todo.send_by) and not mention.is_day(todo.due) for todo in about)
+    return any(mention.is_day(todo.send_by) for todo in todos) and not any(
+        mention.is_day(todo.due) for todo in todos
+    )
+
+
+def _nearest(dates: list[_Mention], word: re.Match[str]) -> _Mention:
+    """The date nearest to ``word`` (the later one on a tie)."""
+    return min(dates, key=lambda m: (max(m.start - word.end(), word.start() - m.end), -m.start))
+
+
+def _subject(clause: str, word: re.Match[str]) -> str:
+    """The part of ``clause`` a due word is about: its own "and" part ("the fee is due and the rent
+    goes out"), or the whole clause after a plural verb ("the rent and the fee are due")."""
+    if _PLURAL.search(clause[: word.start()]):
+        return clause
+    start = 0
+    for joint in _AND.finditer(clause):
+        if joint.start() >= word.start():
+            return clause[start : joint.start()]
+        start = joint.end()
+    return clause[start:]
+
+
+def mislabelled_dates(text: str, agenda: Agenda) -> list[str]:
+    """Dates ``text`` calls due ("due", "fällig", …) that are a send-by day, not the due date.
+
+    A due word labels the date of its clause nearest to it — in a clause without a date, the dates
+    of its sentence's clauses that are not about sending ("Then on Fri 2 Oct, the rent is due"). The
+    to-dos it is about are those named (by amount or by a word of their own) in its part of the
+    clause (:func:`_subject`), else in its clause, else in its sentence; see :func:`_mislabelled`.
+    """
+    todos = _todos(agenda)
+    words = _own_words(todos)
+    wrong: list[str] = []
+    for sentence in split_sentences(strip_weekdays(fold_punctuation(text))):
+        clauses = [clause for clause in _CLAUSE_END.split(sentence) if clause.strip()]
+        loose = [
+            mention for clause in clauses if not _SEND_WORD.search(clause) for mention in _mentions(clause)
+        ]
+        for clause in clauses:
+            dates = _mentions(clause)
+            for word in _DUE_WORD.finditer(clause):
+                labelled = [_nearest(dates, word)] if dates else loose
+                named = next(
+                    (
+                        found
+                        for part in (_subject(clause, word), clause, sentence)
+                        if (found := _named(part, todos, words))
+                    ),
+                    [],
+                )
+                for mention in labelled:
+                    if mention.text not in wrong and _mislabelled(mention, named, todos):
+                        wrong.append(mention.text)
+    return wrong
+
+
 def grounded_note(text: str, agenda: Agenda) -> bool:
-    """Whether a model note is acceptable: short, and every date/amount/§ it mentions is in the agenda."""
+    """Whether a model note is acceptable: short, every date/amount/§ it mentions is in the agenda, and
+    no send-by day is called a due date (:func:`mislabelled_dates`)."""
     if not text.strip() or len(text) > MAX_BRIEF_CHARS:
         return False
-    return not Facts.from_data(agenda.model_dump(exclude={"waiting"})).unsupported(text)
+    if Facts.from_data(agenda.model_dump(exclude={"waiting"})).unsupported(text):
+        return False
+    return not mislabelled_dates(text, agenda)
 
 
 def _note_from(data: dict[str, object] | None, text: str) -> str:

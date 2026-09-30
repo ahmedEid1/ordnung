@@ -554,7 +554,10 @@ whose adding was stopped before its attachments adds them.
 - **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash). The
   code-written note is served as the ledger stands (a stored one only while it still says the same),
   and while letters from the watched folder wait unread it never says "all clear": "Nothing is due in
-  the next 7 days from the letters that were read." (the count is not sent to the model).
+  the next 7 days from the letters that were read." (the count is not sent to the model). The model sees
+  each to-do's dates labelled — `due`, and `send_by` when a transfer or letter must go out earlier — and
+  a note that calls a send-by day "due"/"fällig" for the to-do it names is rejected for the code-written
+  note, which says "send by …, due …".
 - **Weekly session** (`secretary/week.py`, policy in its docstring; `views.weekly_session`) — a guided
   ~10-minute review composed from the agenda, the money summary, drafts and to-dos: *act now* (only when
   a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
