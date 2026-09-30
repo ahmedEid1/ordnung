@@ -26,6 +26,7 @@ import itertools
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -553,15 +554,32 @@ async def _exercise_asks(
     return states
 
 
+#: The result the CLI gives a tool call its tool server did not answer — it was still starting (the
+#: first calls of a turn, now and then): bare, unlike a tool's own input error ("…: invalid arguments").
+_TOOL_NOT_READY = re.compile(r"^Error executing tool \S+$")
+
+
 def _stale_asks(store: Store, asks: Sequence[tuple[Path, list[StreamEvent]]], state: int) -> list[str]:
     """Recorded Ask answers whose tool results Ordnung's tools no longer give on this ledger: a change
     to the MCP output (ADR 0008) must be recorded again, or the replay checks answers against stale
-    evidence."""
+    evidence. A take whose tool server did not answer a call (:data:`_TOOL_NOT_READY`) is discarded on
+    the spot, so the next recording asks again instead of failing on the same file every time."""
     from ordnung.assistant.mcp_server import LedgerTools, stale_tool_results
 
-    tools = LedgerTools(store)
+    tools = None
     problems = []
     for path, events in asks:
+        if any(
+            event.type == "tool_result" and _TOOL_NOT_READY.match((event.text or "").strip())
+            for event in events
+        ):
+            path.unlink(missing_ok=True)
+            problems.append(
+                f"tray state {state}: the recorded Ask answer {path.name} holds a tool call its tool server "
+                "did not answer (it was still starting) — discarded; record it again"
+            )
+            continue
+        tools = tools or LedgerTools(store)
         stale = stale_tool_results(tools, events)
         if stale:
             problems.append(

@@ -662,3 +662,27 @@ def test_the_rebuild_fails_when_ask_gives_no_answer(monkeypatch: pytest.MonkeyPa
         asyncio.run(loader._ask_all(None, ["When is rent due?"]))  # type: ignore[arg-type]
     monkeypatch.setattr(loader, "ask_stream", answered)
     assert asyncio.run(loader._ask_all(None, ["When is rent due?", "And the gym?"])) == 2  # type: ignore[arg-type]
+
+
+def test_a_take_its_tool_server_did_not_answer_is_discarded(tmp_path: Path) -> None:
+    """The CLI's tool server is sometimes still starting when the first calls of a turn come: their
+    results read "Error executing tool …", the model calls again, and the take keeps both. The stale
+    check rejected such a take on every rebuild; now the recorder discards it, and the next asks again."""
+    from ordnung.demo.loader import _stale_asks
+    from ordnung.llm.base import StreamEvent
+
+    take = tmp_path / "take.json"
+    take.write_text("{}", encoding="utf-8")
+    events = [
+        StreamEvent(type="tool_use", name="mcp__ordnung__today", input={}, tool_use_id="a"),
+        StreamEvent(type="tool_result", text="Error executing tool today", tool_use_id="a"),
+        StreamEvent(type="tool_use", name="mcp__ordnung__today", input={}, tool_use_id="b"),
+        StreamEvent(type="tool_result", text='{"today":"2026-09-28"}', tool_use_id="b"),
+        StreamEvent(type="done", text="Today is Mon 28 Sep 2026."),
+    ]
+    problems = _stale_asks(None, [(take, events)], 6)  # type: ignore[arg-type]
+    assert not take.exists()
+    assert problems == [
+        "tray state 6: the recorded Ask answer take.json holds a tool call its tool server did not answer "
+        "(it was still starting) — discarded; record it again"
+    ]
