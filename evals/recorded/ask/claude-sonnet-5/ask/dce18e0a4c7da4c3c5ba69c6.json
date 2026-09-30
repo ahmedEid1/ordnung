@@ -1,0 +1,281 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "9+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2d698bfda0ef6a3a85def9cda6b66b9e4db847a6afe17b1bc53b51bdc9a58d9d\",\"question\":\"When do I have to object to the health insurance contribution notice from Muster BKK?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9t9tmrv1ypba"
+    ],
+    "prompt_head": "The person asks:\nWhen do I have to object to the health insurance contribution notice from Muster BKK?\n"
+  },
+  "response": {
+    "text": "You need to send your objection (Widerspruch) to Muster BKK so that it arrives by **Wed 14 Oct 2026**, so it's best to post it by **Thu 8 Oct 2026** [item:itm_tj3z83ve4hfg].\n\nA few notes:\n- This is a decision-point deadline, not a payment — you'd only need to act if you disagree with the increased contribution [item:itm_tj3z83ve4hfg].\n- Filing an objection does not stop the higher contribution from being due in the meantime — it must be paid either way [item:itm_tj3z83ve4hfg].\n- Separately, the new contribution amount is due as a payment via direct debit on **Thu 15 Oct 2026** [item:itm_00sbt9f3e0pe].\n\nIf you want to file the objection, you can draft a letter to Muster BKK from Ordnung.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 476,
+      "cache_read_tokens": 20391,
+      "cache_creation_tokens": 5262,
+      "cost_usd": 0.0298982,
+      "duration_ms": 9265,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Muster BKK Beitragsbescheid contribution"
+      },
+      "tool_use_id": "toolu_01CyNMTifhEdkmqdUWKU6P9M"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"Muster BKK, Sam Rivera's statutory health/long-term care insurer, raises the monthly contribution as…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01CyNMTifhEdkmqdUWKU6P9M"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9t9tmrv1ypba"
+      },
+      "tool_use_id": "toolu_01XALPCUi8tCN3Ywn7vRvGDP"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_eatxsexnt9s3\",\"case_id\":\"cas_jmphbycg8vfz\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"remedy\":{\"type\":\"widerspruch\"},\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"amount\":156.55,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"doc_9t9tmrv1ypba\":{\"tax_note\":\"Statutory health and long-term care insurance contributions are deductible as special expenses (Sonderausgaben) in the German tax return.\",\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"summary\":\"Muster BKK, Sam Rivera's statutory health/long-term care insurer, raises the monthly contribution as a student member from €146.29 to €156.55 as of 1 October 2026, because the student income basis (BAföG-Bedarf) rises from €855.00 to €915.00 for the winter semester 2026/27. An objection (Widerspruch) can be filed within one month of notification.\",\"explanation\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance contributions for the new semester, so your monthly contribution goes up. The amount is collected automatically by direct debit around the 15th of each month; the new, higher amount is first collected on 15 October 2026 — make sure your account has enough funds. If you disagree with the assessment, you may file a written or electronic objection (Widerspruch); the app shows the deadline for this. Note that filing an objection does not stop the higher contribution from being due in the meantime, so you must keep paying it either way. Consider consulting the insurer or a student advisory service if unsure.\",\"key_facts\":[{\"label\":\"New monthly contribution (Monatsbeitrag)\",\"value\":\"156,55 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New income basis (Bemessungsgrundlage)\",\"value\":\"915,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous income basis\",\"value\":\"855,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Additional contribution rate (Zusatzbeitrag)\",\"value\":\"2,69 %\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Direct debit day\",\"value\":\"15. eines Monats\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}],\"remedy\":{\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"Der Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"payment\":{\"iban\":\"DE18123456000006060000\",\"payee\":\"Muster BKK\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nMuster BKK\\nDie Betriebskrankenkasse für Musterstadt\\n\\nVersicherten-Nr. R482019379\\nUnser Zeichen   BZ-S/2026/0917\\nMuster BKK · Kassenstraße 3 · 12346 Musterstadt   Nadine Beispiel\\nIhr Kontakt\\nTelefon   0123 6060-417\\nHerrn\\nDatum   10.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBeitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab\\n01.10.2026\\n\\nSehr geehrter Herr Rivera,\\n\\nSie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert. Als\\nbeitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V);\\ner beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €). Ab dem 01.10.2026 beträgt Ihr\\nmonatlicher Beitrag 156,55 € (bisher 146,29 €).\\n\\nBeitragsart   Satz   Monatsbeitrag\\n\\nKrankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, §   10,22 %   93,51 €\\n245 SGB V)\\n\\nKassenindividueller Zusatzbeitrag der Muster BKK (§ 242 SGB V)   2,69 %   24,61 €\\n\\nPflegeversicherung (§ 55 Abs. 1 SGB XI)   3,60 %   32,94 €\\n\\nBeitragszuschlag für Kinderlose (§ 55 Abs. 3 SGB XI)   0,60 %   5,49 €\\n\\nGesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\\n\\nWas ist der Zusatzbeitrag?\\nJede Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz einen eigenen Zusatzbeitrag.\\nAnders als Arbeitnehmer tragen Studierende ihn – wie den gesamten Beitrag – allein. Der\\nZusatzbeitragssatz der Muster BKK ist unverändert und liegt mit 2,69 % unter dem Durchschnitt von\\n2,9 %. Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am\\n15.10.2026.\\n\\nRechtsbehelfsbelehrung\\nGegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\\nDer Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift\\nbei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\\n\\nHinweis: Widerspruch und Klage haben keine aufschiebende Wirkung (§ 86a Abs. 2 Nr. 1 SGG); die Beiträge sind daher\\nauch bei einem Widerspruch zunächst in der festgesetzten Höhe zu zahlen.\\n\\nMit freundlichen Grüßen\\nIhre Muster BKK\\nNadine Beispiel\\nBeitragsservice\\n\\nMuster BKK · Körperschaft des öffentlichen Rechts   Vorstand: Andrea Beispiel   Sparkasse Musterstadt\\nKassenstraße 3 · 12346 Musterstadt   Verwaltungsratsvorsitzender: Peter Muster   IBAN DE18 1234 5600 0006 0600 00\\nServicetelefon 0123 6060-0 (Mo–Fr 8–18 Uhr)   Gläubiger-ID DE22ZZZ00000606017   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01XALPCUi8tCN3Ywn7vRvGDP"
+    },
+    {
+      "type": "text",
+      "text": "You need to send"
+    },
+    {
+      "type": "text",
+      "text": " your objection (Widersp"
+    },
+    {
+      "type": "text",
+      "text": "ruch) to Muster B"
+    },
+    {
+      "type": "text",
+      "text": "KK so that it arrives"
+    },
+    {
+      "type": "text",
+      "text": " by **W"
+    },
+    {
+      "type": "text",
+      "text": "ed 14 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026**"
+    },
+    {
+      "type": "text",
+      "text": ", so"
+    },
+    {
+      "type": "text",
+      "text": " it's"
+    },
+    {
+      "type": "text",
+      "text": " best to post it by **Th"
+    },
+    {
+      "type": "text",
+      "text": "u 8 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026** [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_tj3z83ve"
+    },
+    {
+      "type": "text",
+      "text": "4hfg]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nA few notes:\n-"
+    },
+    {
+      "type": "text",
+      "text": " This is a decision-point de"
+    },
+    {
+      "type": "text",
+      "text": "adline, not a pay"
+    },
+    {
+      "type": "text",
+      "text": "ment —"
+    },
+    {
+      "type": "text",
+      "text": " you'd only"
+    },
+    {
+      "type": "text",
+      "text": " need to act"
+    },
+    {
+      "type": "text",
+      "text": " if you disagree with the incre"
+    },
+    {
+      "type": "text",
+      "text": "ased contribution [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_tj3z"
+    },
+    {
+      "type": "text",
+      "text": "83ve4hfg]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Fil"
+    },
+    {
+      "type": "text",
+      "text": "ing an objection does"
+    },
+    {
+      "type": "text",
+      "text": " not"
+    },
+    {
+      "type": "text",
+      "text": " stop the higher contribution"
+    },
+    {
+      "type": "text",
+      "text": " from being due in"
+    },
+    {
+      "type": "text",
+      "text": " the meantime —"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": " must"
+    },
+    {
+      "type": "text",
+      "text": " be"
+    },
+    {
+      "type": "text",
+      "text": " paid either way [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_tj3z83"
+    },
+    {
+      "type": "text",
+      "text": "ve4hfg].\n-"
+    },
+    {
+      "type": "text",
+      "text": " Separately, the new"
+    },
+    {
+      "type": "text",
+      "text": " cont"
+    },
+    {
+      "type": "text",
+      "text": "ribution amount is due as"
+    },
+    {
+      "type": "text",
+      "text": " a pay"
+    },
+    {
+      "type": "text",
+      "text": "ment via direct debit on **"
+    },
+    {
+      "type": "text",
+      "text": "Thu 15 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026** [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_00sbt9"
+    },
+    {
+      "type": "text",
+      "text": "f3e0"
+    },
+    {
+      "type": "text",
+      "text": "pe].\n\nIf you want to"
+    },
+    {
+      "type": "text",
+      "text": " file the objection, you can dra"
+    },
+    {
+      "type": "text",
+      "text": "ft a"
+    },
+    {
+      "type": "text",
+      "text": " letter to"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK from"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You need to send your objection (Widerspruch) to Muster BKK so that it arrives by **Wed 14 Oct 2026**, so it's best to post it by **Thu 8 Oct 2026** [item:itm_tj3z83ve4hfg].\n\nA few notes:\n- This is a decision-point deadline, not a payment — you'd only need to act if you disagree with the increased contribution [item:itm_tj3z83ve4hfg].\n- Filing an objection does not stop the higher contribution from being due in the meantime — it must be paid either way [item:itm_tj3z83ve4hfg].\n- Separately, the new contribution amount is due as a payment via direct debit on **Thu 15 Oct 2026** [item:itm_00sbt9f3e0pe].\n\nIf you want to file the objection, you can draft a letter to Muster BKK from Ordnung.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 476,
+          "cache_read_tokens": 20391,
+          "cache_creation_tokens": 5262,
+          "cost_usd": 0.0298982,
+          "duration_ms": 9265,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
