@@ -30,7 +30,7 @@ from ordnung.secretary.brief import build_agenda
 from test_api_support import Api, ApiRouter, api_for
 
 DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
-DEMO_RENT = "itm_b1b5643x7qy7"  # "Monthly rent", €640, the lease's 3rd working day
+DEMO_RENT = "itm_b1b5643x7qy7"  # "Pay monthly rent (Miete)", €640, the lease's 3rd working day
 DEMO_NEW_RENT = "itm_9dvnqv1acvka"  # "New monthly total rent €670", "ab dem 01.11.2026"
 MONTHLY = {"interval": 1, "unit": "months"}
 
@@ -87,7 +87,7 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
         # its last occurrence stays, and the series is closed there
         assert (paid["status"], paid["due_date"], paid["amount"]) == ("done", "2026-10-05", 640.0)
         assert (
-            "Paid “Monthly rent” (Mon 5 Oct 2026) — replaced by “New monthly total rent €670” from Nov 2026"
+            "Paid “Pay monthly rent (Miete)” (Mon 5 Oct 2026) — replaced by “New monthly total rent €670” from Nov 2026"
             in _log(api, DEMO_RENT)
         )
 
@@ -101,9 +101,11 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
         # and the Sunday is no longer the due day
         assert not any("not a working day" in warning for warning in receipt["warnings"])
         assert LAW_DEFAULT_WARNING not in receipt["warnings"]
-        # its send-by follows how the statement says it is paid: the demo's reading asks the person to adjust
-        # their standing order ("… unless you use direct debit"), their own transfer (ordnung.payments)
-        assert asks_for_transfer(new["action"]) and new["send_by"] == "2026-11-03"
+        # its send-by follows how it is paid: the series the reading completes from the statement's change
+        # (ordnung.ingest.extract.with_rent_series) has no action, so the rent is the person's own transfer,
+        # as the lease's is, with a transfer's send-by day (ordnung.payments)
+        assert new["action"] is None and not asks_for_transfer(new["action"])
+        assert new["send_by"] == "2026-11-03"
 
         november = await _rents(api, **{"from": "2026-11-01", "to": "2026-11-30"})
         assert [(r["id"], r["amount"], r["due_date"]) for r in november] == [
@@ -132,7 +134,7 @@ async def test_the_demos_new_rent_replaces_the_lease_rent_from_november(tmp_path
 
         reopened = await _patch(api, DEMO_RENT, status="open")  # the closed rent set open again
         assert (reopened["status"], reopened["due_date"]) == ("open", "2026-10-05")
-        assert "Reopened “Monthly rent” (Mon 5 Oct 2026)" in _log(api, DEMO_RENT)
+        assert "Reopened “Pay monthly rent (Miete)” (Mon 5 Oct 2026)" in _log(api, DEMO_RENT)
         closed = await _patch(api, DEMO_RENT, status="done")
         assert (closed["status"], closed["due_date"]) == ("done", "2026-10-05")
 
