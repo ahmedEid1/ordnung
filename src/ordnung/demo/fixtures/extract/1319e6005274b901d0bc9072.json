@@ -1,0 +1,204 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "sonnet",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"4d1dc6026c9091bdc121cd2f8de3fc4fbc9d957d311a57198d404db2207a94a6\",\"language\":\"en\",\"pages\":[[1,\"text\"],[2,\"text\"]],\"region\":\"NW\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9mewc0kcj28v"
+    ],
+    "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Global Talent Scholarship Foundation (other)\n- Hochschule Musterstadt (university)\n- Muster Tec"
+  },
+  "response": {
+    "text": "{\"area\":\"residence\",\"case_title\":\"Operating Cost Statement 2025 – Wohnbau Musterstadt\",\"kind\":\"utility_bill\",\"title\":\"Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung)\",\"summary\":\"Wohnbau Musterstadt eG, Sam Rivera's landlord, sent the 2025 operating and heating cost statement for the apartment at Beispielweg 5, showing an additional payment (Nachzahlung) of €184.30 due by 9 October 2026. The letter also raises the monthly advance payments (Vorauszahlungen) to a total of €670.00 (from €640.00) starting 1 November 2026.\",\"explanation\":\"This is the yearly settlement of your share of the building's running and heating costs, covering the period your tenancy has existed in 2025. Because your actual costs (€544.30) were higher than what you already paid in advance (€360.00), you owe €184.30 — transfer this by the stated due date to avoid a reminder. Separately, the landlord is increasing your monthly advance payments to €670.00 total from 1 November 2026 based on this settlement; if you pay by standing order, update it, otherwise it will be collected automatically by direct debit. You may raise objections to the figures in this statement within the window shown by the app; check the attached breakdown if anything looks wrong.\",\"language\":\"de\",\"document_date\":\"2026-09-08\",\"recipient_name\":\"Sam Rivera\",\"high_stakes_kind\":\"operating_costs\",\"urgency\":\"high\",\"tax_relevant\":true,\"tax_note\":\"Some of the listed cost items (e.g. Hauswart, Gartenpflege, Gebäudereinigung) are household-related services that may be deductible in the tax return under § 35a EStG (haushaltsnahe Dienstleistungen); keep this statement for the relevant tax year.\",\"sender\":{\"name\":\"Wohnbau Musterstadt eG\",\"kind\":\"landlord\",\"address\":\"Genossenschaftsstraße 10 · 12345 Musterstadt\",\"phone\":\"0123 45678-214\",\"email\":null,\"website\":\"www.wohnbau-musterstadt.example\",\"identifiers\":[{\"label\":\"Amtsgericht/GnR\",\"value\":\"Amtsgericht Musterstadt GnR 123\"}]},\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"MV-2025-0412\"}],\"payment\":{\"iban\":\"DE05123456000044556660\",\"iban_valid\":null,\"payee\":\"Wohnbau Musterstadt eG\",\"reference\":\"MV-2025-0412 NK 2025\"},\"remedy\":null,\"contract\":{\"name\":\"Wohnung Nr. 05-2-03, Beispielweg 5\",\"category\":\"rent\",\"concluded_date\":null,\"start_date\":\"2025-10-01\",\"end_date\":null,\"initial_term_months\":null,\"renewal_term_months\":null,\"notice_value\":null,\"notice_unit\":null,\"notice_basis\":null,\"notice_day\":null,\"notice_statutory\":false,\"notice_before_end\":false,\"cost_amount\":670,\"cost_interval\":\"monthly\",\"customer_number\":\"MV-2025-0412\",\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Da Ihr Mietverhältnis am 01.10.2025 begonnen hat, werden die Kosten des Hauses zeitanteilig für 92 von 365 Tagen und nach Ihrem Wohnflächenanteil (48,60 m² von 742,80 m²) berechnet.\",\"Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).\"]},\"change\":{\"type\":\"price_increase\",\"effective_date\":\"2026-11-01\",\"old_amount\":640,\"new_amount\":670,\"cost_interval\":\"monthly\",\"unit_price_old\":null,\"unit_price_new\":null,\"quote\":\"Auf Grundlage dieser Abrechnung passen wir Ihre monatlichen Vorauszahlungen gemäß § 560 Abs. 4 BGB ab dem 01.11.2026 an: Betriebskosten 85,00 € (bisher 70,00 €), Heiz- und Warmwasserkosten 65,00 € (bisher 50,00 €).\"},\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the additional cost settlement (Nachzahlung)\",\"action\":\"Transfer €184.30 to the landlord's bank account by the due date shown.\",\"consequence\":null,\"amount\":184.3,\"currency\":\"EUR\",\"direction\":\"out\",\"priority\":\"high\",\"location\":null,\"date\":{\"type\":\"fixed\",\"date\":\"2026-10-09\",\"text\":\"bis zum 09.10.2026\",\"nature\":\"payment\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"time\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"quote\":\"Bitte überweisen Sie den Nachzahlungsbetrag in Höhe von 184,30 € bis zum 09.10.2026 auf unser Konto bei der Sparkasse Musterstadt.\",\"recurrence\":null},{\"kind\":\"deadline\",\"title\":\"Raise objections to the cost statement (Einwendungen)\",\"action\":\"If you think any figures in this statement are wrong, notify the landlord in writing before the deadline shown.\",\"consequence\":null,\"amount\":null,\"currency\":null,\"direction\":null,\"priority\":\"normal\",\"location\":null,\"date\":{\"type\":\"relative\",\"date\":null,\"text\":\"innerhalb von zwölf Monaten nach Zugang dieser Abrechnung\",\"nature\":\"objection\",\"anchor\":\"receipt\",\"anchor_date\":null,\"amount\":12,\"unit\":\"months\",\"time\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":\"§ 556 Abs. 3 Satz 5 BGB\"},\"quote\":\"Einwendungen gegen diese Abrechnung teilen Sie uns bitte innerhalb von zwölf Monaten nach Zugang dieser Abrechnung mit (§ 556 Abs. 3 Satz 5 BGB).\",\"recurrence\":null}],\"key_facts\":[{\"label\":\"Additional payment due (Nachzahlung)\",\"value\":\"184,30 €\",\"quote\":\"Nachzahlung 184,30 €\"},{\"label\":\"Payment due date\",\"value\":\"09.10.2026\",\"quote\":\"Bitte überweisen Sie den Nachzahlungsbetrag in Höhe von 184,30 € bis zum 09.10.2026 auf unser Konto bei der Sparkasse Musterstadt.\"},{\"label\":\"New total rent (Gesamtmiete)\",\"value\":\"670,00 €\",\"quote\":\"Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).\"},{\"label\":\"Previous total rent (bisher)\",\"value\":\"640,00 €\",\"quote\":\"Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €).\"},{\"label\":\"Usage period (Nutzungszeitraum)\",\"value\":\"01.10.–31.12.2025 (92 Tage)\",\"quote\":\"Abrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025 (92 Tage)\"},{\"label\":\"Living space share (Wohnflächenanteil)\",\"value\":\"48,60 m² von 742,80 m²\",\"quote\":\"Da Ihr Mietverhältnis am 01.10.2025 begonnen hat, werden die Kosten des Hauses zeitanteilig für 92 von 365 Tagen und nach Ihrem Wohnflächenanteil (48,60 m² von 742,80 m²) berechnet.\"},{\"label\":\"Total 2025 costs (Ihre Kosten 2025)\",\"value\":\"544,30 €\",\"quote\":\"Ihre Kosten 2025   544,30 €\"},{\"label\":\"Advance payments made (Vorauszahlungen)\",\"value\":\"3 × 120,00 €\",\"quote\":\"abzüglich Ihrer Vorauszahlungen (3 × 120,00 €)   – 360,00 €\"}],\"warnings\":[]}",
+    "data": {
+      "area": "residence",
+      "case_title": "Operating Cost Statement 2025 – Wohnbau Musterstadt",
+      "kind": "utility_bill",
+      "title": "Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung)",
+      "summary": "Wohnbau Musterstadt eG, Sam Rivera's landlord, sent the 2025 operating and heating cost statement for the apartment at Beispielweg 5, showing an additional payment (Nachzahlung) of €184.30 due by 9 October 2026. The letter also raises the monthly advance payments (Vorauszahlungen) to a total of €670.00 (from €640.00) starting 1 November 2026.",
+      "explanation": "This is the yearly settlement of your share of the building's running and heating costs, covering the period your tenancy has existed in 2025. Because your actual costs (€544.30) were higher than what you already paid in advance (€360.00), you owe €184.30 — transfer this by the stated due date to avoid a reminder. Separately, the landlord is increasing your monthly advance payments to €670.00 total from 1 November 2026 based on this settlement; if you pay by standing order, update it, otherwise it will be collected automatically by direct debit. You may raise objections to the figures in this statement within the window shown by the app; check the attached breakdown if anything looks wrong.",
+      "language": "de",
+      "document_date": "2026-09-08",
+      "recipient_name": "Sam Rivera",
+      "high_stakes_kind": "operating_costs",
+      "urgency": "high",
+      "tax_relevant": true,
+      "tax_note": "Some of the listed cost items (e.g. Hauswart, Gartenpflege, Gebäudereinigung) are household-related services that may be deductible in the tax return under § 35a EStG (haushaltsnahe Dienstleistungen); keep this statement for the relevant tax year.",
+      "sender": {
+        "name": "Wohnbau Musterstadt eG",
+        "kind": "landlord",
+        "address": "Genossenschaftsstraße 10 · 12345 Musterstadt",
+        "phone": "0123 45678-214",
+        "email": null,
+        "website": "www.wohnbau-musterstadt.example",
+        "identifiers": [
+          {
+            "label": "Amtsgericht/GnR",
+            "value": "Amtsgericht Musterstadt GnR 123"
+          }
+        ]
+      },
+      "references": [
+        {
+          "label": "Vertragsnummer",
+          "value": "MV-2025-0412"
+        }
+      ],
+      "payment": {
+        "iban": "DE05123456000044556660",
+        "iban_valid": null,
+        "payee": "Wohnbau Musterstadt eG",
+        "reference": "MV-2025-0412 NK 2025"
+      },
+      "remedy": null,
+      "contract": {
+        "name": "Wohnung Nr. 05-2-03, Beispielweg 5",
+        "category": "rent",
+        "concluded_date": null,
+        "start_date": "2025-10-01",
+        "end_date": null,
+        "initial_term_months": null,
+        "renewal_term_months": null,
+        "notice_value": null,
+        "notice_unit": null,
+        "notice_basis": null,
+        "notice_day": null,
+        "notice_statutory": false,
+        "notice_before_end": false,
+        "cost_amount": 670,
+        "cost_interval": "monthly",
+        "customer_number": "MV-2025-0412",
+        "is_consumer": true,
+        "is_basic_supply": false,
+        "quotes": [
+          "Da Ihr Mietverhältnis am 01.10.2025 begonnen hat, werden die Kosten des Hauses zeitanteilig für 92 von 365 Tagen und nach Ihrem Wohnflächenanteil (48,60 m² von 742,80 m²) berechnet.",
+          "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €)."
+        ]
+      },
+      "change": {
+        "type": "price_increase",
+        "effective_date": "2026-11-01",
+        "old_amount": 640,
+        "new_amount": 670,
+        "cost_interval": "monthly",
+        "unit_price_old": null,
+        "unit_price_new": null,
+        "quote": "Auf Grundlage dieser Abrechnung passen wir Ihre monatlichen Vorauszahlungen gemäß § 560 Abs. 4 BGB ab dem 01.11.2026 an: Betriebskosten 85,00 € (bisher 70,00 €), Heiz- und Warmwasserkosten 65,00 € (bisher 50,00 €)."
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the additional cost settlement (Nachzahlung)",
+          "action": "Transfer €184.30 to the landlord's bank account by the due date shown.",
+          "consequence": null,
+          "amount": 184.3,
+          "currency": "EUR",
+          "direction": "out",
+          "priority": "high",
+          "location": null,
+          "date": {
+            "type": "fixed",
+            "date": "2026-10-09",
+            "text": "bis zum 09.10.2026",
+            "nature": "payment",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "time": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "quote": "Bitte überweisen Sie den Nachzahlungsbetrag in Höhe von 184,30 € bis zum 09.10.2026 auf unser Konto bei der Sparkasse Musterstadt.",
+          "recurrence": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Raise objections to the cost statement (Einwendungen)",
+          "action": "If you think any figures in this statement are wrong, notify the landlord in writing before the deadline shown.",
+          "consequence": null,
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "priority": "normal",
+          "location": null,
+          "date": {
+            "type": "relative",
+            "date": null,
+            "text": "innerhalb von zwölf Monaten nach Zugang dieser Abrechnung",
+            "nature": "objection",
+            "anchor": "receipt",
+            "anchor_date": null,
+            "amount": 12,
+            "unit": "months",
+            "time": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": "§ 556 Abs. 3 Satz 5 BGB"
+          },
+          "quote": "Einwendungen gegen diese Abrechnung teilen Sie uns bitte innerhalb von zwölf Monaten nach Zugang dieser Abrechnung mit (§ 556 Abs. 3 Satz 5 BGB).",
+          "recurrence": null
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Additional payment due (Nachzahlung)",
+          "value": "184,30 €",
+          "quote": "Nachzahlung 184,30 €"
+        },
+        {
+          "label": "Payment due date",
+          "value": "09.10.2026",
+          "quote": "Bitte überweisen Sie den Nachzahlungsbetrag in Höhe von 184,30 € bis zum 09.10.2026 auf unser Konto bei der Sparkasse Musterstadt."
+        },
+        {
+          "label": "New total rent (Gesamtmiete)",
+          "value": "670,00 €",
+          "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €)."
+        },
+        {
+          "label": "Previous total rent (bisher)",
+          "value": "640,00 €",
+          "quote": "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00 €)."
+        },
+        {
+          "label": "Usage period (Nutzungszeitraum)",
+          "value": "01.10.–31.12.2025 (92 Tage)",
+          "quote": "Abrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025 (92 Tage)"
+        },
+        {
+          "label": "Living space share (Wohnflächenanteil)",
+          "value": "48,60 m² von 742,80 m²",
+          "quote": "Da Ihr Mietverhältnis am 01.10.2025 begonnen hat, werden die Kosten des Hauses zeitanteilig für 92 von 365 Tagen und nach Ihrem Wohnflächenanteil (48,60 m² von 742,80 m²) berechnet."
+        },
+        {
+          "label": "Total 2025 costs (Ihre Kosten 2025)",
+          "value": "544,30 €",
+          "quote": "Ihre Kosten 2025   544,30 €"
+        },
+        {
+          "label": "Advance payments made (Vorauszahlungen)",
+          "value": "3 × 120,00 €",
+          "quote": "abzüglich Ihrer Vorauszahlungen (3 × 120,00 €)   – 360,00 €"
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 12140,
+      "cache_read_tokens": 22082,
+      "cache_creation_tokens": 11274,
+      "cost_usd": 0.1709204,
+      "duration_ms": 96282,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
