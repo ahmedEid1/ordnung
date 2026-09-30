@@ -973,7 +973,9 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
 
 def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
     """Review finding (round 2): every recorded "what do I have to pay" answer left out the rent (it has
-    no stored due date) and, with the scam letter opened, no longer warned about its demand."""
+    no stored due date) and, with the scam letter opened, no longer warned about its demand. The warning
+    must be about that demand: the answer cites the record money_summary lists under ``do_not_pay`` and
+    calls it a scam (its amount is optional — it once stood in for the citation)."""
     payments = [
         (record, answer)
         for _, record, answer in _demo_records()
@@ -983,9 +985,14 @@ def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
     for record, answer in payments:
         # the rent, in either amount style the model writes English in ("640.00 €", "€640.00")
         assert re.search(r"640[.,]00\s?€|€\s?640[.,]00", answer.text), answer.text
-        scam_listed = any('"do_not_pay":[{' in result for result in record["results"])
-        if scam_listed:
-            assert re.search(r"254[.,]35", answer.text) and "scam" in answer.text.lower(), answer.text
+        listed = [
+            found
+            for result in record["results"]
+            for found in re.findall(r'"do_not_pay":\[\{"id":"(itm_\w+)"', result)
+        ]
+        if listed:
+            assert any(f"[item:{ref}]" in answer.text for ref in listed), answer.text
+            assert "scam" in answer.text.lower(), answer.text
     assert sum(any('"do_not_pay":[{' in r for r in record["results"]) for record, _ in payments) >= 4
 
 
