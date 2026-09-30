@@ -563,14 +563,24 @@ DueDay = tuple[Literal["working_day", "day_of_month"], int]
 """A recurring payment's due day: ``("working_day", 3)`` (the 3rd working day, -1 the last) or
 ``("day_of_month", 1)`` (the 1st, 31 a month's last day)."""
 
+# Words about paying, matched as whole words or word parts that only paying has: "Zahlung", "zahlbar",
+# "zahlen" but not "Anzahl"; "Miete", "Kaltmiete", "Mietzins" but not "Mieter"; "Beitrag", "Betrag",
+# "Lastschrift(einzug)" but not "Einzug" alone (moving in); "instalment" but not "installation".
 _PAYMENT_WORDS = re.compile(
-    r"zahl|abbuch|abgebucht|lastschrift|einzug|eingezogen|einzieh|überweis|ueberweis|fällig|faellig|beitrag"
-    r"|miete|abschlag|\brate\b|\bpay|paid\b|debit|\bdue\b|\brent\b|transfer|collected|instal",
+    r"zahl(?:ung|bar|en\b|e\b|st\b|t\b|te\b|ten\b)|abbuch|abgebucht|lastschrift|einzugserm|überweis|ueberweis"
+    r"|fällig|faellig|beitrag|betrag|miete\b|mietzins|abschlag|\brate\b"
+    r"|\bpay(?:s|ing|ments?|able)?\b|\bpaid\b|\bdebit|\bdue\b(?!\s+to\b)|\brent\b|\btransfer|\binstal+ments?\b",
     re.IGNORECASE,
 )
-# A day of a notice period or an objection ("Die Kündigung muss bis zum 10. eines Monats …") is no payment's.
+# A day that is no payment's due day, though a payment word is near: a notice period or an objection
+# ("Die Kündigung muss bis zum 10. eines Monats …"), late fees from a day on ("Mahngebühren werden ab dem 15.
+# fällig"), or a contract's start, end or term ("Ihr Vertrag endet zum Monatsende, der Beitrag …").
 _NOT_A_PAYMENT = re.compile(
-    r"kündig|kuendig|widerruf|widersp|einspruch|cancel|terminat|notice|withdraw|objection", re.IGNORECASE
+    r"kündig|kuendig|widerruf|widersp|einspruch|cancel|terminat|notice|withdraw|objection"
+    r"|mahn|verzug|säumnis|saeumnis|\blate\b|overdue|arrear|penalt|\bab\s+(?:dem|den)\b|\b(?:from|after)\s+the\b"
+    r"|\bendet\b|\benden\b|beginnt|vertragsende|vertragsbeginn|laufzeit|gültig|gueltig|in\s+kraft"
+    r"|\bends\b|\bbegins\b|\bstarts\b|\bexpir|\bcommenc|\bterm\b|\beffective\b",
+    re.IGNORECASE,
 )
 _MONTH_NAME = (
     r"januar|january|jan|februar|february|feb|märz|maerz|march|mär|mrz|mar|april|apr|mai|may|juni|june|jun"
@@ -581,20 +591,27 @@ _NAMED_DATE = re.compile(
       | \b(?:{_MONTH_NAME})\.?\s+(?:{_DAY_NUMBER})(?:st|nd|rd|th)?\b""",
     re.IGNORECASE | re.VERBOSE,
 )
-# Where a line breaks inside a phrase ("… bis zum" / "10. eines Monats …", "am 3." / "Werktag …").
+# Where a line breaks inside a phrase ("… bis zum" / "10. eines Monats …", "am 3." / "Werktag …", "am
+# dritten" / "Werktag …").
 _CUT_PHRASE = re.compile(
-    r"(?:\b(?:zum|am|bis|jeweils|spätestens|des|eines|jeden|jedes|dem|den|der|zur|the|on|by|of)|\d\.)$",
-    re.IGNORECASE,
+    rf"""(?:\b(?:zum|am|bis|jeweils|spätestens|des|eines|jeden|jedes|dem|den|der|zur|the|on|by|of
+            |(?:{_GERMAN_ORDINAL}|letzt)e[mnrs]?|{_ENGLISH_ORDINAL}|last)|\d\.)$""",
+    re.IGNORECASE | re.VERBOSE,
 )
+# A line that goes on with the day's noun ("… am 3." / "Werktag", "… zum 15. eines" / "Monats").
+_GOES_ON = re.compile(r"(?:werktag|(?:bank)?arbeitstag|monat)", re.IGNORECASE)
 _RUNS_ON = re.compile(r"[a-zäöüß0-9(]")
+# A word hyphenated across the break ("Monats-" / "anfang"), joined as the quote grounding joins it.
+_HYPHENATED = re.compile(r"[^\W\d_]-$")
 _SENTENCE_END = re.compile(r"(?<=[^\d\s][.!?])\s+(?=[\"(]?[A-ZÄÖÜ])")
 
 
 def _sentences(text: str) -> list[str]:
     """A page's sentences on one line each: a line joins the one before when the sentence runs on (it
-    starts in lower case, with a digit or a bracket after a line without a full stop) or the break falls
-    inside a phrase (after "zum" or "3."); a blank line ends a paragraph; sentences end at a full stop,
-    question or exclamation mark before a capital (never after a digit: "am 3. Werktag")."""
+    starts in lower case, with a digit or a bracket after a line without a full stop), the break falls
+    inside a phrase (after "zum", "3." or "dritten", or before "Werktag" or "Monats") or inside a hyphenated
+    word ("Monats-" / "anfang" is "Monatsanfang"); a blank line ends a paragraph; sentences end at a full
+    stop, question or exclamation mark before a capital (never after a digit: "am 3. Werktag")."""
     lines: list[str] = []
     joins = False
     for raw in text.splitlines():
@@ -603,8 +620,11 @@ def _sentences(text: str) -> list[str]:
             joins = False
             continue
         last = lines[-1] if lines and joins else None
-        if last is not None and (
-            _CUT_PHRASE.search(last) or (last[-1] not in ".!?:" and _RUNS_ON.match(line))
+        if last is not None and _HYPHENATED.search(last) and line[0].islower():
+            lines[-1] = f"{last[:-1]}{line}"
+        elif last is not None and (
+            _CUT_PHRASE.search(last)
+            or (last[-1] not in ".!?:" and (_RUNS_ON.match(line) or _GOES_ON.match(line)))
         ):
             lines[-1] = f"{last} {line}"
         else:

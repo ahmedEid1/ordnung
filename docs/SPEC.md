@@ -1582,8 +1582,11 @@ likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang"
 
 A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
 letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
-"Beitrag", "Miete", "debit" …, never one about a notice period, cancellation or objection, nor a date
-with a month name) name exactly one working day or day of the month, and it is the reading's. That
+"Beitrag", "Miete", "debit" … as whole words or compound parts, never inside another word such as "Mieter"
+or "Anzahl"; never a sentence about a notice period, cancellation, objection, late fees or a contract's
+start or end, nor a date with a month name) name exactly one working day or day of the month, and it is
+the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
+hyphenated words ("Monats-" / "anfang"). That
 sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text
 page, `model_read` on a transcript), and no reason is raised. No such day, another one, two different
 ones, or a quote naming another day keep the reason (`plan.day_evidence`). UI never says "verified"; it says

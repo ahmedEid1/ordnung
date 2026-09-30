@@ -825,6 +825,55 @@ def test_payment_days_stated_finds_the_sentences_about_when_a_payment_is_due() -
     assert payment_days_stated("Der Beitrag wird monatlich abgebucht.") == []
     assert payment_days_stated("Notice must reach us by the 10th of each month.") == []
     assert payment_days_stated("Wir haben am 1. eines Monats geöffnet.") == []
+    # a month's end is a due day; a contract that ends then is not ("Ihr Vertrag endet …", below)
+    month_end = "Die Kaltmiete ist zum Ende eines jeden Monats zu zahlen."
+    assert payment_days_stated(month_end) == [(month_end, {("day_of_month", 31)})]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden.",  # "Mieter" is no rent
+        "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden.",  # "Anzahl" is no payment
+        "Der Einzug in die Wohnung erfolgt zum 15. des Monats.",  # moving in, not a debit
+        "Die Installation erfolgt am 3. Werktag.",  # no instalment
+        "Mahngebühren werden ab dem 15. eines Monats fällig.",  # late fees from a day on
+        "Bei Zahlungsverzug berechnen wir Zinsen ab dem 3. Werktag.",
+        "Late fees apply from the 15th of each month.",
+        "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht.",  # a contract's end
+        "Die Laufzeit beginnt zum Monatsersten; der Beitrag wird monatlich abgebucht.",
+        "Your membership ends at the end of the month; the fee is debited monthly.",
+    ],
+)
+def test_a_day_in_a_sentence_not_about_paying_its_due_day_is_no_due_day(sentence: str) -> None:
+    """Payment words count as whole words or as parts only paying has ("Zahlung", "Kaltmiete", "Beitrag"),
+    never inside another word ("Mieter", "Anzahl", "Installation") nor "Einzug" alone; and a day of late fees
+    or of a contract's start or end is no payment's due day, though the sentence mentions paying."""
+    assert payment_days_stated(sentence) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "due"),
+    [
+        (
+            "Die Kaltmiete ist spätestens am dritten\nWerktag eines jeden Monats zu zahlen.",
+            ("working_day", 3),
+        ),
+        ("Die Miete ist am letzten\nBankarbeitstag eines Monats fällig.", ("working_day", -1)),
+        ("Der Beitrag wird zum ersten\nTag eines jeden Monats abgebucht.", ("day_of_month", 1)),
+        ("Der Beitrag wird am 3.\nWerktag eines Monats abgebucht.", ("working_day", 3)),
+        ("Die Abbuchung erfolgt jeweils zum Monats-\nanfang.", ("day_of_month", 1)),
+        ("Der Monatsbeitrag wird per Lastschrifteinzug zum\nMonatsende abgebucht.", ("day_of_month", 31)),
+        ("Die Nettomiete ist am dritten (3.)\nWerktag eines Monats zu überweisen.", ("working_day", 3)),
+    ],
+)
+def test_a_due_day_a_line_break_cuts_is_read_whole(text: str, due: DueDay) -> None:
+    """A text layer breaks lines anywhere: between an ordinal word and its noun ("am dritten" / "Werktag"),
+    before the noun of a day ("Werktag", "Monatsende"), or inside a hyphenated word ("Monats-" / "anfang",
+    joined as the quote grounding joins it)."""
+    [(sentence, days)] = payment_days_stated(text)
+    assert days == {due} and "\n" not in sentence
+    assert "Monats- anfang" not in sentence
 
 
 def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> None:

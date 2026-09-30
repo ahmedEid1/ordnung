@@ -290,6 +290,38 @@ def test_a_working_day_the_letter_states_elsewhere_is_grounded_on_that_sentence(
             ticket(),
             DAY_OF_MONTH_NOT_IN_QUOTE,
         ),
+        # the reading's day, but in a sentence that is not about paying: a tenant's duty, a count, moving in,
+        # an installation, late fees from that day on, a contract's end
+        (
+            (TICKET_PRICE, "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Der Einzug in die Wohnung erfolgt zum 15. des Monats."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Die Installation erfolgt am 3. Werktag."),
+            ticket(None, working_day=3),
+            WORKING_DAY_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Mahngebühren werden ab dem 15. eines Monats fällig."),
+            ticket(15),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
+        (
+            (TICKET_PRICE, "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht."),
+            ticket(31),
+            DAY_OF_MONTH_NOT_IN_QUOTE,
+        ),
     ],
 )
 def test_a_due_day_the_letter_does_not_state_alone_still_needs_a_check(
