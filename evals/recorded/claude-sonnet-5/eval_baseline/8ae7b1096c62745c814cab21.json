@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"26d45be22e0f1562c505eb79d448516a90fe6d9cd0f1c3ec00d8dc6bd538dac3\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2025-04-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-04-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreisverwaltung Musterweiler – Bußgeldstelle\",\"document_date\":\"2025-04-14\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"BGS 2025/10744\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"MWL-JB 77\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the fine notice\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.\",\"computation\":\"The letter was formally served (Zustellungsurkunde, § 182 ZPO); the attached delivery slip records the actual delivery date as 17.04.2025 (Thursday), so this is the date of Zustellung (not the 3-day fiction, which only applies to non-formal mailings). Under § 187 Abs. 1 BGB the day of the event (17.04.2025) is not counted; the two-week period begins the next day, 18.04.2025 (Friday). Under § 188 Abs. 2 BGB a period of weeks ends with the expiry of the day in the last week that bears the same name as the day it began: 18.04.2025 + 14 days = 02.05.2025 (Friday). 02.05.2025 is a Friday and not a public holiday in Rheinland-Pfalz, so no shift under § 193 BGB applies. The written Einspruch must reach the Bußgeldstelle by this date.\",\"due_date\":\"2025-05-02\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Bußgeld, fee, delivery costs)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"This obligation only arises if no Einspruch is filed. Rechtskraft (finality) enters upon expiry of the Einspruch period, i.e. at the end of 02.05.2025 (see the deadline item above). Counting the two-week payment period from the day after that (03.05.2025, a Saturday, per § 187 Abs. 1 BGB) and applying § 188 Abs. 2 BGB gives 17.05.2025, which is also a Saturday. Under § 193 BGB, a deadline falling on a Saturday, Sunday or public holiday moves to the next business day: Monday 19.05.2025 (not a holiday in Rheinland-Pfalz). This date is only valid if the fine has become final; if an Einspruch is lodged, this due date no longer applies.\",\"due_date\":\"2025-05-19\",\"confidence\":\"low\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The attached delivery-slip date is printed cut off as '17.04.20'; it was read as 17.04.2025 based on context, but the original scan should be checked to confirm the year and exact delivery date, since it determines the Einspruch deadline.\",\"The payment due date (two weeks after Rechtskraft) is conditional on no Einspruch being filed; if an Einspruch is lodged by 02.05.2025, this payment obligation and its date no longer apply.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreisverwaltung Musterweiler – Bußgeldstelle",
+      "document_date": "2025-04-14",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "BGS 2025/10744"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "MWL-JB 77"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the fine notice",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift bei der Kreisverwaltung Musterweiler – Bußgeldstelle.",
+          "computation": "The letter was formally served (Zustellungsurkunde, § 182 ZPO); the attached delivery slip records the actual delivery date as 17.04.2025 (Thursday), so this is the date of Zustellung (not the 3-day fiction, which only applies to non-formal mailings). Under § 187 Abs. 1 BGB the day of the event (17.04.2025) is not counted; the two-week period begins the next day, 18.04.2025 (Friday). Under § 188 Abs. 2 BGB a period of weeks ends with the expiry of the day in the last week that bears the same name as the day it began: 18.04.2025 + 14 days = 02.05.2025 (Friday). 02.05.2025 is a Friday and not a public holiday in Rheinland-Pfalz, so no shift under § 193 BGB applies. The written Einspruch must reach the Bußgeldstelle by this date.",
+          "due_date": "2025-05-02",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Bußgeld, fee, delivery costs)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "This obligation only arises if no Einspruch is filed. Rechtskraft (finality) enters upon expiry of the Einspruch period, i.e. at the end of 02.05.2025 (see the deadline item above). Counting the two-week payment period from the day after that (03.05.2025, a Saturday, per § 187 Abs. 1 BGB) and applying § 188 Abs. 2 BGB gives 17.05.2025, which is also a Saturday. Under § 193 BGB, a deadline falling on a Saturday, Sunday or public holiday moves to the next business day: Monday 19.05.2025 (not a holiday in Rheinland-Pfalz). This date is only valid if the fine has become final; if an Einspruch is lodged, this due date no longer applies.",
+          "due_date": "2025-05-19",
+          "confidence": "low",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The attached delivery-slip date is printed cut off as '17.04.20'; it was read as 17.04.2025 based on context, but the original scan should be checked to confirm the year and exact delivery date, since it determines the Einspruch deadline.",
+        "The payment due date (two weeks after Rechtskraft) is conditional on no Einspruch being filed; if an Einspruch is lodged by 02.05.2025, this payment obligation and its date no longer apply."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5594,
+      "cache_read_tokens": 8971,
+      "cache_creation_tokens": 6914,
+      "cost_usd": 0.0853982,
+      "duration_ms": 46327,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"09cb7a35bbd7598a1e46ab5eb11ddb3f6e4c071e41c3efb959a58e5d88a51e8d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-11-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-E2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-11-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle\",\"document_date\":\"2025-11-05\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 25-0918-337\"},{\"label\":\"Kennzeichen\",\"value\":\"MB-TB 318\"}],\"amounts\":[128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.\",\"computation\":\"The attached Zustellungsurkunde (page 2) documents formal delivery (Zustellung) on 08.11.2025 (Saturday), so the actual proven delivery date controls rather than the 3-day fiction for ordinary mail. Under §§187(1), 188(2) BGB (applied via §46 OWiG/§43 StPO for Bußgeldverfahren), a two-week period following an event ends with the day two weeks later that corresponds by name to the day of the event itself: 08.11.2025 (Sat) + 14 days = 22.11.2025 (Sat). Since that day is a Saturday, §193 BGB shifts the deadline to the next business day. No public holiday falls in NRW in that window, so the deadline moves to Monday, 24.11.2025.\",\"due_date\":\"2025-11-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (128,50 €) after the decision becomes final\",\"quote\":\"Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.\",\"computation\":\"Payment is due two weeks after the Bescheid becomes rechtskräftig (final), which happens only if no Einspruch is filed within the Einspruch deadline. Assuming no Einspruch is filed, the Einspruch deadline expires 24.11.2025, so Rechtskraft is reached the following day, 25.11.2025 (Tue). Applying the same weeks-period rule (§§187(1), 188(2) BGB): 25.11.2025 + 14 days = 09.12.2025 (Tue), which is not a weekend/holiday, so no shift is needed. This date is conditional on no Einspruch being filed and is therefore an estimate.\",\"due_date\":\"2025-12-09\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (09.12.2025) is an estimate: it assumes no Einspruch is filed and that the decision becomes final immediately after the Einspruch deadline (24.11.2025); if an Einspruch is filed, no payment is due and this date does not apply.\",\"Verify the IBAN (DE43 5335 0000 0000 5050 50) and payee 'Musterbank' printed in the footer against official Regierungspräsidium Musterbergen contact channels before transferring money, as is prudent for any unfamiliar payment instruction.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Regierungspräsidium Musterbergen – Zentrale Bußgeldstelle",
+      "document_date": "2025-11-05",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 25-0918-337"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "MB-TB 318"
+        }
+      ],
+      "amounts": [
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Einspruch gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach seiner Zustellung einlegen.",
+          "computation": "The attached Zustellungsurkunde (page 2) documents formal delivery (Zustellung) on 08.11.2025 (Saturday), so the actual proven delivery date controls rather than the 3-day fiction for ordinary mail. Under §§187(1), 188(2) BGB (applied via §46 OWiG/§43 StPO for Bußgeldverfahren), a two-week period following an event ends with the day two weeks later that corresponds by name to the day of the event itself: 08.11.2025 (Sat) + 14 days = 22.11.2025 (Sat). Since that day is a Saturday, §193 BGB shifts the deadline to the next business day. No public holiday falls in NRW in that window, so the deadline moves to Monday, 24.11.2025.",
+          "due_date": "2025-11-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (128,50 €) after the decision becomes final",
+          "quote": "Sobald der Bescheid rechtskräftig ist, haben Sie für die Zahlung des Gesamtbetrags zwei Wochen Zeit; geben Sie als Verwendungszweck bitte das Aktenzeichen an.",
+          "computation": "Payment is due two weeks after the Bescheid becomes rechtskräftig (final), which happens only if no Einspruch is filed within the Einspruch deadline. Assuming no Einspruch is filed, the Einspruch deadline expires 24.11.2025, so Rechtskraft is reached the following day, 25.11.2025 (Tue). Applying the same weeks-period rule (§§187(1), 188(2) BGB): 25.11.2025 + 14 days = 09.12.2025 (Tue), which is not a weekend/holiday, so no shift is needed. This date is conditional on no Einspruch being filed and is therefore an estimate.",
+          "due_date": "2025-12-09",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (09.12.2025) is an estimate: it assumes no Einspruch is filed and that the decision becomes final immediately after the Einspruch deadline (24.11.2025); if an Einspruch is filed, no payment is due and this date does not apply.",
+        "Verify the IBAN (DE43 5335 0000 0000 5050 50) and payee 'Musterbank' printed in the footer against official Regierungspräsidium Musterbergen contact channels before transferring money, as is prudent for any unfamiliar payment instruction."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6807,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2745,
+      "cost_usd": 0.0796784,
+      "duration_ms": 62597,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

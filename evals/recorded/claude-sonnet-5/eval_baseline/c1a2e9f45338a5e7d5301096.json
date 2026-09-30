@@ -1,0 +1,138 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e087bb6df63ab3f76613c3a953bdbf1d5a64fa6190bfa22a90a0126ca701042d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F1"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielmünde – Bußgeldbehörde\",\"document_date\":\"2027-02-17\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"32.4-OWI-2027-01188\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"BMÜ-IB 12\"}],\"amounts\":[115,25,3.5,143.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.\",\"computation\":\"Page 2 shows a copy of the delivery envelope (Postzustellungsurkunde, § 182 ZPO): the handwritten note reads 'zugestellt 22.02.20[27]', so formal service (förmliche Zustellung) took place on Mon 22 Feb 2027 — this actual service date governs, not the deemed-delivery fiction for ordinary post. The 2-week Einspruch period starts the day after service (§ 187 Abs. 1 BGB): counting from Tue 23 Feb 2027, two weeks end Mon 8 Mar 2027 (§ 188 Abs. 1, 2 BGB). 8 Mar 2027 is Frauentag, a public holiday in Mecklenburg-Vorpommern, so the deadline shifts to the next working day, Tue 9 Mar 2027 (§ 31 Abs. 3 VwVfG analog / § 43 Abs. 1 StPO).\",\"due_date\":\"2027-03-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and delivery costs (Gesamtbetrag)\",\"quote\":\"Eintragung im Fahreignungsregister: 1 Punkt. Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"Payment falls due two weeks after the decision becomes final (Rechtskraft), which only happens if no Einspruch is filed. If unchallenged, Rechtskraft is deemed to occur with the expiry of the Einspruch period, i.e. at the end of Tue 9 Mar 2027 (see the objection item above, already shifted for the MV holiday Frauentag). Counting the 2-week payment period from the day after (§ 187 Abs. 1 BGB), from Wed 10 Mar 2027 two weeks end Tue 23 Mar 2027 (§ 188 Abs. 1, 2 BGB); that day is a normal working day, so it stands. This date only applies if no Einspruch is lodged in time; filing an Einspruch stops Rechtskraft and this payment obligation does not arise on this date.\",\"due_date\":\"2027-03-23\",\"confidence\":\"medium\",\"amount\":143.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The service date is read from a handwritten, partly unclear annotation on the enclosed envelope copy ('27 zugestellt / 22.02.20'), interpreted as 22.02.2027; if the actual Zustellung date differs, both the Einspruch deadline and the payment due date shift accordingly.\",\"The payment due date (23.03.2027) assumes Rechtskraft occurs automatically at the end of the Einspruch period because no appeal is filed; if an Einspruch is lodged in time, the fine is not yet due and the amount may change after court review.\",\"The IBAN on the letter (DE97 1305 0000 0000 4030 00) is a valid German IBAN for Ostseesparkasse Muster, consistent with a German authority; still verify it against a previously known official source before paying, and check the payee name match your bank reports.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+      "document_date": "2027-02-17",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "32.4-OWI-2027-01188"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "BMÜ-IB 12"
+        }
+      ],
+      "amounts": [
+        115,
+        25,
+        3.5,
+        143.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.",
+          "computation": "Page 2 shows a copy of the delivery envelope (Postzustellungsurkunde, § 182 ZPO): the handwritten note reads 'zugestellt 22.02.20[27]', so formal service (förmliche Zustellung) took place on Mon 22 Feb 2027 — this actual service date governs, not the deemed-delivery fiction for ordinary post. The 2-week Einspruch period starts the day after service (§ 187 Abs. 1 BGB): counting from Tue 23 Feb 2027, two weeks end Mon 8 Mar 2027 (§ 188 Abs. 1, 2 BGB). 8 Mar 2027 is Frauentag, a public holiday in Mecklenburg-Vorpommern, so the deadline shifts to the next working day, Tue 9 Mar 2027 (§ 31 Abs. 3 VwVfG analog / § 43 Abs. 1 StPO).",
+          "due_date": "2027-03-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and delivery costs (Gesamtbetrag)",
+          "quote": "Eintragung im Fahreignungsregister: 1 Punkt. Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "Payment falls due two weeks after the decision becomes final (Rechtskraft), which only happens if no Einspruch is filed. If unchallenged, Rechtskraft is deemed to occur with the expiry of the Einspruch period, i.e. at the end of Tue 9 Mar 2027 (see the objection item above, already shifted for the MV holiday Frauentag). Counting the 2-week payment period from the day after (§ 187 Abs. 1 BGB), from Wed 10 Mar 2027 two weeks end Tue 23 Mar 2027 (§ 188 Abs. 1, 2 BGB); that day is a normal working day, so it stands. This date only applies if no Einspruch is lodged in time; filing an Einspruch stops Rechtskraft and this payment obligation does not arise on this date.",
+          "due_date": "2027-03-23",
+          "confidence": "medium",
+          "amount": 143.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The service date is read from a handwritten, partly unclear annotation on the enclosed envelope copy ('27 zugestellt / 22.02.20'), interpreted as 22.02.2027; if the actual Zustellung date differs, both the Einspruch deadline and the payment due date shift accordingly.",
+        "The payment due date (23.03.2027) assumes Rechtskraft occurs automatically at the end of the Einspruch period because no appeal is filed; if an Einspruch is lodged in time, the fine is not yet due and the amount may change after court review.",
+        "The IBAN on the letter (DE97 1305 0000 0000 4030 00) is a valid German IBAN for Ostseesparkasse Muster, consistent with a German authority; still verify it against a previously known official source before paying, and check the payee name match your bank reports."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 5064,
+      "cache_read_tokens": 44386,
+      "cache_creation_tokens": 9333,
+      "cost_usd": 0.09686519999999998,
+      "duration_ms": 47847,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2027-02-22",
+            "nature": "objection",
+            "delivery_rule": "none",
+            "legal_basis": "§43 OWiG i.V.m. §§187,188 BGB",
+            "text": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+          "document_date": "2027-02-17",
+          "received_date": "2027-02-22",
+          "region": "MV",
+          "recipient_region": "MV",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2027-03-09\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-03-02\",\"summary\":\"Two weeks after delivery on Mon 22 Feb 2027 (as stated on the letter) is Mon 8 Mar 2027, a public holiday, Frauentag, so the deadline moves to Tue 9 Mar 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 22 Feb 2027\",\"date\":\"2027-02-22\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 8 Mar 2027\",\"date\":\"2027-03-08\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 8 Mar 2027 is a public holiday, Frauentag, so the deadline moves to Tue 9 Mar 2027\",\"date\":\"2027-03-09\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Tue 2 Mar 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-03-02\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-02-22\",\"letter_date\":\"2027-02-17\",\"received_date\":\"2027-02-22\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Mecklenburg-Vorpommern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "MV"
+        },
+        "result": "{\"year\":2027,\"region\":\"MV\",\"calendar\":\"Mecklenburg-Vorpommern\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-08\",\"weekday\":\"Monday\",\"name\":\"Frauentag\",\"nationwide\":false},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-10-31\",\"weekday\":\"Sunday\",\"name\":\"Reformationstag\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-03-09",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§94 OWiG (Fälligkeit)",
+            "text": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+          "region": "MV",
+          "recipient_region": "MV"
+        },
+        "result": "{\"due_date\":\"2027-03-23\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-03-22\",\"summary\":\"Two weeks after Tue 9 Mar 2027 is Tue 23 Mar 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 9 Mar 2027\",\"date\":\"2027-03-09\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 23 Mar 2027\",\"date\":\"2027-03-23\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 23 Mar 2027 is a working day, so it stays\",\"date\":\"2027-03-23\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 22 Mar 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-03-22\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-02-22\",\"holiday_calendar\":\"Mecklenburg-Vorpommern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE97 1305 0000 0000 4030 00"
+        },
+        "result": "{\"iban\":\"DE97 1305 0000 0000 4030 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"13050000\"},\"account_number\":\"0000403000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

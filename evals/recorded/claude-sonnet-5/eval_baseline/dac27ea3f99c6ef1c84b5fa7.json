@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e087bb6df63ab3f76613c3a953bdbf1d5a64fa6190bfa22a90a0126ca701042d\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-fine_bussgeld-F1"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielmünde – Bußgeldbehörde\",\"document_date\":\"2027-02-17\",\"references\":[{\"label\":\"Geschäftszeichen / Aktenzeichen\",\"value\":\"32.4-OWI-2027-01188\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"BMÜ-IB 12\"}],\"amounts\":[143.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.\",\"computation\":\"This is a formal delivery (förmliche Zustellung mit Zustellungsurkunde, shown on page 2), so the date written on the returned service document is the delivery day and no days are added for postal transit. The handwritten note on the scanned envelope reads '22.02.20' with '27' noted separately, read as delivery on Monday, 22.02.2027. For the two-week objection period (§ 43 Abs. 2 StPO / §§ 187 Abs. 1, 188 Abs. 2 BGB), the day of delivery itself is not counted; the period ends on the same weekday two weeks later, i.e. Monday, 08.03.2027. However, 8 March is a statutory public holiday in Mecklenburg-Vorpommern (Internationaler Frauentag), the Land where the Bußgeldbehörde is seated, so the period end moves to the next working day (§ 43 Abs. 2 StPO, § 193 BGB) — Tuesday, 09.03.2027.\",\"due_date\":\"2027-03-09\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine amount (if the notice becomes final)\",\"quote\":\"Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.\",\"computation\":\"The notice becomes final (Rechtskraft) if no Einspruch is filed within the objection period, i.e. upon expiry of that period on Tuesday, 09.03.2027 (see Einspruch item). The payment is due two weeks after this event; the day of the event is not counted (§ 187 Abs. 1 BGB), so the period ends on the same weekday two weeks later: Tuesday, 23.03.2027. No public holiday falls on that date in MV, so no further shift applies. This date is contingent: it only applies if no Einspruch is filed; the letter itself does not state a fixed calendar date for Rechtskraft or payment.\",\"due_date\":\"2027-03-23\",\"confidence\":\"low\",\"amount\":143.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The handwritten delivery date on the scanned Zustellungsurkunde (page 2) is oddly formatted ('22.02.20' with a separate '27'); it was read as 22.02.2027, but the person should verify the actual date on the original returned service document, since the Einspruch and payment deadlines both derive from it.\",\"The payment due date (two weeks after Rechtskraft) could not be fixed to a specific day by the letter itself and depends entirely on whether an Einspruch is filed within the objection period; if an Einspruch is filed, this payment obligation as stated does not apply.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielmünde – Bußgeldbehörde",
+      "document_date": "2027-02-17",
+      "references": [
+        {
+          "label": "Geschäftszeichen / Aktenzeichen",
+          "value": "32.4-OWI-2027-01188"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "BMÜ-IB 12"
+        }
+      ],
+      "amounts": [
+        143.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Die Frist für den Einspruch beträgt zwei Wochen ab Zustellung; einzulegen ist er schriftlich oder zur Niederschrift beim Landkreis Beispielmünde – Bußgeldbehörde.",
+          "computation": "This is a formal delivery (förmliche Zustellung mit Zustellungsurkunde, shown on page 2), so the date written on the returned service document is the delivery day and no days are added for postal transit. The handwritten note on the scanned envelope reads '22.02.20' with '27' noted separately, read as delivery on Monday, 22.02.2027. For the two-week objection period (§ 43 Abs. 2 StPO / §§ 187 Abs. 1, 188 Abs. 2 BGB), the day of delivery itself is not counted; the period ends on the same weekday two weeks later, i.e. Monday, 08.03.2027. However, 8 March is a statutory public holiday in Mecklenburg-Vorpommern (Internationaler Frauentag), the Land where the Bußgeldbehörde is seated, so the period end moves to the next working day (§ 43 Abs. 2 StPO, § 193 BGB) — Tuesday, 09.03.2027.",
+          "due_date": "2027-03-09",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine amount (if the notice becomes final)",
+          "quote": "Fälligkeit des Gesamtbetrags: zwei Wochen nach Eintritt der Rechtskraft.",
+          "computation": "The notice becomes final (Rechtskraft) if no Einspruch is filed within the objection period, i.e. upon expiry of that period on Tuesday, 09.03.2027 (see Einspruch item). The payment is due two weeks after this event; the day of the event is not counted (§ 187 Abs. 1 BGB), so the period ends on the same weekday two weeks later: Tuesday, 23.03.2027. No public holiday falls on that date in MV, so no further shift applies. This date is contingent: it only applies if no Einspruch is filed; the letter itself does not state a fixed calendar date for Rechtskraft or payment.",
+          "due_date": "2027-03-23",
+          "confidence": "low",
+          "amount": 143.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The handwritten delivery date on the scanned Zustellungsurkunde (page 2) is oddly formatted ('22.02.20' with a separate '27'); it was read as 22.02.2027, but the person should verify the actual date on the original returned service document, since the Einspruch and payment deadlines both derive from it.",
+        "The payment due date (two weeks after Rechtskraft) could not be fixed to a specific day by the letter itself and depends entirely on whether an Einspruch is filed within the objection period; if an Einspruch is filed, this payment obligation as stated does not apply."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6209,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2699,
+      "cost_usd": 0.07399599999999999,
+      "duration_ms": 55215,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
