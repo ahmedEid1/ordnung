@@ -1229,36 +1229,41 @@ def _rents(ledger: Ledger, contract: Contract, letters: LetterText) -> list[dict
     (:func:`~ordnung.recurrence.is_rent`, :func:`~ordnung.recurrence.replacement`): each open or snoozed rent
     that no other one replaces, as its to-do's row (:func:`_item_row`: its amount only when verified) — one
     that runs beside it, such as a parking space's, has a row of its own — with ``next_rent``, the row of the
-    rent that replaces it and the month it starts in (``from_month``). A rent increase's new rent the person
-    hasn't agreed to yet is the next rent too, ``proposed``, with the note that it needs their decision
-    (:data:`NEXT_RENT_PROPOSED`, § 558b Abs. 1 BGB): the ledger keeps the current rent running until then.
-    The Ask benchmark's "How much is my rent?" gave October's rent but said the new one from November was only
-    in the letter: no record of the contract held it, and its first payment is past ``money_summary``'s 30
-    days."""
+    rent that replaces it in the ledger and the month it starts in (``from_month``). A rent increase's new rent
+    the person hasn't agreed to yet replaces nothing until then (§ 558b Abs. 1 BGB): the ledger keeps the
+    current rent running, so it is no next rent but ``proposed_rent``, the same row with the note that it
+    needs their decision (:data:`NEXT_RENT_PROPOSED`) — and no rent in force either. The Ask benchmark's "How
+    much is my rent?" gave October's rent but said the new one from November was only in the letter: no record
+    of the contract held it, and its first payment is past ``money_summary``'s 30 days."""
     if contract.category != "rent":
         return None
     from ordnung.ingest.plan import item_contexts
-    from ordnung.recurrence import ROLLING_STATUSES, is_rent, replacement
+    from ordnung.recurrence import ROLLING_STATUSES, Replacement, is_rent, replacement
 
     store, today, contexts = ledger.store, ledger.today, item_contexts()
     rents = [item for item in ledger.items if item.status in ROLLING_STATUSES and is_rent(item, contract)]
-    replaced = {
-        rent.id: replacement(store, rent, contexts(store, rent, today), contexts, proposed=True)
-        for rent in rents
-    }
-    newer = {found.newer.id for found in replaced.values() if found is not None}
+    replaced: dict[str, Replacement | None] = {}
+    proposals: dict[str, Replacement] = {}
+    for rent in rents:
+        ctx = contexts(store, rent, today)
+        replaced[rent.id] = owed = replacement(store, rent, ctx, contexts)
+        offered = replacement(store, rent, ctx, contexts, proposed=True)
+        if offered is not None and not offered.owed and (owed is None or offered.newer.id != owed.newer.id):
+            proposals[rent.id] = offered
+    newer = {found.newer.id for found in (*replaced.values(), *proposals.values()) if found is not None}
+
+    def later(found: Replacement) -> dict[str, Any]:
+        return {**_item_row(ledger, found.newer, letters), "from_month": f"{found.starts:%Y-%m}"}
+
     rows = []
     for rent in rents:
         if rent.id in newer:
             continue
         row = _item_row(ledger, rent, letters)
         if (found := replaced[rent.id]) is not None:
-            row["next_rent"] = {
-                **_item_row(ledger, found.newer, letters),
-                "from_month": f"{found.starts:%Y-%m}",
-                "proposed": not found.owed or None,
-                "note": None if found.owed else NEXT_RENT_PROPOSED,
-            }
+            row["next_rent"] = later(found)
+        if (offered := proposals.get(rent.id)) is not None:
+            row["proposed_rent"] = {**later(offered), "note": NEXT_RENT_PROPOSED}
         rows.append(row)
     return rows or None
 
@@ -1682,8 +1687,9 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
         """Contracts with costs, terms and the rules engine's dates: cancel_by (must arrive by),
         send_by (post by), current term end, next renewal, earliest exit. A rent contract's rent is the rent
         in force (its to-do: id, amount, next due date) with next_rent, the rent that replaces it: its
-        to-do, amount, from_month (the month it starts in) and first due date — proposed when it is a rent
-        increase the person hasn't agreed to yet (see its note and payment_note)."""
+        to-do, amount, from_month (the month it starts in) and first due date — and proposed_rent, a rent
+        increase the person hasn't agreed to yet, which replaces nothing until they do (see its note and
+        payment_note)."""
         return answer(lambda: tools.list_contracts(status))
 
     @tool

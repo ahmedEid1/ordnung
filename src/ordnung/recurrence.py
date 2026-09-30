@@ -907,7 +907,7 @@ def replacement(
     starts in — the earliest a rent on its contract starts in after it, of the rents owed that restate the
     whole of it (:meth:`_Rent.restates`); ``None`` for a rent nothing replaces and for any other to-do.
     ``context`` gives the other rents' contexts. ``proposed``: of the rents owed or not yet (a rent increase's
-    new rent the person hasn't agreed to: ``owed`` false) — the next rent Ask's record names."""
+    new rent the person hasn't agreed to: ``owed`` false) — the proposed rent Ask's record names."""
     contract = _rent_contract(store, item)
     rent = _rent(store, item, contract, ctx)
     if rent is None or contract is None:

@@ -653,8 +653,8 @@ HTML and without remote images.
   with `next_rent`, the row of the rent that replaces it (`recurrence.replacement`) and `from_month`, the
   month it starts in — so "how much is my rent?" can name a statement's new total rent and its first due
   date as Ordnung's own, past `money_summary`'s 30 days too. A rent increase's new rent the person hasn't
-  agreed to is the next rent as well, `proposed`, with a note that it replaces nothing until they agree
-  (§ 558b Abs. 1 BGB) and its `payment_note`. `explain_date`
+  agreed to replaces nothing until they agree (§ 558b Abs. 1 BGB), so it is neither the next rent nor a rent
+  in force but `proposed_rent`, with a note that says so and its `payment_note`. `explain_date`
   keeps an unverified contract's steps (which repeat its terms) in its letter text, like the terms, and
   leaves out the wording and quotes of a to-do whose letter is private or in the trash. `list_contracts` names a letter that says a contract is cancelled
   only as `cancellation_letter` (pending the person's confirmation). `if_not_cancelled` (also in

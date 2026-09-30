@@ -454,10 +454,11 @@ def _rents_in_force(api: Api, contract_id: str, today: date) -> list[dict[str, A
 
 
 async def test_asks_record_names_a_rent_increase_not_yet_agreed_as_proposed(data_dir: Path) -> None:
-    """Ask's record of the rent contract names a § 558 increase's new rent as the next rent before the person
-    agreed — proposed, with the note that they decide first (it replaces nothing yet) — and, once they paid it
-    (paying can count as agreeing), as the rent that replaces the old one; "Undo" makes it proposed again. The
-    answer check keeps the new rent cited to the contract and adds the app's § 558b note."""
+    """Ask's record of the rent contract names a § 558 increase's new rent the person hasn't agreed to as the
+    proposed rent — with the note that they decide first (it replaces nothing yet) —, never as the next rent;
+    once they paid it (paying can count as agreeing) it is the next rent, which replaces the old one; "Undo"
+    makes it proposed again. The answer check keeps the new rent cited to the contract and adds the app's
+    § 558b note."""
     lease, increase = _lease(), _increase()
     today = date(2026, 9, 29)
     clock.set_today(today.isoformat())
@@ -467,15 +468,16 @@ async def test_asks_record_names_a_rent_increase_not_yet_agreed_as_proposed(data
         contract = rent["contract_id"]
         (row,) = _rents_in_force(api, contract, today)
         assert (row["id"], row["amount"], row["due_date"]) == (rent["id"], 640.0, "2026-10-05")
-        upcoming = row["next_rent"]
-        assert (upcoming["id"], upcoming["amount"], upcoming["from_month"], upcoming["due_date"]) == (
+        assert "next_rent" not in row
+        proposed = row["proposed_rent"]
+        assert (proposed["id"], proposed["amount"], proposed["from_month"], proposed["due_date"]) == (
             new["id"],
             700.0,
             "2026-12",
             "2026-12-03",
         )
-        assert (upcoming["proposed"], upcoming["note"]) == (True, NEXT_RENT_PROPOSED)
-        assert upcoming["payment_note"] == RENT_INCREASE_PAYMENT_WARNING
+        assert proposed["note"] == NEXT_RENT_PROPOSED
+        assert proposed["payment_note"] == RENT_INCREASE_PAYMENT_WARNING
 
         tools = LedgerTools(api.ctx.store, today=today)
         evidence = TurnEvidence.from_results([render_result(tools.list_contracts())], today=today)
@@ -485,11 +487,41 @@ async def test_asks_record_names_a_rent_increase_not_yet_agreed_as_proposed(data
 
         await _patch(api, new["id"], status="done")  # paid: agreed, as far as Ordnung can tell
         (row,) = _rents_in_force(api, contract, today)
-        assert (row["id"], row["next_rent"]["id"]) == (rent["id"], new["id"])
-        assert (row["next_rent"]["proposed"], row["next_rent"]["note"]) == (None, None)
+        assert (row["id"], row["next_rent"]["id"], row["next_rent"]["from_month"]) == (
+            rent["id"],
+            new["id"],
+            "2026-12",
+        )
+        assert "proposed_rent" not in row and "note" not in row["next_rent"]
         await _patch(api, new["id"], status="open")  # the toast's "Undo"
         (row,) = _rents_in_force(api, contract, today)
-        assert row["next_rent"]["proposed"] is True
+        assert "next_rent" not in row and row["proposed_rent"]["id"] == new["id"]
+
+
+async def test_asks_record_gives_the_rent_the_ledger_replaces_it_by_beside_a_proposed_one(
+    data_dir: Path,
+) -> None:
+    """A § 558 increase to €700 from December the person hasn't agreed to, and a statement's new total rent of
+    €660 from January (it restates the €640): the ledger's next rent is the €660 — the €700 replaces nothing
+    until agreed —, so Ask's record gives the €640 as the one rent in force, the €660 as its next rent and the
+    €700 as the proposed rent; neither is a second rent in force."""
+    lease, increase = _lease(), _increase()
+    statement = _statement(
+        "Ihre Gesamtmiete beträgt ab dem 01.01.2027 somit 660,00 EUR (bisher 640,00 EUR).",
+        title="New monthly total rent €660",
+        amount=660.0,
+        starts="2027-01-01",
+    )
+    today = date(2026, 9, 29)
+    clock.set_today(today.isoformat())
+    async with api_for(data_dir, router=_router(lease, increase, statement)) as api:
+        _, rent = await _read(api, lease)
+        _, proposed = await _read(api, increase)
+        _, owed = await _read(api, statement)
+        (row,) = _rents_in_force(api, rent["contract_id"], today)
+        assert row["id"] == rent["id"]
+        assert (row["next_rent"]["id"], row["next_rent"]["from_month"]) == (owed["id"], "2027-01")
+        assert (row["proposed_rent"]["id"], row["proposed_rent"]["from_month"]) == (proposed["id"], "2026-12")
 
 
 async def test_a_new_rent_that_names_its_own_working_day_keeps_it(data_dir: Path) -> None:

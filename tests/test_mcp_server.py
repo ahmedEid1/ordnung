@@ -1391,7 +1391,7 @@ def test_a_rent_contracts_record_names_the_rent_in_force_and_the_next_rent(demo_
         "2026-11",
         "2026-11-04",
     )
-    assert upcoming["proposed"] is None and upcoming["note"] is None  # owed: a statement asks no consent
+    assert "proposed_rent" not in rent and "note" not in upcoming  # owed: a statement asks no consent
     assert not any("rent" in row for cid, row in rows.items() if cid != lease)
     # the same wherever the rent contract is given
     fixed = {row["id"]: row for row in tools.money_summary().record["fixed_cost_contracts"]}
