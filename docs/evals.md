@@ -5,7 +5,8 @@
 > 12 adversarial), 56 required items with a known date
 > (a phone photo repeats the items of the PDF it was made from).
 > LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
-> Ordnung was run again on 2026-09-29 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
+> Ordnung was run again on 2026-09-30 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
+> Ordnung was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -52,6 +53,29 @@ Paired differences (bootstrap over the same letters; an interval that excludes 0
 
 ![Due-date accuracy by condition, with 95 % confidence intervals](assets/eval-due-date-accuracy.png)
 
+## Held-out run: the holdout split
+
+The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
+it no longer is. The holdout split is a fresh sample of the same template families (variants E and
+F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
+**The holdout letters were written after prompt version 11 and before any holdout recording, and are
+recorded once with frozen prompts.** These are the benchmark's held-out numbers; elsewhere on this
+page, “the held-out run” is the first recording on the test split.
+
+> Run on 2026-09-30 from recorded outputs (replay), model `sonnet`, commit `e147618`:
+> 63 letters (11 phone photos, 12 adversarial),
+> 56 required items with a known date.
+
+| Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Published run, test split |
+|---|---|---|---|---|---|---|
+| **Ordnung** | 94.6 % [88.5–100.0] | 53/56 | 3.6 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
+
+Ordnung got 3 dated item(s) of the holdout split wrong; from the failure gallery:
+
+- `holdout-adversarial-conflicting_dates-1` — *Rechnung DB-26-0117 bezahlen*: expected Mon 9 Feb 2026, got Mon 16 Feb 2026 (wrong, late, reading error)
+- `holdout-adversarial-conflicting_dates-2` — *Einspruchsfrist*: expected Wed 12 May 2027, got Thu 13 May 2027 (wrong, late, reading error)
+- `holdout-tax_assessment-F1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Fri 20 Jun 2025, got Mon 16 Jun 2025 (wrong, early, computing error)
+
 ## After the held-out run
 
 The held-out run exposed a gap in Ordnung itself rather than in the model's reading: its sender categories had no place for social-benefit agencies, so a job centre, the pension insurance or the Familienkasse was filed as a plain *authority*, and the engine applied general administrative law (§ 41 VwVfG, with a Land's older 3-day rule) instead of social law (§ 37 SGB X). All five of Ordnung's reading errors above are this case. The engine now also reads the sender's name and the remedy notice (a Sozialgericht or the SGB means social law; an *Einspruch* to the Familienkasse is tax law): `scope_for_party_kind` in `src/ordnung/rules/delivery.py`, with tests. The one error left is deliberate: that letter prints a posting day two days after its own date, and Ordnung counts from the letter's date (the earliest plausible start), telling the person why.
@@ -75,7 +99,7 @@ Ordnung's remaining errors after the fix:
 
 ## The prompt the app uses now
 
-Extraction prompt version 11 (2026-09-29) is the one the app uses now. Versions 9 to 11 fix what the UI audit and the Ask benchmark found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats ("Semesterbeitrag überweisen", "94.99 EUR", "03.09.2026"); a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel); and three terms the ledger could not hold: the working day a rent is due on (§ 556b BGB), a cancellation that must arrive by a day of the month (the Deutschlandticket's "by the 10th") and a fixed-term job that may be ended by notice after probation. The model also names a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. Each version was checked on the dev split before the test split, but the test split was recorded three times for them, which is iteration on it: read the row with that in mind. Version 9 scored 54 of 56 (dev 24 of 25). Version 10 added the three terms and scored 53 of 56 (dev 23 of 25): it left the delivery date out of fines served by Zustellung ("zugestellt am") on both splits, so their objection deadlines were counted from an earlier day (versions 8 and 9 filled it in all 6 fines; version 10 in 4, one of them read as an explicit anchor, and left it out of 2). Version 11 says so explicitly, was checked on the dev split (24 of 25) and scored 54 of 56. In its 91 readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). Its two misses are early, on the safe side: a questionnaire's "10 Arbeitstagen (Montag bis Freitag)" read as working days that include Saturdays, so its return date came out two days early (version 9 made the same slip on the letter's photo); and the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date. No benchmark letter states one of the three new terms; they are measured on the demo and in the Ask benchmark. Recording cost $10.66 (API-equivalent): version 9 $3.56, version 10 $3.51, version 11 $3.59. Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts.
+Extraction prompt version 12 (2026-09-30) is the one the app uses now. Versions 9 to 11 fix what the UI audit and the Ask benchmark found in the published readings: a to-do's action and consequence and a key fact's label came out in the letter's German, with its number formats ("Semesterbeitrag überweisen", "94.99 EUR", "03.09.2026"); a letter's explanation could say there was nothing to do when the rules engine times a choice (an objection, a special right to cancel); and three terms the ledger could not hold: the working day a rent is due on (§ 556b BGB), a cancellation that must arrive by a day of the month (the Deutschlandticket's "by the 10th") and a fixed-term job that may be ended by notice after probation. The model also names a high-stakes letter itself (`high_stakes_kind`, ADR 0010), which code then checks. Version 12 adds three more terms the ledger could not hold: a monthly payment's day of the month or last working day, a standing order as the person's own transfer, and a contract that names the statutory notice periods. Each version was checked on the dev split before the test split, but the test split was recorded four times for them, which is iteration on it: read the row with that in mind. Version 9 scored 54 of 56 (dev 24 of 25). Version 10 added the three terms and scored 53 of 56 (dev 23 of 25): it left the delivery date out of fines served by Zustellung ("zugestellt am") on both splits, so their objection deadlines were counted from an earlier day (versions 8 and 9 filled it in all 6 fines; version 10 in 4, one of them read as an explicit anchor, and left it out of 2). Version 11 says so explicitly, was checked on the dev split (24 of 25) and scored 54 of 56. In its 91 readings no key-fact label, action or consequence is in German and no prose field uses the letter's date or amount format; one names a high-stakes kind, correctly (a landlord's heating-cost statement, `operating_costs`). Its two misses are early, on the safe side: a questionnaire's "10 Arbeitstagen (Montag bis Freitag)" read as working days that include Saturdays, so its return date came out two days early (version 9 made the same slip on the letter's photo); and the tax notice above that prints a posting day two days after its own date: the old reading passed that day and the engine counted from the letter's date on purpose (a computing error by this page's taxonomy); this reading leaves the day out, so the engine counts from the letter's date anyway (a reading error): the same date. Version 12 was checked on the dev split (24 of 25) and scored 54 of 56, with the same two misses, both early, on the safe side: the questionnaire's ten working days, this time on the letter's photo (its text PDF was read right), and the tax notice, counted from the letter's date again. No benchmark letter states one of version 10's or version 12's terms; version 10's are measured on the demo and in the Ask benchmark. Recording cost $14.18 (API-equivalent): version 9 $3.56, version 10 $3.51, version 11 $3.59, version 12 $3.51. Cost and latency per letter were measured on a different day from the published run and are not a comparison of the prompts.
 
 These are new recordings of the same letters, scored by the rules engine of the commit named in each
 row. The test split informed the fix above and has been read since, so the prompt-now row is **not
@@ -85,12 +109,12 @@ held-out**; the sections below describe the published run.
 |---|---|---|---|---|---|---|---|
 | Held-out run (2026-09-25, headline) | 89.3 % [78.9–96.7] | 50/56 | 0.0 % | 10.7 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
 | Re-scored after the fix | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | $0.0746 | 47.5 s / 51.0 s |
-| **Prompt now** (2026-09-29, commit `ab96bb3`) | 96.4 % [91.2–100.0] | 54/56 | 0.0 % | 3.6 % | 0.0 % | $0.0400 | 12.2 s / 15.7 s |
-| **Prompt now** (2026-09-29, commit `ab96bb3`, dev split) | 96.0 % [87.5–100.0] | 24/25 | 0.0 % | 4.0 % | 0.0 % | $0.0384 | 11.2 s / 13.2 s |
+| **Prompt now** (2026-09-30, commit `7cd8920`) | 96.4 % [91.2–100.0] | 54/56 | 0.0 % | 3.6 % | 0.0 % | $0.0378 | 10.8 s / 14.8 s |
+| **Prompt now** (2026-09-30, commit `f1207a0`, dev split) | 96.0 % [87.5–100.0] | 24/25 | 0.0 % | 4.0 % | 0.0 % | $0.0403 | 11.5 s / 13.3 s |
 
 Ordnung's errors with the prompt now:
 
-- `test-relative_business_days-D1` — *Fragebogen zum Unfallhergang zurücksenden*: expected Thu 21 May 2026, got Tue 19 May 2026 (wrong, early, reading error)
+- `test-relative_business_days-D1-photo` — *Fragebogen zum Unfallhergang zurücksenden*: expected Thu 21 May 2026, got Tue 19 May 2026 (wrong, early, reading error)
 - `test-tax_assessment-D1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Mon 9 Feb 2026, got Thu 5 Feb 2026 (wrong, early, reading error)
 
 ## Error taxonomy: reading vs computing
@@ -284,14 +308,19 @@ Concrete errors, the dangerous (late) ones first.
 12 template families (tax assessments, municipal and social-law decisions, fines, invoices with
 relative terms, dunning letters, Werktage/business-day periods, year-boundary cases, English
 letters, appointments, contract confirmations, price increases), German and English, text PDFs plus
-simulated phone photos, and a test-only adversarial set (visible and hidden prompt injection, scams,
-conflicting dates, missing letter date). Each letter has its own "today" (the day it is read) and,
-where the letterhead names a Land, a holiday region.
+simulated phone photos, and an adversarial set in the test and holdout splits (visible and hidden
+prompt injection, scams, conflicting dates, missing letter date). Each letter has its own "today" (the
+day it is read) and, where the letterhead names a Land, a holiday region.
 
-**Splits.** Template variants A/B are the dev split and C/D the test split; adversarial letters are
-test-only; no deadline-bearing sentence of a dev letter recurs in a test letter. Prompts were tuned
-on dev letters and the published numbers are the test split — but the split is not blind: the same
-people wrote the letters, the labels, the prompts and the rules engine (see Limitations).
+**Splits.** Template variants A/B are the dev split, C/D the test split and E/F the holdout split;
+the test and holdout splits each have their own adversarial letters, dev has none; no
+deadline-bearing sentence of one split recurs in another. Prompts were tuned on dev letters and the
+published numbers are the test split — but the test split is no longer held-out: extraction prompts
+9 to 12 were each recorded on it. The holdout split is a fresh sample of the same families and
+attack classes (new senders, wording, layout, dates and amounts): the holdout letters were written
+after prompt version 11 and before any holdout recording, and are recorded once with frozen prompts.
+No split is blind: the same project wrote the letters, the labels, the prompts and the rules engine
+(see Limitations).
 
 **Label independence.** Expected dates come from the generator's own date arithmetic
 (`evals/gen/law.py`, which does not import `ordnung.rules`) and were re-derived by hand-written
@@ -333,12 +362,14 @@ family (Claude) is tested. The test split has a few dozen letters, so intervals 
 differences are noise. Ordnung deliberately answers the *earliest plausible* date in some cases
 where the label is the legal date (e.g. a stated posting day later than the letter date, or a
 period "after Zustellung" whose delivery day it counts from the letter date until the person
-confirms the arrival day), which the scorer counts as an (early) computing error. The split is not
-blind: the rules engine is regression-tested against the labels of both splits given a perfect
-reading, so Ordnung's *computing* error rate on test measures its documented policies, not
-generalisation to unseen law; and the adversarial letters are test-only, so every prompt's security
-instructions — and the rules text, e.g. that a Familienkasse Kinderzuschlag decision follows SGB X —
-were written by people who knew the test traps (which helps the baselines at least as much as Ordnung).
+confirms the arrival day), which the scorer counts as an (early) computing error. No split is
+blind: the rules engine is regression-tested against the labels of every split given a perfect
+reading, so Ordnung's *computing* error rate measures its documented policies, not generalisation to
+unseen law; and every prompt's security instructions — and the rules text, e.g. that a Familienkasse
+Kinderzuschlag decision follows SGB X — were written by people who knew the test split's traps (which
+helps the baselines at least as much as Ordnung). The holdout letters keep the families, legal
+regimes and attack classes and change the wording, so they measure generalisation to new letters of
+known kinds, not to new kinds of letters.
 Warnings are scored with keyword patterns (scam, AI-directed text, uncertainty), which can miss
 unusual wording. Recorded outputs make the numbers reproducible, not the model deterministic: a
 fresh live run will differ somewhat. The rules-tool condition's recording includes the tool's
@@ -350,6 +381,7 @@ condition's.
 ```bash
 python -m evals.run --split test --model sonnet          # recompute from recorded outputs (no tokens)
 python -m evals.run --live --split test --model sonnet   # call the model and record new outputs
+python -m evals.run --split holdout --model sonnet       # the held-out run, from its recorded outputs
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
 
@@ -358,5 +390,6 @@ results with every prediction in `evals/results/`. A replay scores the recorded 
 rules engine of the checked-out commit; this run's numbers come from commit `17f2292`, a commit from before the history was squashed; a replay on a commit whose extraction prompt is version 8 gives the same numbers — from version 9 on, a replay scores the recordings of the prompt the app uses then (the “Prompt now” row).
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
-[--prompt-run evals/results/<later run>.json --prompt-note <why>.md]`.
+[--prompt-run evals/results/<later run>.json --prompt-note <why>.md] [--holdout-run
+evals/results/<holdout run>.json]`. A run on the holdout split never rewrites this page itself.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model sonnet --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).

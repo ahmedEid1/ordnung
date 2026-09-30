@@ -186,6 +186,63 @@ def test_readme_extraction_benchmark_numbers_match_the_results() -> None:
     assert split in readme
 
 
+def _latest_holdout() -> dict[str, Any]:
+    """The newest holdout results file (by its own generated_at): the one README's held-out row must match."""
+    runs = [_results(path.name) for path in (ROOT / "evals" / "results").glob("*-holdout.json")]
+    return max(runs, key=lambda run: run["meta"]["generated_at"])
+
+
+def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
+    """README's last two benchmark rows: Ordnung with the extraction prompt the app uses now (2026-09-30,
+    test split, not held-out) and Ordnung on the holdout split (the newest holdout run, recorded once);
+    the footnotes' scores per prompt version, the holdout split's size and what its three misses are."""
+    readme = _readme()
+    now = _results("2026-09-30-sonnet-test.json")["metrics"]["ordnung"]
+    assert now["dangerous_late_rate"]["k"] == 0
+    assert (
+        f"| **Ordnung**, with the extraction prompt the app uses now⁴ | {_with_interval(now['due_date_accuracy'])} "
+        "| **0 %** | no |"
+    ) in readme
+    holdout = _latest_holdout()
+    meta, held = holdout["meta"], holdout["metrics"]["ordnung"]
+    assert meta["split"] == "holdout" and "ordnung" in meta["conditions"] and not meta["partial"]
+    late = held["dangerous_late_rate"]
+    assert (
+        f"| **Ordnung**, on a fresh held-out split⁵ | {_with_interval(held['due_date_accuracy'])} "
+        f"| **{_pct(late['value'])} %** ({int(late['k'])} of {int(late['n'])}) | yes |"
+    ) in readme
+    assert (
+        f"⁵ {meta['entries']} new letters ({meta['photos']} photos, {meta['adversarial']} adversarial; "
+        f"{meta['scored_items']} dated obligations)"
+    ) in readme
+    exact = int(held["due_date_accuracy"]["k"])
+    assert f"Ordnung got {exact} of {int(late['n'])} right" in readme
+    scores = [
+        int(_results(name)["metrics"]["ordnung"]["due_date_accuracy"]["k"])
+        for name in (
+            "2026-09-29-sonnet-test-prompt9.json",
+            "2026-09-29-sonnet-test-prompt10.json",
+            "2026-09-29-sonnet-test.json",
+            "2026-09-30-sonnet-test.json",
+        )
+    ]
+    assert f"({', '.join(map(str, scores[:-1]))} and {scores[-1]} of 56)" in readme
+    # the two late dates are the two conflicting-date letters; the third miss is early
+    misses = [g for g in holdout["gallery"] if g["condition"] == "ordnung"]
+    assert len(misses) == int(late["n"]) - exact == 3
+    assert sorted(g["entry_id"] for g in misses if g["direction"] == "late") == [
+        "holdout-adversarial-conflicting_dates-1",
+        "holdout-adversarial-conflicting_dates-2",
+    ]
+    assert [g["direction"] for g in misses if g["entry_id"] == "holdout-tax_assessment-F1"] == ["early"]
+    # the test split's two letters of that class were read right with the same prompt
+    test_run = _results("2026-09-30-sonnet-test.json")
+    for entry in test_run["entries"]:
+        if entry["id"].startswith("test-adversarial-conflicting_dates-"):
+            items = entry["conditions"]["ordnung"]["score"]["items"]
+            assert items and all(item["outcome"] == "correct" for item in items if item["required"])
+
+
 def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
     """README's Ask benchmark table and its sizes are the newest recorded Ask run's."""
     readme = _readme()
