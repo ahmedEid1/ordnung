@@ -1574,12 +1574,19 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
 English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
-quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
-working day", "3rd business day"; 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else
-`working_day_not_in_quote`: the working day still dates the item, one confidence level lower with a note.
-A recurrence's day of the month likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st",
-"Monatsanfang" for 1, "Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch →
-"Please check". UI never says "verified"; it says
+quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
+1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
+working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
+likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
+"Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch → "Please check".
+
+A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
+letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
+"Beitrag", "Miete", "debit" …, never one about a notice period, cancellation or objection, nor a date
+with a month name) name exactly one working day or day of the month, and it is the reading's. That
+sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text
+page, `model_read` on a transcript), and no reason is raised. No such day, another one, two different
+ones, or a quote naming another day keep the reason (`plan.day_evidence`). UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

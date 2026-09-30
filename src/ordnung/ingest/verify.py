@@ -7,7 +7,9 @@
 * :func:`spec_consistency` checks that a :class:`~ordnung.models.DateSpec` and an amount are
   actually stated by their quote (numbers, number words, units, explicit dates), and
   :func:`working_day_consistency` and :func:`day_of_month_consistency` that a recurrence's working day
-  or day of the month is (:func:`working_days_named`, :func:`days_of_month_named`).
+  or day of the month is (:func:`working_days_named`, :func:`days_of_month_named`);
+  :func:`payment_day_sentence` finds the letter's one sentence stating a recurring payment's due day
+  when its quote doesn't (:func:`payment_days_stated`).
 * :func:`grade_reading` applies the § 21 confidence rubric's reading conditions to a date's receipt,
   and :func:`regrade` the same reading to the receipt of a schedule's next occurrence.
 """
@@ -20,7 +22,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from rapidfuzz import fuzz
 
@@ -531,7 +533,7 @@ _DAY_OF_MONTH_PHRASE = re.compile(
     (?: (?:zum|am|bis|jeweils)\s+(?:(?:zum|am)\s+)?(?P<after>{_DAY_NUMBER})\.(?!\d)(?!{_A_WORKING_DAY})
       | (?P<before>{_DAY_NUMBER})\.\s*{_EVERY_MONTH}
       | (?P<english>{_DAY_NUMBER})(?:st|nd|rd|th)\b(?!{_A_WORKING_DAY})
-      | (?P<start>monatsanfang|monatsbeginn|(?:anfang|beginn)\s+{_EVERY_MONTH}
+      | (?P<start>monatsanfang|monatsbeginn|monatserste[mnr]?|(?:anfang|beginn|erste[mn]?(?:\s+tag)?)\s+{_EVERY_MONTH}
           |(?:start|beginning|first\s+day)\s+of\s+(?:each|every|the)\s+month)
       | (?P<end>monatsende|monatsletzten|(?:ende|letzten\s+tag)\s+{_EVERY_MONTH}|zum\s+letzten\b(?!{_A_WORKING_DAY})
           |(?:end|last\s+day)\s+of\s+(?:each|every|the)\s+month)
@@ -544,13 +546,109 @@ def days_of_month_named(text: str) -> set[int]:
     """The days of the month (1–31) ``text`` names: digits with a full stop after *zum*, *am*, *bis* or
     *jeweils* ("jeweils zum 15.", "zum 1. eines Monats") or before *eines/des/jeden Monats*, an English
     ordinal ("the 1st"), and the start (1) or end (31, a month's last day) of a month in words
-    ("Monatsanfang", "zum Monatsende", "zum Letzten", "end of the month"). A date ("am 15.10.2026") names none,
-    nor does a working day ("zum 3. Werktag")."""
+    ("Monatsanfang", "zum Monatsersten", "am ersten Tag eines Monats", "zum Monatsende", "zum Letzten", "end of
+    the month"). A date ("am 15.10.2026") names none, nor does a working day ("zum 3. Werktag")."""
     named: set[int] = set()
     for match in _DAY_OF_MONTH_PHRASE.finditer(fold_punctuation(text)):
         digits = match.group("after") or match.group("before") or match.group("english")
         named.add(int(digits) if digits else 1 if match.group("start") else 31)
     return named
+
+
+# --------------------------------------------------------------------------------------------------
+# A recurring payment's due day stated elsewhere in its letter
+# --------------------------------------------------------------------------------------------------
+
+DueDay = tuple[Literal["working_day", "day_of_month"], int]
+"""A recurring payment's due day: ``("working_day", 3)`` (the 3rd working day, -1 the last) or
+``("day_of_month", 1)`` (the 1st, 31 a month's last day)."""
+
+_PAYMENT_WORDS = re.compile(
+    r"zahl|abbuch|abgebucht|lastschrift|einzug|eingezogen|einzieh|überweis|ueberweis|fällig|faellig|beitrag"
+    r"|miete|abschlag|\brate\b|\bpay|paid\b|debit|\bdue\b|\brent\b|transfer|collected|instal",
+    re.IGNORECASE,
+)
+# A day of a notice period or an objection ("Die Kündigung muss bis zum 10. eines Monats …") is no payment's.
+_NOT_A_PAYMENT = re.compile(
+    r"kündig|kuendig|widerruf|widersp|einspruch|cancel|terminat|notice|withdraw|objection", re.IGNORECASE
+)
+_MONTH_NAME = (
+    r"januar|january|jan|februar|february|feb|märz|maerz|march|mär|mrz|mar|april|apr|mai|may|juni|june|jun"
+    r"|juli|july|jul|august|aug|september|sept|sep|oktober|october|okt|oct|november|nov|dezember|december|dez|dec"
+)
+_NAMED_DATE = re.compile(
+    rf"""(?<![\w.,])(?:{_DAY_NUMBER})(?:\.|st|nd|rd|th)?\s*(?:of\s+)?(?:{_MONTH_NAME})\b\.?
+      | \b(?:{_MONTH_NAME})\.?\s+(?:{_DAY_NUMBER})(?:st|nd|rd|th)?\b""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# Where a line breaks inside a phrase ("… bis zum" / "10. eines Monats …", "am 3." / "Werktag …").
+_CUT_PHRASE = re.compile(
+    r"(?:\b(?:zum|am|bis|jeweils|spätestens|des|eines|jeden|jedes|dem|den|der|zur|the|on|by|of)|\d\.)$",
+    re.IGNORECASE,
+)
+_RUNS_ON = re.compile(r"[a-zäöüß0-9(]")
+_SENTENCE_END = re.compile(r"(?<=[^\d\s][.!?])\s+(?=[\"(]?[A-ZÄÖÜ])")
+
+
+def _sentences(text: str) -> list[str]:
+    """A page's sentences on one line each: a line joins the one before when the sentence runs on (it
+    starts in lower case, with a digit or a bracket after a line without a full stop) or the break falls
+    inside a phrase (after "zum" or "3."); a blank line ends a paragraph; sentences end at a full stop,
+    question or exclamation mark before a capital (never after a digit: "am 3. Werktag")."""
+    lines: list[str] = []
+    joins = False
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        if not line:
+            joins = False
+            continue
+        last = lines[-1] if lines and joins else None
+        if last is not None and (
+            _CUT_PHRASE.search(last) or (last[-1] not in ".!?:" and _RUNS_ON.match(line))
+        ):
+            lines[-1] = f"{last} {line}"
+        else:
+            lines.append(line)
+        joins = True
+    return [sentence for line in lines for sentence in _SENTENCE_END.split(line) if sentence]
+
+
+def due_days_named(text: str) -> set[DueDay]:
+    """The due days ``text`` names: its working days (:func:`working_days_named`) and days of the month
+    (:func:`days_of_month_named`)."""
+    return {("working_day", day) for day in working_days_named(text)} | {
+        ("day_of_month", day) for day in days_of_month_named(text)
+    }
+
+
+def payment_days_stated(text: str) -> list[tuple[str, set[DueDay]]]:
+    """The sentences of a page's ``text`` that state the day a recurring payment is due, each with the days
+    it states: a sentence about paying ("zahlbar", "Abbuchung", "Lastschrift", "Beitrag", "Miete", "debit",
+    "due" …) that names a working day or a day of the month (:func:`due_days_named`: "Abbuchung zum
+    Monatsanfang", "jeweils zum 15.", "am 3. Werktag eines jeden Monats") — not a date with a month name ("am
+    1. Oktober"), and no sentence about a notice period, a cancellation or an objection ("Die Kündigung muss
+    bis zum 10. eines Monats eingehen")."""
+    stated: list[tuple[str, set[DueDay]]] = []
+    for sentence in _sentences(text):
+        folded = fold_punctuation(sentence)
+        if not _PAYMENT_WORDS.search(folded) or _NOT_A_PAYMENT.search(folded):
+            continue
+        days = due_days_named(_NAMED_DATE.sub(" ", folded))
+        if days:
+            stated.append((sentence, days))
+    return stated
+
+
+def payment_day_sentence(texts: Sequence[str], due: DueDay, quote: str = "") -> str | None:
+    """The sentence of a letter (``texts``: its pages' text) stating ``due`` as the day a recurring payment is
+    due, when that is the only such day the letter states (:func:`payment_days_stated`) and ``quote`` (the
+    to-do's own sentence) names no other; else ``None`` — no such day, another one, or two different ones."""
+    if due_days_named(quote) - {due}:
+        return None
+    stated = [found for text in texts for found in payment_days_stated(text)]
+    if not stated or set().union(*(days for _, days in stated)) != {due}:
+        return None
+    return stated[0][0]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -613,8 +711,9 @@ def _relative_reasons(quote: str, spec: DateSpec, mentions: list[DateMention]) -
 def working_day_consistency(quote: str, working_day: int | None) -> list[str]:
     """Whether a recurrence's working day (``Recurrence.working_day``, "spätestens am dritten Werktag eines
     jeden Monats" is 3) is stated by its item's quote: ``[WORKING_DAY_NOT_IN_QUOTE]`` unless the quote names
-    that ordinal (:func:`working_days_named`); ``[]`` for a recurrence without one. Only the quote counts,
-    never the rest of the letter: the working day is the reading's claim about that sentence."""
+    that ordinal (:func:`working_days_named`); ``[]`` for a recurrence without one. Only the quote counts
+    here: the working day is the reading's claim about that sentence (the letter's one sentence stating
+    when the payment is due can still vouch for it: :func:`payment_day_sentence`)."""
     if working_day is None or working_day in working_days_named(quote):
         return []
     return [WORKING_DAY_NOT_IN_QUOTE]
