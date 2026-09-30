@@ -251,7 +251,7 @@ def _due_day(item: ExtractedItem) -> DueDay | None:
     if working_day_consistency(item.quote, working_day):
         return ("working_day", working_day) if working_day is not None else None
     day = rule_day_of_month(rule)
-    if day_of_month_consistency(item.quote, day):
+    if day_of_month_consistency(item.quote, day, rule):
         return ("day_of_month", day) if day is not None else None
     return None
 
@@ -267,7 +267,7 @@ def day_evidence(doc_id: str, item: ExtractedItem, pages: Sequence[PageInput]) -
     due = _due_day(item)
     if due is None:
         return None
-    sentence = payment_day_sentence([_page_text(page) for page in pages], due, item.quote)
+    sentence = payment_day_sentence([_page_text(page) for page in pages], due, item.quote, item.recurrence)
     if sentence is None:
         return None
     evidence = ground_evidence(doc_id, sentence, pages)
@@ -287,7 +287,9 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
     working day still dates the to-do (:mod:`ordnung.recurrence`, point 8). A day of the month that dates it
     (``recurrence.day_of_month`` without a working day, point 10) is graded the same way
-    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``). Either day
+    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words,
+    or by dates that state it as the recurrence's schedule ("fällig jeweils am 10.03., 10.06., 10.09. und
+    10.12.", never a single start date: :func:`~ordnung.ingest.verify.schedule_days_named`). Either day
     counts as stated, too, when the letter's one sentence about when the payment is due states it
     (:func:`day_evidence`, which the to-do gets as its evidence)."""
     found: list[str] = []
@@ -295,7 +297,7 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
-    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence))
+    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence), item.recurrence)
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 

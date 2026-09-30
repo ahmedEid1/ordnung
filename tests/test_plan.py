@@ -334,6 +334,60 @@ def test_a_due_day_the_letter_does_not_state_alone_still_needs_a_check(
     assert consistency_reasons(reading, [ticket_page(*lines)]) == (reason,)
 
 
+PREMIUM_DEBIT = "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht."
+PREMIUM_DUE = "Hauptfälligkeit   01.12. eines jeden Jahres"
+
+
+def premium(quote: str = PREMIUM_DEBIT, day: int = 1) -> ExtractedItem:
+    """A yearly premium as its reading gives it: the next debit's date, due on that day every year."""
+    reading = item(quote, money=59.9, type="fixed", date="2026-12-01", nature="payment")
+    return reading.model_copy(update={"recurrence": Recurrence(interval=1, unit="years", day_of_month=day)})
+
+
+def test_a_day_the_letter_states_as_a_schedule_of_dates_is_confirmed() -> None:
+    """A day of the month the letter states as a schedule of dates counts as stated: in the quote (quarterly
+    dates on the 10th), or in the letter's sentence about when a yearly premium is due ("01.12. eines jeden
+    Jahres", then the to-do's evidence too); the quote's single debit date alone never is."""
+    quarterly = "Die Vorauszahlungen betragen 300,00 € (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.)."
+    advance = item(quarterly, money=300.0, type="fixed", date="2026-03-10", nature="payment").model_copy(
+        update={"recurrence": Recurrence(interval=3, unit="months", day_of_month=10)}
+    )
+    [verified] = verify_extraction("doc_x", extraction([advance]), [ticket_page(quarterly)]).items
+    assert verified.reasons == () and not verified.needs_check and verified.day_evidence is None
+    page = ticket_page(PREMIUM_DUE, PREMIUM_DEBIT)
+    result = verify_extraction("doc_x", extraction([premium()]), [page])
+    [verified] = result.items
+    assert verified.reasons == () and not verified.needs_check and not result.needs_review
+    assert verified.day_evidence is not None and verified.day_evidence.grounding == "verified"
+    assert verified.day_evidence.quote == " ".join(PREMIUM_DUE.split())
+    assert consistency_reasons(premium(), [page]) == ()
+    for lines, reading in (
+        ((PREMIUM_DEBIT,), premium()),  # the letter states the date of one debit only
+        ((PREMIUM_DUE, PREMIUM_DEBIT), premium(day=15)),  # another day than the letter's
+    ):
+        [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(*lines)]).items
+        assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € monatlich.",
+        "Your new monthly rent of 670.00 EUR is payable from 1 November 2026.",
+        "Die Miete von 670,00 € ist ab dem 01.11.2026 monatlich zu zahlen, erstmals am 01.12.2026.",
+    ],
+)
+def test_a_single_start_date_is_never_the_recurring_day(quote: str) -> None:
+    """A day of the month read from the date a schedule starts on (the extraction prompt forbids it) stays
+    unconfirmed ("Please check"), even beside another date on that day."""
+    reading = item(quote, money=670.0, type="fixed", date="2026-11-01", nature="payment").model_copy(
+        update={"recurrence": Recurrence(day_of_month=1)}
+    )
+    result = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)])
+    [verified] = result.items
+    assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check and result.needs_review
+
+
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
     data = extraction(
         [],

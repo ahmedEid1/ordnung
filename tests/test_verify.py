@@ -52,11 +52,12 @@ from ordnung.ingest.verify import (
     payment_day_sentence,
     payment_days_stated,
     regrade,
+    schedule_days_named,
     spec_consistency,
     working_day_consistency,
     working_days_named,
 )
-from ordnung.models import Box, ComputationReceipt, DateSpec, Page
+from ordnung.models import Box, ComputationReceipt, DateSpec, Page, Recurrence
 
 
 def _extract(directory: Path, data: bytes) -> tuple[list[RenderedPage], list[PageText]]:
@@ -801,6 +802,101 @@ def test_a_day_of_the_month_is_named_or_flagged() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# A day of the month stated as a schedule of dates
+# --------------------------------------------------------------------------------------------------
+
+MONTHLY = Recurrence(interval=1, unit="months")
+QUARTERLY = Recurrence(interval=3, unit="months")
+YEARLY = Recurrence(interval=1, unit="years")
+QUARTERLY_DATES = (
+    "Die Vorauszahlungen betragen 300,00 € (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.)."
+)
+
+
+@pytest.mark.parametrize(
+    ("text", "rule", "expected"),
+    [
+        # two or more dates on one day, a whole number of the rule's intervals apart
+        (QUARTERLY_DATES, QUARTERLY, {10}),
+        ("Die Raten sind am 15.02.2027, 15.05.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),
+        ("Instalments are due on 10 March 2026, 10 June 2026 and 10 September 2026.", QUARTERLY, {10}),
+        ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),  # one skipped
+        ("Abbuchung am 01.12.2026 und am 01.12.2027.", YEARLY, {1}),
+        ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
+        ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
+        ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, {10}),  # another date's day aside
+        # a date without a year, for a rule of a year or more
+        ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
+        ("The annual fee is due on 1 December.", YEARLY, {1}),
+        ("Hauptfälligkeit 01.12. eines jeden Jahres", YEARLY, {1}),
+        ("Der Beitrag ist am 15. März fällig.", Recurrence(interval=2, unit="years"), {15}),
+        ("Der Beitrag ist am 15.03. fällig.", Recurrence(interval=24, unit="months"), {15}),
+        # wording that makes a single date recur
+        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", YEARLY, {1}),
+        ("Der Beitrag ist jeweils am 15.11.2026 fällig.", QUARTERLY, {15}),
+        ("The premium is debited each year on 1 December 2026.", YEARLY, {1}),
+        ("The fee is due every quarter on 15 November 2026.", QUARTERLY, {15}),
+        ("Die Prämie ist am 01.12.2026 eines jeden Jahres fällig.", YEARLY, {1}),
+        ("The premium is due on 1 December 2026 of each year.", YEARLY, {1}),
+        # a single dated start is never the recurring day, not even with a schedule's wording beside it
+        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 €.", MONTHLY, set()),
+        ("Die Miete ist ab dem 01.11.2026 jeweils monatlich zu zahlen.", MONTHLY, set()),
+        ("Die Miete ist jeweils ab dem 01.11.2026 zu zahlen.", MONTHLY, set()),
+        ("Your new rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY, set()),
+        ("Monthly payments of 30.00 EUR, beginning 1 November 2026.", MONTHLY, set()),
+        ("Payable every month starting on 1 November 2026.", MONTHLY, set()),
+        ("Der Beitrag wird mit Wirkung zum 01.11.2026 monatlich abgebucht.", MONTHLY, set()),
+        ("Die Beiträge sind vom 01.11.2026 an monatlich zu zahlen.", MONTHLY, set()),
+        # … nor does a start date make a schedule with another date
+        ("Ab dem 01.11.2026 zahlen Sie monatlich, erstmals am 01.12.2026.", MONTHLY, set()),
+        # a single date on its own
+        ("Der Betrag von 55,08 € ist fällig am 15.11.2026.", QUARTERLY, set()),
+        # … also written twice
+        ("Der Betrag ist am 15.11.2026 und erneut am 15.11.2026 fällig.", QUARTERLY, set()),
+        # dates on different days
+        ("Die Raten sind am 01.03.2026 und am 15.06.2026 fällig.", QUARTERLY, set()),
+        ("Die Raten sind am 10.03., 11.06., 12.09. und 13.12. fällig.", QUARTERLY, set()),
+        # dates whose spacing does not fit the rule's interval
+        ("Die Raten sind am 15.11.2026 und 15.12.2026 fällig.", QUARTERLY, set()),
+        ("Die Raten sind am 10.03. und 10.04. fällig.", QUARTERLY, set()),
+        ("Abbuchung am 01.12.2026 und am 01.06.2027.", YEARLY, set()),
+        # a date without a year, or one wording makes yearly, is no yearly day for a shorter rule
+        ("Der Beitrag ist zum 01.12. fällig.", QUARTERLY, set()),
+        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", MONTHLY, set()),
+        ("Hauptfälligkeit 01.12. eines jeden Jahres", QUARTERLY, set()),
+        ("The premium is debited every year on 1 December 2026.", QUARTERLY, set()),
+        # a period's dates are no due days
+        ("Versicherungsjahr 01.12. – 30.11.", YEARLY, set()),
+        ("Beitragszeitraum vom 01.01.2026 bis 31.12.2026", YEARLY, set()),
+        ("Coverage 1 December 2026 to 1 December 2027", YEARLY, set()),
+        # an ambiguous date, a rule in weeks, no rule
+        ("Die Raten sind am 03/05/2026 und 03/08/2026 fällig.", QUARTERLY, set()),
+        (QUARTERLY_DATES, Recurrence(interval=13, unit="weeks"), set()),
+        (QUARTERLY_DATES, None, set()),
+    ],
+)
+def test_schedule_days_named(text: str, rule: Recurrence | None, expected: set[int]) -> None:
+    """A day a letter states as a schedule of dates is named (the dates fit the rule's interval, a yearly
+    date has no year, or wording makes the date recur); a single start date never is."""
+    assert schedule_days_named(text, rule) == expected
+
+
+def test_a_day_stated_as_a_schedule_of_dates_is_named_by_the_quote() -> None:
+    """``day_of_month_consistency`` with the recurrence: the quarterly dates name their day (without the
+    recurrence, a date names none, as before); another day, a start date or a single date does not."""
+    assert day_of_month_consistency(QUARTERLY_DATES, 10) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(QUARTERLY_DATES, 10, QUARTERLY) == []
+    assert day_of_month_consistency(QUARTERLY_DATES, 11, QUARTERLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(QUARTERLY_DATES, 10, MONTHLY) == []  # every third month is monthly too
+    start = "Die neue Miete ist ab dem 01.11.2026 monatlich zu zahlen."
+    assert day_of_month_consistency(start, 1, MONTHLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    single = "Der nächste Jahresbeitrag wird am 01.12.2026 abgebucht."
+    assert day_of_month_consistency(single, 1, YEARLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert days_of_month_named("jeweils zum 15. eines Monats, erstmals am 15.11.2026", QUARTERLY) == {15}
+    assert days_of_month_named(QUARTERLY_DATES, QUARTERLY) == {10}
+
+
+# --------------------------------------------------------------------------------------------------
 # A recurring payment's due day stated elsewhere in its letter
 # --------------------------------------------------------------------------------------------------
 
@@ -874,6 +970,32 @@ def test_a_due_day_a_line_break_cuts_is_read_whole(text: str, due: DueDay) -> No
     [(sentence, days)] = payment_days_stated(text)
     assert days == {due} and "\n" not in sentence
     assert "Monats- anfang" not in sentence
+
+
+INSURANCE_LETTER = (
+    "Hauptfälligkeit   01.12. eines jeden Jahres\n"
+    "Versicherungsjahr   01.12. – 30.11.\n"
+    "\n"
+    "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\n"
+)
+INSURANCE_DUE = "Hauptfälligkeit 01.12. eines jeden Jahres"
+
+
+def test_a_due_day_stated_as_a_schedule_of_dates_is_found_for_its_recurrence() -> None:
+    """A yearly premium's due day and month ("01.12. eines jeden Jahres") state its day for a yearly
+    recurrence — not for a monthly one, and not without one; the single next debit date states none."""
+    first: DueDay = ("day_of_month", 1)
+    assert payment_days_stated(INSURANCE_LETTER) == []
+    assert payment_days_stated(INSURANCE_LETTER, YEARLY) == [(INSURANCE_DUE, {first})]
+    assert payment_days_stated(INSURANCE_LETTER, MONTHLY) == []
+    single = "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 abgebucht."
+    assert payment_day_sentence([INSURANCE_LETTER], first, single, YEARLY) == INSURANCE_DUE
+    assert payment_day_sentence([INSURANCE_LETTER], first, single) is None
+    assert payment_day_sentence([INSURANCE_LETTER], ("day_of_month", 15), single, YEARLY) is None
+    quarterly = f"Quartalsbeitrag 48,00 € fällig am 15.02.2027, 15.05.2027 und 15.08.2027.\n{TICKET_LETTER}"
+    # the letter states two different days (the 15th as a schedule, the 1st in words): which one is it?
+    assert payment_day_sentence([quarterly], first, "", QUARTERLY) is None
+    assert payment_day_sentence([quarterly], first, "", None) == TICKET_DEBIT
 
 
 def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> None:

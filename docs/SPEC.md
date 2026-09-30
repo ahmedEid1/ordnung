@@ -1598,14 +1598,20 @@ quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day
 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
 working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
 likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
-"Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch → "Please check".
+"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): two
+or more dates on that day a whole number of the recurrence's intervals apart ("fällig jeweils am 10.03.,
+10.06., 10.09. und 10.12." every 3 months), a date without a year for a recurrence of a year or more
+("Hauptfälligkeit 01.12. eines jeden Jahres"), or a date that wording makes recur ("jeweils am …",
+"jährlich zum …", "each year on …" for a yearly one, "every quarter on …"); never a date that starts the
+schedule ("ab dem 01.11.2026", "from 1 November 2026", "beginning …"), a single date on its own or a
+period's dates ("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
 
 A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
 letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
 "Beitrag", "Miete", "debit" … as whole words or compound parts, never inside another word such as "Mieter"
 or "Anzahl"; never a sentence about a notice period, cancellation, objection, late fees or a contract's
-start or end, nor a date with a month name) name exactly one working day or day of the month, and it is
-the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
+start or end, nor a date with a month name unless its dates state a schedule as above) name exactly one
+working day or day of the month, and it is the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
 hyphenated words ("Monats-" / "anfang"). That
 sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text
 page, `model_read` on a transcript), and no reason is raised. No such day, another one, two different

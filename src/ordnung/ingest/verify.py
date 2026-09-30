@@ -7,7 +7,8 @@
 * :func:`spec_consistency` checks that a :class:`~ordnung.models.DateSpec` and an amount are
   actually stated by their quote (numbers, number words, units, explicit dates), and
   :func:`working_day_consistency` and :func:`day_of_month_consistency` that a recurrence's working day
-  or day of the month is (:func:`working_days_named`, :func:`days_of_month_named`);
+  or day of the month is (:func:`working_days_named`, :func:`days_of_month_named`; a day stated as a
+  schedule of dates counts: :func:`schedule_days_named`);
   :func:`payment_day_sentence` finds the letter's one sentence stating a recurring payment's due day
   when its quote doesn't (:func:`payment_days_stated`).
 * :func:`grade_reading` applies the § 21 confidence rubric's reading conditions to a date's receipt,
@@ -17,6 +18,7 @@
 from __future__ import annotations
 
 import functools
+import itertools
 import math
 import re
 from collections.abc import Sequence
@@ -38,6 +40,7 @@ from ordnung.models import (
     Grounding,
     Page,
     PeriodUnit,
+    Recurrence,
 )
 
 MIN_SCORE = 90.0
@@ -554,17 +557,124 @@ _DAY_OF_MONTH_PHRASE = re.compile(
 )
 
 
-def days_of_month_named(text: str) -> set[int]:
+def days_of_month_named(text: str, rule: Recurrence | None = None) -> set[int]:
     """The days of the month (1–31) ``text`` names: digits with a full stop after *zum*, *am*, *bis* or
     *jeweils* ("jeweils zum 15.", "zum 1. eines Monats") or before *eines/des/jeden Monats*, an English
     ordinal ("the 1st"), and the start (1) or end (31, a month's last day) of a month in words
     ("Monatsanfang", "zum Monatsersten", "am ersten Tag eines Monats", "zum Monatsende", "zum Letzten", "end of
-    the month"). A date ("am 15.10.2026") names none, nor does a working day ("zum 3. Werktag")."""
+    the month"). A date ("am 15.10.2026") names none, nor does a working day ("zum 3. Werktag") — but with
+    ``rule`` (the recurrence the day is read for) a day its dates state as a schedule does
+    (:func:`schedule_days_named`)."""
     named: set[int] = set()
     for match in _DAY_OF_MONTH_PHRASE.finditer(fold_punctuation(text)):
         digits = match.group("after") or match.group("before") or match.group("english")
         named.add(int(digits) if digits else 1 if match.group("start") else 31)
+    return named | schedule_days_named(text, rule)
+
+
+_ON_THE = r"\s+(?:(?:am|zum|bis|on|by)\s+)?(?:(?:dem|den|the)\s+)?$"
+# Wording that makes the date right after it recur ("fällig jeweils am 15.11.2026", "every quarter on 15
+# November 2026") …
+_RECURS_FROM = re.compile(
+    rf"(?:\bjeweils|\b(?:each|every)\s+(?!years?\b)(?:[^\W\d_]+\s+){{0,2}}?(?:on|by)){_ON_THE}", re.IGNORECASE
+)
+# … or recur every year, before it ("jährlich zum 01.12.2026", "each year on 1 December 2026") or after it
+# ("01.12.2026 eines jeden Jahres", "1 December 2026 of each year").
+_YEARLY_FROM = re.compile(
+    rf"(?:\b(?:all)?j(?:ä|ae)hrlich|\bannually|\byearly|\b(?:each|every)\s+year(?:\s+(?:on|by))?){_ON_THE}",
+    re.IGNORECASE,
+)
+_YEARLY_UNTIL = re.compile(
+    r"""\s*(?:(?:eines|des)\s+)?(?:jeden|jedes)\s+(?:kalender)?jahres\b
+       |\s*(?:of\s+)?(?:each|every)\s+year\b
+       |\s*(?:all)?j(?:ä|ae)hrlich\b""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# A date the schedule starts from, never its day ("ab dem 01.11.2026", "from 1 November 2026", "beginning 1
+# November 2026", "mit Wirkung zum 01.11.2026").
+_STARTS_FROM = re.compile(
+    r"""(?:\bab|\bvom|\bseit|\bbeginnend(?:\s+(?:mit|am|ab))?|\bmit\s+wirkung\s+(?:zum|vom|ab)
+         |\bfrom|\bstarting(?:\s+(?:on|from))?|\bbeginning(?:\s+(?:on|from))?|\bcommencing(?:\s+(?:on|from))?
+         |\bas\s+(?:of|from)|\beffective(?:\s+(?:on|from))?|\bwith\s+effect\s+from)
+       \s+(?:(?:dem|den|the)\s+)?$""",
+    re.IGNORECASE | re.VERBOSE,
+)
+# Between the two dates of a period ("Versicherungsjahr 01.12. – 30.11.", "vom 01.01.2026 bis 31.12.2026").
+_UNTIL = re.compile(r"\s*(?:-|bis(?:\s+(?:zum|einschlie(?:ß|ss)lich))?|to|until|through)\s*", re.IGNORECASE)
+
+
+def schedule_days_named(text: str, rule: Recurrence | None) -> set[int]:
+    """The days of the month ``text`` states as the schedule of a recurrence every ``rule.interval`` months
+    or years (none for a rule in days or weeks, or without one):
+
+    * the day of two or more of its dates that fit the rule's interval — a whole number of intervals
+      apart ("fällig jeweils am 10.03., 10.06., 10.09. und 10.12." every 3 months → 10; a year's dates
+      without a year by their month);
+    * the day of a date without a year for a rule of a year or more ("Hauptfälligkeit 01.12. eines jeden
+      Jahres", "jährlich zum 01.12." every year → 1);
+    * the day of a date that wording makes recur ("jeweils am 15.11.2026", "every quarter on 15 November
+      2026"), every year for a rule of a year or more ("jährlich zum 01.12.2026", "each year on 1 December
+      2026", "01.12.2026 eines jeden Jahres").
+
+    A date the schedule starts from counts for none ("ab dem 01.11.2026", "from 1 November 2026", "beginning
+    1 November 2026"): a single start date is never the recurring day. Nor does a date on its own
+    ("fällig am 15.11.2026"), an ambiguous one (03/05/2026) or one that begins or ends a period
+    ("Versicherungsjahr 01.12. – 30.11.")."""
+    months = _interval_months(rule)
+    if months is None:
+        return set()
+    plain = fold_punctuation(text)
+    placed = date_spans(plain)
+    spans = sorted({(start, end) for start, end, _ in placed})
+    period = {
+        edge
+        for first, second in itertools.pairwise(spans)
+        if _UNTIL.fullmatch(plain, first[1], second[0])
+        for edge in (first, second)
+    }
+    dates = [
+        (start, end, mention)
+        for start, end, mention in placed
+        if not mention.ambiguous and (start, end) not in period and not _STARTS_FROM.search(plain, 0, start)
+    ]
+    yearly = months % 12 == 0
+    named = {
+        mention.day
+        for start, end, mention in dates
+        if _RECURS_FROM.search(plain, 0, start)
+        or (
+            yearly
+            and (
+                mention.year is None
+                or _YEARLY_FROM.search(plain, 0, start)
+                or _YEARLY_UNTIL.match(plain, end)
+            )
+        )
+    }
+    for day in {mention.day for _, _, mention in dates} - named:
+        if _fits_interval([mention for _, _, mention in dates if mention.day == day], months):
+            named.add(day)
     return named
+
+
+def _interval_months(rule: Recurrence | None) -> int | None:
+    """A rule's interval in months (every year is 12), ``None`` for a rule in days or weeks, or none."""
+    if rule is None or rule.unit in ("days", "weeks"):
+        return None
+    return max(1, rule.interval) * (12 if rule.unit == "years" else 1)
+
+
+def _fits_interval(mentions: Sequence[DateMention], months: int) -> bool:
+    """Whether two or more different dates are each a whole number of ``months`` after the one before: by
+    year and month, or — when one has no year — by month alone ("10.03., 10.06., 10.09. und 10.12.")."""
+    if any(mention.year is None for mention in mentions):
+        steps = sorted({mention.month for mention in mentions})
+    else:
+        steps = sorted(
+            {mention.year * 12 + mention.month for mention in mentions if mention.year is not None}
+        )
+    gaps = [later - earlier for earlier, later in itertools.pairwise(steps)]
+    return bool(gaps) and all(gap % months == 0 for gap in gaps)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -645,39 +755,45 @@ def _sentences(text: str) -> list[str]:
     return [sentence for line in lines for sentence in _SENTENCE_END.split(line) if sentence]
 
 
-def due_days_named(text: str) -> set[DueDay]:
+def due_days_named(text: str, rule: Recurrence | None = None) -> set[DueDay]:
     """The due days ``text`` names: its working days (:func:`working_days_named`) and days of the month
-    (:func:`days_of_month_named`)."""
+    (:func:`days_of_month_named`, with ``rule`` those its dates state as a schedule of that recurrence)."""
     return {("working_day", day) for day in working_days_named(text)} | {
-        ("day_of_month", day) for day in days_of_month_named(text)
+        ("day_of_month", day) for day in days_of_month_named(text, rule)
     }
 
 
-def payment_days_stated(text: str) -> list[tuple[str, set[DueDay]]]:
+def payment_days_stated(text: str, rule: Recurrence | None = None) -> list[tuple[str, set[DueDay]]]:
     """The sentences of a page's ``text`` that state the day a recurring payment is due, each with the days
     it states: a sentence about paying ("zahlbar", "Abbuchung", "Lastschrift", "Beitrag", "Miete", "debit",
     "due" …) that names a working day or a day of the month (:func:`due_days_named`: "Abbuchung zum
     Monatsanfang", "jeweils zum 15.", "am 3. Werktag eines jeden Monats") — not a date with a month name ("am
-    1. Oktober"), and no sentence about a notice period, a cancellation or an objection ("Die Kündigung muss
-    bis zum 10. eines Monats eingehen")."""
+    1. Oktober") unless its dates state the day as a schedule of ``rule``, the payment's recurrence
+    (:func:`schedule_days_named`: "Hauptfälligkeit 01.12. eines jeden Jahres" every year), and no sentence
+    about a notice period, a cancellation or an objection ("Die Kündigung muss bis zum 10. eines Monats
+    eingehen")."""
     stated: list[tuple[str, set[DueDay]]] = []
     for sentence in _sentences(text):
         folded = fold_punctuation(sentence)
         if not _PAYMENT_WORDS.search(folded) or _NOT_A_PAYMENT.search(folded):
             continue
-        days = due_days_named(_NAMED_DATE.sub(" ", folded))
+        scheduled: set[DueDay] = {("day_of_month", day) for day in schedule_days_named(folded, rule)}
+        days = due_days_named(_NAMED_DATE.sub(" ", folded)) | scheduled
         if days:
             stated.append((sentence, days))
     return stated
 
 
-def payment_day_sentence(texts: Sequence[str], due: DueDay, quote: str = "") -> str | None:
+def payment_day_sentence(
+    texts: Sequence[str], due: DueDay, quote: str = "", rule: Recurrence | None = None
+) -> str | None:
     """The sentence of a letter (``texts``: its pages' text) stating ``due`` as the day a recurring payment is
-    due, when that is the only such day the letter states (:func:`payment_days_stated`) and ``quote`` (the
-    to-do's own sentence) names no other; else ``None`` — no such day, another one, or two different ones."""
-    if due_days_named(quote) - {due}:
+    due, when that is the only such day the letter states (:func:`payment_days_stated`, a schedule of dates
+    read for ``rule``, the payment's recurrence) and ``quote`` (the to-do's own sentence) names no other; else
+    ``None`` — no such day, another one, or two different ones."""
+    if due_days_named(quote, rule) - {due}:
         return None
-    stated = [found for text in texts for found in payment_days_stated(text)]
+    stated = [found for text in texts for found in payment_days_stated(text, rule)]
     if not stated or set().union(*(days for _, days in stated)) != {due}:
         return None
     return stated[0][0]
@@ -751,12 +867,14 @@ def working_day_consistency(quote: str, working_day: int | None) -> list[str]:
     return [WORKING_DAY_NOT_IN_QUOTE]
 
 
-def day_of_month_consistency(quote: str, day: int | None) -> list[str]:
+def day_of_month_consistency(quote: str, day: int | None, rule: Recurrence | None = None) -> list[str]:
     """Whether a recurrence's day of the month (``Recurrence.day_of_month``, "zum 1. eines Monats" is 1) is
     stated by its item's quote: ``[DAY_OF_MONTH_NOT_IN_QUOTE]`` unless the quote names that day
-    (:func:`days_of_month_named`); ``[]`` for a recurrence without one. Only the quote counts, as for a
-    working day (:func:`working_day_consistency`)."""
-    if day is None or day in days_of_month_named(quote):
+    (:func:`days_of_month_named`), in words or — for ``rule``, the recurrence — as a schedule of dates
+    ("fällig jeweils am 10.03., 10.06., 10.09. und 10.12." every 3 months: :func:`schedule_days_named`; never a
+    single start date, "ab dem 01.11.2026"); ``[]`` for a recurrence without one. Only the quote counts, as
+    for a working day (:func:`working_day_consistency`)."""
+    if day is None or day in days_of_month_named(quote, rule):
         return []
     return [DAY_OF_MONTH_NOT_IN_QUOTE]
 

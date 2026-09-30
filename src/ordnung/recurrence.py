@@ -101,7 +101,9 @@ limits, not bugs):
    law's third working day (point 8); a later rent keeps the due day of the one it follows (point 9) over a
    day of the month its own reading gives (often the day it starts on: "ab dem 01.11.2026"). A day of the
    month the reading gives dates the item even when its quote doesn't name it, graded as a working day
-   is (``DAY_OF_MONTH_NOT_IN_QUOTE``).
+   is (``DAY_OF_MONTH_NOT_IN_QUOTE``); dates that state it as the schedule name it (quarterly dates on the
+   10th, a yearly "01.12." without a year: :func:`~ordnung.ingest.verify.schedule_days_named`), a single
+   start date never does.
 """
 
 from __future__ import annotations
