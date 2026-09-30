@@ -14,7 +14,12 @@ Policy (ADR 0007):
   "Returned" without a debit beside it is anything returned ("the router must be returned").
 * **A to-do is a direct debit** when its own words (title, action, description) name one —
   :data:`DEBIT_WORDS`, German or English — unless one of them says the debit failed (after one, the
-  person transfers) or its action asks for a transfer.
+  person transfers) or its action asks for a transfer (:func:`asks_for_transfer`).
+* **An action asks for a transfer** when it names one, or a standing order (*Dauerauftrag*) the person
+  sets up or changes: their own transfer, every period ("Adjust your standing order to the new total
+  rent unless you use direct debit"), so it gets a send-by day. A standing order its clause tells them
+  to end — cancel, stop, delete, no longer needed (*löschen*, *kündigen*, *einstellen*, *nicht mehr*:
+  :data:`_ORDER_ENDED`), because the payee now collects — asks for none.
 * **A letter's sentence speaks of a direct debit** (:func:`debit_in_sentence`) when it names one —
   the same words, a mandate's reference or the creditor's ID, the split verb "buchen … ab", or
   "einziehen" in a clause that names the account or the money ("von Ihrem Konto eingezogen", "ziehen
@@ -66,6 +71,15 @@ _COLLECT = re.compile(
 )
 _ACCOUNT_OR_MONEY = re.compile(r"konto|account|betrag|beitrag|summe|forderung|gebühr|prämie|entgelt", re.I)
 _TRANSFER_WORDS = re.compile(r"\btransfer|überweis", re.I)
+#: A standing order (*Dauerauftrag*): the person's own transfer, every period (module policy).
+_STANDING_ORDER = re.compile(r"standing\s+order|dauerauftr", re.I)
+#: A standing order its clause tells the person to end (the payee now collects: module policy).
+_ORDER_ENDED = re.compile(
+    r"\b(?:cancel|stop|delet|remov|terminat)\w*|\bno\s+longer\b"
+    r"|lösch|kündig|einstell|eingestellt|beend|aufheb|widerruf|nicht\s+mehr"
+    r"|\b(?:stelle|stellen|stellt)\b.{0,80}?\bein\b",
+    re.I | re.S,
+)
 _DEBIT_NOUN = r"(?:lastschrift|abbuchung|einzug|debit|payment|zahlung)"
 _FAILED_VERB = r"(?:zurückgegeben|zurückgebucht|zurückgerufen|fehlgeschlagen|returned|bounced|failed)"
 #: A debit that failed: the bank returned it, or it couldn't be collected (in one clause).
@@ -121,13 +135,22 @@ def _description(item: Item | ExtractedItem) -> str | None:
     return item.description if isinstance(item, Item) else None
 
 
+def asks_for_transfer(action: str | None) -> bool:
+    """A to-do's ``action`` asks the person to transfer the money: it names a transfer, or a standing order
+    they set up or change — not one its clause tells them to end (policy)."""
+    text = action or ""
+    return bool(_TRANSFER_WORDS.search(text)) or any(
+        _STANDING_ORDER.search(clause) and not _ORDER_ENDED.search(clause) for clause in _clauses(text)
+    )
+
+
 def is_direct_debit(item: Item | ExtractedItem) -> bool:
     """The sender collects this payment itself (SEPA direct debit): nothing to transfer (policy)."""
     parts = [part for part in (item.title, item.action, _description(item)) if part]
     return (
         any(DEBIT_WORDS.search(part) for part in parts)
         and not any(debit_failed(part) for part in parts)
-        and not _TRANSFER_WORDS.search(item.action or "")
+        and not asks_for_transfer(item.action)
     )
 
 
@@ -154,7 +177,7 @@ def pays_on_site(item: Item | ExtractedItem) -> bool:
     if item.kind != "payment" or item.direction == "in" or is_direct_debit(item):
         return False
     how = " ".join(part for part in (item.action, _description(item)) if part)
-    return bool(_ON_SITE_WORDS.search(how)) and not _TRANSFER_WORDS.search(item.action or "")
+    return bool(_ON_SITE_WORDS.search(how)) and not asks_for_transfer(item.action)
 
 
 def debit_in_sentence(sentence: str) -> bool:

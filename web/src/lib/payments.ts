@@ -12,6 +12,14 @@ import type { Item } from "@/api/types";
  */
 const DEBIT_WORDS = /direct debit|debited|collected automatically|sufficient funds|lastschrift|bankeinzug|abbuch|abgebucht|kontodeckung/i;
 const TRANSFER_WORDS = /\btransfer|überweis/i;
+/** A standing order (Dauerauftrag): the person's own transfer, every period. */
+const STANDING_ORDER = /standing\s+order|dauerauftr/i;
+/**
+ * A standing order its clause tells the person to end — cancel, stop, delete, no longer needed ("löschen",
+ * "kündigen", "einstellen", "nicht mehr") — because the payee now collects.
+ */
+const ORDER_ENDED =
+  /(?<![\p{L}\p{N}_])(?:cancel|stop|delet|remov|terminat)[\p{L}\p{N}_]*|(?<![\p{L}\p{N}_])no\s+longer(?![\p{L}\p{N}_])|lösch|kündig|einstell|eingestellt|beend|aufheb|widerruf|nicht\s+mehr|(?<![\p{L}\p{N}_])(?:stelle|stellen|stellt)(?![\p{L}\p{N}_])[\s\S]{0,80}?(?<![\p{L}\p{N}_])ein(?![\p{L}\p{N}_])/iu;
 const DEBIT_NOUN = "(?:lastschrift|abbuchung|einzug|debit|payment|zahlung)";
 const FAILED_VERB = "(?:zurückgegeben|zurückgebucht|zurückgerufen|fehlgeschlagen|returned|bounced|failed)";
 /**
@@ -47,6 +55,16 @@ export function debitFailed(text: string): boolean {
 }
 
 /**
+ * A to-do's action asks the person to transfer the money: it names a transfer, or a standing order they set
+ * up or change ("Adjust your standing order … unless you use direct debit") — not one its clause tells them
+ * to end ("Dauerauftrag löschen", "cancel your standing order"), because the payee now collects.
+ */
+export function asksForTransfer(action: string | null | undefined): boolean {
+  const text = action ?? "";
+  return TRANSFER_WORDS.test(text) || text.split(CLAUSE_END).some((clause) => STANDING_ORDER.test(clause) && !ORDER_ENDED.test(clause));
+}
+
+/**
  * The sender collects this payment itself (direct debit): nothing to transfer — unless one of its
  * words (title, action, description) says the debit failed, or its action asks for a transfer.
  */
@@ -56,7 +74,7 @@ export function isDirectDebit(item: Pick<Item, "kind" | "title" | "action" | "de
   return (
     parts.some((part) => DEBIT_WORDS.test(part)) &&
     !parts.some((part) => debitFailed(part)) &&
-    !TRANSFER_WORDS.test(item.action ?? "")
+    !asksForTransfer(item.action)
   );
 }
 

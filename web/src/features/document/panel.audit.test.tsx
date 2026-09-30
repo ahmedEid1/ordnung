@@ -237,6 +237,7 @@ describe("To-dos & dates", () => {
     expect(paysOnSite(makeItem({ kind: "payment", action: "Pay the 4,50 € in fees at the service desk or the payment machine." }))).toBe(true);
     expect(paysOnSite(makeItem({ kind: "payment", action: "Transfer 55.08 € to the Beitragsservice, or pay in cash." }))).toBe(false);
     expect(paysOnSite(makeItem({ kind: "payment", action: "Transfer the amount by the deadline." }))).toBe(false);
+    expect(paysOnSite(makeItem({ kind: "payment", action: "Pay the fee at the service desk or by standing order." }))).toBe(false);
   });
 });
 

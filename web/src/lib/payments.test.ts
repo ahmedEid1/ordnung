@@ -1,10 +1,10 @@
 /**
  * `payments.ts` mirrors `ordnung/payments.py` (tests/test_payments.py has the same cases): a to-do
- * naming a direct debit in German or English — unless its debit failed — and the reference to type
- * without its label.
+ * naming a direct debit in German or English — unless its debit failed or its action asks for a transfer
+ * (a standing order to set up or change) — and the reference to type without its label.
  */
 import { describe, expect, it } from "vitest";
-import { isDirectDebit, isTransfer, paymentReference } from "./payments";
+import { asksForTransfer, isDirectDebit, isTransfer, paymentReference } from "./payments";
 
 const todo = (title: string, action: string | null = null) => ({ kind: "payment" as const, title, action, description: null });
 
@@ -45,6 +45,32 @@ describe("isDirectDebit", () => {
     const item = todo(title, action);
     expect(isDirectDebit(item)).toBe(false);
     expect(isTransfer({ ...item, direction: "out" })).toBe(true);
+  });
+
+  // a standing order the person sets up or changes is their own transfer (the demo's €670 rent had no send-by day)
+  it.each([
+    ["New monthly total rent €670", "Adjust your standing order to the new total rent unless you use direct debit."],
+    ["Neue Gesamtmiete", "Dauerauftrag auf 670 € anpassen, falls Sie nicht per Lastschrift zahlen"],
+    ["Beitrag bisher per Lastschrift", "Set up a standing order for the monthly fee"],
+    ["Miete per Lastschrift", "Richten Sie einen Dauerauftrag über 670 € ein"],
+  ])("%s / %s asks for a transfer", (title, action) => {
+    expect(asksForTransfer(action)).toBe(true);
+    expect(isDirectDebit(todo(title, action))).toBe(false);
+    expect(isTransfer({ ...todo(title, action), direction: "out" })).toBe(true);
+  });
+
+  // one the person is told to cancel, stop or delete — the payee now collects — is no transfer
+  it.each([
+    ["Monthly rent collected by direct debit", "Cancel your standing order: the rent is now debited."],
+    ["Miete per Lastschrift", "Dauerauftrag löschen – die Miete wird ab November abgebucht."],
+    ["Beitrag per Lastschrift", "Bitte kündigen Sie Ihren Dauerauftrag."],
+    ["Beitrag per Lastschrift", "Bitte stellen Sie Ihren Dauerauftrag ein."],
+    ["Beitrag per Lastschrift", "Dauerauftrag einstellen"],
+    ["Fee collected by direct debit", "Stop your standing order; you no longer need it."],
+    ["Monatsbeitrag per Bankeinzug", "Ihren Dauerauftrag brauchen Sie nicht mehr."],
+  ])("%s / %s stays a direct debit", (title, action) => {
+    expect(asksForTransfer(action)).toBe(false);
+    expect(isDirectDebit(todo(title, action))).toBe(true);
   });
 
   it.each([

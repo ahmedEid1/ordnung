@@ -11,6 +11,7 @@ import pytest
 
 from ordnung.models import Item
 from ordnung.payments import (
+    asks_for_transfer,
     debit_in_sentence,
     is_collected_or_incoming,
     is_direct_debit,
@@ -100,6 +101,46 @@ def test_a_to_do_whose_debit_failed_or_that_moves_in_is_a_payment_to_make(
 )
 def test_a_failed_debit_stated_as_a_fact_is_still_one(title: str, action: str | None) -> None:
     assert not is_direct_debit(todo(title, action))
+
+
+@pytest.mark.parametrize(
+    ("title", "action"),
+    [
+        # the demo's new rent: the person changes their own standing order; the debit is only the alternative
+        (
+            "New monthly total rent €670",
+            "Adjust your standing order to the new total rent unless you use direct debit.",
+        ),
+        ("Neue Gesamtmiete", "Dauerauftrag auf 670 € anpassen, falls Sie nicht per Lastschrift zahlen"),
+        ("Beitrag bisher per Lastschrift", "Set up a standing order for the monthly fee"),
+        ("Miete per Lastschrift", "Richten Sie einen Dauerauftrag über 670 € ein"),
+    ],
+)
+def test_a_standing_order_to_set_up_or_change_is_a_transfer(title: str, action: str) -> None:
+    """A standing order (Dauerauftrag) the person sets up or changes is their own transfer: the to-do is no
+    direct debit, so its date gets a send-by day (the demo's €670 rent had none)."""
+    item = todo(title, action)
+    assert asks_for_transfer(action)
+    assert not is_direct_debit(item) and not is_collected_or_incoming(item)
+
+
+@pytest.mark.parametrize(
+    ("title", "action"),
+    [
+        ("Monthly rent collected by direct debit", "Cancel your standing order: the rent is now debited."),
+        ("Miete per Lastschrift", "Dauerauftrag löschen – die Miete wird ab November abgebucht."),
+        ("Beitrag per Lastschrift", "Bitte kündigen Sie Ihren Dauerauftrag."),
+        ("Beitrag per Lastschrift", "Bitte stellen Sie Ihren Dauerauftrag ein."),
+        ("Beitrag per Lastschrift", "Dauerauftrag einstellen"),
+        ("Fee collected by direct debit", "Stop your standing order; you no longer need it."),
+        ("Monatsbeitrag per Bankeinzug", "Ihren Dauerauftrag brauchen Sie nicht mehr."),
+    ],
+)
+def test_a_standing_order_to_end_asks_for_no_transfer(title: str, action: str) -> None:
+    """A standing order the person is told to cancel, stop or delete, because the payee now collects, is no
+    transfer: the direct debit stays one."""
+    assert not asks_for_transfer(action)
+    assert is_direct_debit(todo(title, action))
 
 
 def described(title: str, description: str) -> Item:
@@ -261,6 +302,7 @@ def payment(**fields: Any) -> Item:
         ("Gebühr vor Ort mit EC-Karte bezahlen.", True),
         ("Transfer 55.08 € to the Beitragsservice, or pay in cash.", False),  # a transfer first
         ("Transfer the amount by the deadline.", False),
+        ("Pay the fee at the service desk or by standing order.", False),  # a transfer too
         (None, False),
     ],
 )

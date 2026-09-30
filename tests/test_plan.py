@@ -278,6 +278,25 @@ def test_a_collected_or_incoming_payment_is_stored_without_a_send_by_day() -> No
     assert kept.send_by == "2026-10-14"
 
 
+def test_a_payment_by_standing_order_keeps_its_send_by_day() -> None:
+    """The demo's €670 rent: "Adjust your standing order to the new total rent unless you use direct debit".
+    The standing order is the person's own transfer (``ordnung.payments.asks_for_transfer``), so the rent
+    keeps a transfer's send-by day; "direct debit" named as the alternative once made it collected, without
+    one. A standing order the person is told to cancel, because the payee now collects, gets none."""
+    ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
+    rent = PAYMENT.model_copy(
+        update={
+            "title": "New monthly total rent €670",
+            "action": "Adjust your standing order to the new total rent unless you use direct debit.",
+        }
+    )
+    kept = compute_item(verified_item(rent), for_item(ctx, rent, None), postal_buffer_days=4)
+    assert (kept.due_date, kept.send_by) == ("2026-10-15", "2026-10-14")
+    collected = rent.model_copy(update={"action": "Cancel your standing order: the rent is now debited."})
+    computed = compute_item(verified_item(collected), for_item(ctx, collected, None), postal_buffer_days=4)
+    assert (computed.due_date, computed.send_by) == ("2026-10-15", None)
+
+
 def test_rule_context_from_party_and_document(store: Store) -> None:
     party = store.add_party(name="Finanzamt", kind="tax_office", region="BY")
     document = store.add_document(

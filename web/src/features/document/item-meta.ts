@@ -12,20 +12,19 @@
  * - `undated`: no date — money coming in is "expected", something that repeats says only how often.
  */
 import type { Item } from "@/api/types";
-import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
+import { asksForTransfer, isDirectDebit, isIncomingMoney } from "@/lib/payments";
 
 export type ItemDateRole = "scam" | "debit" | "on_site" | "transfer" | "event" | "due" | "undated";
 
 /** Paid in person — at the appointment, the service desk or a machine, by card or in cash (as `pays_on_site` in `ordnung/payments.py`). */
 const ON_SITE =
   /\bon[ -]site\b|\bat the appointment\b|\bat the (?:service )?(?:desk|counter)\b|\bpayment machine\b|\bgirocard\b|\bEC[ -]card\b|\bcash\b|\bvor Ort\b|\bin bar\b|\bbar (?:be)?zahlen\b|\bEC-Karte\b|\bam (?:Kassen|Zahl)automaten\b|\ban der Kasse\b/i;
-const TRANSFER = /\btransfer|überweis/i;
 
 /** A payment made in person (card or cash at the appointment, the desk, a machine), not by bank transfer. */
 export function paysOnSite(item: Pick<Item, "kind" | "direction" | "title" | "action" | "description">): boolean {
   if (item.kind !== "payment" || item.direction === "in" || isDirectDebit(item)) return false;
   const how = [item.action, item.description].filter(Boolean).join(" ");
-  return ON_SITE.test(how) && !TRANSFER.test(item.action ?? "");
+  return ON_SITE.test(how) && !asksForTransfer(item.action);
 }
 
 /** How the row shows an open to-do's date (see the module comment). */
