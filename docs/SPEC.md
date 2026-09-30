@@ -769,16 +769,18 @@ HTML and without remote images.
   label) — what was checked, not every claim. A checked answer is stored with the label (alone when
   nothing changed), so an answer stored before this check is never shown as checked; a model sentence
   that starts like the note — also with look-alike letters or across a soft line break — is left out.
-- **The prompt** (`ask_system` version 9: since 7 a to-do's own words are letter text, since 8 a year
+- **The prompt** (`ask_system` version 10: since 7 a to-do's own words are letter text, since 8 a year
   standing alone in its title too, since 9 a matter's open to-dos and appointments are looked up before
-  the answer says what to do) says what the check does: a value only a letter holds is not
-  stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
-  record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
-  term dates are left out, its cost stays), today's date is checked like any other date, each sentence
-  and list item cites its own record, the record's legal statements keep their hedges, German answers
-  use "Sie", and a `do_not_pay` demand is not to be paid until checked with the sender. It names every
-  ledger tool (`get_my_numbers` too) and the app's buttons by their labels ("Add your dates to your
-  calendar"). Every demo and benchmark answer was recorded with it.
+  the answer says what to do, since 10, when the records hold nothing on the question, the first
+  paragraph says only that — no date, amount or other record — and a related record may follow in a
+  paragraph of its own; the check keeps the answer's paragraph breaks) says what the check does: a value
+  only a letter holds is not stated (it would be shown as "[… only in the letter]", however the sentence
+  frames it), only a cited record's flagged amount and the person's own words stay as quotes (a
+  `terms_unverified` contract's term dates are left out, its cost stays), today's date is checked like
+  any other date, each sentence and list item cites its own record, the record's legal statements keep
+  their hedges, German answers use "Sie", and a `do_not_pay` demand is not to be paid until checked with
+  the sender. It names every ledger tool (`get_my_numbers` too) and the app's buttons by their labels
+  ("Add your dates to your calendar"). Every demo and benchmark answer was recorded with it.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
