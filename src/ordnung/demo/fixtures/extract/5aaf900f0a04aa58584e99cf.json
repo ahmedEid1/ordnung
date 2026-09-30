@@ -11,21 +11,17 @@
     "prompt_head": "Today is 2026-09-28. The person lives in region NW (DE). Their name is Sam Rivera.\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n<untrusted_document>\n- FitWell Studios GmbH (gym)\n- FunkNetz Mobil GmbH (telecom)\n- Wohnbau Musterstadt eG (landlord)\n</untrusted_document>\n\nThe document's text follows, page by p"
   },
   "response": {
-    "text": "{\"kind\":\"contract\",\"title\":\"Electricity contract confirmation \\\"MusterStrom Flex\\\"\",\"summary\":\"Stadtwerke Musterstadt GmbH confirms your electricity supply contract \\\"MusterStrom Flex\\\" for Beispielweg 5, starting 1 October 2025 with a 12-month initial term. The monthly advance payment is €48.00, due on the 15th.\",\"explanation\":\"This letter confirms your new electricity contract. Supply started on 1 October 2025 and the initial term runs to 30 September 2026. It can be cancelled with one month's notice to the end of the initial term; the app computes the cancellation deadline. If you don't cancel, it continues indefinitely and can then be cancelled at any time with one month's notice. You pay €48.00 per month by direct debit on the 15th. You were asked to report the meter reading at the start of supply by 5 October 2025. Check that this was done.\",\"case_title\":\"Electricity contract MusterStrom Flex\",\"area\":\"home\",\"language\":\"German\",\"document_date\":\"2025-09-20\",\"recipient_name\":\"Sam Rivera\",\"urgency\":\"normal\",\"tax_relevant\":false,\"tax_note\":null,\"high_stakes_kind\":null,\"sender\":{\"name\":\"Stadtwerke Musterstadt GmbH\",\"kind\":\"utility\",\"address\":\"Energieplatz 1, 12345 Musterstadt\",\"phone\":\"0123 5550-100\",\"website\":\"www.stadtwerke-musterstadt.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE400123982\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE28ZZZ00000401239\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 4711\"}]},\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"400123987\"},{\"label\":\"Kundennummer\",\"value\":\"2004711\"},{\"label\":\"Zählernummer\",\"value\":\"1EMH0012345678\"},{\"label\":\"Marktlokation\",\"value\":\"51238764017\"}],\"contract\":{\"name\":\"MusterStrom Flex\",\"category\":\"energy\",\"concluded_date\":\"2025-09-16\",\"start_date\":\"2025-10-01\",\"end_date\":\"2026-09-30\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"notice_before_end\":false,\"notice_statutory\":false,\"cost_amount\":48,\"cost_interval\":\"monthly\",\"customer_number\":\"2004711\",\"is_consumer\":true,\"is_basic_supply\":false,\"quotes\":[\"Der Vertrag hat eine Erstlaufzeit von 12 Monaten ab Lieferbeginn. Er kann mit einer Frist von einem Monat zum Ende der Erstlaufzeit gekündigt werden.\",\"Wird der Vertrag nicht gekündigt, läuft er nach Ablauf der Erstlaufzeit auf unbestimmte Zeit weiter und kann dann jederzeit mit einer Frist von einem Monat gekündigt werden.\",\"Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\"]},\"items\":[{\"kind\":\"payment\",\"title\":\"Monthly electricity advance payment\",\"amount\":48,\"currency\":\"EUR\",\"direction\":\"out\",\"action\":\"Make sure your account has enough funds; €48.00 is collected by direct debit on the 15th of each month.\",\"consequence\":null,\"priority\":\"normal\",\"date\":{\"type\":\"fixed\",\"date\":\"2025-10-15\",\"text\":\"fällig jeweils zum 15. eines Monats, erstmals am 15.10.2025\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":15,\"working_day\":null},\"quote\":\"Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\"},{\"kind\":\"deadline\",\"title\":\"Report meter reading at start of supply\",\"action\":\"Report the meter reading at the start of supply online or with the enclosed card.\",\"consequence\":null,\"priority\":\"low\",\"date\":{\"type\":\"fixed\",\"date\":\"2025-10-05\",\"text\":\"bis zum 05.10.2025\",\"nature\":\"declaration\",\"shift_rule\":\"auto\"},\"quote\":\"Bitte teilen Sie uns den Zählerstand zum Lieferbeginn bis zum 05.10.2025 mit – am einfachsten online\"}],\"key_facts\":[{\"label\":\"Delivery start (Lieferbeginn)\",\"value\":\"01.10.2025\",\"quote\":\"Lieferbeginn   01.10.2025\"},{\"label\":\"Initial term (Erstlaufzeit)\",\"value\":\"12 Monate (bis 30.09.2026)\",\"quote\":\"Erstlaufzeit   12 Monate (bis 30.09.2026)\"},{\"label\":\"Unit price (Arbeitspreis)\",\"value\":\"32,90 ct/kWh (brutto)\",\"quote\":\"Arbeitspreis   32,90 ct/kWh (brutto) · 27,65 ct/kWh (netto)\"},{\"label\":\"Base fee (Grundpreis)\",\"value\":\"11,90 €/Monat (brutto)\",\"quote\":\"Grundpreis   11,90 €/Monat (brutto) · 10,00 €/Monat (netto)\"},{\"label\":\"Expected annual consumption (Voraussichtlicher Jahresverbrauch)\",\"value\":\"1.320 kWh\",\"quote\":\"Voraussichtlicher   1.320 kWh\"},{\"label\":\"Supply address (Lieferstelle)\",\"value\":\"Beispielweg 5, 12345 Musterstadt, 2. OG links\",\"quote\":\"Lieferstelle   Beispielweg 5, 12345 Musterstadt, 2. OG links\"}],\"remedy\":null,\"change\":null,\"warnings\":[\"The initial term ends on 30 September 2026, so the cancellation deadline for the initial term may already have passed or be very close; check the deadline the app shows.\"]}",
+    "text": "{\"area\":\"home\",\"case_title\":\"Stadtwerke Musterstadt – Electricity Contract Confirmation (MusterStrom Flex)\",\"kind\":\"contract\",\"language\":\"de\",\"document_date\":\"2025-09-20\",\"recipient_name\":\"Sam Rivera\",\"title\":\"Electricity Supply Contract Confirmation – MusterStrom Flex\",\"summary\":\"Stadtwerke Musterstadt GmbH confirms Sam Rivera's new electricity supply contract \\\"MusterStrom Flex\\\" for the address Beispielweg 5, 12345 Musterstadt, starting 1 October 2025 with a 12-month initial term. The monthly advance payment (Abschlag) is €48.00, first due on 15 October 2025 and collected by direct debit.\",\"explanation\":\"This letter confirms the electricity contract Sam ordered on 16 September 2025; no signature or further action is needed to activate it. Two things to do: report the meter reading at the start of supply by the stated date, and make sure the linked bank account has enough funds for the monthly €48.00 direct debit. The contract runs for 12 months and then continues indefinitely unless cancelled; the app tracks the notice window automatically. If Stadtwerke Musterstadt later raises prices, a special right to cancel opens then too, which the app will show.\",\"sender\":{\"name\":\"Stadtwerke Musterstadt GmbH\",\"kind\":\"utility\",\"address\":\"Energieplatz 1, 12345 Musterstadt\",\"phone\":\"0123 5550-100\",\"website\":\"www.stadtwerke-musterstadt.example\",\"identifiers\":[{\"label\":\"USt-IdNr.\",\"value\":\"DE400123982\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE28ZZZ00000401239\"},{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 4711\"}]},\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"400123987\"},{\"label\":\"Kundennummer\",\"value\":\"2004711\"},{\"label\":\"Zählernummer\",\"value\":\"1EMH0012345678\"},{\"label\":\"Marktlokation\",\"value\":\"51238764017\"}],\"contract\":{\"name\":\"MusterStrom Flex\",\"category\":\"energy\",\"is_consumer\":true,\"is_basic_supply\":false,\"concluded_date\":\"2025-09-16\",\"start_date\":\"2025-10-01\",\"end_date\":\"2026-09-30\",\"initial_term_months\":12,\"renewal_term_months\":0,\"notice_value\":1,\"notice_unit\":\"months\",\"notice_basis\":\"end_of_term\",\"notice_statutory\":false,\"notice_before_end\":false,\"notice_day\":null,\"cost_amount\":48,\"cost_interval\":\"monthly\",\"customer_number\":\"2004711\",\"quotes\":[\"herzlichen Dank für Ihren Auftrag vom 16.09.2025 und willkommen bei den Stadtwerken Musterstadt!\",\"Lieferbeginn   01.10.2025\",\"Erstlaufzeit   12 Monate (bis 30.09.2026)\",\"Der Vertrag hat eine Erstlaufzeit von 12 Monaten ab Lieferbeginn. Er kann mit einer Frist von einem Monat zum Ende der Erstlaufzeit gekündigt werden.\",\"Wird der Vertrag nicht gekündigt, läuft er nach Ablauf der Erstlaufzeit auf unbestimmte Zeit weiter und kann dann jederzeit mit einer Frist von einem Monat gekündigt werden.\",\"Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am 15.10.2025\"]},\"change\":null,\"payment\":null,\"remedy\":{\"type\":\"none\"},\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit the electricity meter reading (Zählerstand)\",\"action\":\"Report the electricity meter reading at the start of supply online at stadtwerke-musterstadt.example/zaehlerstand or with the enclosed card\",\"consequence\":null,\"date\":{\"type\":\"fixed\",\"date\":\"2025-10-05\",\"text\":\"bis zum 05.10.2025\",\"nature\":\"declaration\",\"shift_rule\":\"auto\"},\"quote\":\"Bitte teilen Sie uns den Zählerstand zum Lieferbeginn bis zum 05.10.2025 mit – am einfachsten online unter stadtwerke-musterstadt.example/zaehlerstand oder mit der beiliegenden Karte.\",\"priority\":\"normal\"},{\"kind\":\"payment\",\"title\":\"Monthly advance payment (Abschlag) for electricity\",\"action\":\"Ensure your linked bank account has sufficient funds for the SEPA direct debit\",\"consequence\":null,\"amount\":48,\"currency\":\"EUR\",\"direction\":\"out\",\"date\":{\"type\":\"fixed\",\"date\":\"2025-10-15\",\"text\":\"erstmals am 15.10.2025\",\"nature\":\"payment\",\"shift_rule\":\"auto\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":15},\"quote\":\"Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\\n15.10.2025\",\"priority\":\"normal\"}],\"key_facts\":[{\"label\":\"Delivery start (Lieferbeginn)\",\"value\":\"01.10.2025\",\"quote\":\"Lieferbeginn   01.10.2025\"},{\"label\":\"Initial term (Erstlaufzeit)\",\"value\":\"12 Monate (bis 30.09.2026)\",\"quote\":\"Erstlaufzeit   12 Monate (bis 30.09.2026)\"},{\"label\":\"Unit price (Arbeitspreis)\",\"value\":\"32,90 ct/kWh (brutto) · 27,65 ct/kWh (netto)\",\"quote\":\"Arbeitspreis   32,90 ct/kWh (brutto) · 27,65 ct/kWh (netto)\"},{\"label\":\"Base price (Grundpreis)\",\"value\":\"11,90 €/Monat (brutto) · 10,00 €/Monat (netto)\",\"quote\":\"Grundpreis   11,90 €/Monat (brutto) · 10,00 €/Monat (netto)\"},{\"label\":\"Monthly advance payment (Monatlicher Abschlag)\",\"value\":\"48,00 €\",\"quote\":\"Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\\n15.10.2025\"},{\"label\":\"Estimated annual consumption (Voraussichtlicher Jahresverbrauch)\",\"value\":\"1.320 kWh\",\"quote\":\"Voraussichtlicher   1.320 kWh\"},{\"label\":\"Payment method (Zahlungsweise)\",\"value\":\"SEPA-Lastschrift von Ihrem Konto DE41 XXXX XXXX XXXX XX45 00\",\"quote\":\"Zahlungsweise   SEPA-Lastschrift von Ihrem Konto DE41 XXXX XXXX XXXX XX45 00\"}],\"warnings\":[],\"urgency\":\"low\",\"tax_relevant\":false,\"tax_note\":null,\"high_stakes_kind\":null}",
     "data": {
-      "kind": "contract",
-      "title": "Electricity contract confirmation \"MusterStrom Flex\"",
-      "summary": "Stadtwerke Musterstadt GmbH confirms your electricity supply contract \"MusterStrom Flex\" for Beispielweg 5, starting 1 October 2025 with a 12-month initial term. The monthly advance payment is €48.00, due on the 15th.",
-      "explanation": "This letter confirms your new electricity contract. Supply started on 1 October 2025 and the initial term runs to 30 September 2026. It can be cancelled with one month's notice to the end of the initial term; the app computes the cancellation deadline. If you don't cancel, it continues indefinitely and can then be cancelled at any time with one month's notice. You pay €48.00 per month by direct debit on the 15th. You were asked to report the meter reading at the start of supply by 5 October 2025. Check that this was done.",
-      "case_title": "Electricity contract MusterStrom Flex",
       "area": "home",
-      "language": "German",
+      "case_title": "Stadtwerke Musterstadt – Electricity Contract Confirmation (MusterStrom Flex)",
+      "kind": "contract",
+      "language": "de",
       "document_date": "2025-09-20",
       "recipient_name": "Sam Rivera",
-      "urgency": "normal",
-      "tax_relevant": false,
-      "tax_note": null,
-      "high_stakes_kind": null,
+      "title": "Electricity Supply Contract Confirmation – MusterStrom Flex",
+      "summary": "Stadtwerke Musterstadt GmbH confirms Sam Rivera's new electricity supply contract \"MusterStrom Flex\" for the address Beispielweg 5, 12345 Musterstadt, starting 1 October 2025 with a 12-month initial term. The monthly advance payment (Abschlag) is €48.00, first due on 15 October 2025 and collected by direct debit.",
+      "explanation": "This letter confirms the electricity contract Sam ordered on 16 September 2025; no signature or further action is needed to activate it. Two things to do: report the meter reading at the start of supply by the stated date, and make sure the linked bank account has enough funds for the monthly €48.00 direct debit. The contract runs for 12 months and then continues indefinitely unless cancelled; the app tracks the notice window automatically. If Stadtwerke Musterstadt later raises prices, a special right to cancel opens then too, which the app will show.",
       "sender": {
         "name": "Stadtwerke Musterstadt GmbH",
         "kind": "utility",
@@ -68,6 +64,8 @@
       "contract": {
         "name": "MusterStrom Flex",
         "category": "energy",
+        "is_consumer": true,
+        "is_basic_supply": false,
         "concluded_date": "2025-09-16",
         "start_date": "2025-10-01",
         "end_date": "2026-09-30",
@@ -76,50 +74,32 @@
         "notice_value": 1,
         "notice_unit": "months",
         "notice_basis": "end_of_term",
-        "notice_before_end": false,
         "notice_statutory": false,
+        "notice_before_end": false,
+        "notice_day": null,
         "cost_amount": 48,
         "cost_interval": "monthly",
         "customer_number": "2004711",
-        "is_consumer": true,
-        "is_basic_supply": false,
         "quotes": [
+          "herzlichen Dank für Ihren Auftrag vom 16.09.2025 und willkommen bei den Stadtwerken Musterstadt!",
+          "Lieferbeginn   01.10.2025",
+          "Erstlaufzeit   12 Monate (bis 30.09.2026)",
           "Der Vertrag hat eine Erstlaufzeit von 12 Monaten ab Lieferbeginn. Er kann mit einer Frist von einem Monat zum Ende der Erstlaufzeit gekündigt werden.",
           "Wird der Vertrag nicht gekündigt, läuft er nach Ablauf der Erstlaufzeit auf unbestimmte Zeit weiter und kann dann jederzeit mit einer Frist von einem Monat gekündigt werden.",
-          "Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am"
+          "Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am 15.10.2025"
         ]
+      },
+      "change": null,
+      "payment": null,
+      "remedy": {
+        "type": "none"
       },
       "items": [
         {
-          "kind": "payment",
-          "title": "Monthly electricity advance payment",
-          "amount": 48,
-          "currency": "EUR",
-          "direction": "out",
-          "action": "Make sure your account has enough funds; €48.00 is collected by direct debit on the 15th of each month.",
-          "consequence": null,
-          "priority": "normal",
-          "date": {
-            "type": "fixed",
-            "date": "2025-10-15",
-            "text": "fällig jeweils zum 15. eines Monats, erstmals am 15.10.2025",
-            "nature": "payment",
-            "shift_rule": "auto"
-          },
-          "recurrence": {
-            "interval": 1,
-            "unit": "months",
-            "day_of_month": 15,
-            "working_day": null
-          },
-          "quote": "Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am"
-        },
-        {
           "kind": "deadline",
-          "title": "Report meter reading at start of supply",
-          "action": "Report the meter reading at the start of supply online or with the enclosed card.",
+          "title": "Submit the electricity meter reading (Zählerstand)",
+          "action": "Report the electricity meter reading at the start of supply online at stadtwerke-musterstadt.example/zaehlerstand or with the enclosed card",
           "consequence": null,
-          "priority": "low",
           "date": {
             "type": "fixed",
             "date": "2025-10-05",
@@ -127,7 +107,31 @@
             "nature": "declaration",
             "shift_rule": "auto"
           },
-          "quote": "Bitte teilen Sie uns den Zählerstand zum Lieferbeginn bis zum 05.10.2025 mit – am einfachsten online"
+          "quote": "Bitte teilen Sie uns den Zählerstand zum Lieferbeginn bis zum 05.10.2025 mit – am einfachsten online unter stadtwerke-musterstadt.example/zaehlerstand oder mit der beiliegenden Karte.",
+          "priority": "normal"
+        },
+        {
+          "kind": "payment",
+          "title": "Monthly advance payment (Abschlag) for electricity",
+          "action": "Ensure your linked bank account has sufficient funds for the SEPA direct debit",
+          "consequence": null,
+          "amount": 48,
+          "currency": "EUR",
+          "direction": "out",
+          "date": {
+            "type": "fixed",
+            "date": "2025-10-15",
+            "text": "erstmals am 15.10.2025",
+            "nature": "payment",
+            "shift_rule": "auto"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "day_of_month": 15
+          },
+          "quote": "Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\n15.10.2025",
+          "priority": "normal"
         }
       ],
       "key_facts": [
@@ -143,41 +147,46 @@
         },
         {
           "label": "Unit price (Arbeitspreis)",
-          "value": "32,90 ct/kWh (brutto)",
+          "value": "32,90 ct/kWh (brutto) · 27,65 ct/kWh (netto)",
           "quote": "Arbeitspreis   32,90 ct/kWh (brutto) · 27,65 ct/kWh (netto)"
         },
         {
-          "label": "Base fee (Grundpreis)",
-          "value": "11,90 €/Monat (brutto)",
+          "label": "Base price (Grundpreis)",
+          "value": "11,90 €/Monat (brutto) · 10,00 €/Monat (netto)",
           "quote": "Grundpreis   11,90 €/Monat (brutto) · 10,00 €/Monat (netto)"
         },
         {
-          "label": "Expected annual consumption (Voraussichtlicher Jahresverbrauch)",
+          "label": "Monthly advance payment (Monatlicher Abschlag)",
+          "value": "48,00 €",
+          "quote": "Monatlicher Abschlag   48,00 €, fällig jeweils zum 15. eines Monats, erstmals am\n15.10.2025"
+        },
+        {
+          "label": "Estimated annual consumption (Voraussichtlicher Jahresverbrauch)",
           "value": "1.320 kWh",
           "quote": "Voraussichtlicher   1.320 kWh"
         },
         {
-          "label": "Supply address (Lieferstelle)",
-          "value": "Beispielweg 5, 12345 Musterstadt, 2. OG links",
-          "quote": "Lieferstelle   Beispielweg 5, 12345 Musterstadt, 2. OG links"
+          "label": "Payment method (Zahlungsweise)",
+          "value": "SEPA-Lastschrift von Ihrem Konto DE41 XXXX XXXX XXXX XX45 00",
+          "quote": "Zahlungsweise   SEPA-Lastschrift von Ihrem Konto DE41 XXXX XXXX XXXX XX45 00"
         }
       ],
-      "remedy": null,
-      "change": null,
-      "warnings": [
-        "The initial term ends on 30 September 2026, so the cancellation deadline for the initial term may already have passed or be very close; check the deadline the app shows."
-      ]
+      "warnings": [],
+      "urgency": "low",
+      "tax_relevant": false,
+      "tax_note": null,
+      "high_stakes_kind": null
     },
     "usage": {
       "input_tokens": 2,
-      "output_tokens": 2403,
-      "cache_read_tokens": 8885,
-      "cache_creation_tokens": 3429,
-      "cost_usd": 0.03952700000000001,
-      "duration_ms": 13432,
+      "output_tokens": 7638,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 3486,
+      "cost_usd": 0.09211860000000001,
+      "duration_ms": 60333,
       "turns": 2
     },
-    "model": "claude-sonnet-5-5",
+    "model": "claude-sonnet-5",
     "cache_hit": false,
     "backend": "claude",
     "tool_calls": []

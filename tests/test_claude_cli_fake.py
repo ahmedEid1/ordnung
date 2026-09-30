@@ -509,10 +509,10 @@ def test_tool_trace_pairs_by_id_and_falls_back_to_order() -> None:
 def test_the_environment_can_pin_the_model(fake: FakeClaude, monkeypatch: pytest.MonkeyPatch) -> None:
     """ORDNUNG_CLAUDE_MODEL names the id every call uses, whatever alias the request carries — the
     benchmarks and the demo record with one model, and an alias moves with releases."""
-    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", model="sonnet")
+    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.")
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "sonnet"
-    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5")
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"  # ordnung.llm.base.DEFAULT_MODEL
+    monkeypatch.setenv("ORDNUNG_CLAUDE_MODEL", "claude-sonnet-5-5")
     argv = ClaudeCLIBackend().build_args(request)
-    assert argv[argv.index("--model") + 1] == "claude-sonnet-5"
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"

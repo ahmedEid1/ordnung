@@ -322,13 +322,13 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
     ]
     assert all(r.attachments and r.attachments[0].media_type == "image/jpeg" for r in photo_baseline)
 
-    path = tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json"
+    path = tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json"
     assert outcome.runs[0].results_path == path
     results = json.loads(path.read_text(encoding="utf-8"))
     assert set(results) == {"schema", "meta", "metrics", "comparisons", "gallery", "entries"}
     meta = results["meta"]
     assert (meta["model"], meta["split"], meta["entries"], meta["photos"], meta["scored_items"]) == (
-        "sonnet",
+        eval_run.DEFAULT_MODEL,
         "dev",
         3,
         1,
@@ -447,7 +447,7 @@ async def test_live_run_records_and_replay_reproduces(
     ids = ["dev-invoice_relative-A1-photo", "dev-tax_assessment-A1"]
     live = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, live=True, write_docs=False))
     assert live.ok
-    recorded = sorted(p.parent.name for p in (tmp_path / "recorded" / "sonnet").rglob("*.json"))
+    recorded = sorted(p.parent.name for p in (tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.json"))
     assert (
         recorded.count("eval_baseline") == 6
         and recorded.count("extract") == 2
@@ -495,7 +495,7 @@ def test_replay_miss_is_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[s
 
     assert eval_run.run_cli([*args, "--allow-errors", "--quiet"]) == 0
     results = json.loads(
-        (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
+        (tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json").read_text(encoding="utf-8")
     )
     assert results["metrics"]["llm_only"]["errors"] == 1
     assert results["metrics"]["llm_only"]["taxonomy"]["missed"] == 1
@@ -663,7 +663,7 @@ def test_prompt_text_changed_without_a_version_bump_refuses_to_replay(
     from evals.conditions import ordnung_prompt_hashes
 
     current = ordnung_prompt_hashes()
-    root = tmp_path / "recorded" / "sonnet"
+    root = tmp_path / "recorded" / eval_run.DEFAULT_MODEL
     eval_run.write_prompts_lock(root, current)
     assert eval_run.stale_prompts(root, current) == []
     version, _ = current["extract_system"]
@@ -877,7 +877,9 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     assert live.ok and not live.runs[0].errors
     failed = live.runs[0].predictions["llm_only"]["dev-tax_assessment-A1"]
     assert failed.failed and "no structured output" in failed.failed
-    assert len(list((tmp_path / "recorded" / "sonnet").rglob("*.failure.json"))) == 3  # all baselines
+    assert (
+        len(list((tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.failure.json"))) == 3
+    )  # all baselines
     calls = len(fake.calls)
 
     replay = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, resume=False, write_docs=False))
@@ -894,7 +896,7 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: FakeBackend(Responder()))
     fresh = make_config(tmp_path, ids=ids, live=True, refresh=True, resume=False, write_docs=False)
     assert (await eval_run.run_benchmark(fresh)).ok
-    assert not list((tmp_path / "recorded" / "sonnet").rglob("*.failure.json"))
+    assert not list((tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.failure.json"))
 
 
 def _outcome(accuracy: float, late: float) -> eval_run.RunOutcome:
@@ -954,7 +956,7 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
     assert "python -m evals.run --live --split dev --conditions llm_rules_tool" in flat
     assert "--add-condition llm_rules_tool=evals/results/<new run>.json" in flat
     results = json.loads(
-        (tmp_path / "results" / "2026-09-25-sonnet-dev-partial.json").read_text(encoding="utf-8")
+        (tmp_path / "results" / "2026-09-25-claude-sonnet-5-dev-partial.json").read_text(encoding="utf-8")
     )
     assert results["meta"]["conditions"] == ["ordnung", "llm_only", "llm_rules_text"]
     assert set(results["metrics"]) == {"ordnung", "llm_only", "llm_rules_text"}
@@ -1132,7 +1134,7 @@ async def test_a_holdout_run_never_rewrites_the_published_page(
     outcome = await _holdout_run(tmp_path, monkeypatch, live=True, write_docs=True)
     run = outcome.runs[0]
     assert outcome.ok and run.results is not None and run.results_path is not None
-    assert run.results_path.name == "2026-09-25-sonnet-holdout.json"
+    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout.json"
     assert run.results["meta"]["split"] == "holdout" and not run.results["meta"]["partial"]
     assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
     assert outcome.docs_path is None and not docs.exists()
@@ -1183,7 +1185,7 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     # a holdout run recorded with another model is replayed with its own model, not the published run's
     opus = {**holdout, "meta": {**holdout["meta"], "model": "opus"}}
     opus_page = report.render_markdown([published], holdout_run=opus)
-    assert "(the published run used `sonnet`)" in opus_page
+    assert "(the published run used `claude-sonnet-5`)" in opus_page
     assert "python -m evals.run --split holdout --model opus " in opus_page.split("## Reproduce", 1)[1]
     assert "--split holdout --model sonnet" not in opus_page
     # the page's own text documents the split

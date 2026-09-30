@@ -27,6 +27,12 @@ class Attachment(BaseModel):
     media_type: Literal["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"]
 
 
+#: The model every call names unless a request says otherwise: a pinned id, because an alias such as
+#: ``sonnet`` moves with releases while the demo's and the benchmarks' recordings were made with one model
+#: (``ORDNUNG_CLAUDE_MODEL`` overrides it for every call: :mod:`ordnung.llm.claude_cli`).
+DEFAULT_MODEL = "claude-sonnet-5"
+
+
 class LLMRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
@@ -36,7 +42,7 @@ class LLMRequest(BaseModel):
     schema_: dict[str, Any] | None = Field(default=None, alias="schema")
     attachments: list[Attachment] = Field(default_factory=list)
     doc_ids: list[str] = Field(default_factory=list)  # accounting: which documents this call carries
-    model: str = "sonnet"
+    model: str = DEFAULT_MODEL
     tools: list[str] = Field(default_factory=list)
     mcp_config: dict[str, Any] | None = None
     allowed_tools: list[str] = Field(default_factory=list)

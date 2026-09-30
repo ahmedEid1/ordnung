@@ -92,7 +92,9 @@ MANIFEST_PATH = DATASET_DIR / "manifest.json"
 RECORDED_DIR = EVALS_DIR / "recorded"
 RESULTS_DIR = EVALS_DIR / "results"
 
-DEFAULT_MODEL = "sonnet"
+DEFAULT_MODEL = (
+    "claude-sonnet-5"  # a pinned id (ordnung.llm.base.DEFAULT_MODEL): an alias moves with releases
+)
 DEFAULT_SPLIT = "test"
 SPLITS = ("dev", "test", report.HOLDOUT_SPLIT)
 DEFAULT_CONCURRENCY = 3
