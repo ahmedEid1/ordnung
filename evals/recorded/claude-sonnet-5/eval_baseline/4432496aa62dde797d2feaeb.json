@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a76a67a0095537f3ef549ce52825f8dfc6e53041a42e2fcefd82cc230284b4e6\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2027-04-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout-social_decision-F1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-04-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Beispielsee\",\"document_date\":\"2027-04-23\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"08154//0042731\"},{\"label\":\"Kundennummer\",\"value\":\"731D882405\"}],\"amounts\":[1087.6],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit payslips for February to April 2027\",\"quote\":\"Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.\",\"computation\":\"The letter states a fixed calendar date: 14.05.2027. This falls on a Friday, no weekend/holiday adjustment needed. Failing to submit risks a finding of no entitlement for the affected months (§ 41a Abs. 3 SGB II).\",\"due_date\":\"2027-05-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the provisional benefit decision\",\"quote\":\"Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.\",\"computation\":\"Letter dated Fri 23.04.2027 (posting day). Under § 37 Abs. 2 SGB X a letter from a social-law authority sent by ordinary post counts as delivered on the 4th day after posting: Tue 27.04.2027. Under § 187 Abs. 1 BGB the day of delivery is not counted, so the one-month period (§ 84 Abs. 1 SGG) begins Wed 28.04.2027 and would end Thu 27.05.2027 (§ 188 Abs. 1/2 BGB). 27.05.2027 is Fronleichnam, a public holiday in Bayern, so under § 26 Abs. 3 SGB X the deadline shifts to the next business day: Fri 28.05.2027.\",\"due_date\":\"2027-05-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Beispielsee",
+      "document_date": "2027-04-23",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "08154//0042731"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "731D882405"
+        }
+      ],
+      "amounts": [
+        1087.6
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit payslips for February to April 2027",
+          "quote": "Reichen Sie uns bitte bis 14.05.2027 Ihre Lohnabrechnungen für Februar bis April 2027 ein.",
+          "computation": "The letter states a fixed calendar date: 14.05.2027. This falls on a Friday, no weekend/holiday adjustment needed. Failing to submit risks a finding of no entitlement for the affected months (§ 41a Abs. 3 SGB II).",
+          "due_date": "2027-05-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the provisional benefit decision",
+          "quote": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden.",
+          "computation": "Letter dated Fri 23.04.2027 (posting day). Under § 37 Abs. 2 SGB X a letter from a social-law authority sent by ordinary post counts as delivered on the 4th day after posting: Tue 27.04.2027. Under § 187 Abs. 1 BGB the day of delivery is not counted, so the one-month period (§ 84 Abs. 1 SGG) begins Wed 28.04.2027 and would end Thu 27.05.2027 (§ 188 Abs. 1/2 BGB). 27.05.2027 is Fronleichnam, a public holiday in Bayern, so under § 26 Abs. 3 SGB X the deadline shifts to the next business day: Fri 28.05.2027.",
+          "due_date": "2027-05-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2847,
+      "cache_read_tokens": 26817,
+      "cache_creation_tokens": 6362,
+      "cost_usd": 0.0592934,
+      "duration_ms": 23760,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2027-04-23",
+          "recipient_region": "BY",
+          "region": "BY",
+          "remedy_type": "widerspruch",
+          "sender_kind": "authority",
+          "sender_name": "Jobcenter Beispielsee",
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "anchor_date": "2027-04-23",
+            "legal_basis": "§ 84 SGG",
+            "text": "Dieser Bescheid kann binnen eines Monats, nachdem er Ihnen bekannt gegeben wurde, mit dem Widerspruch angefochten werden."
+          }
+        },
+        "result": "{\"due_date\":\"2027-05-28\",\"weekday\":\"Friday\",\"send_by\":\"2027-05-21\",\"summary\":\"Letter dated Fri 23 Apr 2027 counts as delivered on Tue 27 Apr; one month later is Thu 27 May 2027, a public holiday, Fronleichnam, so the deadline moves to Fri 28 May 2027.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 23 Apr 2027 (the letter's date; the real posting day can only be later)\",\"date\":\"2027-04-23\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 27 Apr 2027\",\"date\":\"2027-04-27\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Tue 27 Apr 2027\",\"date\":\"2027-04-27\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 27 May 2027\",\"date\":\"2027-05-27\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 27 May 2027 is a public holiday, Fronleichnam, so the deadline moves to Fri 28 May 2027\",\"date\":\"2027-05-28\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Fri 21 May 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-05-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-04-25\",\"letter_date\":\"2027-04-23\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Bayern\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}
