@@ -243,6 +243,18 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
     return False
 
 
+def _first_date(item: ExtractedItem) -> date | None:
+    """The reading's first date, which the middle of each quarter it states must be
+    (:func:`~ordnung.ingest.verify.mid_quarter_named`): its fixed DateSpec's date — ``None`` for a relative
+    or undated one, which states no such middle."""
+    if item.date.type != "fixed" or not item.date.date:
+        return None
+    try:
+        return date.fromisoformat(item.date.date)
+    except ValueError:
+        return None
+
+
 def _due_day(item: ExtractedItem) -> DueDay | None:
     """The due day of the item's recurrence that its quote doesn't name: its working day, else the day of the
     month it dates each month by (``None`` when the quote names it, or there is none)."""
@@ -251,7 +263,7 @@ def _due_day(item: ExtractedItem) -> DueDay | None:
     if working_day_consistency(item.quote, working_day):
         return ("working_day", working_day) if working_day is not None else None
     day = rule_day_of_month(rule)
-    if day_of_month_consistency(item.quote, day, rule):
+    if day_of_month_consistency(item.quote, day, rule, _first_date(item)):
         return ("day_of_month", day) if day is not None else None
     return None
 
@@ -267,7 +279,8 @@ def day_evidence(doc_id: str, item: ExtractedItem, pages: Sequence[PageInput]) -
     due = _due_day(item)
     if due is None:
         return None
-    sentence = payment_day_sentence([_page_text(page) for page in pages], due, item.quote, item.recurrence)
+    texts = [_page_text(page) for page in pages]
+    sentence = payment_day_sentence(texts, due, item.quote, item.recurrence, _first_date(item))
     if sentence is None:
         return None
     evidence = ground_evidence(doc_id, sentence, pages)
@@ -287,17 +300,22 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
     working day still dates the to-do (:mod:`ordnung.recurrence`, point 8). A day of the month that dates it
     (``recurrence.day_of_month`` without a working day, point 10) is graded the same way
-    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words,
-    or by dates that state it as the recurrence's schedule ("fällig jeweils am 10.03., 10.06., 10.09. und
-    10.12.", never a single start date: :func:`~ordnung.ingest.verify.schedule_days_named`). Either day
-    counts as stated, too, when the letter's one sentence about when the payment is due states it
-    (:func:`day_evidence`, which the to-do gets as its evidence)."""
+    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words
+    ("zur Monatsmitte" is the 15th), by dates that state it as the recurrence's schedule ("fällig jeweils am
+    10.03., 10.06., 10.09. und 10.12.", "31.03., 30.06., 30.09. und 31.12." the last day, never a single start
+    date: :func:`~ordnung.ingest.verify.schedule_days_named`), or as the middle of each quarter for a reading
+    every three months whose fixed date is that middle ("in der Mitte eines Dreimonatszeitraums", the 15th:
+    :func:`~ordnung.ingest.verify.mid_quarter_named`). Either day counts as stated, too, when the letter's one
+    sentence about when the payment is due states it (:func:`day_evidence`, which the to-do gets as its
+    evidence)."""
     found: list[str] = []
     if item.date.type != "none" or item.amount is not None:
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
-    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence), item.recurrence)
+    found += day_of_month_consistency(
+        item.quote, rule_day_of_month(item.recurrence), item.recurrence, _first_date(item)
+    )
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 

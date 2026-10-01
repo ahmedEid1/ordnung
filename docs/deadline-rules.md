@@ -930,7 +930,8 @@ new prepayment alone (§ 560 Abs. 4 BGB: the base rent stays owed), a heating ad
 runs beside the rent with its own date.
 
 **A day of the month** ("zum 1. eines Monats", "jeweils zum 15.", "Abbuchung zum Monatsanfang":
-`Recurrence.day_of_month`; a day past a month's end is its last day, so "zum Monatsende" is 31) dates a
+`Recurrence.day_of_month`; a month's middle is its 15th, "zur Monatsmitte" (§ 192 BGB); a day past a month's
+end is its last day, so "zum Monatsende" is 31) dates a
 recurring payment on that day in every month, moved as its date says (a payment on a Sunday is kept as
 written, with the note that it may move to Monday). Its first occurrence is the first such day on or after
 the date the letter gives, else its letter's date, else — when the letter is read or its dates recomputed

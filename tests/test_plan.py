@@ -431,6 +431,85 @@ def test_a_start_date_or_clause_number_elsewhere_is_no_due_day(stated: str) -> N
     assert verified.needs_check and result.needs_review
 
 
+FEE_TERMS = (
+    "Der Rundfunkbeitrag ist monatlich geschuldet und jeweils in der Mitte eines Dreimonatszeitraums für drei "
+    "Monate zu zahlen (§ 7 Abs. 3 Rundfunkbeitragsstaatsvertrag)."
+)
+FEE_DUE = "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026."
+EVERY_QUARTER_ON_15TH = Recurrence(interval=3, unit="months", day_of_month=15)
+
+
+def fee(*, rule: Recurrence = EVERY_QUARTER_ON_15TH, **date_spec: Any) -> ExtractedItem:
+    """The demo's broadcasting fee as its reading gives it: the due date's sentence quoted, every three months
+    on the 15th."""
+    spec = date_spec or {"type": "fixed", "date": "2026-11-15", "nature": "payment"}
+    return item(FEE_DUE, money=55.08, **spec).model_copy(update={"recurrence": rule})
+
+
+def test_the_middle_of_each_three_month_period_confirms_a_quarterly_15th() -> None:
+    """§ 7 Abs. 3 RBStV's "in der Mitte eines Dreimonatszeitraums" states the 15th of each period's middle month
+    (§§ 189, 192 BGB): the letter's terms vouch for the reading's day — every three months from 15.11.2026 —
+    and become the to-do's evidence; no "Please check" (the demo's letter 16)."""
+    page = ticket_page(FEE_TERMS, FEE_DUE)
+    result = verify_extraction("doc_x", extraction([fee()]), [page])
+    [verified] = result.items
+    assert verified.reasons == () and not verified.needs_check and not result.needs_review
+    assert verified.day_evidence is not None and verified.day_evidence.quote == FEE_TERMS
+    assert verified.day_evidence.grounding == "verified"
+    assert consistency_reasons(fee(), [page]) == ()  # recomputing its dates grades it the same way
+
+
+@pytest.mark.parametrize(
+    "reading",
+    [
+        # every month: no quarter's middle
+        fee(rule=Recurrence(interval=1, unit="months", day_of_month=15)),
+        # a first date off the middle
+        fee(type="fixed", date="2026-11-01", nature="payment"),
+        # no first date
+        fee(type="relative", amount=2, unit="weeks", anchor="document_date", nature="payment"),
+    ],
+)
+def test_the_middle_of_each_quarter_confirms_no_other_reading(reading: ExtractedItem) -> None:
+    page = ticket_page(FEE_TERMS, FEE_DUE)
+    [verified] = verify_extraction("doc_x", extraction([reading]), [page]).items
+    assert DAY_OF_MONTH_NOT_IN_QUOTE in verified.reasons and verified.day_evidence is None
+    assert verified.needs_check
+
+
+QUARTER_ENDS = "Die Abschläge von 300,00 € sind am 31.03., 30.06., 30.09. und 31.12. fällig."
+
+
+@pytest.mark.parametrize(("day", "confirmed"), [(31, True), (30, False)])
+def test_quarter_ends_state_the_last_day_of_the_month(day: int, confirmed: bool) -> None:
+    """Quarter ends confirm a reading of the 31st (each month's last day), and no longer the 30th, which
+    two of them share (30.06., 30.09.): it would date March and December on the 30th."""
+    advance = item(QUARTER_ENDS, money=300.0, type="fixed", date="2026-12-31", nature="payment").model_copy(
+        update={"recurrence": Recurrence(interval=3, unit="months", day_of_month=day)}
+    )
+    [verified] = verify_extraction("doc_x", extraction([advance]), [ticket_page(QUARTER_ENDS)]).items
+    assert verified.needs_check is not confirmed
+    assert verified.reasons == (() if confirmed else (DAY_OF_MONTH_NOT_IN_QUOTE,))
+
+
+def test_a_list_with_a_date_on_another_day_confirms_no_day() -> None:
+    """A list of quarterly dates with one on another day (14.07. among the 15ths) states no schedule on the
+    15th: the reading's 15th would be a day late in July, so it stays "Please check"."""
+    quote = "Die Raten von 300,00 € sind jeweils am 15.01., 15.04., 14.07. und 15.10. fällig."
+    reading = item(quote, money=300.0, type="fixed", date="2027-01-15", nature="payment").model_copy(
+        update={"recurrence": EVERY_QUARTER_ON_15TH}
+    )
+    [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)]).items
+    assert verified.reasons == (DAY_OF_MONTH_NOT_IN_QUOTE,) and verified.needs_check
+
+
+def test_the_middle_of_the_month_confirms_the_15th() -> None:
+    quote = "Die Miete von 640,00 € ist monatlich bis zur Monatsmitte zu zahlen."
+    reading = rent(quote, None).model_copy(update={"recurrence": Recurrence(day_of_month=15)})
+    [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(quote)]).items
+    assert verified.reasons == () and not verified.needs_check
+
+
 def test_key_facts_contract_and_remedy_quotes_are_grounded() -> None:
     data = extraction(
         [],
