@@ -20,6 +20,7 @@ from typing import Any
 
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.plan import (
     VerifiedItem,
     checked_evidence,
@@ -38,7 +39,7 @@ from ordnung.ingest.plan import (
     sync_rule_items,
     with_payment_note,
 )
-from ordnung.ingest.verify import ground_evidence
+from ordnung.ingest.verify import READING_INCOMPLETE, ground_evidence
 from ordnung.models import (
     ComputationReceipt,
     DateNature,
@@ -89,13 +90,17 @@ def _verified(
     """The stored item in the shape the pipeline grades: its evidence and quote problems (graded as
     when the letter was read, so values written elsewhere in the letter still count), and the letter's
     other statements that date its obligation (``others``: the letter's to-dos as read,
-    :func:`~ordnung.ingest.conflicts.find_rivals`) — none once the person confirmed its date."""
+    :func:`~ordnung.ingest.conflicts.find_rivals`) — none once the person confirmed its date. The to-do code
+    filed for an incomplete reading stays graded as Ordnung's own date (``READING_INCOMPLETE``: ``low`` and
+    "Please check") until the person confirms it."""
     evidence = item.evidence[0] if item.evidence else None
     extracted = _extracted(item, spec)
     reasons: tuple[str, ...] = ()
     rivals: tuple[Rival, ...] = ()
     if evidence is not None and item.grounding != "user":
         reasons = consistency_reasons(extracted, pages)
+        if item.slot_key == CHECK_SLOT:
+            reasons = (*reasons, READING_INCOMPLETE)
         rivals = find_rivals(extracted, [extracted, *others], pages)
     grounding = "user" if item.grounding == "user" else (evidence.grounding if evidence else "unverified")
     graded = (evidence or _placeholder_evidence(item)).model_copy(update={"grounding": grounding})

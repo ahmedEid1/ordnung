@@ -4,6 +4,8 @@
   AI transcript → ``model_read``, not found → ``unverified``) and checks each item's DateSpec and
   amount against its quote (:func:`~ordnung.ingest.verify.spec_consistency`); a recurring to-do's due
   day its quote doesn't name is grounded on the letter's sentence that states it (:func:`day_evidence`).
+  With ``check_reading`` it also checks the reading itself against the letter's visible text, and files
+  the one to-do an incomplete reading gets (:mod:`ordnung.ingest.gaps`).
 * :func:`compute_item` runs the rules engine and lowers the confidence per the § 21 rubric using
   the grounding and consistency results, listing the reasons in the receipt's warnings.
 * :func:`write_plan` upserts items by ``slot_key`` (never touching rows the person edited), deletes
@@ -32,6 +34,7 @@ from typing import Any, Literal
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, settle, settle_law
+from ordnung.ingest.gaps import CHECK_SLOT, check_item, gap_warning
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -39,6 +42,7 @@ from ordnung.ingest.verify import (
     DATE_NOT_IN_QUOTE,
     DATE_WITHOUT_YEAR,
     DAY_OF_MONTH_NOT_IN_QUOTE,
+    READING_INCOMPLETE,
     WORKING_DAY_NOT_IN_QUOTE,
     DateMention,
     DueDay,
@@ -184,8 +188,10 @@ class VerifiedItem:
 
     @property
     def needs_check(self) -> bool:
-        """A dated item whose quote was not found or does not state its values ("Please check")."""
-        return self.dated and (self.evidence.grounding == "unverified" or bool(self.reasons))
+        """A dated item whose quote was not found or does not state its values ("Please check") — and the
+        to-do code files for an incomplete reading, dated or not (:data:`~ordnung.ingest.gaps.CHECK_SLOT`)."""
+        dated = self.dated or self.slot_key == CHECK_SLOT
+        return dated and (self.evidence.grounding == "unverified" or bool(self.reasons))
 
 
 def needs_check(item: Item) -> bool:
@@ -193,8 +199,10 @@ def needs_check(item: Item) -> bool:
     (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
     (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
     the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
-    not stating that date)."""
+    not stating that date). The to-do code files for an incomplete reading counts as dated whether or not
+    it has a date (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
     dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
+    dated = dated or item.slot_key == CHECK_SLOT
     if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
         return False
     if item.origin == "rule":
@@ -379,10 +387,11 @@ def _verify_item(
     others: Sequence[ExtractedItem],
     index: int,
     trace: Span,
+    extra_reasons: tuple[str, ...] = (),
 ) -> VerifiedItem:
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
-        reasons = consistency_reasons(item, pages)
+        reasons = (*consistency_reasons(item, pages), *extra_reasons)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
         day = day_evidence(doc_id, item, pages)
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
@@ -416,11 +425,23 @@ def _optional_evidence(
 
 
 def verify_extraction(
-    doc_id: str, extraction: DocumentExtraction, pages: Sequence[PageInput], *, trace: Span = NO_SPAN
+    doc_id: str,
+    extraction: DocumentExtraction,
+    pages: Sequence[PageInput],
+    *,
+    trace: Span = NO_SPAN,
+    check_reading: bool = False,
 ) -> Verification:
     """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
 
-    ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`).
+    With ``check_reading`` (the pipeline and the benchmark's Ordnung condition) the reading itself is checked
+    against the letter's visible text: an implausibly empty one, or one that leaves out the objection deadline
+    the letter's remedy notice states, gets one more to-do in slot :data:`~ordnung.ingest.gaps.CHECK_SLOT`
+    (:func:`~ordnung.ingest.gaps.check_item`, graded ``READING_INCOMPLETE``: ``low`` and "Please check") and a
+    warning that says why.
+
+    ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`); a reading
+    found incomplete adds what was wrong and which to-do it got (:func:`ordnung.trace.facts.reading_check`).
     """
     with trace.span("verify", "Check quotes", key="quotes", stage="verify") as step:
         items = [
@@ -458,7 +479,25 @@ def verify_extraction(
                 trace=step,
             ),
         )
+        found = check_item(extraction, pages) if check_reading else None
+        if found is not None:
+            gap, check, kind = found
+            items.append(
+                _verify_item(
+                    doc_id,
+                    check,
+                    CHECK_SLOT,
+                    pages,
+                    others=extraction.items,
+                    index=len(items),
+                    trace=step,
+                    extra_reasons=(READING_INCOMPLETE,),
+                )
+            )
+            step.set(**facts.reading_check(gap, kind))
         verification.warnings = _verification_warnings(verification)
+        if found is not None:
+            verification.warnings.append(gap_warning(gap, kind))
         grounded = [
             *(evidence for verified in items for evidence in verified.all_evidence),
             *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
@@ -476,7 +515,10 @@ def verify_extraction(
 
 def _verification_warnings(verification: Verification) -> list[str]:
     warnings = []
-    unchecked = sum(verified.needs_check for verified in verification.items)
+    # the to-do an incomplete reading gets has a warning of its own (ordnung.ingest.gaps.gap_warning)
+    unchecked = sum(
+        verified.needs_check for verified in verification.items if verified.slot_key != CHECK_SLOT
+    )
     if unchecked:
         dates = "1 date" if unchecked == 1 else f"{unchecked} dates"
         # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)

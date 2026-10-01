@@ -950,9 +950,11 @@ def _held_out_intro(name: str) -> str:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
-read, are recorded once, and nothing was tuned on them.** No prompt and no change to the reading was
-informed by these letters; the one code change that came after them, a rules-table date their label
-audit found, changes no date on them (see the note below)."""
+read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
+code changes came after them: a rules-table date their label audit found, which changes no date on them;
+and a check for incomplete readings (`ingest/gaps.py`), written after Ordnung's empty reading of
+`holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a re-scored row only,
+never in the held-out row (see the note below)."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.

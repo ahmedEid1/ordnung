@@ -965,7 +965,9 @@ async def _run_stages(
         trace=trace,
     )
     await progress.stage("verify")
-    verification = await asyncio.to_thread(verify_extraction, document.id, extraction, pages, trace=trace)
+    verification = await asyncio.to_thread(
+        verify_extraction, document.id, extraction, pages, trace=trace, check_reading=True
+    )
     await progress.stage("compute")
     profile = store.get_profile()
     data = LedgerInput(

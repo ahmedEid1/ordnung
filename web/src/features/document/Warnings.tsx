@@ -440,9 +440,28 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
 }
 
 /**
+ * The slot of the to-do Ordnung files itself when Claude's reading of a letter came back incomplete
+ * (`CHECK_SLOT` in `src/ordnung/ingest/gaps.py`): the objection deadline worked out from the letter's own
+ * instructions on how to object, or — without them — an undated "Read this letter yourself".
+ */
+export const READING_CHECK_SLOT = "check:reading";
+
+/** Why a to-do needs checking, under its title. */
+function checkReason(item: Item, scam: boolean, notFound: boolean): string {
+  if (scam)
+    return "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know.";
+  if (item.slot_key === READING_CHECK_SLOT)
+    return item.due_date
+      ? "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left it out."
+      : "Claude's reading of this letter came back almost blank: read the letter and add any date it sets.";
+  return notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from.";
+}
+
+/**
  * A to-do whose date or amount Ordnung couldn't confirm against the letter. On a letter with scam signs it
  * is the demand not to pay: no date to correct — only "not a real to-do" or "it's a real to-do" (walkthrough of
- * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment).
+ * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment). The to-do Ordnung
+ * filed for an incomplete reading says so instead ({@link READING_CHECK_SLOT}).
  */
 function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean }) {
   const { dismiss, changeDate, confirmItem, pending } = useItemActions();
@@ -463,13 +482,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
           </span>
         ) : null}
       </p>
-      <p className="mt-1 text-[13px] leading-5 text-ink/75">
-        {scam
-          ? "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know."
-          : notFound
-            ? GROUNDING_COPY.unverified.label + "."
-            : "The date or amount doesn't match the sentence it came from."}
-      </p>
+      <p className="mt-1 text-[13px] leading-5 text-ink/75">{checkReason(item, scam, notFound)}</p>
       {ev?.quote ? (
         <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
           <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="min-h-6 text-left hover:underline">

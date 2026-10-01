@@ -3,6 +3,7 @@ link → plan, on generated PDFs and photos."""
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
@@ -14,6 +15,7 @@ from fixtures_llm import (
     TAX_IBAN,
     TAX_LETTER,
     TODAY,
+    Letter,
     Router,
     fake_backend,
     record_events,
@@ -22,10 +24,13 @@ from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
+from ordnung.ingest.gaps import CHECK_SLOT, gap_warning
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
+from ordnung.ingest.plan import needs_check
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Item
+from test_api_support import ApiRouter, api_for
 
 
 @pytest.fixture(autouse=True)
@@ -441,3 +446,154 @@ async def test_letters_use_the_person_s_country_and_only_a_chosen_region(
     objection = items_by_kind(ctx, document.id)["deadline"]
     assert objection.computation is not None and objection.computation.confidence == "low"
     assert any("only knows German rules" in w for w in objection.computation.warnings)
+
+
+# --------------------------------------------------------------------------------------------------
+# A reading that came back incomplete (ingest/gaps.py): one "Please check" to-do written by code
+# --------------------------------------------------------------------------------------------------
+
+GAP_NOTICE = "Gegen diesen Gebührenbescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen."
+GAP_LETTER = Letter(
+    marker="Sondernutzungsgebühr",
+    pages=(
+        (
+            "Stadt Beispielhausen · Ordnungsamt · Rathausplatz 1 · 12345 Beispielhausen",
+            "SPECIMEN",
+            "Datum: 15.09.2026",
+            "Bescheid über eine Sondernutzungsgebühr",
+            "Sehr geehrte Frau Probe,",
+            "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.",
+            "Rechtsbehelfsbelehrung",
+            # the notice wraps onto a second line, as printed letters do
+            "Gegen diesen Gebührenbescheid können Sie binnen eines Monats",
+            "nach seiner Bekanntgabe Widerspruch einlegen.",
+        ),
+    ),
+    payload={"kind": "other", "title": "Fee decision", "summary": "A fee.", "explanation": "Pay it."},
+)
+GAP_COMPLETE = {
+    **GAP_LETTER.payload,
+    "kind": "authority_letter",
+    "sender": {"name": "Stadt Beispielhausen", "kind": "authority"},
+    "document_date": "2026-09-15",
+    "remedy": {"type": "widerspruch", "quote": GAP_NOTICE},
+    "items": [
+        {
+            "kind": "deadline",
+            "title": "Objection (Widerspruch)",
+            "date": {
+                "type": "relative",
+                "amount": 1,
+                "unit": "months",
+                "anchor": "deemed_delivery",
+                "delivery_rule": "de_admin_post",
+                "nature": "objection",
+                "text": "one month after notification",
+            },
+            "quote": GAP_NOTICE,
+        }
+    ],
+}
+
+
+@pytest.fixture
+def gap_router() -> Router:
+    return Router(letters=(GAP_LETTER,))
+
+
+@pytest.fixture
+def gap_ctx(data_dir: Path, gap_router: Router) -> Iterator[AppContext]:
+    context = build_context(data_dir, backend_obj=fake_backend(gap_router))
+    yield context
+    context.close()
+
+
+def gap_api_router() -> ApiRouter:
+    router = ApiRouter()
+    router.letters = (*router.letters, GAP_LETTER)
+    router.payloads[GAP_LETTER.marker] = GAP_LETTER.extraction()
+    return router
+
+
+async def _read_gap_letter(ctx: AppContext) -> str:
+    document = await add_file(ctx, GAP_LETTER.pdf(), "bescheid.pdf")
+    await ctx.worker.run_until_idle()
+    return document.id
+
+
+async def test_an_empty_reading_of_a_decision_gets_a_dated_please_check_to_do(gap_ctx: AppContext) -> None:
+    doc_id = await _read_gap_letter(gap_ctx)
+    document = gap_ctx.store.get_document(doc_id)
+    assert document is not None and document.status == "needs_review"
+    assert gap_warning("empty", "dated") in document.warnings
+    [check] = gap_ctx.store.list_items(doc_id=doc_id)
+    assert check.slot_key == CHECK_SLOT and check.kind == "deadline" and check.priority == "high"
+    # posted Tue 15 Sep, delivered on the 3rd day (Fri 18 Sep): one month is Sun 18 Oct → Mon 19 Oct
+    assert check.due_date == "2026-10-19" and check.due_date_source == "computed"
+    assert check.computation is not None and check.computation.confidence == "low"
+    assert check.grounding == "verified" and not check.evidence[0].value_consistent
+    assert needs_check(check)
+
+
+async def test_confirming_the_check_to_do_clears_please_check(data_dir: Path) -> None:
+    async with api_for(data_dir, router=gap_api_router()) as api:
+        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [check] = (await api.client.get("/api/items", params={"doc_id": doc_id})).json()
+        assert check["slot_key"] == CHECK_SLOT
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"][
+            "status"
+        ] == "needs_review"
+        assert (await api.client.post(f"/api/items/{check['id']}/confirm")).status_code == 200
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]["status"] == "processed"
+
+
+async def test_a_recompute_keeps_the_check_to_do_low_and_please_check(data_dir: Path) -> None:
+    async with api_for(data_dir, router=gap_api_router()) as api:
+        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        response = await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
+        assert response.status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.slot_key == CHECK_SLOT and check.due_date is not None
+        assert check.computation is not None and check.computation.confidence == "low"
+        assert needs_check(check)
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and document.status == "needs_review"
+
+
+async def test_reading_again_completely_removes_the_untouched_check_to_do(
+    gap_ctx: AppContext, gap_router: Router
+) -> None:
+    doc_id = await _read_gap_letter(gap_ctx)
+    assert [item.slot_key for item in gap_ctx.store.list_items(doc_id=doc_id)] == [CHECK_SLOT]
+    gap_router.payloads[GAP_LETTER.marker] = copy.deepcopy(GAP_COMPLETE)
+    await ingest_document(gap_ctx, doc_id, force=True)
+    [objection] = gap_ctx.store.list_items(doc_id=doc_id)
+    assert objection.slot_key != CHECK_SLOT and objection.title == "Objection (Widerspruch)"
+    document = gap_ctx.store.get_document(doc_id)
+    assert document is not None and document.status == "processed"
+    assert not any("Claude's reading" in warning for warning in document.warnings)
+
+
+async def test_a_complete_reading_gets_no_check_to_do(gap_ctx: AppContext, gap_router: Router) -> None:
+    gap_router.payloads[GAP_LETTER.marker] = copy.deepcopy(GAP_COMPLETE)
+    doc_id = await _read_gap_letter(gap_ctx)
+    assert [item.slot_key == CHECK_SLOT for item in gap_ctx.store.list_items(doc_id=doc_id)] == [False]
+
+
+async def test_a_reading_that_names_its_sender_of_a_letter_without_a_notice_files_nothing(
+    ctx: AppContext, router: Router
+) -> None:
+    router.payloads[APPOINTMENT_LETTER.marker] = {
+        "kind": "appointment",
+        "title": "Appointment",
+        "summary": "s",
+        "explanation": "e",
+        "sender": {"name": "Bürgeramt Musterstadt", "kind": "authority"},
+    }
+    document = await add_file(ctx, APPOINTMENT_LETTER.pdf(), "termin.pdf")
+    await ctx.worker.run_until_idle()
+    assert ctx.store.list_items(doc_id=document.id) == []
+    stored = ctx.store.get_document(document.id)
+    assert stored is not None and stored.status == "processed"

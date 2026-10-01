@@ -361,6 +361,36 @@ December, which are skipped too (a payment due Mon 4 Jan 2027 should be ordered 
 by the due date (BGH VIII ZR 222/15), but tax payments count on the day of credit (§ 224 Abs. 2 AO).
 Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the transfer by Tue 20 Oct.
 
+### When the reading leaves the objection deadline out
+
+A reading can come back without the deadline to object although the letter states it: almost blank (no
+to-do, sender, letter date, key fact, reference, contract, change, payment or remedy), or without any to-do
+that dates an objection on a letter whose visible text shows an administrative act and is not one of the
+kinds whose deadlines the law files itself (§ 7). Code then reads the letter's own instructions on how to
+object (`ingest/gaps.py`, SPEC § 8; no model call) and files **one** to-do, always `low` and "Please check":
+
+- **The notice.** A sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an appeal with a
+  period of 1 to 12 days, weeks or months ("Monatsfrist" is one month) — or, without one, the sentence after
+  it when that names neither a remedy nor a payment. A period before an event ("vor Ablauf …") is none.
+  Of several, the **shortest** period counts (a month as 31 days), so a planted longer one never makes the
+  date later.
+- **The start.** The earliest date the letter gives for itself — its header's "Datum:", "mit diesem Bescheid
+  vom …"; without those, "Place, (den) date" or a date alone in page 1's header — or the reading's date if
+  earlier. A notice that counts from notification (*Bekanntgabe*) gets deemed delivery from that date (§ 5:
+  the 3rd or 4th day); one from formal service or arrival, or naming no start, counts from that date itself,
+  with no delivery days — the earliest it can have arrived. When several notices name different starts, no
+  delivery days count (four weeks after notification can end after one month from service).
+- **Kept the safe side.** The start travels in the DateSpec (`anchor_date`): a letter date the person
+  corrects later never moves deemed delivery later (the earlier of the two counts), and a start from service
+  is fixed. The person can set the to-do's date directly; confirming it ends "Please check".
+- **Without a notice** the to-do is an undated "Read this letter yourself".
+
+| Letter dated | Notice | Sender's Land | Delivered | Deadline |
+|---|---|---|---|---|
+| Fri 6 Nov 2026 | one month after notification | unknown (3rd day, the app's case) | Mon 9 Nov | **Wed 9 Dec 2026** |
+| Fri 6 Nov 2026 | one month after notification | Hamburg (4th day) | Tue 10 Nov | **Thu 10 Dec 2026** |
+| Fri 6 Nov 2026 | one month after formal service or arrival, or no start named | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+
 ---
 
 ## 7. High-stakes letters

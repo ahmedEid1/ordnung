@@ -23,7 +23,9 @@ from fixtures_llm import (
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.pipeline import add_file, reprocess
+from ordnung.ingest.verify import READING_INCOMPLETE
 from ordnung.llm.base import ClaudeRateLimited, LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import DocumentTrace, TraceSpan
@@ -347,6 +349,29 @@ async def test_no_letter_text_ever_reaches_a_span(ctx: AppContext) -> None:
         "1.234,56",
     ]
     for secret in secrets:
+        assert secret not in stored, secret
+
+
+async def test_a_reading_that_came_back_incomplete_says_so_in_codes(ctx: AppContext, router: Router) -> None:
+    """``ingest/gaps.py``: the "Check quotes" step says why the reading was incomplete and which to-do code filed
+    for it; the to-do's own quote step lists its reason — codes only, never the notice it was worked out from."""
+    router.payloads[TAX_LETTER.marker] = {
+        "kind": "other",
+        "title": "Letter",
+        "summary": "s",
+        "explanation": "e",
+    }
+    doc_id = await read(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+    by_key = steps(document_trace(ctx.store, doc_id))
+    checked = by_key["run/verify:quotes"].attributes
+    assert (checked["reading_gap"], checked["check_item"]) == ("empty", "dated")
+    assert checked["needs_check"] == 1
+    quote = by_key[f"run/verify:quotes/verify:item:{CHECK_SLOT}"]
+    assert READING_INCOMPLETE in quote.attributes["reasons"] and quote.attributes["consistent"] is False
+    [check] = ctx.store.list_items(doc_id=doc_id)
+    assert quote.ref is not None and quote.ref.id == check.id
+    stored = stored_spans(ctx)
+    for secret in (TAX_OBJECTION_QUOTE, "innerhalb eines Monats", "Musterstadt", check.title):
         assert secret not in stored, secret
 
 

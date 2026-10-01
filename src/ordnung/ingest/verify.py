@@ -58,6 +58,9 @@ INCOMPLETE_SPEC = "incomplete_spec"
 WORKING_DAY_NOT_IN_QUOTE = "working_day_not_in_quote"
 # Returned by day_of_month_consistency: the reading's ``recurrence.day_of_month`` is not named by its quote.
 DAY_OF_MONTH_NOT_IN_QUOTE = "day_of_month_not_in_quote"
+# The to-do code files for a reading that came back incomplete (ordnung.ingest.gaps): its date is Ordnung's,
+# worked out from the letter's own words, never the reading's — always ``low`` and "Please check".
+READING_INCOMPLETE = "reading_incomplete"
 
 PageInput = PageText | Page | tuple[int, str, Sequence[Word | Sequence[Any]], str]
 """A page to search: a :class:`PageText`, a stored :class:`~ordnung.models.Page`, or
@@ -1175,6 +1178,7 @@ REASON_TEXT: dict[str, str] = {
     INCOMPLETE_SPEC: "Part of the date description is missing — please check it.",
     WORKING_DAY_NOT_IN_QUOTE: "The working day (e.g. “the 3rd working day”) doesn't appear in the sentence it was taken from — please check it.",
     DAY_OF_MONTH_NOT_IN_QUOTE: "The day of the month (e.g. “on the 1st of each month”) doesn't appear in the sentence it was taken from — please check it.",
+    READING_INCOMPLETE: "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.",
 }
 UNVERIFIED_NOTE = "We couldn't find this sentence in the letter — please check the date against the letter."
 MODEL_READ_NOTE = "This was read by AI from a photo or scan — compare the date with the paper letter."
@@ -1190,7 +1194,9 @@ def grade_reading(
 
     Each failed condition (quote not located in the page text, quote not stating the DateSpec, the
     amount, the working day or the day of the month: any ``reasons``) lowers the confidence one level; an ambiguous numeric
-    date makes it ``low``. Reasons are added to the receipt's warnings (:data:`REASON_TEXT`).
+    date makes it ``low``, and so does a date Ordnung worked out itself because the reading left it out
+    (:data:`READING_INCOMPLETE`, :mod:`ordnung.ingest.gaps`) — however sure the engine is of a period with an
+    explicit start. Reasons are added to the receipt's warnings (:data:`REASON_TEXT`).
     """
     failures = _FAILURES[receipt.confidence]
     notes: list[str] = []
@@ -1200,7 +1206,7 @@ def grade_reading(
     if reasons:
         failures += 1
         notes.extend(REASON_TEXT.get(reason, reason) for reason in reasons)
-    if AMBIGUOUS_DATE in reasons:
+    if AMBIGUOUS_DATE in reasons or READING_INCOMPLETE in reasons:
         failures = max(failures, 2)
     confidence: Confidence = "high" if failures == 0 else "medium" if failures == 1 else "low"
     return receipt.model_copy(update={"confidence": confidence, "warnings": [*receipt.warnings, *notes]})

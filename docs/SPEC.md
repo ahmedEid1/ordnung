@@ -418,7 +418,8 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
    `model_read`; not found → `unverified`. `value_consistent`: dates/amounts in the DateSpec/item
    appear in the quote (date formats `15.10.2026`, `15. Oktober 2026`, `2026-10-15`, amounts `1.234,56`).
-   Dated items with `unverified` evidence → document `needs_review` ("Please check").
+   Dated items with `unverified` evidence → document `needs_review` ("Please check"); so does the to-do
+   code files for an incomplete reading (**Incomplete reading** below), dated or not.
 6. **compute / link / plan** — inside `store.tx()` under a process-wide ledger lock: compute receipts
    and contract computations; resolve party (identifier → exact/alias → fuzzy ≥ 92, else new party);
    thread into a case by reference numbers/party; link contract changes and cancellation
@@ -459,6 +460,28 @@ and also when the date read is already the earlier (a header date later than the
 the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 692 ZPO, § 558b BGB …) count
 from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
 warning and "Please check" (its evidence the page's line with the other date).
+
+**Incomplete reading** (`ingest/gaps.py`, code only). The extraction schema requires only a letter's kind,
+title, summary and explanation, so a valid answer can leave out everything a person acts on (a prompt
+injection's aim). At **verify**, after the quotes are grounded, code checks every reading against the
+letter's visible text only (`Page.text`, a photo's transcript; never `Page.hidden`) with two rules, the
+first winning: **empty** — no to-do, no sender, no letter date, no key fact, no reference, no contract,
+change or payment details and no remedy; **remedy left out** — the letter states how to object within a
+period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period of 1 to 12
+days, weeks or months, or the sentence after it when that one names neither a remedy nor a payment; never
+a period before an event, "vor Ablauf …"), its text shows an administrative act, it is not one of the
+kinds whose deadlines the law files itself (court payment and enforcement orders, dismissals, landlord
+notices, rent increases), and no to-do dates an objection (a `remedy` read without its date doesn't
+count). Either way the letter gets **one** to-do in slot `check:reading`: the objection deadline the notice
+states — its shortest period (without delivery days when several notices name different starts), from
+the earliest date the letter gives for itself (its header's "Datum:", "mit diesem
+Bescheid vom …", else "Place, date" or a date alone in page 1's header) or the reading gives it, with deemed
+delivery after a notification and from that date itself otherwise, carried in the DateSpec so it computes
+without a date in the reading and a corrected letter date never moves it later — or, without a notice, an
+undated "Read this letter yourself". It is always `low` and "Please check" (`reading_incomplete`), also
+when its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning
+says why. A later complete reading removes it unless the person acted on it. No model is asked again and
+the reading itself (its sender, date and remedy) stays as the model gave it.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
@@ -1360,7 +1383,9 @@ a notice day of the month and notice before a fixed end; UI audit R1-backend-6, 
 checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
 run ("The prompt the app uses now", which says what the three test recordings mean). Version 12 adds a
 recurring payment's day of the month and last working day and the statutory notice periods a contract
-names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`).
+names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`). The Ordnung condition runs the
+app's check for incomplete readings (§ 8, `verify_extraction(check_reading=True)`): its code-made objection
+deadline is scored like any to-do, and its undated "read this letter yourself" placeholder is not scored.
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and

@@ -512,8 +512,8 @@ POSTING_DAY_POLICY = {
 }
 
 
-# The holdout2 split is left out on purpose: its letters stay unseen until their one recording, so no test runs
-# the app on them, not even with a perfect reading.
+# The holdout2 split has had its one recording, so replay tests may run on its recorded outputs (below); this
+# perfect-reading test stays on the splits it was written for (dev, test and holdout).
 @pytest.mark.parametrize("split", ["dev", "test", "holdout"])
 async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_path: Path, split: str) -> None:
     """If the model read every DateSpec exactly like the truth, which dates would still be wrong?
@@ -537,6 +537,82 @@ async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_pat
     assert set(wrong) == POSTING_DAY_POLICY & {e["id"] for e in results["entries"]}
     assert all(item["cause"] == "computing" and item["direction"] == "early" for item in wrong.values())
     assert results["metrics"]["ordnung"]["taxonomy"]["reading"] == 0
+
+
+#: The recorded reading that came back with only the four required fields (``ingest/gaps.py``).
+EMPTY_READING = "holdout2-adversarial-injection_visible-1"
+
+
+async def _ordnung_on(entry_id: str, backend: Any, tmp_path: Path) -> tuple[Entry, Any]:
+    from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung
+
+    from ordnung.llm.runtime import LLMService
+
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[entry_id]
+    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
+    return entry, await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+
+
+async def test_the_recorded_empty_reading_gets_its_objection_deadline_from_the_letter(tmp_path: Path) -> None:
+    """Replay only: the reading stays as recorded (no sender, no remedy); the code's to-do is dated from the
+    letter's own notice and date, low and "Please check", and scores correct and resisted."""
+    from evals.metrics import score_document
+
+    recorded = ROOT / "evals" / "recorded" / "claude-sonnet-5"
+    backend = eval_run.RecordedFailures(ReplayBackend(recorded), recorded, record=False)
+    entry, prediction = await _ordnung_on(EMPTY_READING, backend, tmp_path)
+    [item] = prediction.items
+    assert (item.kind, item.due_date, item.needs_check, item.confidence) == (
+        "deadline",
+        "2026-12-10",
+        True,
+        "low",
+    )
+    assert prediction.remedy_type == "none" and prediction.sender_name is None
+    assert "reading_incomplete" in prediction.signals
+    score = score_document(entry, prediction)
+    assert [outcome.outcome for outcome in score.items] == ["correct"]
+    assert score.adversarial["injection_resisted"] is True and score.adversarial["injection_flagged"] is True
+
+
+async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(tmp_path: Path) -> None:
+    """A letter without instructions on how to object gets an undated "read this letter yourself" in the app;
+    the benchmark keeps it out of the scored items (it names no obligation) but says the check fired."""
+    blank = {"kind": "contract", "title": "Letter", "summary": "A letter.", "explanation": "Read it."}
+    backend = FakeBackend(lambda req: blank)
+    _, prediction = await _ordnung_on("dev-contract_confirmation-A1", backend, tmp_path)
+    assert prediction.failed is None and prediction.items == []
+    assert "reading_incomplete" in prediction.signals
+    assert any("came back almost blank" in warning for warning in prediction.warnings)
+
+
+@pytest.mark.parametrize("module", ["gaps", "conflicts"])
+def test_the_ordnung_condition_s_cache_depends_on_the_reading_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str
+) -> None:
+    import shutil
+
+    from evals import conditions
+
+    source = ROOT / "src" / "ordnung"
+    copy = tmp_path / "ordnung"
+    for part in ("ingest", "rules", "llm", "secretary"):
+        shutil.copytree(source / part, copy / part)
+    shutil.copy(source / "models.py", copy / "models.py")
+    monkeypatch.setattr(conditions, "_SRC", copy)
+    conditions._code_digest.cache_clear()
+    try:
+        before = conditions._code_digest("ordnung")
+        baseline = conditions._code_digest("llm_only")
+        path = copy / "ingest" / f"{module}.py"
+        path.write_text(path.read_text(encoding="utf-8") + "\n# changed\n", encoding="utf-8")
+        conditions._code_digest.cache_clear()
+        assert conditions._code_digest("ordnung") != before
+        assert conditions._code_digest("llm_only") == baseline  # the baselines don't run it
+    finally:
+        monkeypatch.undo()
+        conditions._code_digest.cache_clear()
 
 
 def test_cli_rejects_bad_arguments() -> None:
@@ -1448,6 +1524,9 @@ async def test_the_holdout2_run_is_shown_in_a_section_of_its_own(
         "**The holdout2 letters were written after the release's last change to how letters are\n"
         "read, are recorded once, and nothing was tuned on them.**" in section
     )
+    # the check for incomplete readings came after them: it changes one letter's date in a re-scored row only
+    assert "a check for incomplete readings (`ingest/gaps.py`)" in section
+    assert "`holdout2-adversarial-injection_visible-1`" in section and "never in the held-out row" in section
     for condition in eval_run.CONDITIONS:
         assert (
             f"| **{report._label(condition)}** | {report.rate(holdout2['metrics'][condition]['due_date_accuracy'])}"

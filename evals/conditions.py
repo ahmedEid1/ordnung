@@ -5,7 +5,9 @@
   of pages without a text layer with the pipeline's own request, the pipeline's extraction request
   (:func:`ordnung.ingest.extract.extract_document`, including its repair attempt), verification of
   every quote against the page text, and the rules engine for every date (``compute_due`` with the
-  pipeline's confidence grading, ``compute_contract`` for contract terms).
+  pipeline's confidence grading, ``compute_contract`` for contract terms). The app's check of the reading
+  itself runs too (:mod:`ordnung.ingest.gaps`): an incomplete reading's code-made objection deadline is
+  scored like any to-do, its undated "read this letter yourself" placeholder is never scored.
 * ``llm_only`` — the model reads the letter (the same visible text; a photo is attached as the
   image itself, as a person would share it) and computes every final due date itself. The prompt
   gives today, the region and an explicit instruction to apply current German law.
@@ -61,6 +63,7 @@ from ordnung.ingest.extract import (
     validation_problems,
     wrap_untrusted,
 )
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.intake import render_pages
 from ordnung.ingest.pipeline import HIDDEN_TEXT_WARNING, NO_TEXT_ERROR, injection_warnings
 from ordnung.ingest.plan import (
@@ -459,9 +462,17 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
         extraction = await extract_document(llm, data, model=model)
     except (ExtractionError, ClaudeBadOutput) as exc:
         return base.model_copy(update={"failed": str(exc), "warnings": warnings, "signals": signals})
-    verification = verify_extraction(entry.id, extraction, pages)
+    verification = verify_extraction(entry.id, extraction, pages, check_reading=True)
+    if any(verified.slot_key == CHECK_SLOT for verified in verification.items):
+        signals.append("reading_incomplete")
+    # the placeholder of an empty reading without a remedy notice names no obligation: it is never scored
+    scored = [
+        verified
+        for verified in verification.items
+        if not (verified.slot_key == CHECK_SLOT and verified.item.date.type == "none")
+    ]
     ctx = ordnung_rule_context(entry, extraction, pages)
-    computed = [compute_item(v, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) for v in verification.items]
+    computed = [compute_item(v, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) for v in scored]
     terms = contract_terms(extraction)
     contract = None
     if terms is not None:
@@ -487,7 +498,7 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
             "references": [reference.value for reference in extraction.references],
             "amounts": extraction_amounts(extraction),
             "remedy_type": extraction.remedy.type if extraction.remedy else "none",
-            "items": [_ordnung_item(v, c) for v, c in zip(verification.items, computed, strict=True)],
+            "items": [_ordnung_item(v, c) for v, c in zip(scored, computed, strict=True)],
             "contract": contract,
             "warnings": list(dict.fromkeys(w for w in warnings if w.strip())),
             "signals": signals,
@@ -853,7 +864,18 @@ def _code_digest(condition: str) -> str:
         return _digest([*own, *shared])
     ingest = [
         _SRC / "ingest" / f"{name}.py"
-        for name in ("extract", "intake", "normalize", "pipeline", "plan", "text", "transcribe", "verify")
+        for name in (
+            "conflicts",
+            "extract",
+            "gaps",
+            "intake",
+            "normalize",
+            "pipeline",
+            "plan",
+            "text",
+            "transcribe",
+            "verify",
+        )
     ]
     rules = sorted((_SRC / "rules").glob("*.py"))
     return _digest([*own, *shared, *ingest, *rules, _SRC / "secretary" / "scam.py"])

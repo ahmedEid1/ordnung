@@ -405,6 +405,12 @@ def _clauses(text: str) -> list[tuple[str, list[tuple[int, int, date]]]]:
     return clauses
 
 
+def sentences(text: str) -> list[str]:
+    """The letter's text folded into sentences (:func:`_clauses`, without their dates): whitespace runs
+    collapsed, its line breaks kept, a full stop inside a date never ending one."""
+    return [clause for clause, _ in _clauses(text)]
+
+
 def _label_before(before: str) -> str:
     """The words before a date that are its own. On a label's line ("Zahlbar bis: 16.03.2026") the line
     itself, from the label before it on that line if any ("Fälligkeit: sofort, Datum: 02.03.2026" gives
@@ -625,6 +631,12 @@ def _header(lines: list[str]) -> list[str]:
         ):
             return lines[:index]
     return lines
+
+
+def header(lines: list[str]) -> list[str]:
+    """The lines of a letter's header (:func:`_header`): those before its salutation, else before its first
+    sentence or table."""
+    return _header(lines)
 
 
 Box = tuple[str, float, float, float, float]

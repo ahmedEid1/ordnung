@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from ordnung.db.store import Store
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.plan import (
     ComputedDate,
@@ -1011,6 +1012,31 @@ def test_a_rule_to_do_needs_checking_only_when_its_end_date_isnt_written(store: 
     assert needs_check(flagged)
     confirmed = store.update_item(flagged.id, grounding="user")
     assert not needs_check(confirmed)
+
+
+def test_the_to_do_code_files_for_an_incomplete_reading_needs_checking_dated_or_not(store: Store) -> None:
+    """``ingest/gaps.py``: an incomplete reading's to-do keeps the letter "Please check" until the person acts on
+    it, even without a date; any other undated to-do of a reading still never does."""
+    document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
+    unfound = Evidence(doc_id=document.id, quote="", grounding="unverified", value_consistent=False)
+    fields: dict[str, Any] = {"kind": "task", "title": "Read this letter yourself", "evidence": [unfound]}
+    check = store.add_item(doc_id=document.id, slot_key=CHECK_SLOT, **fields)
+    assert check.due_date is None and needs_check(check)
+    assert not needs_check(store.update_item(check.id, grounding="user"))  # confirmed
+    for status in ("done", "dismissed"):
+        assert not needs_check(store.update_item(check.id, grounding="unverified", status=status))
+    ordinary = store.add_item(doc_id=document.id, slot_key="a" * 40, **fields)
+    assert not needs_check(ordinary)
+
+
+def test_verifying_without_the_reading_check_adds_nothing() -> None:
+    """Only the pipeline and the benchmark ask for the reading check (``check_reading``): an empty reading of a
+    letter with a notice on how to object gets no to-do of its own here."""
+    empty = DocumentExtraction(kind="other", title="Letter", summary="s", explanation="e")
+    assert verify_extraction("doc_x", empty, [TEXT_PAGE]).items == []
+    assert verify_extraction("doc_x", empty, [TEXT_PAGE]).warnings == []
+    [check] = verify_extraction("doc_x", empty, [TEXT_PAGE], check_reading=True).items
+    assert check.slot_key == CHECK_SLOT and check.needs_check
 
 
 def test_remedy_warnings_and_payment_details() -> None:
