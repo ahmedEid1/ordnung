@@ -186,8 +186,11 @@ function firstSentence(text: string | null | undefined): string | null {
   return t ? t : null;
 }
 
-/** The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`). */
-const READING_INCOMPLETE_NOTE = /^Ordnung worked this date out from the letter's own instructions/;
+/**
+ * The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`): its
+ * wording now, and the one receipts stored before say ("worked this date out").
+ */
+const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions/;
 
 function reasonForItem(
   item: Item,

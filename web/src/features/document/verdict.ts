@@ -320,11 +320,26 @@ export type MainAction =
   | { type: "reminder"; docId: string }
   | { type: "none" };
 
+/** The "get advice" warning of a letter that can only be challenged in court (`remedy_warnings`, plan.py). */
+const COURT_ONLY = /^This decision can only be challenged in court \(Klage\)/;
+
+/**
+ * The letter's instructions name only a court action (Klage): the to-do Ordnung added for it
+ * (`check:reading`, titled "… (Klage)") is the one in view, or the letter carries the "can only be challenged
+ * in court" warning — an objection letter to the authority would not stop that deadline (UX review 2, R2UX-7),
+ * whatever remedy the reading named.
+ */
+export function courtActionOnly(detail: Pick<DocumentDetail, "document">, primary: Item | null): boolean {
+  if (primary?.slot_key === "check:reading" && /\(Klage\)\s*$/.test(primary.title)) return true;
+  return detail.document.warnings.some((w) => COURT_ONLY.test(w.trim()));
+}
+
 /**
  * The one main button of the verdict card:
  * scam → never "Pay" (offer to compare with a real letter) · Einspruch/Widerspruch → draft the
  * objection (type comes from the Rechtsbehelfsbelehrung, never a guess), unless the person has dealt
- * with the letter ({@link isLetterSettled}) or every open to-do was set aside (an archived letter) · an
+ * with the letter ({@link isLetterSettled}), every open to-do was set aside (an archived letter) or only a
+ * court action is open ({@link courtActionOnly}) · an
  * invoice a payment reminder replaced → open the reminder (never Pay twice) · a notice deadline on a
  * contract → draft the cancellation · a payment → Pay (not when it may not be owed, see
  * {@link mayNotBeOwed}) · a dated to-do → Add to calendar · otherwise Mark done.
@@ -341,7 +356,7 @@ export function chooseMainAction(detail: DocumentDetail, primary: Item | null): 
   const allAside = aside.length > 0 && !primary;
   // once the person dealt with the letter (objected, or paid), it is settled: no objection to draft
   const stillOpen = primary ? isOpenItem(primary) : !allAside && !isLetterSettled(detail);
-  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && stillOpen) {
+  if ((remedy === "einspruch" || remedy === "widerspruch" || courtOrder) && stillOpen && !courtActionOnly(detail, primary)) {
     return { type: "draft", draftKind: "objection", label: "Draft objection", item: primary };
   }
   const reminder = replacedBy(detail);

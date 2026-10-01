@@ -28,6 +28,7 @@ import {
   selectPrimaryItem,
   sortItems,
   withoutIfYouDisagree,
+  courtActionOnly,
 } from "./verdict";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 import { splitGlossary } from "./glossary-text";
@@ -95,6 +96,19 @@ describe("chooseMainAction", () => {
       const d = makeDetail({ document: makeDoc({ remedy: { type, addressee: null, period_text: null, form_text: null, quote: null } }), items: [objection] });
       expect(chooseMainAction(d, objection).type).toBe("calendar");
     }
+  });
+
+  it("never offers an objection draft over a court action the letter names alone (UX review 2, R2UX-7)", () => {
+    const remedy = { type: "widerspruch" as const, addressee: null, period_text: null, form_text: null, quote: null };
+    const check = makeItem({ id: "chk", kind: "deadline", due_date: "2026-12-09", slot_key: "check:reading", title: "Deadline for a court action (Klage)" });
+    expect(courtActionOnly(makeDetail({ document: makeDoc({ remedy }), items: [check] }), check)).toBe(true);
+    expect(chooseMainAction(makeDetail({ document: makeDoc({ remedy }), items: [check] }), check).type).not.toBe("draft");
+    // the "can only be challenged in court" warning says it too
+    const warned = makeDoc({ remedy, warnings: ["This decision can only be challenged in court (Klage) — get advice (e.g. a Verbraucherzentrale) in time."] });
+    expect(chooseMainAction(makeDetail({ document: warned, items: [objection] }), objection).type).not.toBe("draft");
+    // an objection to-do of Ordnung's own still gets its draft
+    const own = { ...check, title: "Deadline to object (Widerspruch)" };
+    expect(chooseMainAction(makeDetail({ document: makeDoc({ remedy }), items: [own] }), own)).toMatchObject({ type: "draft", draftKind: "objection" });
   });
 
   it("never offers Pay for a suspected scam", () => {

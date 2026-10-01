@@ -124,6 +124,11 @@ describe("trace copy", () => {
       span({ kind: "verify", label: "Deadline to object", attributes: { target: "item", grounding: "verified", page: 2, reasons: ["reading_incomplete"] } }),
     );
     expect(todo.summary).toBe("To-do · Found on page 2 · added by Ordnung because Claude's reading came back incomplete");
+    // "Read this letter yourself" quotes nothing: nothing was looked for (UX review 2, R2UX-9)
+    const placeholder = spanCopy(
+      span({ kind: "verify", label: "Read this letter yourself", attributes: { target: "item", grounding: "unverified", slot_key: "check:reading", reasons: ["reading_incomplete"] } }),
+    );
+    expect(placeholder.summary).toMatch(/^To-do · Added by Ordnung — no sentence to find/);
     expect(todo.flag?.text).toBe("Please check");
   });
 

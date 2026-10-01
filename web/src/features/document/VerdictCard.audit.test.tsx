@@ -41,6 +41,22 @@ function renderVerdict(detail: DocumentDetail) {
   return screen.getByRole("article");
 }
 
+describe("a date the person confirmed (UX review 2, R2UX-6)", () => {
+  it("is no longer “Please check this date”, though its receipt keeps a low grade", () => {
+    const receipt = makeReceipt({ due_date: "2026-10-19", confidence: "low" });
+    const item = makeItem({ id: "itm_ok", kind: "deadline", title: "Deadline to object", due_date: "2026-10-19", computation: receipt, grounding: "user" });
+    renderVerdict(makeDetail({ items: [item] }));
+    expect(screen.queryByText("Please check this date")).toBeNull();
+  });
+
+  it("still says it before the person confirmed it", () => {
+    const receipt = makeReceipt({ due_date: "2026-10-19", confidence: "low" });
+    const item = makeItem({ id: "itm_low", kind: "deadline", title: "Deadline to object", due_date: "2026-10-19", computation: receipt });
+    renderVerdict(makeDetail({ items: [item] }));
+    expect(screen.getByText("Please check this date")).toBeInTheDocument();
+  });
+});
+
 /** Every text in `root` outside a `lang="de"` element (the German the card marks as the letter's). */
 function englishTexts(root: HTMLElement): string[] {
   const clone = root.cloneNode(true) as HTMLElement;

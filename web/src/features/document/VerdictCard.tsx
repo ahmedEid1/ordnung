@@ -653,7 +653,8 @@ function DateBox({
         {item.computation ? (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} item={item} />
-            {item.computation.confidence !== "high" ? (
+            {/* the person confirmed it: their date, not ours to doubt (a receipt keeps its low grade) */}
+            {item.computation.confidence !== "high" && item.grounding !== "user" ? (
               <span className="text-[12px] text-muted">{item.computation.confidence === "medium" ? "Worth a second look" : "Please check this date"}</span>
             ) : null}
           </div>

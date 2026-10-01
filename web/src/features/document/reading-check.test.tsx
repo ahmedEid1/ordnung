@@ -10,6 +10,8 @@ import { screen } from "@testing-library/react";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { qk } from "@/api/hooks";
 import { DocumentWarnings, READING_CHECK_SLOT } from "./Warnings";
+import { ItemsList } from "./ItemsList";
+import { germanRuns } from "./fact-text";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "./fixtures";
 
 function client() {
@@ -56,6 +58,21 @@ const placeholder = makeItem({
 });
 
 const scam = makeSuggestion({ id: "sug_scam", kind: "scam", title: "Possible scam", refs: [{ type: "document", id: "doc_1" }] });
+
+describe("the to-do Ordnung adds, round 2 (UX review 2)", () => {
+  it("marks the remedy in parentheses German (R2UX-8)", () => {
+    const runs = germanRuns("Deadline for a court action (Klage)");
+    expect(runs.filter((r) => r.german).map((r) => r.text)).toEqual(["Klage"]);
+    expect(germanRuns("Deadline to object (Widerspruch)").some((r) => r.german && r.text === "Widerspruch")).toBe(true);
+  });
+
+  it("shows no “couldn't find” chip on “Read this letter yourself”: it quotes nothing (R2UX-9)", () => {
+    const done = { ...placeholder, status: "done" as const };
+    renderWithProviders(<ItemsList items={[done]} docId="doc_1" />, { client: client() });
+    expect(screen.getByText("Added by Ordnung")).toBeInTheDocument();
+    expect(screen.queryByText("Please check")).toBeNull();
+  });
+});
 
 describe("the to-do Ordnung adds for an incomplete reading", () => {
   it("is the backend's slot, spelled out", () => {

@@ -198,6 +198,8 @@ const natureOf = (a: Attrs): string | null => {
 
 function groundingText(a: Attrs): string {
   const page = num(a, "page");
+  // the to-do Ordnung added for an almost blank reading quotes nothing: nothing was looked for
+  if (str(a, "slot_key") === "check:reading" && str(a, "grounding") === "unverified") return "Added by Ordnung — no sentence to find";
   switch (str(a, "grounding")) {
     case "verified":
       return page ? `Found on page ${page}` : "Found in the letter";

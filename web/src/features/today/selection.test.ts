@@ -177,7 +177,7 @@ describe("actions from to-dos & dates", () => {
   });
 
   it("gives the to-do Ordnung added for an incomplete reading its own reason, not a side note (check:reading)", () => {
-    const own = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.";
+    const own = "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.";
     const receipt = makeReceipt({ due_date: "2026-12-09", confidence: "low", warnings: ["Counted from 3 days after the letter's date.", own] });
     const a = actionFromItem(item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: receipt }), {
       today: TODAY,
@@ -191,6 +191,13 @@ describe("actions from to-dos & dates", () => {
       reviewDocs: [],
     })!;
     expect(other.reason).toBe("Counted from 3 days after the letter's date.");
+    // a receipt stored before the note was reworded keeps its reason too
+    const stored = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.";
+    const old = actionFromItem(
+      item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: { ...receipt, warnings: [receipt.warnings[0]!, stored] } }),
+      { today: TODAY, reviewDocs: [] },
+    )!;
+    expect(old.reason).toBe(stored);
   });
 
   it("skips done, dismissed, undated and still-snoozed items but includes snoozes that ended", () => {
