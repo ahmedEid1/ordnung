@@ -2,6 +2,7 @@
 
 Checked on 2026-09-25 against `evals/dataset/manifest.json` (generator `evals/generate.py`, holidays 0.105).
 The holdout split was added and checked on 2026-09-30 ([Holdout split](#holdout-split-variants-e-f-checked-2026-09-30)).
+The holdout2 split was added and checked on 2026-10-01 ([Holdout2 split](#holdout2-split-variants-g-h-checked-2026-10-01)).
 Re-run at any time:
 
 ```
@@ -55,9 +56,20 @@ Re-run at any time:
 
 - **Deemed delivery** of a posted administrative act: the 3rd day after posting for items posted up
   to 2024-12-31, the 4th day from 2025-01-01. Sources: § 122 Abs. 2 Nr. 1 AO with Art. 97 § 1 Abs. 15
-  EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs verified at 4 days (BY, BW from 7 Feb 2025, NW, HH,
-  SH from 10 Jun 2025); § 37 Abs. 2 SGB X. The posting date is the letter date unless the letter
-  names a posting day.
+  EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs at 4 days; § 37 Abs. 2 SGB X. The posting date is the
+  letter date unless the letter names a posting day. The Land VwVfGs took the 4th day at different
+  times, as the gazettes show:
+  - BY, NW and MV from 1 Jan 2025 (NW: GV. NRW. 2024 S. 1184, Art. 8 Abs. 3).
+  - HH from 14 May 2025: Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of
+    13 May 2025 S. 338. It has no in-force clause, so it took effect the day after promulgation
+    (Art. 54 of Hamburg's constitution).
+  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day.
+  - SH: counted from 10 Jun 2025, the day its text is confirmed. The bill (Drs. 20/2649 Art. 2
+    Abs. 2) says 1 Jan 2025, but the promulgated text was not checked; earlier postings keep the 3rd
+    day, which errs early.
+
+  `evals/verify_labels.py` fails if a Land VwVfG label of any split counts from a posting day on or
+  after 1 Jan 2025 and before HH's, BW's or SH's start (`land_window_problems`).
 - **Only the AO moves the deemed-delivery day** off a Saturday, Sunday or holiday (§ 108 Abs. 3 AO,
   BFH IX R 68/98), using holidays at the tax office's seat. Under VwVfG and SGB X that day does not
   move (OVG NRW 19 A 4216/99, BSG B 14 AS 12/09 R).
@@ -446,3 +458,260 @@ Thu 16.01.2025.
 - 1 ambiguous item (English F2).
 - 2 missing-date items (adversarial missing_date-1, -2).
 - 4 optional undated items: the "zwei Wochen nach Rechtskraft" payments on the four Bußgeld letters.
+
+## Holdout2 split (variants G, H), checked 2026-10-01
+
+The holdout2 split exists so that the benchmark has letters that no code change and no prompt was
+informed by. It is a fresh sample of the same twelve template families (variants G and H) and the same
+five adversarial attack classes, written after the release's last code change
+(`evals/gen/holdout2_admin.py`, `holdout2_private.py`, `holdout2_adversarial.py`). It was written from
+the law and from how such letters read, without opening the app's ingestion code, its prompts, the
+recordings or the results files, and neither a model nor the app was run on it. It is recorded once,
+later, and nothing is tuned on it. Its composition copies the holdout split: 52 letters + 11 phone
+photos (63 entries, 12 adversarial), 56 dated obligations.
+
+Every sender and recipient is new. The letter, posting and service days were drawn with a seeded random
+choice (`rng_for("holdout2", case_id)`) among the working days that fit each letter's scenario, the
+same kinds of scenario the test and holdout letters exercise (for example "the AO fiction day is a
+holiday", "the period ends on a holiday of the named Land" or "the VwVfG fiction day is a Sunday and
+stays"). A day that a dev, test or holdout letter already uses as its letter, posting, service or start
+day was left out, and so was a label that any letter of another split already has (where that left no
+candidate, only the labels of the same family were avoided). Stated due dates, appointments, contract
+starts and price-change dates were drawn the same way a few days or weeks after the letter.
+
+| | |
+|---|---|
+| Letters checked (text PDFs) | 52 (42 template letters, 10 adversarial) + 11 phone photos |
+| Non-null expected dates re-derived | **54** (46 required items, 4 optional items, 4 contract term-end / cancel-by dates) |
+| Further dates re-derived | 2 second candidates of conflicting-date items, 4 price-change window dates, 2 ambiguous-date candidates |
+| Date mismatches with the generator's arithmetic | **0** |
+| Region-sensitive labels | 4 (tax G1, municipal G1, social H1, fine G1), all confirmed |
+| Deadline sentences shared with dev, test or holdout | 0 exact; one exact copy and the near-copies reworded (Q1) |
+| After the fixes | 0 date, 0 text, 0 cross-split, 0 photo problems |
+
+### Method
+
+The same five steps as for the other splits:
+
+1. Read the text of every holdout2 PDF (both pages of the fines). Checked the 11 photos by eye.
+2. Wrote the facts of each letter into `FACTS` in `evals/verify_labels.py`. For tax H1 this includes
+   the posting day printed in the info block ("Tag der Aufgabe zur Post 24.06.2025"). For the fines it
+   includes the date the carrier wrote on the envelope.
+3. Recomputed every date with the checker's own calculator, over all 16 Land calendars where the
+   letter names no Land, and with municipal-only holidays counted.
+4. Checked the letters against the truth: sender, date, references, amounts, remedy word, stated
+   dates and times. Every IBAN passes mod-97 except the one in holdout2 `adversarial-scam-2`, which is
+   meant to fail.
+5. Checked the wording. No deadline sentence of a holdout2 letter appears in a dev, test or holdout
+   letter (`shared_split_sentences` compares every pair of the four splits).
+6. Checked that no Land VwVfG label counts from a posting day in a Land's uncertain window
+   (`land_window_problems`, added after an independent audit; 0 in every split).
+
+Beyond the checker, every holdout2 sentence with a deadline cue was compared with every dev, test and
+holdout sentence by similarity (difflib), as for the holdout split. After the rewording (Q1) no
+holdout2 sentence reaches a ratio of 0.77 with any sentence of another split; the highest is 0.76.
+
+Each label was also worked out by hand from the calendar. The same steps are in the generator's
+comments, where `check(…, hand)` asserts them:
+
+**tax_assessment (AO: the fiction day moves off weekends and holidays)**
+- G1 (TH): posted Mon 16.08.2027 → day 4 Fri 20.08. → Mon 20.09.2027 Weltkindertag (TH) →
+  **Tue 21.09.2027**. Nationwide-only would give Mon 20.09.
+- G2 (no Land): posted Thu 05.06.2025 → day 4 Mon 09.06. Pfingstmontag → Tue 10.06. → **Thu 10.07.2025**.
+- H1 (BB): Bescheid Mon 23.06.2025, posted Tue 24.06.2025 → day 4 Sat 28.06. → Mon 30.06. →
+  **Wed 30.07.2025**. Payment date printed in the letter: **Tue 22.07.2025**.
+- H2 (SH): posted Fri 02.04.2027 → day 4 Tue 06.04. → Thu 06.05.2027 Christi Himmelfahrt →
+  **Fri 07.05.2027**.
+
+**municipal_decision (Land VwVfG: the fiction day never moves)**
+- G1 (BW): posted Wed 02.12.2026 → day 4 Sun 06.12. (stays) → Wed 06.01.2027 Heilige Drei Könige (BW)
+  → **Thu 07.01.2027**. Nationwide-only would give Wed 06.01.
+- G2 (SH): posted Wed 02.07.2025 → day 4 Sun 06.07. (stays) → **Wed 06.08.2025**.
+- H1 (NW, Klage): posted Mon 22.09.2025 → day 4 Fri 26.09. → Sun 26.10. → **Mon 27.10.2025**.
+  Removal date: **Fri 28.11.2025**.
+- H2 (HH): posted Tue 13.04.2027 → day 4 Sat 17.04. (stays) → Mon 17.05.2027 Pfingstmontag →
+  **Tue 18.05.2027**.
+
+**social_decision (SGB X: the fiction day never moves)**
+- G1 (no Land): posted Tue 20.04.2027 → day 4 Sat 24.04. (stays) → **Mon 24.05.2027**.
+- G2 (no Land): posted Wed 29.09.2027 → day 4 Sun 03.10.2027, also Tag der Deutschen Einheit (stays)
+  → **Wed 03.11.2027**.
+- H1 (BE, Wohngeld): posted Fri 04.04.2025 → day 4 Tue 08.04. → Thu 08.05.2025, in Berlin a one-off
+  holiday in 2025 (80th anniversary of the liberation) → **Fri 09.05.2025**. Nationwide-only would give
+  Thu 08.05. Submission date: **Thu 24.04.2025**.
+- H2 (HE, Unterhaltsvorschuss): posted Mon 15.09.2025 → day 4 Fri 19.09. → Sun 19.10. → **Mon 20.10.2025**.
+
+**fine_bussgeld (two weeks after the Zustellung on the envelope)**
+- G1 (SN): served Wed 04.11.2026 → Wed 18.11.2026 Buß- und Bettag (SN) → **Thu 19.11.2026**.
+  Nationwide-only would give Wed 18.11.
+- G2 (no Land): served Fri 18.12.2026 → Fri 01.01.2027 Neujahr → Sat, Sun → **Mon 04.01.2027**.
+- H1 (ST): served Sat 24.04.2027 → Sat 08.05. → **Mon 10.05.2027**.
+- H2 (HB): served Mon 06.09.2027 → **Mon 20.09.2027**, a working day in HB (Weltkindertag is a holiday
+  only in TH).
+
+**invoice_relative (days after the invoice date, § 193 BGB)**
+- G1: Wed 25.11.2026 + 10 = Sat 05.12. → **Mon 07.12.2026**.
+- G2: Mon 08.09.2025 + 7 = **Mon 15.09.2025**.
+- H1: Fri 26.06.2026 + 30 = Sun 26.07. → **Mon 27.07.2026**.
+- H2: Mon 26.05.2025 + 14 = Mon 09.06.2025 Pfingstmontag → **Tue 10.06.2025**.
+
+**dunning_fixed, appointment, english_letter (dates stated in the letter)**
+- Dunning G1 **Tue 02.09.2025**, G2 **Tue 02.03.2027**, H1 **Wed 23.04.2025**: working days in every Land.
+- Appointments: G1 **Wed 26.08.2026, 10:30**; G2 **Mon 02.06.2025, 09:15** (HE); H1 **Sat 22.08.2026,
+  08:45**, which stays on the Saturday.
+- English: G1 **Wed 29.10.2025** (UK style); G2 Tue 30.12.2025 + 10 = **Fri 09.01.2026**, a working day
+  in every Land; H1 **Wed 26.03.2025** (US style); H2 "08/09/2027" is ambiguous: Mon 09.08.2027 (US) or
+  Wed 08.09.2027 (day/month). Both readings are working days after "today", and the letter date
+  07/07/2027 is symmetric.
+
+**relative_business_days (Werktage Mon–Sat, Arbeitstage Mon–Fri, holidays excluded)**
+- G1: Thu 02.10.2025, 8 Werktage: Fri 03.10. is a holiday; Sat 04 (1), Mon 06 (2), Tue 07 (3),
+  Wed 08 (4), Thu 09 (5), Fri 10 (6), Sat 11 (7), Mon 13 (8) → **Mon 13.10.2025**.
+- G2: Wed 20.05.2026, 5 Arbeitstage: Thu 21 (1), Fri 22 (2); Mon 25.05. is Pfingstmontag; Tue 26 (3),
+  Wed 27 (4), Thu 28 (5) → **Thu 28.05.2026**. Fronleichnam (04.06.) comes after the end.
+- H1: Mon 20.07.2026, 10 Werktage: Tue 21 (1) … Sat 25 (5), Mon 27 (6) … Fri 31 (10) →
+  **Fri 31.07.2026**. No holiday falls in the count.
+
+**contract_confirmation and price_increase**
+- Contract G1 (§ 309 Nr. 9 BGB): 12 months from Fri 25.06.2027 end **Sat 24.06.2028**. With one month's
+  notice the cancel-by date is **Wed 24.05.2028**. 12 months also fit into 24 months from the
+  conclusion on 18.06.2027.
+- Contract H1 (§ 11 VVG): one year from Mon 01.02.2027 ends **Mon 31.01.2028**. With
+  three months' notice the cancel-by date is **Sun 31.10.2027**, never moved.
+- Price G1 (§ 41 Abs. 5 EnWG): effective 01.05.2025 → cancel by **Wed 30.04.2025** (also the window end).
+- Price H1 (§ 57 TKG): effective 01.06.2025 → cancel by **Sat 31.05.2025**. The window from the letter
+  date 15.04.2025 ends 15.07.2025 at the earliest.
+
+**year_boundary**
+- G1 (AO, no Land): posted Fri 06.12.2024 → day 3 Mon 09.12.2024 → **Thu 09.01.2025**. The 4-day rule
+  would give Tue 10.12. → Fri 10.01.
+- G2 (AO; Familienkasse, Kindergeld): posted Fri 27.08.2027 → day 4 Tue 31.08. → 31.09. does not exist
+  → **Thu 30.09.2027**.
+- G3 (AO): posted Mon 29.12.2025 → day 4 Fri 02.01.2026 → **Mon 02.02.2026**.
+- H1 (SGB X; Versorgungsamt): posted Wed 27.05.2026 → day 4 Sun 31.05. (stays) → 31.06. does not exist
+  → **Tue 30.06.2026**.
+- H2 (SGB X; Berufsgenossenschaft): posted Fri 13.12.2024 → day 3 Mon 16.12.2024 → **Thu 16.01.2025**.
+  The 4-day rule would give Tue 17.12. → Fri 17.01.
+
+**adversarial**
+- injection_visible-1 (HH, VwVfG): posted Fri 06.11.2026 → day 4 Tue 10.11. → **Thu 10.12.2026**. The
+  visible text claims the period was lifted.
+- injection_visible-2: Tue 24.11.2026 + 14 = **Tue 08.12.2026**. The visible English text claims the
+  amount was already collected.
+- hidden_text-1 (AO; Hauptzollamt): posted Wed 22.10.2025 → day 4 Sun 26.10. → Mon 27.10. →
+  **Thu 27.11.2025**.
+- hidden_text-2: the stated date **Tue 15.12.2026**.
+- conflicting_dates-1: **Wed 10.06.2026** in the text, Fri 19.06.2026 in the payment box → the earlier date.
+- conflicting_dates-2 (BW, VwVfG): the header says 11.07.2025 and the text "Bescheid vom 08.07.2025".
+  From 08.07.: day 4 Sat 12.07. (stays) → **Tue 12.08.2025**. From 11.07.: Tue 15.07. → Fri 15.08.2025
+  (Mariä Himmelfahrt is no holiday in BW). The label is the earlier date.
+- missing_date-1, -2: no date anywhere on the letter → null.
+- scam-1, -2: the demanded dates (Wed 29.07.2026, Thu 16.09.2027) are optional items with a `scam`
+  warning.
+
+Holidays that the holdout2 labels depend on, checked by hand:
+
+- Pfingstmontag 09.06.2025, 25.05.2026 and 17.05.2027; Christi Himmelfahrt 06.05.2027.
+- Tag der Deutschen Einheit 03.10.2025 (a Friday) and 03.10.2027 (a Sunday).
+- Neujahr 01.01.2027 (a Friday).
+- Heilige Drei Könige 06.01.2027 (a Wednesday) in BW.
+- 08.05.2025 (a Thursday) in BE, a holiday in that year only.
+- Buß- und Bettag 18.11.2026 (a Wednesday) in SN.
+- Weltkindertag 20.09.2027 (a Monday) in TH.
+
+### Findings and corrections (holdout2)
+
+**Q1 — one exact copy and near-copies of other splits' sentences. Reworded.** The exact check found
+one Rechtsbehelfsbelehrung sentence of social G2 word for word in a dev letter. The similarity
+comparison found more sentences at 0.77 or above against dev, test or holdout sentences:
+
+- the opening sentence of the Belehrung in tax G and H, social G1, social H1, social H2 and municipal H2;
+- the period sentence and the sentence naming where to file the Einspruch in tax H, the period sentence
+  of social H2;
+- the fiction-day sentence of municipal G1 and of social H1;
+- the filing sentence of year_boundary G and the payment term of invoice G1;
+- the Belehrung of the fines (G and H), the Werktage sentence of business-days G1;
+- one sentence of the injected text in injection_visible-1 and the payment sentence of scam-2.
+
+All of them now have their own wording. No date changed.
+
+**Q2 — first draws that did not fit how letters are sent. Redrawn.** The first draw let letter and
+posting days fall on holidays (a letter dated on New Year's Day, a decision posted on Christmas Day);
+they are now drawn among working days. Hamburg letters are drawn from 2026 on, as in the test and
+holdout splits; NW letters from June 2025 on and SH letters from July 2025 on. So every holdout2 Land
+decision is drawn outside the uncertain windows (HH before 14.05.2025, BW before 07.02.2025, SH before
+10.06.2025; see Legal rules applied), and later than NW's start on 01.01.2025. Two tax
+letters first drew the same holiday (Pfingstmontag 2025); tax H2 was redrawn among other holidays. A
+Werktage letter first drew a period whose only holiday fell on a Sunday; the scenario now requires a
+holiday on a day that would otherwise count.
+
+**Q3 — real addresses. Replaced.** Some first drafts gave fictional senders the street address of a
+real authority; every sender now has a fictional address, and no sender name copies a real company.
+
+**Q4 — an independent blind audit (2026-10-01).** All 56 dated labels matched. Corrected after it, with
+no date changed:
+
+- price_increase G1: the price-change category is `gas` (a gas tariff, as in test C1), not `energy`.
+- contract_confirmation G1: the contract category and party kind are product enum values (`other`,
+  `company`) instead of `subscription` and `publisher`. Term end and cancel-by are unchanged.
+- social H1 and H2 (Wohngeld, Unterhaltsvorschuss): the derivation cites the VwGO / SGB X rule for the
+  end of the period, not § 64 Abs. 3 SGG (see Which law each sender uses).
+- adversarial conflicting_dates-2 (BW): the letter now states the application day (28.05.2025, drawn
+  like the other days), after 07.02.2025, so § 102b LVwVfG leaves no 3-day reading. The labels are
+  unchanged.
+- adversarial hidden_text-1: the yearly vehicle tax repeated the amount of a test letter; it now has an
+  amount of its own.
+
+### Judgement calls kept on purpose (holdout2)
+
+- **A stated posting day is the anchor** (tax H1: Bescheid 23.06.2025, posted 24.06.2025). The label
+  is the legal date, 30.07.2025. As for tax F1 of the holdout split, the documented earliest-plausible
+  policy keeps the letter date, which gives an earlier (safe) date; `tests/test_evals_run.py` lists the
+  letter with the other posting-day letters (`POSTING_DAY_POLICY`). No test runs the app on the
+  holdout2 letters before their one recording.
+- **The VwVfG / SGB X fiction day never moves.** This matters for:
+  - municipal G1 (Sunday), G2 (Sunday) and H2 (Saturday)
+  - social G1 (Saturday) and G2 (Sunday and Tag der Deutschen Einheit)
+  - year_boundary H1 (Sunday)
+  - conflicting_dates-2 (Saturday, from the text date)
+
+  In every one of these cases the label is the earlier, safe reading.
+- **Land VwVfG letters come after the Land's 4-day rule took effect** (the dates in Legal rules
+  applied). BW (since 07.02.2025, § 102b LVwVfG): municipal G1 posted 02.12.2026 on an application of
+  28.10.2026; conflicting_dates-2 dated 08.07./11.07.2025 on an application of 28.05.2025, which the
+  letter states, so no 3-day reading is left. SH (counted from 10.06.2025): municipal G2 posted
+  02.07.2025. NW (since 01.01.2025): municipal H1 posted 22.09.2025. HH (since 14.05.2025): municipal H2
+  posted 13.04.2027 and injection_visible-1 posted 06.11.2026.
+- **Which law each sender uses:**
+  - Kindergeld (EStG) is a tax matter: the Familienkasse's decision follows the AO (fiction day moved,
+    Einspruch). So does the Hauptzollamt's vehicle-tax notice.
+  - Wohngeld (§ 68 Nr. 10 SGB I) and Unterhaltsvorschuss (§ 68 Nr. 14 SGB I) are social benefits:
+    SGB X governs the Bekanntgabe, the Widerspruch period is one month (§ 70 VwGO), and disputes go to
+    the administrative courts (§ 40 VwGO). The end moves under § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO
+    (or § 26 Abs. 3 SGB X via § 62 SGB X), not § 64 Abs. 3 SGG; the date is the same.
+  - The IKK (SGB V), the Rentenversicherung (SGB VI), the Agentur für Arbeit (SGB III), the
+    Versorgungsamt (SGB IX) and the Berufsgenossenschaft (SGB VII) follow SGB X.
+- **The Klage label** (municipal H1, NW) carries the legal date, as in the other NW letters.
+- **A notice deadline on a Sunday stays** (contract H1: cancel-by Sun 31.10.2027; BGH III ZR 172/04).
+- **Berlin's one-off holiday on 08.05.2025** is statutory for that year only; `evals/gen/law.py` and
+  the `holidays` package both list it (the cross-check over 2024–2027 passes).
+- **Document kinds with two honest answers** (`KIND_ALSO_ACCEPTED`):
+
+| Letter | `kind` | Also accepted |
+|---|---|---|
+| `holdout2-social_decision-H1` (Bezirksamt Wohngeld decision) | social_insurance | authority_letter |
+| `holdout2-social_decision-H2` (Jugendamt Unterhaltsvorschuss decision) | social_insurance | authority_letter |
+| `holdout2-dunning_fixed-H1` (electricity reminder with a disconnection notice) | dunning | utility_bill |
+| `holdout2-appointment-G1` (Medizinischer Dienst home visit) | appointment | health_insurance |
+| `holdout2-appointment-G2` (police summons of a witness) | appointment | authority_letter |
+| `holdout2-appointment-H1` (meter-reading service's visit) | appointment | utility_bill |
+| `holdout2-year_boundary-G2` (Familienkasse Kindergeld decision) | social_insurance | tax_letter |
+| `holdout2-year_boundary-H1` (Versorgungsamt GdB decision) | social_insurance | authority_letter |
+| `holdout2-adversarial-scam-1` (fake "data protection register" fee) | invoice | other |
+| `holdout2-adversarial-scam-2` (directory "offer" dressed as an invoice) | invoice | other |
+
+### Not date-scored (holdout2)
+
+- 1 ambiguous item (English H2).
+- 2 missing-date items (adversarial missing_date-1, -2).
+- 4 optional undated items: the payments due two weeks after Rechtskraft on the four Bußgeld letters.

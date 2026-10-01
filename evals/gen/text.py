@@ -128,6 +128,9 @@ _FEMININE = (
     "Pflegekasse",
     "Beispiel Ersatzkasse",
     "BKK ",
+    "IKK ",
+    "Rentenversicherung ",
+    "Beispiel-Berufsgenossenschaft",
 )
 _ADJECTIVE_DATIVE = {"Allgemeine ": "Allgemeinen ", "Zentrale ": "Zentralen "}
 

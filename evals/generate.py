@@ -1,6 +1,6 @@
 """Generate the Ordnung benchmark documents and their ground truth (SPEC §17, §21).
 
-    .venv/bin/python evals/generate.py                 # writes evals/dataset/{dev,test,holdout}/ + manifest.json
+    .venv/bin/python evals/generate.py                 # writes evals/dataset/{dev,test,holdout,holdout2}/ + manifest.json
     .venv/bin/python evals/generate.py --out /tmp/x    # same, elsewhere (used by the determinism test)
 
 Everything is deterministic: fixed seeds, fixed PDF metadata and creation dates, no clock reads.
@@ -8,9 +8,9 @@ Labels come from the small, commented date arithmetic in ``evals/gen/law.py`` �
 ``ordnung.rules`` — and every dated label is additionally asserted against a date worked out by hand
 (``check(..., hand)`` in the family modules).
 
-Template families have six wording/layout variants each: A and B go to ``dev`` (the only split
-prompts may be tuned on), C and D to ``test`` (the published run), E and F to ``holdout``.
-Adversarial letters are one-offs in ``test`` and ``holdout``; dev has none.
+Template families have eight wording/layout variants each: A and B go to ``dev`` (the only split
+prompts may be tuned on), C and D to ``test`` (the published run), E and F to ``holdout``, G and H to
+``holdout2``. Adversarial letters are one-offs in ``test``, ``holdout`` and ``holdout2``; dev has none.
 
 The test split was meant to be held out, but extraction prompts 9, 10 and 11 were each recorded on
 it, so it no longer is. The ``holdout`` split is a fresh sample of the same families, written from
@@ -18,6 +18,12 @@ scratch (``gen/holdout_*.py``: new senders, recipients, wording, layout, dates a
 extraction prompt version 11 and before any holdout recording. It is recorded once, with the prompts
 frozen, and never tuned on. No deadline-bearing sentence of one split recurs in another
 (``evals/verify_labels.py``).
+
+The ``holdout2`` split is another fresh sample of the same families and attack classes
+(``gen/holdout2_*.py``), written after the release's last code change from the law and from how such
+letters read (new senders, recipients, wording, layout, dates, amounts and regions), so that the
+benchmark has letters that no code change and no prompt was informed by. It is recorded once, and
+nothing is tuned on it.
 """
 
 from __future__ import annotations
@@ -53,6 +59,19 @@ from gen.families_private import (  # noqa: E402
     invoice_relative,
     price_increase,
 )
+from gen.holdout2_admin import fine_bussgeld as holdout2_fine_bussgeld  # noqa: E402
+from gen.holdout2_admin import municipal_decision as holdout2_municipal_decision  # noqa: E402
+from gen.holdout2_admin import social_decision as holdout2_social_decision  # noqa: E402
+from gen.holdout2_admin import tax_assessment as holdout2_tax_assessment  # noqa: E402
+from gen.holdout2_admin import year_boundary as holdout2_year_boundary  # noqa: E402
+from gen.holdout2_adversarial import adversarial as holdout2_adversarial  # noqa: E402
+from gen.holdout2_private import appointment as holdout2_appointment  # noqa: E402
+from gen.holdout2_private import business_days as holdout2_business_days  # noqa: E402
+from gen.holdout2_private import contract_confirmation as holdout2_contract_confirmation  # noqa: E402
+from gen.holdout2_private import dunning_fixed as holdout2_dunning_fixed  # noqa: E402
+from gen.holdout2_private import english_letter as holdout2_english_letter  # noqa: E402
+from gen.holdout2_private import invoice_relative as holdout2_invoice_relative  # noqa: E402
+from gen.holdout2_private import price_increase as holdout2_price_increase  # noqa: E402
 from gen.holdout_admin import fine_bussgeld as holdout_fine_bussgeld  # noqa: E402
 from gen.holdout_admin import municipal_decision as holdout_municipal_decision  # noqa: E402
 from gen.holdout_admin import social_decision as holdout_social_decision  # noqa: E402
@@ -72,7 +91,7 @@ from gen.text import seed_for  # noqa: E402
 
 DEFAULT_OUT = HERE / "dataset"
 MAX_TOTAL_BYTES = 25 * 1024 * 1024
-SPLITS = tuple(SPLIT_VARIANTS)  # dev, test, holdout
+SPLITS = tuple(SPLIT_VARIANTS)  # dev, test, holdout, holdout2
 
 FAMILIES = (
     ("tax_assessment", tax_assessment),
@@ -105,6 +124,22 @@ HOLDOUT_FAMILIES = (
     ("year_boundary", holdout_year_boundary),
     ("adversarial", holdout_adversarial),
 )
+# The holdout2 split's letters (variants G, H and new adversarial letters), one builder per family.
+HOLDOUT2_FAMILIES = (
+    ("tax_assessment", holdout2_tax_assessment),
+    ("municipal_decision", holdout2_municipal_decision),
+    ("social_decision", holdout2_social_decision),
+    ("invoice_relative", holdout2_invoice_relative),
+    ("dunning_fixed", holdout2_dunning_fixed),
+    ("appointment", holdout2_appointment),
+    ("fine_bussgeld", holdout2_fine_bussgeld),
+    ("contract_confirmation", holdout2_contract_confirmation),
+    ("price_increase", holdout2_price_increase),
+    ("english_letter", holdout2_english_letter),
+    ("relative_business_days", holdout2_business_days),
+    ("year_boundary", holdout2_year_boundary),
+    ("adversarial", holdout2_adversarial),
+)
 
 CONVENTIONS = [
     "Labels are computed by evals/gen/law.py (independent of ordnung.rules) and asserted against dates worked out by hand.",
@@ -129,6 +164,9 @@ CONVENTIONS = [
     "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, "
     "wording, layout, dates and amounts) after extraction prompt version 11 and before any holdout recording; they repeat no "
     "deadline-bearing sentence of the dev or test letters. The split is recorded once with frozen prompts and never tuned on.",
+    "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, "
+    "wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing "
+    "sentence of the dev, test or holdout letters. The split is recorded once and nothing is tuned on it.",
     "references list identifiers only; info-block lines holding a dash, a date or a billing month are printed but not labelled.",
     "amounts = the sums the reader must pay, will receive, or that the decision sets (old/new price for price changes, fees to "
     "bring to an appointment); line items, sums insured and merely threatened penalties are not listed.",
@@ -150,12 +188,22 @@ KIND_ALSO_ACCEPTED: dict[str, list[str]] = {
     "holdout-invoice_relative-F1": ["invoice"],  # annual gas bill with a balance to pay (utility_bill)
     "holdout-appointment-F1": ["appointment"],  # landlord's move-out inspection (rent_lease)
     "holdout-adversarial-scam-2": ["other"],  # fake parcel 'customs fee' demand (invoice)
+    "holdout2-social_decision-H1": ["authority_letter"],  # Bezirksamt Wohngeld decision (social_insurance)
+    "holdout2-social_decision-H2": ["authority_letter"],  # Jugendamt UVG decision (social_insurance)
+    "holdout2-dunning_fixed-H1": ["utility_bill"],  # electricity reminder, disconnection notice (dunning)
+    "holdout2-appointment-G1": ["health_insurance"],  # Medizinischer Dienst home visit (appointment)
+    "holdout2-appointment-G2": ["authority_letter"],  # police summons of a witness (appointment)
+    "holdout2-appointment-H1": ["utility_bill"],  # meter-reading service's visit (appointment)
+    "holdout2-year_boundary-G2": ["tax_letter"],  # Familienkasse Kindergeld, EStG (social_insurance)
+    "holdout2-year_boundary-H1": ["authority_letter"],  # Versorgungsamt GdB decision (social_insurance)
+    "holdout2-adversarial-scam-1": ["other"],  # fake 'data protection register' fee (invoice)
+    "holdout2-adversarial-scam-2": ["other"],  # directory 'offer' dressed as an invoice (invoice)
 }
 
 
 def build_cases() -> list[Case]:
     cases: list[Case] = []
-    for family, builder in (*FAMILIES, *HOLDOUT_FAMILIES):
+    for family, builder in (*FAMILIES, *HOLDOUT_FAMILIES, *HOLDOUT2_FAMILIES):
         built = builder()
         assert built, family
         for case in built:
