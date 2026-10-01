@@ -20,14 +20,19 @@ After quote verification, code checks every reading against the letter's **visib
 benchmark's Ordnung condition):
 
 - **empty** — no to-do, sender, letter date, key fact, reference, contract, change, payment or remedy;
-- **remedy left out** — the letter states how to object within a period, its text shows an administrative
-  act, it is not a kind whose deadlines the law files itself, and no to-do dates an objection (a `remedy`
-  read without its date does not count).
+- **remedy left out** — the letter states how to object within a period, in words about a remedy against
+  this letter (not a later decision's, one already lodged, a direct debit's or one ruled out), its text
+  shows an administrative act, it is not a kind whose deadlines the law files itself (unless the letter
+  doesn't bear that kind out and its notice is shorter than the law's period), and no to-do dates the
+  objection with a date that computes (a `remedy` read without its date does not count).
 
-Either way the letter gets **one** to-do in slot `check:reading`, always `low` and "Please check": the
-objection deadline the notice states, counted from the earliest date the letter gives for itself (shortest
-period, deemed delivery only after a notification, never a later start), or an undated "Read this letter
-yourself" when there is no notice. The reading itself stays as the model gave it; the to-do and a warning
+Either way the letter gets **one** to-do in slot `check:reading`, always `low` and "Please check". **Its date
+is never later than the letter allows:** the period that ends first of all the notices state, dated only
+when it is from a week to a month and every notice's period can be read and runs forward; counted from the
+earliest date the letter gives for itself, and not at all when those dates are more than 14 days apart;
+deemed delivery only when every notice counts from notification; and on recompute only an earlier start
+moves it. When any of that fails, the to-do has no date — the person finds it in the letter — rather than a
+wrong one. Without a notice it is an undated "Read this letter yourself". The reading itself stays as the model gave it; the to-do and a warning
 say what code added. Confirming, re-dating, finishing or dismissing the to-do ends "Please check"; a later
 complete reading removes it unless the person acted on it.
 
@@ -46,14 +51,21 @@ and measured separately.
 - On all 333 recorded readings (217 benchmark readings at the current prompt, 91 at the old one, 25 demo
   readings) the rules fire on `holdout2-adversarial-injection_visible-1` only; a guard test re-checks the
   current 217 on every run.
-- The notice finder finds a notice on exactly the 98 letters whose labels have an objection deadline.
-  Forced onto all 98 with a blank reading, 95 get a date and **none is late**; in the app's situation
-  (the sender's Land unknown) dates are exact or early, at most 9 days early.
+- The notice finder finds a notice on exactly the 98 letters whose labels have an objection deadline, and
+  each has one about this letter. Forced onto all 98 with a blank reading, **none is late** and no letter
+  without an objection deadline gets a date: in the app's situation (the sender's Land unknown) 27 are
+  exact, 66 early (at most 8 days) and 2 get no date because their dates for themselves disagree; with the
+  authority's Land 46 are exact and 47 early. The letter's date taken is never later than the label's.
+- Synthetic letters that mention a remedy without one against them (reminders, hearings, a court's or an
+  authority's acknowledgement, a direct debit, data-protection rights) stay silent; a test corpus keeps them
+  so, beside real notices that must still be dated. These letters are not in the benchmark: it can't
+  measure false alarms, since every benchmark letter that mentions an objection has one.
 - Replaying dev, test, holdout and holdout2, only that letter changes: missed becomes correct
   (2026-12-10), and injection resistance on holdout2 goes from 2 of 3 to 3 of 3. In the app, which does not
   know the sender's Land, the same letter gets Wed 9 Dec 2026 — one day early, "Please check".
 
 ## Consequences
-A reading that drops a deadline other than the objection, but keeps its sender, is still not caught, nor is a
-plausible but later objection date planted by an injection; both are listed as follow-ups. Remedy notices
-are only recognised in German and English wording, with periods written as 1 to 12 days, weeks or months.
+A reading that drops a deadline other than the objection, but keeps its sender, is still not caught.
+Remedy notices are only recognised in German and English wording; a period the parser can't read, or one
+longer than a month, leaves the to-do without a date. A notice that refers to an earlier decision whose
+period has already run can still file a to-do (dated no later than the letter allows).

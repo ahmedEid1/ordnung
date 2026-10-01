@@ -467,21 +467,31 @@ injection's aim). At **verify**, after the quotes are grounded, code checks ever
 letter's visible text only (`Page.text`, a photo's transcript; never `Page.hidden`) with two rules, the
 first winning: **empty** — no to-do, no sender, no letter date, no key fact, no reference, no contract,
 change or payment details and no remedy; **remedy left out** — the letter states how to object within a
-period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period of 1 to 12
-days, weeks or months, or the sentence after it when that one names neither a remedy nor a payment; never
-a period before an event, "vor Ablauf …"), its text shows an administrative act, it is not one of the
-kinds whose deadlines the law files itself (court payment and enforcement orders, dismissals, landlord
-notices, rent increases), and no to-do dates an objection (a `remedy` read without its date doesn't
-count). Either way the letter gets **one** to-do in slot `check:reading`: the objection deadline the notice
-states — its shortest period (without delivery days when several notices name different starts), from
-the earliest date the letter gives for itself (its header's "Datum:", "mit diesem
-Bescheid vom …", else "Place, date" or a date alone in page 1's header) or the reading gives it, with deemed
-delivery after a notification and from that date itself otherwise, carried in the DateSpec so it computes
-without a date in the reading and a corrected letter date never moves it later — or, without a notice, an
-undated "Read this letter yourself". It is always `low` and "Please check" (`reading_incomplete`), also
-when its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning
-says why. A later complete reading removes it unless the person acted on it. No model is asked again and
-the reading itself (its sender, date and remedy) stays as the model gave it.
+period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period, or the
+sentence after it when that one names neither a remedy nor a payment; words split across lines joined as
+quotes are matched) in words that speak of a remedy against *this* letter (not a later decision's, one
+already lodged, a direct debit's, one the letter rules out, or one counted back from an event), its text
+shows an administrative act, it is not filed as a kind whose deadline the law files itself (court payment
+and enforcement orders, dismissals, landlord notices, rent increases) unless the letter's words bear that
+kind out or its notices give no shorter period than the law, and no to-do dates the objection with a
+date that computes (an objection item, or a dated to-do quoting the notice; a `remedy` read without its
+date doesn't count). Either way the letter gets **one** to-do in slot `check:reading`, never with a date
+later than the letter allows: the period of all the notices state (and the sentences after them) that
+ends first, counted from the letter's date — dated only when it is from a week to a month and no notice
+holds a period that can't be read or dated (Werktage, years) or counts back from an event ("zwei Wochen
+vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
+after a portal download; never on formal service); the start is the earliest date the letter gives for
+itself (any page's header date, "mit diesem Bescheid vom …", "Bescheid vom …" in the notice) or the
+reading gives it, carried in the DateSpec — none when those are more than 14 days apart (then no date at
+all), and the letter's date once entered when it gives none. Recomputed, an earlier stored letter date
+or arrival moves it earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never
+apply to it. Without a notice it is an undated "Read this letter yourself". Its quote is the notice's own
+words, at most 600 characters. It is always `low` and "Please check" (`reading_incomplete`), also when
+its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
+why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
+addressed to an AI its action says to send the objection only to an address the person already knows. A
+later complete reading removes it unless the person acted on it. No model is asked again and the reading
+itself (its sender, date and remedy) stays as the model gave it.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**

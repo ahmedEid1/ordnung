@@ -954,7 +954,8 @@ async def _run_stages(
     pages = store.list_pages(document.id)
     if not prompt_pages(pages):
         raise ExtractionError(NO_TEXT_ERROR)
-    warnings += injection_warnings(pages)
+    injected = injection_warnings(pages)
+    warnings += injected
     _refuse_trashed(store, document.id)
     await progress.stage("extract")
     extraction = await extract_document(
@@ -966,7 +967,13 @@ async def _run_stages(
     )
     await progress.stage("verify")
     verification = await asyncio.to_thread(
-        verify_extraction, document.id, extraction, pages, trace=trace, check_reading=True
+        verify_extraction,
+        document.id,
+        extraction,
+        pages,
+        trace=trace,
+        check_reading=True,
+        injected=bool(injected),
     )
     await progress.stage("compute")
     profile = store.get_profile()

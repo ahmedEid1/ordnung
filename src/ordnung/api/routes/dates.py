@@ -20,7 +20,7 @@ from typing import Any
 
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals
-from ordnung.ingest.gaps import CHECK_SLOT
+from ordnung.ingest.gaps import CHECK_SLOT, check_reasons
 from ordnung.ingest.plan import (
     VerifiedItem,
     checked_evidence,
@@ -39,7 +39,7 @@ from ordnung.ingest.plan import (
     sync_rule_items,
     with_payment_note,
 )
-from ordnung.ingest.verify import READING_INCOMPLETE, ground_evidence
+from ordnung.ingest.verify import ground_evidence
 from ordnung.models import (
     ComputationReceipt,
     DateNature,
@@ -100,7 +100,7 @@ def _verified(
     if evidence is not None and item.grounding != "user":
         reasons = consistency_reasons(extracted, pages)
         if item.slot_key == CHECK_SLOT:
-            reasons = (*reasons, READING_INCOMPLETE)
+            reasons = check_reasons(reasons)
         rivals = find_rivals(extracted, [extracted, *others], pages)
     grounding = "user" if item.grounding == "user" else (evidence.grounding if evidence else "unverified")
     graded = (evidence or _placeholder_evidence(item)).model_copy(update={"grounding": grounding})

@@ -104,6 +104,14 @@ def _clusters(text: str) -> Iterator[tuple[int, str]]:
             start = index
 
 
+def join_hyphenated(text: str) -> str:
+    """``text`` with every word split across lines by a hyphen joined again ("Wider-\\nspruch" →
+    "Widerspruch") — exactly where :func:`normalise_with_map` joins them (a lowercase continuation only:
+    "Miet-\\nWohnung" stays as it is)."""
+    skipped = _hyphen_break_indices(text)
+    return "".join(char for index, char in enumerate(text) if index not in skipped) if skipped else text
+
+
 def _hyphen_break_indices(text: str) -> set[int]:
     """Indices of hyphen + line-break runs that split one word across lines."""
     skipped: set[int] = set()

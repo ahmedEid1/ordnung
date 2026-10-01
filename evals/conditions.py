@@ -462,7 +462,9 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
         extraction = await extract_document(llm, data, model=model)
     except (ExtractionError, ClaudeBadOutput) as exc:
         return base.model_copy(update={"failed": str(exc), "warnings": warnings, "signals": signals})
-    verification = verify_extraction(entry.id, extraction, pages, check_reading=True)
+    verification = verify_extraction(
+        entry.id, extraction, pages, check_reading=True, injected=bool(found_injection)
+    )
     if any(verified.slot_key == CHECK_SLOT for verified in verification.items):
         signals.append("reading_incomplete")
     # the placeholder of an empty reading without a remedy notice names no obligation: it is never scored

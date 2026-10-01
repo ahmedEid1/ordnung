@@ -365,24 +365,39 @@ Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the 
 
 A reading can come back without the deadline to object although the letter states it: almost blank (no
 to-do, sender, letter date, key fact, reference, contract, change, payment or remedy), or without any to-do
-that dates an objection on a letter whose visible text shows an administrative act and is not one of the
-kinds whose deadlines the law files itself (§ 7). Code then reads the letter's own instructions on how to
-object (`ingest/gaps.py`, SPEC § 8; no model call) and files **one** to-do, always `low` and "Please check":
+that dates an objection on a letter whose visible text shows an administrative act, with a notice that
+speaks of a remedy against that letter (not a later decision's, one already lodged, a direct debit's or one
+the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps.py`, SPEC
+§ 8; no model call) and files **one** to-do, always `low` and "Please check". Its date is never later than
+the letter allows:
 
-- **The notice.** A sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an appeal with a
-  period of 1 to 12 days, weeks or months ("Monatsfrist" is one month) — or, without one, the sentence after
-  it when that names neither a remedy nor a payment. A period before an event ("vor Ablauf …") is none.
-  Of several, the **shortest** period counts (a month as 31 days), so a planted longer one never makes the
-  date later.
-- **The start.** The earliest date the letter gives for itself — its header's "Datum:", "mit diesem Bescheid
-  vom …"; without those, "Place, (den) date" or a date alone in page 1's header — or the reading's date if
-  earlier. A notice that counts from notification (*Bekanntgabe*) gets deemed delivery from that date (§ 5:
-  the 3rd or 4th day); one from formal service or arrival, or naming no start, counts from that date itself,
-  with no delivery days — the earliest it can have arrived. When several notices name different starts, no
-  delivery days count (four weeks after notification can end after one month from service).
-- **Kept the safe side.** The start travels in the DateSpec (`anchor_date`): a letter date the person
-  corrects later never moves deemed delivery later (the earlier of the two counts), and a start from service
-  is fixed. The person can set the to-do's date directly; confirming it ends "Please check".
+- **The period.** Every period a sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an
+  appeal states — and the sentence after it, when that names neither a remedy nor a payment ("Monatsfrist"
+  is one month; words split across lines are joined). The one that **ends first** counts, counted in the
+  calendar from the letter's date (from 1 Feb, one month ends on 1 Mar, 30 days on 3 Mar), so a planted
+  longer period never makes the date later. It is dated only when it lasts from a week to a month — every
+  domestic remedy period does (§ 70/§ 74 VwGO, § 355 AO, § 47 FGO, § 84/§ 87 SGG, § 67 OWiG, § 410 StPO,
+  § 692 ZPO) — and when no notice holds a period that can't be read or dated (Werktage, years, "binnen
+  eines Kalendermonats") or that counts back from an event ("spätestens zwei Monate vor Mietende"):
+  otherwise the to-do has no date, to be found in the letter. A period shorter than a week (an attacker's
+  "binnen eines Tages") never puts a date on Today.
+- **The start.** The earliest date the letter gives for itself — any page's header date ("Datum:", "Datum
+  …", "Bescheiddatum:", "Erstellt am", "Place, (den) date", a date alone in the header; never a due day, a
+  validity, an appointment or a date after a weekday), "mit diesem Bescheid vom …", "Bescheid vom …" in
+  the notice — or the reading's date if earlier. When these are more than **14 days** apart one of them is
+  another's (planted, an earlier decision's), so the to-do has no date rather than a wrong one. A letter
+  giving no date at all counts from its date once the person enters it.
+- **Delivery days.** Deemed delivery (§ 5: the 3rd or 4th day) is added only when every notice counts from
+  notification (*Bekanntgabe*) and its period ends first from any start delivery can give; from a portal,
+  the day after the earliest download. A notice from formal service or arrival, one naming no start, a
+  letter served by *Postzustellungsurkunde*, or notices naming different starts count from the letter's
+  date with no delivery days. A sender filed as a company keeps that start and only loses the delivery
+  days.
+- **Kept the safe side.** The start travels in the DateSpec (`anchor_date`). Recomputed, an earlier letter
+  date the person enters, or (for a period from service or arrival) an earlier arrival, moves the to-do
+  earlier; a later one never moves it later. The person can set its date directly; confirming it ends
+  "Please check". The letter rules for the model's readings (§ 574b BGB counting back from a tenancy's
+  end) never apply to it.
 - **Without a notice** the to-do is an undated "Read this letter yourself".
 
 | Letter dated | Notice | Sender's Land | Delivered | Deadline |
@@ -390,6 +405,8 @@ object (`ingest/gaps.py`, SPEC § 8; no model call) and files **one** to-do, alw
 | Fri 6 Nov 2026 | one month after notification | unknown (3rd day, the app's case) | Mon 9 Nov | **Wed 9 Dec 2026** |
 | Fri 6 Nov 2026 | one month after notification | Hamburg (4th day) | Tue 10 Nov | **Thu 10 Dec 2026** |
 | Fri 6 Nov 2026 | one month after formal service or arrival, or no start named | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+| Fri 6 Nov 2026 | one month after notification, sender filed as a company | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+| Mon 1 Feb 2027 | one month and 30 days after service | any | counted from the letter's date | **Mon 1 Mar 2027** (one month ends first) |
 
 ---
 

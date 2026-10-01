@@ -1599,11 +1599,14 @@ def iban_fails_checksum(doc: Document) -> bool:
 
 
 #: Warnings that are no scam sign of their own: the reading's count of dates it couldn't confirm, a "Please
-#: check" note, and text meant for software — said once, as hidden text (as ``otherWarnings`` and
+#: check" note, the note that the reading came back incomplete (``ordnung.ingest.gaps.gap_warning``), and text
+#: meant for software — said once, as hidden text (as ``otherWarnings``, ``scamSigns`` and
 #: ``isHiddenTextWarning`` in ``web/src/features/document/Warnings.tsx``).
 _NOT_A_SIGN = re.compile(
     r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
-    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection",
+    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection"
+    r"|^Claude's reading of this letter came back almost blank|^This letter explains how to (?:object|challenge it "
+    r"in court), but Claude's reading",
     re.I,
 )
 HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."

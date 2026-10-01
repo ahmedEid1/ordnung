@@ -34,7 +34,7 @@ from typing import Any, Literal
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, settle, settle_law
-from ordnung.ingest.gaps import CHECK_SLOT, check_item, gap_warning
+from ordnung.ingest.gaps import CHECK_SLOT, check_item, check_reasons, gap_warning, start_variants
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -42,7 +42,6 @@ from ordnung.ingest.verify import (
     DATE_NOT_IN_QUOTE,
     DATE_WITHOUT_YEAR,
     DAY_OF_MONTH_NOT_IN_QUOTE,
-    READING_INCOMPLETE,
     WORKING_DAY_NOT_IN_QUOTE,
     DateMention,
     DueDay,
@@ -101,6 +100,7 @@ from ordnung.rules.advice import (
     statement_late,
 )
 from ordnung.rules.deadlines import parse_date
+from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import (
     DerivedDeadline,
     alternative_notice,
@@ -387,11 +387,12 @@ def _verify_item(
     others: Sequence[ExtractedItem],
     index: int,
     trace: Span,
-    extra_reasons: tuple[str, ...] = (),
 ) -> VerifiedItem:
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
-        reasons = (*consistency_reasons(item, pages), *extra_reasons)
+        reasons = consistency_reasons(item, pages)
+        if key == CHECK_SLOT:  # Ordnung's own to-do: graded as such (ordnung.ingest.gaps.check_reasons)
+            reasons = check_reasons(reasons)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
         day = day_evidence(doc_id, item, pages)
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
@@ -431,6 +432,7 @@ def verify_extraction(
     *,
     trace: Span = NO_SPAN,
     check_reading: bool = False,
+    injected: bool = False,
 ) -> Verification:
     """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
 
@@ -438,7 +440,9 @@ def verify_extraction(
     against the letter's visible text: an implausibly empty one, or one that leaves out the objection deadline
     the letter's remedy notice states, gets one more to-do in slot :data:`~ordnung.ingest.gaps.CHECK_SLOT`
     (:func:`~ordnung.ingest.gaps.check_item`, graded ``READING_INCOMPLETE``: ``low`` and "Please check") and a
-    warning that says why.
+    warning that says why — and, for a court action the reading's remedy doesn't name, the "get advice"
+    warning a Klage gets (:func:`remedy_warnings`). ``injected``: the letter carries text addressed to an AI
+    (the to-do's action then says where to send the objection).
 
     ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`); a reading
     found incomplete adds what was wrong and which to-do it got (:func:`ordnung.trace.facts.reading_check`).
@@ -479,27 +483,33 @@ def verify_extraction(
                 trace=step,
             ),
         )
-        found = check_item(extraction, pages) if check_reading else None
+        found = check_item(extraction, pages, injected=injected) if check_reading else None
         if found is not None:
-            gap, check, kind = found
             items.append(
                 _verify_item(
                     doc_id,
-                    check,
+                    found.item,
                     CHECK_SLOT,
                     pages,
                     others=extraction.items,
                     index=len(items),
                     trace=step,
-                    extra_reasons=(READING_INCOMPLETE,),
                 )
             )
-            step.set(**facts.reading_check(gap, kind))
+            step.set(**facts.reading_check(found.gap, found.kind))
         verification.warnings = _verification_warnings(verification)
         if found is not None:
-            verification.warnings.append(gap_warning(gap, kind))
+            verification.warnings.append(gap_warning(found.gap, found.kind, found.remedy))
+            if found.remedy == "klage" and (extraction.remedy is None or extraction.remedy.type != "klage"):
+                verification.warnings += remedy_warnings(Remedy(type="klage"))
         grounded = [
-            *(evidence for verified in items for evidence in verified.all_evidence),
+            # the placeholder "Read this letter yourself" quotes nothing: it is no quote looked for
+            *(
+                evidence
+                for verified in items
+                for evidence in verified.all_evidence
+                if verified.slot_key != CHECK_SLOT or verified.item.quote
+            ),
             *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
             *verification.contract_evidence,
             *(e for e in (verification.change_evidence, verification.remedy_evidence) if e is not None),
@@ -721,12 +731,20 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     is the period's own words too (``RuleContext.quote``): for a sender filed as private, one naming an
     administrative act keeps a late arrival from moving the date later, as the spec's words do
     (:func:`ordnung.rules.deadlines.may_be_public`); it never brings deemed delivery back.
+
+    The to-do code files for an incomplete reading (:data:`~ordnung.ingest.gaps.CHECK_SLOT`) gets the earliest
+    date of its own start and every earlier one the letter's dates as stored allow
+    (:func:`~ordnung.ingest.gaps.start_variants`), so neither a corrected letter date nor an arrival day can
+    move it later, and a note when the letter's own date is earlier than the one stored.
     """
     spec = verified.item.date
     if spec.type == "none":
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
     ctx = replace(ctx, quote=verified.item.quote)
-    receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
+    if verified.slot_key == CHECK_SLOT:
+        receipt = _check_receipt(verified, ctx, postal_buffer_days=postal_buffer_days)
+    else:
+        receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
     fixed = spec.type == "fixed"
     settled = settle(receipt, verified.item, verified.rivals, ctx, postal_buffer_days=postal_buffer_days)
     if settled is not None:
@@ -739,6 +757,29 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         source=source,
         conflict=settled is not None,
     )
+
+
+def _check_receipt(
+    verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days: int
+) -> ComputationReceipt:
+    """The receipt of the code-made to-do (:func:`compute_item`): the earliest of its start variants."""
+    spec = verified.item.date
+    receipts = [
+        grade_receipt(compute_due(variant, variant_ctx, postal_buffer_days=postal_buffer_days), verified)
+        for variant, variant_ctx in start_variants(spec, ctx)
+    ]
+    dated = [receipt for receipt in receipts if receipt.due_date is not None]
+    receipt = min(dated, key=lambda found: found.due_date or "") if dated else receipts[0]
+    written = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
+    stored = ctx.document_date
+    if written is not None and stored is not None and written < stored:
+        note = (
+            f"The letter gives {fmt_date(written)} for itself, earlier than the date stored for it "
+            f"({fmt_date(stored)}), so we count from {fmt_date(written)} to be safe — change this to-do's date "
+            "if the letter says otherwise."
+        )
+        receipt = receipt.model_copy(update={"warnings": [*receipt.warnings, note]})
+    return receipt
 
 
 def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:

@@ -7,29 +7,51 @@ photo's transcript; never ``Page.hidden``), with two rules (:func:`reading_gap`;
 
 * ``empty`` — nothing a person could act on or file came back: no to-do, no sender, no letter date, no key
   fact, no reference, no contract, change or payment details, and no remedy;
-* ``remedy_left_out`` — the letter explains how to object within a period (:func:`remedy_notices`) and shows
-  an administrative act, but no to-do of the reading dates the objection (whatever its ``remedy`` field
-  says). Never for the kinds of letter whose deadlines the law already files (:data:`LAW_DATED_KINDS`).
+* ``remedy_left_out`` — the letter explains how to object within a period (:func:`remedy_notices`) in words
+  that speak of a remedy against *this* letter (:attr:`RemedyNotice.live`), its text shows an administrative
+  act, and no to-do of the reading dates the objection (whatever its ``remedy`` field says). Never for a
+  kind of letter whose deadline the law files itself (:data:`LAW_DATED_KINDS`) when the letter bears that
+  kind out.
 
 Either way the letter gets **one** to-do in slot :data:`CHECK_SLOT` (:func:`check_item`), always ``low`` and
-"Please check" (:data:`~ordnung.ingest.verify.READING_INCOMPLETE`): the objection deadline the letter's own
-notice states — its shortest period, counted from the earliest date the letter gives for itself
-(:func:`letter_date`), so a period or a date planted in the letter can only make it earlier — or, without a
-notice, an undated "Read this letter yourself". Nothing here calls a model; the reading itself (its sender,
-date and remedy) stays as the model gave it.
+"Please check" (:data:`~ordnung.ingest.verify.READING_INCOMPLETE`). Its date is never later than the letter
+allows:
+
+* **the period** is the one of every period the notices state (and the sentence after each, when that one
+  goes on about it) that ends first, counted from the letter's date; it is dated only when that is at least a
+  week and at most a month (every domestic remedy period is: § 70/§ 74 VwGO, § 355 AO, § 47 FGO, § 84/§ 87
+  SGG, § 67 OWiG, § 410 StPO, § 692 ZPO), and when no notice holds a period that can't be read or dated
+  (Werktage, years) or that counts back from an event ("zwei Wochen vor …") — otherwise the to-do is filed
+  without a date, to be found in the letter;
+* **the start** is the earliest date the letter gives for itself (:func:`letter_date`: its header's date on
+  any page, "Bescheid vom …" in the notice) or the reading gives it — none when those are more than two
+  weeks apart. Deemed delivery is added only when every notice counts from notification, by post (or the
+  day after a portal download), never on formal service. Recomputed later, an earlier letter date or
+  arrival still moves it earlier (:func:`start_variants`), never later;
+* without a notice it is an undated "Read this letter yourself".
+
+Nothing here calls a model; the reading itself (its sender, date and remedy) stays as the model gave it.
 """
 
 from __future__ import annotations
 
+import calendar
 import re
 from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import date
-from typing import Literal
+from dataclasses import dataclass, replace
+from datetime import date, timedelta
+from typing import Literal, NamedTuple
 
 from ordnung.ingest.conflicts import header, letter_statements, sentences
-from ordnung.ingest.normalize import fold_punctuation
-from ordnung.ingest.verify import PageInput, date_spans, parse_periods
+from ordnung.ingest.normalize import fold_punctuation, join_hyphenated
+from ordnung.ingest.verify import (
+    DATE_NOT_IN_QUOTE,
+    PERIOD_NOT_IN_QUOTE,
+    READING_INCOMPLETE,
+    PageInput,
+    date_spans,
+    parse_periods,
+)
 from ordnung.models import (
     DateSpec,
     DocumentExtraction,
@@ -38,59 +60,165 @@ from ordnung.models import (
     ExtractedItem,
     PaymentDetails,
 )
+from ordnung.rules import RuleContext
 from ordnung.rules.delivery import shows_administrative_act
-from ordnung.rules.routing import letter_kind
+from ordnung.rules.routing import letter_kind, special_rule
 
 __all__ = [
     "CHECK_SLOT",
     "LAW_DATED_KINDS",
+    "Check",
     "CheckKind",
     "Gap",
     "RemedyNotice",
     "check_item",
+    "check_reasons",
     "gap_warning",
     "letter_date",
     "reading_gap",
     "remedy_notices",
+    "start_variants",
 ]
 
 #: Slot of the to-do code files for an incomplete reading (one per letter).
 CHECK_SLOT = "check:reading"
 #: The kinds of letter whose deadlines the law files itself (``routing.derived_deadlines``, through
-#: ``plan.law_deadlines``): a court payment order read as "pay" still gets "pay or object", so a reading
-#: that leaves their objection out is no gap.
+#: ``plan.law_deadlines``): a court payment order read as "pay" still gets "pay or object".
 LAW_DATED_KINDS = frozenset(
     {"court_payment_order", "enforcement_order", "dismissal", "landlord_notice", "rent_increase"}
 )
+#: The shortest deadline the law gives each of those kinds, in days (two weeks for a court's payment or
+#: enforcement order, three for a dismissal, two months for a rent increase; a landlord's notice counts back
+#: from the tenancy's end, so no notice period vouches for it).
+_LAW_DAYS: dict[str, int] = {
+    "court_payment_order": 14,
+    "enforcement_order": 14,
+    "dismissal": 21,
+    "rent_increase": 59,
+}
+#: What the letter's own words must say for a reading's law-dated kind to count without such a period.
+_LAW_WORDS: dict[str, tuple[re.Pattern[str], ...]] = {
+    "court_payment_order": (re.compile(r"mahnbescheid|mahngericht", re.I),),
+    "enforcement_order": (re.compile(r"vollstreckungsbescheid", re.I),),
+    "dismissal": (re.compile(r"kündig", re.I), re.compile(r"arbeitsverh(?:ä|ae)ltnis", re.I)),
+    "landlord_notice": (re.compile(r"kündig", re.I), re.compile(r"miet|wohnung", re.I)),
+    "rent_increase": (re.compile(r"mieterh(?:ö|oe)hung|§\s*558", re.I),),
+}
 
 Gap = Literal["empty", "remedy_left_out"]
-#: The to-do :func:`check_item` files: a dated objection deadline, one whose start the letter doesn't give,
-#: or an undated "Read this letter yourself".
+#: The to-do :func:`check_item` files: a dated objection deadline, one Ordnung couldn't date, or an undated
+#: "Read this letter yourself".
 CheckKind = Literal["dated", "undated", "read_yourself"]
 Unit = Literal["days", "weeks", "months"]
 
-_REMEDY = re.compile(
-    r"widerspr\w*|einspr\w*|\bklage\w*|\bklagen\b|\bobjection\w*|\bobject\b|\bappeal\w*", re.IGNORECASE
-)
-_GERMAN_REMEDY = re.compile(r"widerspr\w*|einspr\w*|\bklage\w*|\bklagen\b", re.IGNORECASE)
+
+class Check(NamedTuple):
+    """What :func:`check_item` found: why the reading is incomplete, the to-do, which kind it is, and the
+    remedy the notice names (``""`` for the placeholder)."""
+
+    gap: Gap
+    item: ExtractedItem
+    kind: CheckKind
+    remedy: str
+
+
+_REMEDY = re.compile(r"widerspr\w*|einspr\w*|\bklage\w*|\bobjection\w*|\bobject\b|\bappeal\w*", re.IGNORECASE)
+_GERMAN_REMEDY = re.compile(r"widerspr\w*|einspr\w*|\bklage\w*", re.IGNORECASE)
+#: The decision a remedy was already lodged against names no remedy: "in Gestalt dieses Widerspruchsbescheids
+#: kann … Klage …" is a court action.
+_DECISION_ON_REMEDY = re.compile(r"\w*(?:widerspruchsbescheid|einspruchsentscheidung)\w*", re.IGNORECASE)
 #: A sentence after the notice that speaks of money is no part of it.
 _PAYMENT = re.compile(r"zahl|überweis|fällig|betrag|\bpay\w*|\bdue\b", re.IGNORECASE)
 _MONTH_PERIOD = re.compile(r"\bmonatsfrist\b", re.IGNORECASE)
-#: A period that ends before an event ("vor Ablauf …") is no period to object within.
-_BACKWARD = re.compile(r"\bvor\s+(?:der|dem|ablauf|beendigung|ende)\b|\bbefore\s+the\s+end\b", re.IGNORECASE)
+#: A notice that is no live remedy against this letter: a later decision's, one already lodged or that should
+#: have been, a direct debit's, or one the letter rules out (only whether the check fires: never its date).
+_NOT_LIVE = re.compile(
+    r"(?:späteren|künftigen)\s+\w*bescheid|\bhätten\b|\beingelegt\s+haben\b|"
+    r"\b(?:ist|sind|wurde|wurden)\s+(?:\S+\s+){0,4}?eingegangen\b|"
+    r"\bbegründen\s+Sie\s+(?:Ihren|Ihre|die|den)\s+(?:widerspruch|einspruch|klage)|"
+    r"lastschrift|\bkein(?:en)?\s+(?:neuer\s+)?(?:bescheid|verwaltungsakt)\b|"
+    r"(?:widerspruch|einspruch)\w*\s+(?:\w+\s+){0,3}(?:ist|sind)\s+(?:\w+\s+){0,2}nicht\s+(?:möglich|zulässig|statthaft)",
+    re.IGNORECASE,
+)
+#: The sentence after a notice without a period of its own speaks of the remedy's period when it says so.
+_LIVE_FOLD = re.compile(
+    r"frist|bekanntgabe|bekannt\s*gegeben|zustell|zugang|zugegangen|beginnt|einzulegen|zu\s+erheben|einzureichen",
+    re.IGNORECASE,
+)
+_CONTRADICTORY = re.compile(r"widersprüchlich\w*", re.IGNORECASE)
+_UNIT_WORD = r"(?:tag|tage|tagen|tages|woche|wochen|monat|monate|monaten|monats|jahr|jahre|jahren|jahres|days?|weeks?|months?|years?)"
+#: A period counted back from an event: its unit followed by "vor", "bevor", "before" or "prior to".
+_BACKWARD = re.compile(
+    rf"\b{_UNIT_WORD}\b[\s,]*(?:(?!klage|widerspr|einspr)[^\W\d_]+[\s,]+){{0,2}}?(?:vor|bevor|before|prior\s+to)\b",
+    re.IGNORECASE,
+)
+#: A start that runs forward from this letter.
+_FORWARD = re.compile(
+    r"\b(?:nach|ab|seit|mit)\s+(?:\w+\s+){0,3}?(?:bekanntgabe|zustellung|zugang|erhalt|eingang|empfang)\b"
+    r"|bekannt\s*gegeben|zugestellt|zugegangen"
+    r"|\b(?:after|of|from|following)\s+(?:the\s+)?(?:notification|service|receipt|delivery)\b|\bnotified\b",
+    re.IGNORECASE,
+)
+#: A period written in a form the parser can't count ("einen Kalendermonat", "14-tägig", "Zweiwochenfrist").
+_ODD_PERIOD = re.compile(
+    r"kalender(?:woche|monat|jahr)\w*|(?:\d+\s*-?\s*|\b\w+)(?:tägig|wöchig|monatig)\w*|\b\w*(?:wochen|monats|tages)frist\b",
+    re.IGNORECASE,
+)
+#: A number and a unit within a few words: where a period is written (to bound the quote around it).
+_PERIOD_WORDS = re.compile(
+    rf"(?:\b\d+|\b(?:ein|eine|einen|eines|einem|einer|one|a|an|zwei|two|drei|three|vier|four|fünf|five|sechs|six|sieben|seven|acht|eight"
+    rf"|neun|nine|zehn|ten|elf|eleven|zwölf|twelve|vierzehn|fourteen|zwanzig|twenty|dreißig|dreissig|thirty))\W+"
+    rf"(?:[^\W\d_]+\W+){{0,2}}?\w*{_UNIT_WORD}\b|monatsfrist",
+    re.IGNORECASE,
+)
 #: Counted from notification (Bekanntgabe): deemed delivery after the letter's date.
-_NOTIFIED = re.compile(r"bekanntgabe|bekannt\s*gegeben|bekanntgegeben|\bnotif\w*", re.IGNORECASE)
+_NOTIFIED = re.compile(r"bekanntgabe|bekannt\s*gegeben|\bnotif(?:ication|ied)\b", re.IGNORECASE)
 #: Counted from formal service or arrival: from the letter's date itself, the earliest it can have arrived.
 _ARRIVAL = re.compile(
     r"zustell\w*|zugestellt|\bzugang\b|zugegangen|\berhalt\b|\breceipt\b|\bservice\b|\bserved\b",
     re.IGNORECASE,
 )
-#: "Musterstadt, 06.11.2026" / "Musterstadt, den 06.11.2026": a place and the letter's date on page 1.
+#: Formal service (Postzustellungsurkunde and the like): notified on the day it is served, no delivery days.
+_FORMAL_SERVICE = re.compile(
+    r"zustellungsurkunde|empfangsbekenntnis|rückschein|persönlich\s+(?:ausgehändigt|übergeben)", re.IGNORECASE
+)
+#: Provided for download (a portal or electronic mailbox): the day after the earliest download.
+_PORTAL = re.compile(
+    r"zum\s+(?:abruf|download)\s+bereit\w*|bürgerportal|nutzerkonto|elektronisch\w*\s+(?:post)?fach|online-?postfach",
+    re.IGNORECASE,
+)
+#: "Musterstadt, 06.11.2026" / "Musterstadt, den 06.11.2026": a place and the letter's date.
 _PLACE_DATE = re.compile(r"^[A-ZÄÖÜ][\w .\-/()]{1,40},\s*(?:den\s+)?$")
-#: A line that labels the date under it as another one ("Antrag vom", "geboren am").
+#: "Datum 06.11.2026", "Bescheiddatum: …", "Erstellt am …": a label of the letter's own date.
+_DATE_LABEL = re.compile(
+    r"(?:^|[\s·|])(?:\w*datum|date|(?:erstellt|ausgestellt)\s+am)\s*:?\s*$", re.IGNORECASE
+)
+#: A line that labels the date under or after it as another one ("Antrag vom", "geboren am").
 _ANOTHER = re.compile(r"\b(?:vom|seit|bis|ab|am|zum|antrag\w*|geboren|geburtsdatum)\s*:?\s*$", re.IGNORECASE)
+#: Words of a date that is not the letter's: a due day, a validity, an appointment, a weekday before it.
+_OTHER_DATE = re.compile(
+    r"\b(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag|monday|tuesday|wednesday"
+    r"|thursday|friday|saturday|sunday|valid\w*|until|due|bis|ab|am|zum|vom|seit)\b|fällig|zahlung|zahlbar|"
+    r"gültig|termin|anhörung|beginn|geburt|ablauf|liefer|leistung|zeitraum|frist|eingang|antrag|\bende\b",
+    re.IGNORECASE,
+)
+_CREATED_ON = re.compile(r"(?:erstellt|ausgestellt)\s+am", re.IGNORECASE)
+#: "Bescheid vom 01.10.2026" in a notice: the decision it is about was issued then.
+_ISSUED = re.compile(r"(?:bescheid\w*|schreiben\w*|verfügung)\s+vom\s*$", re.IGNORECASE)
+_RESHAPED = re.compile(r"\s*in\s+(?:der\s+)?gestalt\s+(?:dieses|des|der)\b", re.IGNORECASE)
+
 _UNITS: dict[str, Unit] = {"days": "days", "weeks": "weeks", "months": "months"}
 _DAYS: dict[str, int] = {"days": 1, "weeks": 7, "months": 31}
+#: The periods dated: at most a month (every domestic remedy period), at least a week (none is shorter; an
+#: attacker's "binnen eines Tages" gets no date to push onto Today).
+_DATABLE_MAX: dict[str, int] = {"days": 31, "weeks": 4, "months": 1}
+_DATABLE_MIN_DAYS = 7
+#: The letter's dates for itself more than this far apart: one of them is another's, so no start is taken.
+LETTER_DATE_SPAN = 14
+#: How many days deemed delivery can take (the 4th day, moved past a weekend and Easter, or a little more).
+_DELIVERY_REACH = 35
+#: The longest quote a code-made to-do keeps (the notice's words around its remedy and its period).
+QUOTE_CAP = 600
 _REMEDIES = (("widerspr", "widerspruch"), ("einspr", "einspruch"), ("klage", "klage"))
 _TITLES = {
     "widerspruch": "Deadline to object (Widerspruch)",
@@ -103,46 +231,67 @@ DEADLINE_ACTION = (
     "this date out from the letter's own instructions on how to object — check it against the letter first."
 )
 DEADLINE_CONSEQUENCE = "After this date the decision can usually no longer be challenged."
+KLAGE_ACTION = (
+    "If you disagree with this decision, a court action (Klage) must reach the court the letter names by this "
+    "date — a letter to the authority does not stop this deadline. Get advice (e.g. a Verbraucherzentrale) well "
+    "before it. Ordnung worked this date out from the letter's own instructions — check it against the letter first."
+)
+KLAGE_CONSEQUENCE = "After this date the decision can usually no longer be challenged in court."
+#: Added to the action when the letter carries text addressed to an AI: where to send it.
+KNOWN_ADDRESS = (
+    "Send it only to an address you already know for this authority or court — not to a link, e-mail address or "
+    "phone number in this letter."
+)
 PLACEHOLDER_ACTION = (
-    "Claude's reading of this letter came back almost blank. Read the letter, add any date it asks you to act "
-    "by, then mark this to-do done."
+    "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do "
+    "something by a date, give this to-do that date, and mark it done only once you have done what the letter asks."
 )
 _PREFIX: dict[Gap, str] = {
     "empty": "Claude's reading of this letter came back almost blank: the sender, the letter's date and its "
     "to-dos were all left out.",
     "remedy_left_out": "This letter explains how to object, but Claude's reading left out the deadline to object.",
 }
+_COURT_PREFIX = (
+    "This letter explains how to challenge it in court, but Claude's reading left out the deadline for the court "
+    "action."
+)
 _SUFFIX: dict[CheckKind, str] = {
-    "dated": "Ordnung worked the deadline out from the letter's own instructions on how to object "
+    "dated": "Ordnung added the deadline from the letter's own instructions on how to object "
     "(Rechtsbehelfsbelehrung) — please check it against the letter before you rely on it.",
     "undated": "Ordnung found the letter's instructions on how to object but couldn't work out the deadline from "
-    "them — please find it in the letter and enter it.",
-    "read_yourself": "Please read the letter yourself and add anything it asks you to do.",
+    "them — please find it in the letter and enter it with “Set a date”.",
+    "read_yourself": "Please read the letter yourself; if it asks you to do something by a date, give the to-do "
+    "“Read this letter yourself” that date.",
 }
 
 
 @dataclass(frozen=True)
 class RemedyNotice:
-    """A sentence of the letter that says how to object within a period — with the sentence after it when that
-    one goes on about the period: its words (``quote``, as folded), the page it is on, the period, whether it
-    counts from notification (``notified``: deemed delivery) or from service or arrival, and the remedy it
-    names (``widerspruch``, ``einspruch``, ``klage`` or ``objection``)."""
+    """A sentence of the letter that names a remedy and a period — with the sentence after it when that one
+    neither names a remedy nor speaks of money (a notice's period is often there).
 
-    page: int
+    ``quote``: its words around the remedy and the period, at most :data:`QUOTE_CAP` characters (``text``: all
+    of them); ``periods``: every period of days, weeks or months it states, as ``(amount, unit)``;
+    ``notified``: counted from notification (deemed delivery), not from service or arrival; ``remedy``:
+    ``widerspruch``, ``einspruch``, ``klage`` or ``objection``; ``live``: a remedy against this letter, not
+    a later decision's, one already lodged, a direct debit's, one ruled out or one counted back from an event
+    (whether the check fires — a notice that isn't live still counts for the date);
+    ``datable``: every period it states can be read and runs forward, and its words fit the quote;
+    ``issued``: the dates of the decisions it names ("Bescheid vom …")."""
+
     quote: str
-    amount: int
-    unit: Unit
+    text: str
+    periods: tuple[tuple[int, Unit], ...]
     notified: bool
     remedy: str
+    live: bool
+    datable: bool
+    issued: tuple[date, ...]
 
     @property
     def days(self) -> int:
-        """The period's length for ranking, a month as 31 days."""
-        return self.amount * _DAYS[self.unit]
-
-
-def _page_number(page: PageInput) -> int:
-    return page[0] if isinstance(page, tuple) else page.page
+        """Its shortest period's length for ranking, a month as 31 days (a very long one without a period)."""
+        return min((amount * _DAYS[unit] for amount, unit in self.periods), default=10**6)
 
 
 def _visible(page: PageInput) -> str:
@@ -150,48 +299,129 @@ def _visible(page: PageInput) -> str:
     return page[1] if isinstance(page, tuple) else page.text
 
 
+def _flat(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _matchable(text: str) -> str:
+    """Text as compared with a quote: punctuation folded, case and whitespace ignored."""
+    return _flat(fold_punctuation(join_hyphenated(text))).casefold()
+
+
 def _remedy(sentence: str) -> str:
-    found = _REMEDY.search(sentence)
+    found = _REMEDY.search(_DECISION_ON_REMEDY.sub(" ", sentence))
     word = found.group().casefold() if found else ""
     return next((remedy for stem, remedy in _REMEDIES if word.startswith(stem)), "objection")
 
 
+class _Periods(NamedTuple):
+    good: tuple[tuple[int, Unit], ...]  # days, weeks or months, more than nothing
+    odd: bool  # a period that can't be read or counted (Werktage, years, none at all, "Kalendermonat")
+
+    @property
+    def found(self) -> bool:
+        return bool(self.good) or self.odd
+
+
+def _periods(text: str) -> _Periods:
+    words = _MONTH_PERIOD.sub("einen Monat", text)
+    read = parse_periods(words)
+    good = tuple((amount, _UNITS[unit]) for amount, unit in read if unit in _UNITS and amount > 0)
+    odd = any(unit not in _UNITS or amount <= 0 for amount, unit in read) or bool(_ODD_PERIOD.search(words))
+    return _Periods(good, odd)
+
+
+def _own_lines(text: str) -> str:
+    """The notice's own lines: from the first that names a remedy or a period (not a heading or the letter's
+    header run into it for want of a full stop)."""
+    lines = text.split("\n")
+    first = next(
+        (index for index, line in enumerate(lines) if _REMEDY.search(line) or _PERIOD_WORDS.search(line)), 0
+    )
+    return "\n".join(lines[first:])
+
+
+def _window(text: str) -> str | None:
+    """The notice's words as a quote: all of its own lines when short, else the stretch from its remedy word
+    to its periods with what fits around it, up to :data:`QUOTE_CAP`; ``None`` when that stretch alone is
+    longer."""
+    text = _own_lines(text)
+    flat = _flat(text)
+    if len(flat) <= QUOTE_CAP:
+        return flat
+    remedy = _REMEDY.search(text)
+    marks = [match.span() for match in _PERIOD_WORDS.finditer(text)]
+    if remedy is not None:
+        marks.append(remedy.span())
+    if not marks:
+        return None
+    low, high = min(start for start, _ in marks), max(end for _, end in marks)
+    if high - low > QUOTE_CAP:
+        return None
+    room = (QUOTE_CAP - (high - low)) // 2
+    start, end = max(0, low - room), min(len(text), high + room)
+    while start > 0 and not text[start - 1].isspace() and start < low:
+        start += 1
+    while end < len(text) and not text[end].isspace() and end > high:
+        end -= 1
+    quote = _flat(text[start:end])
+    return quote if len(quote) <= QUOTE_CAP else None
+
+
+def _issued(text: str) -> tuple[date, ...]:
+    """The dates of the decisions the notice's own lines name ("Gegen den Bescheid vom 01.10.2026 …") — not
+    the one this letter reshapes ("Bescheid vom … in Gestalt dieses Widerspruchsbescheids": its period runs
+    from this letter)."""
+    folded = fold_punctuation(_own_lines(text))
+    return tuple(
+        day
+        for start, end, mention in date_spans(folded)
+        if not mention.ambiguous
+        and (day := mention.as_date()) is not None
+        and _ISSUED.search(folded[:start])
+        and not _RESHAPED.match(folded[end:])
+    )
+
+
 def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
     """Every sentence of the visible text naming a remedy (Widerspruch, Einspruch, Klage, objection, appeal)
-    with a forward period of days, weeks or months (1 to 12) in it — or, when it has none, in it and the
-    sentence after it, which counts only when it names neither a remedy nor a payment. "Monatsfrist" is one
-    month; a period before an event ("vor Ablauf …") is none; of several periods the shortest counts."""
+    with a period in it or in the sentence after it — that one only when it names neither a remedy nor a
+    payment. Words split across lines are joined as quotes are matched ("Wider-\\nspruch"); "Monatsfrist" is
+    one month. A notice whose period can't be read, or counts back from an event without a start from this
+    letter, is kept but can't be dated (:attr:`RemedyNotice.datable`)."""
     found: list[RemedyNotice] = []
     for page in pages:
-        folded = sentences(_visible(page))
+        folded = sentences(join_hyphenated(_visible(page)))
         for index, sentence in enumerate(folded):
             if not _REMEDY.search(sentence):
                 continue
             following = folded[index + 1] if index + 1 < len(folded) else ""
-            candidates = [sentence]
-            if following and not _REMEDY.search(following) and not _PAYMENT.search(following):
-                candidates.append(f"{sentence} {following}")
-            for candidate in candidates:  # the sentence alone first: the next one never changes its period
-                words = _MONTH_PERIOD.sub("einen Monat", candidate)
-                periods = [
-                    (amount, _UNITS[unit])
-                    for amount, unit in parse_periods(words)
-                    if unit in _UNITS and 0 < amount <= 12
-                ]
-                if periods:
-                    break
-            if not periods or _BACKWARD.search(candidate):
+            foldable = bool(following) and not _REMEDY.search(following) and not _PAYMENT.search(following)
+            own = _periods(sentence)
+            after = _periods(following) if foldable else _Periods((), False)
+            if not own.found and not after.found:
                 continue
-            amount, unit = min(periods, key=lambda period: period[0] * _DAYS[period[1]])
-            notified = bool(_NOTIFIED.search(candidate)) and not _ARRIVAL.search(candidate)
+            text = f"{sentence} {following}" if foldable else sentence
+            # the sentence after counts for the date whenever it may go on about the period (the shorter wins),
+            # but for the check to fire only when the notice has no period of its own and it names its start
+            alone = sentence if own.found else text
+            backward = bool(_BACKWARD.search(text)) and not _FORWARD.search(text)
+            quote = _window(text)
             found.append(
                 RemedyNotice(
-                    page=_page_number(page),
-                    quote=" ".join(candidate.split()),
-                    amount=amount,
-                    unit=unit,
-                    notified=notified,
+                    quote=quote if quote is not None else _flat(sentence)[:QUOTE_CAP],
+                    text=_flat(text),
+                    periods=(*own.good, *after.good),
+                    notified=bool(_NOTIFIED.search(text)) and not _ARRIVAL.search(text),
                     remedy=_remedy(sentence),
+                    live=bool(_REMEDY.search(_CONTRADICTORY.sub(" ", sentence)))
+                    and not _NOT_LIVE.search(alone)
+                    and not backward  # counted back from an event (a hearing): no deadline from this letter
+                    and (own.found or bool(_LIVE_FOLD.search(following))),
+                    datable=not (own.odd or (not own.found and after.odd))
+                    and not backward
+                    and quote is not None,
+                    issued=_issued(text),
                 )
             )
     return found
@@ -220,26 +450,6 @@ def _empty(extraction: DocumentExtraction) -> bool:
     )
 
 
-def reading_gap(
-    extraction: DocumentExtraction, pages: Sequence[PageInput], notices: Sequence[RemedyNotice]
-) -> Gap | None:
-    """Why the reading is incomplete (module docstring), or ``None``. Its warnings, kind, title, summary and
-    explanation are never looked at. A left-out objection counts only on a letter whose visible text shows an
-    administrative act (:func:`~ordnung.rules.delivery.shows_administrative_act`: not a direct debit's or a
-    contract's right to object), filed as a kind the law doesn't date itself (:data:`LAW_DATED_KINDS`), and
-    only when no to-do dates an objection — a ``remedy`` the reading copied without its date doesn't count."""
-    if _empty(extraction):
-        return "empty"
-    if (
-        notices
-        and shows_administrative_act("\n".join(_visible(page) for page in pages))
-        and letter_kind(extraction) not in LAW_DATED_KINDS
-        and not any(item.date.nature == "objection" and item.date.type != "none" for item in extraction.items)
-    ):
-        return "remedy_left_out"
-    return None
-
-
 def _iso(value: str | None) -> date | None:
     """An ISO date as the rules engine reads one (``rules.deadlines.parse_date``)."""
     try:
@@ -248,17 +458,78 @@ def _iso(value: str | None) -> date | None:
         return None
 
 
-def _header_dates(pages: Sequence[PageInput]) -> list[date]:
-    """The dates page 1 gives for the letter when no reader of :func:`letter_statements` finds one: on a line of
-    its own before the first remedy, a single date that reads one way and ends the line, either after a place
-    ("Musterstadt, (den) 06.11.2026") or — in the header, not under a line that labels another date ("Antrag
-    vom") — alone. A place's dates first, else the header's."""
-    if not pages:
-        return []
-    lines = fold_punctuation(_visible(pages[0])).splitlines()
+def _computable(spec: DateSpec) -> bool:
+    """Whether a DateSpec gives a date the engine can compute (a model's objection item without one doesn't
+    count as dating the objection)."""
+    if spec.type == "fixed":
+        return _iso(spec.date) is not None
+    if spec.type != "relative" or spec.amount is None or spec.unit is None:
+        return False
+    return spec.anchor != "explicit_date" or _iso(spec.anchor_date) is not None
+
+
+def _dates_the_objection(item: ExtractedItem, notices: Sequence[RemedyNotice]) -> bool:
+    """A to-do of the reading that dates the objection: an objection with a date, or any dated to-do whose
+    quote is part of a notice's words (an objection filed under another nature)."""
+    if not _computable(item.date):
+        return False
+    if item.date.nature == "objection":
+        return True
+    quote = _matchable(item.quote)
+    return bool(quote) and any(quote in _matchable(notice.text) for notice in notices)
+
+
+def _law_dated(extraction: DocumentExtraction, notices: Sequence[RemedyNotice], text: str) -> bool:
+    """A kind of letter whose deadline the law files itself — when the letter's own words bear it out, or its
+    notices give no shorter period than the law (so a reading's laundered kind never brings a later date)."""
+    kind = letter_kind(extraction)
+    if kind not in LAW_DATED_KINDS:
+        return False
+    if all(words.search(text) for words in _LAW_WORDS[kind]):
+        return True
+    law = _LAW_DAYS.get(kind)
+    shortest = min(
+        (
+            amount * {"days": 1, "weeks": 7, "months": 28}[unit]
+            for notice in notices
+            for amount, unit in notice.periods
+        ),
+        default=None,
+    )
+    return law is not None and shortest is not None and shortest >= law
+
+
+def reading_gap(
+    extraction: DocumentExtraction, pages: Sequence[PageInput], notices: Sequence[RemedyNotice]
+) -> Gap | None:
+    """Why the reading is incomplete (module docstring), or ``None``. Its warnings, kind, title, summary and
+    explanation are never looked at. A left-out objection counts only with a live notice
+    (:attr:`RemedyNotice.live`), on a letter whose visible text shows an administrative act
+    (:func:`~ordnung.rules.delivery.shows_administrative_act`: not a direct debit's or a contract's right to
+    object), not filed as a kind the law dates itself (:func:`_law_dated`), and only when no to-do dates the
+    objection (:func:`_dates_the_objection`) — a ``remedy`` the reading copied without its date doesn't count."""
+    if _empty(extraction):
+        return "empty"
+    text = "\n".join(_visible(page) for page in pages)
+    if (
+        any(notice.live for notice in notices)
+        and shows_administrative_act(text)
+        and not _law_dated(extraction, notices, text)
+        and not any(_dates_the_objection(item, notices) for item in extraction.items)
+    ):
+        return "remedy_left_out"
+    return None
+
+
+def _header_dates(page: PageInput) -> list[date]:
+    """The dates a page gives for its letter, on a line of their own before its first remedy: one date that
+    reads one way and ends the line, after a date label ("Datum 06.11.2026", "Bescheiddatum:", "Erstellt
+    am"), after a place ("Musterstadt, (den) 06.11.2026") or — in the page's header, not under a line that
+    labels another date ("Antrag vom") — alone. Never a due day, a validity, an appointment or a date after
+    a weekday ("Zahlbar bis Freitag, 04.12.2026")."""
+    lines = fold_punctuation(join_hyphenated(_visible(page))).splitlines()
     rows = len(header(lines))
-    placed: list[date] = []
-    bare: list[date] = []
+    found: list[date] = []
     for index, line in enumerate(lines):
         stripped = line.strip()
         if _GERMAN_REMEDY.search(stripped):
@@ -268,50 +539,123 @@ def _header_dates(pages: Sequence[PageInput]) -> list[date]:
             continue
         start, end, mention = spans[0]
         day = mention.as_date()
-        if day is None or mention.ambiguous or end != len(stripped):
+        if day is None or end != len(stripped):
             continue
         before = stripped[:start]
-        if _PLACE_DATE.match(before):
-            placed.append(day)
+        previous = lines[index - 1].strip() if index else ""
+        if _DATE_LABEL.search(before):
+            other = _OTHER_DATE.search(
+                _CREATED_ON.sub(" ", before)
+            )  # "Fälligkeitsdatum:" is no letter's date
+        elif _PLACE_DATE.match(before):
+            other = _OTHER_DATE.search(before)  # "Zahlbar bis Freitag, …"
         elif not before.strip() and index < rows:
-            previous = lines[index - 1].rstrip() if index else ""
-            if not _ANOTHER.search(previous):
-                bare.append(day)
-    return placed or bare
+            other = _ANOTHER.search(previous) or _OTHER_DATE.search(previous)  # under "Antrag vom", "Termin:"
+        else:
+            continue
+        if other is None:
+            found.append(day)
+    return found
 
 
-def letter_date(extraction: DocumentExtraction, pages: Sequence[PageInput]) -> date | None:
-    """The earliest date the letter gives for itself — its header's "Datum:", "mit diesem Bescheid vom …"
-    (:func:`~ordnung.ingest.conflicts.letter_statements`), else a date on a line of its own on page 1
-    (:func:`_header_dates`) — or the reading gives it; ``None`` when there is none."""
-    days = [statement.letter_date for statement in letter_statements(pages) if statement.letter_date]
+def letter_date(
+    extraction: DocumentExtraction, pages: Sequence[PageInput], notices: Sequence[RemedyNotice] | None = None
+) -> date | None:
+    """The earliest date the letter gives for itself — its first page's "Datum:" and "mit diesem Bescheid vom
+    …" (:func:`~ordnung.ingest.conflicts.letter_statements`), every page's own header date
+    (:func:`_header_dates`), the decision its notice names ("Bescheid vom …") — or the reading gives it;
+    ``None`` when there is none, or when they are more than :data:`LETTER_DATE_SPAN` days apart (one of them
+    is another's: planted, a due day, an old decision's), so the start is never later than the letter's
+    own date and never absurdly early."""
+    days = _letter_dates(extraction, pages, notices)
     if not days:
-        days = _header_dates(pages)
+        return None
+    first = min(days)
+    return first if (max(days) - first).days <= LETTER_DATE_SPAN else None
+
+
+def _letter_dates(
+    extraction: DocumentExtraction, pages: Sequence[PageInput], notices: Sequence[RemedyNotice] | None
+) -> list[date]:
+    """Every date the letter gives for itself and the reading's (:func:`letter_date`)."""
+    days = [statement.letter_date for statement in letter_statements(pages) if statement.letter_date]
+    for page in pages:
+        days += _header_dates(page)
+    for notice in notices if notices is not None else remedy_notices(pages):
+        days += notice.issued
     read = _iso(extraction.document_date)
-    return min([*days, *([read] if read else [])], default=None)
+    return [*days, read] if read is not None else days
 
 
-def _choose(notices: Sequence[RemedyNotice]) -> tuple[RemedyNotice, bool]:
-    """The notice whose deadline comes first, and whether it counts with delivery days: the shortest period
-    (a month as 31 days — with periods of 1 to 12 days, weeks or months that order is the calendar's), on a tie
-    the one without delivery days. Delivery days count only when every notice counts from notification: four
-    weeks after notification can end after one month from service, so a notice with a start of its own (planted
-    or not) never makes the date later either."""
-    notice = min(notices, key=lambda found: (found.days, found.notified))
-    return notice, notice.notified and all(found.notified for found in notices)
+def _end(start: date, period: tuple[int, Unit]) -> date:
+    """The last day of ``period`` counted from ``start`` (§ 188 BGB, no weekends): to rank periods."""
+    amount, unit = period
+    if unit != "months":
+        return start + timedelta(days=amount * _DAYS[unit])
+    month = start.month - 1 + amount
+    year, month = start.year + month // 12, month % 12 + 1
+    return date(year, month, min(start.day, calendar.monthrange(year, month)[1]))
+
+
+def _datable(period: tuple[int, Unit]) -> bool:
+    amount, unit = period
+    return amount <= _DATABLE_MAX[unit] and amount * _DAYS[unit] >= _DATABLE_MIN_DAYS
+
+
+class _Choice(NamedTuple):
+    notice: RemedyNotice
+    period: tuple[int, Unit] | None  # None: no date can be worked out
+    delivery: Literal["de_admin_post", "de_admin_portal", "none"]
+
+
+def _choose(notices: Sequence[RemedyNotice], start: date | None, text: str) -> _Choice:
+    """The notice whose period ends first, counted from the letter's date ``start`` (a court action after the
+    other remedies, then one without delivery days, on a tie), and how it counts:
+
+    * no date when any notice can't be dated, the period isn't from a week to a month, or the order of two
+      periods near a month depends on a start Ordnung doesn't know;
+    * delivery days only when every notice counts from notification and its period ends first from any start
+      deemed delivery can give — by portal when the letter says so, never on formal service."""
+    ranked = [(notice, period) for notice in notices for period in notice.periods]
+    if not ranked:
+        return _Choice(min(notices, key=lambda n: (n.remedy == "klage", n.notified)), None, "none")
+
+    def order(start_day: date | None, pick: tuple[RemedyNotice, tuple[int, Unit]]) -> tuple[object, ...]:
+        notice, period = pick
+        length = _end(start_day, period) if start_day else period[0] * _DAYS[period[1]]
+        return length, period[0] * _DAYS[period[1]], notice.remedy == "klage", notice.notified
+
+    notice, period = min(ranked, key=lambda pick: order(start, pick))
+    near_month = any(unit == "months" for _, (_, unit) in ranked) and any(
+        unit == "days" and 28 < amount <= 31 for _, (amount, unit) in ranked
+    )
+    if not all(n.datable for n in notices) or not _datable(period) or (start is None and near_month):
+        return _Choice(notice, None, "none")
+    # from any start deemed delivery can give, the chosen period still ends first (or there is no start yet)
+    first_whatever_the_start = start is None or all(
+        _end(start + timedelta(days=shift), period) <= _end(start + timedelta(days=shift), other)
+        for shift in range(_DELIVERY_REACH + 1)
+        for _, other in ranked
+    )
+    delivery: Literal["de_admin_post", "de_admin_portal", "none"] = "none"
+    if all(n.notified for n in notices) and not _FORMAL_SERVICE.search(text) and first_whatever_the_start:
+        delivery = "de_admin_portal" if _PORTAL.search(text) else "de_admin_post"
+    return _Choice(notice, period, delivery)
 
 
 def check_item(
-    extraction: DocumentExtraction, pages: Sequence[PageInput]
-) -> tuple[Gap, ExtractedItem, CheckKind] | None:
-    """The to-do an incomplete reading gets (module docstring), why, and which kind it is; ``None`` for a
-    complete reading.
+    extraction: DocumentExtraction, pages: Sequence[PageInput], *, injected: bool = False
+) -> Check | None:
+    """The to-do an incomplete reading gets (module docstring), why, which kind it is and its remedy; ``None``
+    for a complete reading. ``injected``: the letter carries text addressed to an AI, so the action says
+    where to send the objection.
 
-    With a remedy notice, a ``deadline``: the notice's period counted from the letter's date
+    With a remedy notice, a ``deadline``: the period of :func:`_choose`, counted from the letter's date
     (:func:`letter_date`, carried in the DateSpec's ``anchor_date``, so it computes without a date in the
-    reading and keeps it when recomputed) — with deemed delivery after a notification ("nach Bekanntgabe";
-    the earlier of that date and the letter's date as stored counts), else from that date itself, fixed
-    (formal service or arrival can't be before the letter's date). Without one, a ``task``: read the letter."""
+    reading and keeps it when recomputed; when neither the letter nor the reading gives any date, from the
+    letter's date once the person enters it) — or without a date (``DateSpec(type="none")``) when none can
+    be worked out, also when the letter's dates for itself disagree (never from the later one stored).
+    Without one, a ``task``: read the letter."""
     notices = remedy_notices(pages)
     gap = reading_gap(extraction, pages, notices)
     if gap is None:
@@ -325,32 +669,76 @@ def check_item(
             priority="high",
             quote="",
         )
-        return gap, placeholder, "read_yourself"
-    written = letter_date(extraction, pages)
-    notice, notified = _choose(notices)
-    spec = DateSpec(
-        type="relative",
-        anchor="deemed_delivery" if notified else "explicit_date",
-        anchor_date=written.isoformat() if written else None,
-        amount=notice.amount,
-        unit=notice.unit,
-        delivery_rule="de_admin_post" if notified else "none",
-        shift_rule="auto",
-        nature="objection",
-        text=notice.quote,
-    )
+        return Check(gap, placeholder, "read_yourself", "")
+    written = letter_date(extraction, pages, notices)
+    notice, period, delivery = _choose(notices, written, "\n".join(_visible(page) for page in pages))
+    if written is None and _letter_dates(extraction, pages, notices):
+        period = None  # the letter's dates disagree: no start at all, never the one stored later
+    kind: CheckKind
+    if period is None:
+        spec = DateSpec(type="none", nature="objection", text=notice.quote)
+        kind = "undated"
+    else:
+        spec = DateSpec(
+            type="relative",
+            anchor="explicit_date" if written else "document_date",
+            anchor_date=written.isoformat() if written else None,
+            amount=period[0],
+            unit=period[1],
+            delivery_rule=delivery,
+            shift_rule="auto",
+            nature="objection",
+            text=notice.quote,
+        )
+        kind = "dated" if written else "undated"
+    court = notice.remedy == "klage"
+    action = KLAGE_ACTION if court else DEADLINE_ACTION
     deadline = ExtractedItem(
         kind="deadline",
         title=_TITLES.get(notice.remedy, "Deadline to object"),
-        action=DEADLINE_ACTION,
-        consequence=DEADLINE_CONSEQUENCE,
+        action=f"{action} {KNOWN_ADDRESS}" if injected else action,
+        consequence=KLAGE_CONSEQUENCE if court else DEADLINE_CONSEQUENCE,
         date=spec,
         priority="high",
         quote=notice.quote,
     )
-    return gap, deadline, "dated" if written else "undated"
+    return Check(gap, deadline, kind, notice.remedy)
 
 
-def gap_warning(gap: Gap, kind: CheckKind) -> str:
-    """The letter's warning for an incomplete reading: why (``gap``), then what Ordnung did (``kind``)."""
-    return f"{_PREFIX[gap]} {_SUFFIX[kind]}"
+def gap_warning(gap: Gap, kind: CheckKind, remedy: str = "") -> str:
+    """The letter's warning for an incomplete reading: why (``gap``; a court action's own words for a
+    ``klage`` notice the reading left out), then what Ordnung did (``kind``)."""
+    prefix = _COURT_PREFIX if gap == "remedy_left_out" and remedy == "klage" else _PREFIX[gap]
+    return f"{prefix} {_SUFFIX[kind]}"
+
+
+def check_reasons(reasons: Sequence[str]) -> tuple[str, ...]:
+    """The reasons the code-made to-do is graded by: always :data:`READING_INCOMPLETE`; never that its quote
+    doesn't state the start date or the period (Ordnung took them from the letter, not from that sentence)."""
+    kept = tuple(reason for reason in reasons if reason not in (DATE_NOT_IN_QUOTE, PERIOD_NOT_IN_QUOTE))
+    return kept if READING_INCOMPLETE in kept else (*kept, READING_INCOMPLETE)
+
+
+def start_variants(spec: DateSpec, ctx: RuleContext) -> list[tuple[DateSpec, RuleContext]]:
+    """The code-made to-do's DateSpec (first) and the same period from every earlier start the letter's dates
+    as stored allow — the letter's date the person corrected, an arrival confirmed before the date (for a
+    period from service or arrival), the stored letter date when it had none — each in a context that never
+    routes it through a letter rule meant for the model's readings (§ 574b BGB would read the start as the
+    tenancy's end). The earliest of their dates is the to-do's: recomputing never moves it later."""
+    plain = ctx
+    if special_rule(spec, ctx.letter_kind, authority=ctx.delivery_scope is not None or ctx.court) is not None:
+        spec = spec.model_copy(update={"text": "", "legal_basis": None})
+        plain = replace(ctx, letter_kind=None)
+    variants = [(spec, plain)]
+    if spec.type != "relative":
+        return variants
+    start = _iso(spec.anchor_date) if spec.anchor == "explicit_date" else None
+    stored = ctx.document_date
+    if spec.anchor == "explicit_date" and start is None:
+        variants.append((spec.model_copy(update={"anchor": "document_date", "anchor_date": None}), plain))
+    if start is not None and stored is not None and stored < start:
+        variants.append((spec.model_copy(update={"anchor_date": stored.isoformat()}), plain))
+    arrival = ctx.received_date if ctx.received_confirmed else None
+    if start is not None and arrival is not None and arrival < start and spec.delivery_rule == "none":
+        variants.append((spec.model_copy(update={"anchor_date": arrival.isoformat()}), plain))
+    return variants
