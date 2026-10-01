@@ -7,11 +7,13 @@
  *
  * The answer's toast runs from the request's own promise, so it happens even though the card is gone
  * by then (the letter's refetch can land before the answer returns); the focus move to the card that
- * replaces this one is the page's (`onAnswered`: DocumentView moves it once that card is rendered).
+ * replaces this one is the page's (`onAnswered`: DocumentView moves it once that card is rendered,
+ * whether that render comes before the answer returns or after) — only when the answer changed the
+ * letter (`answeredFor`).
  * While an answer runs its button keeps focus, so a failed one leaves the person where they were.
  */
 import { Lock, Sparkles } from "lucide-react";
-import type { DocumentDetail } from "@/api/types";
+import type { DocumentDetail, HeldResult } from "@/api/types";
 import { useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
 import { MEANING_ICONS } from "@/lib/copy";
 import { glueText } from "@/lib/format";
@@ -54,11 +56,18 @@ export function waitingAttachments(detail: Pick<DocumentDetail, "attachments">):
   return detail.attachments.filter((a) => a.doc_id && a.status === "held").length;
 }
 
+/**
+ * Whether an answer changed this letter: the server skips one that no longer waits (answered elsewhere, in the
+ * trash, a proof), and then its status may never change. Only an answer that changed it arms the page's focus move,
+ * or a later, unrelated change (the letter read from the Inbox) would move focus to the page's heading.
+ */
+export const answeredFor = (res: HeldResult, docId: string) => res.documents.some((d) => d.id === docId);
+
 export interface HeldCardProps {
   detail: DocumentDetail;
   className?: string;
-  /** An answer went through: the card goes, and focus belongs to the one that takes its place. */
-  onAnswered?: () => void;
+  /** An answer went through (`from`: the status it answered): the card goes, and focus belongs to the one that takes its place. */
+  onAnswered?: (from: DocumentDetail["document"]["status"]) => void;
 }
 
 export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
@@ -73,9 +82,9 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
   const readIt = () =>
     read
       .mutateAsync([doc.id])
-      .then(() => {
+      .then((res) => {
         toast.success("Claude is reading it", { description: "You'll see every step here." });
-        onAnswered?.();
+        if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
       })
       .catch(() => undefined); // the request's own error toast says what went wrong
 
@@ -94,7 +103,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
                   .catch(() => undefined)
             : undefined,
         });
-        onAnswered?.();
+        if (answeredFor(res, doc.id)) onAnswered?.(doc.status);
       })
       .catch(() => undefined);
 

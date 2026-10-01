@@ -13,12 +13,12 @@
  * The letter's content is split around the pages (verdict first, then the pages on phones, then the
  * rest), so "The letter" controls two panels: its verdict and warnings, and the rest of the letter.
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router";
 import { useMediaQuery } from "@/lib/hooks";
 import { useReducedMotion } from "motion/react";
 import { FileText, Route } from "lucide-react";
-import type { DocumentDetail } from "@/api/types";
+import type { DocumentDetail, DocumentStatus } from "@/api/types";
 import { Skeleton, SkeletonCard, SkeletonText } from "@/components/ui/Skeleton";
 import { TabPanel, Tabs } from "@/components/ui/Tabs";
 import { cn } from "@/lib/utils";
@@ -85,22 +85,29 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const held = doc.status === "held";
 
   // an answer to a waiting letter ("Keep private", "Read it with Claude", "Undo “Keep private”") replaces its card with
-  // another's: once the letter's new state is rendered, focus moves to the page's new first heading (never to the page).
-  // The answer resolves before its refetch is rendered (the query tells its listeners a task later), and on a busy
-  // computer the next frame comes before that render: a focus moved on the frame landed on the old heading and fell to
-  // the page with it (e2e: "focus never falls to the page")
-  const answered = useRef(false);
-  const onAnswered = useCallback(() => {
-    answered.current = true;
+  // another's: once the answer went through AND the letter's new state is rendered, focus moves to the page's new first
+  // heading (never to the page). The two come in either order (e2e: "focus never falls to the page"):
+  // - the answer's refetch is rendered after its promise resolves (the query tells its listeners a task later), so a
+  //   focus moved on the next frame landed on the old heading on a busy computer, and fell to the page with it;
+  // - the server says the letter changed (`document.updated`) before it replies, and the refetch that event starts can
+  //   be rendered before the reply comes (a server slowed by a busy computer): the new card is on the page, the answered
+  //   button gone with the old one, and the status no longer changes when the answer resolves.
+  // So the card says which status it answered from, and the move waits for a rendered status other than that one.
+  const answeredFrom = useRef<DocumentStatus | null>(null);
+  const [answers, setAnswers] = useState(0);
+  const onAnswered = useCallback((from: DocumentStatus) => {
+    answeredFrom.current = from;
+    setAnswers((n) => n + 1); // runs the effect below after this render, in case the new card is already there
   }, []);
   useEffect(() => {
-    if (!answered.current) return;
-    answered.current = false;
+    const from = answeredFrom.current;
+    if (from === null || doc.status === from) return; // not answered, or its new state isn't rendered yet
+    answeredFrom.current = null;
     const h = document.querySelector<HTMLElement>("main h1, main h2");
     if (!h) return;
     if (!h.hasAttribute("tabindex")) h.setAttribute("tabindex", "-1");
     h.focus({ preventScroll: true });
-  }, [doc.status]);
+  }, [doc.status, answers]);
 
   // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
   // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)

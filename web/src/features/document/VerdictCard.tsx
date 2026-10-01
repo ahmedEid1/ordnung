@@ -195,7 +195,7 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
  * this card's place, so focus moves to its heading (`onAnswered`: the page moves it once that card is
  * rendered); a failed undo leaves focus on the button.
  */
-function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: () => void }) {
+function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
   const wait = useWaitAgain();
   return (
     <>
@@ -221,7 +221,7 @@ function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["docum
                     return;
                   }
                   toast({ title: "It's back with the letters not read yet", description: "Choose “Read it” to have Claude read it.", tone: "info" });
-                  onAnswered?.();
+                  onAnswered?.(doc.status);
                 })
                 .catch(() => undefined) // the request's own error toast says what went wrong
             }
@@ -240,8 +240,8 @@ export interface VerdictCardProps {
   primary: Item | null;
   /** Scroll to the "When did this letter arrive?" question. */
   onAskArrival?: () => void;
-  /** "Undo “Keep private”" went through: the card goes, and focus belongs to the waiting card that takes its place. */
-  onAnswered?: () => void;
+  /** "Undo “Keep private”" went through (`from`: the status it answered): the card goes, and focus belongs to the waiting card that takes its place. */
+  onAnswered?: (from: DocumentDetail["document"]["status"]) => void;
 }
 
 export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: VerdictCardProps) {
