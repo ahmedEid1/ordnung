@@ -201,7 +201,10 @@ function renderInline(nodes: Inline[], r: Render, prefix: string): ReactNode[] {
         {piece.word.map((w, j) => renderNode(w, `${key}.w${j}`, r))}
         {piece.refs.map((ref, j) => (
           <Fragment key={`${key}.c${j}`}>
-            {j ? "\u00a0" : null}
+            {/* two chips in a row: a no-break space at least 5 px wide, so the markers stand 7 px apart (the
+                5 and a marker's 2 px after its word) and their 24 px targets, 3.5 px past each side of the
+                marker, never overlap (CitationMarker; a space alone is 4.2 px in the answer's 15 px Inter) */}
+            {j ? <span className="inline-block min-w-[5px]">{"\u00a0"}</span> : null}
             {r.cite(ref, `${key}.c${j}`)}
           </Fragment>
         ))}

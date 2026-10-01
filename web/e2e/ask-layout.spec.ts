@@ -2,8 +2,9 @@
  * Ask on the real demo, where jsdom can't measure (UI audit round 1, ask): long words, an IBAN and a
  * law's web address never widen a 320 px phone, markers follow their word, sources and follow-up
  * chips wrap instead of cutting their text, two suggested questions in a row both replay, a question
- * without a recording gets a note (no Try again), the question box leaves a phone room, and the layout
- * sweep's target-size probe tells a marker after its words from a marker alone.
+ * without a recording gets a note (no Try again), the question box leaves a phone room, every marker is a
+ * 24 × 24 px target (one alone in a list item too) that adds nothing to its line, and the layout sweep's
+ * target-size probe tells a small marker after its words from a marker alone.
  */
 import type { Page } from "@playwright/test";
 import { layoutFindings } from "../scripts/ui-audit/probes.mjs";
@@ -82,11 +83,13 @@ test.describe("phone", () => {
     expect(chip!.x + chip!.width).toBeLessThanOrEqual(column!.x + column!.width + 0.5);
   });
 
-  // The layout sweep's target-size probe exempts a marker after its words (WCAG 2.5.8's inline exception). A
-  // person's or organisation's marker is a button (it opens their drawer), not a link: it counts the same when
-  // it follows words, also right after another marker ("…94.99 €¹ ²"); a marker alone in a list item does not
-  // (the sweep's run after `pages` replayed list answers ending in a letter's and a person's marker).
-  test("the target-size probe exempts markers after their words, a person's button too, but not a marker alone", async ({ page }) => {
+  // A marker may stand alone, where WCAG 2.5.8's inline exception doesn't hold: a list item made only of markers
+  // (the sweep's run after `pages` replayed list answers ending in a letter's and a person's marker), or a marker
+  // wrapped onto a line of its own. So every marker's link or button is a 24 × 24 px target round the 17 px
+  // marker that is seen, a person's or organisation's (a button: it opens their drawer) as much as a letter's
+  // (a link), and two in a row ("…94.99 €¹ ²") never cover each other. The sweep's target-size probe — which
+  // still exempts a small marker after its words (the next test) — has nothing to report.
+  test("every marker is a 24 px target round its 17 px marker, a person's alone in a list item too", async ({ page }) => {
     const docs = await apiGet<{ id: string; title: string | null }[]>(page, "/api/documents");
     const parties = await apiGet<{ id: string; name: string }[]>(page, "/api/parties");
     const doc = docs[0]!;
@@ -95,7 +98,9 @@ test.describe("phone", () => {
       { type: "text" },
       {
         type: "done",
-        text: `Due soon:\n\n- The phone bill, 94.99 € [doc:${doc.id}] [party:${party.id}]\n- Paid by transfer [party:${party.id}]\n- [party:${party.id}]`,
+        text:
+          `Due soon:\n\n- The phone bill, 94.99 € [doc:${doc.id}] [party:${party.id}]\n- Paid by transfer [party:${party.id}]\n` +
+          `- [party:${party.id}]\n- [doc:${doc.id}] [party:${party.id}]`,
         note: null,
         note_label: "Checked by Ordnung:",
         citations: [
@@ -111,37 +116,99 @@ test.describe("phone", () => {
     await page.getByRole("textbox").first().press("Enter");
     await expect(status(page)).toHaveText("Answer ready.");
 
-    // the answer's list (the sources under it are a list too)
-    const items = page.getByRole("article").last().getByRole("list").first().getByRole("listitem");
-    await expect(items).toHaveCount(3);
-    // the app draws them as the sweep sees them: small inline boxes, the person's a button
+    // the answer's list (the sources under it are a list too); its third item is a person's marker alone
+    const list = page.getByRole("article").last().getByRole("list").first();
+    const items = list.getByRole("listitem");
+    await expect(items).toHaveCount(4);
     const alone = items.nth(2).getByRole("button", { name: /^Source 2: / });
-    await expect(items.nth(0).getByRole("button", { name: /^Source 2: / })).toBeVisible();
     await expect(alone).toBeVisible();
-    expect((await alone.boundingBox())!.height).toBeLessThan(24);
+    await expect(items.nth(2)).toHaveText(/^\u2060?2$/); // a word joiner, then the marker: no word
+    await expect(items.nth(3).getByRole("link", { name: /^Source 1: / })).toBeVisible();
 
+    // the sweep's probe: no target under 24 × 24 px on the page, and no marker over another control or cut off
     const { findings } = await layoutFindings(page);
-    const markers = findings.filter((f) => f.probe === "target-size" && f.selector.includes('[aria-label="Source '));
-    const where = await alone.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY) };
+    const small = findings.filter((f) => f.probe === "target-size").map((f) => `${f.selector} “${f.text}” ${String(f.detail.width)} × ${String(f.detail.height)} px`);
+    expect(small, "targets under 24 × 24 px").toEqual([]);
+    const markerTrouble = findings
+      .filter((f) => ["overlap", "covered", "clipped-content"].includes(f.probe) && `${f.selector} ${String(f.detail.other ?? "")}`.includes('[aria-label="Source '))
+      .map((f) => `${f.probe}: ${f.selector} ${f.text}`);
+    expect(markerTrouble).toEqual([]);
+
+    const shown = await list.evaluate((ul) =>
+      [...ul.querySelectorAll(":scope > li")].map((li) => ({
+        // the item is a whole number of its lines: a target adds no height to its line
+        lineHeight: parseFloat(getComputedStyle(li).lineHeight),
+        height: li.getBoundingClientRect().height,
+        markers: [...li.querySelectorAll("[aria-label^='Source ']")].map((m) => {
+          const r = m.getBoundingClientRect();
+          const drawn = getComputedStyle(m, "::before");
+          return {
+            role: m.tagName === "BUTTON" ? "button" : "link",
+            target: { left: r.left, right: r.right, width: r.width, height: r.height },
+            drawn: { width: parseFloat(drawn.width), height: parseFloat(drawn.height), inset: [drawn.top, drawn.right, drawn.bottom, drawn.left] },
+          };
+        }),
+      })),
+    );
+    expect(shown.map((li) => li.markers.map((m) => m.role))).toEqual([["link", "button"], ["button"], ["button"], ["link", "button"]]);
+    for (const [i, li] of shown.entries()) {
+      const lines = Math.max(1, Math.round(li.height / li.lineHeight));
+      expect(Math.abs(li.height - lines * li.lineHeight), `item ${i + 1}: ${li.height} px high, lines of ${li.lineHeight} px`).toBeLessThan(0.5);
+      for (const m of li.markers) {
+        // the target is 24 px high and at least 24 wide, centred on the marker that is seen: 17 px, as before
+        expect(m.target.height).toBeGreaterThanOrEqual(24);
+        expect(m.target.width).toBeGreaterThanOrEqual(24);
+        expect(m.drawn.height).toBeCloseTo(17, 1);
+        expect(m.drawn.width).toBeGreaterThanOrEqual(17);
+        expect(m.drawn.inset).toEqual(["3.5px", "3.5px", "3.5px", "3.5px"]);
+      }
+      // two in a row: the second target starts where the first ends or later (none covers the other)
+      for (let j = 1; j < li.markers.length; j++) expect(li.markers[j]!.target.left).toBeGreaterThanOrEqual(li.markers[j - 1]!.target.right - 0.01);
+    }
+    expect(shown[2]!.height, "the marker alone keeps its item one line high").toBeLessThan(shown[2]!.lineHeight + 0.5);
+
+    // keyboard focus rings the marker that is seen, not the invisible target round it
+    await alone.focus();
+    const ring = await alone.evaluate((el) => {
+      const own = getComputedStyle(el);
+      const drawn = getComputedStyle(el, "::before");
+      return {
+        focusVisible: el.matches(":focus-visible"),
+        own: own.outlineStyle,
+        drawn: `${drawn.outlineStyle} ${drawn.outlineWidth} offset ${drawn.outlineOffset}`,
+      };
     });
-    expect(markers.map((f) => ({ x: f.rect!.x, y: f.rect!.y })), "only the marker alone in its list item").toEqual([where]);
+    expect(ring).toEqual({ focusVisible: true, own: "none", drawn: "solid 2px offset 1px" });
   });
 
-  // The exemption is a marker's, in the line of the words it backs (review of the rule above): a small text
-  // button on its own line under other text in the same box is still a standalone target, and so is a marker
-  // that starts its own line under a paragraph or after a line break.
-  test("the target-size probe still reports small buttons and markers on a line of their own", async ({ page }) => {
-    // drawn like Ask's marker (17 px, inline-grid, raised); `name` "Source n: …" makes it a marker
-    const btn = (id: string, text: string, name?: string) =>
-      `<button id="${id}" ${name ? `aria-label="${name}"` : ""} style="display:inline-grid;place-items:center;position:relative;top:-0.35em;height:17px;min-width:17px;padding:0 4px;margin-left:2px;border:0;font-size:11px;line-height:1;background:#eef">${text}</button>`;
+  // The probe's rule for a small marker (Ask's markers are 24 px targets now: the test above), on markers drawn
+  // like Ask's were. It exempts a marker after its words (WCAG 2.5.8's inline exception): a person's or
+  // organisation's marker, a button, counts the same as a letter's link when it follows words, also right after
+  // another marker ("…94.99 €¹ ²"), in the app's own markup too; a marker alone in a list item does not. The
+  // exemption is a marker's, in the line of the words it backs (review of the rule): a small text button on its
+  // own line under other text in the same box is still a standalone target, and so is a marker that starts its
+  // own line under a paragraph or after a line break.
+  test("the target-size probe exempts small markers after their words, but reports small buttons and markers on a line of their own", async ({ page }) => {
+    // drawn like Ask's marker was (17 px, inline-grid, raised); `name` "Source n: …" makes it a marker
+    const look = "display:inline-grid;place-items:center;position:relative;top:-0.35em;height:17px;min-width:17px;padding:0 4px;margin-left:2px;border:0;font-size:11px;line-height:1;background:#eef";
+    const btn = (id: string, text: string, name?: string) => `<button id="${id}" ${name ? `aria-label="${name}"` : ""} style="${look}">${text}</button>`;
+    const link = (id: string, text: string, name: string) => `<a id="${id}" href="#${id}" aria-label="${name}" style="${look}">${text}</a>`;
     const src = (n: number) => `Source ${n}: Person “Stadtwerke”`;
+    // the app's markup (Markdown.tsx, Tooltip.tsx): a word and its markers in a group that never wraps (one
+    // without a word starts with a word joiner), each marker in its tooltip's `display: contents` span, two in a
+    // row apart by a no-break space
+    const group = (word: string, ...markers: string[]) =>
+      `<span style="white-space:nowrap">${word || "&#8288;"}${markers.map((m) => `<span style="display:contents">${m}</span>`).join('<span style="display:inline-block;min-width:5px">&nbsp;</span>')}</span>`;
     await page.setContent(`<!doctype html><html lang="en"><head><title>Probe</title></head>
       <body style="font:16px/24px sans-serif;margin:16px"><main><h1>Probe</h1>
       <p>The phone bill is due soon, 94.99 €&#8288;${btn("after-words", "1", src(1))}${btn("after-marker", "2", src(2))}</p>
       <p>Paid by <strong>transfer</strong>&#8288;${btn("after-strong", "3", src(3))}</p>
       <ul><li>${btn("alone", "4", src(4))}</li><li>${btn("alone-run-1", "5", src(5))}${btn("alone-run-2", "6", src(6))}</li></ul>
+      <ul>
+        <li>The phone bill, ${group("94.99&nbsp;€", link("app-link-after-words", "1", src(1)), btn("app-after-link", "2", src(2)))}</li>
+        <li>Paid by ${group("transfer", btn("app-after-words", "2", src(2)))}</li>
+        <li>${group("", btn("app-alone", "2", src(2)))}</li>
+      </ul>
       <div style="margin-top:40px"><p>A paragraph with plenty of words above the button.</p>${btn("undo-under-paragraph", "Undo")}</div>
       <div style="margin-top:40px"><h3 style="margin:0">Reminder</h3><span style="display:block">Some text.</span>${btn("remove-under-heading", "Remove")}</div>
       <div style="margin-top:40px"><label>Name</label><br>${btn("change-after-br", "Change")}</div>
@@ -151,7 +218,7 @@ test.describe("phone", () => {
     const { findings } = await layoutFindings(page);
     const reported = findings.filter((f) => f.probe === "target-size").map((f) => /#([\w-]+)/.exec(f.selector)?.[1] ?? f.selector);
     expect(reported.sort()).toEqual(
-      ["alone", "alone-run-1", "alone-run-2", "undo-under-paragraph", "remove-under-heading", "change-after-br", "marker-under-paragraph", "marker-after-br"].sort(),
+      ["alone", "alone-run-1", "alone-run-2", "app-alone", "undo-under-paragraph", "remove-under-heading", "change-after-br", "marker-under-paragraph", "marker-after-br"].sort(),
     );
   });
 
