@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b58ba62f9c9b96adc2e4ca165471a5fb020ee96ba4f9ce079522311c5caf4ba8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-09-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Beispielbochum – Der Oberbürgermeister, Bauordnungsamt\",\"document_date\":\"2025-09-22\",\"references\":[{\"label\":\"Az.\",\"value\":\"63.2-BV-2025-2207\"}],\"amounts\":[2000],\"items\":[{\"kind\":\"task\",\"title\":\"Remove unauthorized carport\",\"quote\":\"Ich gebe Ihnen daher nach § 82 BauO NRW auf, den Carport bis spätestens 28.11.2025 vollständig zu beseitigen.\",\"computation\":\"The letter states an explicit calendar deadline: 'bis spätestens 28.11.2025'. No period calculation is needed; this date is the due date as written.\",\"due_date\":\"2025-11-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) with the Verwaltungsgericht\",\"quote\":\"die Klage ist innerhalb eines Monats nach Bekanntgabe zu erheben.\",\"computation\":\"Letter dated Monday 22.09.2025, sent by post by a German authority. Under § 41 Abs. 2 VwVfG NRW, a notice sent by ordinary mail within Germany is deemed delivered (Bekanntgabe) on the third day after posting, i.e. 22.09.2025 + 3 days = 25.09.2025 (Thursday). The one-month Klagefrist runs from this Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event (25.09.2025) is not counted; the period begins 26.09.2025. Per § 188 Abs. 2 BGB a month-long period beginning this way ends on the day of the following month that numerically corresponds to the day of the triggering event, i.e. 25.10.2025. 25.10.2025 is a Saturday, so under § 193 BGB the deadline shifts to the next business day: Sunday 26.10.2025 is also non-business, so the deadline moves to Monday 27.10.2025 (no NRW public holiday falls on this date; NRW does not observe Reformationstag).\",\"due_date\":\"2025-10-27\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter threatens a Zwangsgeld (coercive fine) of 2,000.00 € if the carport is not removed by the deadline; this is a penalty for non-compliance, not a separate payment currently due.\",\"A separate fee notice ('gesonderter Bescheid') for the cost of this order is announced but not yet issued, so no amount or due date can be given for it yet; the recipient should watch for that follow-up letter.\",\"The delivery date used to compute the one-month Klagefrist (25.09.2025) relies on the statutory 3-day postal delivery fiction (§ 41 Abs. 2 VwVfG NRW); if the letter actually arrived later or earlier, the deadline shifts accordingly and the recipient should check the envelope postmark or actual receipt date if in doubt.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Beispielbochum – Der Oberbürgermeister, Bauordnungsamt",
+      "document_date": "2025-09-22",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "63.2-BV-2025-2207"
+        }
+      ],
+      "amounts": [
+        2000
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Remove unauthorized carport",
+          "quote": "Ich gebe Ihnen daher nach § 82 BauO NRW auf, den Carport bis spätestens 28.11.2025 vollständig zu beseitigen.",
+          "computation": "The letter states an explicit calendar deadline: 'bis spätestens 28.11.2025'. No period calculation is needed; this date is the due date as written.",
+          "due_date": "2025-11-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) with the Verwaltungsgericht",
+          "quote": "die Klage ist innerhalb eines Monats nach Bekanntgabe zu erheben.",
+          "computation": "Letter dated Monday 22.09.2025, sent by post by a German authority. Under § 41 Abs. 2 VwVfG NRW, a notice sent by ordinary mail within Germany is deemed delivered (Bekanntgabe) on the third day after posting, i.e. 22.09.2025 + 3 days = 25.09.2025 (Thursday). The one-month Klagefrist runs from this Bekanntgabe. Per § 187 Abs. 1 BGB the day of the triggering event (25.09.2025) is not counted; the period begins 26.09.2025. Per § 188 Abs. 2 BGB a month-long period beginning this way ends on the day of the following month that numerically corresponds to the day of the triggering event, i.e. 25.10.2025. 25.10.2025 is a Saturday, so under § 193 BGB the deadline shifts to the next business day: Sunday 26.10.2025 is also non-business, so the deadline moves to Monday 27.10.2025 (no NRW public holiday falls on this date; NRW does not observe Reformationstag).",
+          "due_date": "2025-10-27",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter threatens a Zwangsgeld (coercive fine) of 2,000.00 € if the carport is not removed by the deadline; this is a penalty for non-compliance, not a separate payment currently due.",
+        "A separate fee notice ('gesonderter Bescheid') for the cost of this order is announced but not yet issued, so no amount or due date can be given for it yet; the recipient should watch for that follow-up letter.",
+        "The delivery date used to compute the one-month Klagefrist (25.09.2025) relies on the statutory 3-day postal delivery fiction (§ 41 Abs. 2 VwVfG NRW); if the letter actually arrived later or earlier, the deadline shifts accordingly and the recipient should check the envelope postmark or actual receipt date if in doubt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 6266,
+      "cache_read_tokens": 8594,
+      "cache_creation_tokens": 7465,
+      "cost_usd": 0.09424679999999999,
+      "duration_ms": 55274,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"beb39d5e68ae72093f4f7b2a831cb045b0707c6cae8b2320bc5443cf58cc3bfd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G3"
+    ],
+    "prompt_head": "Today is Sunday, 2026-01-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwalde\",\"document_date\":\"2025-12-29\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/31206\"}],\"amounts\":[186.3],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against amended 2024 income tax assessment\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter is dated Mon 29 Dec 2025 (posting day, per § 122 Abs. 2 AO cannot be earlier). Deemed delivery for a letter sent by ordinary post from a tax authority occurs on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): 29 Dec 2025 + 4 days = Fri 2 Jan 2026 (not a weekend/holiday in NW, so it stands). The one-month Einspruch period (§ 355 Abs. 1 AO) starts the day after Bekanntgabe (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. from 2 Jan 2026, and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): Mon 2 Feb 2026. That day is a Monday, not a weekend or NW public holiday, so no further shift applies.\",\"due_date\":\"2026-02-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwalde",
+      "document_date": "2025-12-29",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/31206"
+        }
+      ],
+      "amounts": [
+        186.3
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against amended 2024 income tax assessment",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter is dated Mon 29 Dec 2025 (posting day, per § 122 Abs. 2 AO cannot be earlier). Deemed delivery for a letter sent by ordinary post from a tax authority occurs on the 4th day after posting (§ 122 Abs. 2 Nr. 1 AO): 29 Dec 2025 + 4 days = Fri 2 Jan 2026 (not a weekend/holiday in NW, so it stands). The one-month Einspruch period (§ 355 Abs. 1 AO) starts the day after Bekanntgabe (§ 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB), i.e. from 2 Jan 2026, and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): Mon 2 Feb 2026. That day is a Monday, not a weekend or NW public holiday, so no further shift applies.",
+          "due_date": "2026-02-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1555,
+      "cache_read_tokens": 15187,
+      "cache_creation_tokens": 4685,
+      "cost_usd": 0.037335400000000005,
+      "duration_ms": 15272,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 172 Abs. 1 Satz 1 Nr. 2 Buchst. a AO; § 355 AO; § 122 Abs. 2 Nr. 1 AO",
+            "text": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe"
+          },
+          "document_date": "2025-12-29",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterwalde",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2026-02-02\",\"weekday\":\"Monday\",\"send_by\":\"2026-01-27\",\"summary\":\"Letter dated Mon 29 Dec 2025 counts as delivered on Fri 2 Jan; one month later is Mon 2 Feb 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Mon 29 Dec 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-12-29\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Fri 2 Jan 2026\",\"date\":\"2026-01-02\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Fri 2 Jan 2026\",\"date\":\"2026-01-02\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Mon 2 Feb 2026\",\"date\":\"2026-02-02\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 2 Feb 2026 is a working day, so it stays\",\"date\":\"2026-02-02\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Tue 27 Jan 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-01-27\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-01-04\",\"letter_date\":\"2025-12-29\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"96118ff7d5fa1637834553ddc2d15790d6c7d169230b063f20fa08b24aaf9e62\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-H1"
+    ],
+    "prompt_head": "Today is Friday, 2026-05-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Versorgungsamt Beispielfeld\",\"document_date\":\"2026-05-27\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"SB 61-0447/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against GdB decision\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.\",\"computation\":\"Letter dated and presumably posted 27.05.2026 (Wednesday); no separate 'Tag der Aufgabe zur Post' is stated, so the letter date is the posting date. The Versorgungsamt deciding under SGB IX/SGB X is a social-law body, so § 37 Abs. 2 SGB X applies: the decision counts as delivered on the 4th day after posting, and (unlike for tax offices under § 108 Abs. 3 AO) this delivery day is NOT shifted even if it falls on a weekend or holiday. 27.05.2026 + 4 days = 31.05.2026 (Sunday) = date of Bekanntgabe. The one-month Widerspruchsfrist (§ 84 SGG, § 26 Abs. 1 SGB X with §§ 187, 188 BGB) runs from this event date; under § 188 Abs. 2 BGB the period ends on the day of the following month bearing the same number as the event day. 31 June does not exist, so per the end-of-month rule the period ends on the last day of June, i.e. 30.06.2026 (Tuesday). This is neither a weekend day nor a public holiday in NRW, so no shift under § 26 Abs. 3 SGB X is needed.\",\"due_date\":\"2026-06-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Versorgungsamt Beispielfeld",
+      "document_date": "2026-05-27",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "SB 61-0447/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against GdB decision",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.",
+          "computation": "Letter dated and presumably posted 27.05.2026 (Wednesday); no separate 'Tag der Aufgabe zur Post' is stated, so the letter date is the posting date. The Versorgungsamt deciding under SGB IX/SGB X is a social-law body, so § 37 Abs. 2 SGB X applies: the decision counts as delivered on the 4th day after posting, and (unlike for tax offices under § 108 Abs. 3 AO) this delivery day is NOT shifted even if it falls on a weekend or holiday. 27.05.2026 + 4 days = 31.05.2026 (Sunday) = date of Bekanntgabe. The one-month Widerspruchsfrist (§ 84 SGG, § 26 Abs. 1 SGB X with §§ 187, 188 BGB) runs from this event date; under § 188 Abs. 2 BGB the period ends on the day of the following month bearing the same number as the event day. 31 June does not exist, so per the end-of-month rule the period ends on the last day of June, i.e. 30.06.2026 (Tuesday). This is neither a weekend day nor a public holiday in NRW, so no shift under § 26 Abs. 3 SGB X is needed.",
+          "due_date": "2026-06-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2337,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2148,
+      "cost_usd": 0.033072000000000004,
+      "duration_ms": 23127,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

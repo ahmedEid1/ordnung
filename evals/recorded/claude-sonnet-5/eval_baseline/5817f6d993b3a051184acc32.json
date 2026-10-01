@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"a41b701927638f34b301b94c41551defffb131355362dbb7e4715cf856866367\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2025-06-27\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-H1"
+    ],
+    "prompt_head": "Today is Friday, 2025-06-27 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterpotsdam\",\"document_date\":\"2025-06-23\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"046/219/05731\"}],\"amounts\":[8213,1238],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay remaining income tax 2024\",\"quote\":\"Bitte überweisen Sie den Betrag von 1.238,00 € so, dass er spätestens am 22.07.2025 auf unserem Konto gutgeschrieben ist\",\"computation\":\"The letter states a fixed calendar date for the payment to be credited: 22.07.2025. This is a Tuesday, not a weekend or Brandenburg public holiday, so no shift is needed.\",\"due_date\":\"2025-07-22\",\"confidence\":\"high\",\"amount\":1238},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit. Wird der Bescheid mit einfachem Brief übermittelt, gilt er mit dem vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben (§ 122 Abs. 2 Nr. 1 AO), es sei denn, er ist nicht oder später zugegangen.\",\"computation\":\"Tag der Aufgabe zur Post = 24.06.2025 (Tuesday). Under § 122 Abs. 2 Nr. 1 AO (as amended effective 2025), the letter is deemed delivered on the 4th day after posting: 24.06.2025 + 4 days = 28.06.2025, which is a Saturday. Per § 108 Abs. 3 AO, since this fictional delivery day falls on a Saturday, the deemed delivery (Bekanntgabe) shifts to the next business day: Monday 30.06.2025. The one-month Einspruchsfrist (§ 355 AO) begins the day after Bekanntgabe per § 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB (01.07.2025), and under § 188 Abs. 2 BGB ends on the day in the following month bearing the same calendar number as the Bekanntgabe day (30.06. → 30.07.), i.e. 30.07.2025, a Wednesday (no further weekend/holiday shift needed).\",\"due_date\":\"2025-07-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterpotsdam",
+      "document_date": "2025-06-23",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "046/219/05731"
+        }
+      ],
+      "amounts": [
+        8213,
+        1238
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay remaining income tax 2024",
+          "quote": "Bitte überweisen Sie den Betrag von 1.238,00 € so, dass er spätestens am 22.07.2025 auf unserem Konto gutgeschrieben ist",
+          "computation": "The letter states a fixed calendar date for the payment to be credited: 22.07.2025. This is a Tuesday, not a weekend or Brandenburg public holiday, so no shift is needed.",
+          "due_date": "2025-07-22",
+          "confidence": "high",
+          "amount": 1238
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit. Wird der Bescheid mit einfachem Brief übermittelt, gilt er mit dem vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben (§ 122 Abs. 2 Nr. 1 AO), es sei denn, er ist nicht oder später zugegangen.",
+          "computation": "Tag der Aufgabe zur Post = 24.06.2025 (Tuesday). Under § 122 Abs. 2 Nr. 1 AO (as amended effective 2025), the letter is deemed delivered on the 4th day after posting: 24.06.2025 + 4 days = 28.06.2025, which is a Saturday. Per § 108 Abs. 3 AO, since this fictional delivery day falls on a Saturday, the deemed delivery (Bekanntgabe) shifts to the next business day: Monday 30.06.2025. The one-month Einspruchsfrist (§ 355 AO) begins the day after Bekanntgabe per § 108 Abs. 1 AO i.V.m. § 187 Abs. 1 BGB (01.07.2025), and under § 188 Abs. 2 BGB ends on the day in the following month bearing the same calendar number as the Bekanntgabe day (30.06. → 30.07.), i.e. 30.07.2025, a Wednesday (no further weekend/holiday shift needed).",
+          "due_date": "2025-07-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3292,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2441,
+      "cost_usd": 0.043312399999999994,
+      "duration_ms": 30366,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

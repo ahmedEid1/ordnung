@@ -463,7 +463,7 @@ Thu 16.01.2025.
 
 The holdout2 split exists so that the benchmark has letters that no code change and no prompt was
 informed by. It is a fresh sample of the same twelve template families (variants G and H) and the same
-five adversarial attack classes, written after the release's last code change
+five adversarial attack classes, written after the release's last change to how letters are read
 (`evals/gen/holdout2_admin.py`, `holdout2_private.py`, `holdout2_adversarial.py`). It was written from
 the law and from how such letters read, without opening the app's ingestion code, its prompts, the
 recordings or the results files, and neither a model nor the app was run on it. It is recorded once,

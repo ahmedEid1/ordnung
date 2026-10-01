@@ -1,0 +1,132 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"bc936247fa2add7fb7889837a37292324d267a54cca0e75e313ce5db96d32227\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2026-11-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-11-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielelbe – Bußgeldstelle\",\"document_date\":\"2026-10-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 2026/08-77412\"},{\"label\":\"Kennzeichen\",\"value\":\"PIR-HM 418\"}],\"amounts\":[150,25,3.5,178.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"The attached Zustellungsurkunde copy shows the notice was formally served (zugestellt) on 04.11.2026 (Wednesday) — formal service under § 182 ZPO, so there is no statutory 'deemed delivery' fiction; the stated delivery day itself is the start of the period. Under § 187 Abs. 1 BGB the day of delivery (04.11.) is not counted; the two-week period (§ 188 Abs. 1, 2 BGB) therefore runs from 05.11.2026 and would end Wednesday 18.11.2026. 18.11.2026 is Buß- und Bettag, a public holiday in Sachsen, so under § 31 Abs. 3 VwVfG the deadline shifts to the next working day, Thursday 19.11.2026.\",\"due_date\":\"2026-11-19\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Gesamtbetrag) once the notice is final\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.\",\"computation\":\"The notice becomes rechtskräftig (final) when the Einspruch period expires unused, i.e. at the end of 19.11.2026 (see the objection deadline above). The letter allows payment 'spätestens zwei Wochen danach' (at the latest two weeks after that). Counting from 19.11.2026 (not counted, § 187 Abs. 1 BGB), two weeks (§ 188 Abs. 1, 2 BGB) end Thursday 03.12.2026, which is a normal working day in Sachsen, so no further shift applies.\",\"due_date\":\"2026-12-03\",\"confidence\":\"medium\",\"amount\":178.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The scanned Zustellungsurkunde shows the delivery date as the truncated '04.11.20' with the year cut off; I assumed 2026 (six days after the notice's own date of 30.10.2026), but the person should check the original slip to confirm the full date, since both the Einspruch deadline and the payment deadline depend directly on it.\",\"The payment due date is only an estimate: it depends on the exact day the Bescheid becomes rechtskräftig (unappealed), which in turn depends on confirming the true delivery date above; if no Einspruch is filed, the authority itself will usually confirm the Rechtskraft date.\",\"The IBAN DE77 8505 0300 0005 1500 00 is a valid, well-formed German IBAN at Bankleitzahl 85050300, consistent with a German authority account, but as with any payment the payee name shown by your bank during the transfer should match 'Landkreis Beispielelbe' or 'Ostsächsische Musterkasse' before sending money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielelbe – Bußgeldstelle",
+      "document_date": "2026-10-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 2026/08-77412"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "PIR-HM 418"
+        }
+      ],
+      "amounts": [
+        150,
+        25,
+        3.5,
+        178.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "The attached Zustellungsurkunde copy shows the notice was formally served (zugestellt) on 04.11.2026 (Wednesday) — formal service under § 182 ZPO, so there is no statutory 'deemed delivery' fiction; the stated delivery day itself is the start of the period. Under § 187 Abs. 1 BGB the day of delivery (04.11.) is not counted; the two-week period (§ 188 Abs. 1, 2 BGB) therefore runs from 05.11.2026 and would end Wednesday 18.11.2026. 18.11.2026 is Buß- und Bettag, a public holiday in Sachsen, so under § 31 Abs. 3 VwVfG the deadline shifts to the next working day, Thursday 19.11.2026.",
+          "due_date": "2026-11-19",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Gesamtbetrag) once the notice is final",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.",
+          "computation": "The notice becomes rechtskräftig (final) when the Einspruch period expires unused, i.e. at the end of 19.11.2026 (see the objection deadline above). The letter allows payment 'spätestens zwei Wochen danach' (at the latest two weeks after that). Counting from 19.11.2026 (not counted, § 187 Abs. 1 BGB), two weeks (§ 188 Abs. 1, 2 BGB) end Thursday 03.12.2026, which is a normal working day in Sachsen, so no further shift applies.",
+          "due_date": "2026-12-03",
+          "confidence": "medium",
+          "amount": 178.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The scanned Zustellungsurkunde shows the delivery date as the truncated '04.11.20' with the year cut off; I assumed 2026 (six days after the notice's own date of 30.10.2026), but the person should check the original slip to confirm the full date, since both the Einspruch deadline and the payment deadline depend directly on it.",
+        "The payment due date is only an estimate: it depends on the exact day the Bescheid becomes rechtskräftig (unappealed), which in turn depends on confirming the true delivery date above; if no Einspruch is filed, the authority itself will usually confirm the Rechtskraft date.",
+        "The IBAN DE77 8505 0300 0005 1500 00 is a valid, well-formed German IBAN at Bankleitzahl 85050300, consistent with a German authority account, but as with any payment the payee name shown by your bank during the transfer should match 'Landkreis Beispielelbe' or 'Ostsächsische Musterkasse' before sending money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 3951,
+      "cache_read_tokens": 41470,
+      "cache_creation_tokens": 7821,
+      "cost_usd": 0.07910400000000001,
+      "duration_ms": 35649,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-11-04",
+            "delivery_rule": "none",
+            "nature": "objection",
+            "legal_basis": "§ 182 ZPO; binnen zwei Wochen nach der Zustellung Einspruch",
+            "text": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielelbe – Bußgeldstelle",
+          "document_date": "2026-10-30",
+          "received_date": "2026-11-04",
+          "region": "SN",
+          "recipient_region": "SN",
+          "remedy_type": "einspruch",
+          "today": "2026-11-05"
+        },
+        "result": "{\"due_date\":\"2026-11-19\",\"weekday\":\"Thursday\",\"send_by\":\"2026-11-12\",\"summary\":\"Two weeks after delivery on Wed 4 Nov 2026 (as stated on the letter) is Wed 18 Nov 2026, a public holiday, Buß- und Bettag, so the deadline moves to Thu 19 Nov 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Wed 4 Nov 2026\",\"date\":\"2026-11-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Wed 18 Nov 2026\",\"date\":\"2026-11-18\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 18 Nov 2026 is a public holiday, Buß- und Bettag, so the deadline moves to Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Thu 12 Nov 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-11-12\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-11-05\",\"letter_date\":\"2026-10-30\",\"received_date\":\"2026-11-04\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Sachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2026-11-19",
+            "delivery_rule": "none",
+            "nature": "payment",
+            "legal_basis": "spätestens zwei Wochen nach Rechtskraft",
+            "text": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landkreis Beispielelbe – Bußgeldstelle",
+          "region": "SN",
+          "recipient_region": "SN",
+          "today": "2026-11-05"
+        },
+        "result": "{\"due_date\":\"2026-12-03\",\"weekday\":\"Thursday\",\"send_by\":\"2026-12-02\",\"summary\":\"Two weeks after Thu 19 Nov 2026 is Thu 3 Dec 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 19 Nov 2026\",\"date\":\"2026-11-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Thu 3 Dec 2026\",\"date\":\"2026-12-03\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 3 Dec 2026 is a working day, so it stays\",\"date\":\"2026-12-03\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Wed 2 Dec 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-12-02\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-11-05\",\"holiday_calendar\":\"Sachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE77 8505 0300 0005 1500 00"
+        },
+        "result": "{\"iban\":\"DE77 8505 0300 0005 1500 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"85050300\"},\"account_number\":\"0005150000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

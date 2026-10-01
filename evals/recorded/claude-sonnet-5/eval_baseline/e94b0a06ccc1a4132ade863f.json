@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"604d2e95922be8bd6d09c2a4d9f198e7012b3515b13b358c4ff555d4473d7c88\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-10-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Musterbank Lüne eG\",\"document_date\":\"2025-10-02\",\"references\":[{\"label\":\"Anfrage-Nr.\",\"value\":\"BF-2025-3317\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit missing loan documents (payslips, land register extract, declaration of division)\",\"quote\":\"Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.\",\"computation\":\"Letter is dated Thursday 02.10.2025. The period is explicitly defined by the bank to start on the day after the letter's date, i.e. 03.10.2025, and to be counted in 'Werktage' where the bank's own rule applies: Saturdays count, Sundays and public holidays do not. 03.10.2025 (Friday) is itself a public holiday in all German Länder (Tag der Deutschen Einheit, incl. NRW), so it does not count as a working day under the stated rule, regardless of whether it is treated as day zero or day one of the period. Counting forward day by day and skipping Sundays and the 03.10 holiday: counted day 1 = Sat 04.10, day 2 = Mon 06.10, day 3 = Tue 07.10, day 4 = Wed 08.10, day 5 = Thu 09.10, day 6 = Fri 10.10, day 7 = Sat 11.10 (Sun 12.10 skipped), day 8 = Mon 13.10.2025. So the 8th qualifying day, and thus the deadline for the documents to reach the bank, is 13.10.2025.\",\"due_date\":\"2025-10-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is an informal document request from a private bank regarding a mortgage application, not an administrative decision, so no legal remedy instructions apply and missing the deadline only risks losing the currently offered interest rate, not a legal sanction.\",\"The requested interest rate, loan amount and property purchase price are not stated anywhere in the letter, so these amounts could not be extracted.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Musterbank Lüne eG",
+      "document_date": "2025-10-02",
+      "references": [
+        {
+          "label": "Anfrage-Nr.",
+          "value": "BF-2025-3317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit missing loan documents (payslips, land register extract, declaration of division)",
+          "quote": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.",
+          "computation": "Letter is dated Thursday 02.10.2025. The period is explicitly defined by the bank to start on the day after the letter's date, i.e. 03.10.2025, and to be counted in 'Werktage' where the bank's own rule applies: Saturdays count, Sundays and public holidays do not. 03.10.2025 (Friday) is itself a public holiday in all German Länder (Tag der Deutschen Einheit, incl. NRW), so it does not count as a working day under the stated rule, regardless of whether it is treated as day zero or day one of the period. Counting forward day by day and skipping Sundays and the 03.10 holiday: counted day 1 = Sat 04.10, day 2 = Mon 06.10, day 3 = Tue 07.10, day 4 = Wed 08.10, day 5 = Thu 09.10, day 6 = Fri 10.10, day 7 = Sat 11.10 (Sun 12.10 skipped), day 8 = Mon 13.10.2025. So the 8th qualifying day, and thus the deadline for the documents to reach the bank, is 13.10.2025.",
+          "due_date": "2025-10-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is an informal document request from a private bank regarding a mortgage application, not an administrative decision, so no legal remedy instructions apply and missing the deadline only risks losing the currently offered interest rate, not a legal sanction.",
+        "The requested interest rate, loan amount and property purchase price are not stated anywhere in the letter, so these amounts could not be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3234,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1965,
+      "cost_usd": 0.040828399999999994,
+      "duration_ms": 28081,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

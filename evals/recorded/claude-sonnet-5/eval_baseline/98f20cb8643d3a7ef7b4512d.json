@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2b5139bdbcc139c1b46c73f1b41e982a26e6614a87f0ee1d6e9fa90176aa72b7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-H1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-07-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Musterländische Versicherung VVaG\",\"document_date\":\"2026-07-20\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"HR-26-0714 882\"},{\"label\":\"Vertrag\",\"value\":\"MV 55 120 447\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit stolen-goods list and purchase receipts\",\"quote\":\"Senden Sie uns die Stehlgutliste und die Kaufbelege bitte spätestens 10 Werktage nach dem Datum dieses Briefes; Werktage sind dabei Montag bis Samstag ohne die gesetzlichen Feiertage.\",\"computation\":\"This is a private (non-authority) deadline, so §§ 187, 188, 193 BGB apply. Start: letter date 20.07.2026 (Monday) is the triggering event, not counted (§ 187 Abs. 1 BGB); counting begins 21.07.2026. 'Werktage' are defined by the letter itself as Monday–Saturday excluding public holidays, matching the standard rule. No NW public holidays fall in this window (Fronleichnam was in June, Allerheiligen is 1 Nov). Counting Mon–Sat, skipping Sundays: Day1 Tue 21.07, Day2 Wed 22.07, Day3 Thu 23.07, Day4 Fri 24.07, Day5 Sat 25.07, (Sun 26.07 skipped), Day6 Mon 27.07, Day7 Tue 28.07, Day8 Wed 29.07, Day9 Thu 30.07, Day10 Fri 31.07.2026. The 10th Werktag, Friday 31.07.2026, is not a Saturday, Sunday or holiday, so no further adjustment under § 193 BGB is needed.\",\"due_date\":\"2026-07-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Musterländische Versicherung VVaG",
+      "document_date": "2026-07-20",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "HR-26-0714 882"
+        },
+        {
+          "label": "Vertrag",
+          "value": "MV 55 120 447"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit stolen-goods list and purchase receipts",
+          "quote": "Senden Sie uns die Stehlgutliste und die Kaufbelege bitte spätestens 10 Werktage nach dem Datum dieses Briefes; Werktage sind dabei Montag bis Samstag ohne die gesetzlichen Feiertage.",
+          "computation": "This is a private (non-authority) deadline, so §§ 187, 188, 193 BGB apply. Start: letter date 20.07.2026 (Monday) is the triggering event, not counted (§ 187 Abs. 1 BGB); counting begins 21.07.2026. 'Werktage' are defined by the letter itself as Monday–Saturday excluding public holidays, matching the standard rule. No NW public holidays fall in this window (Fronleichnam was in June, Allerheiligen is 1 Nov). Counting Mon–Sat, skipping Sundays: Day1 Tue 21.07, Day2 Wed 22.07, Day3 Thu 23.07, Day4 Fri 24.07, Day5 Sat 25.07, (Sun 26.07 skipped), Day6 Mon 27.07, Day7 Tue 28.07, Day8 Wed 29.07, Day9 Thu 30.07, Day10 Fri 31.07.2026. The 10th Werktag, Friday 31.07.2026, is not a Saturday, Sunday or holiday, so no further adjustment under § 193 BGB is needed.",
+          "due_date": "2026-07-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3099,
+      "cache_read_tokens": 13105,
+      "cache_creation_tokens": 4350,
+      "cost_usd": 0.051019,
+      "duration_ms": 26065,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

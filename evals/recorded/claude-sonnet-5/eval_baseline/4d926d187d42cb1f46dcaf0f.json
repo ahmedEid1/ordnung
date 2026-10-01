@@ -1,0 +1,102 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"39c9e72ae64bb832c8364c24fa2a6d9fd7acd528ce5f72285fbf57b8594987de\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2027-08-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-08-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterjena\",\"document_date\":\"2027-08-16\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"161/208/41537\"},{\"label\":\"Identifikationsnummer\",\"value\":\"48 230 175 966\"}],\"amounts\":[6744,7603,859],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2026 income tax assessment\",\"quote\":\"Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.\",\"computation\":\"Letter is dated Mon 16 Aug 2027. Under §122 Abs.2 Nr.1 AO a letter sent by ordinary post counts as delivered on the 4th day after posting, i.e. Fri 20 Aug 2027 (posting day not later than the document date). The one-month Einspruch period (§355 AO) starts the day after delivery (§187 Abs.1 BGB / §108 Abs.1 AO), so counting begins 20 Aug 2027. One month later lands on Mon 20 Sep 2027 (§188 Abs.2 BGB). 20 Sep 2027 is Weltkindertag, a public holiday in Thüringen, so under §108 Abs.3 AO the deadline moves to the next business day, Tue 21 Sep 2027.\",\"due_date\":\"2027-09-21\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Receive income tax refund for 2026\",\"quote\":\"Er wird in den nächsten Tagen gutgeschrieben.\",\"computation\":\"The notice states the refund of 859,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the assessment dated 16 Aug 2027, but gives no fixed calendar date, so no exact due date can be derived; this is the Finanzamt's own disbursement, not an obligation on the recipient.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":859}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterjena",
+      "document_date": "2027-08-16",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "161/208/41537"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "48 230 175 966"
+        }
+      ],
+      "amounts": [
+        6744,
+        7603,
+        859
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2026 income tax assessment",
+          "quote": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.",
+          "computation": "Letter is dated Mon 16 Aug 2027. Under §122 Abs.2 Nr.1 AO a letter sent by ordinary post counts as delivered on the 4th day after posting, i.e. Fri 20 Aug 2027 (posting day not later than the document date). The one-month Einspruch period (§355 AO) starts the day after delivery (§187 Abs.1 BGB / §108 Abs.1 AO), so counting begins 20 Aug 2027. One month later lands on Mon 20 Sep 2027 (§188 Abs.2 BGB). 20 Sep 2027 is Weltkindertag, a public holiday in Thüringen, so under §108 Abs.3 AO the deadline moves to the next business day, Tue 21 Sep 2027.",
+          "due_date": "2027-09-21",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Receive income tax refund for 2026",
+          "quote": "Er wird in den nächsten Tagen gutgeschrieben.",
+          "computation": "The notice states the refund of 859,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the assessment dated 16 Aug 2027, but gives no fixed calendar date, so no exact due date can be derived; this is the Finanzamt's own disbursement, not an obligation on the recipient.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 859
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2423,
+      "cache_read_tokens": 15652,
+      "cache_creation_tokens": 5961,
+      "cost_usd": 0.051212400000000005,
+      "duration_ms": 21020,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§355 AO / §122 Abs.2 AO - Einspruchsfrist",
+            "text": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe."
+          },
+          "document_date": "2027-08-16",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterjena",
+          "region": "TH",
+          "recipient_region": "TH",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2027-09-21\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-09-14\",\"summary\":\"Letter dated Mon 16 Aug 2027 counts as delivered on Fri 20 Aug; one month later is Mon 20 Sep 2027, a public holiday, Weltkindertag, so the deadline moves to Tue 21 Sep 2027.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Mon 16 Aug 2027 (the letter's date; the real posting day can only be later)\",\"date\":\"2027-08-16\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Fri 20 Aug 2027\",\"date\":\"2027-08-20\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Fri 20 Aug 2027\",\"date\":\"2027-08-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Mon 20 Sep 2027\",\"date\":\"2027-09-20\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 20 Sep 2027 is a public holiday, Weltkindertag, so the deadline moves to Tue 21 Sep 2027\",\"date\":\"2027-09-21\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Tue 14 Sep 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-09-14\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-08-19\",\"letter_date\":\"2027-08-16\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Thüringen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE81 2655 0105 0071 8300 46"
+        },
+        "result": "{\"iban\":\"DE81 2655 0105 0071 8300 46\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"26550105\"},\"account_number\":\"0071830046\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

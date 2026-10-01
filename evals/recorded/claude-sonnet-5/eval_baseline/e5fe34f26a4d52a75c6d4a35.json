@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"575c3bfe781646fa538bcb3cfb72f73d5f1e50f1ab87b9bc2bfaeb8ec066f214\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-H1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-12-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Rechtsschutz Versicherung AG\",\"document_date\":\"2026-12-09\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"RS 4471-0098-22\"}],\"amounts\":[298.4,150],\"items\":[{\"kind\":\"payment\",\"title\":\"First annual premium collected by direct debit\",\"quote\":\"Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.\",\"computation\":\"The policy states Versicherungsbeginn = 01.02.2027, 0:00 Uhr, and that the first annual premium is debited on this start date. No other start date is given, so the direct debit falls due on 01.02.2027.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":298.4}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-01-31\",\"cancel_by\":\"2027-10-31\"},\"warnings\":[\"The policy term runs 'Versicherungsbeginn 01.02.2027' for '1 Jahr', so under §§ 187 Abs. 2, 188 Abs. 2 BGB the first insurance year ends 31.01.2028; the cancellation deadline (three months before that, per the printed renewal clause) is 31.10.2027 and, as a notice period, is not shifted even if it falls on a weekend or holiday.\",\"This is a standard policy confirmation with no decision subject to objection, so no legal-remedy (Rechtsbehelfsbelehrung) section is expected or present.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Rechtsschutz Versicherung AG",
+      "document_date": "2026-12-09",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "RS 4471-0098-22"
+        }
+      ],
+      "amounts": [
+        298.4,
+        150
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "First annual premium collected by direct debit",
+          "quote": "Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.",
+          "computation": "The policy states Versicherungsbeginn = 01.02.2027, 0:00 Uhr, and that the first annual premium is debited on this start date. No other start date is given, so the direct debit falls due on 01.02.2027.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 298.4
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-01-31",
+        "cancel_by": "2027-10-31"
+      },
+      "warnings": [
+        "The policy term runs 'Versicherungsbeginn 01.02.2027' for '1 Jahr', so under §§ 187 Abs. 2, 188 Abs. 2 BGB the first insurance year ends 31.01.2028; the cancellation deadline (three months before that, per the printed renewal clause) is 31.10.2027 and, as a notice period, is not shifted even if it falls on a weekend or holiday.",
+        "This is a standard policy confirmation with no decision subject to objection, so no legal-remedy (Rechtsbehelfsbelehrung) section is expected or present."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3408,
+      "cache_read_tokens": 13177,
+      "cache_creation_tokens": 4420,
+      "cost_usd": 0.054403400000000005,
+      "duration_ms": 31460,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

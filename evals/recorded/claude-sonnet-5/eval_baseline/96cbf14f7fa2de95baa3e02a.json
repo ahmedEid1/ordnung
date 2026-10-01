@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2b5139bdbcc139c1b46c73f1b41e982a26e6614a87f0ee1d6e9fa90176aa72b7\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-H1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-07-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Musterländische Versicherung VVaG\",\"document_date\":\"2026-07-20\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"HR-26-0714 882\"},{\"label\":\"Vertrag\",\"value\":\"MV 55 120 447\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit list of stolen items with proof of purchase\",\"quote\":\"Senden Sie uns die Stehlgutliste und die Kaufbelege bitte spätestens 10 Werktage nach dem Datum dieses Briefes; Werktage sind dabei Montag bis Samstag ohne die gesetzlichen Feiertage.\",\"computation\":\"The letter is dated 20.07.2026 (document_date). The deadline is 10 Werktage (Mon-Sat, excluding statutory public holidays) after the letter's date, counted from 20.07.2026 as the (uncounted) start day. Counting 10 such Werktage in NRW: the only non-Werktag skipped in the window is Sunday 26.07.2026 (no public holiday falls in this period). This lands on Friday, 31.07.2026, which is itself a business day, so no further weekend/holiday shift is needed.\",\"due_date\":\"2026-07-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Musterländische Versicherung VVaG",
+      "document_date": "2026-07-20",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "HR-26-0714 882"
+        },
+        {
+          "label": "Vertrag",
+          "value": "MV 55 120 447"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit list of stolen items with proof of purchase",
+          "quote": "Senden Sie uns die Stehlgutliste und die Kaufbelege bitte spätestens 10 Werktage nach dem Datum dieses Briefes; Werktage sind dabei Montag bis Samstag ohne die gesetzlichen Feiertage.",
+          "computation": "The letter is dated 20.07.2026 (document_date). The deadline is 10 Werktage (Mon-Sat, excluding statutory public holidays) after the letter's date, counted from 20.07.2026 as the (uncounted) start day. Counting 10 such Werktage in NRW: the only non-Werktag skipped in the window is Sunday 26.07.2026 (no public holiday falls in this period). This lands on Friday, 31.07.2026, which is itself a business day, so no further weekend/holiday shift is needed.",
+          "due_date": "2026-07-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1967,
+      "cache_read_tokens": 15159,
+      "cache_creation_tokens": 3887,
+      "cost_usd": 0.0382578,
+      "duration_ms": 18773,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-07-20",
+          "days": 10,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-07-20\",\"days\":10,\"day_type\":\"werktage\",\"date\":\"2026-07-31\",\"weekday\":\"Friday\",\"skipped\":[{\"date\":\"2026-07-26\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE87 3705 0198 0007 0200 00"
+        },
+        "result": "{\"iban\":\"DE87 3705 0198 0007 0200 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0007020000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -39,7 +39,7 @@ GALLERY_SIZE = 8
 GALLERY_PER_FAMILY = 2
 #: The split written after extraction prompt 11 and recorded once with frozen prompts (evals/generate.py).
 HOLDOUT_SPLIT = "holdout"
-#: The split written after the release's last code change, recorded once, nothing tuned on it (evals/generate.py).
+#: The split written after the release's last change to how letters are read, recorded once, nothing tuned on it (evals/generate.py).
 HOLDOUT2_SPLIT = "holdout2"
 #: The held-out splits: a run on either is accepted wherever a held-out run is expected.
 HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT)
@@ -552,7 +552,7 @@ def render_markdown(
     :func:`check_holdout_run`). ``holdout_rescored`` is that run's recorded outputs replayed with later
     code: one more row in its table, labelled re-scored and not held-out, never in its place (see
     :func:`check_holdout_rescored`). ``holdout2_run`` and ``holdout2_rescored`` are the same for the
-    holdout2 split (written after the release's last code change), shown in a section of their own
+    holdout2 split (written after the release's last change to how letters are read), shown in a section of their own
     after the holdout one. Either slot accepts a run on either held-out split; each section is rendered
     for its run's split.
     """
@@ -613,7 +613,7 @@ def _held_out_line(holdout_run: Mapping[str, Any]) -> str:
     if holdout_run["meta"].get("split") == HOLDOUT2_SPLIT:
         return (
             f"\n> {who} {verb} also recorded once on the fresh holdout2 split ({holdout_run['meta'].get('date')}), "
-            "written after the release's last code change (“Held-out run: the holdout2 split”)."
+            "written after the release's last change to how letters are read (“Held-out run: the holdout2 split”)."
         )
     return (
         f"\n> {who} {verb} also recorded once on the fresh holdout split ({holdout_run['meta'].get('date')}): "
@@ -949,8 +949,10 @@ def _held_out_intro(name: str) -> str:
     if name == HOLDOUT2_SPLIT:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
-attack classes. **The holdout2 letters were written after the release's last code change, are recorded
-once, and nothing was tuned on them.** No prompt and no code change was informed by these letters."""
+attack classes. **The holdout2 letters were written after the release's last change to how letters are
+read, are recorded once, and nothing was tuned on them.** No prompt and no change to the reading was
+informed by these letters; the one code change that came after them, a rules-table date their label
+audit found, changes no date on them (see the note below)."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
@@ -2130,7 +2132,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--holdout2-run",
         type=Path,
         metavar="RUN.json",
-        help="the run on the holdout2 split (written after the release's last code change, recorded once; Ordnung "
+        help="the run on the holdout2 split (written after the release's last change to how letters are read, recorded once; Ordnung "
         "alone or every condition), shown in its own section after the holdout one",
     )
     parser.add_argument(

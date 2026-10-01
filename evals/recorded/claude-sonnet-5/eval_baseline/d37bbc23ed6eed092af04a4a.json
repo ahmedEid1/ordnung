@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"eefe0b85aadbc63b68f8b5e213361e72d1da77f0f5259c04885983d6c4aae8c8\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-G2"
+    ],
+    "prompt_head": "Today is Saturday, 2026-01-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Little Explorers Beispiel gGmbH\",\"document_date\":\"2025-12-30\",\"references\":[{\"label\":\"Invoice\",\"value\":\"LE-26-0041\"}],\"amounts\":[1188],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Q1 2026 childcare invoice\",\"quote\":\"The total is payable within 10 days of the invoice date.\",\"computation\":\"Invoice date is 30 December 2025. This is a private company invoice, so ordinary civil-law period counting under §§ 187, 188 BGB applies (no statutory administrative delivery fiction, as this is not a letter from an authority). The period 'within 10 days of the invoice date' begins with an event (the invoice date), so under § 187(1) BGB the day of the event (30 Dec 2025) is not counted; the period starts the next day, 31 Dec 2025 (day 1). Counting 10 days: 31 Dec (1), 1 Jan (2), 2 Jan (3), 3 Jan (4), 4 Jan (5), 5 Jan (6), 6 Jan (7), 7 Jan (8), 8 Jan (9), 9 Jan (10). Day 10 is Friday, 9 January 2026, which is a regular business day in NW (not a Saturday, Sunday, or public holiday), so § 193 BGB does not shift the date further.\",\"due_date\":\"2026-01-09\",\"confidence\":\"high\",\"amount\":1188}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Little Explorers Beispiel gGmbH",
+      "document_date": "2025-12-30",
+      "references": [
+        {
+          "label": "Invoice",
+          "value": "LE-26-0041"
+        }
+      ],
+      "amounts": [
+        1188
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Q1 2026 childcare invoice",
+          "quote": "The total is payable within 10 days of the invoice date.",
+          "computation": "Invoice date is 30 December 2025. This is a private company invoice, so ordinary civil-law period counting under §§ 187, 188 BGB applies (no statutory administrative delivery fiction, as this is not a letter from an authority). The period 'within 10 days of the invoice date' begins with an event (the invoice date), so under § 187(1) BGB the day of the event (30 Dec 2025) is not counted; the period starts the next day, 31 Dec 2025 (day 1). Counting 10 days: 31 Dec (1), 1 Jan (2), 2 Jan (3), 3 Jan (4), 4 Jan (5), 5 Jan (6), 6 Jan (7), 7 Jan (8), 8 Jan (9), 9 Jan (10). Day 10 is Friday, 9 January 2026, which is a regular business day in NW (not a Saturday, Sunday, or public holiday), so § 193 BGB does not shift the date further.",
+          "due_date": "2026-01-09",
+          "confidence": "high",
+          "amount": 1188
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2413,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1893,
+      "cost_usd": 0.0323304,
+      "duration_ms": 21423,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

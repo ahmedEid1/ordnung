@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b8f025b1ac869aac03c82f9f4cf7ef9f622766dca258f81e4d33305c3e004e45\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G2"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-08-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Familienkasse Beispiel-Nord\",\"document_date\":\"2027-08-27\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"212FK558104\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against cancellation of Kindergeld\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter is dated Tue 27.08.2027; no separate posting date is stated, so the posting date (Aufgabe zur Post) is assumed to equal the document date, 27.08.2027. Per the letter's own clause (simple letter: Bekanntgabe = 4th day after posting), day 4 after 27.08. falls on Sat 31.08.2027. Under established rule for the Bekanntgabefiktion (§122 Abs.2 Nr.1 AO analogous to §108 Abs.3 AO/§193 BGB), if that day is a Saturday, Sunday or holiday, deemed delivery shifts to the next business day: Monday 02.09.2027. The day of Bekanntgabe itself is not counted (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB), so the one-month Einspruchsfrist runs from 03.09.2027 and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the day of the triggering event (02.09.) i.e. 02.10.2027. That date is a Saturday/Sunday/holiday check: 02.10.2027 is a Saturday? Verified weekday: 02.09.2027 is Monday, so 02.10.2027 (30 days later) is a Wednesday - a regular business day in NW (Tag der Deutschen Einheit, 03.10., is the following day and not a holiday affecting this deadline).\",\"due_date\":\"2027-10-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter does not explicitly state a separate posting date (Aufgabe zur Post); the calculation assumes it matches the document date (27.08.2027), which determines the deemed-delivery date and hence the Einspruch deadline - verify the actual mailing/receipt date if available.\",\"No Kindergeld amount or repayment sum is mentioned in the letter itself, consistent with the statement that no repayment (Rückforderung) arises for August 2027.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Familienkasse Beispiel-Nord",
+      "document_date": "2027-08-27",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "212FK558104"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against cancellation of Kindergeld",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter is dated Tue 27.08.2027; no separate posting date is stated, so the posting date (Aufgabe zur Post) is assumed to equal the document date, 27.08.2027. Per the letter's own clause (simple letter: Bekanntgabe = 4th day after posting), day 4 after 27.08. falls on Sat 31.08.2027. Under established rule for the Bekanntgabefiktion (§122 Abs.2 Nr.1 AO analogous to §108 Abs.3 AO/§193 BGB), if that day is a Saturday, Sunday or holiday, deemed delivery shifts to the next business day: Monday 02.09.2027. The day of Bekanntgabe itself is not counted (§108 Abs.1 AO i.V.m. §187 Abs.1 BGB), so the one-month Einspruchsfrist runs from 03.09.2027 and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the day of the triggering event (02.09.) i.e. 02.10.2027. That date is a Saturday/Sunday/holiday check: 02.10.2027 is a Saturday? Verified weekday: 02.09.2027 is Monday, so 02.10.2027 (30 days later) is a Wednesday - a regular business day in NW (Tag der Deutschen Einheit, 03.10., is the following day and not a holiday affecting this deadline).",
+          "due_date": "2027-10-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not explicitly state a separate posting date (Aufgabe zur Post); the calculation assumes it matches the document date (27.08.2027), which determines the deemed-delivery date and hence the Einspruch deadline - verify the actual mailing/receipt date if available.",
+        "No Kindergeld amount or repayment sum is mentioned in the letter itself, consistent with the statement that no repayment (Rückforderung) arises for August 2027."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4281,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2190,
+      "cost_usd": 0.05219839999999999,
+      "duration_ms": 39549,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

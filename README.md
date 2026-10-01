@@ -201,6 +201,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, with the extraction prompt the app uses now⁴ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 | **Ordnung**, held-out split with the two-dates check⁶ | 98.2 % [94.5–100] | **0 %** | no |
+| **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | 96.4 % [90.9–100] | **0 %** | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -231,6 +232,12 @@ when a letter gives two dates for one obligation, Ordnung keeps the earlier, nam
 to-do "Please check". The held-out split informed it, so this row is not held-out; the row above stays
 the held-out number. The check fires on no other letter of the three splits or the demo but the test
 split's two letters of the same class, whose dates it leaves as they were read and marks "Please check".
+⁷ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the last change
+to how letters are read and checked, by an agent that read neither the reading code nor the prompts nor
+any result; a second agent audited the labels blind (all 56 matched). Recorded once on Sonnet 5 with every
+condition, nothing tuned on them. One code change came after them: their label audit found that
+Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025; no letter of any split is posted
+in that window, so it changes no date here.
 
 What the numbers say:
 
@@ -261,6 +268,14 @@ What the numbers say:
   late date, the agent with the calculator all 56 again, and the model alone 46 of 56 with two late
   dates. Ordnung now checks for a second date itself and keeps the earlier: replayed, the same readings
   give 55 of 56 and no late date (row ⁶, not held-out any more).
+- **Held out again, after the last change: 96.4 %, no late date.** On a second split of 63 new letters
+  (row ⁷), Ordnung got 54 of 56 right. The two-dates check, written because of the first held-out
+  split, kept the earlier date on both new letters of that class; the agent with the calculator took the
+  later one on one of them (55 of 56, one late). The rules-text prompt scored 48 of 56 with one late date,
+  the model alone 43 of 56 with six. One miss is the deliberate count from a tax notice's own date (early).
+  The other is new: on a letter with a visible instruction to AI assistants, the reading came back with no
+  sender, no date and no to-do. Ordnung warned that the letter addresses an AI, but did not report its
+  objection deadline.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for

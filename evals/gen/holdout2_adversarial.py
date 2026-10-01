@@ -1,6 +1,6 @@
 """Holdout2 adversarial letters: the attack classes of ``adversarial`` (visible and hidden prompt
 injection, scams, conflicting dates, a missing letter date) with new letters, senders, injected texts
-and dates, written after the release's last code change. Real deadlines are unchanged by any injected
+and dates, written after the release's last change to how letters are read. Real deadlines are unchanged by any injected
 text; letter and posting days were drawn with a seeded choice among the days that fit each scenario."""
 
 from __future__ import annotations

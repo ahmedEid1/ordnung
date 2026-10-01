@@ -1,0 +1,140 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f00f88885faf52ba6ddfe3dd0bc5c392c4e51878f2e60ca35911991aff3cc124\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2027-09-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-H2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-09-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Ordnungsamt Weserstadt – Bußgeldstelle\",\"document_date\":\"2027-08-30\",\"references\":[{\"label\":\"Az.\",\"value\":\"OWi 27/40-118833\"},{\"label\":\"Fahrzeug\",\"value\":\"HB-JB 1422\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift beim Ordnungsamt Weserstadt – Bußgeldstelle.\",\"computation\":\"The notice was formally served (förmliche Zustellung per Zustellungsurkunde, § 182 ZPO); page 2 shows the delivery stamp dated 06.09.2027 (Monday), which is the date of delivery for counting purposes — no 'deemed delivery' fiction applies to formal service. Per § 187 Abs. 1 BGB the day of delivery itself is not counted, so the two-week period begins 07.09.2027. Per § 188 Abs. 2 BGB a period in weeks ends on the day of the last week whose name matches the day of the triggering event (Monday, 06.09.2027); the second such Monday is 20.09.2027. That day is a regular working day in Bremen (no holiday), so no shift is needed. The Einspruch must reach the Ordnungsamt by this date.\",\"due_date\":\"2027-09-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and costs (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.\",\"computation\":\"Rechtskraft (the decision becoming final) occurs, absent an Einspruch, with the expiry of the Einspruch period on 20.09.2027. Per § 187 Abs. 1 BGB the day of that event is not counted, so the two-week payment period starts 21.09.2027; per § 188 Abs. 2 BGB it ends on the day of the second following week matching the name of the triggering day (Monday), i.e. 04.10.2027. That day is a normal working day in Bremen, so no weekend/holiday shift applies. This date assumes no Einspruch is filed; filing an Einspruch would stop Rechtskraft and this due date would not apply.\",\"due_date\":\"2027-10-04\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (04.10.2027) is calculated on the assumption that no Einspruch is filed and the Bußgeldbescheid becomes final (rechtskräftig) on 20.09.2027; if an Einspruch is filed by the 20.09.2027 deadline, this payment date no longer applies.\",\"The IBAN printed for payment (DE84 2905 0101 0003 6110 00) is a validly formatted German IBAN with a Bremen-area bank code; it is still worth confirming it matches the Ordnungsamt's known payment details before transferring money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Ordnungsamt Weserstadt – Bußgeldstelle",
+      "document_date": "2027-08-30",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "OWi 27/40-118833"
+        },
+        {
+          "label": "Fahrzeug",
+          "value": "HB-JB 1422"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift beim Ordnungsamt Weserstadt – Bußgeldstelle.",
+          "computation": "The notice was formally served (förmliche Zustellung per Zustellungsurkunde, § 182 ZPO); page 2 shows the delivery stamp dated 06.09.2027 (Monday), which is the date of delivery for counting purposes — no 'deemed delivery' fiction applies to formal service. Per § 187 Abs. 1 BGB the day of delivery itself is not counted, so the two-week period begins 07.09.2027. Per § 188 Abs. 2 BGB a period in weeks ends on the day of the last week whose name matches the day of the triggering event (Monday, 06.09.2027); the second such Monday is 20.09.2027. That day is a regular working day in Bremen (no holiday), so no shift is needed. The Einspruch must reach the Ordnungsamt by this date.",
+          "due_date": "2027-09-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and costs (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.",
+          "computation": "Rechtskraft (the decision becoming final) occurs, absent an Einspruch, with the expiry of the Einspruch period on 20.09.2027. Per § 187 Abs. 1 BGB the day of that event is not counted, so the two-week payment period starts 21.09.2027; per § 188 Abs. 2 BGB it ends on the day of the second following week matching the name of the triggering day (Monday), i.e. 04.10.2027. That day is a normal working day in Bremen, so no weekend/holiday shift applies. This date assumes no Einspruch is filed; filing an Einspruch would stop Rechtskraft and this due date would not apply.",
+          "due_date": "2027-10-04",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (04.10.2027) is calculated on the assumption that no Einspruch is filed and the Bußgeldbescheid becomes final (rechtskräftig) on 20.09.2027; if an Einspruch is filed by the 20.09.2027 deadline, this payment date no longer applies.",
+        "The IBAN printed for payment (DE84 2905 0101 0003 6110 00) is a validly formatted German IBAN with a Bremen-area bank code; it is still worth confirming it matches the Ordnungsamt's known payment details before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5823,
+      "cache_read_tokens": 29832,
+      "cache_creation_tokens": 9708,
+      "cost_usd": 0.1030404,
+      "duration_ms": 51635,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2027-09-06",
+            "delivery_rule": "none",
+            "nature": "objection",
+            "legal_basis": "§ 67 Abs. 1 OWiG",
+            "text": "er muss innerhalb von zwei Wochen ab der Zustellung vorliegen"
+          },
+          "document_date": "2027-08-30",
+          "received_date": "2027-09-06",
+          "sender_kind": "authority",
+          "sender_name": "Ordnungsamt Weserstadt – Bußgeldstelle",
+          "region": "HB",
+          "recipient_region": "HB",
+          "remedy_type": "einspruch",
+          "today": "2027-09-08"
+        },
+        "result": "{\"due_date\":\"2027-09-20\",\"weekday\":\"Monday\",\"send_by\":\"2027-09-14\",\"summary\":\"Two weeks after delivery on Mon 6 Sep 2027 (as stated on the letter) is Mon 20 Sep 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 6 Sep 2027\",\"date\":\"2027-09-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 20 Sep 2027\",\"date\":\"2027-09-20\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 20 Sep 2027 is a working day, so it stays\",\"date\":\"2027-09-20\",\"rule_id\":\"stpo_43\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\"},{\"label\":\"Send by Tue 14 Sep 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-09-14\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"owig_67\",\"title\":\"Objection to a fine (Einspruch gegen Bußgeldbescheid): two weeks\",\"citation\":\"§ 67 Abs. 1 OWiG; § 43 StPO\",\"url\":\"https://www.gesetze-im-internet.de/owig_1968/__67.html\"},{\"id\":\"stpo_43\",\"title\":\"Week periods in fine and criminal proceedings\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\",\"url\":\"https://www.gesetze-im-internet.de/stpo/__43.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-09-08\",\"letter_date\":\"2027-08-30\",\"received_date\":\"2027-09-06\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Bremen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "HB"
+        },
+        "result": "{\"year\":2027,\"region\":\"HB\",\"calendar\":\"Bremen\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-10-31\",\"weekday\":\"Sunday\",\"name\":\"Reformationstag\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE84 2905 0101 0003 6110 00"
+        },
+        "result": "{\"iban\":\"DE84 2905 0101 0003 6110 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"29050101\"},\"account_number\":\"0003611000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-09-20",
+            "delivery_rule": "none",
+            "nature": "payment",
+            "legal_basis": "Fälligkeitsregel im Bescheid",
+            "text": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig."
+          },
+          "document_date": "2027-08-30",
+          "sender_kind": "authority",
+          "sender_name": "Ordnungsamt Weserstadt – Bußgeldstelle",
+          "region": "HB",
+          "recipient_region": "HB",
+          "today": "2027-09-08"
+        },
+        "result": "{\"due_date\":\"2027-10-04\",\"weekday\":\"Monday\",\"send_by\":\"2027-10-01\",\"summary\":\"Two weeks after Mon 20 Sep 2027 is Mon 4 Oct 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 20 Sep 2027\",\"date\":\"2027-09-20\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 4 Oct 2027\",\"date\":\"2027-10-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 4 Oct 2027 is a working day, so it stays\",\"date\":\"2027-10-04\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Fri 1 Oct 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-10-01\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-09-08\",\"letter_date\":\"2027-08-30\",\"holiday_calendar\":\"Bremen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

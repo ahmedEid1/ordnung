@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"604d2e95922be8bd6d09c2a4d9f198e7012b3515b13b358c4ff555d4473d7c88\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-10-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Musterbank Lüne eG\",\"document_date\":\"2025-10-02\",\"references\":[{\"label\":\"Anfrage-Nr.\",\"value\":\"BF-2025-3317\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit missing loan documents (payslips, land register extract, declaration of division)\",\"quote\":\"Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.\",\"computation\":\"The letter is dated 02.10.2025 (Thursday). The letter itself fixes the start of the period as the day after its own date, i.e. 03.10.2025 (Friday). It defines the unit itself: 'Werktage' counting Monday to Saturday, with Sundays and public holidays excluded. Counting 8 such working days from 03.10.2025 (not counting the start day itself): Fri 03.10 is the start (not counted); Sat 04.10 (day1), Sun 05.10 skipped, Mon 06.10 (day2), Tue 07.10 (day3), Wed 08.10 (day4), Thu 09.10 (day5), Fri 10.10 (day6), Sat 11.10 (day7), Sun 12.10 skipped, Mon 13.10 (day8). No public holiday falls in this window in NRW or Niedersachsen. The 8th working day is Monday, 13.10.2025, confirmed independently by the rules engine and by a working-day count.\",\"due_date\":\"2025-10-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a contractual deadline set by the bank to keep the currently offered interest rate, not a statutory or authority deadline; missing it does not trigger a legal remedy but the offered rate may no longer be guaranteed.\",\"The address and postal code appear to be a fictitious placeholder (Musterlüne); verify the sender's identity and genuine contact details before sending sensitive documents such as payslips or the land register extract.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Musterbank Lüne eG",
+      "document_date": "2025-10-02",
+      "references": [
+        {
+          "label": "Anfrage-Nr.",
+          "value": "BF-2025-3317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit missing loan documents (payslips, land register extract, declaration of division)",
+          "quote": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.",
+          "computation": "The letter is dated 02.10.2025 (Thursday). The letter itself fixes the start of the period as the day after its own date, i.e. 03.10.2025 (Friday). It defines the unit itself: 'Werktage' counting Monday to Saturday, with Sundays and public holidays excluded. Counting 8 such working days from 03.10.2025 (not counting the start day itself): Fri 03.10 is the start (not counted); Sat 04.10 (day1), Sun 05.10 skipped, Mon 06.10 (day2), Tue 07.10 (day3), Wed 08.10 (day4), Thu 09.10 (day5), Fri 10.10 (day6), Sat 11.10 (day7), Sun 12.10 skipped, Mon 13.10 (day8). No public holiday falls in this window in NRW or Niedersachsen. The 8th working day is Monday, 13.10.2025, confirmed independently by the rules engine and by a working-day count.",
+          "due_date": "2025-10-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a contractual deadline set by the bank to keep the currently offered interest rate, not a statutory or authority deadline; missing it does not trigger a legal remedy but the offered rate may no longer be guaranteed.",
+        "The address and postal code appear to be a fictitious placeholder (Musterlüne); verify the sender's identity and genuine contact details before sending sensitive documents such as payslips or the land register extract."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3331,
+      "cache_read_tokens": 25794,
+      "cache_creation_tokens": 5852,
+      "cost_usd": 0.061888799999999994,
+      "duration_ms": 29553,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2025-10-03",
+          "days": 8,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2025-10-03\",\"days\":8,\"day_type\":\"werktage\",\"date\":\"2025-10-13\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2025-10-05\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2025-10-12\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 8,
+            "unit": "werktage",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-10-03",
+            "nature": "other",
+            "shift_rule": "none",
+            "legal_basis": "Vertragliche Frist (Bank)",
+            "text": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht."
+          },
+          "document_date": "2025-10-02",
+          "sender_kind": "bank",
+          "sender_name": "Musterbank Lüne eG",
+          "region": "NI",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2025-10-13\",\"weekday\":\"Monday\",\"summary\":\"8 working days (Mon–Sat) after Fri 3 Oct 2025 is Mon 13 Oct 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 3 Oct 2025\",\"date\":\"2025-10-03\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"8 working days (Mon–Sat) later: Mon 13 Oct 2025\",\"date\":\"2025-10-13\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2025-10-04\",\"letter_date\":\"2025-10-02\",\"holiday_calendar\":\"Niedersachsen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

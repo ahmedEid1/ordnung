@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"bc936247fa2add7fb7889837a37292324d267a54cca0e75e313ce5db96d32227\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2026-11-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-11-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielelbe – Bußgeldstelle\",\"document_date\":\"2026-10-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 2026/08-77412\"},{\"label\":\"Kennzeichen\",\"value\":\"PIR-HM 418\"}],\"amounts\":[150,25,3.5,178.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"The attached Zustellungsurkunde (page 2) records the actual formal delivery date as 04.11.2026 (a Wednesday). Because this is a förmliche Zustellung with a documented delivery date, that date governs rather than the statutory 3-day-delivery fiction. Under § 187(1) BGB, since the triggering event (Zustellung) occurred during the day of 04.11.2026, that day is not counted and the period begins the next day, 05.11.2026 (Thursday). Under § 188(2) BGB, a period of weeks ends with the expiry of the day in the last week bearing the same name as the day the period began; the period began on a Thursday, so two weeks later ends on Thursday, 19.11.2026. 19.11.2026 is not a Saturday, Sunday or public holiday in Sachsen (the Saxon holiday Buß- und Bettag falls one day earlier, on 18.11.2026), so § 193 BGB does not shift the date. Deadline: 19.11.2026.\",\"due_date\":\"2026-11-19\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (178,50 €) once the notice is final\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.\",\"computation\":\"The notice becomes rechtskräftig (final) upon expiry of the two-week Einspruch period without an objection being filed, i.e. with the end of 19.11.2026 (see the Einspruch deadline computation above). Treating this expiry as the triggering event, under § 187(1) BGB the follow-on 'two weeks thereafter' period begins the next day, 20.11.2026 (a Friday). Applying § 188(2) BGB, a two-week period beginning on a Friday ends with the expiry of the corresponding Friday two weeks later: 04.12.2026. That day is a Friday, not a weekend day or Saxon public holiday, so § 193 BGB does not apply. Latest payment date: 04.12.2026.\",\"due_date\":\"2026-12-04\",\"confidence\":\"medium\",\"amount\":178.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The scanned/attached delivery notation on page 2 ('26 zugestellt am 04.11.20') appears garbled by OCR/layout merging of two columns; the most plausible reading is a delivery date of 04.11.2026, which was used for the deadline calculation, but this should be verified against the original envelope.\",\"The payment due date is derived by chaining two legal deadlines (Rechtskraft following the Einspruch period, then two more weeks); if the notice becomes final earlier or later for any other reason (e.g. an Einspruch is actually filed), this payment date would no longer apply.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielelbe – Bußgeldstelle",
+      "document_date": "2026-10-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 2026/08-77412"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "PIR-HM 418"
+        }
+      ],
+      "amounts": [
+        150,
+        25,
+        3.5,
+        178.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "The attached Zustellungsurkunde (page 2) records the actual formal delivery date as 04.11.2026 (a Wednesday). Because this is a förmliche Zustellung with a documented delivery date, that date governs rather than the statutory 3-day-delivery fiction. Under § 187(1) BGB, since the triggering event (Zustellung) occurred during the day of 04.11.2026, that day is not counted and the period begins the next day, 05.11.2026 (Thursday). Under § 188(2) BGB, a period of weeks ends with the expiry of the day in the last week bearing the same name as the day the period began; the period began on a Thursday, so two weeks later ends on Thursday, 19.11.2026. 19.11.2026 is not a Saturday, Sunday or public holiday in Sachsen (the Saxon holiday Buß- und Bettag falls one day earlier, on 18.11.2026), so § 193 BGB does not shift the date. Deadline: 19.11.2026.",
+          "due_date": "2026-11-19",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (178,50 €) once the notice is final",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.",
+          "computation": "The notice becomes rechtskräftig (final) upon expiry of the two-week Einspruch period without an objection being filed, i.e. with the end of 19.11.2026 (see the Einspruch deadline computation above). Treating this expiry as the triggering event, under § 187(1) BGB the follow-on 'two weeks thereafter' period begins the next day, 20.11.2026 (a Friday). Applying § 188(2) BGB, a two-week period beginning on a Friday ends with the expiry of the corresponding Friday two weeks later: 04.12.2026. That day is a Friday, not a weekend day or Saxon public holiday, so § 193 BGB does not apply. Latest payment date: 04.12.2026.",
+          "due_date": "2026-12-04",
+          "confidence": "medium",
+          "amount": 178.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The scanned/attached delivery notation on page 2 ('26 zugestellt am 04.11.20') appears garbled by OCR/layout merging of two columns; the most plausible reading is a delivery date of 04.11.2026, which was used for the deadline calculation, but this should be verified against the original envelope.",
+        "The payment due date is derived by chaining two legal deadlines (Rechtskraft following the Einspruch period, then two more weeks); if the notice becomes final earlier or later for any other reason (e.g. an Einspruch is actually filed), this payment date would no longer apply."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6083,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2845,
+      "cost_usd": 0.07283839999999998,
+      "duration_ms": 53573,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

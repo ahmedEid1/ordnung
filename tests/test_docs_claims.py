@@ -272,6 +272,51 @@ def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:
             assert items and all(item["outcome"] == "correct" for item in items if item["required"])
 
 
+def test_readme_second_held_out_row_matches_its_one_recording() -> None:
+    """Row ⁷: the holdout2 split, written after the last change to the reading, recorded once with every
+    condition; the bullet's counts per condition, and Ordnung's two misses (one early, one missed)."""
+    readme = _readme()
+    runs = sorted((ROOT / "evals" / "results").glob("*-holdout2.json"))
+    assert len(runs) == 1, "holdout2 is recorded once"
+    run = _results(runs[0].name)
+    meta, metrics = run["meta"], run["metrics"]
+    assert meta["split"] == "holdout2" and meta["backend"] == "live" and not meta["partial"]
+    assert set(meta["conditions"]) == {"ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"}
+    ordnung = metrics["ordnung"]
+    assert ordnung["dangerous_late_rate"]["k"] == 0
+    assert (
+        "| **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | "
+        f"{_with_interval(ordnung['due_date_accuracy'])} | **0 %** | yes |"
+    ) in readme
+    assert (
+        f"⁷ {meta['entries']} more new letters ({meta['photos']} photos, {meta['adversarial']} adversarial; "
+        f"{meta['scored_items']} dated obligations)"
+    ) in readme
+    exact = {name: int(m["due_date_accuracy"]["k"]) for name, m in metrics.items()}
+    late = {name: int(m["dangerous_late_rate"]["k"]) for name, m in metrics.items()}
+    assert f"(row ⁷), Ordnung got {exact['ordnung']} of 56 right." in readme
+    assert (
+        f"later one on one of them ({exact['llm_rules_tool']} of 56, {_words(late['llm_rules_tool'])} late)"
+        in readme
+    )
+    assert (
+        f"The rules-text prompt scored {exact['llm_rules_text']} of 56 with {_words(late['llm_rules_text'])} "
+        "late date,"
+    ) in readme
+    assert f"the model alone {exact['llm_only']} of 56 with {_words(late['llm_only'])}." in readme
+    misses = {
+        (entry["id"], item["outcome"], item["direction"])
+        for entry in run["entries"]
+        for item in entry["conditions"]["ordnung"]["score"]["items"]
+        if item["required"] and item["outcome"] in ("wrong", "missed")
+    }
+    assert misses == {
+        ("holdout2-tax_assessment-H1", "wrong", "early"),
+        ("holdout2-adversarial-injection_visible-1", "missed", None),
+    }
+    assert ordnung["adversarial"]["conflicting_dates_handled"]["k"] == 2
+
+
 def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
     """README's Ask benchmark table and its sizes are the newest recorded Ask run's."""
     readme = _readme()

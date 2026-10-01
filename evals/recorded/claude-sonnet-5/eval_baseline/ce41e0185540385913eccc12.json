@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"b3f70007e884aa9d6b2bbeb2eddb5e4d8abafe7c7c5432e769ab0c4401a186ec\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-H1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-03-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Example Analytics, Inc.\",\"document_date\":\"2025-03-12\",\"references\":[{\"label\":\"Requisition\",\"value\":\"REQ-2025-0318\"}],\"amounts\":[92000],\"items\":[{\"kind\":\"deadline\",\"title\":\"Sign and return offer letter to accept\",\"quote\":\"To accept, please sign the enclosed offer letter and return it to People Operations no later\\nthan March 26, 2025.\",\"computation\":\"The letter prints a fixed calendar date by which the signed offer must be returned: March 26, 2025. This is a date set by a private company (not a German authority), so no deemed-delivery or BGB period-counting rules apply; the date is taken as written. March 26, 2025 is a Wednesday, so no weekend/holiday shift is needed.\",\"due_date\":\"2025-03-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment start date\",\"quote\":\"starting May 5, 2025, at an annual base salary\\nof EUR 92,000.00.\",\"computation\":\"The letter states the employment start date directly as May 5, 2025; this is a fixed date printed in the letter, taken as written.\",\"due_date\":\"2025-05-05\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a job offer from a private US company (not a German authority), so statutory deemed-delivery and BGB deadline-counting rules do not apply; the 'no later than March 26, 2025' date is a company-imposed acceptance deadline, not a legal one.\",\"The sender's address and phone/email are US-based (San Francisco) while the employee is to work from Germany 'through our employer of record' — verify the employer-of-record arrangement and the sender's legitimacy before signing, as offer-letter scams sometimes use this structure.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Example Analytics, Inc.",
+      "document_date": "2025-03-12",
+      "references": [
+        {
+          "label": "Requisition",
+          "value": "REQ-2025-0318"
+        }
+      ],
+      "amounts": [
+        92000
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Sign and return offer letter to accept",
+          "quote": "To accept, please sign the enclosed offer letter and return it to People Operations no later\nthan March 26, 2025.",
+          "computation": "The letter prints a fixed calendar date by which the signed offer must be returned: March 26, 2025. This is a date set by a private company (not a German authority), so no deemed-delivery or BGB period-counting rules apply; the date is taken as written. March 26, 2025 is a Wednesday, so no weekend/holiday shift is needed.",
+          "due_date": "2025-03-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment start date",
+          "quote": "starting May 5, 2025, at an annual base salary\nof EUR 92,000.00.",
+          "computation": "The letter states the employment start date directly as May 5, 2025; this is a fixed date printed in the letter, taken as written.",
+          "due_date": "2025-05-05",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a job offer from a private US company (not a German authority), so statutory deemed-delivery and BGB deadline-counting rules do not apply; the 'no later than March 26, 2025' date is a company-imposed acceptance deadline, not a legal one.",
+        "The sender's address and phone/email are US-based (San Francisco) while the employee is to work from Germany 'through our employer of record' — verify the employer-of-record arrangement and the sender's legitimacy before signing, as offer-letter scams sometimes use this structure."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2053,
+      "cache_read_tokens": 14910,
+      "cache_creation_tokens": 3366,
+      "cost_usd": 0.036984,
+      "duration_ms": 17560,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

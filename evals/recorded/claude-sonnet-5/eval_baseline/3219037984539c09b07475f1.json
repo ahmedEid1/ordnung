@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"ffa994c10cda9ace66666ce0c122a3f7bb4286ad744165de99a72dcc6ea5c9b0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-05-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Verwaltung Musterhof GmbH\",\"document_date\":\"2026-05-20\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Schedule drying appointment with Trocknungstechnik Beispiel\",\"quote\":\"Bitte vereinbaren Sie binnen 5 Arbeitstagen ab Briefdatum einen Termin mit der Firma Trocknungstechnik Beispiel (Telefon 0541 22 11 00); Arbeitstage sind Montag bis Freitag, gesetzliche Feiertage ausgenommen.\",\"computation\":\"The letter itself defines the period and its counting: 5 Arbeitstage (Monday-Friday, public holidays excluded) starting 'ab Briefdatum', i.e. from the letter's date 2026-05-20 (a Wednesday), which is not counted itself (consistent with the usual German counting convention and the letter's own phrasing). Counting business days in NRW: day 1 = Thu 2026-05-21, day 2 = Fri 2026-05-22; Sat 23 and Sun 24 are skipped as weekend; Mon 2026-05-25 (Pfingstmontag) is a public holiday in NRW and is skipped; day 3 = Tue 2026-05-26, day 4 = Wed 2026-05-27, day 5 = Thu 2026-05-28. So the appointment must be arranged by 2026-05-28.\",\"due_date\":\"2026-05-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Verwaltung Musterhof GmbH",
+      "document_date": "2026-05-20",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Schedule drying appointment with Trocknungstechnik Beispiel",
+          "quote": "Bitte vereinbaren Sie binnen 5 Arbeitstagen ab Briefdatum einen Termin mit der Firma Trocknungstechnik Beispiel (Telefon 0541 22 11 00); Arbeitstage sind Montag bis Freitag, gesetzliche Feiertage ausgenommen.",
+          "computation": "The letter itself defines the period and its counting: 5 Arbeitstage (Monday-Friday, public holidays excluded) starting 'ab Briefdatum', i.e. from the letter's date 2026-05-20 (a Wednesday), which is not counted itself (consistent with the usual German counting convention and the letter's own phrasing). Counting business days in NRW: day 1 = Thu 2026-05-21, day 2 = Fri 2026-05-22; Sat 23 and Sun 24 are skipped as weekend; Mon 2026-05-25 (Pfingstmontag) is a public holiday in NRW and is skipped; day 3 = Tue 2026-05-26, day 4 = Wed 2026-05-27, day 5 = Thu 2026-05-28. So the appointment must be arranged by 2026-05-28.",
+          "due_date": "2026-05-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2518,
+      "cache_read_tokens": 15120,
+      "cache_creation_tokens": 3114,
+      "cost_usd": 0.040667999999999996,
+      "duration_ms": 24590,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2026-05-20",
+          "days": 5,
+          "day_type": "business_days",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2026-05-20\",\"days\":5,\"day_type\":\"business_days\",\"date\":\"2026-05-28\",\"weekday\":\"Thursday\",\"skipped\":[{\"date\":\"2026-05-23\",\"weekday\":\"Saturday\",\"reason\":\"Saturday\"},{\"date\":\"2026-05-24\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"reason\":\"Pfingstmontag\"}],\"counting\":\"Business days: Monday to Friday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

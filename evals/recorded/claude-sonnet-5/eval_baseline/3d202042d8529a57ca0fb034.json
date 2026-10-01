@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4f3b13ac14626361c7337bf725cc20ae9125e8b16bb28415f05744ed04d6e284\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-G2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-06-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielhain\",\"document_date\":\"2025-06-05\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"65/112/30894\"},{\"label\":\"Identifikationsnummer\",\"value\":\"71 604 293 518\"}],\"amounts\":[4518,5197,679],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2024 income tax assessment\",\"quote\":\"Der Einspruch muss innerhalb eines Monats beim Finanzamt Beispielhain eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.\",\"computation\":\"Letter is dated (and thus posted) 05.06.2025, a Thursday. Posted on/after 1 Jan 2025, so the Bekanntgabefiktion is the 4th calendar day after posting: 05.06.2025 + 4 days = 09.06.2025 (Monday). For tax offices, if that day fell on a weekend/holiday it would move to the next working day (§108 Abs.3 AO), but 09.06.2025 is a normal Monday, so Bekanntgabe = 09.06.2025. Per §355 Abs.1 AO / §108 AO with §§187 Abs.1, 188 Abs.2 BGB, the one-month objection period runs from the day after Bekanntgabe and ends on the day in the following month bearing the same number as the Bekanntgabe day: 09.07.2025 (Wednesday). This date is not a Saturday, Sunday or public holiday in NRW, so it stands as the final day (§108 Abs.3 AO would otherwise shift it).\",\"due_date\":\"2025-07-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund credited to bank account\",\"quote\":\"Er wird in den nächsten Tagen gutgeschrieben.\",\"computation\":\"The letter only states the refund of 679,00 € will be credited 'in the next few days' after the assessment date (05.06.2025) without giving a specific calendar date, so no exact due date can be derived.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":679}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The refund-crediting date ('in den nächsten Tagen') is not a fixed date, so no exact due date could be computed for that item; please verify the actual credit date on your bank statement.\",\"There is a discrepancy between the task context's stated 'today' dates (2025-06-08 in one reminder, 2026-10-01 in a later reminder); the Einspruch deadline of 2025-07-09 was computed purely from the letter's own dates and is unaffected by this, but if 'today' is actually 2026-10-01 the Einspruch period has already long expired.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielhain",
+      "document_date": "2025-06-05",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "65/112/30894"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "71 604 293 518"
+        }
+      ],
+      "amounts": [
+        4518,
+        5197,
+        679
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2024 income tax assessment",
+          "quote": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Beispielhain eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.",
+          "computation": "Letter is dated (and thus posted) 05.06.2025, a Thursday. Posted on/after 1 Jan 2025, so the Bekanntgabefiktion is the 4th calendar day after posting: 05.06.2025 + 4 days = 09.06.2025 (Monday). For tax offices, if that day fell on a weekend/holiday it would move to the next working day (§108 Abs.3 AO), but 09.06.2025 is a normal Monday, so Bekanntgabe = 09.06.2025. Per §355 Abs.1 AO / §108 AO with §§187 Abs.1, 188 Abs.2 BGB, the one-month objection period runs from the day after Bekanntgabe and ends on the day in the following month bearing the same number as the Bekanntgabe day: 09.07.2025 (Wednesday). This date is not a Saturday, Sunday or public holiday in NRW, so it stands as the final day (§108 Abs.3 AO would otherwise shift it).",
+          "due_date": "2025-07-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund credited to bank account",
+          "quote": "Er wird in den nächsten Tagen gutgeschrieben.",
+          "computation": "The letter only states the refund of 679,00 € will be credited 'in the next few days' after the assessment date (05.06.2025) without giving a specific calendar date, so no exact due date can be derived.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 679
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The refund-crediting date ('in den nächsten Tagen') is not a fixed date, so no exact due date could be computed for that item; please verify the actual credit date on your bank statement.",
+        "There is a discrepancy between the task context's stated 'today' dates (2025-06-08 in one reminder, 2026-10-01 in a later reminder); the Einspruch deadline of 2025-07-09 was computed purely from the letter's own dates and is unaffected by this, but if 'today' is actually 2026-10-01 the Einspruch period has already long expired."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2731,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2456,
+      "cost_usd": 0.038244,
+      "duration_ms": 23753,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

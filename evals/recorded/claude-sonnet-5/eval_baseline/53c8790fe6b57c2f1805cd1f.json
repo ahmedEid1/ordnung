@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"25dd6393f4300c43bc5103ef2146c7905c95cc4a434a2aa12345b2a2f2d0ec95\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-24\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Friday, 2026-07-24 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"DSR Datenschutz-Registerstelle Europa UAB\",\"document_date\":\"2026-07-22\",\"references\":[{\"label\":\"Erfassungs-Nr.\",\"value\":\"DSR-DE-26-447120\"}],\"amounts\":[398,100,498],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'data protection registration' fee\",\"quote\":\"Zahlen Sie die Gebühr bis zum 29.07.2026 auf das Konto IBAN LT21 7044 0000 0447 1229 (Empfänger: Registerservice M. Kovalenko).\",\"computation\":\"The letter states an explicit calendar due date, 29.07.2026, with no period to compute. Taking today as 2026-07-24 as instructed, this date is simply read off the letter as written; no BGB period counting is needed.\",\"due_date\":\"2026-07-29\",\"confidence\":\"high\",\"amount\":498}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a known scam pattern (similar to fake 'Gewerbeauskunft'/'Datenschutz-Register' schemes): it invents a non-existent legal duty to 'register' with a private central data-protection register; Art. 30 GDPR actually only requires controllers to keep their OWN internal record of processing activities, not register with any third party.\",\"The sender is a private Lithuanian limited company (UAB), not a German or EU data protection authority, yet the letter is styled to look like an official 'Erfassung'/'Gebührenbescheid' and threatens fines of up to 20,000,000 € for non-payment — a classic intimidation tactic.\",\"The payment IBAN is a Lithuanian account (LT...) and the named payee 'Registerservice M. Kovalenko' does not match the sender's own company name 'DSR Datenschutz-Registerstelle Europa UAB' — a strong mismatch red flag for a German resident asked to pay a German-sounding fee.\",\"The deadline is extremely short (about 5 days from the letter's date) and the letter restricts contact to email only ('Rückfragen ausschließlich per E-Mail'), both typical pressure/scam tactics to prevent verification.\",\"The letter explicitly denies any right to object ('Ein Widerspruch gegen die Erfassung ist nicht möglich'), which is itself suspicious since no genuine administrative or contractual fee notice can simply exclude all legal remedies.\",\"Recommendation: do not pay, do not reply by the given email, and report this letter to the Verbraucherzentrale and/or the police (Internetwache) as a suspected fraud/phishing attempt; genuine GDPR compliance for a private individual processing personal data typically requires no such registration or fee.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "DSR Datenschutz-Registerstelle Europa UAB",
+      "document_date": "2026-07-22",
+      "references": [
+        {
+          "label": "Erfassungs-Nr.",
+          "value": "DSR-DE-26-447120"
+        }
+      ],
+      "amounts": [
+        398,
+        100,
+        498
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'data protection registration' fee",
+          "quote": "Zahlen Sie die Gebühr bis zum 29.07.2026 auf das Konto IBAN LT21 7044 0000 0447 1229 (Empfänger: Registerservice M. Kovalenko).",
+          "computation": "The letter states an explicit calendar due date, 29.07.2026, with no period to compute. Taking today as 2026-07-24 as instructed, this date is simply read off the letter as written; no BGB period counting is needed.",
+          "due_date": "2026-07-29",
+          "confidence": "high",
+          "amount": 498
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a known scam pattern (similar to fake 'Gewerbeauskunft'/'Datenschutz-Register' schemes): it invents a non-existent legal duty to 'register' with a private central data-protection register; Art. 30 GDPR actually only requires controllers to keep their OWN internal record of processing activities, not register with any third party.",
+        "The sender is a private Lithuanian limited company (UAB), not a German or EU data protection authority, yet the letter is styled to look like an official 'Erfassung'/'Gebührenbescheid' and threatens fines of up to 20,000,000 € for non-payment — a classic intimidation tactic.",
+        "The payment IBAN is a Lithuanian account (LT...) and the named payee 'Registerservice M. Kovalenko' does not match the sender's own company name 'DSR Datenschutz-Registerstelle Europa UAB' — a strong mismatch red flag for a German resident asked to pay a German-sounding fee.",
+        "The deadline is extremely short (about 5 days from the letter's date) and the letter restricts contact to email only ('Rückfragen ausschließlich per E-Mail'), both typical pressure/scam tactics to prevent verification.",
+        "The letter explicitly denies any right to object ('Ein Widerspruch gegen die Erfassung ist nicht möglich'), which is itself suspicious since no genuine administrative or contractual fee notice can simply exclude all legal remedies.",
+        "Recommendation: do not pay, do not reply by the given email, and report this letter to the Verbraucherzentrale and/or the police (Internetwache) as a suspected fraud/phishing attempt; genuine GDPR compliance for a private individual processing personal data typically requires no such registration or fee."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3185,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2103,
+      "cost_usd": 0.04089039999999999,
+      "duration_ms": 31536,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

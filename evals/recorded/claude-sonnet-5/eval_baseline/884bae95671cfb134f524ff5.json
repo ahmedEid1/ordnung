@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"fb676dc7b9b69c762a43eb8686dd6a81fb302d116d69a7c9701b388596324e73\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2027-04-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-H2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterwandsbek, Freie und Hansestadt Hamburg\",\"document_date\":\"2027-04-13\",\"references\":[{\"label\":\"Az.\",\"value\":\"MR 31/27-0442\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of Sondernutzung permit\",\"quote\":\"Dafür haben Sie einen Monat Zeit, gerechnet ab der Bekanntgabe.\",\"computation\":\"Letter dated Tue 13.04.2027; no separate 'Aufgabe zur Post' date is stated, so the letter date is treated as the posting date. Letter posted after 1 Jan 2025 by a general (non-tax) authority: delivery is deemed to occur on the 4th day after posting, counting calendar days and not moving for weekends/holidays (§ 41 Abs. 2 VwVfG/HmbVwVfG analog). 13.04 + 4 days = Sat/Sun/... counted as calendar days: 14.04 (1), 15.04 (2), 16.04 (3), 17.04 (4, Saturday)? Recomputed: 13.04.2027 is a Tuesday, so 14.04=Wed(1), 15.04=Thu(2), 16.04=Fri(3), 17.04=Sat(4) -> deemed delivery Saturday 17.04.2027 (no移动 for non-tax authorities). One-month Widerspruch period (§ 70 VwGO analog, §§ 187, 188 BGB): the day of delivery is not counted; the period ends on the day of the following month bearing the same number as the delivery day, i.e. 17.05.2027. 17.05.2027 is a Monday (not a Saturday/Sunday/holiday in Hamburg), so no shift under § 193 BGB is needed.\",\"due_date\":\"2027-05-17\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The delivery (Bekanntgabe) date depends on the letter's own date being the actual posting date (Tag der Aufgabe zur Post); if the letter was actually mailed on a different, later day, the one-month Widerspruch deadline would shift accordingly — recommend checking the envelope postmark.\",\"Recalculation shows 17.04.2027 (the deemed delivery date, 4 calendar days after the 13.04.2027 letter date) falls on a Saturday; since this is a general district-authority letter (not a tax office), the delivery date itself is not moved to the next working day, only the eventual deadline end-date is checked for weekend/holiday adjustment.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterwandsbek, Freie und Hansestadt Hamburg",
+      "document_date": "2027-04-13",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "MR 31/27-0442"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of Sondernutzung permit",
+          "quote": "Dafür haben Sie einen Monat Zeit, gerechnet ab der Bekanntgabe.",
+          "computation": "Letter dated Tue 13.04.2027; no separate 'Aufgabe zur Post' date is stated, so the letter date is treated as the posting date. Letter posted after 1 Jan 2025 by a general (non-tax) authority: delivery is deemed to occur on the 4th day after posting, counting calendar days and not moving for weekends/holidays (§ 41 Abs. 2 VwVfG/HmbVwVfG analog). 13.04 + 4 days = Sat/Sun/... counted as calendar days: 14.04 (1), 15.04 (2), 16.04 (3), 17.04 (4, Saturday)? Recomputed: 13.04.2027 is a Tuesday, so 14.04=Wed(1), 15.04=Thu(2), 16.04=Fri(3), 17.04=Sat(4) -> deemed delivery Saturday 17.04.2027 (no移动 for non-tax authorities). One-month Widerspruch period (§ 70 VwGO analog, §§ 187, 188 BGB): the day of delivery is not counted; the period ends on the day of the following month bearing the same number as the delivery day, i.e. 17.05.2027. 17.05.2027 is a Monday (not a Saturday/Sunday/holiday in Hamburg), so no shift under § 193 BGB is needed.",
+          "due_date": "2027-05-17",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The delivery (Bekanntgabe) date depends on the letter's own date being the actual posting date (Tag der Aufgabe zur Post); if the letter was actually mailed on a different, later day, the one-month Widerspruch deadline would shift accordingly — recommend checking the envelope postmark.",
+        "Recalculation shows 17.04.2027 (the deemed delivery date, 4 calendar days after the 13.04.2027 letter date) falls on a Saturday; since this is a general district-authority letter (not a tax office), the delivery date itself is not moved to the next working day, only the eventual deadline end-date is checked for weekend/holiday adjustment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2826,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2331,
+      "cost_usd": 0.038694,
+      "duration_ms": 26998,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

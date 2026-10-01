@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4f3b13ac14626361c7337bf725cc20ae9125e8b16bb28415f05744ed04d6e284\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-G2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-06-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispielhain\",\"document_date\":\"2025-06-05\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"65/112/30894\"},{\"label\":\"Identifikationsnummer\",\"value\":\"71 604 293 518\"}],\"amounts\":[4518,679],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the 2024 income tax assessment\",\"quote\":\"Der Einspruch muss innerhalb eines Monats beim Finanzamt Beispielhain eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.\",\"computation\":\"The notice is dated Thursday 05.06.2025 and sent as a simple letter. Under the current (2025) version of §122 Abs. 2 Nr. 1 AO, such a letter is deemed delivered (Bekanntgabe) on the 4th day after dispatch: day 1 = 06.06. (Fri), day 2 = 07.06. (Sat), day 3 = 08.06. (Sun), day 4 = 09.06.2025 (Mon). 09.06.2025 is a business day (not a weekend/holiday in NRW), so the fictitious delivery date stands at 09.06.2025. Per the letter and §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB, the one-month Einspruch period begins the day after Bekanntgabe. Under §188 Abs. 2 BGB a one-month period that starts under §187 Abs. 1 ends on the day of the following month that numerically corresponds to the day of the triggering event (09.06. -> 09.07.). 09.07.2025 is a Wednesday, not a weekend day or a NRW public holiday, so no shift is needed. Deadline: 09.07.2025.\",\"due_date\":\"2025-07-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Income tax refund credited to the taxpayer's account\",\"quote\":\"Er wird in den nächsten Tagen gutgeschrieben.\",\"computation\":\"The letter only states the refund of 679,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the notice date of 05.06.2025, without giving a specific calendar date, so an exact due date cannot be determined; this is an estimate/expectation rather than a legally fixed deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":679}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The exact calendar date of the tax refund credit ('in den nächsten Tagen') is not stated, so no precise due date could be computed for it; only the one-month Einspruch deadline is legally binding.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispielhain",
+      "document_date": "2025-06-05",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "65/112/30894"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "71 604 293 518"
+        }
+      ],
+      "amounts": [
+        4518,
+        679
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the 2024 income tax assessment",
+          "quote": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Beispielhain eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.",
+          "computation": "The notice is dated Thursday 05.06.2025 and sent as a simple letter. Under the current (2025) version of §122 Abs. 2 Nr. 1 AO, such a letter is deemed delivered (Bekanntgabe) on the 4th day after dispatch: day 1 = 06.06. (Fri), day 2 = 07.06. (Sat), day 3 = 08.06. (Sun), day 4 = 09.06.2025 (Mon). 09.06.2025 is a business day (not a weekend/holiday in NRW), so the fictitious delivery date stands at 09.06.2025. Per the letter and §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB, the one-month Einspruch period begins the day after Bekanntgabe. Under §188 Abs. 2 BGB a one-month period that starts under §187 Abs. 1 ends on the day of the following month that numerically corresponds to the day of the triggering event (09.06. -> 09.07.). 09.07.2025 is a Wednesday, not a weekend day or a NRW public holiday, so no shift is needed. Deadline: 09.07.2025.",
+          "due_date": "2025-07-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Income tax refund credited to the taxpayer's account",
+          "quote": "Er wird in den nächsten Tagen gutgeschrieben.",
+          "computation": "The letter only states the refund of 679,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the notice date of 05.06.2025, without giving a specific calendar date, so an exact due date cannot be determined; this is an estimate/expectation rather than a legally fixed deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 679
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The exact calendar date of the tax refund credit ('in den nächsten Tagen') is not stated, so no precise due date could be computed for it; only the one-month Einspruch deadline is legally binding."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4482,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2454,
+      "cost_usd": 0.05526439999999999,
+      "duration_ms": 41727,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"c7c23db4e0c37590c68eb20afc79737ee5975ff58021ff88e914379409f27b9b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-invoice_relative-H2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-06-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Steuerberatung Beispielmann & Partner mbB\",\"document_date\":\"2025-05-26\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"2025/0712\"},{\"label\":\"Mandant\",\"value\":\"10 448\"}],\"amounts\":[735.42],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay tax advisor's fee invoice\",\"quote\":\"Der Rechnungsbetrag ist ohne Abzug binnen 14 Tagen ab Rechnungsdatum fällig.\",\"computation\":\"This is a private-law invoice from a company (Steuerberater), not an authority, so no deemed-delivery rule applies; the period runs from the invoice date itself. Start: 26.05.2025 (Monday) is the Rechnungsdatum; per § 187 Abs. 1 BGB the day of the event is not counted, so counting starts 27.05.2025. 14 days later (§ 188 Abs. 1 BGB) lands on Monday 09.06.2025. That day is Pfingstmontag, a nationwide public holiday (also observed in NRW), so per § 193 BGB the deadline shifts to the next business day, Tuesday 10.06.2025.\",\"due_date\":\"2025-06-10\",\"confidence\":\"high\",\"amount\":735.42}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Steuerberatung Beispielmann & Partner mbB",
+      "document_date": "2025-05-26",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "2025/0712"
+        },
+        {
+          "label": "Mandant",
+          "value": "10 448"
+        }
+      ],
+      "amounts": [
+        735.42
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay tax advisor's fee invoice",
+          "quote": "Der Rechnungsbetrag ist ohne Abzug binnen 14 Tagen ab Rechnungsdatum fällig.",
+          "computation": "This is a private-law invoice from a company (Steuerberater), not an authority, so no deemed-delivery rule applies; the period runs from the invoice date itself. Start: 26.05.2025 (Monday) is the Rechnungsdatum; per § 187 Abs. 1 BGB the day of the event is not counted, so counting starts 27.05.2025. 14 days later (§ 188 Abs. 1 BGB) lands on Monday 09.06.2025. That day is Pfingstmontag, a nationwide public holiday (also observed in NRW), so per § 193 BGB the deadline shifts to the next business day, Tuesday 10.06.2025.",
+          "due_date": "2025-06-10",
+          "confidence": "high",
+          "amount": 735.42
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2502,
+      "cache_read_tokens": 26027,
+      "cache_creation_tokens": 5175,
+      "cost_usd": 0.050937399999999994,
+      "duration_ms": 26682,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "document_date",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§ 193 BGB; StBVV Rechnungsfälligkeit",
+            "text": "Der Rechnungsbetrag ist ohne Abzug binnen 14 Tagen ab Rechnungsdatum fällig."
+          },
+          "document_date": "2025-05-26",
+          "sender_kind": "company",
+          "sender_name": "Steuerberatung Beispielmann & Partner mbB",
+          "recipient_region": "NW",
+          "region": "NI"
+        },
+        "result": "{\"due_date\":\"2025-06-10\",\"weekday\":\"Tuesday\",\"send_by\":\"2025-06-06\",\"summary\":\"14 days after the letter's date (Mon 26 May 2025) is Mon 9 Jun 2025, a public holiday, Pfingstmontag, so the deadline moves to Tue 10 Jun 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 26 May 2025\",\"date\":\"2025-05-26\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"14 days later: Mon 9 Jun 2025\",\"date\":\"2025-06-09\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 9 Jun 2025 is a public holiday, Pfingstmontag, so the deadline moves to Tue 10 Jun 2025\",\"date\":\"2025-06-10\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Fri 6 Jun 2025 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2025-06-06\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2025-06-01\",\"letter_date\":\"2025-05-26\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

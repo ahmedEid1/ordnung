@@ -27,7 +27,7 @@ with ``--docs``) — it joins the published page as a section of its own with ``
 <published run>.json --holdout-run <holdout run>.json``.
 
 The ``holdout2`` split (``--split holdout2``, results ``<YYYY-MM-DD>-<model>-holdout2.json``) was written
-after the release's last code change; it follows the same rule: recorded once, nothing tuned on it, and
+after the release's last change to how letters are read; it follows the same rule: recorded once, nothing tuned on it, and
 its run never rewrites ``docs/evals.md`` (not even with ``--docs``). It joins the published page with
 ``python -m evals.report <published run>.json --holdout2-run <holdout2 run>.json``.
 

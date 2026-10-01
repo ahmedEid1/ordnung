@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c7c23db4e0c37590c68eb20afc79737ee5975ff58021ff88e914379409f27b9b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-06-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-invoice_relative-H2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-06-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Steuerberatung Beispielmann & Partner mbB\",\"document_date\":\"2025-05-26\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"2025/0712\"},{\"label\":\"Mandant\",\"value\":\"10 448\"}],\"amounts\":[735.42],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay tax advisor invoice\",\"quote\":\"Der Rechnungsbetrag ist ohne Abzug binnen 14 Tagen ab Rechnungsdatum fällig.\",\"computation\":\"Invoice date (Rechnungsdatum) is 26.05.2025. The period is set 'ab Rechnungsdatum' (from the invoice date), an event-triggered period under §187 Abs. 1 BGB, so the day of the event (26.05.2025) is not counted; counting starts 27.05.2025. A 14-day period under §188 Abs. 1 BGB ends with the expiry of the 14th day: 27,28,29,30,31 May (5 days) + 1,2,3,4,5,6,7,8,9 June (9 days) = 14 days, ending 09.06.2025. 09.06.2025 is a Monday, not a Saturday, Sunday or public holiday in NRW, so no shift under §193 BGB is needed.\",\"due_date\":\"2025-06-09\",\"confidence\":\"high\",\"amount\":735.42}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Steuerberatung Beispielmann & Partner mbB",
+      "document_date": "2025-05-26",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "2025/0712"
+        },
+        {
+          "label": "Mandant",
+          "value": "10 448"
+        }
+      ],
+      "amounts": [
+        735.42
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay tax advisor invoice",
+          "quote": "Der Rechnungsbetrag ist ohne Abzug binnen 14 Tagen ab Rechnungsdatum fällig.",
+          "computation": "Invoice date (Rechnungsdatum) is 26.05.2025. The period is set 'ab Rechnungsdatum' (from the invoice date), an event-triggered period under §187 Abs. 1 BGB, so the day of the event (26.05.2025) is not counted; counting starts 27.05.2025. A 14-day period under §188 Abs. 1 BGB ends with the expiry of the 14th day: 27,28,29,30,31 May (5 days) + 1,2,3,4,5,6,7,8,9 June (9 days) = 14 days, ending 09.06.2025. 09.06.2025 is a Monday, not a Saturday, Sunday or public holiday in NRW, so no shift under §193 BGB is needed.",
+          "due_date": "2025-06-09",
+          "confidence": "high",
+          "amount": 735.42
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1611,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2076,
+      "cost_usd": 0.0250424,
+      "duration_ms": 14117,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

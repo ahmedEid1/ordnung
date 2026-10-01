@@ -1,6 +1,6 @@
 """Holdout2 split, families 1, 2, 3, 7 and 12: variants G and H of the administrative acts.
 
-Written after the release's last code change, from the law and from how such letters read, without
+Written after the release's last change to how letters are read, from the law and from how such letters read, without
 opening the app's ingestion code, its prompts, the recordings or the results files: new senders,
 recipients, wording, layout, dates, amounts and regions. Variant G prints the date first in the
 information block and the Rechtsbehelfsbelehrung in a framed box; variant H prints the bare date

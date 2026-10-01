@@ -1,7 +1,7 @@
 """Holdout2 split, families 4, 5, 6, 8, 9, 10 and 11: variants G and H of the invoices, dunning
 letters, appointments, contracts, price changes, English letters and business-day periods.
 
-Written like ``holdout2_admin`` (after the release's last code change, new senders, recipients, wording,
+Written like ``holdout2_admin`` (after the release's last change to how letters are read, new senders, recipients, wording,
 layout, dates and amounts; letter days drawn with a seeded choice among the days that fit each
 scenario). The same generation rules as ``families_private`` hold: private-law deadlines never depend on
 a Land's holidays, fixed dates fall on working days in every Land and Werktage counts never end on a

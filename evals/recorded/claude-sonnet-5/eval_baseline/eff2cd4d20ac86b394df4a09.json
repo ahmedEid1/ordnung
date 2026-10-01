@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"575c3bfe781646fa538bcb3cfb72f73d5f1e50f1ab87b9bc2bfaeb8ec066f214\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-H1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-12-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Rechtsschutz Versicherung AG\",\"document_date\":\"2026-12-09\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"RS 4471-0098-22\"}],\"amounts\":[298.4,150],\"items\":[{\"kind\":\"payment\",\"title\":\"First annual premium collected by direct debit\",\"quote\":\"Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.\",\"computation\":\"Versicherungsbeginn is stated in the contract data table as '01.02.2027, 0:00 Uhr'. The first annual premium is withdrawn on that date. 2027-02-01 is a Monday, so no weekend shift is needed.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":298.4}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-01-31\",\"cancel_by\":\"2027-10-31\"},\"warnings\":[\"The contract's current term runs from 01.02.2027 to 31.01.2028 (one year, then auto-renews); the cancellation deadline 'spätestens drei Monate vor Ablauf des Versicherungsjahres' in Textform falls on 2027-10-31, a Sunday — a letter-form notice should be sent several business days earlier (e.g. by late October 2027) to be safely received by then, since notice deadlines are not automatically shifted to the next business day.\",\"The policy has a 3-month waiting period (Wartezeit) for most coverage (not for Verkehrsrechtsschutz) starting from the Versicherungsbeginn on 01.02.2027, meaning claims under the waiting-period coverage are not valid until roughly 01.05.2027.\",\"A per-claim deductible (Selbstbeteiligung) of 150 € applies to each Rechtsschutzfall.\"]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Rechtsschutz Versicherung AG",
+      "document_date": "2026-12-09",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "RS 4471-0098-22"
+        }
+      ],
+      "amounts": [
+        298.4,
+        150
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "First annual premium collected by direct debit",
+          "quote": "Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.",
+          "computation": "Versicherungsbeginn is stated in the contract data table as '01.02.2027, 0:00 Uhr'. The first annual premium is withdrawn on that date. 2027-02-01 is a Monday, so no weekend shift is needed.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 298.4
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-01-31",
+        "cancel_by": "2027-10-31"
+      },
+      "warnings": [
+        "The contract's current term runs from 01.02.2027 to 31.01.2028 (one year, then auto-renews); the cancellation deadline 'spätestens drei Monate vor Ablauf des Versicherungsjahres' in Textform falls on 2027-10-31, a Sunday — a letter-form notice should be sent several business days earlier (e.g. by late October 2027) to be safely received by then, since notice deadlines are not automatically shifted to the next business day.",
+        "The policy has a 3-month waiting period (Wartezeit) for most coverage (not for Verkehrsrechtsschutz) starting from the Versicherungsbeginn on 01.02.2027, meaning claims under the waiting-period coverage are not valid until roughly 01.05.2027.",
+        "A per-claim deductible (Selbstbeteiligung) of 150 € applies to each Rechtsschutzfall."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4706,
+      "cache_read_tokens": 15229,
+      "cache_creation_tokens": 7948,
+      "cost_usd": 0.0819058,
+      "duration_ms": 54215,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "anchor": "explicit_date",
+            "anchor_date": "2028-01-31",
+            "amount": -3,
+            "unit": "months",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "Vertraglich: Kündigung spätestens drei Monate vor Ablauf des Versicherungsjahres",
+            "text": "Der Vertrag verlängert sich jeweils um ein weiteres Jahr, wenn er nicht spätestens drei Monate vor Ablauf des Versicherungsjahres in Textform gekündigt wird."
+          }
+        },
+        "result": "{\"due_date\":\"2027-10-31\",\"weekday\":\"Sunday\",\"send_by\":\"2027-10-25\",\"safe_date\":\"2027-10-29\",\"summary\":\"Three months before Mon 31 Jan 2028 is Sun 31 Oct 2027, a Sunday; notice deadlines don't move, so aim for Fri 29 Oct 2027.\",\"confidence\":\"medium\",\"warnings\":[\"Holiday region unknown — Sun 31 Oct 2027 is a public holiday in some Länder (e.g. Brandenburg, Bremen, Hamburg), where the deadline would be earlier — act a working day before it to be safe. We used nationwide holidays only.\"],\"steps\":[{\"label\":\"Three months before Mon 31 Jan 2028: it must arrive by Sun 31 Oct 2027\",\"date\":\"2027-10-31\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sun 31 Oct 2027 is a Sunday, but notice deadlines never move to the next working day\",\"date\":\"2027-10-31\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Fri 29 Oct 2027\",\"date\":\"2027-10-29\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Mon 25 Oct 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-10-25\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-12-13\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass region — the Land of the office or company where the deadline is met. A regional holiday may make this date earlier.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "NW"
+        },
+        "result": "{\"year\":2027,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-05-27\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-11-01\",\"weekday\":\"Monday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

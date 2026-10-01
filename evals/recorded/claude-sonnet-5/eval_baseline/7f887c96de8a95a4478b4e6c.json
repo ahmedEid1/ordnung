@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"604d2e95922be8bd6d09c2a4d9f198e7012b3515b13b358c4ff555d4473d7c88\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-10-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Musterbank Lüne eG\",\"document_date\":\"2025-10-02\",\"references\":[{\"label\":\"Anfrage-Nr.\",\"value\":\"BF-2025-3317\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit missing financing documents (payslips, Grundbuchauszug, Teilungserklärung)\",\"quote\":\"Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.\",\"computation\":\"Letter dated Thu 02.10.2025. The stated start is the day after the letter date, i.e. Fri 03.10.2025. That day is the Tag der Deutschen Einheit, a nationwide public holiday, which the letter itself excludes from the count ('Sonn- und Feiertage nicht'), so it is not Werktag 1; the first countable Werktag is Sat 04.10.2025 (Saturdays explicitly count). Counting forward, treating each Mon-Sat day that is not a public holiday as one Werktag: Day1=Sat 04.10, Day2=Mon 06.10, Day3=Tue 07.10, Day4=Wed 08.10, Day5=Thu 09.10, Day6=Fri 10.10, Day7=Sat 11.10, Day8=Mon 13.10.2025 (Sun 12.10 excluded). This is a private deadline (not a statutory authority period), so no further weekend/holiday-end shift rule applies beyond the Werktage definition already used; the 8th Werktag, Mon 13.10.2025, is itself a normal working day so no further adjustment is needed.\",\"due_date\":\"2025-10-13\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The sender's name, the address ('Musterlüne'), the applicant's name ('Beispielgaard') and other details are generic German placeholder/sample names ('Muster…', 'Beispiel…'), suggesting this document may be a template or specimen rather than genuine individual correspondence; verify authenticity before acting on it.\",\"Because this is a deadline set unilaterally by a private bank (not a statutory period), the exact start-of-count treatment of a public holiday as the nominal first day is an interpretation choice; double-check with the bank if the exact cut-off date matters for keeping the quoted interest rate.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Musterbank Lüne eG",
+      "document_date": "2025-10-02",
+      "references": [
+        {
+          "label": "Anfrage-Nr.",
+          "value": "BF-2025-3317"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit missing financing documents (payslips, Grundbuchauszug, Teilungserklärung)",
+          "quote": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.",
+          "computation": "Letter dated Thu 02.10.2025. The stated start is the day after the letter date, i.e. Fri 03.10.2025. That day is the Tag der Deutschen Einheit, a nationwide public holiday, which the letter itself excludes from the count ('Sonn- und Feiertage nicht'), so it is not Werktag 1; the first countable Werktag is Sat 04.10.2025 (Saturdays explicitly count). Counting forward, treating each Mon-Sat day that is not a public holiday as one Werktag: Day1=Sat 04.10, Day2=Mon 06.10, Day3=Tue 07.10, Day4=Wed 08.10, Day5=Thu 09.10, Day6=Fri 10.10, Day7=Sat 11.10, Day8=Mon 13.10.2025 (Sun 12.10 excluded). This is a private deadline (not a statutory authority period), so no further weekend/holiday-end shift rule applies beyond the Werktage definition already used; the 8th Werktag, Mon 13.10.2025, is itself a normal working day so no further adjustment is needed.",
+          "due_date": "2025-10-13",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The sender's name, the address ('Musterlüne'), the applicant's name ('Beispielgaard') and other details are generic German placeholder/sample names ('Muster…', 'Beispiel…'), suggesting this document may be a template or specimen rather than genuine individual correspondence; verify authenticity before acting on it.",
+        "Because this is a deadline set unilaterally by a private bank (not a statutory period), the exact start-of-count treatment of a public holiday as the nominal first day is an interpretation choice; double-check with the bank if the exact cut-off date matters for keeping the quoted interest rate."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4136,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1962,
+      "cost_usd": 0.050318,
+      "duration_ms": 37192,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

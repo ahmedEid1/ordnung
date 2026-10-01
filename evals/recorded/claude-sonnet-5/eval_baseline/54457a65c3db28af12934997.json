@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0f6aa4a2293d328d78c9b70905e71dbb110425c1da82009b349dadaa7b47119c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-social_decision-G1"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"IKK Mustertal\",\"document_date\":\"2027-04-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"R512077348\"},{\"label\":\"Vorgang\",\"value\":\"HH-27-04412\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Ihr Widerspruch muss uns innerhalb eines Monats erreichen, nachdem Ihnen der Bescheid bekannt gegeben wurde – schriftlich oder zur Niederschrift bei der IKK Mustertal, Handwerkerplatz 3, 57072 Mustertal.\",\"computation\":\"Letter dated Tuesday 20.04.2027, sent by regular post by a public-law body (Körperschaft des öffentlichen Rechts), so § 37 Abs. 2 SGB X applies: deemed delivered (bekanntgegeben) on the 3rd day after posting = 23.04.2027 (Friday, a working day, so no further shift needed for the delivery fiction itself). The one-month Widerspruchsfrist is an event-triggered period (§ 187 Abs. 1 BGB): the day of bekanntgegeben (23.04.) is not counted, the period starts 24.04.2027. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering day, i.e. 23.05.2027. That date, 23.05.2027, is a Sunday, so under § 193 BGB the deadline shifts to the next working day. 24.05.2027 is a Monday and not a public holiday in NRW (Pfingstmontag that year falls on 07.06.2027), so it is a valid working day.\",\"due_date\":\"2027-05-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "IKK Mustertal",
+      "document_date": "2027-04-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "R512077348"
+        },
+        {
+          "label": "Vorgang",
+          "value": "HH-27-04412"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Ihr Widerspruch muss uns innerhalb eines Monats erreichen, nachdem Ihnen der Bescheid bekannt gegeben wurde – schriftlich oder zur Niederschrift bei der IKK Mustertal, Handwerkerplatz 3, 57072 Mustertal.",
+          "computation": "Letter dated Tuesday 20.04.2027, sent by regular post by a public-law body (Körperschaft des öffentlichen Rechts), so § 37 Abs. 2 SGB X applies: deemed delivered (bekanntgegeben) on the 3rd day after posting = 23.04.2027 (Friday, a working day, so no further shift needed for the delivery fiction itself). The one-month Widerspruchsfrist is an event-triggered period (§ 187 Abs. 1 BGB): the day of bekanntgegeben (23.04.) is not counted, the period starts 24.04.2027. Per § 188 Abs. 2 BGB a one-month period ends on the day of the following month bearing the same number as the triggering day, i.e. 23.05.2027. That date, 23.05.2027, is a Sunday, so under § 193 BGB the deadline shifts to the next working day. 24.05.2027 is a Monday and not a public holiday in NRW (Pfingstmontag that year falls on 07.06.2027), so it is a valid working day.",
+          "due_date": "2027-05-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4708,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2206,
+      "cost_usd": 0.0565324,
+      "duration_ms": 44057,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d4e55788711f9d922c302c3ada1879b592e5273e4fec18453778820ffd9bf892\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-price_increase-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-04-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Netzwelt Beispiel GmbH\",\"document_date\":\"2025-04-15\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"NWB-551 207 9\"}],\"amounts\":[44.99,49.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"New monthly price takes effect\",\"quote\":\"ab dem 01.06.2025 kostet Ihr Tarif „Netzwelt DSL 100“ 49,99 € statt bisher 44,99 € im Monat.\",\"computation\":\"The letter states the new price of 49,99 € applies from 01.06.2025 (fixed calendar date as printed).\",\"due_date\":\"2025-06-01\",\"confidence\":\"high\",\"amount\":49.99},{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (§ 57 TKG) due to price increase\",\"quote\":\"Das Kündigungsrecht besteht drei Monate ab Zugang dieser Mitteilung; der Vertrag endet frühestens zu dem Zeitpunkt, an dem der neue Preis wirksam wird.\",\"computation\":\"Letter dated 15.04.2025 (Tuesday). No actual receipt date is stated, so the earliest plausible assumption is that Zugang (receipt) occurred on the letter's own date, 15.04.2025 (in practice a domestic letter typically arrives 1-3 days after the printed date, which could push the real Zugang, and thus this deadline, a few days later). Counting the 3-month period under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Zugang (15.04.2025) is not counted; the period ends three months later on the same calendar day, 15.07.2025 (a Tuesday, no weekend/holiday shift needed). So the special termination notice must reach the provider by 15.07.2025 at the latest to take effect at the earliest possible date (01.06.2025, when the new price becomes effective, per the letter's own wording). Confidence is medium because the exact Zugang date (and thus the exact due date) depends on when the letter actually arrived, which is not stated.\",\"due_date\":\"2025-07-15\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The 3-month deadline for the special termination right (§ 57 TKG) is calculated here assuming the letter arrived on its printed date (15.04.2025); if it actually arrived a few days later, the deadline shifts later by the same number of days — confirm the actual delivery/receipt date if exact timing matters.\",\"No signs of fraud were found (domestic German IBAN, plausible sender and contact details, correct description of the statutory § 57 TKG special termination right for price increases), but the IBAN and contact details should still be checked against prior bills from this provider before relying on them.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Netzwelt Beispiel GmbH",
+      "document_date": "2025-04-15",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "NWB-551 207 9"
+        }
+      ],
+      "amounts": [
+        44.99,
+        49.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New monthly price takes effect",
+          "quote": "ab dem 01.06.2025 kostet Ihr Tarif „Netzwelt DSL 100“ 49,99 € statt bisher 44,99 € im Monat.",
+          "computation": "The letter states the new price of 49,99 € applies from 01.06.2025 (fixed calendar date as printed).",
+          "due_date": "2025-06-01",
+          "confidence": "high",
+          "amount": 49.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (§ 57 TKG) due to price increase",
+          "quote": "Das Kündigungsrecht besteht drei Monate ab Zugang dieser Mitteilung; der Vertrag endet frühestens zu dem Zeitpunkt, an dem der neue Preis wirksam wird.",
+          "computation": "Letter dated 15.04.2025 (Tuesday). No actual receipt date is stated, so the earliest plausible assumption is that Zugang (receipt) occurred on the letter's own date, 15.04.2025 (in practice a domestic letter typically arrives 1-3 days after the printed date, which could push the real Zugang, and thus this deadline, a few days later). Counting the 3-month period under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Zugang (15.04.2025) is not counted; the period ends three months later on the same calendar day, 15.07.2025 (a Tuesday, no weekend/holiday shift needed). So the special termination notice must reach the provider by 15.07.2025 at the latest to take effect at the earliest possible date (01.06.2025, when the new price becomes effective, per the letter's own wording). Confidence is medium because the exact Zugang date (and thus the exact due date) depends on when the letter actually arrived, which is not stated.",
+          "due_date": "2025-07-15",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The 3-month deadline for the special termination right (§ 57 TKG) is calculated here assuming the letter arrived on its printed date (15.04.2025); if it actually arrived a few days later, the deadline shifts later by the same number of days — confirm the actual delivery/receipt date if exact timing matters.",
+        "No signs of fraud were found (domestic German IBAN, plausible sender and contact details, correct description of the statutory § 57 TKG special termination right for price increases), but the IBAN and contact details should still be checked against prior bills from this provider before relying on them."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3697,
+      "cache_read_tokens": 15155,
+      "cache_creation_tokens": 4790,
+      "cost_usd": 0.059169,
+      "duration_ms": 37704,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "receipt",
+            "anchor_date": "2025-04-15",
+            "nature": "notice",
+            "shift_rule": "auto",
+            "legal_basis": "§ 57 Abs. 1 TKG",
+            "text": "Das Kündigungsrecht besteht drei Monate ab Zugang dieser Mitteilung"
+          },
+          "document_date": "2025-04-15",
+          "sender_kind": "telecom",
+          "sender_name": "Netzwelt Beispiel GmbH",
+          "region": "NW",
+          "recipient_region": "NW",
+          "today": "2025-04-17"
+        },
+        "result": "{\"due_date\":\"2025-07-15\",\"weekday\":\"Tuesday\",\"send_by\":\"2025-07-09\",\"safe_date\":\"2025-07-15\",\"summary\":\"Three months after delivery on Tue 15 Apr 2025 (as stated on the letter) is Tue 15 Jul 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 15 Apr 2025\",\"date\":\"2025-04-15\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Tue 15 Jul 2025\",\"date\":\"2025-07-15\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Wed 9 Jul 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-07-09\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-04-17\",\"letter_date\":\"2025-04-15\",\"received_date\":\"2025-04-15\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

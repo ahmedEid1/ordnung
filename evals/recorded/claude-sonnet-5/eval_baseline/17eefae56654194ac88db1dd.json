@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f00f88885faf52ba6ddfe3dd0bc5c392c4e51878f2e60ca35911991aff3cc124\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2027-09-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-H2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-09-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Ordnungsamt Weserstadt – Bußgeldstelle\",\"document_date\":\"2027-08-30\",\"references\":[{\"label\":\"Az.\",\"value\":\"OWi 27/40-118833\"},{\"label\":\"Kennzeichen\",\"value\":\"HB-JB 1422\"}],\"amounts\":[70,25,3.5,98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift beim Ordnungsamt Weserstadt – Bußgeldstelle.\",\"computation\":\"The attached Zustellungsurkunde (page 2) shows the formal delivery (förmliche Zustellung nach § 182 ZPO) was effected on 06.09.2027 (a Monday). Under § 67 Abs. 1 OWiG the two-week Einspruch period runs 'ab der Zustellung'; per § 187 Abs. 1 BGB the day of delivery itself is not counted, so the period starts on 07.09.2027. Per § 188 Abs. 2 BGB a period stated in weeks ends with the expiry of the day of the last week which, by its name, corresponds to the day of the triggering event (Monday). Two weeks after Monday 06.09.2027 is Monday 20.09.2027, which is not a Saturday, Sunday or Bremen public holiday, so it remains the deadline.\",\"due_date\":\"2027-09-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay total fine, fee and costs (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.\",\"computation\":\"Rechtskraft (legal force) of the Bußgeldbescheid enters with the expiry of the Einspruch period, i.e. with the end of 20.09.2027, assuming no Einspruch is filed. Treating that expiry as the triggering event, the following day 21.09.2027 begins the new two-week period (§ 187 Abs. 1 BGB analogously). Per § 188 Abs. 2 BGB the two-week period ends on the day two weeks later matching the weekday of the triggering event (Monday), i.e. 04.10.2027, which is not a Saturday, Sunday or Bremen public holiday. This date is only valid if no Einspruch is lodged within the objection period; filing an Einspruch would prevent Rechtskraft and shift or suspend this payment obligation.\",\"due_date\":\"2027-10-04\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (04.10.2027) is conditional: it only applies if no Einspruch is filed within the two-week objection period ending 20.09.2027; filing an Einspruch prevents Rechtskraft and changes the payment timeline.\",\"Page 2 is a scan/copy of the delivery envelope (Zustellungsurkunde) showing a handwritten delivery date of 06.09.2027; verify this matches the actual date the letter was received, as the official delivery date determines the Einspruch deadline.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Ordnungsamt Weserstadt – Bußgeldstelle",
+      "document_date": "2027-08-30",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "OWi 27/40-118833"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HB-JB 1422"
+        }
+      ],
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift beim Ordnungsamt Weserstadt – Bußgeldstelle.",
+          "computation": "The attached Zustellungsurkunde (page 2) shows the formal delivery (förmliche Zustellung nach § 182 ZPO) was effected on 06.09.2027 (a Monday). Under § 67 Abs. 1 OWiG the two-week Einspruch period runs 'ab der Zustellung'; per § 187 Abs. 1 BGB the day of delivery itself is not counted, so the period starts on 07.09.2027. Per § 188 Abs. 2 BGB a period stated in weeks ends with the expiry of the day of the last week which, by its name, corresponds to the day of the triggering event (Monday). Two weeks after Monday 06.09.2027 is Monday 20.09.2027, which is not a Saturday, Sunday or Bremen public holiday, so it remains the deadline.",
+          "due_date": "2027-09-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay total fine, fee and costs (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.",
+          "computation": "Rechtskraft (legal force) of the Bußgeldbescheid enters with the expiry of the Einspruch period, i.e. with the end of 20.09.2027, assuming no Einspruch is filed. Treating that expiry as the triggering event, the following day 21.09.2027 begins the new two-week period (§ 187 Abs. 1 BGB analogously). Per § 188 Abs. 2 BGB the two-week period ends on the day two weeks later matching the weekday of the triggering event (Monday), i.e. 04.10.2027, which is not a Saturday, Sunday or Bremen public holiday. This date is only valid if no Einspruch is lodged within the objection period; filing an Einspruch would prevent Rechtskraft and shift or suspend this payment obligation.",
+          "due_date": "2027-10-04",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (04.10.2027) is conditional: it only applies if no Einspruch is filed within the two-week objection period ending 20.09.2027; filing an Einspruch prevents Rechtskraft and changes the payment timeline.",
+        "Page 2 is a scan/copy of the delivery envelope (Zustellungsurkunde) showing a handwritten delivery date of 06.09.2027; verify this matches the actual date the letter was received, as the official delivery date determines the Einspruch deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4742,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2672,
+      "cost_usd": 0.058736399999999994,
+      "duration_ms": 41113,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

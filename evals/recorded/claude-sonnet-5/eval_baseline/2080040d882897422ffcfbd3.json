@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d02ab9a6aeed6caeb69b8efd63310f0afae8cb988b2f87ec98e57a2d55aa0a2\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2025-05-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-G2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-05-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Polizeipräsidium Beispielfurt · Kriminalinspektion 2 – Kommissariat 21\",\"document_date\":\"2025-05-09\",\"references\":[{\"label\":\"Tagebuchnummer\",\"value\":\"ST/0418877/2025\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Appear for witness interview\",\"quote\":\"Termin: Montag, 02.06.2025, 09:15 Uhr\",\"computation\":\"The letter states an explicit appointment date and time: Monday, 02.06.2025, 09:15. No period calculation is needed; this is the fixed date to appear at the Polizeipräsidium Beispielfurt, room 3.118. If unable to attend, the recipient is instructed to arrange an alternative date by phone before this date.\",\"due_date\":\"2025-06-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter contains no Rechtsbehelfsbelehrung (legal remedy instructions), as is typical for a witness summons rather than a decision; this is not an administrative act that can be appealed. If the recipient cannot attend on 02.06.2025, they should call the given extension (-21180) in good time to reschedule, as instructed in the letter.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Polizeipräsidium Beispielfurt · Kriminalinspektion 2 – Kommissariat 21",
+      "document_date": "2025-05-09",
+      "references": [
+        {
+          "label": "Tagebuchnummer",
+          "value": "ST/0418877/2025"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appear for witness interview",
+          "quote": "Termin: Montag, 02.06.2025, 09:15 Uhr",
+          "computation": "The letter states an explicit appointment date and time: Monday, 02.06.2025, 09:15. No period calculation is needed; this is the fixed date to appear at the Polizeipräsidium Beispielfurt, room 3.118. If unable to attend, the recipient is instructed to arrange an alternative date by phone before this date.",
+          "due_date": "2025-06-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter contains no Rechtsbehelfsbelehrung (legal remedy instructions), as is typical for a witness summons rather than a decision; this is not an administrative act that can be appealed. If the recipient cannot attend on 02.06.2025, they should call the given extension (-21180) in good time to reschedule, as instructed in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 866,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2048,
+      "cost_usd": 0.0174804,
+      "duration_ms": 7735,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

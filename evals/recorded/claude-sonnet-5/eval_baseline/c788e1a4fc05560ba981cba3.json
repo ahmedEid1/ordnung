@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8d5addc81fe01b4e429255e97453b07384ee7cdad4123d41f0f4fe41e51042ce\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2024-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwalde\",\"document_date\":\"2024-12-06\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/20877\"}],\"amounts\":[5118,5530,412],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2023 income tax assessment\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter dated Friday 2024-12-06, sent as regular mail ('einfacher Brief'); no separate 'Tag der Aufgabe zur Post' is stated, so the printed date is treated as the posting day. The letter was posted on/before 31 Dec 2024, so the statutory 3-day deemed-delivery rule applies (not the 4-day rule that applies from 1 Jan 2025). Counting from 2024-12-06 (day of posting not counted, §187 Abs.1 BGB): +1 day = Sat 2024-12-07, +2 = Sun 2024-12-08, +3 = Mon 2024-12-09 → deemed delivery (Bekanntgabe) = 2024-12-09. As this is a Finanzamt, if the 3rd day had fallen on a weekend/holiday the delivery day itself would shift to the next working day (§108 Abs.3 AO), but 2024-12-09 is already a Monday, so no shift is needed. The one-month Einspruch period under §355 Abs.1 AO then runs from the day after Bekanntgabe (§187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the delivery day: 2024-12-09 + 1 month = 2025-01-09. 2025-01-09 is a Thursday and not a public holiday in NRW, so no further adjustment under §108 Abs.3 AO is needed.\",\"due_date\":\"2025-01-09\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The refund of 412,00 € is to be transferred to the account named in the original tax return, but the letter states no payment date or deadline, so this was not included as a dated obligation.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwalde",
+      "document_date": "2024-12-06",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/20877"
+        }
+      ],
+      "amounts": [
+        5118,
+        5530,
+        412
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2023 income tax assessment",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter dated Friday 2024-12-06, sent as regular mail ('einfacher Brief'); no separate 'Tag der Aufgabe zur Post' is stated, so the printed date is treated as the posting day. The letter was posted on/before 31 Dec 2024, so the statutory 3-day deemed-delivery rule applies (not the 4-day rule that applies from 1 Jan 2025). Counting from 2024-12-06 (day of posting not counted, §187 Abs.1 BGB): +1 day = Sat 2024-12-07, +2 = Sun 2024-12-08, +3 = Mon 2024-12-09 → deemed delivery (Bekanntgabe) = 2024-12-09. As this is a Finanzamt, if the 3rd day had fallen on a weekend/holiday the delivery day itself would shift to the next working day (§108 Abs.3 AO), but 2024-12-09 is already a Monday, so no shift is needed. The one-month Einspruch period under §355 Abs.1 AO then runs from the day after Bekanntgabe (§187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the delivery day: 2024-12-09 + 1 month = 2025-01-09. 2025-01-09 is a Thursday and not a public holiday in NRW, so no further adjustment under §108 Abs.3 AO is needed.",
+          "due_date": "2025-01-09",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The refund of 412,00 € is to be transferred to the account named in the original tax return, but the letter states no payment date or deadline, so this was not included as a dated obligation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3087,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2024,
+      "cost_usd": 0.040076,
+      "duration_ms": 28083,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

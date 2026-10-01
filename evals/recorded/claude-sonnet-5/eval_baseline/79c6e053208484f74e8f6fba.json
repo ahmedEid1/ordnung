@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c201213b2b73fc616327a8fb57c0ebe3c6266950f8d190445e03405fa5978442\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-09-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Branchenregister Musterland – Verzeichnisservice\",\"document_date\":\"2027-09-09\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"BRM 27-0909-4471\"},{\"label\":\"Verwendungszweck\",\"value\":\"BRM 27-0909-4471\"}],\"amounts\":[569.06],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for disputed directory listing\",\"quote\":\"Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.\",\"computation\":\"The letter states a fixed calendar due date, 16.09.2027, rather than a period to count. This is a payment to a private company, so the Land's public holidays apply only to decide if the date must move to the next working day. 16.09.2027 is a Thursday (today, 11.09.2027, is a Saturday, so 12th=Sun, 13th=Mon, 14th=Tue, 15th=Wed, 16th=Thu), a normal working day in NW, so no adjustment is needed. Due date as printed: 16.09.2027.\",\"due_date\":\"2027-09-16\",\"confidence\":\"high\",\"amount\":569.06}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter matches the well-known German 'Branchenregister/Gewerbeauskunft' scam pattern: it looks like an invoice for an existing registration, but the small print 'Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an' reveals that no contract exists yet and this is really an unsolicited offer dressed up as a bill — do not pay unless you deliberately and knowingly ordered this specific paid directory entry.\",\"The payee on the IBAN (BRM Verlagsservice Ltd.) does not match the sender name on the letterhead (Branchenregister Musterland – Verzeichnisservice); mismatched sender/payee names are a typical fraud indicator and should be verified independently before any transfer.\",\"The threat to pass the case to a debt collection agency without any further reminder if payment is not made by a very short deadline (one week after the letter's date) is a pressure tactic commonly used in these directory-entry scams, not a sign of a genuine enforceable debt.\",\"A Berlin PO box and a '.example' email domain are used for a 'Musterland' registry addressed to someone in NW; such generic/placeholder contact details are inconsistent with a legitimate official business register and should be checked before responding.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Branchenregister Musterland – Verzeichnisservice",
+      "document_date": "2027-09-09",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "BRM 27-0909-4471"
+        },
+        {
+          "label": "Verwendungszweck",
+          "value": "BRM 27-0909-4471"
+        }
+      ],
+      "amounts": [
+        569.06
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for disputed directory listing",
+          "quote": "Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.",
+          "computation": "The letter states a fixed calendar due date, 16.09.2027, rather than a period to count. This is a payment to a private company, so the Land's public holidays apply only to decide if the date must move to the next working day. 16.09.2027 is a Thursday (today, 11.09.2027, is a Saturday, so 12th=Sun, 13th=Mon, 14th=Tue, 15th=Wed, 16th=Thu), a normal working day in NW, so no adjustment is needed. Due date as printed: 16.09.2027.",
+          "due_date": "2027-09-16",
+          "confidence": "high",
+          "amount": 569.06
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter matches the well-known German 'Branchenregister/Gewerbeauskunft' scam pattern: it looks like an invoice for an existing registration, but the small print 'Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an' reveals that no contract exists yet and this is really an unsolicited offer dressed up as a bill — do not pay unless you deliberately and knowingly ordered this specific paid directory entry.",
+        "The payee on the IBAN (BRM Verlagsservice Ltd.) does not match the sender name on the letterhead (Branchenregister Musterland – Verzeichnisservice); mismatched sender/payee names are a typical fraud indicator and should be verified independently before any transfer.",
+        "The threat to pass the case to a debt collection agency without any further reminder if payment is not made by a very short deadline (one week after the letter's date) is a pressure tactic commonly used in these directory-entry scams, not a sign of a genuine enforceable debt.",
+        "A Berlin PO box and a '.example' email domain are used for a 'Musterland' registry addressed to someone in NW; such generic/placeholder contact details are inconsistent with a legitimate official business register and should be checked before responding."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3165,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2001,
+      "cost_usd": 0.040763999999999995,
+      "duration_ms": 30636,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

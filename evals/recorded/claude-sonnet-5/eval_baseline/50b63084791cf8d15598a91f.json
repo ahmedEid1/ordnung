@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"96a7655fe3ce6a044d550ea23327890e9cdcd77678f79c01c826cc840db94711\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-07-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-H2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-07-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispiel Living Apartments GmbH\",\"document_date\":\"2027-07-07\",\"references\":[{\"label\":\"Reference\",\"value\":\"BL-APT-3.12\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed lease and proof of deposit transfer\",\"quote\":\"To complete the booking, please return the signed lease together with proof that you have\\ntransferred the deposit by 08/09/2027.\",\"computation\":\"The letter prints the deadline only as the numeric date '08/09/2027', with no day name or other date on the letter to disambiguate the format. German convention (and the company's German-language letterhead/address in Hamburg) would read this as DD/MM/YYYY = 8 September 2027. However, the letter is addressed to an international resident and written entirely in English, which commonly uses MM/DD/YYYY = 9 August 2027. Both readings are internally consistent with the document date of 07/07/2027 (7 July 2027), so nothing in the letter settles which format was intended. Following the rule to take the earliest plausible reading when a date can be read two ways, the earlier of the two (9 August 2027, MM/DD/YYYY) is used as due_date, but the true deadline may in fact be 8 September 2027 if the sender used DD/MM/YYYY.\",\"due_date\":\"2027-08-09\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The deadline is printed only as the numeric date '08/09/2027', which can be read as 9 August 2027 (MM/DD/YYYY, English format) or 8 September 2027 (DD/MM/YYYY, German format); the letter gives no other clue to resolve this, so the earlier reading (9 August 2027) was used but the real deadline could be a month later — confirm the intended date with the Lettings Team before relying on it.\",\"No deposit amount, lease document, or payment account details beyond the sender's own IBAN are specified in this letter; verify the deposit sum and any payment instructions directly with the lessor through a channel you already trust before transferring money.\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispiel Living Apartments GmbH",
+      "document_date": "2027-07-07",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "BL-APT-3.12"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed lease and proof of deposit transfer",
+          "quote": "To complete the booking, please return the signed lease together with proof that you have\ntransferred the deposit by 08/09/2027.",
+          "computation": "The letter prints the deadline only as the numeric date '08/09/2027', with no day name or other date on the letter to disambiguate the format. German convention (and the company's German-language letterhead/address in Hamburg) would read this as DD/MM/YYYY = 8 September 2027. However, the letter is addressed to an international resident and written entirely in English, which commonly uses MM/DD/YYYY = 9 August 2027. Both readings are internally consistent with the document date of 07/07/2027 (7 July 2027), so nothing in the letter settles which format was intended. Following the rule to take the earliest plausible reading when a date can be read two ways, the earlier of the two (9 August 2027, MM/DD/YYYY) is used as due_date, but the true deadline may in fact be 8 September 2027 if the sender used DD/MM/YYYY.",
+          "due_date": "2027-08-09",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The deadline is printed only as the numeric date '08/09/2027', which can be read as 9 August 2027 (MM/DD/YYYY, English format) or 8 September 2027 (DD/MM/YYYY, German format); the letter gives no other clue to resolve this, so the earlier reading (9 August 2027) was used but the real deadline could be a month later — confirm the intended date with the Lettings Team before relying on it.",
+        "No deposit amount, lease document, or payment account details beyond the sender's own IBAN are specified in this letter; verify the deposit sum and any payment instructions directly with the lessor through a channel you already trust before transferring money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2772,
+      "cache_read_tokens": 14913,
+      "cache_creation_tokens": 4080,
+      "cost_usd": 0.047030600000000006,
+      "duration_ms": 27883,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE34 3705 0198 0005 5560 60"
+        },
+        "result": "{\"iban\":\"DE34 3705 0198 0005 5560 60\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005556060\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

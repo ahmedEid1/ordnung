@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f16d80915d7b296fce05e858aea5c03db50b75a084e03ea23284664e2e6db953\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-dunning_fixed-H1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-04-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Energie Nordost GmbH\",\"document_date\":\"2025-04-16\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"300 4471 882\"},{\"label\":\"Zählernummer\",\"value\":\"1EBZ0100447218\"}],\"amounts\":[198.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for electricity account\",\"quote\":\"Bitte begleichen Sie den Gesamtbetrag bis zum 23. April 2025.\",\"computation\":\"The letter states an explicit calendar date for payment: 23 April 2025. No period calculation is needed; this is a fixed due date printed in the letter.\",\"due_date\":\"2025-04-23\",\"confidence\":\"high\",\"amount\":198.5},{\"kind\":\"milestone\",\"title\":\"Earliest possible date the grid operator may interrupt electricity supply\",\"quote\":\"Geht bis dahin keine Zahlung ein, sind wir nach § 19 StromGVV berechtigt, die Versorgung frühestens vier Wochen nach dieser Androhung durch den Netzbetreiber unterbrechen zu lassen; den genauen Termin kündigen wir Ihnen acht Werktage vorher an.\",\"computation\":\"The 'Androhung' (threat/warning) is this letter itself, dated 16.04.2025 (a Wednesday). Under § 187 Abs. 1 BGB the day of the triggering event is not counted, so the four-week period begins 17.04.2025. Under § 188 Abs. 2 BGB a period of weeks ends with the expiry of the day of the last week that bears the same name as the day on which the event (here: the date of the Androhung) occurred, i.e. four Wednesdays later. 16.04.2025 + 4 weeks = 14.05.2025, also a Wednesday. This is only the earliest possible date the grid operator ('Netzbetreiber') is permitted to cut supply after this written threat; the exact date of any actual interruption is announced separately at least 8 working days beforehand, and no interruption may occur before payment is made. The true start of the period may run from the day the letter is actually received rather than its printing date; since the exact delivery date is unknown, the letter's own date is used as a proxy, so confidence is medium.\",\"due_date\":\"2025-05-14\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private company's dunning letter, not a government notice, so no formal legal-remedy (Rechtsbehelf) instructions apply; the recipient should still check the claimed arrears (Feb/March 2025 Abschläge) against their own meter readings/payment records before paying.\",\"The earliest-possible-interruption date (14.05.2025) is calculated from the letter's print date rather than its actual delivery date, which is not stated in the letter; the true earliest date could be a few days later if postal delivery took time.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Energie Nordost GmbH",
+      "document_date": "2025-04-16",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "300 4471 882"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1EBZ0100447218"
+        }
+      ],
+      "amounts": [
+        198.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for electricity account",
+          "quote": "Bitte begleichen Sie den Gesamtbetrag bis zum 23. April 2025.",
+          "computation": "The letter states an explicit calendar date for payment: 23 April 2025. No period calculation is needed; this is a fixed due date printed in the letter.",
+          "due_date": "2025-04-23",
+          "confidence": "high",
+          "amount": 198.5
+        },
+        {
+          "kind": "milestone",
+          "title": "Earliest possible date the grid operator may interrupt electricity supply",
+          "quote": "Geht bis dahin keine Zahlung ein, sind wir nach § 19 StromGVV berechtigt, die Versorgung frühestens vier Wochen nach dieser Androhung durch den Netzbetreiber unterbrechen zu lassen; den genauen Termin kündigen wir Ihnen acht Werktage vorher an.",
+          "computation": "The 'Androhung' (threat/warning) is this letter itself, dated 16.04.2025 (a Wednesday). Under § 187 Abs. 1 BGB the day of the triggering event is not counted, so the four-week period begins 17.04.2025. Under § 188 Abs. 2 BGB a period of weeks ends with the expiry of the day of the last week that bears the same name as the day on which the event (here: the date of the Androhung) occurred, i.e. four Wednesdays later. 16.04.2025 + 4 weeks = 14.05.2025, also a Wednesday. This is only the earliest possible date the grid operator ('Netzbetreiber') is permitted to cut supply after this written threat; the exact date of any actual interruption is announced separately at least 8 working days beforehand, and no interruption may occur before payment is made. The true start of the period may run from the day the letter is actually received rather than its printing date; since the exact delivery date is unknown, the letter's own date is used as a proxy, so confidence is medium.",
+          "due_date": "2025-05-14",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private company's dunning letter, not a government notice, so no formal legal-remedy (Rechtsbehelf) instructions apply; the recipient should still check the claimed arrears (Feb/March 2025 Abschläge) against their own meter readings/payment records before paying.",
+        "The earliest-possible-interruption date (14.05.2025) is calculated from the letter's print date rather than its actual delivery date, which is not stated in the letter; the true earliest date could be a few days later if postal delivery took time."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3983,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2115,
+      "cost_usd": 0.0489184,
+      "duration_ms": 39759,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

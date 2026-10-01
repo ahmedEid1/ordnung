@@ -1,0 +1,126 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f81a58816132fe0c830f99fd0cd2529bf4aaacd8e047618f8faef90fe3f5c044\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-H1"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterhalle – Bußgeldstelle\",\"document_date\":\"2027-04-21\",\"references\":[{\"label\":\"Az.\",\"value\":\"32.21-OWI-2027-03390\"},{\"label\":\"Fahrzeug\",\"value\":\"HAL-RM 63\"}],\"amounts\":[60,25,3.5,88.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift bei der Stadt Musterhalle – Bußgeldstelle.\",\"computation\":\"This is a förmliche Zustellung (formal service via Postzustellungsurkunde, § 182 ZPO), shown on page 2 with the delivery date noted as 24.04.2027 (a Saturday) — this actual service date governs, not the ordinary 'deemed delivery' rule for authority post. Counting starts the day after service (§ 187 Abs. 1 BGB): 25.04.2027. Two weeks (14 days) later (§ 188 Abs. 1, 2 BGB) falls on 08.05.2027, a Saturday. Under § 43 StPO (applied via § 46 Abs. 1 OWiG), a period ending on a Saturday, Sunday or public holiday ends on the next working day: Monday 10.05.2027.\",\"due_date\":\"2027-05-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine (Geldbuße, Gebühr, Auslagen)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.\",\"computation\":\"Rechtskraft (legal force, § 84 OWiG) occurs once the Einspruch period expires without an objection being filed, i.e. the day after 10.05.2027 = 11.05.2027. 'Zwei Wochen nach Rechtskraft' then runs from the day after that event (§ 187 Abs. 1 BGB): counting starts 12.05.2027 (wait, verified via tool using 11.05.2027 as the event date), two weeks later lands on Tuesday 25.05.2027, a working day, so no further shift applies (§ 193 BGB). This date is contingent: it only holds if no Einspruch is filed; filing an Einspruch would postpone Rechtskraft and this payment date.\",\"due_date\":\"2027-05-25\",\"confidence\":\"medium\",\"amount\":88.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (25.05.2027) assumes no Einspruch is filed; if an Einspruch is lodged by 10.05.2027, Rechtskraft (and therefore the payment date) is postponed until the objection proceedings conclude.\",\"The IBAN printed (DE75 8005 3762 0002 2100 00) is a valid German IBAN at a named Saalesparkasse — before paying, confirm it matches the Bußgeldstelle's known account details, especially since a payee-name check (Empfängerüberprüfung) is now required for euro transfers.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterhalle – Bußgeldstelle",
+      "document_date": "2027-04-21",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "32.21-OWI-2027-03390"
+        },
+        {
+          "label": "Fahrzeug",
+          "value": "HAL-RM 63"
+        }
+      ],
+      "amounts": [
+        60,
+        25,
+        3.5,
+        88.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift bei der Stadt Musterhalle – Bußgeldstelle.",
+          "computation": "This is a förmliche Zustellung (formal service via Postzustellungsurkunde, § 182 ZPO), shown on page 2 with the delivery date noted as 24.04.2027 (a Saturday) — this actual service date governs, not the ordinary 'deemed delivery' rule for authority post. Counting starts the day after service (§ 187 Abs. 1 BGB): 25.04.2027. Two weeks (14 days) later (§ 188 Abs. 1, 2 BGB) falls on 08.05.2027, a Saturday. Under § 43 StPO (applied via § 46 Abs. 1 OWiG), a period ending on a Saturday, Sunday or public holiday ends on the next working day: Monday 10.05.2027.",
+          "due_date": "2027-05-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine (Geldbuße, Gebühr, Auslagen)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.",
+          "computation": "Rechtskraft (legal force, § 84 OWiG) occurs once the Einspruch period expires without an objection being filed, i.e. the day after 10.05.2027 = 11.05.2027. 'Zwei Wochen nach Rechtskraft' then runs from the day after that event (§ 187 Abs. 1 BGB): counting starts 12.05.2027 (wait, verified via tool using 11.05.2027 as the event date), two weeks later lands on Tuesday 25.05.2027, a working day, so no further shift applies (§ 193 BGB). This date is contingent: it only holds if no Einspruch is filed; filing an Einspruch would postpone Rechtskraft and this payment date.",
+          "due_date": "2027-05-25",
+          "confidence": "medium",
+          "amount": 88.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (25.05.2027) assumes no Einspruch is filed; if an Einspruch is lodged by 10.05.2027, Rechtskraft (and therefore the payment date) is postponed until the objection proceedings conclude.",
+        "The IBAN printed (DE75 8005 3762 0002 2100 00) is a valid German IBAN at a named Saalesparkasse — before paying, confirm it matches the Bußgeldstelle's known account details, especially since a payee-name check (Empfängerüberprüfung) is now required for euro transfers."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4581,
+      "cache_read_tokens": 27841,
+      "cache_creation_tokens": 7609,
+      "cost_usd": 0.0818262,
+      "duration_ms": 39675,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2027-04-21",
+          "received_date": "2027-04-24",
+          "sender_kind": "authority",
+          "sender_name": "Stadt Musterhalle – Bußgeldstelle",
+          "region": "ST",
+          "recipient_region": "ST",
+          "remedy_type": "einspruch",
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2027-04-24",
+            "delivery_rule": "none",
+            "nature": "objection",
+            "legal_basis": "§ 67 Abs. 1 OWiG",
+            "text": "er muss innerhalb von zwei Wochen ab der Zustellung vorliegen"
+          }
+        },
+        "result": "{\"due_date\":\"2027-05-10\",\"weekday\":\"Monday\",\"send_by\":\"2027-05-03\",\"summary\":\"Two weeks after delivery on Sat 24 Apr 2027 (as stated on the letter) is Sat 8 May 2027, a Saturday, so the deadline moves to Mon 10 May 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Sat 24 Apr 2027\",\"date\":\"2027-04-24\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Sat 8 May 2027\",\"date\":\"2027-05-08\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Sat 8 May 2027 is a Saturday, so the deadline moves to Mon 10 May 2027\",\"date\":\"2027-05-10\",\"rule_id\":\"stpo_43\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\"},{\"label\":\"Send by Mon 3 May 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-05-03\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"owig_67\",\"title\":\"Objection to a fine (Einspruch gegen Bußgeldbescheid): two weeks\",\"citation\":\"§ 67 Abs. 1 OWiG; § 43 StPO\",\"url\":\"https://www.gesetze-im-internet.de/owig_1968/__67.html\"},{\"id\":\"stpo_43\",\"title\":\"Week periods in fine and criminal proceedings\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\",\"url\":\"https://www.gesetze-im-internet.de/stpo/__43.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-04-26\",\"letter_date\":\"2027-04-21\",\"received_date\":\"2027-04-24\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Sachsen-Anhalt\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-05-11",
+            "delivery_rule": "none",
+            "nature": "payment",
+            "legal_basis": "§ 84 OWiG (Rechtskraft nach Fristablauf)",
+            "text": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig."
+          },
+          "region": "ST"
+        },
+        "result": "{\"due_date\":\"2027-05-25\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-05-24\",\"summary\":\"Two weeks after Tue 11 May 2027 is Tue 25 May 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 11 May 2027\",\"date\":\"2027-05-11\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 25 May 2027\",\"date\":\"2027-05-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 25 May 2027 is a working day, so it stays\",\"date\":\"2027-05-25\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Mon 24 May 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-05-24\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-04-26\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE75 8005 3762 0002 2100 00"
+        },
+        "result": "{\"iban\":\"DE75 8005 3762 0002 2100 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"80053762\"},\"account_number\":\"0002210000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"8c23ad49e9c5ef1a68cb7c67238c90ad1166fb5b1d0ccdb0576e4880cbd3daf3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-G1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-10-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Beispiel Direktbank AG\",\"document_date\":\"2025-10-09\",\"references\":[{\"label\":\"Customer no.\",\"value\":\"7704 2219 03\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return tax residency self-certification form\",\"quote\":\"Please complete the enclosed self-certification form and send it back to us by 29 October 2025.\",\"computation\":\"The letter states an explicit calendar date for returning the form: 29 October 2025. This is a private bank's own stated deadline, so no statutory delivery-fiction or counting rules apply; the date is used as written. 29 October 2025 is a Wednesday, not a weekend or NW public holiday, so no shift is needed.\",\"due_date\":\"2025-10-29\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Beispiel Direktbank AG",
+      "document_date": "2025-10-09",
+      "references": [
+        {
+          "label": "Customer no.",
+          "value": "7704 2219 03"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return tax residency self-certification form",
+          "quote": "Please complete the enclosed self-certification form and send it back to us by 29 October 2025.",
+          "computation": "The letter states an explicit calendar date for returning the form: 29 October 2025. This is a private bank's own stated deadline, so no statutory delivery-fiction or counting rules apply; the date is used as written. 29 October 2025 is a Wednesday, not a weekend or NW public holiday, so no shift is needed.",
+          "due_date": "2025-10-29",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 3743,
+      "cache_read_tokens": 30242,
+      "cache_creation_tokens": 5128,
+      "cost_usd": 0.0640064,
+      "duration_ms": 38902,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0d02ab9a6aeed6caeb69b8efd63310f0afae8cb988b2f87ec98e57a2d55aa0a2\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2025-05-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-G2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-05-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Polizeipräsidium Beispielfurt, Kriminalinspektion 2 – Kommissariat 21\",\"document_date\":\"2025-05-09\",\"references\":[{\"label\":\"Tagebuchnummer\",\"value\":\"ST/0418877/2025\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Witness interview (Vernehmung) at police station\",\"quote\":\"Termin: Montag, 02.06.2025, 09:15 Uhr\",\"computation\":\"The letter states a fixed calendar date and time for the appointment ('Montag, 02.06.2025, 09:15 Uhr'). Appointments keep the date as written and are not subject to period-counting or weekend/holiday shifting rules.\",\"due_date\":\"2025-06-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The appointment date in the letter (02.06.2025) is in the past relative to today's date (2026-10-01); this letter appears to be an old document, so double-check whether a rescheduled or follow-up notice exists.\",\"If unable to attend, the letter asks to arrange an alternative date by phone ('vereinbaren Sie bitte telefonisch einen anderen Termin') rather than giving a written deadline — no written response deadline is set in the letter.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Polizeipräsidium Beispielfurt, Kriminalinspektion 2 – Kommissariat 21",
+      "document_date": "2025-05-09",
+      "references": [
+        {
+          "label": "Tagebuchnummer",
+          "value": "ST/0418877/2025"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Witness interview (Vernehmung) at police station",
+          "quote": "Termin: Montag, 02.06.2025, 09:15 Uhr",
+          "computation": "The letter states a fixed calendar date and time for the appointment ('Montag, 02.06.2025, 09:15 Uhr'). Appointments keep the date as written and are not subject to period-counting or weekend/holiday shifting rules.",
+          "due_date": "2025-06-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The appointment date in the letter (02.06.2025) is in the past relative to today's date (2026-10-01); this letter appears to be an old document, so double-check whether a rescheduled or follow-up notice exists.",
+        "If unable to attend, the letter asks to arrange an alternative date by phone ('vereinbaren Sie bitte telefonisch einen anderen Termin') rather than giving a written deadline — no written response deadline is set in the letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1457,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2050,
+      "cost_usd": 0.02388,
+      "duration_ms": 13785,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

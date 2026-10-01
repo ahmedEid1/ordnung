@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c3c586f8b2b3bb6df06a6deec3dcb51e29901684c0e7565ecb88a0dfa125d9f1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-06-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-06-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"amounts\":[42.9],\"contract\":{\"current_term_end\":\"2028-06-24\",\"cancel_by\":\"2028-05-24\"},\"document_date\":\"2027-06-18\",\"items\":[],\"kind\":\"contract\",\"references\":[{\"label\":\"Abo-Nummer\",\"value\":\"TK-0098 4417\"},{\"label\":\"Kundennummer\",\"value\":\"551 207\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielstädter Tageblatt Verlag GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        42.9
+      ],
+      "contract": {
+        "current_term_end": "2028-06-24",
+        "cancel_by": "2028-05-24"
+      },
+      "document_date": "2027-06-18",
+      "items": [],
+      "kind": "contract",
+      "references": [
+        {
+          "label": "Abo-Nummer",
+          "value": "TK-0098 4417"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "551 207"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2903,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2137,
+      "cost_usd": 0.038688,
+      "duration_ms": 27674,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

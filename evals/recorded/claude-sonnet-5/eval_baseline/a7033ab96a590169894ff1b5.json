@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"beb39d5e68ae72093f4f7b2a831cb045b0707c6cae8b2320bc5443cf58cc3bfd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G3"
+    ],
+    "prompt_head": "Today is Sunday, 2026-01-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwalde\",\"document_date\":\"2025-12-29\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/31206\"}],\"amounts\":[186.3],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against amended 2024 income tax assessment\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter dated (and presumed posted) 29.12.2025. Delivery fiction for simple letter: 4th day after posting, day of posting not counted: Dec 30 (1), Dec 31 (2), Jan 1 2026 (3), Jan 2 2026 (4) → deemed delivery = Fri 02.01.2026. This is a Finanzamt, so if the 4th day were a Sat/Sun/holiday it would move to the next working day (§108 Abs.3 AO), but 02.01.2026 is a Friday and not a holiday, so no shift applies. One-month Einspruch period (§355 Abs.1 AO) runs from delivery per §§187 Abs.1, 188 Abs.2 BGB/§108 Abs.1 AO: delivery day itself not counted, period ends on the day in the following month with the same number as the delivery day → 02.02.2026. That date is a Monday (Jan 2026: Jan1=Thu, Jan2=Fri, so Jan30=Fri, Jan31=Sat, Feb1=Sun, Feb2=Mon), not a weekend/holiday in NRW, so no further shift under §108 Abs.3 AO.\",\"due_date\":\"2026-02-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwalde",
+      "document_date": "2025-12-29",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/31206"
+        }
+      ],
+      "amounts": [
+        186.3
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against amended 2024 income tax assessment",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter dated (and presumed posted) 29.12.2025. Delivery fiction for simple letter: 4th day after posting, day of posting not counted: Dec 30 (1), Dec 31 (2), Jan 1 2026 (3), Jan 2 2026 (4) → deemed delivery = Fri 02.01.2026. This is a Finanzamt, so if the 4th day were a Sat/Sun/holiday it would move to the next working day (§108 Abs.3 AO), but 02.01.2026 is a Friday and not a holiday, so no shift applies. One-month Einspruch period (§355 Abs.1 AO) runs from delivery per §§187 Abs.1, 188 Abs.2 BGB/§108 Abs.1 AO: delivery day itself not counted, period ends on the day in the following month with the same number as the delivery day → 02.02.2026. That date is a Monday (Jan 2026: Jan1=Thu, Jan2=Fri, so Jan30=Fri, Jan31=Sat, Feb1=Sun, Feb2=Mon), not a weekend/holiday in NRW, so no further shift under §108 Abs.3 AO.",
+          "due_date": "2026-02-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2319,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2071,
+      "cost_usd": 0.032584,
+      "duration_ms": 21085,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

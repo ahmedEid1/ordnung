@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b3f70007e884aa9d6b2bbeb2eddb5e4d8abafe7c7c5432e769ab0c4401a186ec\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-H1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-03-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[92000],\"contract\":null,\"document_date\":\"2025-03-12\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Sign and return offer letter to accept\",\"quote\":\"To accept, please sign the enclosed offer letter and return it to People Operations no later than March 26, 2025.\",\"computation\":\"The letter states an explicit calendar date by which the signed offer must be returned: March 26, 2025. This is a fixed date set by the sender (a private US company, not a German authority), so no statutory delivery-fiction or BGB period-counting rules apply; the date is taken as printed. No weekend/holiday adjustment is needed or stated by the letter.\",\"due_date\":\"2025-03-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment start date\",\"quote\":\"working remotely from Germany through our employer of record, starting May 5, 2025, at an annual base salary of EUR 92,000.00.\",\"computation\":\"The letter explicitly states the employment start date as May 5, 2025; this is a fixed calendar date given by the sender, not a period requiring calculation.\",\"due_date\":\"2025-05-05\",\"confidence\":\"high\",\"amount\":92000}],\"kind\":\"employment\",\"references\":[{\"label\":\"Requisition\",\"value\":\"REQ-2025-0318\"}],\"remedy_type\":\"none\",\"sender_name\":\"Example Analytics, Inc.\",\"warnings\":[\"This is a private employment offer from a US company (not a German authority), so no statutory delivery-fiction or BGB period rules apply to its March 26, 2025 acceptance deadline; it is taken as printed.\",\"The letter and its stated deadlines (document dated March 12, 2025; acceptance deadline March 26, 2025; start date May 5, 2025) are far in the past relative to a current date of October 2026 noted in the session context — double-check whether this is an old document being reviewed historically or whether the dates/years were mistyped.\",\"The employer's own offer letter grants itself a hard deadline ('After that date the offer lapses.') with no appeal or remedy process, which is normal for a private contract offer but is not a legal Rechtsbehelfsbelehrung.\"]}",
+    "data": {
+      "amounts": [
+        92000
+      ],
+      "contract": null,
+      "document_date": "2025-03-12",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Sign and return offer letter to accept",
+          "quote": "To accept, please sign the enclosed offer letter and return it to People Operations no later than March 26, 2025.",
+          "computation": "The letter states an explicit calendar date by which the signed offer must be returned: March 26, 2025. This is a fixed date set by the sender (a private US company, not a German authority), so no statutory delivery-fiction or BGB period-counting rules apply; the date is taken as printed. No weekend/holiday adjustment is needed or stated by the letter.",
+          "due_date": "2025-03-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment start date",
+          "quote": "working remotely from Germany through our employer of record, starting May 5, 2025, at an annual base salary of EUR 92,000.00.",
+          "computation": "The letter explicitly states the employment start date as May 5, 2025; this is a fixed calendar date given by the sender, not a period requiring calculation.",
+          "due_date": "2025-05-05",
+          "confidence": "high",
+          "amount": 92000
+        }
+      ],
+      "kind": "employment",
+      "references": [
+        {
+          "label": "Requisition",
+          "value": "REQ-2025-0318"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Example Analytics, Inc.",
+      "warnings": [
+        "This is a private employment offer from a US company (not a German authority), so no statutory delivery-fiction or BGB period rules apply to its March 26, 2025 acceptance deadline; it is taken as printed.",
+        "The letter and its stated deadlines (document dated March 12, 2025; acceptance deadline March 26, 2025; start date May 5, 2025) are far in the past relative to a current date of October 2026 noted in the session context — double-check whether this is an old document being reviewed historically or whether the dates/years were mistyped.",
+        "The employer's own offer letter grants itself a hard deadline ('After that date the offer lapses.') with no appeal or remedy process, which is normal for a private contract offer but is not a legal Rechtsbehelfsbelehrung."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1768,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 1792,
+      "cost_usd": 0.025476400000000003,
+      "duration_ms": 17532,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

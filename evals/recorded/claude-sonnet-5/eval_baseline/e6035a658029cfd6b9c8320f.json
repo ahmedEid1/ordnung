@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d4e55788711f9d922c302c3ada1879b592e5273e4fec18453778820ffd9bf892\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-price_increase-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2025-04-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Netzwelt Beispiel GmbH\",\"document_date\":\"2025-04-15\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"NWB-551 207 9\"}],\"amounts\":[44.99,49.99],\"items\":[{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (§ 57 TKG) due to price increase\",\"quote\":\"Das Kündigungsrecht besteht drei Monate ab Zugang dieser Mitteilung; der Vertrag endet frühestens zu dem Zeitpunkt, an dem der neue Preis wirksam wird.\",\"computation\":\"The letter is dated 15.04.2025 (Tuesday). It is a private company letter, not an authority notice, so no statutory delivery fiction (e.g. § 122 AO/§41 VwVfG) applies automatically. Lacking an explicit delivery date, I assume normal domestic postal transit of about 3 days, so Zugang (access) is taken as 18.04.2025 (Friday). Under § 187 Abs. 1 BGB the day of Zugang is not counted when the period starts; under § 188 Abs. 2 BGB a period of months ends on the day of the last month bearing the same calendar number as the day of the triggering event (18.04.) - i.e. 18.07.2025. 18.07.2025 is a Friday and not a public holiday in NW, so no weekend/holiday shift under § 193 BGB is needed. The special termination must reach the provider by this date to be effective; the contract would then end no earlier than 01.06.2025, the date the new price takes effect.\",\"due_date\":\"2025-07-18\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"New monthly price for 'Netzwelt DSL 100' takes effect\",\"quote\":\"ab dem 01.06.2025 kostet Ihr Tarif „Netzwelt DSL 100“ 49,99 € statt bisher 44,99 € im Monat.\",\"computation\":\"The letter states the new price applies starting 01.06.2025; this date is given explicitly in the letter and requires no further calculation.\",\"due_date\":\"2025-06-01\",\"confidence\":\"high\",\"amount\":49.99}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact delivery (Zugang) date of this letter is not stated; the 18.07.2025 deadline for the special termination right assumes a typical ~3-day postal transit from the 15.04.2025 document date - the person should check the actual date they received the letter and recalculate three months from that date if different.\",\"This is a private commercial notice (not an authority letter), so it carries no Einspruch/Widerspruch/Klage remedy instructions; the only legal recourse mentioned is the statutory special termination right under § 57 Abs. 1 TKG.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Netzwelt Beispiel GmbH",
+      "document_date": "2025-04-15",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "NWB-551 207 9"
+        }
+      ],
+      "amounts": [
+        44.99,
+        49.99
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (§ 57 TKG) due to price increase",
+          "quote": "Das Kündigungsrecht besteht drei Monate ab Zugang dieser Mitteilung; der Vertrag endet frühestens zu dem Zeitpunkt, an dem der neue Preis wirksam wird.",
+          "computation": "The letter is dated 15.04.2025 (Tuesday). It is a private company letter, not an authority notice, so no statutory delivery fiction (e.g. § 122 AO/§41 VwVfG) applies automatically. Lacking an explicit delivery date, I assume normal domestic postal transit of about 3 days, so Zugang (access) is taken as 18.04.2025 (Friday). Under § 187 Abs. 1 BGB the day of Zugang is not counted when the period starts; under § 188 Abs. 2 BGB a period of months ends on the day of the last month bearing the same calendar number as the day of the triggering event (18.04.) - i.e. 18.07.2025. 18.07.2025 is a Friday and not a public holiday in NW, so no weekend/holiday shift under § 193 BGB is needed. The special termination must reach the provider by this date to be effective; the contract would then end no earlier than 01.06.2025, the date the new price takes effect.",
+          "due_date": "2025-07-18",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "New monthly price for 'Netzwelt DSL 100' takes effect",
+          "quote": "ab dem 01.06.2025 kostet Ihr Tarif „Netzwelt DSL 100“ 49,99 € statt bisher 44,99 € im Monat.",
+          "computation": "The letter states the new price applies starting 01.06.2025; this date is given explicitly in the letter and requires no further calculation.",
+          "due_date": "2025-06-01",
+          "confidence": "high",
+          "amount": 49.99
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact delivery (Zugang) date of this letter is not stated; the 18.07.2025 deadline for the special termination right assumes a typical ~3-day postal transit from the 15.04.2025 document date - the person should check the actual date they received the letter and recalculate three months from that date if different.",
+        "This is a private commercial notice (not an authority letter), so it carries no Einspruch/Widerspruch/Klage remedy instructions; the only legal recourse mentioned is the statutory special termination right under § 57 Abs. 1 TKG."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4291,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2041,
+      "cost_usd": 0.05170239999999999,
+      "duration_ms": 41855,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

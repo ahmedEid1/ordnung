@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"39c9e72ae64bb832c8364c24fa2a6d9fd7acd528ce5f72285fbf57b8594987de\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2027-08-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-08-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterjena\",\"document_date\":\"2027-08-16\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"161/208/41537\"},{\"label\":\"Identifikationsnummer\",\"value\":\"48 230 175 966\"}],\"amounts\":[6744,859],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2026 income tax assessment\",\"quote\":\"Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.\",\"computation\":\"Letter dated Monday 16.08.2027, sent by simple post. The letter itself states the statutory fiction: 'Einen Bescheid, den wir mit einfachem Brief schicken, behandelt das Gesetz am vierten Tag nach dem Absenden als bekannt gegeben' -> posting day 16.08.2027 + 4 days = 20.08.2027 (Friday), which is not a Saturday, Sunday or Thüringen public holiday, so Bekanntgabe (deemed delivery) = Friday 20.08.2027. The one-month Einspruchsfrist begins the day after Bekanntgabe (the event day itself is not counted, §108 AO / §187 Abs.1 BGB) and, per §188 Abs.2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day itself: 20.09.2027. That date is a Monday and not a Thüringen public holiday, so no further shift applies.\",\"due_date\":\"2027-09-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Income tax refund credited to the taxpayer's account\",\"quote\":\"Er wird in den nächsten Tagen gutgeschrieben.\",\"computation\":\"The letter states only that the refund of 859,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the assessment date of 16.08.2027, without giving a precise calendar date, so an exact due date cannot be determined; this is a credit owed to the taxpayer, not an action they must take.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":859}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no precise date for the refund credit ('in den nächsten Tagen'), only an approximate timeframe, so the exact credit date could not be computed.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterjena",
+      "document_date": "2027-08-16",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "161/208/41537"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "48 230 175 966"
+        }
+      ],
+      "amounts": [
+        6744,
+        859
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2026 income tax assessment",
+          "quote": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.",
+          "computation": "Letter dated Monday 16.08.2027, sent by simple post. The letter itself states the statutory fiction: 'Einen Bescheid, den wir mit einfachem Brief schicken, behandelt das Gesetz am vierten Tag nach dem Absenden als bekannt gegeben' -> posting day 16.08.2027 + 4 days = 20.08.2027 (Friday), which is not a Saturday, Sunday or Thüringen public holiday, so Bekanntgabe (deemed delivery) = Friday 20.08.2027. The one-month Einspruchsfrist begins the day after Bekanntgabe (the event day itself is not counted, §108 AO / §187 Abs.1 BGB) and, per §188 Abs.2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day itself: 20.09.2027. That date is a Monday and not a Thüringen public holiday, so no further shift applies.",
+          "due_date": "2027-09-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Income tax refund credited to the taxpayer's account",
+          "quote": "Er wird in den nächsten Tagen gutgeschrieben.",
+          "computation": "The letter states only that the refund of 859,00 € will be credited 'in den nächsten Tagen' (in the next few days) after the assessment date of 16.08.2027, without giving a precise calendar date, so an exact due date cannot be determined; this is a credit owed to the taxpayer, not an action they must take.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 859
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no precise date for the refund credit ('in den nächsten Tagen'), only an approximate timeframe, so the exact credit date could not be computed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3420,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2538,
+      "cost_usd": 0.0449804,
+      "duration_ms": 32792,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"604d2e95922be8bd6d09c2a4d9f198e7012b3515b13b358c4ff555d4473d7c88\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2025-10-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G1"
+    ],
+    "prompt_head": "Today is 2025-10-04. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in"
+  },
+  "response": {
+    "text": "{\"area\":\"money\",\"case_title\":\"Mortgage financing request – missing documents (Musterbank Lüne)\",\"kind\":\"authority_letter\",\"language\":\"de\",\"document_date\":\"2025-10-02\",\"recipient_name\":\"Ruben Beispielgaard\",\"sender\":{\"name\":\"Musterbank Lüne eG\",\"kind\":\"bank\",\"address\":\"Marktstieg 40 · 21335 Musterlüne\",\"email\":\"baufinanzierung@musterbank-luene.example\",\"phone\":\"04131 707-0\",\"website\":null,\"identifiers\":[{\"label\":\"GnR\",\"value\":\"112 AG Musterlüne\"}]},\"title\":\"Request for missing documents for mortgage financing\",\"summary\":\"Musterbank Lüne eG asks Ruben Beispielgaard to submit his last three payslips, the land register extract (Grundbuchauszug) and the declaration of division (Teilungserklärung) needed to process his financing request for the flat at Wiesengrund 23, within 8 working days of the letter; otherwise the offered interest rate can no longer be guaranteed.\",\"explanation\":\"Your bank still needs three documents to finish checking your mortgage application: your last three payslips, the land register extract, and the declaration of division for the flat you want to buy. Send these by the deadline shown in the app, which counts working days (Saturdays count, Sundays and holidays don't) from the day after this letter's date. If you miss it, the bank says it can no longer guarantee the interest rate it offered you, so it's worth sending the documents as soon as possible or contacting the bank if you need more time.\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit missing documents for the mortgage financing request\",\"action\":\"Send your last three payslips, the land register extract (Grundbuchauszug) and the declaration of division (Teilungserklärung) to Musterbank Lüne eG.\",\"consequence\":\"The bank says it can no longer guarantee the interest rate it offered you.\",\"priority\":\"high\",\"date\":{\"type\":\"relative\",\"nature\":\"declaration\",\"anchor\":\"explicit_date\",\"anchor_date\":\"2025-10-02\",\"amount\":8,\"unit\":\"werktage\",\"shift_rule\":\"auto\",\"delivery_rule\":\"none\",\"text\":\"innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht\"},\"quote\":\"Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.\"}],\"key_facts\":[{\"label\":\"Documents requested\",\"value\":\"letzten drei Gehaltsabrechnungen, Grundbuchauszug, Teilungserklärung\",\"quote\":\"fehlen uns noch Ihre letzten drei Gehaltsabrechnungen, der Grundbuchauszug und die Teilungserklärung.\"},{\"label\":\"Deadline (Frist)\",\"value\":\"8 Werktage\",\"quote\":\"Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht.\"},{\"label\":\"Property to be financed\",\"value\":\"Wiesengrund 23\",\"quote\":\"für die Prüfung Ihrer Anfrage über ein Darlehen zum Kauf der Wohnung Wiesengrund 23 fehlen uns noch Ihre letzten drei Gehaltsabrechnungen, der Grundbuchauszug und die Teilungserklärung.\"}],\"references\":[{\"label\":\"Anfrage-Nr.\",\"value\":\"BF-2025-3317\"}],\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"payment\":null,\"contract\":null,\"change\":null,\"high_stakes_kind\":null,\"urgency\":\"high\",\"tax_relevant\":false,\"tax_note\":null,\"warnings\":[]}",
+    "data": {
+      "area": "money",
+      "case_title": "Mortgage financing request – missing documents (Musterbank Lüne)",
+      "kind": "authority_letter",
+      "language": "de",
+      "document_date": "2025-10-02",
+      "recipient_name": "Ruben Beispielgaard",
+      "sender": {
+        "name": "Musterbank Lüne eG",
+        "kind": "bank",
+        "address": "Marktstieg 40 · 21335 Musterlüne",
+        "email": "baufinanzierung@musterbank-luene.example",
+        "phone": "04131 707-0",
+        "website": null,
+        "identifiers": [
+          {
+            "label": "GnR",
+            "value": "112 AG Musterlüne"
+          }
+        ]
+      },
+      "title": "Request for missing documents for mortgage financing",
+      "summary": "Musterbank Lüne eG asks Ruben Beispielgaard to submit his last three payslips, the land register extract (Grundbuchauszug) and the declaration of division (Teilungserklärung) needed to process his financing request for the flat at Wiesengrund 23, within 8 working days of the letter; otherwise the offered interest rate can no longer be guaranteed.",
+      "explanation": "Your bank still needs three documents to finish checking your mortgage application: your last three payslips, the land register extract, and the declaration of division for the flat you want to buy. Send these by the deadline shown in the app, which counts working days (Saturdays count, Sundays and holidays don't) from the day after this letter's date. If you miss it, the bank says it can no longer guarantee the interest rate it offered you, so it's worth sending the documents as soon as possible or contacting the bank if you need more time.",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit missing documents for the mortgage financing request",
+          "action": "Send your last three payslips, the land register extract (Grundbuchauszug) and the declaration of division (Teilungserklärung) to Musterbank Lüne eG.",
+          "consequence": "The bank says it can no longer guarantee the interest rate it offered you.",
+          "priority": "high",
+          "date": {
+            "type": "relative",
+            "nature": "declaration",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-10-02",
+            "amount": 8,
+            "unit": "werktage",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "text": "innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht"
+          },
+          "quote": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Documents requested",
+          "value": "letzten drei Gehaltsabrechnungen, Grundbuchauszug, Teilungserklärung",
+          "quote": "fehlen uns noch Ihre letzten drei Gehaltsabrechnungen, der Grundbuchauszug und die Teilungserklärung."
+        },
+        {
+          "label": "Deadline (Frist)",
+          "value": "8 Werktage",
+          "quote": "Wir brauchen die Unterlagen innerhalb von 8 Werktagen, gerechnet ab dem Tag nach dem Datum dieses Schreibens; Samstage zählen mit, Sonn- und Feiertage nicht."
+        },
+        {
+          "label": "Property to be financed",
+          "value": "Wiesengrund 23",
+          "quote": "für die Prüfung Ihrer Anfrage über ein Darlehen zum Kauf der Wohnung Wiesengrund 23 fehlen uns noch Ihre letzten drei Gehaltsabrechnungen, der Grundbuchauszug und die Teilungserklärung."
+        }
+      ],
+      "references": [
+        {
+          "label": "Anfrage-Nr.",
+          "value": "BF-2025-3317"
+        }
+      ],
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "payment": null,
+      "contract": null,
+      "change": null,
+      "high_stakes_kind": null,
+      "urgency": "high",
+      "tax_relevant": false,
+      "tax_note": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3159,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 1864,
+      "cost_usd": 0.0408406,
+      "duration_ms": 25760,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

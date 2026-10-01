@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"39c9e72ae64bb832c8364c24fa2a6d9fd7acd528ce5f72285fbf57b8594987de\",\"mode\":\"text\",\"region\":\"TH\",\"today\":\"2027-08-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-08-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Thüringen (TH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterjena\",\"document_date\":\"2027-08-16\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"161/208/41537\"},{\"label\":\"Identifikationsnummer\",\"value\":\"48 230 175 966\"}],\"amounts\":[6744,7603,859],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2026 income tax assessment\",\"quote\":\"Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.\",\"computation\":\"Letter dated and posted Mon 16.08.2027. Posted on/after 1 Jan 2025 by a tax office, so delivery (Bekanntgabe) is deemed to occur on the 4th day after posting: 16.08 (+1)=17, (+2)=18, (+3)=19, (+4)=20 → Fri 20.08.2027. For Finanzamt letters, if that 4th day falls on a weekend/holiday it moves to the next working day (§108 Abs.3 AO); 20.08.2027 is a Friday and not a holiday in Thüringen, so delivery stands at 20.08.2027. The one-month Einspruch period under §355 Abs.1 AO then runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 20.09.2027 (Monday) → not a weekend/holiday, so no further shift under §108 Abs.3 AO.\",\"due_date\":\"2027-09-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund credited to bank account\",\"quote\":\"Er wird in den nächsten Tagen gutgeschrieben.\",\"computation\":\"The letter states the refund of 859,00 € will be credited 'in the next days' after the assessment date (16.08.2027) without giving a fixed calendar date, so no exact due date can be derived.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":859}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The refund credit date ('in den nächsten Tagen') is vague and has no fixed deadline; verify the credit arrives on the stated IBAN DE81 2655 0105 0071 8300 46, which should match the taxpayer's own known bank account.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterjena",
+      "document_date": "2027-08-16",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "161/208/41537"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "48 230 175 966"
+        }
+      ],
+      "amounts": [
+        6744,
+        7603,
+        859
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2026 income tax assessment",
+          "quote": "Der Einspruch muss innerhalb eines Monats beim Finanzamt Musterjena eingehen; die Frist beginnt mit dem Tag nach der Bekanntgabe.",
+          "computation": "Letter dated and posted Mon 16.08.2027. Posted on/after 1 Jan 2025 by a tax office, so delivery (Bekanntgabe) is deemed to occur on the 4th day after posting: 16.08 (+1)=17, (+2)=18, (+3)=19, (+4)=20 → Fri 20.08.2027. For Finanzamt letters, if that 4th day falls on a weekend/holiday it moves to the next working day (§108 Abs.3 AO); 20.08.2027 is a Friday and not a holiday in Thüringen, so delivery stands at 20.08.2027. The one-month Einspruch period under §355 Abs.1 AO then runs from the day after delivery and ends on the day in the following month bearing the same number as the delivery day: 20.09.2027 (Monday) → not a weekend/holiday, so no further shift under §108 Abs.3 AO.",
+          "due_date": "2027-09-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund credited to bank account",
+          "quote": "Er wird in den nächsten Tagen gutgeschrieben.",
+          "computation": "The letter states the refund of 859,00 € will be credited 'in the next days' after the assessment date (16.08.2027) without giving a fixed calendar date, so no exact due date can be derived.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 859
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The refund credit date ('in den nächsten Tagen') is vague and has no fixed deadline; verify the credit arrives on the stated IBAN DE81 2655 0105 0071 8300 46, which should match the taxpayer's own known bank account."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3276,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2538,
+      "cost_usd": 0.044022,
+      "duration_ms": 29596,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"586ed0bba4698bfe30b2d41264df36545510b091ec2950b5570d1b8a3389aa2d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-06-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-invoice_relative-H1"
+    ],
+    "prompt_head": "Today is Monday, 2026-06-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Privatpraxis Dr. med. Hanna Musterknie\",\"document_date\":\"2026-06-26\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"2026-04471\"},{\"label\":\"Patientennummer\",\"value\":\"PN 18 330\"}],\"amounts\":[309.32],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay doctor's invoice\",\"quote\":\"Bitte begleichen Sie den Rechnungsbetrag innerhalb von 30 Tagen nach dem Rechnungsdatum unter Angabe der Rechnungsnummer.\",\"computation\":\"Private invoice, period counted under §§ 187, 188, 193 BGB. Start event is the invoice date 26.06.2026; this day is not counted (§187 Abs.1 BGB). Counting 30 days forward: day 1 = 27.06.2026 ... day 30 = 26.07.2026. 26.07.2026 is a Sunday, so under §193 BGB the due date moves to the next working day. This is a payment to a private company, so the relevant holidays are those of the payer's own Land (NW per given context); no public holiday falls on 27.07.2026, which is a Monday, so it becomes the due date.\",\"due_date\":\"2026-07-27\",\"confidence\":\"high\",\"amount\":309.32}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Privatpraxis Dr. med. Hanna Musterknie",
+      "document_date": "2026-06-26",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "2026-04471"
+        },
+        {
+          "label": "Patientennummer",
+          "value": "PN 18 330"
+        }
+      ],
+      "amounts": [
+        309.32
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay doctor's invoice",
+          "quote": "Bitte begleichen Sie den Rechnungsbetrag innerhalb von 30 Tagen nach dem Rechnungsdatum unter Angabe der Rechnungsnummer.",
+          "computation": "Private invoice, period counted under §§ 187, 188, 193 BGB. Start event is the invoice date 26.06.2026; this day is not counted (§187 Abs.1 BGB). Counting 30 days forward: day 1 = 27.06.2026 ... day 30 = 26.07.2026. 26.07.2026 is a Sunday, so under §193 BGB the due date moves to the next working day. This is a payment to a private company, so the relevant holidays are those of the payer's own Land (NW per given context); no public holiday falls on 27.07.2026, which is a Monday, so it becomes the due date.",
+          "due_date": "2026-07-27",
+          "confidence": "high",
+          "amount": 309.32
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2447,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2137,
+      "cost_usd": 0.034128,
+      "duration_ms": 23099,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

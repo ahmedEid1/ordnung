@@ -1367,7 +1367,7 @@ async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
 
 
 # --------------------------------------------------------------------------------------------------
-# The holdout2 split: written after the release's last code change, recorded once, a section of its own
+# The holdout2 split: written after the release's last change to how letters are read, recorded once, a section of its own
 # --------------------------------------------------------------------------------------------------
 # The holdout2 letters stay unseen until their one recording: these tests never run the app on them. They
 # run on the holdout letters of ``HOLDOUT_IDS`` and label the run as a holdout2 run.
@@ -1443,10 +1443,10 @@ async def test_the_holdout2_run_is_shown_in_a_section_of_its_own(
         page.split("## Method", 1)[1].split("## Reproduce", 1)[0]
         == before.split("## Method", 1)[1].split("## Reproduce", 1)[0]
     )
-    # the method sentence: written after the release's last code change, recorded once, nothing tuned on it
+    # the method sentence: written after the release's last change to how letters are read, recorded once, nothing tuned on it
     assert (
-        "**The holdout2 letters were written after the release's last code change, are recorded\n"
-        "once, and nothing was tuned on them.**" in section
+        "**The holdout2 letters were written after the release's last change to how letters are\n"
+        "read, are recorded once, and nothing was tuned on them.**" in section
     )
     for condition in eval_run.CONDITIONS:
         assert (

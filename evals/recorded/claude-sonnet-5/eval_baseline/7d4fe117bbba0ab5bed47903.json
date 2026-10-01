@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"fb676dc7b9b69c762a43eb8686dd6a81fb302d116d69a7c9701b388596324e73\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2027-04-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-H2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterwandsbek, Fachamt Management des öffentlichen Raumes\",\"document_date\":\"2027-04-13\",\"references\":[{\"label\":\"Az.\",\"value\":\"MR 31/27-0442\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of Sondernutzung permit\",\"quote\":\"Dafür haben\\nSie einen Monat Zeit, gerechnet ab der Bekanntgabe.\",\"computation\":\"The letter is dated 13.04.2027 (Tuesday); assuming this is also the day it was handed to the post (no separate dispatch date given). The letter itself states the statutory fiction: 'Einen Bescheid, den wir mit der Post schicken, behandelt das Gesetz am vierten Tag nach der Aufgabe zur Post als bekannt gegeben.' Counting 4 days from 13.04.2027 (14., 15., 16., 17.04.) lands on Saturday, 17.04.2027. Under the established analogous application of §108(3) AO to the postal-delivery fiction, if that day falls on a Saturday, Sunday or public holiday, Bekanntgabe is shifted to the next working day: Monday, 19.04.2027 (no Hamburg public holiday falls in this window; Ostermontag 2027 was already 29.03.). So Bekanntgabe = 19.04.2027. The one-month Widerspruchsfrist then runs under §§187(1), 188(2) BGB: the day of Bekanntgabe itself is not counted as a full day, the period begins the next day, and ends on the day of the following month bearing the same number as the day of the event (19.04.), i.e. 19.05.2027 (Wednesday). 19.05.2027 is a normal working day in Hamburg, so no further shift is needed.\",\"due_date\":\"2027-05-19\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact date the letter was handed to the post office is not stated; the computation assumes it matches the printed document date (13.04.2027), which gives the deemed-delivery (Bekanntgabe) date and hence the Widerspruch deadline a medium rather than high confidence.\",\"The letter advises checking whether the container could instead be placed on the applicant's own property, but sets no deadline for this and it is not a formal obligation.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterwandsbek, Fachamt Management des öffentlichen Raumes",
+      "document_date": "2027-04-13",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "MR 31/27-0442"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of Sondernutzung permit",
+          "quote": "Dafür haben\nSie einen Monat Zeit, gerechnet ab der Bekanntgabe.",
+          "computation": "The letter is dated 13.04.2027 (Tuesday); assuming this is also the day it was handed to the post (no separate dispatch date given). The letter itself states the statutory fiction: 'Einen Bescheid, den wir mit der Post schicken, behandelt das Gesetz am vierten Tag nach der Aufgabe zur Post als bekannt gegeben.' Counting 4 days from 13.04.2027 (14., 15., 16., 17.04.) lands on Saturday, 17.04.2027. Under the established analogous application of §108(3) AO to the postal-delivery fiction, if that day falls on a Saturday, Sunday or public holiday, Bekanntgabe is shifted to the next working day: Monday, 19.04.2027 (no Hamburg public holiday falls in this window; Ostermontag 2027 was already 29.03.). So Bekanntgabe = 19.04.2027. The one-month Widerspruchsfrist then runs under §§187(1), 188(2) BGB: the day of Bekanntgabe itself is not counted as a full day, the period begins the next day, and ends on the day of the following month bearing the same number as the day of the event (19.04.), i.e. 19.05.2027 (Wednesday). 19.05.2027 is a normal working day in Hamburg, so no further shift is needed.",
+          "due_date": "2027-05-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date the letter was handed to the post office is not stated; the computation assumes it matches the printed document date (13.04.2027), which gives the deemed-delivery (Bekanntgabe) date and hence the Widerspruch deadline a medium rather than high confidence.",
+        "The letter advises checking whether the container could instead be placed on the applicant's own property, but sets no deadline for this and it is not a formal obligation."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5639,
+      "cache_read_tokens": 8573,
+      "cache_creation_tokens": 6819,
+      "cost_usd": 0.08538859999999998,
+      "duration_ms": 52744,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

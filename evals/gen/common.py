@@ -57,7 +57,7 @@ NATURES = {"objection", "payment", "declaration", "notice", "appointment", "othe
 REMEDIES = {"einspruch", "widerspruch", "klage", "none", "unclear"}
 WARNINGS = {"scam", "injection", "hidden_text", "conflicting_dates", "missing_date"}
 #: The template variants of each split: dev (prompts may be tuned on it), test (published), holdout (written after
-#: extraction prompt 11, recorded once with frozen prompts), holdout2 (written after the release's last code change,
+#: extraction prompt 11, recorded once with frozen prompts), holdout2 (written after the release's last change to how letters are read,
 #: recorded once, nothing tuned on it). Adversarial letters are one-offs in test, holdout and holdout2.
 SPLIT_VARIANTS = {"dev": ("A", "B"), "test": ("C", "D"), "holdout": ("E", "F"), "holdout2": ("G", "H")}
 
