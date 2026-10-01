@@ -41,6 +41,7 @@ from ordnung.ingest.link import LinkResult
 from ordnung.ingest.plan import (
     ComputedDate,
     VerifiedItem,
+    checked_evidence,
     compute_item,
     needs_check,
     remedy_warnings,
@@ -1365,6 +1366,103 @@ def test_the_check_item_is_graded_as_ordnung_s_own_date() -> None:
     verified = checked(blank(), [page(*HEAD, monatsfrist)])
     assert verified.reasons == (READING_INCOMPLETE,)
     assert PERIOD_NOT_IN_QUOTE not in verified.reasons and DATE_NOT_IN_QUOTE not in verified.reasons
+
+
+# --------------------------------------------------------------------------------------------------
+# A reading that dates the objection weeks after the letter's own notice (spec 3.9(b))
+# --------------------------------------------------------------------------------------------------
+
+
+def _read_objection(
+    spec: dict[str, Any], pages: Sequence[PageInput] = (DECISION,), **ctx: Any
+) -> tuple[VerifiedItem, ComputedDate, DocumentExtraction]:
+    """The reading's own objection to-do (``spec``, quoting the notice), verified and computed."""
+    reading = blank(sender=SENDER, document_date="2026-11-06", items=[objection(spec)])
+    [verified] = verify_extraction("doc_x", reading, pages, check_reading=True).items
+    return verified, compute_item(verified, ctx_for(reading, **ctx), postal_buffer_days=3), reading
+
+
+THREE_MONTHS = {
+    "type": "relative",
+    "amount": 3,
+    "unit": "months",
+    "anchor": "deemed_delivery",
+    "delivery_rule": "de_admin_post",
+}
+
+
+def test_an_objection_date_weeks_after_the_notice_gets_the_notice_s_date_and_please_check() -> None:
+    """The reading's "three months" (a planted extension, say) ends on Tue 9 Feb 2027; the letter's own notice
+    gives one month, Wed 9 Dec 2026: the earlier is kept, both are named, and the to-do is "Please check"."""
+    verified, computed, _ = _read_objection(THREE_MONTHS)
+    assert verified.notice is not None and verified.notice.statement in NOTIFIED
+    assert computed.due_date == NOTIFIED_DUE and computed.conflict and computed.notice
+    assert computed.receipt is not None and computed.receipt.confidence == "low"
+    assert any("2027" in note and "We use the earlier one" in note for note in computed.receipt.warnings)
+    assert not checked_evidence(verified, computed).value_consistent
+    alone = compute_item(
+        replace(verified, notice=None), ctx_for(blank(document_date="2026-11-06")), postal_buffer_days=3
+    )
+    assert alone.due_date == "2027-02-09" and not alone.conflict
+
+
+@pytest.mark.parametrize(
+    ("written", "kept"),
+    [
+        ("2026-12-01", "2026-12-01"),  # earlier than the notice: the reading's
+        ("2026-12-21", "2026-12-21"),  # 12 days later: within reach, the reading's
+        ("2026-12-23", "2026-12-23"),  # 14 days later: still the reading's
+        ("2026-12-24", NOTIFIED_DUE),  # 15 days later: the notice's
+        ("2027-03-31", NOTIFIED_DUE),
+    ],
+)
+def test_only_a_date_more_than_two_weeks_after_the_notice_gets_it(written: str, kept: str) -> None:
+    _, computed, _ = _read_objection({"type": "fixed", "date": written})
+    assert computed.due_date == kept
+    assert computed.notice is (kept != written)
+
+
+@pytest.mark.parametrize("amount", [1, 2, 3, 6, 12])
+@pytest.mark.parametrize("unit", ["weeks", "months"])
+@pytest.mark.parametrize("anchor", ["deemed_delivery", "document_date", "receipt"])
+@pytest.mark.parametrize("region", [None, "NW"])
+def test_the_notice_beside_an_objection_date_never_makes_it_later(
+    amount: int, unit: str, anchor: str, region: str | None
+) -> None:
+    spec = {
+        "type": "relative",
+        "amount": amount,
+        "unit": unit,
+        "anchor": anchor,
+        "delivery_rule": "de_admin_post",
+    }
+    verified, guarded, reading = _read_objection(spec, region=region)
+    ctx = ctx_for(reading, region=region)
+    plain = compute_item(replace(verified, notice=None), ctx, postal_buffer_days=3)
+    assert guarded.due_date is not None and plain.due_date is not None
+    assert guarded.due_date <= plain.due_date
+    if guarded.notice:
+        assert guarded.due_date < plain.due_date and guarded.receipt is not None
+        assert guarded.receipt.confidence == "low"
+
+
+@pytest.mark.parametrize(
+    "notice_line",
+    [
+        # a period that can't be dated, one counted back from an event, a direct debit's
+        "Gegen diesen Bescheid kann binnen 10 Werktagen nach Zustellung Widerspruch erhoben werden.",
+        "Ein Widerspruch ist spätestens zwei Wochen vor der Verhandlung zu begründen.",
+        "Einer Lastschrift können Sie innerhalb von acht Wochen nach der Belastung widersprechen.",
+    ],
+)
+def test_no_notice_beside_it_when_the_check_couldn_t_date_one_itself(notice_line: str) -> None:
+    verified, computed, _ = _read_objection(THREE_MONTHS, pages=[page(*HEAD, notice_line)])
+    assert verified.notice is None and not computed.notice
+
+
+def test_the_check_s_own_to_do_never_gets_the_notice_beside_it() -> None:
+    verification = verify_extraction("doc_x", blank(), [DECISION], check_reading=True)
+    assert [verified.notice for verified in verification.items] == [None]
 
 
 # --------------------------------------------------------------------------------------------------

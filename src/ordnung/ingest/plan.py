@@ -33,8 +33,19 @@ from typing import Any, Literal
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, settle, settle_law
-from ordnung.ingest.gaps import CHECK_SLOT, check_item, check_reasons, gap_warning, start_variants
+from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, rival_due, settle, settle_law
+from ordnung.ingest.gaps import (
+    CHECK_SLOT,
+    NOTICE_REACH,
+    RemedyNotice,
+    check_item,
+    check_reasons,
+    dates_the_objection,
+    gap_warning,
+    notice_rival,
+    remedy_notices,
+    start_variants,
+)
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -115,6 +126,7 @@ from ordnung.rules.routing import (
     notice_without_period,
     objection_dated,
     objection_excluded,
+    special_rule,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, invalid_iban_message, normalize_iban
 from ordnung.trace import facts
@@ -160,7 +172,9 @@ class VerifiedItem:
     """An extracted item with its evidence and the problems found between its values and quote, and the
     sentence elsewhere in the letter that states its recurrence's due day when its quote doesn't
     (:func:`day_evidence`). ``rivals``: the letter's other statements that date the same obligation
-    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle."""
+    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle. ``notice``: for a to-do
+    that dates the objection, the period the letter's own remedy notice gives
+    (:func:`~ordnung.ingest.gaps.notice_rival`), a rival only when it ends weeks earlier."""
 
     item: ExtractedItem
     evidence: Evidence
@@ -168,6 +182,7 @@ class VerifiedItem:
     slot_key: str
     rivals: tuple[Rival, ...] = ()
     day_evidence: Evidence | None = None
+    notice: Rival | None = None
 
     @property
     def all_evidence(self) -> list[Evidence]:
@@ -483,6 +498,8 @@ def verify_extraction(
                 trace=step,
             ),
         )
+        if check_reading:
+            items[:] = with_notice(items, extraction, pages)
         found = check_item(extraction, pages, injected=injected) if check_reading else None
         if found is not None:
             items.append(
@@ -521,6 +538,32 @@ def verify_extraction(
             )
         )
     return verification
+
+
+def with_notice(
+    items: Sequence[VerifiedItem],
+    extraction: DocumentExtraction | None,
+    pages: Sequence[PageInput],
+    notices: Sequence[RemedyNotice] | None = None,
+) -> list[VerifiedItem]:
+    """The reading's to-dos, each one that dates the objection with the period the letter's own notice gives
+    beside it (:attr:`VerifiedItem.notice`, :func:`~ordnung.ingest.gaps.notice_rival`) — never the to-do
+    Ordnung files itself. One the person confirmed keeps it too: the date they confirmed was the earlier one,
+    and a recompute never moves it later. ``notices``: the letter's remedy notices, when already found
+    (:func:`~ordnung.ingest.gaps.remedy_notices`)."""
+    if extraction is None:
+        return list(items)
+    notices = remedy_notices(pages) if notices is None else notices
+    dating = [
+        verified.slot_key != CHECK_SLOT and dates_the_objection(verified.item, notices) for verified in items
+    ]
+    rival = notice_rival(extraction, pages, notices) if any(dating) else None
+    if rival is None:
+        return list(items)
+    return [
+        replace(verified, notice=rival) if date else verified
+        for verified, date in zip(items, dating, strict=True)
+    ]
 
 
 def _verification_warnings(verification: Verification) -> list[str]:
@@ -716,6 +759,9 @@ class ComputedDate:
     send_by: str | None
     source: DueDateSource
     conflict: bool = False
+    #: The letter's own notice ended weeks before the reading's objection date and was set beside it
+    #: (:attr:`VerifiedItem.notice`).
+    notice: bool = False
 
 
 def grade_receipt(receipt: ComputationReceipt, verified: VerifiedItem) -> ComputationReceipt:
@@ -746,7 +792,10 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     else:
         receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
     fixed = spec.type == "fixed"
-    settled = settle(receipt, verified.item, verified.rivals, ctx, postal_buffer_days=postal_buffer_days)
+    notice = _notice_beside(verified, receipt, ctx, postal_buffer_days=postal_buffer_days)
+    settled = settle(
+        receipt, verified.item, (*verified.rivals, *notice), ctx, postal_buffer_days=postal_buffer_days
+    )
     if settled is not None:
         receipt, fixed = settled.receipt, settled.fixed
     source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
@@ -756,7 +805,24 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         send_by=receipt.send_by,
         source=source,
         conflict=settled is not None,
+        notice=bool(notice) and settled is not None,
     )
+
+
+def _notice_beside(
+    verified: VerifiedItem, receipt: ComputationReceipt, ctx: RuleContext, *, postal_buffer_days: int
+) -> tuple[Rival, ...]:
+    """The letter's own notice as a rival of the reading's objection date (:attr:`VerifiedItem.notice`) when,
+    counted in the same context, it ends more than :data:`~ordnung.ingest.gaps.NOTICE_REACH` days earlier —
+    :func:`~ordnung.ingest.conflicts.settle` then keeps it, the earlier. Never through a letter rule meant for
+    a model's reading (§ 574b BGB would read the letter's date as the tenancy's end)."""
+    notice, own = verified.notice, parse_date(receipt.due_date)
+    if notice is None or own is None:
+        return ()
+    if special_rule(notice.spec, ctx.letter_kind, authority=ctx.delivery_scope is not None or ctx.court):
+        return ()
+    early = rival_due(notice, own, ctx, postal_buffer_days)
+    return (notice,) if early is not None and (own - early).days > NOTICE_REACH else ()
 
 
 def _check_receipt(

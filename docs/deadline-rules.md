@@ -399,6 +399,12 @@ the letter allows:
   "Please check". The letter rules for the model's readings (§ 574b BGB counting back from a tenancy's
   end) never apply to it.
 - **Without a notice** the to-do is an undated "Read this letter yourself".
+- **A reading that dates the objection weeks later.** When the reading has its own objection to-do but its
+  date is more than **14 days** after the period the notice gives (as above, counted in the same context),
+  that period is set beside it as a second date the letter gives (the "two different dates" rule of § 1: the
+  earlier is kept, both are named, `low` and "Please check"), also when recomputed and once confirmed. On
+  every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a weekend), so within
+  14 days the reading's date stands.
 
 | Letter dated | Notice | Sender's Land | Delivered | Deadline |
 |---|---|---|---|---|

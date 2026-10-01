@@ -655,6 +655,59 @@ async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(
         assert earlier_note == (corrected > "2026-09-15")
 
 
+def _later_objection_router() -> ApiRouter:
+    """The fee decision read with its sender and date, and an objection "three months" after notification."""
+    router = gap_api_router()
+    router.payloads[GAP_LETTER.marker] = {
+        **copy.deepcopy(GAP_COMPLETE),
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Objection (Widerspruch)",
+                "date": {
+                    "type": "relative",
+                    "amount": 3,
+                    "unit": "months",
+                    "anchor": "deemed_delivery",
+                    "delivery_rule": "de_admin_post",
+                    "nature": "objection",
+                    "text": "three months after notification",
+                },
+                "quote": GAP_NOTICE,
+            }
+        ],
+    }
+    return router
+
+
+async def test_an_objection_date_weeks_after_the_letter_s_notice_keeps_the_notice_s_date(
+    data_dir: Path,
+) -> None:
+    """Spec 3.9(b): the reading's objection (Fri 18 Dec) is weeks after the letter's own one month (Mon 19 Oct):
+    the earlier is kept and "Please check" — when read, recomputed, and after the person confirmed it."""
+    async with api_for(data_dir, router=_later_objection_router()) as api:
+        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [objection] = api.ctx.store.list_items(doc_id=doc_id)
+        assert (
+            objection.slot_key != CHECK_SLOT and objection.due_date == "2026-10-19" and needs_check(objection)
+        )
+        assert objection.computation is not None and objection.computation.confidence == "low"
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and document.status == "needs_review"
+        assert (
+            await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
+        ).status_code == 200
+        [objection] = api.ctx.store.list_items(doc_id=doc_id)
+        assert objection.due_date == "2026-10-19" and needs_check(objection)
+        assert (await api.client.post(f"/api/items/{objection.id}/confirm")).status_code == 200
+        assert (
+            await api.client.put("/api/profile", json={"region": "BE", "onboarded": True})
+        ).status_code == 200
+        [objection] = api.ctx.store.list_items(doc_id=doc_id)
+        assert objection.due_date == "2026-10-19" and not needs_check(objection)
+
+
 async def test_reading_again_completely_removes_the_untouched_check_to_do(
     gap_ctx: AppContext, gap_router: Router
 ) -> None:

@@ -915,6 +915,13 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
     return _Candidate(due, receipt, rival.statement, rival.spec.type == "fixed", rival)
 
 
+def rival_due(rival: Rival, own: date, ctx: RuleContext, postal_buffer_days: int) -> date | None:
+    """The date ``rival`` gives, computed as :func:`settle` computes it (``None`` when it gives none, the same
+    date as ``own``, or one :func:`settle` leaves out)."""
+    found = _rival_candidate(rival, own, ctx, postal_buffer_days)
+    return found.due if found is not None else None
+
+
 def _warning(noun: str, own: _Candidate, other: _Candidate, kept: date, ctx: RuleContext) -> str:
     """The warning naming both dates, the earlier first."""
     rival = other.rival

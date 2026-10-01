@@ -20,7 +20,7 @@ from typing import Any
 
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals
-from ordnung.ingest.gaps import CHECK_SLOT, check_reasons
+from ordnung.ingest.gaps import CHECK_SLOT, check_reasons, remedy_notices
 from ordnung.ingest.plan import (
     VerifiedItem,
     checked_evidence,
@@ -37,6 +37,7 @@ from ordnung.ingest.plan import (
     payment_note,
     rent_context,
     sync_rule_items,
+    with_notice,
     with_payment_note,
 )
 from ordnung.ingest.verify import ground_evidence
@@ -92,7 +93,8 @@ def _verified(
     other statements that date its obligation (``others``: the letter's to-dos as read,
     :func:`~ordnung.ingest.conflicts.find_rivals`) — none once the person confirmed its date. The to-do code
     filed for an incomplete reading stays graded as Ordnung's own date (``READING_INCOMPLETE``: ``low`` and
-    "Please check") until the person confirms it."""
+    "Please check") until the person confirms it. The period the letter's own notice gives is set beside a
+    to-do that dates the objection by :func:`recompute_document_items` (:func:`~ordnung.ingest.plan.with_notice`)."""
     evidence = item.evidence[0] if item.evidence else None
     extracted = _extracted(item, spec)
     reasons: tuple[str, ...] = ()
@@ -151,6 +153,7 @@ def recompute_document_items(
     )
     changed: list[Item] = []
     contexts = item_contexts()
+    notices = remedy_notices(pages)
     with store.tx():
         stored = store.list_items(doc_id=document.id)
         read = {
@@ -164,7 +167,10 @@ def recompute_document_items(
             contract = store.get_contract(item.contract_id) if item.contract_id else None
             item_ctx = rent_context(store, item, for_item(ctx, item, note, contract))
             others = [extracted for other_id, extracted in read.items() if other_id != item.id]
-            verified = _verified(item, item.date_spec, pages, others)
+            # a reading's objection date weeks after the letter's own notice: that notice beside it, as when read
+            [verified] = with_notice(
+                [_verified(item, item.date_spec, pages, others)], extraction, pages, notices
+            )
             result = with_payment_note(
                 compute_item(verified, item_ctx, postal_buffer_days=buffer), item, note
             )
@@ -187,8 +193,14 @@ def recompute_document_items(
             if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date, item_ctx):
                 moved = at_occurrence(recomputed, item.due_date, item_ctx, postal_buffer_days=buffer) or item
             fields: dict[str, Any] = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
-            if result.conflict and item.evidence and item.evidence[0].value_consistent:
-                # the letter gives the to-do two dates: "Please check", as when it was read
+            if (
+                result.conflict
+                and item.grounding != "user"
+                and item.evidence
+                and item.evidence[0].value_consistent
+            ):
+                # the letter gives the to-do two dates: "Please check", as when it was read (not once confirmed:
+                # a to-do whose date the person confirmed keeps the earlier one, unflagged)
                 fields["evidence"] = [checked_evidence(verified, result), *item.evidence[1:]]
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))

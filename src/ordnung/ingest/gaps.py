@@ -30,6 +30,10 @@ allows:
   arrival still moves it earlier (:func:`start_variants`), never later;
 * without a notice it is an undated "Read this letter yourself".
 
+A reading that does date the objection, but weeks after the period the letter's own notice gives (a planted
+"extended" period, a start moved later), gets that period beside its own date (:func:`notice_rival`): the
+earlier is kept and the to-do is "Please check" (:func:`~ordnung.ingest.plan.compute_item`).
+
 Nothing here calls a model; the reading itself (its sender, date and remedy) stays as the model gave it.
 """
 
@@ -42,8 +46,9 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Literal, NamedTuple
 
-from ordnung.ingest.conflicts import header, letter_statements, sentences
+from ordnung.ingest.conflicts import Rival, header, letter_statements, sentences
 from ordnung.ingest.normalize import fold_punctuation, join_hyphenated
+from ordnung.ingest.text import PageText
 from ordnung.ingest.verify import (
     DATE_NOT_IN_QUOTE,
     PERIOD_NOT_IN_QUOTE,
@@ -58,6 +63,7 @@ from ordnung.models import (
     ExtractedChange,
     ExtractedContract,
     ExtractedItem,
+    Grounding,
     PaymentDetails,
 )
 from ordnung.rules import RuleContext
@@ -67,14 +73,17 @@ from ordnung.rules.routing import letter_kind, special_rule
 __all__ = [
     "CHECK_SLOT",
     "LAW_DATED_KINDS",
+    "NOTICE_REACH",
     "Check",
     "CheckKind",
     "Gap",
     "RemedyNotice",
     "check_item",
     "check_reasons",
+    "dates_the_objection",
     "gap_warning",
     "letter_date",
+    "notice_rival",
     "reading_gap",
     "remedy_notices",
     "start_variants",
@@ -219,6 +228,11 @@ LETTER_DATE_SPAN = 14
 _DELIVERY_REACH = 35
 #: The longest quote a code-made to-do keeps (the notice's words around its remedy and its period).
 QUOTE_CAP = 600
+#: How many days later than the letter's own notice gives a reading's objection date may be before that
+#: notice's date is set beside it (:func:`notice_rival`). Measured on every recorded reading: 0 to 7 days (the
+#: days until a letter counts as delivered, a Land's holiday, a weekend), so only a date moved weeks later — a
+#: planted "extended" period, a later start — gets it.
+NOTICE_REACH = 14
 _REMEDIES = (("widerspr", "widerspruch"), ("einspr", "einspruch"), ("klage", "klage"))
 _TITLES = {
     "widerspruch": "Deadline to object (Widerspruch)",
@@ -277,7 +291,8 @@ class RemedyNotice:
     a later decision's, one already lodged, a direct debit's, one ruled out or one counted back from an event
     (whether the check fires — a notice that isn't live still counts for the date);
     ``datable``: every period it states can be read and runs forward, and its words fit the quote;
-    ``issued``: the dates of the decisions it names ("Bescheid vom …")."""
+    ``issued``: the dates of the decisions it names ("Bescheid vom …"); ``grounding``: how its page was read
+    (a text layer or a photo's transcript)."""
 
     quote: str
     text: str
@@ -287,6 +302,7 @@ class RemedyNotice:
     live: bool
     datable: bool
     issued: tuple[date, ...]
+    grounding: Grounding = "verified"
 
     @property
     def days(self) -> int:
@@ -297,6 +313,17 @@ class RemedyNotice:
 def _visible(page: PageInput) -> str:
     """The page's visible text (a photo's transcript), never its hidden text."""
     return page[1] if isinstance(page, tuple) else page.text
+
+
+def _grounding(page: PageInput) -> Grounding:
+    """How the page's text was read: its text layer (``verified``) or an AI transcript (``model_read``)."""
+    if isinstance(page, tuple):
+        source = page[3]
+    elif isinstance(page, PageText):
+        source = page.source
+    else:
+        source = page.text_source
+    return "verified" if source == "text" else "model_read"
 
 
 def _flat(text: str) -> str:
@@ -422,6 +449,7 @@ def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
                     and not backward
                     and quote is not None,
                     issued=_issued(text),
+                    grounding=_grounding(page),
                 )
             )
     return found
@@ -468,7 +496,7 @@ def _computable(spec: DateSpec) -> bool:
     return spec.anchor != "explicit_date" or _iso(spec.anchor_date) is not None
 
 
-def _dates_the_objection(item: ExtractedItem, notices: Sequence[RemedyNotice]) -> bool:
+def dates_the_objection(item: ExtractedItem, notices: Sequence[RemedyNotice]) -> bool:
     """A to-do of the reading that dates the objection: an objection with a date, or any dated to-do whose
     quote is part of a notice's words (an objection filed under another nature)."""
     if not _computable(item.date):
@@ -507,18 +535,25 @@ def reading_gap(
     (:attr:`RemedyNotice.live`), on a letter whose visible text shows an administrative act
     (:func:`~ordnung.rules.delivery.shows_administrative_act`: not a direct debit's or a contract's right to
     object), not filed as a kind the law dates itself (:func:`_law_dated`), and only when no to-do dates the
-    objection (:func:`_dates_the_objection`) — a ``remedy`` the reading copied without its date doesn't count."""
+    objection (:func:`dates_the_objection`) — a ``remedy`` the reading copied without its date doesn't count."""
     if _empty(extraction):
         return "empty"
     text = "\n".join(_visible(page) for page in pages)
-    if (
-        any(notice.live for notice in notices)
-        and shows_administrative_act(text)
-        and not _law_dated(extraction, notices, text)
-        and not any(_dates_the_objection(item, notices) for item in extraction.items)
+    if _objection_due(extraction, notices, text) and not any(
+        dates_the_objection(item, notices) for item in extraction.items
     ):
         return "remedy_left_out"
     return None
+
+
+def _objection_due(extraction: DocumentExtraction, notices: Sequence[RemedyNotice], text: str) -> bool:
+    """Whether the letter's text says an objection to it is due: a live notice, an administrative act, and
+    not a kind of letter the law dates itself (:func:`reading_gap`)."""
+    return (
+        any(notice.live for notice in notices)
+        and shows_administrative_act(text)
+        and not _law_dated(extraction, notices, text)
+    )
 
 
 def _header_dates(page: PageInput) -> list[date]:
@@ -703,6 +738,39 @@ def check_item(
         quote=notice.quote,
     )
     return Check(gap, deadline, kind, notice.remedy)
+
+
+def notice_rival(
+    extraction: DocumentExtraction, pages: Sequence[PageInput], notices: Sequence[RemedyNotice] | None = None
+) -> Rival | None:
+    """The objection deadline the letter's own notice gives, as a second date for a to-do of the reading that
+    dates the objection (:func:`dates_the_objection`): :func:`~ordnung.ingest.plan.compute_item` sets it beside
+    that to-do's own date only when it ends more than :data:`NOTICE_REACH` days earlier — then the earlier is
+    kept, both are named and the to-do is "Please check" (:func:`~ordnung.ingest.conflicts.settle`); a date
+    within that reach is the reading's to give. ``None`` unless the check would date it itself: a live notice
+    on an administrative act, not a kind the law dates, a period from a week to a month counted from the
+    letter's own date (:func:`check_item`)."""
+    notices = remedy_notices(pages) if notices is None else notices
+    text = "\n".join(_visible(page) for page in pages)
+    if not _objection_due(extraction, notices, text):
+        return None
+    written = letter_date(extraction, pages, notices)
+    if written is None:
+        return None
+    notice, period, delivery = _choose(notices, written, text)
+    if period is None:
+        return None
+    spec = DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date=written.isoformat(),
+        amount=period[0],
+        unit=period[1],
+        delivery_rule=delivery,
+        shift_rule="auto",
+        nature="objection",
+    )
+    return Rival(spec, notice.quote, notice.grounding)
 
 
 def gap_warning(gap: Gap, kind: CheckKind, remedy: str = "") -> str:

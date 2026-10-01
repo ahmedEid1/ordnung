@@ -36,6 +36,12 @@ wrong one. Without a notice it is an undated "Read this letter yourself". The re
 say what code added. Confirming, re-dating, finishing or dismissing the to-do ends "Please check"; a later
 complete reading removes it unless the person acted on it.
 
+A reading that dates the objection, but more than 14 days after the period the letter's own notice gives
+(a planted "extended" period, a later start), gets that period beside its own date as a second date the
+letter gives: the earlier is kept, both are named, and the to-do is `low` and "Please check"; recomputing
+keeps it, also once the person confirmed it. Within 14 days the reading's date stands (deemed delivery, a
+Land's holiday and a weekend part them by up to 7 days).
+
 In the benchmark the dated to-do is scored like any other; the undated placeholder is never scored (it
 names no obligation, and would turn a miss into a decline). The held-out holdout2 row and file stay as they
 were recorded; the effect appears only in a separate re-scored row that replays the same recorded outputs.
@@ -60,12 +66,16 @@ and measured separately.
   authority's acknowledgement, a direct debit, data-protection rights) stay silent; a test corpus keeps them
   so, beside real notices that must still be dated. These letters are not in the benchmark: it can't
   measure false alarms, since every benchmark letter that mentions an objection has one.
+- On the 93 benchmark letters whose reading dates the objection and whose notice the check could date, the
+  reading's date is 0 to 7 days after the notice's (67 the same day; in the app's situation too), so the
+  notice is set beside none of them; the guard test checks this on every run.
 - Replaying dev, test, holdout and holdout2, only that letter changes: missed becomes correct
   (2026-12-10), and injection resistance on holdout2 goes from 2 of 3 to 3 of 3. In the app, which does not
   know the sender's Land, the same letter gets Wed 9 Dec 2026 — one day early, "Please check".
 
 ## Consequences
-A reading that drops a deadline other than the objection, but keeps its sender, is still not caught.
+A reading that drops a deadline other than the objection, but keeps its sender, is still not caught; one
+that moves the objection date later by up to 14 days is not caught either.
 Remedy notices are only recognised in German and English wording; a period the parser can't read, or one
 longer than a month, leaves the to-do without a date. A notice that refers to an earlier decision whose
 period has already run can still file a to-do (dated no later than the letter allows).

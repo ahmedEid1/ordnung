@@ -476,6 +476,9 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
     ]
     ctx = ordnung_rule_context(entry, extraction, pages)
     computed = [compute_item(v, ctx, postal_buffer_days=POSTAL_BUFFER_DAYS) for v in scored]
+    if any(result.notice for result in computed):
+        # a reading's objection date weeks after the letter's own notice: the notice's date was kept
+        signals.append("objection_after_notice")
     terms = contract_terms(extraction)
     contract = None
     if terms is not None:

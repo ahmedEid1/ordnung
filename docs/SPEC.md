@@ -491,7 +491,12 @@ its dates are recomputed, until the person confirms, re-dates, finishes or dismi
 why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
 addressed to an AI its action says to send the objection only to an address the person already knows. A
 later complete reading removes it unless the person acted on it. No model is asked again and the reading
-itself (its sender, date and remedy) stays as the model gave it.
+itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
+but more than 14 days after the period the letter's own notice gives — as the check would date it, counted
+in the same context — gets that period beside its own date as a second date the letter gives
+(`gaps.notice_rival`, settled like any two dates: the earlier kept, both named, `low` and "Please check");
+recomputed too, also once the person confirmed it. Measured on every recorded reading, the reading's date
+is 0 to 7 days after the notice's, so it never fires there.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
