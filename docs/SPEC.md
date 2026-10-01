@@ -1630,7 +1630,10 @@ Special-right windows are Ideas with rule citations.
 addressee, period_text, form_text, quote}` from the Rechtsbehelfsbelehrung. Objection drafts are
 offered only when `type ∈ {einspruch, widerspruch}`; type and addressee come from the remedy, never
 from a model guess. `klage`/missing/unclear → a warning card ("get advice"; missing instructions may
-mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) — no computed date.
+mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) and no objection draft. A
+court deadline the letter states (an item, or the `check:reading` to-do of §8 "Incomplete reading") is
+computed so it is not missed — always with the "get advice" warning and at most `medium` (`klage_1_month`,
+deadline-rules §6); Ordnung never drafts or files the court action.
 Legally operative sentences come from fixed templates (e.g. "…kündige ich den Vertrag … fristgerecht
 zum {date}, hilfsweise zum nächstmöglichen Zeitpunkt. Bitte bestätigen Sie mir den Eingang und das
 Beendigungsdatum schriftlich." / "…lege ich gegen den Bescheid vom {date}, {reference}, Einspruch ein.

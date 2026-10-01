@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Contract, Item, Suggestion } from "@/api/types";
 import { createMockServer } from "@/mocks/server";
 import { parsePrefill } from "@/features/letters/logic";
+import { makeReceipt } from "@/features/document/fixtures";
 import type { Dashboard, Document } from "@/api/types";
 import {
   actionFromContract,
@@ -173,6 +174,23 @@ describe("actions from to-dos & dates", () => {
     expect(a.needsCheck).toBe(true);
     expect(a.verb).toBe("check");
     expect(a.reason).toBe("We don't know when this letter arrived.");
+  });
+
+  it("gives the to-do Ordnung added for an incomplete reading its own reason, not a side note (check:reading)", () => {
+    const own = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.";
+    const receipt = makeReceipt({ due_date: "2026-12-09", confidence: "low", warnings: ["Counted from 3 days after the letter's date.", own] });
+    const a = actionFromItem(item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: receipt }), {
+      today: TODAY,
+      reviewDocs: [{ id: "doc_r", warnings: ["This letter explains how to object, but Claude's reading left out the deadline to object."] }],
+    })!;
+    expect(a.needsCheck).toBe(true);
+    expect(a.reason).toBe(own);
+    // any other to-do keeps its first note
+    const other = actionFromItem(item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", computation: receipt }), {
+      today: TODAY,
+      reviewDocs: [],
+    })!;
+    expect(other.reason).toBe("Counted from 3 days after the letter's date.");
   });
 
   it("skips done, dismissed, undated and still-snoozed items but includes snoozes that ended", () => {

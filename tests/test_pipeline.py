@@ -30,6 +30,7 @@ from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Item
+from ordnung.secretary.triggers import Ledger, please_check
 from test_api_support import ApiRouter, api_for
 
 
@@ -533,6 +534,17 @@ async def test_an_empty_reading_of_a_decision_gets_a_dated_please_check_to_do(ga
     assert check.computation is not None and check.computation.confidence == "low"
     assert check.grounding == "verified" and not check.evidence[0].value_consistent
     assert needs_check(check)
+
+
+async def test_the_please_check_idea_says_the_reading_came_back_incomplete(gap_ctx: AppContext) -> None:
+    """Nothing was "not found" on the letter: the Idea says why the to-do is there (UX review)."""
+    doc_id = await _read_gap_letter(gap_ctx)
+    [idea] = please_check(Ledger(gap_ctx.store, clock.today()))
+    assert idea.body.startswith(
+        "Claude's reading of this letter came back incomplete, so Ordnung added a to-do"
+    )
+    assert "couldn't find" not in idea.body
+    assert {ref.id for ref in idea.refs} >= {doc_id}
 
 
 async def test_confirming_the_check_to_do_clears_please_check(data_dir: Path) -> None:

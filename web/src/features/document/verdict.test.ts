@@ -27,6 +27,7 @@ import {
   scamSuggestion,
   selectPrimaryItem,
   sortItems,
+  withoutIfYouDisagree,
 } from "./verdict";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 import { splitGlossary } from "./glossary-text";
@@ -497,5 +498,19 @@ describe("UI audit round 2: a law's other deadlines", () => {
     expect(otherLawDeadlines([certificate, court, register], certificate, setAside.slice(1)).map((i) => i.id)).toEqual(["court"]);
     const detail = makeDetail({ items: [certificate, court, register], set_aside: setAside });
     expect(asideItems(detail).map((a) => a.item.id)).toEqual(["court", "register"]);
+  });
+});
+
+describe("the action under “Only if you disagree:” (UI review)", () => {
+  it("drops the action's own “If you disagree”, so it isn't said twice", () => {
+    expect(withoutIfYouDisagree("If you disagree with this decision, send a Widerspruch to the authority in writing.")).toBe(
+      "Send a Widerspruch to the authority in writing.",
+    );
+    expect(withoutIfYouDisagree("If you disagree, object in writing.")).toBe("Object in writing.");
+  });
+
+  it("leaves every other action as it is", () => {
+    expect(withoutIfYouDisagree("Send a Widerspruch to the authority in writing.")).toBe("Send a Widerspruch to the authority in writing.");
+    expect(withoutIfYouDisagree("If you disagree, ")).toBe("If you disagree, ");
   });
 });

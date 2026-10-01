@@ -111,7 +111,10 @@ describe("trace copy", () => {
     const checked = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: { ...facts, reading_gap: "empty", check_item: "dated" } }));
     expect(checked.title).toBe("Quotes checked on the page");
     expect(checked.summary).toBe("1 quote: 1 in the text · reading came back incomplete — Ordnung added a to-do");
+    // its own to-do is the one to check: not counted twice
     expect(checked.flag).toEqual({ text: "Reading incomplete", tone: "warn" });
+    const more = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: { ...facts, needs_check: 3, reading_gap: "remedy_left_out", check_item: "dated" } }));
+    expect(more.flag).toEqual({ text: "Reading incomplete · 2 to check", tone: "warn" });
     // a complete reading's step is as before
     const complete = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: facts }));
     expect(complete.summary).toBe("1 quote: 1 in the text");
@@ -120,7 +123,7 @@ describe("trace copy", () => {
     const todo = spanCopy(
       span({ kind: "verify", label: "Deadline to object", attributes: { target: "item", grounding: "verified", page: 2, reasons: ["reading_incomplete"] } }),
     );
-    expect(todo.summary).toBe("To-do · Found on page 2 · worked out by Ordnung from the letter's instructions on how to object");
+    expect(todo.summary).toBe("To-do · Found on page 2 · added by Ordnung because Claude's reading came back incomplete");
     expect(todo.flag?.text).toBe("Please check");
   });
 

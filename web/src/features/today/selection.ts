@@ -186,6 +186,9 @@ function firstSentence(text: string | null | undefined): string | null {
   return t ? t : null;
 }
 
+/** The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`). */
+const READING_INCOMPLETE_NOTE = /^Ordnung worked this date out from the letter's own instructions/;
+
 function reasonForItem(
   item: Item,
   needsCheck: boolean,
@@ -193,7 +196,9 @@ function reasonForItem(
   docTitles: ReadonlyMap<string, string> | undefined,
 ): string | null {
   if (needsCheck) {
-    const w = item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
+    // the to-do Ordnung added for an incomplete reading: why it's there, not a side note on delivery days
+    const own = item.slot_key === "check:reading" ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
+    const w = own ?? item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
     if (w) return w;
   }
   const title = item.doc_id ? docTitles?.get(item.doc_id) : undefined;

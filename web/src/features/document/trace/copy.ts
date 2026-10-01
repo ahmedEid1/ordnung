@@ -110,7 +110,7 @@ export const CONSISTENCY_REASON: Record<string, string> = {
   amount_not_in_quote: "the quote doesn't state the amount",
   working_day_not_in_quote: "the quote doesn't state the working day",
   day_of_month_not_in_quote: "the quote doesn't state the day of the month",
-  reading_incomplete: "worked out by Ordnung from the letter's instructions on how to object",
+  reading_incomplete: "added by Ordnung because Claude's reading came back incomplete",
 };
 const reason = (code: unknown) => (typeof code === "string" ? (CONSISTENCY_REASON[code] ?? code.replace(/_/g, " ")) : "");
 
@@ -277,7 +277,12 @@ export function spanCopy(span: TraceSpan, today?: string, transfer?: boolean): S
           summary: `${plural(num(a, "quotes") ?? 0, "quote")}${counts.length ? `: ${counts.join(", ")}` : ""}${
             incomplete ? " · reading came back incomplete — Ordnung added a to-do" : ""
           }`,
-          flag: incomplete ? { text: "Reading incomplete", tone: "warn" } : check ? { text: `${check} to check`, tone: "warn" } : undefined,
+          // the to-do Ordnung added is one of the `needs_check`: the others are said beside it
+          flag: incomplete
+            ? { text: check > 1 ? `Reading incomplete · ${check - 1} to check` : "Reading incomplete", tone: "warn" }
+            : check
+              ? { text: `${check} to check`, tone: "warn" }
+              : undefined,
         };
       }
       const target = QUOTE_TARGET[str(a, "target") ?? ""] ?? "Quote";

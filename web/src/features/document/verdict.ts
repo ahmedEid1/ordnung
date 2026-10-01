@@ -517,3 +517,13 @@ export function consequenceWords(text: string): { lead: string; quote: string | 
   const warns = [...new Set(found)];
   return { lead: warns.length ? `The letter warns of ${joinList(warns)}.` : "The letter names what happens then:", quote: t };
 }
+
+/**
+ * An action that starts with its own "If you disagree (with this decision), …" under the verdict's "Only if
+ * you disagree:" (UI review: "Only if you disagree: If you disagree with this decision, send …"). Only here:
+ * notifications and calendar entries show the action without that prefix, so it keeps its condition there.
+ */
+export function withoutIfYouDisagree(text: string): string {
+  const rest = text.replace(/^if you disagree(?: with (?:this|the) decision)?,\s*/i, "");
+  return rest === text || !rest ? text : rest.charAt(0).toUpperCase() + rest.slice(1);
+}

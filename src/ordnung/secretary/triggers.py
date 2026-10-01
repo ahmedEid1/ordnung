@@ -34,6 +34,7 @@ from ordnung.drafts.proof import (
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
@@ -1474,7 +1475,13 @@ def please_check(ledger: Ledger) -> list[Suggestion]:
         unsure = _unsure_items(doc_items)
         days = [day for day in (action_day(item) for item in doc_items) if day is not None]
         first = min(days) if days else None
-        if unsure:
+        if any(item.slot_key == CHECK_SLOT for item in unsure):
+            # the to-do Ordnung added itself: nothing was "not found" — the reading came back incomplete
+            body = (
+                "Claude's reading of this letter came back incomplete, so Ordnung added a to-do from the "
+                "letter's own words. Open the letter and check it."
+            )
+        elif unsure:
             listed = ", ".join(item.title for item in unsure[:3])
             body = f"We couldn't find some dates or amounts in the letter ({listed}). Open it and confirm or correct them."
         else:
