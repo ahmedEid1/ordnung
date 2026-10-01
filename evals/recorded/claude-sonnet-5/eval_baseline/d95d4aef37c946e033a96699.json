@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f4202dc6885067a239a159a8ca1a43e72975da8e24dc34be2f4a4d0d3fe27c03\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-05-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[2193.78,1851.96,341.82],\"contract\":null,\"document_date\":null,\"items\":[{\"kind\":\"payment\",\"title\":\"Pay operating cost balance (Nachzahlung)\",\"quote\":\"Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"This is a private landlord-tenant statement, so no statutory authority delivery-fiction applies; the 30-day period runs from the tenant's actual 'Zugang' (receipt) of the statement, counted under §§ 187 Abs. 1, 188 Abs. 1 BGB (day of receipt not counted, period ends 30 days later, moved to the next working day under § 193 BGB if it falls on a Sat/Sun/holiday). However, the letter carries no document date and does not state when it was sent or received, so the start of the 30-day period cannot be established and no exact due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":341.82}],\"kind\":\"utility_bill\",\"references\":[{\"label\":\"Mieternummer\",\"value\":\"M-0517\"}],\"remedy_type\":\"none\",\"sender_name\":\"Hausverwaltung Musterkamp & Söhne GbR\",\"warnings\":[\"The letter has no document date and does not state when it was sent, so the start of the 30-day payment period (which runs from the tenant's 'Zugang'/receipt of the statement) cannot be determined; the person should check the envelope postmark or email date to establish the actual deadline, roughly 30 days plus the postal transit time from that date.\",\"The letter states the monthly advance payment stays unchanged ('Ihre monatliche Vorauszahlung bleibt unverändert'), but since this is only a cost statement for the completed year 2026, it does not constitute an adjustment of future prepayments; no action is required regarding this sentence.\"]}",
+    "data": {
+      "amounts": [
+        2193.78,
+        1851.96,
+        341.82
+      ],
+      "contract": null,
+      "document_date": null,
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay operating cost balance (Nachzahlung)",
+          "quote": "Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "This is a private landlord-tenant statement, so no statutory authority delivery-fiction applies; the 30-day period runs from the tenant's actual 'Zugang' (receipt) of the statement, counted under §§ 187 Abs. 1, 188 Abs. 1 BGB (day of receipt not counted, period ends 30 days later, moved to the next working day under § 193 BGB if it falls on a Sat/Sun/holiday). However, the letter carries no document date and does not state when it was sent or received, so the start of the 30-day period cannot be established and no exact due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 341.82
+        }
+      ],
+      "kind": "utility_bill",
+      "references": [
+        {
+          "label": "Mieternummer",
+          "value": "M-0517"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Hausverwaltung Musterkamp & Söhne GbR",
+      "warnings": [
+        "The letter has no document date and does not state when it was sent, so the start of the 30-day payment period (which runs from the tenant's 'Zugang'/receipt of the statement) cannot be determined; the person should check the envelope postmark or email date to establish the actual deadline, roughly 30 days plus the postal transit time from that date.",
+        "The letter states the monthly advance payment stays unchanged ('Ihre monatliche Vorauszahlung bleibt unverändert'), but since this is only a cost statement for the completed year 2026, it does not constitute an adjustment of future prepayments; no action is required regarding this sentence."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3151,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2024,
+      "cost_usd": 0.040716,
+      "duration_ms": 29148,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

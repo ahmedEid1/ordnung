@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"4f1268313ca80a159b635a86de9c33f82d7af07504ae16b868a26fac1b7672a5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-06-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Monday, 2026-06-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Reitstall Beispielhof\",\"document_date\":\"2026-05-29\",\"references\":[{\"label\":\"Mitglied\",\"value\":\"RB-118\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding riding-share fees for April and May 2026\",\"quote\":\"Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.\",\"computation\":\"The letter gives two conflicting dates for the same payment of 240,00 €: the body text says 'bis zum 10.06.2026', while the 'Zahlungsinformation' box states 'Fälligkeit: 19.06.2026'. Since the letter contradicts itself about the date, the earliest plausible date must be used: 2026-06-10. This is a calendar date printed in the letter, so no further period counting or holiday adjustment is needed for it. Confidence is lowered and a warning is added due to the contradiction.\",\"due_date\":\"2026-06-10\",\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives two different due dates for the same 240,00 € payment: '10.06.2026' in the main text and '19.06.2026' as the stated 'Fälligkeit' in the payment info box — double-check with the sender which date actually applies.\",\"This appears to be a private riding-stable payment reminder (not an authority or formal invoice) with no legal-remedy instructions; verify the IBAN and recipient details before paying, as is prudent for any informal payment request.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Reitstall Beispielhof",
+      "document_date": "2026-05-29",
+      "references": [
+        {
+          "label": "Mitglied",
+          "value": "RB-118"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding riding-share fees for April and May 2026",
+          "quote": "Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.",
+          "computation": "The letter gives two conflicting dates for the same payment of 240,00 €: the body text says 'bis zum 10.06.2026', while the 'Zahlungsinformation' box states 'Fälligkeit: 19.06.2026'. Since the letter contradicts itself about the date, the earliest plausible date must be used: 2026-06-10. This is a calendar date printed in the letter, so no further period counting or holiday adjustment is needed for it. Confidence is lowered and a warning is added due to the contradiction.",
+          "due_date": "2026-06-10",
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives two different due dates for the same 240,00 € payment: '10.06.2026' in the main text and '19.06.2026' as the stated 'Fälligkeit' in the payment info box — double-check with the sender which date actually applies.",
+        "This appears to be a private riding-stable payment reminder (not an authority or formal invoice) with no legal-remedy instructions; verify the IBAN and recipient details before paying, as is prudent for any informal payment request."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2024,
+      "cache_read_tokens": 0,
+      "cache_creation_tokens": 5052,
+      "cost_usd": 0.040452,
+      "duration_ms": 18522,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

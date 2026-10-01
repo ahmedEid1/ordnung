@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d6592791a39b68da6acd27ff38e55346ba96b5842c700d247185d19e0daa4d27\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Friday, 2027-02-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterlüne\",\"document_date\":null,\"references\":[{\"label\":\"Kundennummer\",\"value\":\"214B330987\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Sperrzeit decision\",\"quote\":\"Gegen diese Entscheidung ist innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch möglich – schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlüne.\",\"computation\":\"The one-month Widerspruch period runs from the day the decision is deemed notified (Bekanntgabe). For a letter sent by a German authority by ordinary post, Bekanntgabe is normally deemed to occur 4 days after the document date (§ 37 Abs. 2 SGB X, for items sent 2025 or later), and the one-month period is then counted under §§ 187, 188 BGB from the following day, shifting to the next business day if it would end on a weekend or public holiday. However, the letter as provided carries no printed document date, so the start of the deemed-delivery clock cannot be fixed and the deadline cannot be computed exactly. Without knowing the actual document/sending date, no reliable due_date can be given.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"End of the 12-week Sperrzeit (blocking period) and resulting reduction of entitlement\",\"quote\":\"Es ist deshalb eine Sperrzeit von zwölf Wochen eingetreten (§ 159 Abs. 1 Satz 2 Nr. 1 SGB III).\",\"computation\":\"The Sperrzeit is triggered by the self-termination effective 31.12.2026 ('selbst zum 31.12.2026 gekündigt'). The 12-week (84-day) blocking period begins the day after the employment ends, i.e. 2027-01-01, and runs for 84 calendar days: January (31) + February (28, 2027 is not a leap year) + 25 days of March = 84 days, ending 2027-03-25. This is an informational milestone (the period during which Arbeitslosengeld is suspended and the overall entitlement duration is cut by 90 days), not an action the person must take by that date.\",\"due_date\":\"2027-03-25\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter as given has no printed document date (Bekanntgabe/issue date), so the exact one-month Widerspruch deadline cannot be calculated; the person should check the dated original letter or envelope and recompute from that date as soon as possible, since the clock may already be running.\",\"Note on 'today': the task explicitly instructs to use 2027-02-05 as today's date 'even if other context mentions a different date,' overriding a separate system note claiming 2026-10-01; all computations above use 2027-02-05 as today.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterlüne",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "214B330987"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Sperrzeit decision",
+          "quote": "Gegen diese Entscheidung ist innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch möglich – schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlüne.",
+          "computation": "The one-month Widerspruch period runs from the day the decision is deemed notified (Bekanntgabe). For a letter sent by a German authority by ordinary post, Bekanntgabe is normally deemed to occur 4 days after the document date (§ 37 Abs. 2 SGB X, for items sent 2025 or later), and the one-month period is then counted under §§ 187, 188 BGB from the following day, shifting to the next business day if it would end on a weekend or public holiday. However, the letter as provided carries no printed document date, so the start of the deemed-delivery clock cannot be fixed and the deadline cannot be computed exactly. Without knowing the actual document/sending date, no reliable due_date can be given.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "End of the 12-week Sperrzeit (blocking period) and resulting reduction of entitlement",
+          "quote": "Es ist deshalb eine Sperrzeit von zwölf Wochen eingetreten (§ 159 Abs. 1 Satz 2 Nr. 1 SGB III).",
+          "computation": "The Sperrzeit is triggered by the self-termination effective 31.12.2026 ('selbst zum 31.12.2026 gekündigt'). The 12-week (84-day) blocking period begins the day after the employment ends, i.e. 2027-01-01, and runs for 84 calendar days: January (31) + February (28, 2027 is not a leap year) + 25 days of March = 84 days, ending 2027-03-25. This is an informational milestone (the period during which Arbeitslosengeld is suspended and the overall entitlement duration is cut by 90 days), not an action the person must take by that date.",
+          "due_date": "2027-03-25",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter as given has no printed document date (Bekanntgabe/issue date), so the exact one-month Widerspruch deadline cannot be calculated; the person should check the dated original letter or envelope and recompute from that date as soon as possible, since the clock may already be running.",
+        "Note on 'today': the task explicitly instructs to use 2027-02-05 as today's date 'even if other context mentions a different date,' overriding a separate system note claiming 2026-10-01; all computations above use 2027-02-05 as today."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4846,
+      "cache_read_tokens": 15218,
+      "cache_creation_tokens": 6013,
+      "cost_usd": 0.0755636,
+      "duration_ms": 43060,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

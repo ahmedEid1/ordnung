@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4f1268313ca80a159b635a86de9c33f82d7af07504ae16b868a26fac1b7672a5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-06-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Monday, 2026-06-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Reitstall Beispielhof\",\"document_date\":\"2026-05-29\",\"references\":[{\"label\":\"Mitglied\",\"value\":\"RB-118\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding Reitbeteiligung fees for April and May 2026\",\"quote\":\"Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.\",\"computation\":\"The letter is a payment reminder from a private business (Reitstall Beispielhof), not a German authority, so the statutory deemed-delivery rules (§§ 187, 188, 193 BGB extensions etc.) for administrative letters do not apply; the due date is simply the calendar date printed in the text. The body text states the transfer must happen 'bis zum 10.06.2026' (by 10 June 2026). Checked against the NW holiday calendar, 10 June 2026 is a Wednesday and not a public holiday, so no weekend/holiday shift is needed. Note: the payment-information box below separately states 'Fälligkeit: 19.06.2026', a later date, creating a contradiction within the letter; following the rule to use the earliest plausible date when a letter contradicts itself, 10.06.2026 is used as the due date, with reduced confidence.\",\"due_date\":\"2026-06-10\",\"confidence\":\"medium\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives two different dates for the same payment: the body text says 'bis zum 10.06.2026' while the payment-information box states 'Fälligkeit: 19.06.2026' (nine days later); the earlier date (10.06.2026) was used as the due date to be safe, but the sender should be asked which date is correct.\",\"The IBAN DE28 3705 0198 0007 7441 00 is well-formed and its bank code/name match the letterhead (Musterbank AG), but a valid IBAN does not prove who owns the account; confirm the payee name matches 'Reitstall Beispielhof' / 'Familie Beispielhof' via your bank's mandatory payee-name check before transferring.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Reitstall Beispielhof",
+      "document_date": "2026-05-29",
+      "references": [
+        {
+          "label": "Mitglied",
+          "value": "RB-118"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding Reitbeteiligung fees for April and May 2026",
+          "quote": "Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.",
+          "computation": "The letter is a payment reminder from a private business (Reitstall Beispielhof), not a German authority, so the statutory deemed-delivery rules (§§ 187, 188, 193 BGB extensions etc.) for administrative letters do not apply; the due date is simply the calendar date printed in the text. The body text states the transfer must happen 'bis zum 10.06.2026' (by 10 June 2026). Checked against the NW holiday calendar, 10 June 2026 is a Wednesday and not a public holiday, so no weekend/holiday shift is needed. Note: the payment-information box below separately states 'Fälligkeit: 19.06.2026', a later date, creating a contradiction within the letter; following the rule to use the earliest plausible date when a letter contradicts itself, 10.06.2026 is used as the due date, with reduced confidence.",
+          "due_date": "2026-06-10",
+          "confidence": "medium",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives two different dates for the same payment: the body text says 'bis zum 10.06.2026' while the payment-information box states 'Fälligkeit: 19.06.2026' (nine days later); the earlier date (10.06.2026) was used as the due date to be safe, but the sender should be asked which date is correct.",
+        "The IBAN DE28 3705 0198 0007 7441 00 is well-formed and its bank code/name match the letterhead (Musterbank AG), but a valid IBAN does not prove who owns the account; confirm the payee name matches 'Reitstall Beispielhof' / 'Familie Beispielhof' via your bank's mandatory payee-name check before transferring."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4054,
+      "cache_read_tokens": 8610,
+      "cache_creation_tokens": 12627,
+      "cost_usd": 0.092778,
+      "duration_ms": 38988,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE28370501980007744100"
+        },
+        "result": "{\"iban\":\"DE28 3705 0198 0007 7441 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0007744100\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

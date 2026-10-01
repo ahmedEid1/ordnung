@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f4202dc6885067a239a159a8ca1a43e72975da8e24dc34be2f4a4d0d3fe27c03\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-05-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Hausverwaltung Musterkamp & Söhne GbR\",\"document_date\":null,\"references\":[{\"label\":\"Mieternummer\",\"value\":\"M-0517\"}],\"amounts\":[2193.78,1851.96,341.82],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay operating cost balance (Nachzahlung)\",\"quote\":\"Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement, not from a printed document date. The letter itself bears no issuance/document date anywhere in the text, so the start of the 30-day period cannot be fixed. Under §130 BGB a posted letter is typically deemed received a few days after dispatch, but without any reference date (no 'Datum', no postmark information) this cannot be computed exactly; normal German civil-law counting (§187 Abs.1 BGB: day of receipt not counted, period starts next day; §188 Abs.2: period ends 30 days later; §193 BGB: if that day falls on a Saturday, Sunday or NW public holiday, it moves to the next business day) could be applied once a receipt date is known, but no such date is available here. Due date left undetermined.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":341.82}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter has no printed document/issue date anywhere, so the 30-day payment deadline for the Nachzahlung, which runs from the date of receipt ('Zugang'), cannot be calculated exactly; the user should check the envelope postmark or email date to determine the actual receipt date and count 30 days from the day after that (adjusting for weekends/NW public holidays per §§187,188,193 BGB).\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Hausverwaltung Musterkamp & Söhne GbR",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieternummer",
+          "value": "M-0517"
+        }
+      ],
+      "amounts": [
+        2193.78,
+        1851.96,
+        341.82
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay operating cost balance (Nachzahlung)",
+          "quote": "Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The payment period is 30 days starting from 'Zugang' (actual receipt) of this statement, not from a printed document date. The letter itself bears no issuance/document date anywhere in the text, so the start of the 30-day period cannot be fixed. Under §130 BGB a posted letter is typically deemed received a few days after dispatch, but without any reference date (no 'Datum', no postmark information) this cannot be computed exactly; normal German civil-law counting (§187 Abs.1 BGB: day of receipt not counted, period starts next day; §188 Abs.2: period ends 30 days later; §193 BGB: if that day falls on a Saturday, Sunday or NW public holiday, it moves to the next business day) could be applied once a receipt date is known, but no such date is available here. Due date left undetermined.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 341.82
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed document/issue date anywhere, so the 30-day payment deadline for the Nachzahlung, which runs from the date of receipt ('Zugang'), cannot be calculated exactly; the user should check the envelope postmark or email date to determine the actual receipt date and count 30 days from the day after that (adjusting for weekends/NW public holidays per §§187,188,193 BGB)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2993,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2024,
+      "cost_usd": 0.0386544,
+      "duration_ms": 28072,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
