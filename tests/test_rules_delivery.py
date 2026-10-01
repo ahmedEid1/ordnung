@@ -213,6 +213,18 @@ def test_baden_wuerttemberg_switch_date(posted: str, expected: str) -> None:
     assert deemed_delivery(D(posted), scope="vwvfg", region="BW")[0] == D(expected)
 
 
+@pytest.mark.parametrize(
+    ("posted", "expected"),
+    [
+        ("2025-03-03", "2025-03-06"),  # label audit: Hamburg's 4th day came with the law of 5 May 2025
+        ("2025-05-13", "2025-05-16"),  # the gazette's day: still the 3rd day
+        ("2025-05-14", "2025-05-18"),  # in force the day after it (Art. 54 HV)
+    ],
+)
+def test_hamburg_switch_date(posted: str, expected: str) -> None:
+    assert deemed_delivery(D(posted), scope="vwvfg", region="HH")[0] == D(expected)
+
+
 def test_schleswig_holstein_confirmed_from_june_2025() -> None:
     """vwvfg verdict: § 110 LVwG SH shows the 4th day in the text as of 10 Jun 2025."""
     assert deemed_delivery(D("2025-03-03"), scope="vwvfg", region="SH")[0] == D("2025-03-06")

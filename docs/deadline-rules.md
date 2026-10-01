@@ -255,9 +255,12 @@ delivered the day after download (§ 41 Abs. 2a VwVfG); unless the download day 
 takes the day it was made available as the earliest download. Tax portals use the 4th day after
 provision (§ 122a Abs. 4 AO), social-law portals the 4th day after the notification (§ 37 Abs. 2a SGB X).
 
-**The Länder.** Authorities of a Land apply their own VwVfG. Confirmed 4-day rule: BY, NW, HH, MV
-(from 1 Jan 2025), BW (from 7 Feb 2025, GBl. 2025 Nr. 8) and SH (§ 110 LVwG; confirmed in the text as
-of 10 Jun 2025, so earlier postings keep 3 days); BE, BB, NI, RP, SN and ST refer to the federal law.
+**The Länder.** Authorities of a Land apply their own VwVfG. Confirmed 4-day rule: BY, NW, MV
+(from 1 Jan 2025), HH (from 14 May 2025: the Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025,
+HmbGVBl. Nr. 17 of 13 May 2025 S. 338, in force the next day under Art. 54 of Hamburg's constitution;
+earlier postings keep 3 days), BW (from 7 Feb 2025, GBl. 2025 Nr. 8) and SH (§ 110 LVwG; confirmed in
+the text as of 10 Jun 2025, so earlier postings keep 3 days); BE, BB, NI, RP, SN and ST refer to the
+federal law.
 For Hessen (still showing the 3rd day), Bremen, Saarland and Thüringen — and whenever the Land is
 unknown — Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Baden-Württemberg keeps 3 days for procedures begun before 7 Feb 2025
 (§ 102b LVwVfG); Ordnung cannot see when a procedure began and notes this here.

@@ -66,14 +66,17 @@ _RULE_BY_SCOPE_CHANNEL: dict[tuple[DeliveryScope, DeliveryChannel], str] = {
 _ORDINAL = {3: "3rd", 4: "4th"}
 
 #: Länder whose own VwVfG uses the 4-day rule, with the first posting day it is confirmed for (legal
-#: research checked 2026-09-25): BY, NW, HH and MV amended their laws for 1 Jan 2025, BW only from
-#: 7 Feb 2025 (GBl. 2025 Nr. 8; § 102b LVwVfG keeps 3 days for procedures begun earlier); BE, BB, NI,
+#: research checked 2026-09-25): BY, NW and MV amended their laws for 1 Jan 2025, HH only from 14 May
+#: 2025 (Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of 13 May 2025
+#: S. 338, in force the day after under Art. 54 of Hamburg's constitution: re-checked 2026-10-01), BW
+#: only from 7 Feb 2025 (GBl. 2025 Nr. 8; § 102b LVwVfG keeps 3 days for procedures begun earlier); BE, BB, NI,
 #: RP, SN and ST refer to the federal VwVfG. For SH (§ 110 LVwG) the 4th day is confirmed in the text
 #: as of 10 Jun 2025 but not its start date, so earlier postings keep the 3rd day. Hessen still showed
 #: the 3rd day; HB, SL and TH were not confirmed — for them (and when the Land is unknown) the
 #: conservative 3rd day is used (SPEC § 21).
 VWVFG_FOUR_DAY_FROM: dict[str, date] = {
-    **dict.fromkeys(("BY", "NW", "HH", "MV", "BE", "BB", "NI", "RP", "SN", "ST"), FOUR_DAY_RULE_FROM),
+    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST"), FOUR_DAY_RULE_FROM),
+    "HH": date(2025, 5, 14),
     "BW": date(2025, 2, 7),
     "SH": date(2025, 6, 10),
 }
