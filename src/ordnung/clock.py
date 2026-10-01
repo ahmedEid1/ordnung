@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 _override: date | None = None
 
@@ -32,16 +33,20 @@ def today() -> date:
 
 
 _stamp_simulated_day = False
+_stamp_zone: str | None = None
 
 
-def stamp_simulated_day(enabled: bool) -> None:
+def stamp_simulated_day(enabled: bool, zone: str | None = None) -> None:
     """Demo mode: date new records on the simulated day (keeping the real time of day).
 
     Without it a letter read in the demo would say "Read on 25 Sep" while the app says today is
-    Mon 28 Sep. Only the demo turns this on (see ``app_context.apply_simulated_today``).
+    Mon 28 Sep. Only the demo turns this on (see ``app_context.apply_simulated_today``). ``zone`` is
+    the person's time zone: the simulated day is theirs, so a record stamped at 23:30 UTC — already
+    the next day in Berlin — still falls on it there (it was stamped on the next local day).
     """
-    global _stamp_simulated_day
+    global _stamp_simulated_day, _stamp_zone
     _stamp_simulated_day = enabled
+    _stamp_zone = zone
 
 
 def real_now_iso() -> str:
@@ -54,6 +59,10 @@ def now_iso() -> str:
     is the simulated day (:func:`stamp_simulated_day`)."""
     now = datetime.now(UTC)
     if _stamp_simulated_day and simulated():
-        day = today()
-        now = datetime.combine(day, now.timetz())
+        try:
+            zone = ZoneInfo(_stamp_zone) if _stamp_zone else UTC
+        except (ZoneInfoNotFoundError, ValueError):
+            zone = UTC
+        local = now.astimezone(zone)
+        now = datetime.combine(today(), local.time(), tzinfo=zone).astimezone(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%SZ")

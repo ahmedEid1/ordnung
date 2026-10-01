@@ -71,7 +71,7 @@ def apply_simulated_today(store: Store, settings: AppSettings) -> str | None:
     if simulated:
         clock.set_today(simulated)
     # the demo dates what happens while exploring it on its simulated day ("Read on Mon 28 Sep")
-    clock.stamp_simulated_day(bool(simulated) and settings.demo)
+    clock.stamp_simulated_day(bool(simulated) and settings.demo, store.get_profile().timezone)
     return simulated
 
 
