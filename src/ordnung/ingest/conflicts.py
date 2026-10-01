@@ -349,6 +349,10 @@ class Rival:
     grounding: Grounding = "verified"
     letter_date: date | None = None
     quote: str = ""
+    #: The letter's own remedy notice set beside a reading's objection date (``gaps.notice_rival``), counted
+    #: from the date the letter's first page names: computed without the letter's kind (no letter rule), and
+    #: never left out as a reminder's or as before the reading's date.
+    notice: bool = False
 
     @property
     def evidence(self) -> str:
@@ -899,6 +903,8 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         if abs((rival.letter_date - ctx.document_date).days) > _LETTER_DATE_REACH:
             return None
         counted = replace(ctx, document_date=rival.letter_date)
+    elif rival.notice:
+        counted = replace(ctx, quote=rival.statement, letter_kind=None)
     else:
         if rival.spec.type == "relative" and ctx.letter_kind in PAYMENT_DEMAND_KINDS:
             return None  # a reminder's "14 Tage nach Rechnungsdatum" counts from the old invoice's date
@@ -910,7 +916,9 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         compute_due(rival.spec, counted, postal_buffer_days=postal_buffer_days), rival.grounding, ()
     )
     due = parse_date(receipt.due_date)
-    if due is None or due == own or (ctx.document_date is not None and due < ctx.document_date):
+    if due is None or due == own:
+        return None
+    if not rival.notice and ctx.document_date is not None and due < ctx.document_date:
         return None
     return _Candidate(due, receipt, rival.statement, rival.spec.type == "fixed", rival)
 
@@ -932,6 +940,13 @@ def _warning(noun: str, own: _Candidate, other: _Candidate, kept: date, ctx: Rul
             f"The letter gives two dates for itself: {fmt_date(early)} and {fmt_date(late)} "
             f"(“{_short(rival.statement)}”), so this {noun} is {fmt_date(first.due)} or {fmt_date(second.due)}. "
             f"We use the earlier one, {fmt_date(kept)} — please check which date applies."
+        )
+    if rival is not None and rival.notice:
+        return (
+            f"Claude's reading and the letter's own instructions on how to object give two dates for this "
+            f"{noun}: {fmt_date(first.due)} (“{_short(first.statement)}”) and {fmt_date(second.due)} "
+            f"(“{_short(second.statement)}”). We use the earlier one, {fmt_date(kept)} — please check which date "
+            "applies."
         )
     return (
         f"The letter gives two dates for this {noun}: {fmt_date(first.due)} (“{_short(first.statement)}”) "

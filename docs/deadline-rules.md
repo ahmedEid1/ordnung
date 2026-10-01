@@ -381,11 +381,15 @@ the letter allows:
   eines Kalendermonats") or that counts back from an event ("spätestens zwei Monate vor Mietende"):
   otherwise the to-do has no date, to be found in the letter. A period shorter than a week (an attacker's
   "binnen eines Tages") never puts a date on Today.
-- **The start.** The earliest date the letter gives for itself — any page's header date ("Datum:", "Datum
-  …", "Bescheiddatum:", "Erstellt am", "Place, (den) date", a date alone in the header; never a due day, a
-  validity, an appointment or a date after a weekday), "mit diesem Bescheid vom …", "Bescheid vom …" in
-  the notice — or the reading's date if earlier. When these are more than **14 days** apart one of them is
-  another's (planted, an earlier decision's), so the to-do has no date rather than a wrong one. A letter
+- **The start.** The earliest date the letter gives for itself. Only dates its words name as its own set
+  it: the first page's "Datum:" (or a label of the letter's own date: Bescheid-, Brief-, Ausstellungs-,
+  Ausfertigungs-, Erstellungs-, Druck-, Bearbeitungsdatum, "Erstellt am"), "Place, (den) date" among its
+  header lines, the reference line's last value under "… Datum", "mit diesem Bescheid vom …", the decision
+  the notice names ("Bescheid … vom …", never "Antrag vom" or "Ihr Schreiben vom") and the reading's date.
+  Any other date (another "…datum" such as "Einzugsdatum", a date alone, a continuation page's) is weak: it
+  lowers the start within 14 days, never sets it, and is ignored when later. When the strong dates are more
+  than **14 days** apart one of them is another's (planted, an earlier decision's), so the to-do has no
+  date rather than a wrong one; so does one date alone more than 60 days before the letter arrived. A letter
   giving no date at all counts from its date once the person enters it.
 - **Delivery days.** Deemed delivery (§ 5: the 3rd or 4th day) is added only when every notice counts from
   notification (*Bekanntgabe*) and its period ends first from any start delivery can give; from a portal,
@@ -399,12 +403,14 @@ the letter allows:
   "Please check". The letter rules for the model's readings (§ 574b BGB counting back from a tenancy's
   end) never apply to it.
 - **Without a notice** the to-do is an undated "Read this letter yourself".
-- **A reading that dates the objection weeks later.** When the reading has its own objection to-do but its
-  date is more than **14 days** after the period the notice gives (as above, counted in the same context),
-  that period is set beside it as a second date the letter gives (the "two different dates" rule of § 1: the
-  earlier is kept, both are named, `low` and "Please check"), also when recomputed and once confirmed. On
-  every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a weekend), so within
-  14 days the reading's date stands.
+- **A reading that dates the objection later.** When the reading has its own objection to-do but its date
+  is more than **7 days** after the period the notice gives, or its period is longer than the notice's,
+  that period is set beside it as a second date (the "two different dates" rule of § 1: the earlier is
+  kept, both are named, `low` and "Please check"), also when recomputed and once confirmed. The notice's
+  date is decided on the letter's words alone: the live notices that can be dated, their own sentences'
+  periods, the one ending first, counted from the date the first page names as its own (never the
+  reading's date or kind), without the letter's kind, and from a confirmed arrival for a period from
+  service. On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a weekend).
 
 | Letter dated | Notice | Sender's Land | Delivered | Deadline |
 |---|---|---|---|---|

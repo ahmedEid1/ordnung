@@ -97,7 +97,7 @@ from ordnung.ingest.text import (
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
 from ordnung.models import PROOF_SOURCE, Direction, Document, DocumentExtraction, EmailAttachment, Job, Page
-from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext
+from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext, parse_date
 from ordnung.trace import facts
 from ordnung.trace.runs import finish_trace, start_trace
 from ordnung.trace.spans import NO_SPAN, Span
@@ -974,6 +974,7 @@ async def _run_stages(
         trace=trace,
         check_reading=True,
         injected=bool(injected),
+        today=parse_date(document.received_date) or person_today(store),
     )
     await progress.stage("compute")
     profile = store.get_profile()

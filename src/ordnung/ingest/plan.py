@@ -36,6 +36,7 @@ from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, rival_due, settle, settle_law
 from ordnung.ingest.gaps import (
     CHECK_SLOT,
+    LETTER_DATE_SPAN,
     NOTICE_REACH,
     RemedyNotice,
     check_item,
@@ -126,7 +127,6 @@ from ordnung.rules.routing import (
     notice_without_period,
     objection_dated,
     objection_excluded,
-    special_rule,
 )
 from ordnung.secretary.scam import iban_from_page, iban_valid, invalid_iban_message, normalize_iban
 from ordnung.trace import facts
@@ -448,6 +448,7 @@ def verify_extraction(
     trace: Span = NO_SPAN,
     check_reading: bool = False,
     injected: bool = False,
+    today: date | None = None,
 ) -> Verification:
     """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
 
@@ -457,7 +458,8 @@ def verify_extraction(
     (:func:`~ordnung.ingest.gaps.check_item`, graded ``READING_INCOMPLETE``: ``low`` and "Please check") and a
     warning that says why — and, for a court action the reading's remedy doesn't name, the "get advice"
     warning a Klage gets (:func:`remedy_warnings`). ``injected``: the letter carries text addressed to an AI
-    (the to-do's action then says where to send the objection).
+    (the to-do's action then says where to send the objection); ``today``: the day the letter arrived or is
+    read (a start resting on one date long before it is none: :func:`~ordnung.ingest.gaps.check_item`).
 
     ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`); a reading
     found incomplete adds what was wrong and which to-do it got (:func:`ordnung.trace.facts.reading_check`).
@@ -500,7 +502,7 @@ def verify_extraction(
         )
         if check_reading:
             items[:] = with_notice(items, extraction, pages)
-        found = check_item(extraction, pages, injected=injected) if check_reading else None
+        found = check_item(extraction, pages, injected=injected, today=today) if check_reading else None
         if found is not None:
             items.append(
                 _verify_item(
@@ -554,6 +556,8 @@ def with_notice(
     if extraction is None:
         return list(items)
     notices = remedy_notices(pages) if notices is None else notices
+    # every to-do that dates the objection, also one a letter rule counts back from a tenancy's end (the
+    # rival only ever lowers its date)
     dating = [
         verified.slot_key != CHECK_SLOT and dates_the_objection(verified.item, notices) for verified in items
     ]
@@ -813,16 +817,81 @@ def _notice_beside(
     verified: VerifiedItem, receipt: ComputationReceipt, ctx: RuleContext, *, postal_buffer_days: int
 ) -> tuple[Rival, ...]:
     """The letter's own notice as a rival of the reading's objection date (:attr:`VerifiedItem.notice`) when,
-    counted in the same context, it ends more than :data:`~ordnung.ingest.gaps.NOTICE_REACH` days earlier —
-    :func:`~ordnung.ingest.conflicts.settle` then keeps it, the earlier. Never through a letter rule meant for
-    a model's reading (§ 574b BGB would read the letter's date as the tenancy's end)."""
+    counted in the same context from its earliest start, it ends more than
+    :data:`~ordnung.ingest.gaps.NOTICE_REACH` days earlier, or the reading's period is longer than the notice's
+    (:func:`_longer_period`) — :func:`~ordnung.ingest.conflicts.settle` then keeps it, the earlier. Counted
+    without the letter's kind: no letter rule meant for a model's reading (§ 574b BGB, § 558b BGB) applies to it.
+    A notice from service starts on a confirmed later arrival (:func:`_served_on_arrival`)."""
     notice, own = verified.notice, parse_date(receipt.due_date)
     if notice is None or own is None:
         return ()
-    if special_rule(notice.spec, ctx.letter_kind, authority=ctx.delivery_scope is not None or ctx.court):
+    served = _served_on_arrival(notice, ctx)
+    start = parse_date(served.spec.anchor_date)
+    # from a confirmed later arrival: that start alone (an earlier one would undo what the person said)
+    variants = [(served.spec, ctx)] if served is not notice else start_variants(notice.spec, ctx)
+    notice = served
+    # the earliest the notice gives from every start the letter's dates as stored allow (a corrected letter
+    # date, an arrival before it: gaps.start_variants) near the letter's own — never a reading's date weeks
+    # earlier, which would give a passed date — counted without the letter's kind
+    found = [
+        (early, candidate)
+        for spec, variant in variants
+        if _near(parse_date(spec.anchor_date), start)
+        and (early := rival_due(candidate := replace(notice, spec=spec), own, variant, postal_buffer_days))
+        is not None
+    ]
+    if not found:
         return ()
-    early = rival_due(notice, own, ctx, postal_buffer_days)
-    return (notice,) if early is not None and (own - early).days > NOTICE_REACH else ()
+    early, candidate = min(found, key=lambda pick: pick[0])
+    if early >= own:
+        return ()  # the reading's own date is the earlier
+    if (own - early).days > NOTICE_REACH or _longer_period(
+        verified, candidate, early, ctx, postal_buffer_days
+    ):
+        return (candidate,)
+    return ()
+
+
+def _near(day: date | None, start: date | None) -> bool:
+    """Whether a start for the notice is within :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days of the
+    letter's own (a corrected letter date, an arrival a few days early)."""
+    return day is not None and start is not None and abs((day - start).days) <= LETTER_DATE_SPAN
+
+
+#: A period from formal service or arrival (not from notification).
+_FROM_SERVICE = re.compile(r"zustell\w*|zugestellt|\bzugang\b|zugegangen|\berhalt\b", re.IGNORECASE)
+
+
+def _served_on_arrival(notice: Rival, ctx: RuleContext) -> Rival:
+    """A notice counted from service or arrival starts on the day the person confirmed the letter arrived
+    (the yellow envelope's date), as the reading's own does, when that is after the letter's date: only the
+    person sets a confirmed arrival, so the notice never overrides it."""
+    start = parse_date(notice.spec.anchor_date)
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    if (
+        notice.spec.delivery_rule != "none"
+        or start is None
+        or arrived is None
+        or arrived <= start
+        or not _FROM_SERVICE.search(notice.statement)
+    ):
+        return notice
+    return replace(notice, spec=notice.spec.model_copy(update={"anchor_date": arrived.isoformat()}))
+
+
+def _longer_period(
+    verified: VerifiedItem, notice: Rival, early: date, ctx: RuleContext, postal_buffer_days: int
+) -> bool:
+    """The reading's own period, counted from the notice's start as the notice counts, ends after the notice's
+    date: a longer period than the letter states (the reach is only for a start or delivery days read
+    differently)."""
+    spec = verified.item.date
+    if spec.type != "relative" or not spec.amount or spec.unit not in ("days", "weeks", "months"):
+        return False
+    same = notice.spec.model_copy(update={"amount": spec.amount, "unit": spec.unit})
+    plain = replace(ctx, letter_kind=None, quote=notice.statement)
+    found = parse_date(compute_due(same, plain, postal_buffer_days=postal_buffer_days).due_date)
+    return found is not None and found > early
 
 
 def _check_receipt(

@@ -480,23 +480,34 @@ later than the letter allows: the period of all the notices state (and the sente
 ends first, counted from the letter's date — dated only when it is from a week to a month and no notice
 holds a period that can't be read or dated (Werktage, years) or counts back from an event ("zwei Wochen
 vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
-after a portal download; never on formal service); the start is the earliest date the letter gives for
-itself (any page's header date, "mit diesem Bescheid vom …", "Bescheid vom …" in the notice) or the
-reading gives it, carried in the DateSpec — none when those are more than 14 days apart (then no date at
-all), and the letter's date once entered when it gives none. Recomputed, an earlier stored letter date
-or arrival moves it earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never
-apply to it. Without a notice it is an undated "Read this letter yourself". Its quote is the notice's own
-words, at most 600 characters. It is always `low` and "Please check" (`reading_incomplete`), also when
+after a portal download; never on formal service: Postzustellungsurkunde, PZU, förmliche Zustellung,
+Empfangsbekenntnis, Rückschein); the start is the earliest date the letter gives for itself, carried in
+the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date" label or a label of
+the letter's own date (Bescheid-, Brief-, Ausstellungs-, Ausfertigungs-, Erstellungs-, Druck-,
+Bearbeitungsdatum, "erstellt am"), a place and date among its header lines (never under a line ending in
+":"), the DIN 5008 reference line (the values under a line ending in "Datum"), "mit diesem Bescheid vom …",
+the decision its notice names ("Bescheid/Festsetzung/Entscheidung … vom …", never "Antrag vom" or "Ihr
+Schreiben vom") and the reading's date; none when those are more than 14 days apart (then no date at all),
+none from one date alone more than 60 days before the letter arrived. Other dates (another "…datum", a date
+alone, a continuation page's) only lower it, within those 14 days; alone they set none. The letter's date
+once entered counts when it gives none. Recomputed, an earlier stored letter date or arrival moves it
+earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
+a notice it is an undated "Read this letter yourself". Its quote is the notice's own words, at most 600
+characters. It is always `low` and "Please check" (`reading_incomplete`), also when
 its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
 why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
 addressed to an AI its action says to send the objection only to an address the person already knows. A
 later complete reading removes it unless the person acted on it. No model is asked again and the reading
 itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
-but more than 14 days after the period the letter's own notice gives — as the check would date it, counted
-in the same context — gets that period beside its own date as a second date the letter gives
-(`gaps.notice_rival`, settled like any two dates: the earlier kept, both named, `low` and "Please check");
-recomputed too, also once the person confirmed it. Measured on every recorded reading, the reading's date
-is 0 to 7 days after the notice's, so it never fires there.
+but more than 7 days after the period the letter's own notice gives, or with a longer period than the
+notice's, gets that period beside its own date as a second date (`gaps.notice_rival`, settled like any two
+dates: the earlier kept, both named — "Claude's reading and the letter's own instructions …" —, `low` and
+"Please check"); decided on the letter's words alone (a live notice that can be dated, its own sentence's
+periods, the one ending first; never the reading's kind or date), counted from the date the first page
+names as its own (none without one) and from every earlier start the letter's stored dates allow, without
+the letter's kind; a notice from service starts on an arrival the person confirmed. Recomputed too, also
+once the person confirmed it. Measured on every recorded reading, the reading's date is 0 to 7 days after
+the notice's, so it never fires there.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**

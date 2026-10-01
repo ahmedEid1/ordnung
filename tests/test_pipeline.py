@@ -7,6 +7,7 @@ import copy
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -24,7 +25,7 @@ from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
-from ordnung.ingest.gaps import CHECK_SLOT, gap_warning
+from ordnung.ingest.gaps import CHECK_SLOT, GAP_WARNING, gap_warning
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
@@ -706,6 +707,195 @@ async def test_an_objection_date_weeks_after_the_letter_s_notice_keeps_the_notic
         ).status_code == 200
         [objection] = api.ctx.store.list_items(doc_id=doc_id)
         assert objection.due_date == "2026-10-19" and not needs_check(objection)
+
+
+def _letter(marker: str, *lines: str, payload: dict[str, Any] | None = None) -> Letter:
+    """A synthetic letter dated 15.09.2026 (or as its lines say) with ``payload`` as its reading."""
+    return Letter(
+        marker=marker,
+        pages=(lines,),
+        payload=payload
+        or {"kind": "other", "title": "Letter", "summary": "A letter.", "explanation": "Read it."},
+    )
+
+
+def _router(*letters: Letter) -> ApiRouter:
+    router = ApiRouter()
+    router.letters = (*letters, *router.letters)
+    for letter in letters:
+        router.payloads[letter.marker] = letter.extraction()
+    return router
+
+
+#: Two dates for one payment (review round 2, R2UX-2): the earlier is kept, and stays once confirmed.
+TWO_PAY = _letter(
+    "Zweifachzahlung",
+    "Stadt Beispielhausen · Stadtkasse · Rathausplatz 1 · 12345 Beispielhausen",
+    "SPECIMEN Zweifachzahlung",
+    "Datum: 15.09.2026",
+    "Gebührenbescheid",
+    "Sehr geehrte Frau Probe,",
+    "Die Gebühr von 85,00 EUR ist bis zum 20.10.2026 zu zahlen.",
+    "Zahlbar bis 13.10.2026.",
+    payload={
+        "kind": "authority_letter",
+        "title": "Fee",
+        "summary": "A fee.",
+        "explanation": "Pay it.",
+        "sender": {"name": "Stadt Beispielhausen", "kind": "authority"},
+        "document_date": "2026-09-15",
+        "items": [
+            {
+                "kind": "payment",
+                "title": "Pay the fee",
+                "amount": 85.0,
+                "date": {"type": "fixed", "date": "2026-10-20", "nature": "payment"},
+                "quote": "Die Gebühr von 85,00 EUR ist bis zum 20.10.2026 zu zahlen.",
+            }
+        ],
+    },
+)
+
+
+async def test_a_confirmed_to_do_keeps_the_earlier_of_its_two_dates_when_recomputed(data_dir: Path) -> None:
+    """UX review 2, R2UX-2 (older than the reading check): confirming the earlier date, then changing the region
+    or entering the arrival, never moves it to the later one."""
+    async with api_for(data_dir, router=_router(TWO_PAY)) as api:
+        doc_id = (await api.upload(("gebuehr.pdf", TWO_PAY.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [pay] = api.ctx.store.list_items(doc_id=doc_id)
+        assert pay.due_date == "2026-10-13"
+        assert (await api.client.post(f"/api/items/{pay.id}/confirm")).status_code == 200
+        assert (
+            await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
+        ).status_code == 200
+        [pay] = api.ctx.store.list_items(doc_id=doc_id)
+        assert pay.due_date == "2026-10-13" and not needs_check(pay)
+        response = await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-18"})
+        assert response.status_code == 200
+        [pay] = api.ctx.store.list_items(doc_id=doc_id)
+        assert pay.due_date == "2026-10-13" and not needs_check(pay)
+
+
+#: A decision without any date of its own: the check to-do is undated until the person enters the date.
+UNDATED_DECISION = _letter(
+    "Ohnedatum",
+    "Stadt Beispielhausen · Ordnungsamt · Rathausplatz 1 · 12345 Beispielhausen",
+    "SPECIMEN Ohnedatum",
+    "Bescheid über eine Sondernutzungsgebühr",
+    "Sehr geehrte Frau Probe,",
+    "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.",
+    "Rechtsbehelfsbelehrung",
+    "Gegen diesen Gebührenbescheid können Sie binnen eines Monats",
+    "nach seiner Bekanntgabe Widerspruch einlegen.",
+)
+
+
+async def test_the_incomplete_reading_s_warning_follows_its_to_do(data_dir: Path) -> None:
+    """UX review 2, R2UX-3 and R2UX-4: once the person enters the letter's date the warning says the deadline was
+    added (not "couldn't work it out"); once they confirm the to-do, the warning goes."""
+    async with api_for(data_dir, router=_router(UNDATED_DECISION)) as api:
+        doc_id = (await api.upload(("ohnedatum.pdf", UNDATED_DECISION.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.slot_key == CHECK_SLOT and check.due_date is None
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and gap_warning("empty", "undated") in document.warnings
+        assert (
+            await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": "2026-09-15"})
+        ).status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.due_date is not None and check.due_date <= "2026-10-19"
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and gap_warning("empty", "dated") in document.warnings
+        assert gap_warning("empty", "undated") not in document.warnings
+        assert (await api.client.post(f"/api/items/{check.id}/confirm")).status_code == 200
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and document.status == "processed"
+        assert not any(GAP_WARNING.match(warning) for warning in document.warnings)
+
+
+FINE_NOTICE = (
+    "Gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach Zustellung schriftlich oder zur "
+    "Niederschrift bei der Bußgeldstelle Einspruch einlegen."
+)
+
+
+def _fine(months: int | None) -> Letter:
+    """A fine dated 01.09.2026 and a complete reading of it (two weeks after service, or a planted period)."""
+    spec = (
+        {"type": "relative", "amount": 2, "unit": "weeks", "anchor": "receipt", "delivery_rule": "none"}
+        if months is None
+        else {
+            "type": "relative",
+            "amount": months,
+            "unit": "months",
+            "anchor": "receipt",
+            "delivery_rule": "none",
+        }
+    )
+    return _letter(
+        f"Bussgeldprobe{months or 0}",
+        "Stadt Beispielhausen · Bußgeldstelle · Rathausplatz 1 · 12345 Beispielhausen",
+        f"SPECIMEN Bussgeldprobe{months or 0}",
+        "Datum: 01.09.2026",
+        "Bußgeldbescheid",
+        "Sehr geehrter Herr Probe,",
+        "wegen Überschreitung der zulässigen Höchstgeschwindigkeit wird gegen Sie eine Geldbuße von 70,00 EUR festgesetzt.",
+        "Rechtsbehelfsbelehrung",
+        "Gegen diesen Bußgeldbescheid können Sie innerhalb von zwei Wochen nach Zustellung schriftlich oder zur",
+        "Niederschrift bei der Bußgeldstelle Einspruch einlegen.",
+        payload={
+            "kind": "fine",
+            "title": "Speeding fine",
+            "summary": "s",
+            "explanation": "e",
+            "sender": {"name": "Stadt Beispielhausen – Bußgeldstelle", "kind": "authority"},
+            "document_date": "2026-09-01",
+            "remedy": {"type": "einspruch", "quote": FINE_NOTICE},
+            "items": [
+                {
+                    "kind": "deadline",
+                    "title": "Objection (Einspruch)",
+                    "date": {**spec, "nature": "objection"},
+                    "quote": FINE_NOTICE,
+                }
+            ],
+        },
+    )
+
+
+@pytest.mark.parametrize(("months", "due", "flagged"), [(None, "2026-10-05", False), (3, "2026-10-05", True)])
+async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_entered(
+    data_dir: Path, months: int | None, due: str, flagged: bool
+) -> None:
+    """False positives F1: the person enters the yellow envelope's date (20.09, 19 days after the letter's): two
+    weeks from service is Mon 5 Oct, never the letter's date's passed 15 Sep — and a planted three months is still
+    pulled to 5 Oct, with "Please check" on the letter."""
+    letter = _fine(months)
+    async with api_for(data_dir, router=_router(letter)) as api:
+        doc_id = (await api.upload(("fine.pdf", letter.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        response = await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-20"})
+        assert response.status_code == 200
+        [objection] = api.ctx.store.list_items(doc_id=doc_id)
+        assert objection.due_date == due and needs_check(objection) is flagged
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and (document.status == "needs_review") is flagged
+
+
+async def test_the_check_s_own_to_do_never_gets_the_notice_beside_it_when_recomputed(data_dir: Path) -> None:
+    """R2T-9: the check to-do is stored as read, so a recompute meets it with the reading's to-dos; the letter's
+    notice is never set beside it (its own date is the notice's: no second date)."""
+    async with api_for(data_dir, router=gap_api_router()) as api:
+        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        assert (
+            await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
+        ).status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.slot_key == CHECK_SLOT and check.computation is not None
+        assert not any("two dates" in note for note in check.computation.warnings)
 
 
 async def test_reading_again_completely_removes_the_untouched_check_to_do(

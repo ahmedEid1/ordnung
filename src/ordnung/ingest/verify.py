@@ -1178,12 +1178,17 @@ REASON_TEXT: dict[str, str] = {
     INCOMPLETE_SPEC: "Part of the date description is missing — please check it.",
     WORKING_DAY_NOT_IN_QUOTE: "The working day (e.g. “the 3rd working day”) doesn't appear in the sentence it was taken from — please check it.",
     DAY_OF_MONTH_NOT_IN_QUOTE: "The day of the month (e.g. “on the 1st of each month”) doesn't appear in the sentence it was taken from — please check it.",
-    READING_INCOMPLETE: "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.",
+    READING_INCOMPLETE: "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.",
 }
+#: The note an incomplete reading's to-do carried before (UX review 2, R2UX-5: it said "worked this date out"
+#: also when no date could be worked out), as receipts already stored say it.
+_EARLIER_READING_INCOMPLETE = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter."
 UNVERIFIED_NOTE = "We couldn't find this sentence in the letter — please check the date against the letter."
 MODEL_READ_NOTE = "This was read by AI from a photo or scan — compare the date with the paper letter."
 _GROUNDING_NOTES: dict[Grounding, str] = {"unverified": UNVERIFIED_NOTE, "model_read": MODEL_READ_NOTE}
-_NOTED_REASONS = {text: reason for reason, text in REASON_TEXT.items()}
+_NOTED_REASONS = {text: reason for reason, text in REASON_TEXT.items()} | {
+    _EARLIER_READING_INCOMPLETE: READING_INCOMPLETE
+}
 _FAILURES: dict[Confidence, int] = {"high": 0, "medium": 1, "low": 2}
 
 

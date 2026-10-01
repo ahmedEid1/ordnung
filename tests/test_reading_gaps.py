@@ -197,7 +197,8 @@ def test_an_empty_reading_gets_the_objection_deadline_its_notice_states() -> Non
         and item.priority == "high"
         and item.title == "Deadline to object (Widerspruch)"
     )
-    assert (item.action, item.consequence) == (DEADLINE_ACTION, DEADLINE_CONSEQUENCE)
+    # an almost blank reading of a letter with a notice is itself a warning sign: the known address too
+    assert (item.action, item.consequence) == (f"{DEADLINE_ACTION} {KNOWN_ADDRESS}", DEADLINE_CONSEQUENCE)
     spec = item.date
     assert (spec.type, spec.amount, spec.unit, spec.nature) == ("relative", 1, "months", "objection")
     # the start travels in the spec; deemed delivery only as the delivery rule (a private sender keeps the start)
@@ -986,7 +987,8 @@ def test_every_remedy_word_gives_a_notice_and_its_title(text: str, remedy: str, 
         True,
         remedy,
     )
-    found = check_item(blank(), [page(*HEAD, text)])
+    reading = blank(sender=SENDER, document_date="2026-11-06", items=[payment()])
+    found = check_item(reading, [page(*HEAD, PAY, text)])
     assert found is not None and found.item.title == title
     court = remedy == "klage"
     assert (found.item.action, found.item.consequence) == (
@@ -1012,9 +1014,16 @@ def test_a_court_action_left_out_gets_its_own_warning_and_the_advice_note() -> N
 
 
 def test_a_letter_addressed_to_an_ai_gets_where_to_send_the_objection() -> None:
-    found = check_item(blank(), [DECISION], injected=True)
+    """Detected text addressed to an AI, or an almost blank reading (security review 2, F5: a detector can miss
+    the injection that blanked it): the action says where to send the objection. Not on a reading that only
+    left the objection out, unless the injection was detected."""
+    for injected in (True, False):
+        found = check_item(blank(), [DECISION], injected=injected)
+        assert found is not None and found.item.action == f"{DEADLINE_ACTION} {KNOWN_ADDRESS}"
+    reading = blank(sender=SENDER, document_date="2026-11-06", items=[payment()])
+    found = check_item(reading, [page(*HEAD, PAY, NOTIFIED)], injected=True)
     assert found is not None and found.item.action == f"{DEADLINE_ACTION} {KNOWN_ADDRESS}"
-    found = check_item(blank(), [DECISION])
+    found = check_item(reading, [page(*HEAD, PAY, NOTIFIED)])
     assert found is not None and found.item.action == DEADLINE_ACTION
 
 
@@ -1075,7 +1084,11 @@ def written(
 def test_the_letter_s_date_is_the_earliest_it_gives_for_itself() -> None:
     assert written("Beispielhausen, 06.11.2026") == date(2026, 11, 6)
     assert written("Beispielhausen, den 06.11.2026") == date(2026, 11, 6)
-    assert written("Frau Mara Probe", "06.11.2026") == date(2026, 11, 6)
+    # a date alone in the header is weak: it lowers a start, never sets one (dates review 2, finding 3)
+    assert written("Frau Mara Probe", "06.11.2026") is None
+    assert written("Frau Mara Probe", "06.11.2026", reading=blank(document_date="2026-11-10")) == date(
+        2026, 11, 6
+    )
     assert written("Datum 06.11.2026") == date(2026, 11, 6)
     assert written("Bescheiddatum: 06.11.2026") == date(2026, 11, 6)
     assert written("Erstellt am 06.11.2026") == date(2026, 11, 6)
@@ -1193,7 +1206,9 @@ def test_the_page_with_the_notice_gives_its_own_date() -> None:
         NOTIFIED,
         number=2,
     )
-    assert letter_date(blank(), [first, second]) == date(2026, 11, 6)
+    # a continuation page's date is weak (dates review 2, finding 10): it never sets the start alone
+    assert letter_date(blank(), [first, second]) is None
+    assert letter_date(blank(document_date="2026-11-09"), [first, second]) == date(2026, 11, 6)
     # a covering letter dated three weeks after the decision: two dates for itself, so no start at all
     cover = page(LETTERHEAD, "Datum: 27.11.2026", "Sehr geehrte Frau Probe,", "anbei unser Bescheid.")
     assert letter_date(blank(), [cover, second]) is None
@@ -1216,14 +1231,14 @@ def test_the_page_with_the_notice_gives_its_own_date() -> None:
 def test_a_due_day_a_validity_or_an_appointment_is_not_the_letter_s_date(lines: tuple[str, ...]) -> None:
     got = written(*lines)
     assert got is None or got == date(2026, 11, 6)
-    assert written("Frau Mara Probe", "06.11.2026", *lines[1:]) == date(2026, 11, 6)
+    assert written("Frau Mara Probe", "Datum: 06.11.2026", *lines[1:]) == date(2026, 11, 6)
 
 
 def test_a_place_and_date_after_the_notice_is_not_the_letter_s() -> None:
     lines = (
         "Stadt Beispielhausen",
         "Frau Mara Probe",
-        "06.11.2026",
+        "Datum: 06.11.2026",
         "Sehr geehrte Frau Probe,",
         NOTIFIED,
         "Beispielhausen, 30.11.2026",
@@ -1235,7 +1250,14 @@ def test_a_bare_date_in_the_body_or_not_ending_its_line_is_not_the_letter_s() ->
     body = ("Stadt Beispielhausen", "Sehr geehrte Frau Probe,", "Ihr Termin:", "01.10.2026", NOTIFIED)
     assert letter_date(blank(), [page(*body)]) is None
     # under the salutation, a bare date is the body's, whatever the line above it says
-    dated = (LETTERHEAD, "Frau Mara Probe", "06.11.2026", "Sehr geehrte Frau Probe,", "30.11.2026", NOTIFIED)
+    dated = (
+        LETTERHEAD,
+        "Frau Mara Probe",
+        "Datum 06.11.2026",
+        "Sehr geehrte Frau Probe,",
+        "30.11.2026",
+        NOTIFIED,
+    )
     assert letter_date(blank(), [page(*dated)]) == date(2026, 11, 6)
     assert written("06.11.2026 (Eingang)") is None
 
@@ -1410,13 +1432,14 @@ def test_an_objection_date_weeks_after_the_notice_gets_the_notice_s_date_and_ple
     ("written", "kept"),
     [
         ("2026-12-01", "2026-12-01"),  # earlier than the notice: the reading's
-        ("2026-12-21", "2026-12-21"),  # 12 days later: within reach, the reading's
-        ("2026-12-23", "2026-12-23"),  # 14 days later: still the reading's
-        ("2026-12-24", NOTIFIED_DUE),  # 15 days later: the notice's
+        ("2026-12-14", "2026-12-14"),  # 5 days later: within reach (a start or delivery days), the reading's
+        ("2026-12-16", "2026-12-16"),  # 7 days later: still the reading's
+        ("2026-12-17", NOTIFIED_DUE),  # 8 days later: the notice's
+        ("2026-12-24", NOTIFIED_DUE),
         ("2027-03-31", NOTIFIED_DUE),
     ],
 )
-def test_only_a_date_more_than_two_weeks_after_the_notice_gets_it(written: str, kept: str) -> None:
+def test_only_a_date_more_than_a_week_after_the_notice_gets_it(written: str, kept: str) -> None:
     _, computed, _ = _read_objection({"type": "fixed", "date": written})
     assert computed.due_date == kept
     assert computed.notice is (kept != written)
