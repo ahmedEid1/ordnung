@@ -16,13 +16,18 @@ second statement:
   "bis (zum)", "spätestens", "by", "no later than", "is due on", never a bare "zum" or "am" (a notice
   "zum 31.12." names the end it takes effect) — or a deadline label ("Abgabefrist:", "Einsendeschluss:"),
   with the nature's words on its label or in its sentence ("Kündigung", "kündigen"; "Unterlagen",
-  "Fragebogen", "Stellungnahme", "einreichen", "zurücksenden", "form", "submit"), and a period after
-  this letter's date or its arrival ("binnen 14 Tagen nach Zugang dieses Schreibens", never "nach
-  Erhalt unseres Schreibens vom …"); and, for any period counted from the letter, a date the letter
-  gives for itself ("mit diesem Bescheid vom …", "mit Bescheid vom … entscheiden wir", "this letter
-  dated …", and the first "Datum:" / "Date:" label of its first page's header, :func:`_header_date` —
-  never a "Datum" in its body, nor a date that reads two ways). Only statements that plausibly concern
-  the *same* obligation count:
+  "Fragebogen", "Stellungnahme", "einreichen", "zurücksenden", "form", "submit") and, without a label,
+  the act it is the last day for ("einreichen", "vorlegen", "bei uns eingehen", "vorliegen", "submit",
+  "be received"; for a notice the cancellation named before the date in its own clause, or "bis …
+  kündigen") — never how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis", "verlängert
+  sich bis", "weiter beliefert", "continues until") or a relative clause's date ("Unterlagen, die bis …
+  eingehen, bearbeiten wir noch …") — and a period after this letter's date or its arrival ("binnen 14
+  Tagen nach Zugang dieses Schreibens", never "nach Erhalt unseres Schreibens vom …"); and, for any
+  period counted from the letter, a date the letter gives for itself ("mit diesem Bescheid vom …", "mit
+  Bescheid vom … entscheiden wir", "this letter dated …", and the first "Datum:" / "Date:" label of its
+  first page's header, :func:`_header_date` — on the label's line or right under it on the page, never
+  a "Datum" in its body, a table's, an event's or another decision's, nor a date that reads two ways).
+  Only statements that plausibly concern the *same* obligation count:
   never a recurring to-do, money coming in, or a to-do with no date; never a statement whose sentence
   is the to-do's own quote, whose date is another to-do's, which names a different amount (an
   instalment), a kind of payment the to-do's sentence does not (instalments, a prepayment, a fee, a
@@ -42,7 +47,9 @@ second statement:
   letter's own (the letter's date itself; a reminder repeats the original invoice's due date:
   history, not a second date — before the day it arrived, or today, when the letter's date was not
   read), is no conflict; nor is a reminder's period "after the invoice date" (it counts from the old
-  invoice's date, not the reminder's). When the letter does give another date, the to-do keeps the **earlier** one (the safe
+  invoice's date, not the reminder's), a date before the letter's own date as read, or a date the letter
+  gives for itself more than :data:`_LETTER_DATE_REACH` days from the one read (it is another's: an old
+  invoice's, an offence's). When the letter does give another date, the to-do keeps the **earlier** one (the safe
   side: acting by it is on time whichever applies), its receipt names both dates and says why the
   earlier one was kept (rule ``conflicting_dates``), its confidence is ``low`` and it is marked
   "Please check" (its evidence is not ``value_consistent``: :func:`~ordnung.ingest.plan.needs_check`).
@@ -62,10 +69,10 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date
-from typing import Literal
+from typing import Any, Literal
 
 from ordnung.ingest.normalize import fold_punctuation, normalise_with_map
-from ordnung.ingest.text import PageText
+from ordnung.ingest.text import PageText, Word
 from ordnung.ingest.verify import (
     PageInput,
     date_spans,
@@ -98,6 +105,8 @@ _AMOUNT_REACH = 80
 #: How much of a statement a warning quotes.
 _QUOTE_CHARS = 90
 _COUNTS = {2: "two", 3: "three"}
+#: How many days a date the letter gives for itself may stand from the one read and still be its own.
+_LETTER_DATE_REACH = 14
 
 _PAYMENT_CUE = re.compile(
     r"\b(?:zahlbar|fällig\w*|zahlungsziel|zahlungstermin|zahlungsfrist|zahlen\s+sie|überweisen\s+sie"
@@ -130,11 +139,49 @@ _DEADLINE_PREPOSITION = re.compile(
     re.IGNORECASE,
 )
 _DEADLINE_LABEL = re.compile(
-    rf"(?:frist|einsendeschluss|abgabe|rückgabe|rücksendung|deadline)[^:\n]*:\s*{_WEEKDAY}$", re.IGNORECASE
+    rf"(?:frist|einsendeschluss|abgabe|rückgabe|rücksendung|deadline|\bbis\b|spätestens)[^:\n]*:\s*{_WEEKDAY}$",
+    re.IGNORECASE,
 )
 #: A notice: a cancellation or termination the person must send ("Kündigung", "kündigen", "cancel") —
 #: never an announcement ("Ankündigung", "wie angekündigt").
 _NOTICE_CUE = re.compile(r"\b(?!an(?:ge)?kündig)\w*kündig\w*|\bcancel\w*|\bterminat\w*", re.IGNORECASE)
+#: The notice's own verb right after its date: "bis zum 31.08.2026 (schriftlich) kündigen", "… gekündigt
+#: werden" — never one in another clause (", wenn Sie kündigen").
+_NOTICE_VERB_AFTER = re.compile(
+    r"^\s*(?:\w+\s+){0,2}?(?:zu\s+)?(?:ge)?kündig(?:en|t)\b|^\s*(?:\w+\s+){0,2}?(?:to\s+)?(?:cancel|terminate)\b",
+    re.IGNORECASE,
+)
+#: The person's act a notice's or a declaration's date is the last day for: sending, handing in or
+#: returning it, or its arriving ("einreichen", "vorlegen", "zurücksenden", "bei uns eingehen", "uns
+#: vorliegen", "zugehen", "übermitteln", "submit", "return", "be received", "reach us") — or cancelling,
+#: or exercising a right to.
+_SENT = re.compile(
+    r"\b(?:ein|nach)(?:zu|ge)?reich(?:en|t)\b|\breichen\s+sie\b|\bvor(?:zu|ge)?leg(?:en|t)\b|\blegen\s+sie\b"
+    r"|\b(?:zurück|ein|zu)?(?:zu|ge)?(?:send|sand|schick)(?:en|et|t|e)?\b|\b(?:zurück|ab)(?:zu|ge)?geb(?:en|t)\b"
+    r"|\bgeben\s+sie\b|\bübers(?:end|and)(?:en|t)?\b|\bübermitt(?:eln|elt|le)\b|\bein(?:zu|ge)?g(?:eh(?:en|t)|angen)\b"
+    r"|\bvor(?:zu)?lieg(?:en|t)\b|\bzu(?:zu|ge)?g(?:eh(?:en|t)|angen)\b|\beintreff(?:en)?\b"
+    r"|\bmit(?:zu|ge)?teil(?:en|t)\b|\bteilen\s+sie\b|\berteil(?:en|t)\b|\bhoch(?:zu|ge)?lad(?:en)?\b"
+    r"|\b(?!an(?:ge)?kündig)\w*kündig(?:en|t|e)\b|\bausüb(?:en|t)\b|\bauszuüben\b|\bgeltend\b"
+    r"|\bsubmi\w*|\breturn\w*|\bsend(?:s|ing)?\b|\bupload\w*|\breceived?\b|\breach(?:es)?\s+us\b|\barriv\w*"
+    r"|\bcancel\b|\bterminate\b|\bexercis\w*",
+    re.IGNORECASE,
+)
+#: Words of a validity, a term or a continuation: a date with one is how long something lasts ("gilt bis",
+#: "ist bis … gültig", "läuft bis", "besteht bis", "verlängert sich bis", "weiter beliefert", "valid until",
+#: "runs until", "continues until"), never the last day to send something.
+_LASTS = re.compile(
+    r"\b(?:gilt|gelten|gültig\w*|läuft|laufen|\w*laufzeit\w*|besteht|bestehen|verlänger\w*|garantier\w*"
+    r"|weiter|fortgesetzt|fortbesteh\w*|befristet\w*|bleibt|bleiben|valid\w*|runs?|continues?|continued"
+    r"|remains?|guarantee\w*|extend\w*|lasts?|in\s+force|in\s+kraft)\b",
+    re.IGNORECASE,
+)
+#: A relative clause's start: "Unterlagen, die bis zum 15.09.2026 eingehen, bearbeiten wir noch …" names
+#: which ones are handled first, not a deadline. The pronoun stands before a small word or a person ("die
+#: bis", "die Sie"); an article stands before its noun (", die Unterlagen bis zum … einzureichen").
+_RELATIVE_CLAUSE = re.compile(
+    r"^\s*(?:(?:die|der|das|welche[rs]?)\s+(?:[a-zäöüß]\w*|Sie|Ihnen|Ihr|wir|uns)\b"
+    r"|which\b|that\s+(?:is|are|arrive\w*|reach\w*|we|you)\b)"
+)
 #: A declaration: a form, documents or a statement to send, or the verbs that ask for one ("einreichen",
 #: "zurücksenden", "submit", "return").
 _DECLARATION_CUE = re.compile(
@@ -261,9 +308,10 @@ _NOTICE_KINDS: dict[str, re.Pattern[str]] = {
         "ordinary": r"\bordentlich\w*|\bordinary\b",
     }.items()
 }
-#: The label of the letter's own date in its header: "Datum: 02.03.2026", "Date: 5 May 2026", "Datum des
-#: Bescheids" — on its own, never a compound ("Rechnungsdatum", "Due date", "Date of birth").
-_HEADER_LABEL = r"(?P<label>datum(?:\s+des\s+(?:bescheid(?:e)?s|schreibens|briefe?s))?|date)"
+#: The label of the letter's own date in its header: "Datum: 02.03.2026", "Date: 5 May 2026" — on its own,
+#: never a compound ("Rechnungsdatum", "Due date", "Date of birth") nor another decision's ("Datum des
+#: Bescheids" in a Widerspruchsbescheid is the decision it rules on).
+_HEADER_LABEL = r"(?P<label>datum|date)"
 #: The label with its date on the same line, after a colon or a column's gap ("Datum   22.09.2026").
 _HEADER_SAME_LINE = re.compile(
     rf"(?:^|[·|]\s*|\s{{2,}}|\t){_HEADER_LABEL}(?:\s*:\s*|\s{{2,}}|\t){_WEEKDAY}$", re.IGNORECASE
@@ -272,6 +320,14 @@ _HEADER_SAME_LINE = re.compile(
 _HEADER_LINE_END = re.compile(rf"(?:^|[·|]\s*|\s{{2,}}|\t){_HEADER_LABEL}\s*:?\s*$", re.IGNORECASE)
 #: Words before a date that make it another one than the letter's ("Ihr Schreiben vom …").
 _ANOTHER_DATE = re.compile(r"\b(?:vom|seit|bis|ab|am|zum|from|of|dated|since|until)\s*$", re.IGNORECASE)
+#: A table's row: cells split by "|", a tab, or more than one column gap.
+_TABLE_ROW = re.compile(r"[|\t]|\S\s{2,}\S.*\S\s{2,}\S")
+#: A line naming an event, whose date is the event's: an offence, an appointment, a time of day.
+_EVENT = re.compile(
+    r"\b(?:uhrzeit|tatzeit|tatort|tattag|termin\w*|appointment|time)\b|\b\d{1,2}:\d{2}\b", re.IGNORECASE
+)
+#: How far (a share of the page's height) a column's value may stand under its label.
+_UNDER_REACH = 0.05
 #: Where a letter's body starts.
 _SALUTATION = re.compile(r"(?:sehr\s+geehrte|guten\s+tag|hallo\b|liebe[rs]?\b|dear\b|hello\b)", re.IGNORECASE)
 
@@ -285,12 +341,19 @@ class Rival:
     date, or a period and what it counts from), ``statement`` the letter's words, ``grounding`` how
     the page it stands on was read (a text layer: ``verified``; an AI transcript: ``model_read``).
     ``letter_date``: the statement is a date the letter gives for *itself*; ``spec`` is then the
-    to-do's own, to be counted from that date instead of the letter's date as read."""
+    to-do's own, to be counted from that date instead of the letter's date as read. ``quote``: the page's
+    own words to show as evidence, when ``statement`` joins words from two lines (default: it)."""
 
     spec: DateSpec
     statement: str
     grounding: Grounding = "verified"
     letter_date: date | None = None
+    quote: str = ""
+
+    @property
+    def evidence(self) -> str:
+        """The page's words this statement stands on."""
+        return self.quote or self.statement
 
 
 @dataclass(frozen=True)
@@ -305,6 +368,7 @@ class _Statement:
     grounding: Grounding
     letter_date: date | None = None
     context: str = ""
+    quote: str = ""
 
 
 # --------------------------------------------------------------------------------------------------
@@ -384,15 +448,33 @@ def _deadline(clause: str, start: int, end: int, before: str, after: str) -> tup
     """The notice or the declaration a date is the last day of ("Kündigung … bis spätestens 30.09.2026",
     "Bitte reichen Sie die Unterlagen bis zum 15.03.2026 ein", "Abgabefrist: 31.07.2026", "must be received
     by"), with the words that say so: a deadline word just before it (never a bare "zum"/"am", nor a label
-    that names no deadline) and the nature's words on its label or in its sentence — not written in the
-    past, nor optional ("möglichst bis", "wenn Sie … bereits bis …, erhalten Sie")."""
-    strict = _DEADLINE_PREPOSITION.search(before) or _DEADLINE_LABEL.search(before)
+    that names no deadline), the nature's words on its label or in its sentence, and — unless a label names
+    the deadline — the person's act it is the last day for (:data:`_SENT`: sending, handing in, its
+    arriving; cancelling). For a notice the cancellation is named before the date in its own clause, or by
+    the verb right after it ("bis zum 31.08.2026 kündigen"): "Der Schutz besteht bis …, wenn Sie kündigen"
+    is no deadline. Never a date of how long something lasts in its own clause ("gilt bis", "ist bis …
+    gültig", "läuft bis", "verlängert sich bis", "weiter beliefert", "continues until": :data:`_LASTS`),
+    a relative clause's ("Unterlagen, die bis … eingehen, bearbeiten wir noch …"), one written in the past,
+    or an optional one ("möglichst bis", "wenn Sie … bereits bis …, erhalten Sie")."""
+    label = _DEADLINE_LABEL.search(before)
+    strict = _DEADLINE_PREPOSITION.search(before) or label
     if strict is None:
         return None
     nature = _new_nature(before + after)
     if nature is None:
         return None
+    clauses = re.split(r"[,;]", before)
+    own_before = clauses[-1]  # the date's own clause: before it …
+    own_after = re.split(r"[,;.!?]", after)[0]  # … and after it
+    if _LASTS.search(f"{own_before} {own_after}"):
+        return None
+    if len(clauses) > 1 and _RELATIVE_CLAUSE.match(own_before):
+        return None  # "Unterlagen, die bis … eingehen, …" (at a sentence's start "Die" is an article)
+    if label is None and not _SENT.search(f"{before} {own_after}"):
+        return None
     cue = _NOTICE_CUE if nature == "notice" else _DECLARATION_CUE
+    if nature == "notice" and not cue.search(own_before) and not _NOTICE_VERB_AFTER.match(after):
+        return None
     found = list(cue.finditer(before))
     head = min(found[-1].start(), strict.start()) if found else strict.start()
     tail = cue.search(after)
@@ -477,9 +559,12 @@ def _relative(clause: str, grounding: Grounding) -> list[_Statement]:
 
 def _relative_deadline(clause: str, grounding: Grounding) -> list[_Statement]:
     """Notice and declaration periods the clause counts from this letter's date or its arrival ("Bitte
-    reichen Sie die Unterlagen binnen 14 Tagen nach Zugang dieses Schreibens ein")."""
+    reichen Sie die Unterlagen binnen 14 Tagen nach Zugang dieses Schreibens ein") — with the person's act
+    they are the last days for, never how long something lasts ("gilt drei Monate nach Zugang")."""
     nature = _new_nature(clause)
     if nature is None or _PAST.search(clause) or _OPTIONAL.search(clause) or _DISCOUNT.search(clause):
+        return []
+    if _LASTS.search(clause) or not _SENT.search(clause):
         return []
     found = []
     for match in _RELATIVE_LETTER.finditer(clause):
@@ -528,22 +613,56 @@ def _one_date(line: str, start: int, end: int) -> date | None:
 
 def _header(lines: list[str]) -> list[str]:
     """The lines of a letter's header: those before its salutation ("Sehr geehrte …", "Dear …") — without
-    one, those before its first sentence."""
+    one, those before its first sentence or its first table (a row of cells: an invoice's number and date)."""
     for index, line in enumerate(lines):
         if _SALUTATION.match(line.strip()):
             return lines[:index]
     for index, line in enumerate(lines):
-        if _SENTENCE_END.search(line) or (line.rstrip().endswith(".") and len(line.split()) >= 4):
+        if (
+            _SENTENCE_END.search(line)
+            or (line.rstrip().endswith(".") and len(line.split()) >= 4)
+            or _TABLE_ROW.search(line)
+        ):
             return lines[:index]
     return lines
 
 
-def _header_date(text: str, grounding: Grounding) -> list[_Statement]:
+Box = tuple[str, float, float, float, float]
+
+
+def _page_words(page: PageInput) -> list[Box]:
+    """The page's words with their boxes (``text, x0, y0, x1, y1``; none for a transcript)."""
+    words: Sequence[Any] = page.words if isinstance(page, PageText | Page) else page[2]
+    boxes: list[Box] = []
+    for word in words:
+        if isinstance(word, Word):
+            boxes.append((word.text, word.x0, word.y0, word.x1, word.y1))
+        elif len(word) >= 5:
+            boxes.append((str(word[0]), float(word[1]), float(word[2]), float(word[3]), float(word[4])))
+    return boxes
+
+
+def _under(words: list[Box], value: str) -> bool:
+    """Whether the date ``value`` stands on the page right under a "Datum" / "Date" label — a column's
+    value, not another column's."""
+    labels = [box for box in words if fold_punctuation(box[0]).strip(":").casefold() in ("datum", "date")]
+    token = value.split()[0].strip(".,;")
+    values = [box for box in words if fold_punctuation(box[0]).strip(".,;") == token]
+    return any(
+        label[2] < found[2] < label[4] + _UNDER_REACH and min(label[3], found[3]) > max(label[1], found[1])
+        for label in labels
+        for found in values
+    )
+
+
+def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Statement]:
     """The date the letter's header gives for it: the first "Datum:" / "Date:" label of its first page's
     header (:func:`_header`), with its date after it on the same line ("Datum: 02.03.2026", "Datum
-    22.09.2026") or ending the next line (a column's label above its value) — the only date on that line,
-    and one that reads one way. A table's "Datum" in the letter's body (an invoice a reminder lists) is
-    never its own date."""
+    22.09.2026") or under it on the next (a column's label above its value: on the page, right under the
+    label; without word boxes, the label and the date each alone on their line) — the only date on that
+    line, ending it, and one that reads one way. Never a table's row or a line naming an event ("Tatort",
+    "Uhrzeit", "Termin"), nor a date after "vom" ("Ihr Schreiben vom …"): an old invoice's, an offence's or
+    an appointment's date is not the letter's."""
     lines = _header(fold_punctuation(text).splitlines())
     for index, line in enumerate(lines):
         for start, end, _ in date_spans(line):
@@ -551,7 +670,7 @@ def _header_date(text: str, grounding: Grounding) -> list[_Statement]:
             if label is None:
                 continue
             day = _one_date(line, start, end)
-            if day is None:
+            if day is None or "|" in line or _EVENT.search(line):
                 return []
             phrase = re.sub(r"\s+", " ", line[label.start("label") : end]).strip()
             return [_Statement(DateSpec(type="none", text=phrase), phrase, line, grounding, letter_date=day)]
@@ -560,14 +679,24 @@ def _header_date(text: str, grounding: Grounding) -> list[_Statement]:
             continue
         following = lines[index + 1].rstrip()
         spans = {(start, end) for start, end, _ in date_spans(following)}
-        if len(spans) != 1:
+        if len(spans) != 1 or _TABLE_ROW.search(line) or _EVENT.search(f"{line} {following}"):
             return []
         [(start, end)] = spans
         day = _one_date(following, start, end)
         if end != len(following) or day is None or _ANOTHER_DATE.search(following[:start]):
             return []  # not its value, or another date's ("Ihr Schreiben vom 15.02.2026")
-        phrase = f"{label.group('label')} {following[start:end]}"
-        return [_Statement(DateSpec(type="none", text=phrase), phrase, following, grounding, letter_date=day)]
+        value = following[start:end]
+        if words and not _under(words, value):
+            return []  # under another column
+        alone = line.strip().rstrip(":").strip() == label.group("label") and following.strip() == value
+        if not words and not alone:
+            return []  # without the page's word boxes: only a label and a date each alone on its line
+        phrase = f"{label.group('label')} {value}"
+        quote = re.sub(r"\s+", " ", following).strip()  # the page's own words, for the evidence
+        statement = _Statement(
+            DateSpec(type="none", text=phrase), phrase, following, grounding, letter_date=day, quote=quote
+        )
+        return [statement]
     return []
 
 
@@ -578,7 +707,7 @@ def letter_statements(pages: Sequence[PageInput]) -> list[_Statement]:
     for index, page in enumerate(pages):
         text, grounding = _page_text(page)
         if index == 0:
-            found += _header_date(text, grounding)
+            found += _header_date(text, _page_words(page), grounding)
         for clause, dates in _clauses(text):
             found += _explicit(clause, dates, grounding)
             found += _relative(clause, grounding)
@@ -673,7 +802,15 @@ def find_rivals(
     for statement in letter_statements(pages):
         if statement.letter_date is not None:
             if item.date.type == "relative":
-                rivals.append(Rival(item.date, statement.phrase, statement.grounding, statement.letter_date))
+                rivals.append(
+                    Rival(
+                        item.date,
+                        statement.phrase,
+                        statement.grounding,
+                        statement.letter_date,
+                        statement.quote,
+                    )
+                )
             continue
         if nature is None or statement.spec.nature != nature or _is_own(statement, item):
             continue
@@ -689,7 +826,7 @@ def law_rivals(spec: DateSpec, pages: Sequence[PageInput]) -> tuple[Rival, ...]:
     the dates the letter gives for itself, each to count it from (:func:`settle_law`)."""
     rivals = {
         (statement.phrase, statement.letter_date): Rival(
-            spec, statement.phrase, statement.grounding, statement.letter_date
+            spec, statement.phrase, statement.grounding, statement.letter_date, statement.quote
         )
         for statement in letter_statements(pages)
         if statement.letter_date is not None
@@ -740,9 +877,14 @@ def _history(written: date, ctx: RuleContext) -> bool:
 
 def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_days: int) -> _Candidate | None:
     """The date a rival statement gives, computed as the to-do's own is — ``None`` when it gives the
-    same date, none, or a written date that is history (:func:`_history`)."""
+    same date, none, a written date that is history (:func:`_history`), or a date before the letter's own
+    as read. A date the letter gives for itself counts only near the one read (:data:`_LETTER_DATE_REACH`):
+    a letter is not dated weeks apart — such a date is another's (an old invoice's, the decision a
+    Widerspruchsbescheid rules on)."""
     if rival.letter_date is not None:
         if ctx.document_date is None or rival.letter_date == ctx.document_date:
+            return None
+        if abs((rival.letter_date - ctx.document_date).days) > _LETTER_DATE_REACH:
             return None
         counted = replace(ctx, document_date=rival.letter_date)
     else:
@@ -756,7 +898,7 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         compute_due(rival.spec, counted, postal_buffer_days=postal_buffer_days), rival.grounding, ()
     )
     due = parse_date(receipt.due_date)
-    if due is None or due == own:
+    if due is None or due == own or (ctx.document_date is not None and due < ctx.document_date):
         return None
     return _Candidate(due, receipt, rival.statement, rival.spec.type == "fixed", rival)
 

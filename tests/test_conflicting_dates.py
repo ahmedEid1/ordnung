@@ -619,6 +619,12 @@ def test_a_reminder_repeating_the_declarations_original_date_is_no_second_date()
     assert result.due_date == "2026-03-20" and result.conflict
     [warning] = _two_dates(result)
     assert "Fri 20 Mar 2026" in warning and "Fri 27 Mar 2026" in warning
+    # the letter's date not read: the original date is still history, before the day it arrived
+    undated = replace(company(date(2026, 3, 12)), document_date=None, received_date=date(2026, 3, 12))
+    result = computed(verified, undated)
+    assert result.due_date == "2026-03-20"
+    [warning] = _two_dates(result)
+    assert "Fri 20 Mar 2026" in warning and "Fri 27 Mar 2026" in warning
 
 
 def test_another_declarations_date_is_not_a_second_date() -> None:
@@ -691,7 +697,7 @@ def _tax_office(letter: date) -> RuleContext:
     [
         "Datum: 16.03.2026",
         "Steuernummer 123/456/78901 · Datum: Montag, 16.03.2026",
-        "Finanzamt Musterstadt · Postfach 1 · 12345 Musterstadt   Datum\n16.03.2026",
+        "Datum\n16.03.2026",
         "Datum   16.03.2026",
         "Date: 16 March 2026",
     ],
@@ -748,6 +754,374 @@ def test_only_the_first_header_date_that_reads_one_way_is_the_letters() -> None:
     assert header_dates("Date: 16/03/2026") == [date(2026, 3, 16)]
     assert header_dates("Date: 07/08/2026") == []  # 7 Aug or 8 Jul: it can't be told
     assert header_dates("Date: 16/03/2026\nDate: 18/03/2026") == [date(2026, 3, 16)]
+
+
+# --------------------------------------------------------------------------------------------------
+# Review of the widened check: what must never be a second date
+# --------------------------------------------------------------------------------------------------
+
+
+def _alone(verified: VerifiedItem, ctx: RuleContext) -> ComputedDate:
+    """The to-do's date as the reading gives it, without the letter's other statements."""
+    return computed(VerifiedItem(verified.item, verified.evidence, verified.reasons, verified.slot_key), ctx)
+
+
+@pytest.mark.parametrize(
+    ("text", "quote", "due"),
+    [
+        (
+            "Die Schulbescheinigung Ihres Kindes gilt nur bis zum 30.09.2026. Bitte reichen Sie eine aktuelle "
+            "Schulbescheinigung bis zum 31.10.2026 ein.",
+            "Bitte reichen Sie eine aktuelle Schulbescheinigung bis zum 31.10.2026 ein.",
+            "2026-10-31",
+        ),
+        (
+            "Ihr Nachweis über die Krankenversicherung ist bis zum 30.09.2026 gültig. Bitte legen Sie uns einen "
+            "neuen Nachweis bis zum 31.10.2026 vor.",
+            "Bitte legen Sie uns einen neuen Nachweis bis zum 31.10.2026 vor.",
+            "2026-10-31",
+        ),
+        (
+            "Ihre Arbeitsunfähigkeitsbescheinigung gilt bis zum 15.09.2026.\n"
+            "Bitte reichen Sie die fehlenden Unterlagen bis zum 30.09.2026 ein.",
+            "Bitte reichen Sie die fehlenden Unterlagen bis zum 30.09.2026 ein.",
+            "2026-09-30",
+        ),
+        (
+            "Bitte reichen Sie die fehlenden Unterlagen bis zum 30.09.2026 ein.\n"
+            "Unterlagen, die bis zum 15.09.2026 eingehen, bearbeiten wir noch im September.",
+            "Bitte reichen Sie die fehlenden Unterlagen bis zum 30.09.2026 ein.",
+            "2026-09-30",
+        ),
+        (
+            "Bitte reichen Sie Ihre Steuererklärung bis zum 31.07.2026 ein.\n"
+            "Wird die Erklärung von einem Steuerberater erstellt, verlängert sich die Abgabefrist bis zum "
+            "01.03.2027.",
+            "Bitte reichen Sie Ihre Steuererklärung bis zum 31.07.2026 ein.",
+            "2026-07-31",
+        ),
+    ],
+    ids=["certificate-valid-until", "proof-valid-until", "sick-note-valid-until", "handled-first", "adviser"],
+)
+def test_how_long_a_document_is_valid_or_an_optional_day_is_no_second_send_by_date(
+    text: str, quote: str, due: str
+) -> None:
+    """Review F1: a certificate's validity, an earlier day documents are handled by, the longer period with
+    a tax adviser — none is a second day to send the documents by."""
+    own = fixed(quote, due, nature="declaration")
+    [verified] = read(f"Familienkasse Musterstadt, 01.09.2026\n{text}\n", own, kind="authority_letter")
+    assert verified.rivals == ()
+    result = computed(verified, company(date(2026, 9, 1)))
+    assert result.due_date == due and not result.conflict
+
+
+CANCEL_BY = "Ihre Kündigung muss uns bis zum 30.09.2026 vorliegen."
+
+
+@pytest.mark.parametrize(
+    ("text", "quote"),
+    [
+        (f"{CANCEL_BY}\nDer Versicherungsschutz besteht bis zum 31.12.2026, wenn Sie kündigen.", CANCEL_BY),
+        (f"{CANCEL_BY}\nBei Kündigung werden Sie bis zum 31.12.2026 weiter beliefert.", CANCEL_BY),
+        (
+            f"{CANCEL_BY}\nNach Ihrer Kündigung können Sie das Studio bis zum 31.12.2026 weiter nutzen.",
+            CANCEL_BY,
+        ),
+        (
+            "Your cancellation must reach us by 30 September 2026.\n"
+            "If you cancel, your service continues until 31 December 2026.",
+            "Your cancellation must reach us by 30 September 2026.",
+        ),
+        (
+            "Your cancellation must reach us by 30 September 2026.\n"
+            "Your contract runs until 31 December 2026 and will then terminate automatically.",
+            "Your cancellation must reach us by 30 September 2026.",
+        ),
+        (
+            f"{CANCEL_BY}\nIhr Preis ist bis zum 31.03.2027 garantiert und kann bis dahin nicht gekündigt werden.",
+            CANCEL_BY,
+        ),
+        (
+            "Ihr Vertrag läuft bis zum 31.12.2026; eine Kündigung muss bis zum 30.09.2026 bei uns eingehen.",
+            "eine Kündigung muss bis zum 30.09.2026 bei uns eingehen",
+        ),
+        (
+            "Wenn Sie nicht bis zum 30.09.2026 kündigen, verlängert sich der Vertrag bis zum 30.09.2027.",
+            "Wenn Sie nicht bis zum 30.09.2026 kündigen",
+        ),
+        ("Mindestlaufzeit bis 31.12.2026, Kündigung bis 30.09.2026", "Kündigung bis 30.09.2026"),
+    ],
+    ids=[
+        "cover-lasts",
+        "supply-goes-on",
+        "use-goes-on",
+        "service-continues",
+        "contract-runs",
+        "price-guaranteed",
+        "term-then-notice",
+        "renewal",
+        "minimum-term",
+    ],
+)
+def test_a_contracts_term_or_service_end_is_no_second_cancellation_deadline(text: str, quote: str) -> None:
+    """Review F2: how long cover, supply, a term or a price lasts — even in a sentence that speaks of
+    cancelling — is not the day a cancellation must arrive by."""
+    own = fixed(quote, "2026-09-30", nature="notice")
+    [verified] = read(f"Muster Versicherung AG, 01.06.2026\n{text}\n", own, kind="contract")
+    assert verified.rivals == ()
+    result = computed(verified, company(date(2026, 6, 1)))
+    assert result.due_date == "2026-09-30" and not result.conflict
+
+
+def _box(text: str, x0: float, y0: float) -> list[Any]:
+    """A word's box on a page (text, x0, y0, x1, y1), one character ≈ 0.01 of the page wide."""
+    return [text, x0, y0, x0 + 0.01 * len(text), y0 + 0.012]
+
+
+def test_an_old_invoices_date_in_a_reminders_table_is_not_its_own() -> None:
+    """Review F3 (1): a reminder dated in its first line ("Musterstadt, 01.09.2026", no salutation) lists the
+    invoice in a table — "Rechnungsnummer | Datum" over "RE-2026-123 | 14.07.2026". Counted from that
+    date, the payment "7 Tage nach Zugang dieses Schreibens" was due on 21 Jul, before the letter itself."""
+    quote = "Bitte zahlen Sie den Betrag innerhalb von 7 Tagen nach Zugang dieses Schreibens."
+    text = (
+        "Inkasso Muster GmbH\nMusterstadt, 01.09.2026\nRechnungsnummer | Datum\nRE-2026-123 | 14.07.2026\n"
+        f"Offener Betrag 120,00 EUR. {quote}\n"
+    )
+    own = item(quote, money=120.0, type="relative", amount=7, unit="days", anchor="receipt", nature="payment")
+    words = [_box("Datum", 0.4, 0.30), _box("14.07.2026", 0.4, 0.32)]
+    reading = DocumentExtraction(kind="dunning", title="Letter", summary="s", explanation="e", items=[own])
+    [verified] = verify_extraction("doc_x", reading, [(1, text, words, "text")]).items
+    assert not any(rival.letter_date for rival in verified.rivals)
+    ctx = replace(company(date(2026, 9, 1)), letter_kind="dunning")
+    result = computed(verified, ctx)
+    assert result.due_date == "2026-09-08" and not result.conflict
+
+
+@pytest.mark.parametrize(
+    ("header", "letter", "scope"),
+    [
+        ("Datum des Bescheids: 10.08.2026\nDatum: 25.09.2026", date(2026, 9, 25), "vwvfg"),
+        (
+            "Datum: 28.08.2026\nTatort: Hauptstraße 5   Datum: 14.08.2026   Uhrzeit: 14:32",
+            date(2026, 8, 28),
+            "vwvfg",
+        ),
+        ("Tatort: Hauptstraße 5   Datum: 14.08.2026   Uhrzeit: 14:32", date(2026, 8, 28), "vwvfg"),
+    ],
+    ids=["the-decision-ruled-on", "an-offence-after-the-header", "an-offence-in-the-header"],
+)
+def test_another_decisions_or_an_offences_date_is_not_the_letters(
+    header: str, letter: date, scope: str
+) -> None:
+    """Review F3 (2, 3): a Widerspruchsbescheid's "Datum des Bescheids" names the decision it rules on; a
+    fine's "Tatort … Datum … Uhrzeit" names the offence. Counted from either, the Klage or the Einspruch was
+    weeks too early."""
+    text = (
+        f"Landratsamt Musterkreis\n{header}\n"
+        "Sehr geehrte Damen und Herren,\n"
+        "Einspruch ist binnen eines Monats nach Bekanntgabe möglich.\n"
+    )
+    [verified] = read(text, INTEREST_OBJECTION, kind="authority_letter")
+    ctx = RuleContext(today=letter, document_date=letter, delivery_scope=scope)
+    result = computed(verified, ctx)
+    assert result.due_date == _alone(verified, ctx).due_date and not result.conflict
+
+
+def test_a_claims_table_in_a_court_order_is_not_its_date_for_the_laws_deadline() -> None:
+    """Review F3 (4): a Mahnbescheid without a salutation lists the claim "Kaufvertrag   500,00 EUR
+    12.03.2026" under "Hauptforderung   Betrag   Datum" — the date is in the column, but it is the
+    contract's: the § 692 ZPO deadline still counts from the letter's own date."""
+    from ordnung.ingest.conflicts import law_rivals, settle_law
+    from ordnung.rules import compute_due
+    from ordnung.rules.routing import derived_deadlines
+
+    text = (
+        "Amtsgericht Hagen - Zentrales Mahngericht\nMahnbescheid\nHagen, 01.09.2026\n"
+        "Hauptforderung   Betrag   Datum\nKaufvertrag   500,00 EUR   12.03.2026\n"
+        "Sie können binnen zwei Wochen seit der Zustellung Widerspruch erheben.\n"
+    )
+    words = [_box("Datum", 0.7, 0.30), _box("12.03.2026", 0.7, 0.32)]
+    [order] = derived_deadlines("court_payment_order", end=None, letter_date=date(2026, 9, 1))
+    ctx = RuleContext(today=date(2026, 9, 2), document_date=date(2026, 9, 1), court=True)
+    rivals = law_rivals(order.spec, [(1, text, words, "text")])
+    receipt = compute_due(order.spec, ctx, postal_buffer_days=BUFFER)
+    assert rivals == () and settle_law(receipt, order.spec, rivals, ctx, postal_buffer_days=BUFFER) is None
+
+
+@pytest.mark.parametrize(
+    ("header", "words"),
+    [
+        ("Ihr Termin / Datum: 20.10.2026", []),
+        ("Ihr Termin   Datum: 20.10.2026", []),
+        # the date stands under the "Zustelldatum" column, not under "Datum"
+        (
+            "Zustelldatum   Datum\n15.09.2026",
+            [_box("Zustelldatum", 0.1, 0.2), _box("Datum", 0.6, 0.2), _box("15.09.2026", 0.1, 0.22)],
+        ),
+        # without word boxes, a column's label and its value must each stand alone on their line
+        ("Zustelldatum   Datum\n15.09.2026", []),
+        # a date after "vom" is another letter's, even right under the label
+        ("Datum\nIhr Schreiben vom 15.09.2026", [_box("Datum", 0.6, 0.2), _box("15.09.2026", 0.6, 0.22)]),
+        # the value must end its line
+        ("Datum\n15.09.2026 Eingang", [_box("Datum", 0.6, 0.2), _box("15.09.2026", 0.6, 0.22)]),
+    ],
+    ids=[
+        "appointment",
+        "appointment-column",
+        "another-column",
+        "no-boxes",
+        "after-vom",
+        "not-ending-its-line",
+    ],
+)
+def test_a_date_near_the_header_label_that_is_not_its_value_is_not_the_letters(
+    header: str, words: list[Any]
+) -> None:
+    """Review F3 (5), F4 (M3, M7): an appointment's date, a date under another column, after "vom" or not
+    ending the label's next line is never read as the letter's own date."""
+    page = (1, f"Stadt Musterstadt\n{header}\nSehr geehrte Damen und Herren,\nDanke.\n", words, "text")
+    assert [statement for statement in letter_statements([page]) if statement.letter_date] == []
+
+
+def test_a_column_label_with_its_value_right_under_it_is_the_letters_date() -> None:
+    """The column layout of a printed letter: "… 44135 Musterstadt   Datum" over "Lindenweg 12   27.03.2026",
+    the date right under the label on the page — and its evidence quotes the page's own line."""
+    page = (
+        1,
+        "Stadt Musterstadt · Rathausplatz 1 · 44135 Musterstadt   Datum\nLindenweg 12   27.03.2026\n"
+        "Sehr geehrte Damen und Herren,\nDanke.\n",
+        [_box("Datum", 0.7, 0.2), _box("27.03.2026", 0.7, 0.22)],
+        "text",
+    )
+    [header] = [statement for statement in letter_statements([page]) if statement.letter_date]
+    assert header.letter_date == date(2026, 3, 27) and header.quote == "Lindenweg 12 27.03.2026"
+
+
+def test_a_header_ends_at_the_letters_first_sentence_without_a_salutation() -> None:
+    """Review F4 (M2): a letter without a salutation — its header ends with its first sentence, so a
+    "Datum:" after it (a receipt it confirms) is not the letter's date."""
+    page = (
+        1,
+        "Stadtwerke Musterstadt\nKundennummer 4711\nWir bestätigen den Eingang Ihrer Unterlagen. Vielen Dank.\n"
+        "Datum: 15.09.2026\n",
+        [],
+        "text",
+    )
+    assert [statement for statement in letter_statements([page]) if statement.letter_date] == []
+    page = (
+        1,
+        "Stadtwerke Musterstadt\nDatum: 15.09.2026\nWir bestätigen den Eingang Ihrer Unterlagen.\n",
+        [],
+        "text",
+    )
+    assert [statement.letter_date for statement in letter_statements([page]) if statement.letter_date] == [
+        date(2026, 9, 15)
+    ]
+
+
+def test_an_optional_day_in_the_to_dos_own_sentence_leaves_the_date_to_the_reading() -> None:
+    """Review F4 (M5): "möglichst bis" in the to-do's own sentence: which date must be met is the reading's to
+    tell, so the letter's other date is no rival."""
+    quote = "Bitte reichen Sie die fehlenden Unterlagen möglichst bis zum 20.03.2026 ein."
+    text = f"Beispiel Versicherung AG, 02.03.2026\n{quote}\nFrist für die Unterlagen: 27.03.2026\n"
+    [verified] = read(text, fixed(quote, "2026-03-20", nature="declaration"), kind="other")
+    assert verified.rivals == ()
+    assert not computed(verified, company(date(2026, 3, 2))).conflict
+
+
+def test_a_letter_date_far_from_the_one_read_or_a_date_before_the_letter_is_never_kept() -> None:
+    """Review F3: a date the letter gives for itself weeks from the one read is another's; and no rival
+    ever moves a date before the letter's own date as read."""
+    text = (
+        "Finanzamt Musterstadt\nDatum: 16.02.2026\nSehr geehrte Damen und Herren,\n"
+        "Einspruch ist binnen eines Monats nach Bekanntgabe möglich.\n"
+    )
+    [verified] = read(text, INTEREST_OBJECTION, kind="tax_assessment")
+    assert {rival.letter_date for rival in verified.rivals} == {date(2026, 2, 16)}
+    result = computed(verified, _tax_office(date(2026, 3, 12)))  # 24 days apart: not the letter's
+    assert result.due_date == "2026-04-16" and not result.conflict
+
+    quote = "Bitte zahlen Sie innerhalb von 3 Tagen nach dem Datum dieses Schreibens."
+    text = f"Muster GmbH\nDatum: 02.03.2026\nSehr geehrte Damen und Herren,\n{quote}\n"
+    own = item(quote, type="relative", amount=3, unit="days", anchor="document_date", nature="payment")
+    [verified] = read(text, own)
+    assert {rival.letter_date for rival in verified.rivals} == {date(2026, 3, 2)}
+    result = computed(verified, company(date(2026, 3, 12)))  # from 2 Mar: Thu 5 Mar, before the letter
+    assert result.due_date == "2026-03-16" and not result.conflict
+
+
+@pytest.mark.parametrize(
+    ("other", "quote", "spec"),
+    [
+        # sent ("einreichen"), but the date is how long they must be valid
+        (
+            "Die Bescheinigungen, die Sie einreichen, müssen bis zum 30.09.2026 gültig sein.",
+            "Bitte reichen Sie die Bescheinigungen bis zum 31.10.2026 ein.",
+            {"type": "fixed", "date": "2026-10-31"},
+        ),
+        # the time the documents cover, with nothing to send by then
+        (
+            "Wir benötigen die Unterlagen für die Zeit bis zum 15.09.2026.",
+            "Bitte reichen Sie die Unterlagen bis zum 31.10.2026 ein.",
+            {"type": "fixed", "date": "2026-10-31"},
+        ),
+        # a period how long they stay valid, and the sender's own time to check them
+        (
+            "Unterlagen, die Sie einreichen, bleiben 6 Monate nach Zugang dieses Schreibens gültig.",
+            "Bitte reichen Sie die Unterlagen innerhalb von 4 Wochen nach Zugang dieses Schreibens ein.",
+            {"type": "relative", "amount": 4, "unit": "weeks", "anchor": "receipt"},
+        ),
+        (
+            "Wir prüfen die Unterlagen innerhalb von 10 Tagen nach Zugang dieses Schreibens.",
+            "Bitte reichen Sie die Unterlagen innerhalb von 4 Wochen nach Zugang dieses Schreibens ein.",
+            {"type": "relative", "amount": 4, "unit": "weeks", "anchor": "receipt"},
+        ),
+    ],
+    ids=["valid-until", "covers-until", "valid-for-a-period", "checked-within"],
+)
+def test_a_declaration_date_without_the_act_it_is_the_last_day_for_is_no_rival(
+    other: str, quote: str, spec: dict[str, Any]
+) -> None:
+    own = item(quote, kind="deadline", nature="declaration", **spec)
+    [verified] = read(
+        f"Familienkasse Musterstadt, 01.09.2026\n{quote}\n{other}\n", own, kind="authority_letter"
+    )
+    assert verified.rivals == ()
+
+
+def test_a_cancellation_named_after_the_date_in_another_clause_is_no_notice_deadline() -> None:
+    """ "Bitte senden Sie uns die Geräte bis zum 31.12.2026 zurück, wenn Sie gekündigt haben": the date is
+    for the devices, the cancellation only its condition."""
+    text = (
+        f"Muster Kabel GmbH, 01.06.2026\n{CANCEL_BY}\n"
+        "Bitte senden Sie uns die Geräte bis zum 31.12.2026 zurück, wenn Sie gekündigt haben.\n"
+    )
+    [verified] = read(text, fixed(CANCEL_BY, "2026-09-30", nature="notice"), kind="contract")
+    assert verified.rivals == ()
+
+
+@pytest.mark.parametrize(
+    ("text", "words"),
+    [
+        # no salutation: the header ends at its first table, a "Datum" after it is a delivery's
+        ("Muster GmbH\nArtikel   Menge   Preis\nKabel   2   10,00 EUR\nDatum: 05.09.2026\n", []),
+        # a table's "Datum" column before the salutation, its value right under it
+        (
+            "Muster GmbH\nRechnung   Betrag   Datum\nRE-1   120,00 EUR   05.09.2026\nSehr geehrte Damen und Herren,\n",
+            [_box("Datum", 0.7, 0.2), _box("05.09.2026", 0.7, 0.22)],
+        ),
+        # an appointment's date under the "Datum" column
+        (
+            "Muster GmbH\nIhr Termin   Datum\n10:30 Uhr   20.10.2026\nSehr geehrte Damen und Herren,\n",
+            [_box("Datum", 0.7, 0.2), _box("20.10.2026", 0.7, 0.22)],
+        ),
+    ],
+    ids=["after-a-table", "table-column", "appointment-column"],
+)
+def test_a_tables_or_an_appointments_date_column_is_not_the_letters_date(text: str, words: list[Any]) -> None:
+    assert [
+        statement for statement in letter_statements([(1, text, words, "text")]) if statement.letter_date
+    ] == []
 
 
 # --------------------------------------------------------------------------------------------------
@@ -906,6 +1280,21 @@ async def test_a_deadline_the_law_adds_counts_from_the_earlier_of_the_letters_tw
             assert needs_check(court) and court.evidence and not court.evidence[0].value_consistent
             assert register.due_date == "2026-09-30" and not needs_check(register)
             assert document.status == "needs_review"
+
+            # recomputing the letter's dates (a changed region or postal buffer) keeps the earlier, still flagged
+            recompute_document_items(store, document, date(2026, 9, 26))
+            again = store.get_item(court.id)
+            assert again is not None and again.due_date == "2026-10-12" and needs_check(again)
+            assert again.computation is not None and CONFLICTING_DATES in again.computation.rule_ids
+
+            # the person corrects the letter's date to the one in its text: one date, nothing to check
+            patched = await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": "2026-09-21"})
+            assert patched.status_code == 200
+            corrected = store.get_item(court.id)
+            assert corrected is not None and corrected.due_date == "2026-10-12" and not needs_check(corrected)
+            assert (
+                corrected.computation is not None and CONFLICTING_DATES not in corrected.computation.rule_ids
+            )
 
             # once its arrival is confirmed, the law counts from that day: one date, nothing to check
             patched = await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-25"})

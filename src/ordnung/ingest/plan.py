@@ -1295,7 +1295,7 @@ def sync_rule_items(
         if settled is not None:
             receipt = settled.receipt
             two_dates[entry.rule_id] = [
-                ground_evidence(document.id, rival.statement, pages).model_copy(
+                ground_evidence(document.id, rival.evidence, pages).model_copy(
                     update={"value_consistent": False}
                 )
                 for rival in rivals
