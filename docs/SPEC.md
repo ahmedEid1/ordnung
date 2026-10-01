@@ -434,16 +434,31 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 **Two dates for one obligation** (`ingest/conflicts.py`, code only). At **verify**, each dated to-do
 (not a recurring one, money coming in, or one whose sentence speaks of a discount) is checked against
 the letter's other statements of the same nature — a payment's date or period ("Zahlbar bis",
-"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, and for a period counted from the letter a
-date the letter gives for itself ("mit diesem Bescheid vom …") — never its own sentence, another
-to-do's date, a statement naming another amount, another kind of payment (instalments, a prepayment,
-a fee, a direct debit, "erstmals am …") or another remedy, one in the past tense, a due word of another
-label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), or an early-payment discount (*Skonto*:
-paying after it is not late). At **compute** the engine dates each; a same date, or a written date on or
-before the letter's own (the letter's date itself, a reminder's original due date; before the day it
-arrived when the letter's date is unknown), is no conflict. Otherwise the
-to-do keeps the **earlier** date, its receipt names both and says why (`conflicting_dates`), and it is
-`low` and "Please check" — also when the letter's dates are recomputed.
+"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, a notice's or a declaration's date or
+period: a deadline word ("bis (zum)", "spätestens", "by", "no later than"; never a bare "zum": a notice
+"zum 31.12." names its end) or a deadline label ("Abgabefrist:"), with the act it is the last day for
+("einreichen", "vorlegen", "zurücksenden", "bei uns eingehen", "vorliegen", "submit", "be received";
+for a notice the cancellation named before the date in its own clause, or "bis … kündigen"), never a
+date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis", "verlängert sich bis",
+"weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
+and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
+…", or the first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
+page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
+Bescheids") — never its own sentence, another to-do's date, a statement naming another amount, another
+kind of payment (instalments, a prepayment, a fee, a direct debit, "erstmals am …"), another remedy,
+something else to send (the documents' date is not the questionnaire's) or another right to cancel, one
+in the past tense, a due word of another label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), an
+early-payment discount (*Skonto*: paying after it is not late) or an optional earlier day ("möglichst
+bis"). At **compute** the engine dates each; a same date, or a written date on or before the letter's
+own (the letter's date itself, a reminder's original due date; before the day it arrived when the
+letter's date is unknown), a date before the letter's own date as read, or a date the letter gives for
+itself more than 14 days from the one read (another's: an old invoice's, an offence's), is no conflict.
+Otherwise the to-do keeps the **earlier** date, its receipt names both and says why
+(`conflicting_dates`), and it is `low` and "Please check" — also when the letter's dates are recomputed,
+and also when the date read is already the earlier (a header date later than the one read is named all
+the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 692 ZPO, § 558b BGB …) count
+from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
+warning and "Please check" (its evidence the page's line with the other date).
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
