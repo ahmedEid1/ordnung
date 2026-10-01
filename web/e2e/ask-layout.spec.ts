@@ -129,6 +129,32 @@ test.describe("phone", () => {
     expect(markers.map((f) => ({ x: f.rect!.x, y: f.rect!.y })), "only the marker alone in its list item").toEqual([where]);
   });
 
+  // The exemption is a marker's, in the line of the words it backs (review of the rule above): a small text
+  // button on its own line under other text in the same box is still a standalone target, and so is a marker
+  // that starts its own line under a paragraph or after a line break.
+  test("the target-size probe still reports small buttons and markers on a line of their own", async ({ page }) => {
+    // drawn like Ask's marker (17 px, inline-grid, raised); `name` "Source n: …" makes it a marker
+    const btn = (id: string, text: string, name?: string) =>
+      `<button id="${id}" ${name ? `aria-label="${name}"` : ""} style="display:inline-grid;place-items:center;position:relative;top:-0.35em;height:17px;min-width:17px;padding:0 4px;margin-left:2px;border:0;font-size:11px;line-height:1;background:#eef">${text}</button>`;
+    const src = (n: number) => `Source ${n}: Person “Stadtwerke”`;
+    await page.setContent(`<!doctype html><html lang="en"><head><title>Probe</title></head>
+      <body style="font:16px/24px sans-serif;margin:16px"><main><h1>Probe</h1>
+      <p>The phone bill is due soon, 94.99 €&#8288;${btn("after-words", "1", src(1))}${btn("after-marker", "2", src(2))}</p>
+      <p>Paid by <strong>transfer</strong>&#8288;${btn("after-strong", "3", src(3))}</p>
+      <ul><li>${btn("alone", "4", src(4))}</li><li>${btn("alone-run-1", "5", src(5))}${btn("alone-run-2", "6", src(6))}</li></ul>
+      <div style="margin-top:40px"><p>A paragraph with plenty of words above the button.</p>${btn("undo-under-paragraph", "Undo")}</div>
+      <div style="margin-top:40px"><h3 style="margin:0">Reminder</h3><span style="display:block">Some text.</span>${btn("remove-under-heading", "Remove")}</div>
+      <div style="margin-top:40px"><label>Name</label><br>${btn("change-after-br", "Change")}</div>
+      <div style="margin-top:40px"><p>A paragraph with plenty of words above the marker.</p>${btn("marker-under-paragraph", "7", src(7))}</div>
+      <p style="margin-top:40px">Words on the line before<br>${btn("marker-after-br", "8", src(8))}</p>
+      </main></body></html>`);
+    const { findings } = await layoutFindings(page);
+    const reported = findings.filter((f) => f.probe === "target-size").map((f) => /#([\w-]+)/.exec(f.selector)?.[1] ?? f.selector);
+    expect(reported.sort()).toEqual(
+      ["alone", "alone-run-1", "alone-run-2", "undo-under-paragraph", "remove-under-heading", "change-after-br", "marker-under-paragraph", "marker-after-br"].sort(),
+    );
+  });
+
   test("the question box leaves a 320 × 640 screen room: a one-line hint, no deep fade", async ({ page }) => {
     await open(page, "/ask");
     const hint = page.locator("#ask-hint");

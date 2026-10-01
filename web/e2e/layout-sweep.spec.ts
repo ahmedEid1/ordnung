@@ -12,8 +12,9 @@
  *   screen outside a scroll container;
  * - an interactive element smaller than 24 × 24 px (WCAG 2.5.8). Excepted: links in running text (a
  *   citation marker after its words, too — a person's or organisation's marker is a button, and one right
- *   after another marker follows its words as well; a marker alone in a list item is not excepted), and the
- *   evidence highlights on a letter's page image (each has a full-size "show … on the page" button next to
+ *   after another marker follows its words as well; only a marker ("Source n: …"), on the line its words end
+ *   on: a marker alone in a list item or on a line of its own, and any other small text button, are not
+ *   excepted), and the evidence highlights on a letter's page image (each has a full-size "show … on the page" button next to
  *   its fact); a stretched link counts as its whole row;
  * - an interactive element whose centre is covered: by the sticky top bar or the phone's tab bar where
  *   the page can't be scrolled out from under them, or by anything else on the page;
