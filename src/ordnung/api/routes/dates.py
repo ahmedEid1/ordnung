@@ -19,8 +19,10 @@ from datetime import date
 from typing import Any
 
 from ordnung.db.store import Store
+from ordnung.ingest.conflicts import Rival, find_rivals
 from ordnung.ingest.plan import (
     VerifiedItem,
+    checked_evidence,
     compute_item,
     consistency_reasons,
     document_context,
@@ -67,25 +69,39 @@ _KIND_NATURES: dict[str, DateNature] = {"payment": "payment", "appointment": "ap
 # --------------------------------------------------------------------------------------------------
 
 
-def _verified(item: Item, spec: DateSpec, pages: Sequence[Page]) -> VerifiedItem:
-    """The stored item in the shape the pipeline grades: its evidence and quote problems (graded as
-    when the letter was read, so values written elsewhere in the letter still count)."""
+def _extracted(item: Item, spec: DateSpec) -> ExtractedItem:
+    """The stored item as the reading it came from (its first evidence's quote)."""
     evidence = item.evidence[0] if item.evidence else None
-    quote = evidence.quote if evidence else ""
-    extracted = ExtractedItem(
+    return ExtractedItem(
         kind=item.kind,
         title=item.title,
         date=spec,
         amount=item.amount,
+        direction=item.direction,
         recurrence=item.recurrence,
-        quote=quote,
+        quote=evidence.quote if evidence else "",
     )
+
+
+def _verified(
+    item: Item, spec: DateSpec, pages: Sequence[Page], others: Sequence[ExtractedItem] = ()
+) -> VerifiedItem:
+    """The stored item in the shape the pipeline grades: its evidence and quote problems (graded as
+    when the letter was read, so values written elsewhere in the letter still count), and the letter's
+    other statements that date its obligation (``others``: the letter's to-dos as read,
+    :func:`~ordnung.ingest.conflicts.find_rivals`) — none once the person confirmed its date."""
+    evidence = item.evidence[0] if item.evidence else None
+    extracted = _extracted(item, spec)
     reasons: tuple[str, ...] = ()
+    rivals: tuple[Rival, ...] = ()
     if evidence is not None and item.grounding != "user":
         reasons = consistency_reasons(extracted, pages)
+        rivals = find_rivals(extracted, [extracted, *others], pages)
     grounding = "user" if item.grounding == "user" else (evidence.grounding if evidence else "unverified")
     graded = (evidence or _placeholder_evidence(item)).model_copy(update={"grounding": grounding})
-    return VerifiedItem(item=extracted, evidence=graded, reasons=reasons, slot_key=item.slot_key or item.id)
+    return VerifiedItem(
+        item=extracted, evidence=graded, reasons=reasons, slot_key=item.slot_key or item.id, rivals=rivals
+    )
 
 
 def _placeholder_evidence(item: Item) -> Evidence:
@@ -131,12 +147,19 @@ def recompute_document_items(
     changed: list[Item] = []
     contexts = item_contexts()
     with store.tx():
-        for item in store.list_items(doc_id=document.id):
+        stored = store.list_items(doc_id=document.id)
+        read = {
+            other.id: _extracted(other, other.date_spec)
+            for other in stored
+            if other.origin == "extracted" and other.date_spec is not None
+        }
+        for item in stored:
             if not recomputable(item) or item.date_spec is None:
                 continue
             contract = store.get_contract(item.contract_id) if item.contract_id else None
             item_ctx = rent_context(store, item, for_item(ctx, item, note, contract))
-            verified = _verified(item, item.date_spec, pages)
+            others = [extracted for other_id, extracted in read.items() if other_id != item.id]
+            verified = _verified(item, item.date_spec, pages, others)
             result = with_payment_note(
                 compute_item(verified, item_ctx, postal_buffer_days=buffer), item, note
             )
@@ -158,7 +181,10 @@ def recompute_document_items(
             moved = rolled(recomputed, item_ctx, postal_buffer_days=buffer, ends=ends) or recomputed
             if keeps_later_date(item, item.recurrence, item.date_spec, moved.due_date, item_ctx):
                 moved = at_occurrence(recomputed, item.due_date, item_ctx, postal_buffer_days=buffer) or item
-            fields = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
+            fields: dict[str, Any] = {name: getattr(moved, name) for name in SCHEDULE_FIELDS}
+            if result.conflict and item.evidence and item.evidence[0].value_consistent:
+                # the letter gives the to-do two dates: "Please check", as when it was read
+                fields["evidence"] = [checked_evidence(verified, result), *item.evidence[1:]]
             if any(getattr(item, name) != value for name, value in fields.items()):
                 changed.append(store.update_item(item.id, **fields))
         contracts = [item.contract_id for item in store.list_items(doc_id=document.id)]

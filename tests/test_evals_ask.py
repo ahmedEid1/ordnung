@@ -255,6 +255,13 @@ def test_correctness_needs_every_gold_value() -> None:
             True,
         ),
         ("I found your gas contract: 48.00 € a month.", False),
+        # Ask prompt 10: the first paragraph says only that nothing is on record, in these words
+        (
+            "Ordnung has no gas contract or gas bill on record.\n\nThe only energy contract is an electricity one.",
+            True,
+        ),
+        ("Ordnung has no due date on record for the 19.90 € enrolment fee.", False),  # a value: an answer
+        ("Your electricity contract costs 48.00 € a month; Ordnung has no gas contract on record.", False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"

@@ -204,6 +204,17 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         None,
     ),
     (
+        "conflicting_dates",
+        "Two dates in the letter for the same thing",
+        "Ordnung safety policy (SPEC § 21)",
+        "When a letter gives two different dates for the same payment or deadline (a period in the text "
+        "and another date in the payment box, or two dates for the letter itself), Ordnung keeps the "
+        "earlier one — acting by it is on time whichever applies —, names both and marks the to-do "
+        "'Please check' (low confidence).",
+        None,
+        None,
+    ),
+    (
         "backward_no_shift",
         "Periods counted backwards never move later",
         "§ 193 BGB; Ordnung safety policy",

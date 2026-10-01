@@ -431,6 +431,20 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    contradicts is dropped, a failing IBAN is said once in Ordnung's words; UI audit R1-backend-7).
 7. **done** — status `processed`/`needs_review`, `ai_processed_at`, activity log entry, SSE events.
 
+**Two dates for one obligation** (`ingest/conflicts.py`, code only). At **verify**, each dated to-do
+(not a recurring one, money coming in, or one whose sentence speaks of a discount) is checked against
+the letter's other statements of the same nature — a payment's date or period ("Zahlbar bis",
+"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, and for a period counted from the letter a
+date the letter gives for itself ("mit diesem Bescheid vom …") — never its own sentence, another
+to-do's date, a statement naming another amount, another kind of payment (instalments, a prepayment,
+a fee, a direct debit, "erstmals am …") or another remedy, one in the past tense, a due word of another
+label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), or an early-payment discount (*Skonto*:
+paying after it is not late). At **compute** the engine dates each; a same date, or a written date on or
+before the letter's own (the letter's date itself, a reminder's original due date; before the day it
+arrived when the letter's date is unknown), is no conflict. Otherwise the
+to-do keeps the **earlier** date, its receipt names both and says why (`conflicting_dates`), and it is
+`low` and "Please check" — also when the letter's dates are recomputed.
+
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
 ("Reading the text"); a scanned PDF shows both.
@@ -554,7 +568,11 @@ whose adding was stopped before its attachments adds them.
 - **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash). The
   code-written note is served as the ledger stands (a stored one only while it still says the same),
   and while letters from the watched folder wait unread it never says "all clear": "Nothing is due in
-  the next 7 days from the letters that were read." (the count is not sent to the model).
+  the next 7 days from the letters that were read." (the count is not sent to the model). The model sees
+  each to-do's dates labelled — `due`, and `send_by` when a transfer or letter must go out earlier — and
+  a note that calls a send-by day "due"/"fällig" for the to-do it names (written out, or as "today",
+  "tomorrow" or a weekday) is rejected for the code-written note, which says "send by …, due …" (a fee
+  paid at an appointment is listed on the appointment's day).
 - **Weekly session** (`secretary/week.py`, policy in its docstring; `views.weekly_session`) — a guided
   ~10-minute review composed from the agenda, the money summary, drafts and to-dos: *act now* (only when
   a deadline, task or appointment is overdue or to act on today, a missed send-by day included) · new
@@ -751,16 +769,18 @@ HTML and without remote images.
   label) — what was checked, not every claim. A checked answer is stored with the label (alone when
   nothing changed), so an answer stored before this check is never shown as checked; a model sentence
   that starts like the note — also with look-alike letters or across a soft line break — is left out.
-- **The prompt** (`ask_system` version 9: since 7 a to-do's own words are letter text, since 8 a year
+- **The prompt** (`ask_system` version 10: since 7 a to-do's own words are letter text, since 8 a year
   standing alone in its title too, since 9 a matter's open to-dos and appointments are looked up before
-  the answer says what to do) says what the check does: a value only a letter holds is not
-  stated (it would be shown as "[… only in the letter]", however the sentence frames it), only a cited
-  record's flagged amount and the person's own words stay as quotes (a `terms_unverified` contract's
-  term dates are left out, its cost stays), today's date is checked like any other date, each sentence
-  and list item cites its own record, the record's legal statements keep their hedges, German answers
-  use "Sie", and a `do_not_pay` demand is not to be paid until checked with the sender. It names every
-  ledger tool (`get_my_numbers` too) and the app's buttons by their labels ("Add your dates to your
-  calendar"). Every demo and benchmark answer was recorded with it.
+  the answer says what to do, since 10, when the records hold nothing on the question, the first
+  paragraph says only that — no date, amount or other record — and a related record may follow in a
+  paragraph of its own; the check keeps the answer's paragraph breaks) says what the check does: a value
+  only a letter holds is not stated (it would be shown as "[… only in the letter]", however the sentence
+  frames it), only a cited record's flagged amount and the person's own words stay as quotes (a
+  `terms_unverified` contract's term dates are left out, its cost stays), today's date is checked like
+  any other date, each sentence and list item cites its own record, the record's legal statements keep
+  their hedges, German answers use "Sie", and a `do_not_pay` demand is not to be paid until checked with
+  the sender. It names every ledger tool (`get_my_numbers` too) and the app's buttons by their labels
+  ("Add your dates to your calendar"). Every demo and benchmark answer was recorded with it.
 
 **Rules tools** (`assistant/rules_tools.py`, no ledger): `compute_deadline(spec, document_date?,
 sender_kind?, sender_name?, remedy_type?, region?, recipient_region?, received_date?, today?)` —
@@ -1574,12 +1594,33 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
 DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
 English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
-quote — never elsewhere in the letter ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third
-working day", "3rd business day"; 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else
-`working_day_not_in_quote`: the working day still dates the item, one confidence level lower with a note.
-A recurrence's day of the month likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st",
-"Monatsanfang" for 1, "Monatsende" or "zum Letzten" for 31), else `day_of_month_not_in_quote`. Mismatch →
-"Please check". UI never says "verified"; it says
+quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
+1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
+working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
+likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
+"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): three
+or more dates on that day a whole number of the recurrence's intervals apart ("fällig jeweils am 10.03.,
+10.06., 10.09. und 10.12." every 3 months, also with dashes between them), or two such dates one list joins
+after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen"); a date without a
+year beside due wording for a recurrence of a year or more ("Hauptfälligkeit 01.12.", "zum 01.12. fällig");
+or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines jeden Jahres", "each year on
+…" for a yearly one, "every quarter on …", "every three months on …"). Never a date that starts the schedule
+("ab dem 01.11.2026", "from 1 November 2026", "beginning …", "beginnt am", "Versicherungsbeginn:",
+"erstmals", "die erste Rate …", "first payment on …"), one that dates a letter or an invoice or ends
+something ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am", "Vertragsende"), a clause number that
+reads like a date ("Ziffer 1.3.", "Nr. 1.1.", "§ 2.1."), a single date on its own or a period's two dates
+("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
+
+A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
+letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
+"Beitrag", "Miete", "debit" … as whole words or compound parts, never inside another word such as "Mieter"
+or "Anzahl"; never a sentence about a notice period, cancellation, objection, late fees or a contract's
+start or end, nor a date with a month name unless its dates state a schedule as above) name exactly one
+working day or day of the month, and it is the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
+hyphenated words ("Monats-" / "anfang"). That
+sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text
+page, `model_read` on a transcript), and no reason is raised. No such day, another one, two different
+ones, or a quote naming another day keep the reason (`plan.day_evidence`). UI never says "verified"; it says
 "Found in the letter (p. 2)" / "Read by AI from the photo" / "Couldn't find this — please check".
 
 **Injection defences.** Extraction has no tools (content blocks via stdin). All document-derived

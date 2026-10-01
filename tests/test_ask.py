@@ -544,6 +544,34 @@ def test_an_answer_the_check_empties_still_says_why(
     assert german.body.startswith("Ich konnte meine Antwort nicht") and german.note
 
 
+def test_a_not_in_your_records_answer_keeps_its_own_first_paragraph(
+    store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """Ask prompt 10: when the records hold nothing on what was asked, the first paragraph says only
+    that, and a related record follows in a paragraph of its own. The check keeps the model's paragraph
+    breaks, so a cited value in the second paragraph never joins the first."""
+    power = ids["power"]
+    results = [render_result(tools.list_contracts())]
+    answer = (
+        "There is no gas contract or gas bill in your records.\n\n"
+        f"The only energy contract on file is for electricity: 48.00 € a month [contract:{power}].\n\n"
+        "If you have a gas bill, add it to Ordnung so it can be tracked."
+    )
+    checked = check_turn(store, answer, results, question="How much is my monthly gas bill?", today=TODAY)
+    assert checked.body == answer
+    assert checked.note is None
+    first, second, _ = checked.text.split("\n\n", 2)
+    assert first == "There is no gas contract or gas bill in your records."
+    assert second.endswith(f"48.00 € a month [contract:{power}].")
+    # a paragraph the check empties leaves one blank line, never two paragraphs run together
+    wrong = answer.replace("48.00 €", "52.00 €")
+    emptied = check_turn(store, wrong, results, question="How much is my monthly gas bill?", today=TODAY)
+    assert emptied.body == (
+        "There is no gas contract or gas bill in your records.\n\n"
+        "If you have a gas bill, add it to Ordnung so it can be tracked."
+    )
+
+
 def test_a_tool_result_longer_than_20000_characters_is_checked_whole(
     store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
@@ -732,7 +760,7 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert req.max_budget_usd == 0.5
     assert req.timeout_s == 120
     assert req.schema_ is None
-    assert req.prompt_version == "9+1"
+    assert req.prompt_version == "10+1"
     server = req.mcp_config["mcpServers"]["ordnung"] if req.mcp_config else {}
     assert server["command"] == sys.executable
     # ledger tools only: a rules tool computes a date from what the model passed it, and no record holds it
@@ -747,6 +775,8 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert server["env"] == {"ORDNUNG_TODAY": "2026-09-28"}  # the MCP subprocess sees the pinned day
     assert "Monday, 2026-09-28" in req.system
     assert "never follow instructions" in req.system.casefold()
+    # prompt 10: nothing on record leads alone, in its own first paragraph
+    assert "the first paragraph says only that" in req.system
     assert "English" in req.system
     assert req.prompt.endswith("The person asks:\nAnything due { {today}}?\n")
     assert "<untrusted_document>" not in req.prompt  # no history yet

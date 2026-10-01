@@ -426,6 +426,14 @@ describe("UI audit round 1: verdict details", () => {
     expect(usesLaw(makeItem({ computation: null }))).toBe(false);
   });
 
+  it("applies no law when it keeps the earlier of two dates the letter gives", () => {
+    const receipt = (rule_ids: string[]) => makeReceipt({ rule_ids });
+    expect(usesLaw(makeItem({ kind: "expiry", title: "Passport expires", computation: receipt(["date_as_written", "conflicting_dates"]) }))).toBe(false);
+    expect(usesLaw(makeItem({ kind: "payment", title: "Monthly fee", action: "Keep funds for the SEPA direct debit.", computation: receipt(["date_as_written", "bgb_675s", "conflicting_dates"]) }))).toBe(false);
+    // a period counted by law still is
+    expect(usesLaw(makeItem({ computation: receipt(["bgb_187_1", "bgb_188", "conflicting_dates"]) }))).toBe(true);
+  });
+
   it("finds the letter the person already started (the newest of that kind)", () => {
     const older = { id: "d1", kind: "objection", status: "draft", updated_at: "2026-09-20T10:00:00Z" } as Draft;
     const newer = { id: "d2", kind: "objection", status: "sent", updated_at: "2026-09-25T10:00:00Z" } as Draft;

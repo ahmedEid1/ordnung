@@ -1,0 +1,241 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"How much do I have to pay for the semester fee for the summer semester 2027, and by when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_nba3k0ka85q0"
+    ],
+    "prompt_head": "The person asks:\nHow much do I have to pay for the semester fee for the summer semester 2027, and by when?\n"
+  },
+  "response": {
+    "text": "The semester fee for summer semester 2027 is **312.40 €**, due by **Fri 15 Jan 2027** [item:itm_85xesrap412m].\n\n- Payee: Hochschule Musterstadt, using reference \"4711123 SoSe 2027\" [doc:doc_nba3k0ka85q0].\n- Ordnung's record also notes a send-by date of 14 Jan 2027 to make sure it arrives in time [item:itm_85xesrap412m].\n- Note: from this semester the Deutschlandsemesterticket is included in the fee — if you have a separate Deutschlandticket subscription, there's a related to-do to cancel it in time [item:itm_kn5zf3bdwew8].",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 392,
+      "cache_read_tokens": 20655,
+      "cache_creation_tokens": 5033,
+      "cost_usd": 0.028194999999999998,
+      "duration_ms": 8220,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Semesterbeitrag Sommersemester 2027"
+      },
+      "tool_use_id": "toolu_01LSjqfuqRkWXvBRQdwGqRz7"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"party_id\":\"pty_fhp8fzemmzvt\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"snippet\":\"…Sommersemester 2027 Nach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das Deutschlandsemesterticket im Semesterbeitrag…\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LSjqfuqRkWXvBRQdwGqRz7"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_nba3k0ka85q0"
+      },
+      "tool_use_id": "toolu_017k5Lpk41QtfJsjSnFUp4zX"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_nba3k0ka85q0\",\"kind\":\"university\",\"date\":\"2026-09-01\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-03\",\"language\":\"de\",\"party_id\":\"pty_fhp8fzemmzvt\",\"case_id\":\"cas_9ym6hn1y9zwb\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"amount\":312.4,\"currency\":\"EUR\"},{\"id\":\"itm_kn5zf3bdwew8\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_kn5zf3bdwew8\":{\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\"},\"doc_nba3k0ka85q0\":{\"tax_note\":\"As a Master's programme following a first degree, semester and study-related costs may be claimable as income-related expenses (Werbungskosten) for a second degree (Zweitausbildung) — keep this letter and the payment proof for the tax return.\",\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"summary\":\"Hochschule Musterstadt confirms that Sam Rivera's re-registration (Rückmeldung) for winter semester 2026/27 is complete and encloses the enrollment certificate. To re-register for summer semester 2027, the semester fee of €312.40 must reach the university's account by 15 January 2027.\",\"explanation\":\"Your university confirms you are enrolled for winter semester 2026/27 and includes your enrollment certificate (Immatrikulationsbescheinigung). To stay enrolled for summer semester 2027 you don't file a separate form — you simply transfer the semester fee of €312.40 so it arrives in the university's account by the deadline shown; the re-registration window opens 1 December 2026. Paying late adds a €15.00 late fee, and if the fee is not received in time you risk being deregistered (Exmatrikulation). From summer semester 2027 the Deutschlandsemesterticket is included in this fee — if you separately hold a Deutschlandticket subscription, remember to cancel it in time so you don't pay for two tickets.\",\"key_facts\":[{\"label\":\"Matriculation number (Matrikelnummer)\",\"value\":\"4711123\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Programme (Studiengang)\",\"value\":\"Data Science (M.Sc.)\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Semester fee (Semesterbeitrag)\",\"value\":\"312,40 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Re-registration period start (Rückmeldezeitraum)\",\"value\":\"01.12.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Late fee (Säumnisgebühr)\",\"value\":\"15,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Risk of non-payment\",\"value\":\"Exmatrikulation\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Deutschlandsemesterticket validity\",\"value\":\"01.04.–30.09.2027\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Deadline to cancel a separate Deutschlandticket subscription\",\"value\":\"31.03.2027\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}],\"payment\":{\"iban\":\"DE10123456000007700220\",\"payee\":\"Hochschule Musterstadt\",\"reference\":\"4711123 SoSe 2027\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nStudierendenservice\\nHochschule Musterstadt   Studierendensekretariat\\nHochschulallee 1\\nUniversity of Applied Sciences   12347 Musterstadt\\nwww.hs-musterstadt.example\\n\\nMatrikelnummer 4711123\\nStudiengang   Data Science (M.Sc.)\\nHochschule Musterstadt · Hochschulallee 1 · 12347 Musterstadt   Studierendenservice\\nIhr Kontakt\\nTelefon   0123 7788-2210\\nHerrn\\nDatum   01.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nSemesterunterlagen Wintersemester 2026/27 und Rückmeldung zum\\nSommersemester 2027\\n\\nSehr geehrter Herr Rivera,\\n\\nIhre Rückmeldung zum Wintersemester 2026/27 ist abgeschlossen. Anbei erhalten Sie Ihre\\nImmatrikulationsbescheinigung.\\n\\nRückmeldung zum Sommersemester 2027\\nDie Rückmeldung zum Sommersemester 2027 erfolgt ausschließlich durch die fristgerechte Zahlung\\ndes Semesterbeitrags. Der Rückmeldezeitraum beginnt am 01.12.2026. Der Semesterbeitrag in Höhe\\nvon 312,40 € muss bis spätestens zum 15.01.2027 auf dem unten genannten Konto der Hochschule\\neingegangen sein.\\n\\nZusammensetzung des Semesterbeitrags   Betrag\\n\\nSozialbeitrag Studierendenwerk Musterstadt   68,00 €\\n\\nBeitrag der Studierendenschaft   17,60 €\\n\\nDeutschlandsemesterticket (6 × 37,80 €)   226,80 €\\n\\nSemesterbeitrag Sommersemester 2027   312,40 €\\n\\nZahlungsangaben\\n\\nEmpfänger: Hochschule Musterstadt · IBAN DE10 1234 5600 0007 7002 20 · BIC MUSKDEM1XXX\\nVerwendungszweck (bitte unbedingt angeben): 4711123 SoSe 2027\\n\\nBei späterem Zahlungseingang wird eine Säumnisgebühr von 15,00 € erhoben. Ohne fristgerechte\\nRückmeldung droht die Exmatrikulation (§ 51 Abs. 2 HG NRW).\\n\\nNeu: Deutschlandsemesterticket ab dem Sommersemester 2027\\nNach der Urabstimmung der Studierendenschaft ist ab dem Sommersemester 2027 das\\nDeutschlandsemesterticket im Semesterbeitrag enthalten (gültig 01.04.–30.09.2027). Falls Sie ein\\nDeutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027\\nzu kündigen.\\n\\nMit freundlichen Grüßen\\nIhr Studierendenservice\\n\\nDieses Schreiben wurde maschinell erstellt und ist ohne Unterschrift gültig.\\n\\nHochschule Musterstadt   Studierendenservice, Gebäude A, Raum A 0.12   Sparkasse Musterstadt\\nHochschulallee 1 · 12347 Musterstadt   Mo, Di, Do 9–12 Uhr, Mi 13–16 Uhr   IBAN DE10 1234 5600 0007 7002 20\\nwww.hs-musterstadt.example   Telefon 0123 7788-2210   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_017k5Lpk41QtfJsjSnFUp4zX"
+    },
+    {
+      "type": "text",
+      "text": "The semester fee for summer"
+    },
+    {
+      "type": "text",
+      "text": " semester 2027 is **"
+    },
+    {
+      "type": "text",
+      "text": "312"
+    },
+    {
+      "type": "text",
+      "text": ".40 €**"
+    },
+    {
+      "type": "text",
+      "text": ", due by **"
+    },
+    {
+      "type": "text",
+      "text": "Fri 15 Jan"
+    },
+    {
+      "type": "text",
+      "text": " 2027** [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_85xesrap412"
+    },
+    {
+      "type": "text",
+      "text": "m]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n- Pay"
+    },
+    {
+      "type": "text",
+      "text": "ee: Hochschule"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt,"
+    },
+    {
+      "type": "text",
+      "text": " using"
+    },
+    {
+      "type": "text",
+      "text": " reference \""
+    },
+    {
+      "type": "text",
+      "text": "4711123 SoSe"
+    },
+    {
+      "type": "text",
+      "text": " 2027\" [do"
+    },
+    {
+      "type": "text",
+      "text": "c:do"
+    },
+    {
+      "type": "text",
+      "text": "c_nba3k0"
+    },
+    {
+      "type": "text",
+      "text": "ka85q0].\n-"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung's record also not"
+    },
+    {
+      "type": "text",
+      "text": "es a"
+    },
+    {
+      "type": "text",
+      "text": " send-by date of 14"
+    },
+    {
+      "type": "text",
+      "text": " Jan 2027 "
+    },
+    {
+      "type": "text",
+      "text": "to make sure it arrives"
+    },
+    {
+      "type": "text",
+      "text": " in time [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "85xesrap412m]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Note: from"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": " sem"
+    },
+    {
+      "type": "text",
+      "text": "ester the"
+    },
+    {
+      "type": "text",
+      "text": " Deutschlandsemes"
+    },
+    {
+      "type": "text",
+      "text": "terticket is included in the f"
+    },
+    {
+      "type": "text",
+      "text": "ee — if"
+    },
+    {
+      "type": "text",
+      "text": " you have"
+    },
+    {
+      "type": "text",
+      "text": " a separate Deutschl"
+    },
+    {
+      "type": "text",
+      "text": "andticket subscription, there"
+    },
+    {
+      "type": "text",
+      "text": "'s a related to-do to"
+    },
+    {
+      "type": "text",
+      "text": " cancel it in"
+    },
+    {
+      "type": "text",
+      "text": " time [item:itm_k"
+    },
+    {
+      "type": "text",
+      "text": "n5zf3bdw"
+    },
+    {
+      "type": "text",
+      "text": "ew8]."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "The semester fee for summer semester 2027 is **312.40 €**, due by **Fri 15 Jan 2027** [item:itm_85xesrap412m].\n\n- Payee: Hochschule Musterstadt, using reference \"4711123 SoSe 2027\" [doc:doc_nba3k0ka85q0].\n- Ordnung's record also notes a send-by date of 14 Jan 2027 to make sure it arrives in time [item:itm_85xesrap412m].\n- Note: from this semester the Deutschlandsemesterticket is included in the fee — if you have a separate Deutschlandticket subscription, there's a related to-do to cancel it in time [item:itm_kn5zf3bdwew8].",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 392,
+          "cache_read_tokens": 20655,
+          "cache_creation_tokens": 5033,
+          "cost_usd": 0.028194999999999998,
+          "duration_ms": 8220,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

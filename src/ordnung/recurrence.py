@@ -55,8 +55,9 @@ limits, not bugs):
    gives it a date, which replaces the law's for every month (point 2; a later one says so on its
    receipt: :func:`over_the_law`). The same schedule read with the working day the law gave it is the
    same schedule (point 6). A rule in days or weeks has no working day. A working day the reading gives
-   dates the item even when the item's quote doesn't name it, but then one confidence level lower, with
-   a note to check it, and the item is "Please check" (``WORKING_DAY_NOT_IN_QUOTE``:
+   dates the item even when the item's quote doesn't name it, but then — unless the letter's one sentence
+   about when the payment is due states it (:func:`~ordnung.ingest.plan.day_evidence`) — one confidence
+   level lower, with a note to check it, and the item is "Please check" (``WORKING_DAY_NOT_IN_QUOTE``:
    :func:`~ordnung.ingest.plan.consistency_reasons`).
 9. A later rent replaces the one it changes, from the month it starts (:func:`replacement`). The rents of a
    rent contract are its to-dos linked to it that pay out every month (not dismissed: :func:`is_rent`); each
@@ -100,7 +101,9 @@ limits, not bugs):
    law's third working day (point 8); a later rent keeps the due day of the one it follows (point 9) over a
    day of the month its own reading gives (often the day it starts on: "ab dem 01.11.2026"). A day of the
    month the reading gives dates the item even when its quote doesn't name it, graded as a working day
-   is (``DAY_OF_MONTH_NOT_IN_QUOTE``).
+   is (``DAY_OF_MONTH_NOT_IN_QUOTE``); dates that state it as the schedule name it (quarterly dates on the
+   10th, a yearly due day without a year, "Hauptfälligkeit 01.12.":
+   :func:`~ordnung.ingest.verify.schedule_days_named`), a single start date never does.
 """
 
 from __future__ import annotations

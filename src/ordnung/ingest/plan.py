@@ -2,7 +2,8 @@
 
 * :func:`verify_extraction` grounds every quote on the page texts (text layer → ``verified``,
   AI transcript → ``model_read``, not found → ``unverified``) and checks each item's DateSpec and
-  amount against its quote (:func:`~ordnung.ingest.verify.spec_consistency`).
+  amount against its quote (:func:`~ordnung.ingest.verify.spec_consistency`); a recurring to-do's due
+  day its quote doesn't name is grounded on the letter's sentence that states it (:func:`day_evidence`).
 * :func:`compute_item` runs the rules engine and lowers the confidence per the § 21 rubric using
   the grounding and consistency results, listing the reasons in the receipt's warnings.
 * :func:`write_plan` upserts items by ``slot_key`` (never touching rows the person edited), deletes
@@ -29,12 +30,16 @@ from typing import Any, Literal
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
+from ordnung.ingest.conflicts import Rival, find_rivals, settle
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
     AMOUNT_NOT_IN_QUOTE,
     DATE_NOT_IN_QUOTE,
     DATE_WITHOUT_YEAR,
+    DAY_OF_MONTH_NOT_IN_QUOTE,
+    WORKING_DAY_NOT_IN_QUOTE,
+    DueDay,
     PageInput,
     check_quote,
     day_of_month_consistency,
@@ -42,6 +47,7 @@ from ordnung.ingest.verify import (
     ground_evidence,
     parse_amounts,
     parse_dates,
+    payment_day_sentence,
     spec_consistency,
     working_day_consistency,
 )
@@ -143,12 +149,22 @@ def slot_keys(items: Sequence[ExtractedItem]) -> list[str]:
 
 @dataclass(frozen=True)
 class VerifiedItem:
-    """An extracted item with its evidence and the problems found between its values and quote."""
+    """An extracted item with its evidence and the problems found between its values and quote, and the
+    sentence elsewhere in the letter that states its recurrence's due day when its quote doesn't
+    (:func:`day_evidence`). ``rivals``: the letter's other statements that date the same obligation
+    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle."""
 
     item: ExtractedItem
     evidence: Evidence
     reasons: tuple[str, ...]
     slot_key: str
+    rivals: tuple[Rival, ...] = ()
+    day_evidence: Evidence | None = None
+
+    @property
+    def all_evidence(self) -> list[Evidence]:
+        """The to-do's evidence: its own sentence, then the one stating its due day (if any)."""
+        return [self.evidence] if self.day_evidence is None else [self.evidence, self.day_evidence]
 
     @property
     def dated(self) -> bool:
@@ -207,8 +223,10 @@ def _page_text(page: PageInput) -> str:
 
 def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageInput]) -> bool:
     """Whether a value missing from the item's own sentence is written elsewhere in the letter
-    (e.g. the invoice total two lines above "payable within 14 days"), or is a schedule's
-    occurrence rather than a single stated date."""
+    (e.g. the invoice total two lines above "payable within 14 days", a monthly debit's day in the letter's
+    payment terms: :func:`day_evidence`), or is a schedule's occurrence rather than a single stated date."""
+    if reason in (WORKING_DAY_NOT_IN_QUOTE, DAY_OF_MONTH_NOT_IN_QUOTE):
+        return day_evidence("", item, pages) is not None
     if reason == AMOUNT_NOT_IN_QUOTE and item.amount is not None:
         return any(
             abs(value - item.amount) < 0.005 for page in pages for value in parse_amounts(_page_text(page))
@@ -225,6 +243,37 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
     return False
 
 
+def _due_day(item: ExtractedItem) -> DueDay | None:
+    """The due day of the item's recurrence that its quote doesn't name: its working day, else the day of the
+    month it dates each month by (``None`` when the quote names it, or there is none)."""
+    rule = item.recurrence
+    working_day = rule.working_day if rule is not None else None
+    if working_day_consistency(item.quote, working_day):
+        return ("working_day", working_day) if working_day is not None else None
+    day = rule_day_of_month(rule)
+    if day_of_month_consistency(item.quote, day, rule):
+        return ("day_of_month", day) if day is not None else None
+    return None
+
+
+def day_evidence(doc_id: str, item: ExtractedItem, pages: Sequence[PageInput]) -> Evidence | None:
+    """Evidence for a recurring to-do's due day (working day or day of the month) its quote doesn't name: the
+    letter's one sentence that states it as the day the payment is due
+    (:func:`~ordnung.ingest.verify.payment_day_sentence`: "Zahlungsweise SEPA-Lastschrift, Abbuchung zum
+    Monatsanfang" for "every month on the 1st"), grounded like any quote (``verified`` with boxes on a text
+    page, ``model_read`` on a transcript). ``None`` when the quote names the day, the letter states no such
+    day, another one or two different ones, or the sentence isn't found on the pages — the day then stays
+    unconfirmed (``WORKING_DAY_NOT_IN_QUOTE`` / ``DAY_OF_MONTH_NOT_IN_QUOTE``)."""
+    due = _due_day(item)
+    if due is None:
+        return None
+    sentence = payment_day_sentence([_page_text(page) for page in pages], due, item.quote, item.recurrence)
+    if sentence is None:
+        return None
+    evidence = ground_evidence(doc_id, sentence, pages)
+    return None if evidence.grounding == "unverified" else evidence
+
+
 def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tuple[str, ...]:
     """Why the item's quote doesn't state its DateSpec, amount, working day or day of the month — a date or
     amount written elsewhere in the letter excepted (the same grading when a letter is read and when its
@@ -238,25 +287,40 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
     working day still dates the to-do (:mod:`ordnung.recurrence`, point 8). A day of the month that dates it
     (``recurrence.day_of_month`` without a working day, point 10) is graded the same way
-    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``)."""
+    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words,
+    or by dates that state it as the recurrence's schedule ("fällig jeweils am 10.03., 10.06., 10.09. und
+    10.12.", never a single start date: :func:`~ordnung.ingest.verify.schedule_days_named`). Either day
+    counts as stated, too, when the letter's one sentence about when the payment is due states it
+    (:func:`day_evidence`, which the to-do gets as its evidence)."""
     found: list[str] = []
     if item.date.type != "none" or item.amount is not None:
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
-    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence))
+    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence), item.recurrence)
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 
 def _verify_item(
-    doc_id: str, item: ExtractedItem, key: str, pages: Sequence[PageInput], *, index: int, trace: Span
+    doc_id: str,
+    item: ExtractedItem,
+    key: str,
+    pages: Sequence[PageInput],
+    *,
+    others: Sequence[ExtractedItem],
+    index: int,
+    trace: Span,
 ) -> VerifiedItem:
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
         reasons = consistency_reasons(item, pages)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
+        day = day_evidence(doc_id, item, pages)
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
-    return VerifiedItem(item=item, evidence=evidence, reasons=reasons, slot_key=key)
+    rivals = find_rivals(item, others, pages)
+    return VerifiedItem(
+        item=item, evidence=evidence, reasons=reasons, slot_key=key, rivals=rivals, day_evidence=day
+    )
 
 
 def _grounded(
@@ -291,7 +355,7 @@ def verify_extraction(
     """
     with trace.span("verify", "Check quotes", key="quotes", stage="verify") as step:
         items = [
-            _verify_item(doc_id, item, key, pages, index=index, trace=step)
+            _verify_item(doc_id, item, key, pages, others=extraction.items, index=index, trace=step)
             for index, (item, key) in enumerate(
                 zip(extraction.items, slot_keys(extraction.items), strict=True)
             )
@@ -327,7 +391,7 @@ def verify_extraction(
         )
         verification.warnings = _verification_warnings(verification)
         grounded = [
-            *(verified.evidence for verified in items),
+            *(evidence for verified in items for evidence in verified.all_evidence),
             *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
             *verification.contract_evidence,
             *(e for e in (verification.change_evidence, verification.remedy_evidence) if e is not None),
@@ -522,12 +586,15 @@ def own_context(store: Store, item: Item, today: date) -> RuleContext:
 
 @dataclass(frozen=True)
 class ComputedDate:
-    """The rules engine's result for one item."""
+    """The rules engine's result for one item. ``conflict``: the letter gives the item another date
+    too; the earlier one was kept (:func:`~ordnung.ingest.conflicts.settle`) and the item is "Please
+    check" (:func:`checked_evidence`)."""
 
     receipt: ComputationReceipt | None
     due_date: str | None
     send_by: str | None
     source: DueDateSource
+    conflict: bool = False
 
 
 def grade_receipt(receipt: ComputationReceipt, verified: VerifiedItem) -> ComputationReceipt:
@@ -549,10 +616,27 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
     ctx = replace(ctx, quote=verified.item.quote)
     receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
-    source: DueDateSource = (
-        "none" if receipt.due_date is None else ("fixed" if spec.type == "fixed" else "computed")
+    fixed = spec.type == "fixed"
+    settled = settle(receipt, verified.item, verified.rivals, ctx, postal_buffer_days=postal_buffer_days)
+    if settled is not None:
+        receipt, fixed = settled.receipt, settled.fixed
+    source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
+    return ComputedDate(
+        receipt=receipt,
+        due_date=receipt.due_date,
+        send_by=receipt.send_by,
+        source=source,
+        conflict=settled is not None,
     )
-    return ComputedDate(receipt=receipt, due_date=receipt.due_date, send_by=receipt.send_by, source=source)
+
+
+def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:
+    """The item's evidence as stored: not ``value_consistent`` when the letter gives the item two dates
+    (``computed.conflict``) — its quote states only one of them, so the to-do is "Please check"
+    (:func:`needs_check`)."""
+    if not computed.conflict:
+        return verified.evidence
+    return verified.evidence.model_copy(update={"value_consistent": False})
 
 
 def is_statement(kind: str | None, extraction: DocumentExtraction | None, *, chosen: bool = False) -> bool:
@@ -943,7 +1027,8 @@ def _item_fields(
         "party_id": links.party.id if links.party else None,
         "case_id": links.case.id if links.case else None,
         "contract_id": links.contract.id if links.contract else None,
-        "evidence": [verified.evidence],
+        # its own quote (checked for a second date), then the sentence stating its due day, if any
+        "evidence": [checked_evidence(verified, computed), *verified.all_evidence[1:]],
         "grounding": verified.evidence.grounding,
         "due_date_source": computed.source,
         "origin": "extracted",

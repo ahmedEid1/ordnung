@@ -77,6 +77,7 @@ ABSTAIN = re.compile(
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:in|among)\s+your\s+(?:\w+\s+)?(?:records|letters|documents)\b
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:recorded|stored|filed|kept)\s+(?:in|among)\s+(?:your|the|Ordnung)\b
     | \bnone\s+of\s+your\b
+    | \b(?:has|have|holds?)\s+no\s+[^.\n]{1,80}?\s+(?:on\s+(?:record|file)|in\s+(?:your|the|its)\s+records?)\b
     | \bkeine[nrs]?\s+(?:Unterlagen|Briefe?|Dokumente?|Verträge?|Einträge?|Angaben|Informationen)\b
     | \bnicht\s+(?:gefunden|finden|vorhanden)\b
     """,

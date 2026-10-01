@@ -261,6 +261,11 @@ _WEEKDAY_BEFORE = re.compile(
 )
 
 
+def strip_weekdays(text: str) -> str:
+    """``text`` without the weekday names written just before a date ("Fri, 2 Oct" → "2 Oct")."""
+    return _WEEKDAY_BEFORE.sub("", text)
+
+
 def _nearest_year(day: int, month: int, today: date) -> date | None:
     candidates = []
     for year in (today.year - 1, today.year, today.year + 1):

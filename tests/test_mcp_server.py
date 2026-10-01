@@ -1102,7 +1102,69 @@ def test_a_result_no_call_claims_makes_a_recording_stale(tools: LedgerTools, ids
         "unclaimed result",
     ]
     assert mcp_server.pair_results([("tool_result", "b", "x")]) == ({}, 1)
-    assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith("status must be")
+    assert mcp_server.answer_again(tools, "list_items", {"status": "running"}).startswith(
+        "Error executing tool list_items: status must be"
+    )
+
+
+BAD_CALLS: list[tuple[str, dict[str, Any]]] = [
+    ("list_items", {"kind": "deadline", "status": "overdue"}),  # a status the tool does not have
+    ("explain_date", {"item_or_contract_id": "doc_hynqaw58f550"}),  # a document id, not an item's
+    ("timeline", {"from_date": "01.10.2026", "to_date": "2026-12-31"}),
+    ("timeline", {"from_date": "2026-01-01"}),  # a required argument left out
+    ("list_items", {"limit": "many"}),  # an argument of the wrong type
+    ("list_items", {"status": "all", "overdue": True}),  # an argument the tool does not have
+    ("list_items", {"limit": "5"}),
+]
+
+
+async def test_a_replay_answers_a_call_as_the_server_does(store: Store, tools: LedgerTools) -> None:
+    """The Ask benchmark recorded on prompt 10 reported two recordings stale right after recording them
+    (a list_items call with a status the tool does not have and an explain_date call with a document id),
+    and the library question went stale the same way the round before: the replay answered a call by
+    calling the method behind the tool, so an input error read as its bare message, where the model got
+    the server's "Error executing tool <name>: …" (and the server's own argument validation). Every
+    recording with a bad call went stale by itself, on whichever questions the model happened to slip."""
+    async with Client(build_server(store, today=TODAY, rules_tools=False)) as client:
+        for name, args in BAD_CALLS:
+            served = await client.call_tool(name, args)
+            given = "".join(block.text for block in served.content if block.type == "text")
+            assert mcp_server.answer_again(tools, f"mcp__ordnung__{name}", args) == given, (name, args)
+            events = [
+                {"type": "tool_use", "tool_use_id": "t", "name": f"mcp__ordnung__{name}", "input": args},
+                {"type": "tool_result", "tool_use_id": "t", "text": given},
+            ]
+            assert mcp_server.stale_tool_results(tools, events) == []
+
+
+async def test_replays_keep_no_connection_per_call(store: Store, tools: LedgerTools) -> None:
+    """Each replayed call runs on an event loop of its own, whose worker thread (the server runs a sync
+    tool in one) opened a connection that stayed open until the store closed: a full benchmark replay
+    kept 115 on one store and ran out of file descriptors under a limit of 256."""
+    first = mcp_server.answer_again(tools, "list_items", {"status": "all"})
+    for _ in range(60):
+        assert mcp_server.answer_again(tools, "list_items", {"status": "all"}) == first
+    assert len(store._connections) <= 2
+
+
+async def test_a_replay_reads_a_protocol_error_as_text(
+    tools: LedgerTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The server lets an MCPError through as a protocol error, not an error result; the replay reads its
+    text rather than failing in the middle of the stale check."""
+    from mcp.server.mcpserver import MCPServer
+    from mcp.shared.exceptions import MCPError
+
+    async def refuse(*_: object, **__: object) -> None:
+        raise MCPError(code=-32602, message="no such thing")
+
+    monkeypatch.setattr(MCPServer, "call_tool", refuse)
+    assert mcp_server.answer_again(tools, "list_items", {}) == "MCP error -32602: no such thing"
+    events = [
+        {"type": "tool_use", "tool_use_id": "t", "name": "mcp__ordnung__list_items", "input": {}},
+        {"type": "tool_result", "tool_use_id": "t", "text": "something else"},
+    ]
+    assert mcp_server.stale_tool_results(tools, events) == ["list_items"]
 
 
 def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: dict[str, str]) -> None:

@@ -1219,11 +1219,13 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     assert "Every condition was also recorded once on the fresh holdout split" in page.split("\n\n")[1]
     assert "--split holdout" in page.split("## Reproduce", 1)[1]
     # a holdout run recorded with another model is replayed with its own model, not the published run's
-    opus = {**holdout, "meta": {**holdout["meta"], "model": "opus"}}
-    opus_page = report.render_markdown([published], holdout_run=opus)
-    assert "(the published run used `claude-sonnet-5`)" in opus_page
-    assert "python -m evals.run --split holdout --model opus " in opus_page.split("## Reproduce", 1)[1]
-    assert "--split holdout --model sonnet" not in opus_page
+    other = {**holdout, "meta": {**holdout["meta"], "model": "another-model"}}
+    other_page = report.render_markdown([published], holdout_run=other)
+    assert "(the published run used `claude-sonnet-5`)" in other_page
+    assert (
+        "python -m evals.run --split holdout --model another-model " in other_page.split("## Reproduce", 1)[1]
+    )
+    assert "--split holdout --model sonnet" not in other_page
     # the page's own text documents the split
     method = report.method_section()
     assert "E/F the holdout split" in method and "recorded once with frozen prompts" in method
@@ -1266,6 +1268,95 @@ async def test_the_holdout_run_is_shown_beside_the_published_run(
     ):
         with pytest.raises(SystemExit):
             report.main(argv)
+
+
+async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--holdout-rescored``: the holdout recordings replayed with later code — a check written after the
+    held-out run and informed by its late dates — is one more row of the held-out table, labelled re-scored
+    and not held-out, with a sentence saying so; the held-out rows stay as recorded."""
+    published = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    recorded = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    assert published is not None and recorded is not None
+    # the held-out run gave one letter a late date; the re-scored run (a replay on later code) did not
+    entries = json.loads(json.dumps(recorded["entries"]))
+    late_id = HOLDOUT_IDS[1]
+    for entry in entries:
+        if entry["id"] == late_id:
+            entry["conditions"]["ordnung"]["score"]["items"][0]["direction"] = "late"
+    holdout = {**recorded, "entries": entries, "meta": {**recorded["meta"], "backend": "live"}}
+    better = json.loads(json.dumps(recorded["metrics"]["ordnung"]))
+    better["due_date_accuracy"] = {
+        **better["due_date_accuracy"],
+        "value": 1.0,
+        "k": better["due_date_accuracy"]["n"],
+    }
+    rescored = {
+        **recorded,
+        "meta": {**recorded["meta"], "backend": "replay", "commit": "abc1234", "date": "2026-10-01"},
+        "metrics": {"ordnung": better},
+    }
+    assert report.late_entries(holdout) == [late_id]
+
+    page = report.render_markdown([published], holdout_run=holdout, holdout_rescored=rescored)
+    section = page.split("## Held-out run: the holdout split", 1)[1].split("\n## ", 1)[0]
+    held_out_row = f"| **Ordnung** | {report.rate(holdout['metrics']['ordnung']['due_date_accuracy'])}"
+    rescored_row = f"| **Ordnung, re-scored** (not held-out) | {report.rate(better['due_date_accuracy'])}"
+    assert held_out_row in section and rescored_row in section
+    assert section.index(held_out_row) < section.index(rescored_row)
+    assert "**Re-scored, not held-out.**" in section
+    assert (
+        f"has a check written after the held-out run and informed by its 1 dangerously late date (`{late_id}`)"
+        in " ".join(section.split())
+    )
+    assert "commit `abc1234` (2026-10-01)" in section
+    assert "## After the held-out run" not in page  # the test split's re-scored section is another thing
+    # without it the section is as before: no re-scored row, no sentence
+    plain = report.render_markdown([published], holdout_run=holdout)
+    assert "re-scored" not in plain.split("## Held-out run: the holdout split", 1)[1].split("\n## ", 1)[0]
+
+    # only a replay of the same recordings qualifies, and only beside the held-out run
+    live = {**rescored, "meta": {**rescored["meta"], "backend": "live"}}
+    other_model = {**rescored, "meta": {**rescored["meta"], "model": "another-model"}}
+    filtered = {**rescored, "meta": {**rescored["meta"], "partial": True}}
+    other_dataset = {
+        **rescored,
+        "meta": {**rescored["meta"], "dataset": {**rescored["meta"]["dataset"], "manifest_sha256": "0" * 64}},
+    }
+    no_dataset = {**rescored, "meta": {k: v for k, v in rescored["meta"].items() if k != "dataset"}}
+    for bad in (live, other_model, filtered, other_dataset, no_dataset):
+        with pytest.raises(ValueError):
+            report.render_markdown([published], holdout_run=holdout, holdout_rescored=bad)
+    with pytest.raises(ValueError):
+        report.render_markdown([published], holdout_rescored=rescored)
+
+    # the command line
+    published_path, holdout_path, rescored_path = (
+        tmp_path / "published.json",
+        tmp_path / "holdout.json",
+        tmp_path / "holdout-rescored.json",
+    )
+    for path, results in ((published_path, published), (holdout_path, holdout), (rescored_path, rescored)):
+        report.write_json(path, results)
+    docs = tmp_path / "page.md"
+    args = [str(published_path), "--docs", str(docs), "--chart", str(tmp_path / "chart.png")]
+    with pytest.raises(SystemExit):
+        report.main([*args, "--holdout-rescored", str(rescored_path)])
+    assert "--holdout-rescored goes with --holdout-run" in capsys.readouterr().err
+    assert (
+        report.main([*args, "--holdout-run", str(holdout_path), "--holdout-rescored", str(rescored_path)])
+        == 0
+    )
+    assert rescored_row in docs.read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------------------------------

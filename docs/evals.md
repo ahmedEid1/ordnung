@@ -74,6 +74,9 @@ The holdout split was recorded twice on 30 September, once per model, with nothi
 | **LLM only** | 82.1 % [70.5–92.2] | 46/56 | 3.6 % | 14.3 % | 0.0 % | 82.1 % [70.9–91.7] |
 | **LLM + rules text** | 94.6 % [88.3–100.0] | 53/56 | 0.0 % | 5.4 % | 0.0 % | 92.9 % [83.9–100.0] |
 | **LLM + rules tool** | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
+| **Ordnung, re-scored** (not held-out) | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
+
+**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the code of commit `cab7e0e` (2026-09-30). That code has a check written after the held-out run and informed by its 2 dangerously late dates (`holdout-adversarial-conflicting_dates-1`, `holdout-adversarial-conflicting_dates-2`), so the holdout split is no longer held-out for it: the held-out row above stays the held-out number.
 
 Paired differences on the holdout letters:
 

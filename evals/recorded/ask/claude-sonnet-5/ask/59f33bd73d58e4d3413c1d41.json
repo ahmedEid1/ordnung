@@ -1,0 +1,172 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"When do I have to pay the dog tax (Hundesteuer)?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to pay the dog tax (Hundesteuer)?\n"
+  },
+  "response": {
+    "text": "I couldn't find anything about a dog tax (Hundesteuer) in your records — no letters, to-dos, or contracts mention it.\n\nIf you're expecting a Hundesteuer bill, it may simply not have arrived yet or hasn't been added to Ordnung. Once you receive a letter about it, you can add it and I can then tell you the due date.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 307,
+      "cache_read_tokens": 20382,
+      "cache_creation_tokens": 1895,
+      "cost_usd": 0.0147384,
+      "duration_ms": 8550,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_01NYH6UuMAKrfV5sGjobXeHd"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01NYH6UuMAKrfV5sGjobXeHd"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hund"
+      },
+      "tool_use_id": "toolu_01JCC5jTUKYdPFve6Z8sVKp2"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01JCC5jTUKYdPFve6Z8sVKp2"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog tax"
+      },
+      "tool_use_id": "toolu_01FgfCxuyfgHdyufMggBMwMW"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01FgfCxuyfgHdyufMggBMwMW"
+    },
+    {
+      "type": "text",
+      "text": "I couldn't find an"
+    },
+    {
+      "type": "text",
+      "text": "ything about"
+    },
+    {
+      "type": "text",
+      "text": " a dog tax (H"
+    },
+    {
+      "type": "text",
+      "text": "undesteuer) in your"
+    },
+    {
+      "type": "text",
+      "text": " records — no letters"
+    },
+    {
+      "type": "text",
+      "text": ", to-dos, or cont"
+    },
+    {
+      "type": "text",
+      "text": "racts mention it.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you're"
+    },
+    {
+      "type": "text",
+      "text": " expecting a"
+    },
+    {
+      "type": "text",
+      "text": " Hundesteuer b"
+    },
+    {
+      "type": "text",
+      "text": "ill, it may"
+    },
+    {
+      "type": "text",
+      "text": " sim"
+    },
+    {
+      "type": "text",
+      "text": "ply not have ar"
+    },
+    {
+      "type": "text",
+      "text": "rived yet or h"
+    },
+    {
+      "type": "text",
+      "text": "asn't been added to "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung. Once"
+    },
+    {
+      "type": "text",
+      "text": " you rece"
+    },
+    {
+      "type": "text",
+      "text": "ive a letter about"
+    },
+    {
+      "type": "text",
+      "text": " it, you can add it and"
+    },
+    {
+      "type": "text",
+      "text": " I can then"
+    },
+    {
+      "type": "text",
+      "text": " tell you the due date."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find anything about a dog tax (Hundesteuer) in your records — no letters, to-dos, or contracts mention it.\n\nIf you're expecting a Hundesteuer bill, it may simply not have arrived yet or hasn't been added to Ordnung. Once you receive a letter about it, you can add it and I can then tell you the due date.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 307,
+          "cache_read_tokens": 20382,
+          "cache_creation_tokens": 1895,
+          "cost_usd": 0.0147384,
+          "duration_ms": 8550,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

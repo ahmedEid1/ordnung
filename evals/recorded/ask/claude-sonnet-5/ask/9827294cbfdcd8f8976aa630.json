@@ -1,0 +1,235 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a295a35e1f9c4e6b1776a94592e958578706c449f3f2224c0b0221814e9a500a\",\"question\":\"When do I have to renew my driving licence?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to renew my driving licence?\n"
+  },
+  "response": {
+    "text": "There's no record of a driving licence in your Ordnung data.\n\n- I searched your letters and your personal document list (passport, residence permit, Steuer-ID, etc.), and no driving licence expiry or renewal is stored.\n- For reference, the records do show a residence permit expiry due Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf] and a passport expiry due Wed 10 Feb 2027 [item:itm_g321eme013j2], but nothing about a driving licence.\n\nIf you have a driving licence renewal letter, you could add it to Ordnung so it can track the deadline for you.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 339,
+      "cache_read_tokens": 12998,
+      "cache_creation_tokens": 3600,
+      "cost_usd": 0.020397600000000002,
+      "duration_ms": 6822,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Führerschein driving licence"
+      },
+      "tool_use_id": "toolu_01EQCG5QWiYiwX8SxAd8dtjn"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_0146d41sCkSGXxwtiDcqjEDR"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01EQCG5QWiYiwX8SxAd8dtjn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\",\"n6\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"health_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n5\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n6\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"numbers\":{\"n4\":{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"numbers\":{\"n5\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"numbers\":{\"n6\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Sam Rivera\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"X1234567\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0146d41sCkSGXxwtiDcqjEDR"
+    },
+    {
+      "type": "text",
+      "text": "There's no record of a driving"
+    },
+    {
+      "type": "text",
+      "text": " licence in your"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung data"
+    },
+    {
+      "type": "text",
+      "text": ".\n\n- I"
+    },
+    {
+      "type": "text",
+      "text": " searched your"
+    },
+    {
+      "type": "text",
+      "text": " letters and your"
+    },
+    {
+      "type": "text",
+      "text": " personal document"
+    },
+    {
+      "type": "text",
+      "text": " list (passport, residence perm"
+    },
+    {
+      "type": "text",
+      "text": "it, Steuer-"
+    },
+    {
+      "type": "text",
+      "text": "ID, et"
+    },
+    {
+      "type": "text",
+      "text": "c.),"
+    },
+    {
+      "type": "text",
+      "text": " and no"
+    },
+    {
+      "type": "text",
+      "text": " driving licence expiry or"
+    },
+    {
+      "type": "text",
+      "text": " renewal is"
+    },
+    {
+      "type": "text",
+      "text": " stored."
+    },
+    {
+      "type": "text",
+      "text": "\n- For"
+    },
+    {
+      "type": "text",
+      "text": " reference, the"
+    },
+    {
+      "type": "text",
+      "text": " records"
+    },
+    {
+      "type": "text",
+      "text": " do show a resid"
+    },
+    {
+      "type": "text",
+      "text": "ence permit expiry due"
+    },
+    {
+      "type": "text",
+      "text": " M"
+    },
+    {
+      "type": "text",
+      "text": "on 30 Nov "
+    },
+    {
+      "type": "text",
+      "text": "2026 [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_p0k64jp"
+    },
+    {
+      "type": "text",
+      "text": "7r8bf] and a"
+    },
+    {
+      "type": "text",
+      "text": " passport expiry due W"
+    },
+    {
+      "type": "text",
+      "text": "ed 10 Feb "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_g321eme013"
+    },
+    {
+      "type": "text",
+      "text": "j2], but nothing about"
+    },
+    {
+      "type": "text",
+      "text": " a driving licence.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you have a driving licence ren"
+    },
+    {
+      "type": "text",
+      "text": "ewal letter, you"
+    },
+    {
+      "type": "text",
+      "text": " could"
+    },
+    {
+      "type": "text",
+      "text": " add it to Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " so it"
+    },
+    {
+      "type": "text",
+      "text": " can track"
+    },
+    {
+      "type": "text",
+      "text": " the de"
+    },
+    {
+      "type": "text",
+      "text": "adline for"
+    },
+    {
+      "type": "text",
+      "text": " you."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "There's no record of a driving licence in your Ordnung data.\n\n- I searched your letters and your personal document list (passport, residence permit, Steuer-ID, etc.), and no driving licence expiry or renewal is stored.\n- For reference, the records do show a residence permit expiry due Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf] and a passport expiry due Wed 10 Feb 2027 [item:itm_g321eme013j2], but nothing about a driving licence.\n\nIf you have a driving licence renewal letter, you could add it to Ordnung so it can track the deadline for you.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 339,
+          "cache_read_tokens": 12998,
+          "cache_creation_tokens": 3600,
+          "cost_usd": 0.020397600000000002,
+          "duration_ms": 6822,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

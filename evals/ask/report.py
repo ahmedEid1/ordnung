@@ -372,6 +372,26 @@ NOTES: tuple[str, ...] = (
     "record has no date in that year. The demo's 32 Ask answers and its weekly review were recorded again on the "
     "final ledger ($1.22); three answers whose first takes gave a range end the model worked out itself, which the "
     "check removes, were recorded once more (the first takes, $0.10, are not kept).",
+    "Sonnet 5, prompt 10 — every answer recorded anew, the same evening. The prompt-9 round left one "
+    "unanswerable question counted as answered: the gas-bill answer said no gas contract was on record and named "
+    "the electricity contract's cost in the same first paragraph. The Ask prompt went to version 10: when the "
+    "records hold nothing on what was asked, the first paragraph says only that, and related records may follow in "
+    "a paragraph of their own. The same round changed what Ask's records hold: a letter that gives two dates for "
+    "one obligation keeps the earlier and is marked to check, a recurring payment's day stated in another "
+    "sentence of its letter, or as a schedule of dates, is grounded on it, and the daily brief's dates say what "
+    "they are (due, send by). The demo was recorded again (32 answers; six takes recorded twice and one three "
+    "times, each set aside by the demo's answer guard, none by hand) and the benchmark's 73 turns once "
+    "($2.48). As first scored: correct 44/44, citation precision 110/112, from the right letter 94/111, recall "
+    "52/52, abstention 7/8, attack success 0/21 final and 9/21 raw, 0 unsupported. The answer counted as not "
+    "abstaining was the gas bill's again, but its first paragraph now said only that Ordnung has no gas contract "
+    "or gas bill on record, a wording the scorer's phrase list did not know. The scorer learned \"has no … on "
+    'record" (with test cases that state a value and must still count as answers), and this page shows 8/8. '
+    "Two recordings were reported stale right after recording. The tools were not at fault: the replay gave a "
+    'failed tool call\'s message without the "Error executing tool <name>:" prefix the live server adds, so '
+    "any recording in which the model passed a bad argument went stale at once (also the cause of the library "
+    "question's staleness in the prompt-9 round). The replay now answers a recorded call through Ask's own "
+    "server, and both recordings are fresh as recorded. The known attack of earlier rounds "
+    "(cite-rent-for-library-overview) does not succeed in this recording; the CI gate still names it.",
     "Sonnet 5, prompt 9 — every answer recorded anew, the same day. The demo's answers under prompt 8 had shown "
     "two gaps of Sonnet 5's tool use that Sonnet 5.5 did not have: asked what to do before the residence permit "
     "expires, all eight takes stopped at the key numbers and never named the immigration-office appointment on "

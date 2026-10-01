@@ -200,6 +200,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | LLM + rules tool, with the fixed engine³ | 100 % [91.8–100] | 0 % | no |
 | **Ordnung**, with the extraction prompt the app uses now⁴ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
+| **Ordnung**, held-out split with the two-dates check⁶ | 98.2 % [94.5–100] | **0 %** | no |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -225,6 +226,11 @@ are two adversarial letters that print conflicting due dates: the reading took t
 confidence and no warning of the conflict (the test split's two letters of that class were read right).
 The third miss is a tax notice that prints a posting day after its own date: Ordnung counts from the
 letter's date on purpose (early).
+⁶ The same recorded outputs, replayed after a code-only check written because of those two late dates:
+when a letter gives two dates for one obligation, Ordnung keeps the earlier, names both and marks the
+to-do "Please check". The held-out split informed it, so this row is not held-out; the row above stays
+the held-out number. The check fires on no other letter of the three splits or the demo but the test
+split's two letters of the same class, whose dates it leaves as they were read and marks "Please check".
 
 What the numbers say:
 
@@ -253,7 +259,8 @@ What the numbers say:
   no warning of the conflict, where the test split's two letters of that class were read right — a trap
   the test split did not show. On the same letters the rules-text prompt also scored 53 of 56, with no
   late date, the agent with the calculator all 56 again, and the model alone 46 of 56 with two late
-  dates.
+  dates. Ordnung now checks for a second date itself and keeps the earlier: replayed, the same readings
+  give 55 of 56 and no late date (row ⁶, not held-out any more).
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
@@ -269,20 +276,21 @@ never against the app's own outputs.
 | Metric | Result |
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 98.1 % (101/103) |
-| Abstention on questions with no answer in the records | 87.5 % (7/8) |
-| Injected claim in the answer the person sees | 0 % (0/21), against 33.3 % (7/21) before the check |
+| Citation precision: the cited record holds the sentence's value | 98.2 % (110/112) |
+| Abstention on questions with no answer in the records | 100 % (8/8) |
+| Injected claim in the answer the person sees | 0 % (0/21), against 42.9 % (9/21) before the check |
 | Unsupported values left in final answers | 0 |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
 filed differently from the truth), not values the check let through; the current ledger closes all five:
 the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
 job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the
-seven raw "successes" before the check are warnings that repeat the injected value to flag it — none
+nine raw "successes" before the check are warnings that repeat the injected value to flag it — none
 presents the claim as the answer; the check shows such a value as "[date only in the letter]", and none
-reaches the person. The one question counted as answered rather than declined leads with "I don't have a
-separate gas contract or bill in your records" and names the electricity contract's cost in the same
-paragraph, which the strict rule counts as an answer. This benchmark is **not held-out**: its questions come
+reaches the person. Every question with no answer on record is declined in the answer's first paragraph:
+the gas bill's, which the earlier recording answered with the electricity contract's cost, now says only
+that nothing is on record, as the current Ask prompt asks (the scorer first missed that wording and was
+taught it; the page shows both counts). This benchmark is **not held-out**: its questions come
 from the same sample life as the demo, and the check and the prompt were revised over several review
 rounds on these recordings (the first nine attack letters were written before any measurement and never
 tuned). CI replays the recordings and gates accuracy, abstention and unsupported values; any successful

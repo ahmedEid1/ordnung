@@ -533,6 +533,7 @@ def render_markdown(
     prompt_runs: Sequence[Mapping[str, Any]] = (),
     prompt_note: str | None = None,
     holdout_run: Mapping[str, Any] | None = None,
+    holdout_rescored: Mapping[str, Any] | None = None,
 ) -> str:
     """``docs/evals.md`` for one or more runs (one per model; the first is the headline).
 
@@ -542,7 +543,9 @@ def render_markdown(
     in a section of their own with ``prompt_note``, the written reason for the new prompt.
     ``holdout_run`` is the run on the holdout split (recorded once, prompts frozen: Ordnung alone or
     with the baselines), shown in a section and table of its own beside the published run (see
-    :func:`check_holdout_run`).
+    :func:`check_holdout_run`). ``holdout_rescored`` is that run's recorded outputs replayed with later
+    code: one more row in its table, labelled re-scored and not held-out, never in its place (see
+    :func:`check_holdout_rescored`).
     """
     if not runs:
         return render_pending_markdown()
@@ -550,10 +553,16 @@ def render_markdown(
     meta = main["meta"]
     if holdout_run is not None:
         check_holdout_run(holdout_run)
+    if holdout_rescored is not None:
+        if holdout_run is None:
+            raise ValueError(
+                "a re-scored holdout run is shown beside the held-out run: give the held-out run too"
+            )
+        check_holdout_rescored(holdout_run, holdout_rescored)
     sections = [
         _intro(main, prompt_runs, holdout_run),
         _headline(main, chart, rescored),
-        _holdout_section(main, holdout_run) if holdout_run else "",
+        _holdout_section(main, holdout_run, holdout_rescored) if holdout_run else "",
         _rescored_section(main, rescored) if rescored else "",
         _prompt_section(main, rescored, prompt_runs, prompt_note) if prompt_runs else "",
         _taxonomy_section(main),
@@ -828,25 +837,91 @@ def check_holdout_run(results: Mapping[str, Any]) -> None:
         )
 
 
-def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -> str:
-    """The run on the holdout split: its own table, with the published run's accuracy beside each row."""
+def check_holdout_rescored(holdout: Mapping[str, Any], rescored: Mapping[str, Any]) -> None:
+    """A re-scored holdout run replays the held-out run's recorded outputs — the whole holdout split, with
+    Ordnung, the same model, the same benchmark dataset — on later code; raises ``ValueError`` if not."""
+    check_holdout_run(rescored)
+    meta = rescored["meta"]
+    if meta.get("backend") != "replay":
+        raise ValueError(
+            "a re-scored holdout run replays the held-out run's recorded outputs (backend 'replay')"
+        )
+    if meta.get("model") != holdout["meta"].get("model"):
+        raise ValueError(
+            f"a re-scored holdout run replays the held-out run's recordings (model {holdout['meta'].get('model')!r}), "
+            f"not {meta.get('model')!r}"
+        )
+    dataset = (meta.get("dataset") or {}).get("manifest_sha256")
+    if dataset is None or dataset != (holdout["meta"].get("dataset") or {}).get("manifest_sha256"):
+        raise ValueError(
+            "a re-scored holdout run replays the held-out run's recordings of the same benchmark dataset; "
+            "the runs used different datasets"
+        )
+
+
+def late_entries(results: Mapping[str, Any], condition: str = "ordnung") -> list[str]:
+    """The letters where ``condition`` gave a date later than the truth (dangerously late)."""
+    late = []
+    for entry in results.get("entries") or []:
+        score = ((entry.get("conditions") or {}).get(condition) or {}).get("score") or {}
+        if any(item.get("direction") == "late" for item in score.get("items") or []):
+            late.append(str(entry["id"]))
+    return late
+
+
+def _holdout_row(label: str, metrics: Mapping[str, Any], published: Mapping[str, Any] | None) -> list[str]:
+    acc = metrics["due_date_accuracy"]
+    return [
+        label,
+        rate(acc),
+        f"{_num(acc['k'])}/{_num(acc['n'])}",
+        rate(metrics["dangerous_late_rate"], ci=False),
+        rate(metrics["early_rate"], ci=False),
+        rate(metrics["missed_rate"], ci=False),
+        rate(published["due_date_accuracy"]) if published else "–",
+    ]
+
+
+def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, Any]) -> str:
+    """What the re-scored row is: the held-out recordings replayed on code with a check written after the
+    held-out run and informed by its late dates — so not held-out (the file's ``meta.note`` follows)."""
+    meta = rescored["meta"]
+    late = late_entries(holdout)
+    listed = ", ".join(f"`{entry}`" for entry in late)
+    informed = (
+        f"informed by its {len(late)} dangerously late date{'s' if len(late) != 1 else ''} ({listed})"
+        if late
+        else "informed by its errors"
+    )
+    note = " ".join(str(meta.get("note") or "").split())
+    return (
+        "**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the "
+        f"code of commit `{meta.get('commit') or '?'}`{_commit_note(dict(meta))} ({meta.get('date')}). That code "
+        f"has a check written after the held-out run and {informed}, so the holdout split is no longer held-out "
+        "for it: the held-out row above stays the held-out number." + (f" {note}" if note else "")
+    )
+
+
+def _holdout_section(
+    published: Mapping[str, Any], holdout: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
+) -> str:
+    """The run on the holdout split: its own table, with the published run's accuracy beside each row — and,
+    after it, Ordnung re-scored on later code (``rescored``), labelled as not held-out."""
     meta = holdout["meta"]
     split = published["meta"].get("split")
-    rows = []
-    for condition in _conditions(holdout):
-        m = holdout["metrics"][condition]
-        acc = m["due_date_accuracy"]
-        before = published["metrics"].get(condition)
+    rows = [
+        _holdout_row(
+            f"**{_label(condition)}**", holdout["metrics"][condition], published["metrics"].get(condition)
+        )
+        for condition in _conditions(holdout)
+    ]
+    if rescored is not None:
         rows.append(
-            [
-                f"**{_label(condition)}**",
-                rate(acc),
-                f"{_num(acc['k'])}/{_num(acc['n'])}",
-                rate(m["dangerous_late_rate"], ci=False),
-                rate(m["early_rate"], ci=False),
-                rate(m["missed_rate"], ci=False),
-                rate(before["due_date_accuracy"]) if before else "–",
-            ]
+            _holdout_row(
+                f"**{_label('ordnung')}, re-scored** (not held-out)",
+                rescored["metrics"]["ordnung"],
+                published["metrics"].get("ordnung"),
+            )
         )
     table = _table(
         [
@@ -890,7 +965,8 @@ def _holdout_section(published: Mapping[str, Any], holdout: Mapping[str, Any]) -
     else:
         misses = f"Ordnung got {wrong} dated item(s) of the holdout split wrong (see the results file)."
     note = " ".join(str(meta.get("holdout_note") or "").split())
-    body = "\n\n".join(part for part in (note, table, paired, misses) if part)
+    after = _holdout_rescored_note(holdout, rescored) if rescored is not None else ""
+    body = "\n\n".join(part for part in (note, table, after, paired, misses) if part)
     return f"""## Held-out run: the holdout split
 
 The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
@@ -1872,6 +1948,7 @@ def write_docs(
     prompt_runs: Sequence[Mapping[str, Any]] = (),
     prompt_note: str | None = None,
     holdout_run: Mapping[str, Any] | None = None,
+    holdout_rescored: Mapping[str, Any] | None = None,
 ) -> tuple[Path, Path | None]:
     """Regenerate ``docs/evals.md`` (and the chart of the first run); returns both paths."""
     if any(run["meta"].get("split") == HOLDOUT_SPLIT for run in runs):
@@ -1894,6 +1971,7 @@ def write_docs(
             prompt_runs=prompt_runs,
             prompt_note=prompt_note,
             holdout_run=holdout_run,
+            holdout_rescored=holdout_rescored,
         ),
         encoding="utf-8",
     )
@@ -1956,6 +2034,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="with --holdout-run: a written note on that recording (a second model, an interruption), stored "
         "in its results file and shown with it",
     )
+    parser.add_argument(
+        "--holdout-rescored",
+        type=Path,
+        metavar="RUN.json",
+        help="with --holdout-run: a replay of the holdout recordings with the current code, shown as one more "
+        "row of the held-out table, labelled re-scored and not held-out",
+    )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:
         parser.error("give results files or --pending")
@@ -1995,6 +2080,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         note = " ".join(args.holdout_note.read_text(encoding="utf-8").split())
         write_json(args.holdout_run, {**results, "meta": {**results["meta"], "holdout_note": note}})
     holdout_run = load_results(args.holdout_run) if args.holdout_run else None
+    if args.holdout_rescored and not args.holdout_run:
+        parser.error("--holdout-rescored goes with --holdout-run")
+    holdout_rescored = load_results(args.holdout_rescored) if args.holdout_rescored else None
     try:
         docs, chart = write_docs(
             runs,
@@ -2004,6 +2092,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             prompt_runs=prompt_runs,
             prompt_note=prompt_note,
             holdout_run=holdout_run,
+            holdout_rescored=holdout_rescored,
         )
     except ValueError as exc:
         parser.error(str(exc))

@@ -22,7 +22,7 @@ from __future__ import annotations
 import re
 import sys
 from collections import deque
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Iterable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, TypeVar, get_args
@@ -141,6 +141,7 @@ class LedgerTools:
         """``today`` pins the date (tests); by default the person's local, possibly simulated, day."""
         self.store = store
         self._today = today
+        self._replay_server: MCPServer | None = None  # answer_again's server, built on first use
 
     def current_day(self) -> date:
         """Today for the person (the pinned date, the demo's simulated day, or their local date)."""
@@ -1523,15 +1524,49 @@ Ask may call and the only results its answer check reads (ADR 0011); the rules t
 
 def answer_again(tools: LedgerTools, name: str, args: Mapping[str, Any]) -> str:
     """What the tool ``name`` (``mcp__ordnung__`` prefix allowed) answers to ``args`` today: the text
-    the server returns, or an input error's message. Replays use it to notice recordings whose tool
-    results the current tools would no longer give."""
+    Ask's server (:func:`build_server` without the rules tools) returns for ``tools``' ledger and day.
+    Replays use it to notice recordings whose tool results the current tools would no longer give.
+
+    The call goes through the server itself, not the :class:`LedgerTools` method behind the tool, so a
+    bad call reads exactly as the model got it: the server's ``Error executing tool <name>: …`` with the
+    input error's message, and its own validation of the arguments (a missing or mistyped one, or one
+    the tool does not have, which it ignores). Calling the method gave the bare message (or a
+    ``TypeError``), so every recording in which the model slipped on an argument went stale by itself,
+    right after it was recorded (the Ask benchmark on prompt 10)."""
     tool = name.removeprefix(f"mcp__{SERVER_NAME}__")
     if tool not in TOOL_NAMES:
         return f"unknown tool {name}"
+    if tools._replay_server is None:
+        tools._replay_server = build_server(tools.store, today=tools._today, rules_tools=False)
+    return _apart(_served_text(tools._replay_server, tool, dict(args)))
+
+
+async def _served_text(server: MCPServer, tool: str, args: dict[str, Any]) -> str:
+    """The tool result's text as a client of ``server`` reads it: the result's text, or — for a failed
+    call, which the server returns as an error result — the error's text (MCPServer's ``call_tool``
+    handler does the same). An ``MCPError`` (none of the ledger tools raises one) is no result: the
+    handler lets it through as a protocol error, which reads ``MCP error <code>: <message>`` to a
+    TypeScript client — its text here, so a replay compares it rather than failing on it."""
+    from mcp.server.mcpserver.exceptions import ToolError
+    from mcp.shared.exceptions import MCPError
+
     try:
-        return render_result(getattr(tools, tool)(**dict(args)))
-    except (ToolInputError, TypeError) as exc:
+        result = await server.call_tool(tool, args)
+    except ToolError as exc:
         return str(exc)
+    except MCPError as exc:
+        return f"MCP error {exc.code}: {exc.message}"
+    return "".join(getattr(block, "text", "") for block in getattr(result, "content", []))
+
+
+def _apart(coroutine: Coroutine[Any, Any, str]) -> str:
+    """Run ``coroutine`` to its end on an event loop of its own, in a worker thread — so a replay can
+    ask the server from inside a running loop (Ask's benchmark asks inside one)."""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coroutine).result()
 
 
 def stale_tool_results(tools: LedgerTools, events: Iterable[Any]) -> list[str]:

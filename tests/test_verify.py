@@ -37,6 +37,7 @@ from ordnung.ingest.verify import (
     REASON_TEXT,
     WORKING_DAY_NOT_IN_QUOTE,
     DateMention,
+    DueDay,
     Located,
     PageInput,
     amount_matches,
@@ -48,12 +49,15 @@ from ordnung.ingest.verify import (
     parse_amounts,
     parse_dates,
     parse_periods,
+    payment_day_sentence,
+    payment_days_stated,
     regrade,
+    schedule_days_named,
     spec_consistency,
     working_day_consistency,
     working_days_named,
 )
-from ordnung.models import Box, ComputationReceipt, DateSpec, Page
+from ordnung.models import Box, ComputationReceipt, DateSpec, Page, Recurrence
 
 
 def _extract(directory: Path, data: bytes) -> tuple[list[RenderedPage], list[PageText]]:
@@ -755,6 +759,9 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("am Monatsbeginn", {1}),
         ("at the beginning of each month", {1}),
         ("on the first day of the month", {1}),
+        ("jeweils zum Monatsersten", {1}),
+        ("am Ersten eines jeden Monats", {1}),
+        ("zum ersten Tag des Monats", {1}),
         # a month's end is its last day: 31
         ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
         ("zum Letzten eines Monats", {31}),
@@ -770,6 +777,7 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("zum letzten Werktag", set()),
         ("§ 7. Kündigung", set()),
         ("am 32. eines Monats", set()),
+        ("am ersten Werktag eines Monats", set()),
         ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
     ],
 )
@@ -791,3 +799,276 @@ def test_a_day_of_the_month_is_named_or_flagged() -> None:
     assert "day of the month" in graded.warnings[0] and "please check" in graded.warnings[0]
     again = regrade(ComputationReceipt(due_date="2026-11-02"), graded)
     assert (again.confidence, again.warnings) == ("medium", graded.warnings)
+
+
+# --------------------------------------------------------------------------------------------------
+# A day of the month stated as a schedule of dates
+# --------------------------------------------------------------------------------------------------
+
+MONTHLY = Recurrence(interval=1, unit="months")
+QUARTERLY = Recurrence(interval=3, unit="months")
+YEARLY = Recurrence(interval=1, unit="years")
+QUARTERLY_DATES = (
+    "Die Vorauszahlungen betragen 300,00 € (fällig jeweils am 10.03., 10.06., 10.09. und 10.12.)."
+)
+
+
+@pytest.mark.parametrize(
+    ("text", "rule", "expected"),
+    [
+        # two or more dates on one day, a whole number of the rule's intervals apart
+        (QUARTERLY_DATES, QUARTERLY, {10}),
+        ("Die Raten sind am 15.02.2027, 15.05.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),
+        ("Instalments are due on 10 March 2026, 10 June 2026 and 10 September 2026.", QUARTERLY, {10}),
+        ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen.", QUARTERLY, {15}),  # one skipped
+        ("Abbuchung am 01.12.2026 und am 01.12.2027.", YEARLY, {1}),
+        ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
+        ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
+        ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, {10}),  # another date's day aside
+        # … a list with dashes between three or more dates
+        ("Vorauszahlungen fällig: 10.03.2026 – 10.06.2026 – 10.09.2026 – 10.12.2026", QUARTERLY, {10}),
+        # a date without a year, for a rule of a year or more
+        ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
+        ("The annual fee is due on 1 December.", YEARLY, {1}),
+        ("Hauptfälligkeit 01.12. eines jeden Jahres", YEARLY, {1}),
+        ("Der Beitrag ist am 15. März fällig.", Recurrence(interval=2, unit="years"), {15}),
+        ("Der Beitrag ist am 15.03. fällig.", Recurrence(interval=24, unit="months"), {15}),
+        # wording that makes a single date recur
+        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", YEARLY, {1}),
+        ("Der Beitrag ist jeweils am 15.11.2026 fällig.", QUARTERLY, {15}),
+        ("The premium is debited each year on 1 December 2026.", YEARLY, {1}),
+        ("The fee is due every quarter on 15 November 2026.", QUARTERLY, {15}),
+        ("The fee is due every three months on 15 November 2026.", QUARTERLY, {15}),
+        ("Die Prämie ist am 01.12.2026 eines jeden Jahres fällig.", YEARLY, {1}),
+        ("The premium is due on 1 December 2026 of each year.", YEARLY, {1}),
+        # a single dated start is never the recurring day, not even with a schedule's wording beside it
+        ("Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 €.", MONTHLY, set()),
+        ("Die Miete ist ab dem 01.11.2026 jeweils monatlich zu zahlen.", MONTHLY, set()),
+        ("Die Miete ist jeweils ab dem 01.11.2026 zu zahlen.", MONTHLY, set()),
+        ("Your new rent of 670.00 EUR is payable from 1 November 2026.", MONTHLY, set()),
+        ("Monthly payments of 30.00 EUR, beginning 1 November 2026.", MONTHLY, set()),
+        ("Payable every month starting on 1 November 2026.", MONTHLY, set()),
+        ("Der Beitrag wird mit Wirkung zum 01.11.2026 monatlich abgebucht.", MONTHLY, set()),
+        ("Die Beiträge sind vom 01.11.2026 an monatlich zu zahlen.", MONTHLY, set()),
+        # … however the start is worded, and though it has no year or yearly wording follows
+        ("Ihr Vertrag beginnt am 01.11., der Jahresbeitrag beträgt 120,00 €.", YEARLY, set()),
+        ("Versicherungsbeginn: 1. November; Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Vertragsbeginn 01.11. / Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Versicherungsbeginn 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+        ("Beginn: 01.11.2026, Beitrag jeweils monatlich", MONTHLY, set()),
+        ("Der Jahresbeitrag ist erstmals am 01.11. fällig.", YEARLY, set()),
+        ("Der Beitrag ist erstmals jeweils am 01.11.2026 fällig.", MONTHLY, set()),
+        ("Der Beitrag ist erstmalig zum 01.11. fällig.", YEARLY, set()),
+        ("Der Beitrag ist zum ersten Mal am 01.11. fällig.", YEARLY, set()),
+        ("Die erste Rate ist am 01.11. fällig.", YEARLY, set()),
+        ("The first payment is due on 1 November.", YEARLY, set()),
+        ("Your cover starts on 1 November; the annual premium is due then.", YEARLY, set()),
+        ("Start 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+        ("Cover begins 01.11.2026 jährlich 120,00 EUR", YEARLY, set()),
+        # … nor does a start date make a schedule with another date
+        ("Ab dem 01.11.2026 zahlen Sie monatlich, erstmals am 01.12.2026.", MONTHLY, set()),
+        # a single date on its own
+        ("Der Betrag von 55,08 € ist fällig am 15.11.2026.", QUARTERLY, set()),
+        ("Please return each form by 1 November 2026.", MONTHLY, set()),
+        ("Each payment is due by 1 November 2026.", MONTHLY, set()),
+        # … beside the date of a letter or an invoice, or a contract's start and end
+        ("Rechnungsdatum 15.10.2026, Monatsbeitrag 20,00 € fällig am 15.11.2026.", MONTHLY, set()),
+        ("Rechnung vom 15.10.2026: Der Betrag ist am 15.11.2026 fällig.", MONTHLY, set()),
+        ("Datum: 01.10.2026. Der Beitrag von 20,00 € ist am 01.11.2026 fällig.", MONTHLY, set()),
+        ("Stand 01.11.2026, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", MONTHLY, set()),
+        ("Der Vertrag beginnt am 01.11.2026 und endet am 01.11.2028; Beitrag monatlich.", QUARTERLY, set()),
+        ("Beginn 01.11.2026, Ende 01.11.2027, Jahresbeitrag 120,00 €", YEARLY, set()),
+        ("Mietbeginn 01.11.2026, Mindestmietdauer bis 01.11.2027, Miete 670 € monatlich", MONTHLY, set()),
+        ("Stand 01.09.2026, Vertragsende 01.11.2027, Beitrag fällig am 01.12.2026", MONTHLY, set()),
+        ("Das Versicherungsjahr endet am 01.12. eines jeden Jahres.", YEARLY, set()),
+        # … or one other date: two dates are a schedule only as a list after schedule or due wording
+        ("Lieferung am 15.10.2026 und 15.11.2026.", MONTHLY, set()),
+        ("Die Rate ist am 15.10.2026 eingegangen; die nächste ist am 15.11.2026 fällig.", MONTHLY, set()),
+        # a clause or section number reads like a date without a year, and is none
+        ("Gemäß Ziffer 1.3. der AVB wird der Jahresbeitrag ab dem 01.11.2026 fällig.", YEARLY, set()),
+        ("Zahlbar gemäß Nr. 1.1. AVB.", YEARLY, set()),
+        ("Die Beitragszahlung richtet sich nach Abschnitt 1.4. der Bedingungen.", YEARLY, set()),
+        ("Fällig gemäß § 1.2. und § 1.5. der Bedingungen.", QUARTERLY, set()),
+        ("Tarif 1.1. jährlich 120,00 €", YEARLY, set()),
+        ("Die Raten richten sich nach Ziffer 1.3., 1.6. und 1.9. der Bedingungen.", QUARTERLY, set()),
+        # a date without a year and no due wording beside it
+        ("Ihre Unterlagen erhalten Sie am 01.12. mit dem Jahresbeitrag.", YEARLY, set()),
+        # … also written twice
+        ("Der Betrag ist am 15.11.2026 und erneut am 15.11.2026 fällig.", QUARTERLY, set()),
+        # dates on different days
+        ("Die Raten sind am 01.03.2026 und am 15.06.2026 fällig.", QUARTERLY, set()),
+        ("Die Raten sind am 10.03., 11.06., 12.09. und 13.12. fällig.", QUARTERLY, set()),
+        # dates whose spacing does not fit the rule's interval
+        ("Die Raten sind am 15.11.2026 und 15.12.2026 fällig.", QUARTERLY, set()),
+        ("Die Raten sind am 10.03. und 10.04. fällig.", QUARTERLY, set()),
+        ("Abbuchung am 01.12.2026 und am 01.06.2027.", YEARLY, set()),
+        # a date without a year, or one wording makes yearly, is no yearly day for a shorter rule
+        ("Der Beitrag ist zum 01.12. fällig.", QUARTERLY, set()),
+        ("Der Beitrag wird jährlich zum 01.12.2026 abgebucht.", MONTHLY, set()),
+        ("Hauptfälligkeit 01.12. eines jeden Jahres", QUARTERLY, set()),
+        ("The premium is debited every year on 1 December 2026.", QUARTERLY, set()),
+        # a period's dates are no due days
+        ("Versicherungsjahr 01.12. – 30.11.", YEARLY, set()),
+        ("Beitragszeitraum vom 01.01.2026 bis 31.12.2026", YEARLY, set()),
+        ("Coverage 1 December 2026 to 1 December 2027", YEARLY, set()),
+        ("Laufzeit 10.03.2026 – 10.06.2026", QUARTERLY, set()),  # two dashed dates are a period
+        # an ambiguous date, a rule in weeks, no rule
+        ("Die Raten sind am 03/05/2026 und 03/08/2026 fällig.", QUARTERLY, set()),
+        (QUARTERLY_DATES, Recurrence(interval=13, unit="weeks"), set()),
+        (QUARTERLY_DATES, None, set()),
+    ],
+)
+def test_schedule_days_named(text: str, rule: Recurrence | None, expected: set[int]) -> None:
+    """A day a letter states as a schedule of dates is named (the dates fit the rule's interval, a yearly
+    date has no year, or wording makes the date recur); a single start date never is."""
+    assert schedule_days_named(text, rule) == expected
+
+
+def test_a_day_stated_as_a_schedule_of_dates_is_named_by_the_quote() -> None:
+    """``day_of_month_consistency`` with the recurrence: the quarterly dates name their day (without the
+    recurrence, a date names none, as before); another day, a start date or a single date does not."""
+    assert day_of_month_consistency(QUARTERLY_DATES, 10) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(QUARTERLY_DATES, 10, QUARTERLY) == []
+    assert day_of_month_consistency(QUARTERLY_DATES, 11, QUARTERLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(QUARTERLY_DATES, 10, MONTHLY) == []  # every third month is monthly too
+    start = "Die neue Miete ist ab dem 01.11.2026 monatlich zu zahlen."
+    assert day_of_month_consistency(start, 1, MONTHLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    single = "Der nächste Jahresbeitrag wird am 01.12.2026 abgebucht."
+    assert day_of_month_consistency(single, 1, YEARLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert days_of_month_named("jeweils zum 15. eines Monats, erstmals am 15.11.2026", QUARTERLY) == {15}
+    assert days_of_month_named(QUARTERLY_DATES, QUARTERLY) == {10}
+
+
+# --------------------------------------------------------------------------------------------------
+# A recurring payment's due day stated elsewhere in its letter
+# --------------------------------------------------------------------------------------------------
+
+TICKET_LETTER = (
+    "Preis   63,00 € pro Monat\n"
+    "Zahlungsweise   SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID\n"
+    "Das Abonnement ist monatlich kündbar. Die Kündigung muss bis zum\n"
+    "10. eines Monats zum Ende dieses Monats bei uns eingehen.\n"
+)
+TICKET_DEBIT = "Zahlungsweise SEPA-Lastschrift, Abbuchung zum Monatsanfang, Gläubiger-ID"
+
+
+def test_payment_days_stated_finds_the_sentences_about_when_a_payment_is_due() -> None:
+    """Only sentences about paying count — never a notice period's day (the ticket's "bis zum 10." to
+    cancel, though its line breaks inside the phrase), a date with a month name, or a day without a
+    payment; a phrase a line break cuts ("am" / "3. Werktag") is read whole."""
+    assert payment_days_stated(TICKET_LETTER) == [(TICKET_DEBIT, {("day_of_month", 1)})]
+    lease = "Die Miete ist monatlich im Voraus, spätestens am\n3. Werktag eines jeden Monats zu zahlen."
+    assert payment_days_stated(lease) == [(" ".join(lease.split()), {("working_day", 3)})]
+    assert payment_days_stated("Die erste Abbuchung erfolgt am 1. Oktober 2026.") == []
+    assert payment_days_stated("The first debit is on October 1st.") == []
+    assert payment_days_stated("Der Beitrag wird monatlich abgebucht.") == []
+    assert payment_days_stated("Notice must reach us by the 10th of each month.") == []
+    assert payment_days_stated("Wir haben am 1. eines Monats geöffnet.") == []
+    # a month's end is a due day; a contract that ends then is not ("Ihr Vertrag endet …", below)
+    month_end = "Die Kaltmiete ist zum Ende eines jeden Monats zu zahlen."
+    assert payment_days_stated(month_end) == [(month_end, {("day_of_month", 31)})]
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Der Mieter hat den Zählerstand bis zum 15. eines Monats zu melden.",  # "Mieter" is no rent
+        "Die Anzahl der Fahrten ist bis zum 15. eines Monats zu melden.",  # "Anzahl" is no payment
+        "Der Einzug in die Wohnung erfolgt zum 15. des Monats.",  # moving in, not a debit
+        "Die Installation erfolgt am 3. Werktag.",  # no instalment
+        "Mahngebühren werden ab dem 15. eines Monats fällig.",  # late fees from a day on
+        "Bei Zahlungsverzug berechnen wir Zinsen ab dem 3. Werktag.",
+        "Late fees apply from the 15th of each month.",
+        "Ihr Vertrag endet zum Monatsende, der Beitrag wird monatlich abgebucht.",  # a contract's end
+        "Die Laufzeit beginnt zum Monatsersten; der Beitrag wird monatlich abgebucht.",
+        "Your membership ends at the end of the month; the fee is debited monthly.",
+    ],
+)
+def test_a_day_in_a_sentence_not_about_paying_its_due_day_is_no_due_day(sentence: str) -> None:
+    """Payment words count as whole words or as parts only paying has ("Zahlung", "Kaltmiete", "Beitrag"),
+    never inside another word ("Mieter", "Anzahl", "Installation") nor "Einzug" alone; and a day of late fees
+    or of a contract's start or end is no payment's due day, though the sentence mentions paying."""
+    assert payment_days_stated(sentence) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "due"),
+    [
+        (
+            "Die Kaltmiete ist spätestens am dritten\nWerktag eines jeden Monats zu zahlen.",
+            ("working_day", 3),
+        ),
+        ("Die Miete ist am letzten\nBankarbeitstag eines Monats fällig.", ("working_day", -1)),
+        ("Der Beitrag wird zum ersten\nTag eines jeden Monats abgebucht.", ("day_of_month", 1)),
+        ("Der Beitrag wird am 3.\nWerktag eines Monats abgebucht.", ("working_day", 3)),
+        ("Die Abbuchung erfolgt jeweils zum Monats-\nanfang.", ("day_of_month", 1)),
+        ("Der Monatsbeitrag wird per Lastschrifteinzug zum\nMonatsende abgebucht.", ("day_of_month", 31)),
+        ("Die Nettomiete ist am dritten (3.)\nWerktag eines Monats zu überweisen.", ("working_day", 3)),
+    ],
+)
+def test_a_due_day_a_line_break_cuts_is_read_whole(text: str, due: DueDay) -> None:
+    """A text layer breaks lines anywhere: between an ordinal word and its noun ("am dritten" / "Werktag"),
+    before the noun of a day ("Werktag", "Monatsende"), or inside a hyphenated word ("Monats-" / "anfang",
+    joined as the quote grounding joins it)."""
+    [(sentence, days)] = payment_days_stated(text)
+    assert days == {due} and "\n" not in sentence
+    assert "Monats- anfang" not in sentence
+
+
+INSURANCE_LETTER = (
+    "Hauptfälligkeit   01.12. eines jeden Jahres\n"
+    "Versicherungsjahr   01.12. – 30.11.\n"
+    "\n"
+    "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 von Ihrem Konto abgebucht.\n"
+)
+INSURANCE_DUE = "Hauptfälligkeit 01.12. eines jeden Jahres"
+
+
+def test_a_due_day_stated_as_a_schedule_of_dates_is_found_for_its_recurrence() -> None:
+    """A yearly premium's due day and month ("01.12. eines jeden Jahres") state its day for a yearly
+    recurrence — not for a monthly one, and not without one; the single next debit date states none."""
+    first: DueDay = ("day_of_month", 1)
+    assert payment_days_stated(INSURANCE_LETTER) == []
+    assert payment_days_stated(INSURANCE_LETTER, YEARLY) == [(INSURANCE_DUE, {first})]
+    assert payment_days_stated(INSURANCE_LETTER, MONTHLY) == []
+    single = "Der nächste Jahresbeitrag in Höhe von 59,90 € wird am 01.12.2026 abgebucht."
+    assert payment_day_sentence([INSURANCE_LETTER], first, single, YEARLY) == INSURANCE_DUE
+    assert payment_day_sentence([INSURANCE_LETTER], first, single) is None
+    assert payment_day_sentence([INSURANCE_LETTER], ("day_of_month", 15), single, YEARLY) is None
+    quarterly = f"Quartalsbeitrag 48,00 € fällig am 15.02.2027, 15.05.2027 und 15.08.2027.\n{TICKET_LETTER}"
+    # the letter states two different days (the 15th as a schedule, the 1st in words): which one is it?
+    assert payment_day_sentence([quarterly], first, "", QUARTERLY) is None
+    assert payment_day_sentence([quarterly], first, "", None) == TICKET_DEBIT
+
+
+def test_a_due_day_a_schedule_states_with_month_names_is_found() -> None:
+    """A schedule's dates are read before month-name dates are left out of a payment sentence: "am 1.
+    Dezember 2026 und 1. Dezember 2027" states the 1st for a yearly recurrence, and no day without one."""
+    sentence = "Beitrag fällig am 1. Dezember 2026 und 1. Dezember 2027."
+    assert payment_days_stated(sentence, YEARLY) == [(sentence, {("day_of_month", 1)})]
+    assert payment_days_stated(sentence) == []
+
+
+def test_a_quote_stating_another_day_as_a_schedule_rules_out_the_letters_day() -> None:
+    """The to-do's own quote stating another day as a schedule of its recurrence (the 15th, three months
+    apart) rules out the letter's one day (the 1st, "zum Monatsanfang")."""
+    first: DueDay = ("day_of_month", 1)
+    quote = "Quartalsbeitrag 48,00 € fällig am 15.02.2027, 15.05.2027 und 15.08.2027."
+    assert payment_day_sentence([TICKET_LETTER], first, quote, QUARTERLY) is None
+    assert payment_day_sentence([TICKET_LETTER], first, quote) == TICKET_DEBIT
+
+
+def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> None:
+    first: DueDay = ("day_of_month", 1)
+    assert payment_day_sentence([TICKET_LETTER], first, "Preis 63,00 € pro Monat") == TICKET_DEBIT
+    assert payment_day_sentence(["Seite 1", TICKET_LETTER], first) == TICKET_DEBIT  # on any page
+    assert payment_day_sentence([TICKET_LETTER], ("day_of_month", 15)) is None  # another day
+    assert payment_day_sentence([TICKET_LETTER], ("working_day", 1)) is None  # not a working day
+    assert payment_day_sentence(["Preis 63,00 € pro Monat"], first) is None  # no day stated
+    two_days = f"{TICKET_LETTER}Die Servicegebühr wird jeweils zum 15. abgebucht."
+    assert payment_day_sentence([two_days], first) is None  # two different days: which one is it?
+    twice = f"{TICKET_LETTER}Der Beitrag wird zum Monatsersten eingezogen."
+    assert payment_day_sentence([twice], first) == TICKET_DEBIT  # the same day twice is one day
+    # a quote naming another day contradicts the letter's
+    assert payment_day_sentence([TICKET_LETTER], first, "Der Beitrag wird zum 15. abgebucht.") is None
