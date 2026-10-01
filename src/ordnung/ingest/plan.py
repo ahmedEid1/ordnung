@@ -30,7 +30,7 @@ from typing import Any, Literal
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.ingest.conflicts import Rival, find_rivals, settle
+from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, settle, settle_law
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -1266,7 +1266,11 @@ def sync_rule_items(
     is no quote to grade — except the end a termination announces, which the model read: a to-do that
     counts from an end the letter doesn't write (the engine cites ``termination_end``, ``low``) gets the
     termination's sentence (``end_evidence``) as evidence that doesn't state its value, so it is marked
-    "Please check" (:func:`needs_check`). Rule to-dos the letter no longer has (its kind was corrected) are deleted
+    "Please check" (:func:`needs_check`). When the letter gives two dates for itself (its stored pages:
+    :func:`~ordnung.ingest.conflicts.law_rivals`), a deadline counted from its date or its arrival is counted
+    from each and keeps the earlier (:func:`~ordnung.ingest.conflicts.settle_law`: a step says why, a warning
+    names both, ``low``); its evidence is the letter's other date, not stating its value, so it is "Please
+    check" too. Rule to-dos the letter no longer has (its kind was corrected) are deleted
     unless the person acted on them; those the person edited are kept as they are. With ``create``
     false (a recompute after the region, buffer or arrival day changed) only the rule to-dos that still
     exist are updated: one the person deleted stays deleted — only reading the letter or choosing its
@@ -1280,10 +1284,24 @@ def sync_rule_items(
         for item in store.list_items(doc_id=document.id)
         if item.origin == "extracted" and item.date_spec is not None and item.computation is not None
     ]
-    receipts = {
-        entry.rule_id: compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
-        for entry in derived
-    }
+    pages = store.list_pages(document.id) if derived else []
+    receipts: dict[str, ComputationReceipt] = {}
+    # per rule that counts from the letter's date: the other dates the letter gives for itself
+    two_dates: dict[str, list[Evidence]] = {}
+    for entry in derived:
+        receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
+        rivals = law_rivals(entry.spec, pages)
+        settled = settle_law(receipt, entry.spec, rivals, ctx, postal_buffer_days=postal_buffer_days)
+        if settled is not None:
+            receipt = settled.receipt
+            two_dates[entry.rule_id] = [
+                ground_evidence(document.id, rival.statement, pages).model_copy(
+                    update={"value_consistent": False}
+                )
+                for rival in rivals
+                if rival.letter_date != ctx.document_date
+            ]
+        receipts[entry.rule_id] = receipt
     wanted = [
         entry
         for entry in derived
@@ -1316,6 +1334,7 @@ def sync_rule_items(
             if END_NOT_WRITTEN in receipt.rule_ids:
                 quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
                 evidence = [quote.model_copy(update={"value_consistent": False})]
+            evidence += two_dates.get(entry.rule_id, [])
             fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
             item = store.upsert_item_by_slot(document.id, slot, **fields)
             step.set(

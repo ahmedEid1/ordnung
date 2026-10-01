@@ -11,17 +11,30 @@ second statement:
   same nature as a to-do: for a payment, a date after "zahlbar bis", "fällig am", "bitte überweisen
   Sie … bis zum", "Zahlungsziel:" (or before "… fällig", "… zu zahlen"), and a period after the
   invoice's date or its arrival ("binnen 14 Tagen nach Rechnungsdatum"); for an objection, a date
-  after "Widerspruch / Einspruch / Klage … bis"; and, for any period counted from the letter, a
-  date the letter gives for itself ("mit diesem Bescheid vom …", "mit Bescheid vom … entscheiden
-  wir", "this letter dated …"). Only statements that plausibly concern the *same* obligation count:
+  after "Widerspruch / Einspruch / Klage … bis"; for a notice (a cancellation that must arrive) or a
+  declaration (a form, documents, a statement or a consent to send), a date after a deadline word —
+  "bis (zum)", "spätestens", "by", "no later than", "is due on", never a bare "zum" or "am" (a notice
+  "zum 31.12." names the end it takes effect) — or a deadline label ("Abgabefrist:", "Einsendeschluss:"),
+  with the nature's words on its label or in its sentence ("Kündigung", "kündigen"; "Unterlagen",
+  "Fragebogen", "Stellungnahme", "einreichen", "zurücksenden", "form", "submit"), and a period after
+  this letter's date or its arrival ("binnen 14 Tagen nach Zugang dieses Schreibens", never "nach
+  Erhalt unseres Schreibens vom …"); and, for any period counted from the letter, a date the letter
+  gives for itself ("mit diesem Bescheid vom …", "mit Bescheid vom … entscheiden wir", "this letter
+  dated …", and the first "Datum:" / "Date:" label of its first page's header, :func:`_header_date` —
+  never a "Datum" in its body, nor a date that reads two ways). Only statements that plausibly concern
+  the *same* obligation count:
   never a recurring to-do, money coming in, or a to-do with no date; never a statement whose sentence
   is the to-do's own quote, whose date is another to-do's, which names a different amount (an
   instalment), a kind of payment the to-do's sentence does not (instalments, a prepayment, a fee, a
   direct debit, a series: "die neuen Abschläge … erstmals am", "die nächste Vorauszahlung"), or —
-  for an objection — another remedy (a Klage's date is not a Beschwerde's), which is written in the
-  past ("war fällig am …", "wurde"), or which is an early-payment discount (*Skonto*: paying after
-  the discount date is not late — the net date is the obligation, so a discount date is never a
-  second due date). The page's line breaks stay: a due word counts for a date only on the date's own
+  for an objection — another remedy (a Klage's date is not a Beschwerde's), for a declaration
+  something else to send (the documents' date is not the questionnaire's; a to-do naming none has no
+  rival), for a notice another right to cancel (a *Sonderkündigungsrecht* is not the ordinary notice),
+  which is written in the past ("war fällig am …", "wurde"), or which is an early-payment discount
+  (*Skonto*: paying after the discount date is not late — the net date is the obligation, so a discount
+  date is never a second due date) or, for a notice or a declaration, an optional earlier day
+  ("möglichst bis", "wenn möglich", a bonus for answering early). The page's line breaks stay: a due
+  word counts for a date only on the date's own
   label or in its sentence, never from another label ("Rechnungsdatum: …" above "Zahlbar bis: …"),
   and a remedy's sentence gives no payment period.
 * :func:`settle` (compute stage) computes each such statement with the rules engine, as the to-do's
@@ -33,6 +46,11 @@ second statement:
   side: acting by it is on time whichever applies), its receipt names both dates and says why the
   earlier one was kept (rule ``conflicting_dates``), its confidence is ``low`` and it is marked
   "Please check" (its evidence is not ``value_consistent``: :func:`~ordnung.ingest.plan.needs_check`).
+  A date the letter gives for itself that is later than the one read leaves the to-do's date as it is
+  (it is already the earlier) but is named all the same: the letter contradicts itself.
+* :func:`settle_law` does the same for the deadlines the law adds to a high-stakes letter
+  (:func:`~ordnung.ingest.plan.sync_rule_items`): counted from the letter's date or its arrival, each is
+  counted from every date the letter gives for itself (:func:`law_rivals`) and keeps the earliest.
 
 The check reads code-side only (no model call) and adds dates only where the letter writes them.
 """
@@ -79,6 +97,7 @@ _AFTER_REACH = 60
 _AMOUNT_REACH = 80
 #: How much of a statement a warning quotes.
 _QUOTE_CHARS = 90
+_COUNTS = {2: "two", 3: "three"}
 
 _PAYMENT_CUE = re.compile(
     r"\b(?:zahlbar|fällig\w*|zahlungsziel|zahlungstermin|zahlungsfrist|zahlen\s+sie|überweisen\s+sie"
@@ -91,12 +110,50 @@ _PAYMENT_CUE_AFTER = re.compile(
     r"^\W*(?:\S+\s+){0,6}?(?:fällig|zu\s+zahlen|zu\s+überweisen|zu\s+begleichen|zahlbar)\b", re.IGNORECASE
 )
 _OBJECTION_CUE = re.compile(r"\b(?:widerspruch|einspruch|klage|objection|appeal)\w*", re.IGNORECASE)
+_WEEKDAY = (
+    r"(?:(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday"
+    r"|friday|saturday|sunday),?\s*)?"
+)
 #: The words just before a due date: "bis (zum)", "spätestens", "am", "by" … or a label's colon —
 #: a weekday may stand between ("bis Freitag, 28.08.2026").
 _DUE_PREPOSITION = re.compile(
-    r"(?:\b(?:bis|zum|spätestens|einschließlich|am|by|on|before|until)|:)\s*"
-    r"(?:(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|monday|tuesday|wednesday|thursday"
-    r"|friday|saturday|sunday),?\s*)?(?:den\s+)?$",
+    rf"(?:\b(?:bis|zum|spätestens|einschließlich|am|by|on|before|until)|:)\s*{_WEEKDAY}(?:den\s+)?$",
+    re.IGNORECASE,
+)
+#: The words just before the last day of a notice or a declaration: "bis (zum)", "spätestens (am)",
+#: "by", "no later than", "is due on" — never a bare "zum" or "am" ("kündigen zum 31.12.2026" names the
+#: end the notice takes effect, not the day it must arrive by) — or the colon of a label that names a
+#: deadline ("Abgabefrist:", "Einsendeschluss:", "Deadline:"), not one that names a date ("Stand:").
+_DEADLINE_PREPOSITION = re.compile(
+    r"(?:\b(?:bis|spätestens|by|before|until)(?:\s+(?:zum|am|spätestens|einschließlich|bis))*"
+    rf"|\b(?:no|not)\s+later\s+than|\bdue(?:\s+(?:on|by))?)\s*{_WEEKDAY}(?:den\s+)?$",
+    re.IGNORECASE,
+)
+_DEADLINE_LABEL = re.compile(
+    rf"(?:frist|einsendeschluss|abgabe|rückgabe|rücksendung|deadline)[^:\n]*:\s*{_WEEKDAY}$", re.IGNORECASE
+)
+#: A notice: a cancellation or termination the person must send ("Kündigung", "kündigen", "cancel") —
+#: never an announcement ("Ankündigung", "wie angekündigt").
+_NOTICE_CUE = re.compile(r"\b(?!an(?:ge)?kündig)\w*kündig\w*|\bcancel\w*|\bterminat\w*", re.IGNORECASE)
+#: A declaration: a form, documents or a statement to send, or the verbs that ask for one ("einreichen",
+#: "zurücksenden", "submit", "return").
+_DECLARATION_CUE = re.compile(
+    r"\w*erklärung\w*|\w*fragebog\w*|\w*formular\w*|\bvordruck\w*|\bunterlagen\b|\w*nachweis\w*|\bbelege?\b"
+    r"|\w*bescheinigung\w*|\bstellungnahme\w*|\w*anhörung\w*|\bäußer(?:n|ung\w*)\b|\bzustimmung\w*"
+    r"|\beinwilligung\w*|\breichen\s+sie\b|\blegen\s+sie\b|\b(?:ein|nach)(?:zu|ge)?reich\w*"
+    r"|\b(?:zurück|ein|zu)(?:zu|ge)?(?:send|sand|schick)\w*|\bzurück(?:zu|ge)?geb\w*|\bvor(?:zu|ge)?leg\w*"
+    r"|\bübers(?:end|and)\w*"
+    r"|\bdeclaration\w*|\bforms?\b|\bquestionnaire\w*|\bdocument(?:s|ation)?\b|\bsubmi\w*|\breturn(?:ed)?\b"
+    r"|\bupload\w*|\bconsent\w*",
+    re.IGNORECASE,
+)
+#: Words that make a notice's or a declaration's date optional — an earlier day that brings a benefit or
+#: is only asked for if possible ("möglichst bis", "wenn Sie … bereits bis … einreichen, erhalten Sie"):
+#: missing it is not late (as with *Skonto* for a payment), so it is never a second date.
+_OPTIONAL = re.compile(
+    r"\b(?:möglichst|nach\s+möglichkeit|wenn\s+möglich|gerne?|vorzugsweise|idealerweise|bereits|vorab"
+    r"|frühzeitig|schon\s+jetzt|empfehl\w*|empfohl\w*|bonus|prämie\w*|vorteil\w*|rabatt|if\s+possible|ideally"
+    r"|preferably|in\s+advance|early|earlier|already|recommend\w*|priority|vorrangig\w*|bevorzugt\w*)\b",
     re.IGNORECASE,
 )
 #: An early-payment discount: its date is not the due date ("ohne Abzug" is the net amount, which is).
@@ -121,6 +178,19 @@ _RELATIVE_PAYMENT = re.compile(
     re.IGNORECASE,
 )
 _ARRIVAL_ANCHORS = ("rechnungseingang", "rechnungserhalt", "erhalt", "zugang", "receipt")
+#: A notice's or a declaration's period counted from this letter's date or its arrival ("binnen 14 Tagen
+#: nach Zugang dieses Schreibens", "within 10 business days of the date of this letter") — never from
+#: another letter's ("nach Erhalt unseres Schreibens vom …").
+_RELATIVE_LETTER = re.compile(
+    rf"(?:\b(?:binnen|innerhalb(?:\s+von)?|within)\s+)?\b(?P<period>(?:{_NUMBER})\s+"
+    rf"(?:(?:business|working)\s+days?|\w*werktag\w*|\w*arbeitstag\w*|{_PERIOD_UNIT}))(?:\s*\([^)]*\))?\s+"
+    r"(?:nach|ab|after|from|of)\s+(?:dem\s+|the\s+)?"
+    r"(?P<anchor>(?:zugang|erhalt|receipt)(?:\s+(?:of\s+)?(?:dieses|this)\s+(?:schreibens|briefes|letter))?"
+    r"|datum\s+(?:dieses|des)\s+(?:schreibens|briefes)|briefdatum|date\s+of\s+(?:this|the)\s+letter)\b"
+    r"(?!\s+(?:unsere[sr]?|ihre[sr]?|des|der|of|our|your|the)\b)",
+    re.IGNORECASE,
+)
+_LETTER_ARRIVAL = ("zugang", "erhalt", "receipt")
 #: The letter naming its own date: "(mit) diesem Bescheid vom …", "this letter dated …".
 _SELF_DATE = re.compile(
     r"(?:\b(?:diese[mnrs]?|vorliegende[mnrs]?)\s+\w*(?:bescheid|schreiben|brief|mahnung|erinnerung"
@@ -171,8 +241,42 @@ _REMEDIES: dict[str, re.Pattern[str]] = {
         "appeal": r"\bappeal\w*",
     }.items()
 }
+#: What a declaration asks for: a date for the documents is not one for a form or a statement.
+_DECLARED: dict[str, re.Pattern[str]] = {
+    key: re.compile(pattern, re.IGNORECASE)
+    for key, pattern in {
+        "documents": r"\bunterlagen\b|\bdokument\w*|\bbelege?\b|\w*nachweis\w*|\w*bescheinigung\w*|\w*auszüg\w*"
+        r"|\w*abrechnungen\b|\bdocument(?:s|ation)?\b|\bproofs?\b|\bevidence\b|\bcertificates?\b|\breceipts\b",
+        "form": r"\w*formular\w*|\bvordruck\w*|\w*fragebog\w*|\w*bogen\b|\bforms?\b|\bquestionnaire\w*",
+        "declaration": r"\w*erklärung\w*|\bdeclarations?\b",
+        "statement": r"\bstellungnahme\w*|\w*anhörung\w*|\bäußer(?:n|ung\w*)\b|\bstatement\b|\bcomments?\b",
+        "consent": r"\bzustimm\w*|\bzustimmung\w*|\beinwillig\w*|\bconsent\w*",
+    }.items()
+}
+#: Which notice: a date for a special right to cancel is not one for the ordinary notice.
+_NOTICE_KINDS: dict[str, re.Pattern[str]] = {
+    key: re.compile(pattern, re.IGNORECASE)
+    for key, pattern in {
+        "special": r"\w*sonderkündig\w*|\baußerordentlich\w*|\bfristlos\w*|\bspecial\b|\bextraordinar\w*",
+        "ordinary": r"\bordentlich\w*|\bordinary\b",
+    }.items()
+}
+#: The label of the letter's own date in its header: "Datum: 02.03.2026", "Date: 5 May 2026", "Datum des
+#: Bescheids" — on its own, never a compound ("Rechnungsdatum", "Due date", "Date of birth").
+_HEADER_LABEL = r"(?P<label>datum(?:\s+des\s+(?:bescheid(?:e)?s|schreibens|briefe?s))?|date)"
+#: The label with its date on the same line, after a colon or a column's gap ("Datum   22.09.2026").
+_HEADER_SAME_LINE = re.compile(
+    rf"(?:^|[·|]\s*|\s{{2,}}|\t){_HEADER_LABEL}(?:\s*:\s*|\s{{2,}}|\t){_WEEKDAY}$", re.IGNORECASE
+)
+#: The label ending its line, its date ending the next ("… 44135 Musterstadt   Datum" over "27.04.2026").
+_HEADER_LINE_END = re.compile(rf"(?:^|[·|]\s*|\s{{2,}}|\t){_HEADER_LABEL}\s*:?\s*$", re.IGNORECASE)
+#: Words before a date that make it another one than the letter's ("Ihr Schreiben vom …").
+_ANOTHER_DATE = re.compile(r"\b(?:vom|seit|bis|ab|am|zum|from|of|dated|since|until)\s*$", re.IGNORECASE)
+#: Where a letter's body starts.
+_SALUTATION = re.compile(r"(?:sehr\s+geehrte|guten\s+tag|hallo\b|liebe[rs]?\b|dear\b|hello\b)", re.IGNORECASE)
 
-Nature = Literal["payment", "objection"]
+Nature = Literal["payment", "objection", "notice", "declaration"]
+_NEW_NATURES = ("notice", "declaration")
 
 
 @dataclass(frozen=True)
@@ -265,34 +369,71 @@ def _label_after(after: str) -> str:
     return after[: breaks[-1].start()] if breaks else ""
 
 
+def _new_nature(text: str) -> Nature | None:
+    """A notice's or a declaration's words in ``text`` — neither when it names both, or a payment's or an
+    objection's (whose statements are read as theirs)."""
+    if _PAYMENT_CUE.search(text) or _OBJECTION_CUE.search(text) or re.search(r"zahlung|überweis", text, re.I):
+        return None
+    notice, declaration = bool(_NOTICE_CUE.search(text)), bool(_DECLARATION_CUE.search(text))
+    if notice == declaration:
+        return None
+    return "notice" if notice else "declaration"
+
+
+def _deadline(clause: str, start: int, end: int, before: str, after: str) -> tuple[Nature, str] | None:
+    """The notice or the declaration a date is the last day of ("Kündigung … bis spätestens 30.09.2026",
+    "Bitte reichen Sie die Unterlagen bis zum 15.03.2026 ein", "Abgabefrist: 31.07.2026", "must be received
+    by"), with the words that say so: a deadline word just before it (never a bare "zum"/"am", nor a label
+    that names no deadline) and the nature's words on its label or in its sentence — not written in the
+    past, nor optional ("möglichst bis", "wenn Sie … bereits bis …, erhalten Sie")."""
+    strict = _DEADLINE_PREPOSITION.search(before) or _DEADLINE_LABEL.search(before)
+    if strict is None:
+        return None
+    nature = _new_nature(before + after)
+    if nature is None:
+        return None
+    cue = _NOTICE_CUE if nature == "notice" else _DECLARATION_CUE
+    found = list(cue.finditer(before))
+    head = min(found[-1].start(), strict.start()) if found else strict.start()
+    tail = cue.search(after)
+    said = before[head:] + clause[start:end] + (after[: tail.end()] if tail and not found else "")
+    words = before + after
+    if _PAST.search(said + after[:30]) or _OPTIONAL.search(words) or _DISCOUNT.search(words):
+        return None
+    return nature, said.strip()
+
+
 def _explicit(clause: str, dates: list[tuple[int, int, date]], grounding: Grounding) -> list[_Statement]:
-    """Dates the clause sets for a payment or an objection ("Zahlbar bis: 16.02.2026",
-    "Widerspruch … bis zum 12.05.2026"): a due word on the date's own label or in its sentence —
-    never one of another label or beyond another date."""
+    """Dates the clause sets for a payment, an objection, a notice or a declaration ("Zahlbar bis:
+    16.02.2026", "Widerspruch … bis zum 12.05.2026", :func:`_deadline`): a due word on the date's own label
+    or in its sentence — never one of another label or beyond another date."""
     found = []
     for index, (start, end, day) in enumerate(dates):
         lo = dates[index - 1][1] if index > 0 else 0
         hi = dates[index + 1][0] if index + 1 < len(dates) else len(clause)
         before = _label_before(clause[max(lo, start - _CUE_REACH) : start])
         after = _label_after(clause[end : min(hi, end + _AFTER_REACH)])
-        if not _DUE_PREPOSITION.search(before):
-            continue
         nature: Nature | None = None
         cue = None
-        payment = list(_PAYMENT_CUE.finditer(before))
-        objection = list(_OBJECTION_CUE.finditer(before))
-        if payment:
-            nature, cue = "payment", payment[-1].start()
-        elif _PAYMENT_CUE_AFTER.search(after):
-            nature, cue = "payment", len(before)
-        elif objection:
-            nature, cue = "objection", objection[-1].start()
-        if nature is None or cue is None:
+        phrase = ""
+        if _DUE_PREPOSITION.search(before):
+            payment = list(_PAYMENT_CUE.finditer(before))
+            objection = list(_OBJECTION_CUE.finditer(before))
+            if payment:
+                nature, cue = "payment", payment[-1].start()
+            elif _PAYMENT_CUE_AFTER.search(after):
+                nature, cue = "payment", len(before)
+            elif objection:
+                nature, cue = "objection", objection[-1].start()
+        if nature is not None and cue is not None:
+            said = (before[cue:] if cue < len(before) else before[-40:]) + clause[start:end] + after[:30]
+            if _PAST.search(said) or _DISCOUNT.search(before + after):
+                continue
+            phrase = (before[cue:] + clause[start:end]).strip()
+        elif (deadline := _deadline(clause, start, end, before, after)) is not None:
+            nature, phrase = deadline
+        else:
             continue
-        said = (before[cue:] if cue < len(before) else before[-40:]) + clause[start:end] + after[:30]
-        if _PAST.search(said) or _DISCOUNT.search(before + after):
-            continue
-        phrase = (before[cue:] + clause[start:end]).strip()
         spec = DateSpec(type="fixed", date=day.isoformat(), nature=nature, shift_rule="auto", text=phrase)
         window = clause[max(0, start - _AMOUNT_REACH) : end + _AMOUNT_REACH]
         found.append(_Statement(spec, phrase, window, grounding, context=before + clause[start:end] + after))
@@ -334,6 +475,33 @@ def _relative(clause: str, grounding: Grounding) -> list[_Statement]:
     return found
 
 
+def _relative_deadline(clause: str, grounding: Grounding) -> list[_Statement]:
+    """Notice and declaration periods the clause counts from this letter's date or its arrival ("Bitte
+    reichen Sie die Unterlagen binnen 14 Tagen nach Zugang dieses Schreibens ein")."""
+    nature = _new_nature(clause)
+    if nature is None or _PAST.search(clause) or _OPTIONAL.search(clause) or _DISCOUNT.search(clause):
+        return []
+    found = []
+    for match in _RELATIVE_LETTER.finditer(clause):
+        periods = parse_periods(match.group("period"))
+        if len(periods) != 1:
+            continue
+        amount, unit = periods[0]
+        anchor = match.group("anchor").casefold().split()[0]
+        spec = DateSpec(
+            type="relative",
+            anchor="receipt" if anchor in _LETTER_ARRIVAL else "document_date",
+            amount=amount,
+            unit=unit,
+            nature=nature,
+            shift_rule="auto",
+            text=match.group().strip(),
+        )
+        window = clause[max(0, match.start() - _AMOUNT_REACH) : match.end() + _AMOUNT_REACH]
+        found.append(_Statement(spec, match.group().strip(), window, grounding, context=clause))
+    return found
+
+
 def _letter_dates(clause: str, dates: list[tuple[int, int, date]], grounding: Grounding) -> list[_Statement]:
     """Dates the letter gives for itself ("Mit diesem Bescheid vom 06.04.2027 setzen wir …")."""
     found = []
@@ -351,15 +519,70 @@ def _letter_dates(clause: str, dates: list[tuple[int, int, date]], grounding: Gr
     return found
 
 
+def _one_date(line: str, start: int, end: int) -> date | None:
+    """The date written at ``line[start:end]`` — ``None`` when its day and month could be read either way
+    (03/05/2026)."""
+    days = {found for s, e, m in date_spans(line) if (s, e) == (start, end) and (found := m.as_date())}
+    return days.pop() if len(days) == 1 else None
+
+
+def _header(lines: list[str]) -> list[str]:
+    """The lines of a letter's header: those before its salutation ("Sehr geehrte …", "Dear …") — without
+    one, those before its first sentence."""
+    for index, line in enumerate(lines):
+        if _SALUTATION.match(line.strip()):
+            return lines[:index]
+    for index, line in enumerate(lines):
+        if _SENTENCE_END.search(line) or (line.rstrip().endswith(".") and len(line.split()) >= 4):
+            return lines[:index]
+    return lines
+
+
+def _header_date(text: str, grounding: Grounding) -> list[_Statement]:
+    """The date the letter's header gives for it: the first "Datum:" / "Date:" label of its first page's
+    header (:func:`_header`), with its date after it on the same line ("Datum: 02.03.2026", "Datum
+    22.09.2026") or ending the next line (a column's label above its value) — the only date on that line,
+    and one that reads one way. A table's "Datum" in the letter's body (an invoice a reminder lists) is
+    never its own date."""
+    lines = _header(fold_punctuation(text).splitlines())
+    for index, line in enumerate(lines):
+        for start, end, _ in date_spans(line):
+            label = _HEADER_SAME_LINE.search(line[:start])
+            if label is None:
+                continue
+            day = _one_date(line, start, end)
+            if day is None:
+                return []
+            phrase = re.sub(r"\s+", " ", line[label.start("label") : end]).strip()
+            return [_Statement(DateSpec(type="none", text=phrase), phrase, line, grounding, letter_date=day)]
+        label = _HEADER_LINE_END.search(line)
+        if label is None or index + 1 >= len(lines):
+            continue
+        following = lines[index + 1].rstrip()
+        spans = {(start, end) for start, end, _ in date_spans(following)}
+        if len(spans) != 1:
+            return []
+        [(start, end)] = spans
+        day = _one_date(following, start, end)
+        if end != len(following) or day is None or _ANOTHER_DATE.search(following[:start]):
+            return []  # not its value, or another date's ("Ihr Schreiben vom 15.02.2026")
+        phrase = f"{label.group('label')} {following[start:end]}"
+        return [_Statement(DateSpec(type="none", text=phrase), phrase, following, grounding, letter_date=day)]
+    return []
+
+
 def letter_statements(pages: Sequence[PageInput]) -> list[_Statement]:
     """Every deadline statement :func:`find_rivals` can read in the letter, and the dates it gives for
-    itself."""
+    itself (in its text, and in its first page's header: :func:`_header_date`)."""
     found: list[_Statement] = []
-    for page in pages:
+    for index, page in enumerate(pages):
         text, grounding = _page_text(page)
+        if index == 0:
+            found += _header_date(text, grounding)
         for clause, dates in _clauses(text):
             found += _explicit(clause, dates, grounding)
             found += _relative(clause, grounding)
+            found += _relative_deadline(clause, grounding)
             found += _letter_dates(clause, dates, grounding)
     return found
 
@@ -369,6 +592,10 @@ def _nature(item: ExtractedItem) -> Nature | None:
         return "objection"
     if item.kind == "payment" or item.date.nature == "payment":
         return "payment"
+    if item.date.nature == "notice":
+        return "notice"
+    if item.date.nature == "declaration":
+        return "declaration"
     return None
 
 
@@ -394,13 +621,24 @@ def _other_obligation(statement: _Statement, item: ExtractedItem, others: Sequen
     """Whether the statement dates another to-do of the letter (its date or its period), names an
     amount that is not the to-do's (an instalment, a fee) or a kind of obligation the to-do's own
     sentence does not ("die neuen Abschläge … erstmals am", "die nächste Vorauszahlung ist fällig am"),
-    or — for an objection — another remedy than the to-do's (a Klage's date is not a Beschwerde's)."""
+    or — for an objection — another remedy than the to-do's (a Klage's date is not a Beschwerde's), for a
+    declaration something else to send (the documents' date is not the questionnaire's), for a notice
+    another right to cancel (a special right's date is not the ordinary notice's)."""
     if _found(_OTHER_OBLIGATION, statement.context) - _found(_OTHER_OBLIGATION, _own_words(item)):
         return True
+    own = f"{_own_words(item)} {item.title}"
     if statement.spec.nature == "objection":
-        remedies = _found(_REMEDIES, f"{_own_words(item)} {item.title}")
+        remedies = _found(_REMEDIES, own)
         if not remedies & _found(_REMEDIES, statement.context):
             return True  # another remedy, or the to-do names none: whether it is the same can't be told
+    declared = _found(_DECLARED, statement.context)
+    if statement.spec.nature == "declaration" and not _found(_DECLARED, own) & declared:
+        # something else to send, or the to-do names nothing: whether it is the same can't be told
+        return True
+    if statement.spec.nature == "notice" and _found(_NOTICE_KINDS, own) != _found(
+        _NOTICE_KINDS, statement.context
+    ):
+        return True
     spec = statement.spec
     for other in others:
         if other is item or other.date.type == "none":
@@ -428,6 +666,9 @@ def find_rivals(
     nature = _nature(item)
     if _DISCOUNT.search(item.quote):
         return ()  # its sentence speaks of a discount: which date is the discount's is the reading's to tell
+    if nature in _NEW_NATURES and _OPTIONAL.search(item.quote):
+        # an optional earlier day ("möglichst bis"): which date must be met is the reading's to tell
+        nature = None
     rivals: list[Rival] = []
     for statement in letter_statements(pages):
         if statement.letter_date is not None:
@@ -441,6 +682,19 @@ def find_rivals(
         rivals.append(Rival(statement.spec, statement.phrase, statement.grounding))
     unique = {(rival.spec.model_dump_json(), rival.statement, rival.letter_date): rival for rival in rivals}
     return tuple(unique.values())
+
+
+def law_rivals(spec: DateSpec, pages: Sequence[PageInput]) -> tuple[Rival, ...]:
+    """For a deadline the law adds to the letter (``spec``, :func:`~ordnung.ingest.plan.sync_rule_items`):
+    the dates the letter gives for itself, each to count it from (:func:`settle_law`)."""
+    rivals = {
+        (statement.phrase, statement.letter_date): Rival(
+            spec, statement.phrase, statement.grounding, statement.letter_date
+        )
+        for statement in letter_statements(pages)
+        if statement.letter_date is not None
+    }
+    return tuple(rivals.values())
 
 
 # --------------------------------------------------------------------------------------------------
@@ -573,6 +827,22 @@ def _other_step(noun: str, candidate: _Candidate, kept: _Candidate, ctx: RuleCon
     )
 
 
+def settle_law(
+    receipt: ComputationReceipt,
+    spec: DateSpec,
+    rivals: Sequence[Rival],
+    ctx: RuleContext,
+    *,
+    postal_buffer_days: int,
+) -> Settled | None:
+    """:func:`settle` for a deadline the law adds to the letter (``spec``, its ``receipt`` computed in
+    ``ctx``) when the letter gives two dates for itself (``rivals``: :func:`law_rivals`): counted from each,
+    the earlier date is kept — the law counts it from the letter's date or its arrival, so acting by the
+    earlier is on time whichever date the letter really has."""
+    item = ExtractedItem(kind="deadline", title="", date=spec, quote="")
+    return settle(receipt, item, rivals, ctx, postal_buffer_days=postal_buffer_days, law=True)
+
+
 def settle(
     receipt: ComputationReceipt,
     item: ExtractedItem,
@@ -580,11 +850,13 @@ def settle(
     ctx: RuleContext,
     *,
     postal_buffer_days: int,
+    law: bool = False,
 ) -> Settled | None:
     """The to-do's receipt when the letter gives it another date (``None`` when it gives none): the
     earliest of the dates kept, with the engine's steps for it, a step per other date and one saying
     why the earlier one is kept, a warning naming both dates, rule ``conflicting_dates`` and ``low``
-    confidence. ``receipt`` is the to-do's own (graded), computed in ``ctx``."""
+    confidence. ``receipt`` is the to-do's own (graded), computed in ``ctx``; ``law``: a deadline the
+    law adds (:func:`settle_law`)."""
     own_due = parse_date(receipt.due_date)
     if own_due is None or not rivals:
         return None
@@ -599,17 +871,22 @@ def settle(
     noun = _noun(item)
     kept = min([own, *others], key=lambda candidate: candidate.due)
     dates = len({own.due, *(other.due for other in others)})
-    count = {2: "two", 3: "three"}.get(dates, str(dates))
+    count = _COUNTS.get(dates, str(dates))
     lead = _lead_step(kept)
+    own_dates = {ctx.document_date, *(other.rival.letter_date for other in others if other.rival is not None)}
+    why = (
+        f"The law counts this deadline from the letter's date or its arrival, and the letter gives "
+        f"{_COUNTS.get(len(own_dates), str(len(own_dates)))} dates for itself: we keep the earliest, "
+        f"{fmt_date(kept.due)} — acting by it is on time whichever date the letter really has"
+        if law
+        else f"The letter gives {count} different dates for this {noun}: we keep the earliest, "
+        f"{fmt_date(kept.due)} — acting by it is on time whichever date applies"
+    )
     steps = [
         *([lead] if lead is not None else []),
         *kept.receipt.steps,
         *(_other_step(noun, other, kept, ctx) for other in [own, *others] if other is not kept),
-        _step(
-            f"The letter gives {count} different dates for this {noun}: we keep the earliest, "
-            f"{fmt_date(kept.due)} — acting by it is on time whichever date applies",
-            kept.due,
-        ),
+        _step(why, kept.due),
     ]
     warnings = [_warning(noun, own, other, kept.due, ctx) for other in others]
     later = ", ".join(fmt_date(c.due) for c in sorted([own, *others], key=lambda c: c.due) if c is not kept)

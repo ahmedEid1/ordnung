@@ -13,10 +13,11 @@ import pytest
 from fixtures_llm import Letter
 from ordnung import clock
 from ordnung.api.routes.dates import recompute_document_items
-from ordnung.ingest.conflicts import CONFLICTING_DATES, find_rivals
+from ordnung.ingest.conflicts import CONFLICTING_DATES, find_rivals, letter_statements
 from ordnung.ingest.plan import ComputedDate, VerifiedItem, compute_item, needs_check, verify_extraction
 from ordnung.models import DocumentExtraction, ExtractedItem
 from ordnung.rules import RuleContext, catalog
+from ordnung.rules.explain import fmt_date
 from test_api_support import ApiRouter, api_for
 
 BUFFER = 3
@@ -492,6 +493,264 @@ def needs_check_after(verified: VerifiedItem, result: ComputedDate) -> bool:
 
 
 # --------------------------------------------------------------------------------------------------
+# Notices and declarations: a cancellation, a form, documents or a statement to send by a day
+# --------------------------------------------------------------------------------------------------
+
+
+def _said(result: ComputedDate) -> str:
+    """Everything the receipt says: its warnings and its steps."""
+    receipt = result.receipt
+    assert receipt is not None
+    return " ".join([*receipt.warnings, *(step.label for step in receipt.steps)])
+
+
+def _two_dates(result: ComputedDate) -> list[str]:
+    """The receipt's warnings that the letter gives another date for the to-do."""
+    receipt = result.receipt
+    assert receipt is not None
+    return [warning for warning in receipt.warnings if warning.startswith("The letter gives two dates")]
+
+
+@pytest.mark.parametrize(
+    ("text", "own", "earlier"),
+    [
+        (
+            "Beispiel Versicherung AG, 02.03.2026\n"
+            "Bitte reichen Sie die fehlenden Unterlagen bis zum 27.03.2026 ein.\n"
+            "Frist für die Unterlagen: 20.03.2026\n",
+            fixed(
+                "Bitte reichen Sie die fehlenden Unterlagen bis zum 27.03.2026 ein.",
+                "2026-03-27",
+                nature="declaration",
+            ),
+            "2026-03-20",
+        ),
+        (
+            "Beispiel Versicherung AG, 02.03.2026\n"
+            "Bitte senden Sie den ausgefüllten Fragebogen innerhalb von 14 Tagen nach dem Datum dieses "
+            "Schreibens zurück.\n"
+            "Der Fragebogen muss bis spätestens 23.03.2026 bei uns eingehen.\n",
+            fixed(
+                "Der Fragebogen muss bis spätestens 23.03.2026 bei uns eingehen.",
+                "2026-03-23",
+                nature="declaration",
+            ),
+            "2026-03-16",  # 14 days after Mon 2 Mar
+        ),
+        (
+            "Studienwerk Muster, 02.03.2026\n"
+            "Please return the signed form by 20 March 2026.\n"
+            "The form must be received no later than 16 March 2026.\n",
+            fixed("Please return the signed form by 20 March 2026.", "2026-03-20", nature="declaration"),
+            "2026-03-16",
+        ),
+        (
+            "Muster Mobilfunk GmbH, 02.03.2026\n"
+            "Ihre Kündigung muss uns bis spätestens 30.09.2026 vorliegen.\n"
+            "Sie können den Vertrag bis zum 31.08.2026 kündigen.\n",
+            fixed(
+                "Ihre Kündigung muss uns bis spätestens 30.09.2026 vorliegen.", "2026-09-30", nature="notice"
+            ),
+            "2026-08-31",
+        ),
+    ],
+    ids=["documents-label", "questionnaire-period", "english-form", "notice"],
+)
+def test_a_notice_or_declaration_dated_twice_keeps_the_earlier_and_needs_a_check(
+    text: str, own: ExtractedItem, earlier: str
+) -> None:
+    [verified] = read(text, own, kind="other")
+    result = computed(verified, company(date(2026, 3, 2)))
+    assert result.due_date == earlier
+    assert result.conflict
+    receipt = result.receipt
+    assert receipt is not None and receipt.confidence == "low" and CONFLICTING_DATES in receipt.rule_ids
+    [warning] = _two_dates(result)
+    assert fmt_date(date.fromisoformat(own.date.date or "")) in warning
+    assert fmt_date(date.fromisoformat(earlier)) in warning
+    assert needs_check_after(verified, result)
+
+
+DOCUMENTS = fixed(
+    "Bitte reichen Sie die fehlenden Unterlagen bis zum 27.03.2026 ein.", "2026-03-27", nature="declaration"
+)
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        "Die Unterlagen waren ursprünglich bis zum 13.03.2026 einzureichen.",
+        "Wenn möglich, reichen Sie die Unterlagen bis zum 13.03.2026 ein.",
+        "Künftige Unterlagen reichen Sie bitte jeweils bis zum 15. eines Monats ein, erstmals bis zum 13.03.2026.",
+        "Wie mit Schreiben vom 16.02.2026 erbeten, sind die Unterlagen binnen 10 Tagen nach Erhalt unseres "
+        "Schreibens einzureichen.",
+        "Checkliste Unterlagen – Stand: 13.03.2026",
+        "Den Fragebogen senden Sie bitte bis zum 13.03.2026 zurück.",
+    ],
+    ids=["past", "optional", "series", "another-letters-period", "label-names-no-deadline", "another-thing"],
+)
+def test_a_declarations_guards_leave_out_what_is_no_second_date(other: str) -> None:
+    """Written in the past, optional (as *Skonto* is for a payment), a series, a period from another
+    letter, a label that names a date but no deadline, something else to send: none of them dates the
+    to-do — the letter's real second date still does."""
+    text = (
+        "Beispiel Versicherung AG, 02.03.2026\n"
+        "Bitte reichen Sie die fehlenden Unterlagen bis zum 27.03.2026 ein.\n"
+        f"{other}\n"
+        "Frist für die Unterlagen: 20.03.2026\n"
+    )
+    [verified] = read(text, DOCUMENTS, kind="other")
+    result = computed(verified, company(date(2026, 3, 2)))
+    assert result.due_date == "2026-03-20" and result.conflict  # the label's date, and no other
+    [warning] = _two_dates(result)
+    assert "Fri 20 Mar 2026" in warning and "Fri 27 Mar 2026" in warning
+
+
+def test_a_reminder_repeating_the_declarations_original_date_is_no_second_date() -> None:
+    text = (
+        "Beispiel Versicherung AG, 12.03.2026\n"
+        "Erinnerung\n"
+        "In unserem Schreiben vom 16.02.2026 baten wir Sie, die Unterlagen bis zum 06.03.2026 einzureichen.\n"
+        "Bitte reichen Sie die fehlenden Unterlagen bis zum 27.03.2026 ein.\n"
+        "Frist für die Unterlagen: 20.03.2026\n"
+    )
+    [verified] = read(text, DOCUMENTS, kind="other")
+    result = computed(verified, company(date(2026, 3, 12)))
+    assert result.due_date == "2026-03-20" and result.conflict
+    [warning] = _two_dates(result)
+    assert "Fri 20 Mar 2026" in warning and "Fri 27 Mar 2026" in warning
+
+
+def test_another_declarations_date_is_not_a_second_date() -> None:
+    text = (
+        "Jobcenter Musterstadt, 02.03.2026\n"
+        "Bitte reichen Sie die Lohnabrechnungen bis zum 27.03.2026 ein.\n"
+        "Die Kontoauszüge reichen Sie bitte bis zum 13.03.2026 ein.\n"
+        "Frist für die Unterlagen: 20.03.2026\n"
+    )
+    payslips = fixed(
+        "Bitte reichen Sie die Lohnabrechnungen bis zum 27.03.2026 ein.", "2026-03-27", nature="declaration"
+    )
+    statements = fixed(
+        "Die Kontoauszüge reichen Sie bitte bis zum 13.03.2026 ein.", "2026-03-13", nature="declaration"
+    )
+    first, _ = read(text, payslips, statements, kind="authority_letter")
+    assert [rival.statement for rival in first.rivals] == ["Frist für die Unterlagen: 20.03.2026"]
+    assert computed(first, company(date(2026, 3, 2))).due_date == "2026-03-20"
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        "Der Vertrag kann mit einer Frist von drei Monaten zum 31.12.2026 gekündigt werden.",
+        "Ihr Sonderkündigungsrecht können Sie bis zum 31.08.2026 ausüben.",
+    ],
+    ids=["the-end-it-takes-effect", "a-special-right"],
+)
+def test_a_notices_guards_leave_out_its_end_and_another_right(other: str) -> None:
+    """A notice "zum 31.12." names the end it takes effect, not the day it must arrive by; a special
+    right to cancel is another obligation than the ordinary notice."""
+    text = (
+        "Muster Mobilfunk GmbH, 02.03.2026\n"
+        "Ihre Kündigung muss uns bis spätestens 30.09.2026 vorliegen.\n"
+        f"{other}\n"
+        "Kündigungen müssen bis zum 15.09.2026 bei uns eingehen.\n"
+    )
+    own = fixed("Ihre Kündigung muss uns bis spätestens 30.09.2026 vorliegen.", "2026-09-30", nature="notice")
+    [verified] = read(text, own, kind="contract")
+    result = computed(verified, company(date(2026, 3, 2)))
+    assert result.due_date == "2026-09-15" and result.conflict
+    [warning] = _two_dates(result)
+    assert "Tue 15 Sep 2026" in warning and "Wed 30 Sep 2026" in warning
+
+
+# --------------------------------------------------------------------------------------------------
+# The letter's own date in its header
+# --------------------------------------------------------------------------------------------------
+
+INTEREST_OBJECTION = item(
+    "Einspruch ist binnen eines Monats nach Bekanntgabe möglich.",
+    kind="deadline",
+    type="relative",
+    amount=1,
+    unit="months",
+    anchor="deemed_delivery",
+    delivery_rule="de_admin_post",
+    nature="objection",
+)
+
+
+def _tax_office(letter: date) -> RuleContext:
+    return RuleContext(
+        today=date(2026, 3, 18), document_date=letter, delivery_scope="ao", sender_kind="tax_office"
+    )
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Datum: 16.03.2026",
+        "Steuernummer 123/456/78901 · Datum: Montag, 16.03.2026",
+        "Finanzamt Musterstadt · Postfach 1 · 12345 Musterstadt   Datum\n16.03.2026",
+        "Datum   16.03.2026",
+        "Date: 16 March 2026",
+    ],
+)
+def test_a_header_date_after_the_one_read_is_named_and_the_earlier_date_kept(header: str) -> None:
+    """The reading took the decision's date in the text (12 Mar) as the letter's; its header says 16 Mar.
+    The date counted from 12 Mar is already the earlier: it stays, but the letter contradicts itself, so
+    it is named and the to-do is "Please check"."""
+    text = (
+        f"Finanzamt Musterstadt\n{header}\n"
+        "Sehr geehrte Damen und Herren,\n"
+        "mit Bescheid vom 12.03.2026 setzen wir Zinsen in Höhe von 12,00 EUR fest.\n"
+        "Einspruch ist binnen eines Monats nach Bekanntgabe möglich.\n"
+    )
+    [verified] = read(text, INTEREST_OBJECTION, kind="tax_assessment")
+    result = computed(verified, _tax_office(date(2026, 3, 12)))
+    # posted Thu 12 Mar: delivered Mon 16 Mar, one month → Thu 16 Apr; from Mon 16 Mar: Fri 20 Mar → Mon 20 Apr
+    assert result.due_date == "2026-04-16"
+    assert result.conflict
+    receipt = result.receipt
+    assert receipt is not None and receipt.confidence == "low"
+    [warning] = [w for w in receipt.warnings if "gives two dates for itself" in w]
+    assert "Thu 12 Mar 2026" in warning and "Mon 16 Mar 2026" in warning and "Mon 20 Apr 2026" in warning
+    assert needs_check_after(verified, result)
+
+
+@pytest.mark.parametrize(
+    "table",
+    ["Bescheid   Datum\nVorauszahlungen   02.03.2026", "Bescheid über Vorauszahlungen · Datum: 02.03.2026"],
+)
+def test_a_date_in_the_letters_body_is_not_its_own_date(table: str) -> None:
+    """Only the header's label counts — never a "Datum" in the letter's body (a table of earlier
+    decisions, the old invoice a reminder lists), which would count the period from long before."""
+    body = (
+        "Sehr geehrte Damen und Herren,\n"
+        f"{table}\n"
+        "mit Bescheid vom 12.03.2026 setzen wir Zinsen in Höhe von 12,00 EUR fest.\n"
+        "Einspruch ist binnen eines Monats nach Bekanntgabe möglich.\n"
+    )
+    [unlabelled] = read(f"Finanzamt Musterstadt\nMusterstadt, 16.03.2026\n{body}", INTEREST_OBJECTION)
+    assert {rival.letter_date for rival in unlabelled.rivals} == {date(2026, 3, 12)}
+    [labelled] = read(f"Finanzamt Musterstadt\nDatum: 16.03.2026\n{body}", INTEREST_OBJECTION)
+    assert {rival.letter_date for rival in labelled.rivals} == {date(2026, 3, 16), date(2026, 3, 12)}
+    result = computed(labelled, _tax_office(date(2026, 3, 12)))
+    assert result.due_date == "2026-04-16" and result.conflict
+    assert "Mon 16 Mar 2026" in _said(result) and "Mon 2 Mar 2026" not in _said(result)
+
+
+def test_only_the_first_header_date_that_reads_one_way_is_the_letters() -> None:
+    def header_dates(header: str) -> list[date | None]:
+        page = (1, f"Studienwerk Muster\n{header}\nDear Ms Muster,\nThank you.\n", [], "text")
+        return [statement.letter_date for statement in letter_statements([page]) if statement.letter_date]
+
+    assert header_dates("Date: 16/03/2026") == [date(2026, 3, 16)]
+    assert header_dates("Date: 07/08/2026") == []  # 7 Aug or 8 Jul: it can't be told
+    assert header_dates("Date: 16/03/2026\nDate: 18/03/2026") == [date(2026, 3, 16)]
+
+
+# --------------------------------------------------------------------------------------------------
 # Through the pipeline, and when the letter's dates are recomputed
 # --------------------------------------------------------------------------------------------------
 
@@ -575,5 +834,85 @@ async def test_a_letter_with_two_dates_is_filed_with_the_earlier_and_stays_so(da
             settled = store.get_item(again.id)
             assert settled is not None and settled.due_date == "2026-03-16"
             assert needs_check(settled)
+    finally:
+        clock.set_today(None)
+
+
+DISMISSAL_TWO_DATES = Letter(
+    marker="Kündigung Ihres Arbeitsverhältnisses PN-4471",
+    pages=(
+        (
+            "Café Kranz GmbH · Marktplatz 3 · 12345 Musterstadt",
+            "SPECIMEN",
+            "Musterstadt, 24.09.2026",
+            "Kündigung Ihres Arbeitsverhältnisses PN-4471",
+            "Sehr geehrte Frau Rivera,",
+            "mit diesem Schreiben vom 21.09.2026",
+            "kündigen wir das Arbeitsverhältnis fristgerecht zum 31.12.2026.",
+        ),
+    ),
+    payload={
+        "kind": "employment",
+        "area": "work",
+        "title": "Dismissal by Café Kranz",
+        "sender": {"name": "Café Kranz GmbH", "kind": "employer"},
+        "document_date": "2026-09-24",
+        "summary": "Your employer ends your job on 31 Dec 2026.",
+        "explanation": "Your job ends.",
+        "items": [],
+        "change": {
+            "type": "termination_by_provider",
+            "effective_date": "2026-12-31",
+            "quote": "kündigen wir das Arbeitsverhältnis fristgerecht zum 31.12.2026",
+        },
+        "urgency": "high",
+    },
+)
+
+
+async def test_a_deadline_the_law_adds_counts_from_the_earlier_of_the_letters_two_dates(
+    data_dir: Path,
+) -> None:
+    """A dismissal dated 24 Sep in its header and 21 Sep in its text: the three weeks for the court action
+    (§ 4 KSchG) count from its arrival — unknown, so from its date, the earlier one: Mon 12 Oct, not Thu 15
+    Oct. The receipt says why, the warning names both and the to-do is "Please check"; the registration
+    (three months before the end) doesn't depend on the letter's date and stays as it is."""
+    router = ApiRouter()
+    router.letters = (DISMISSAL_TWO_DATES, *router.letters)
+    router.payloads[DISMISSAL_TWO_DATES.marker] = DISMISSAL_TWO_DATES.extraction()
+    clock.set_today("2026-09-26")
+    try:
+        async with api_for(data_dir, router=router) as api:
+            body = await api.upload(("kuendigung.pdf", DISMISSAL_TWO_DATES.pdf()))
+            await api.read_all()
+            doc_id = body["documents"][0]["id"]
+            store = api.ctx.store
+            document = store.get_document(doc_id)
+            assert document is not None and document.kind == "dismissal"
+            rules = {item.slot_key: item for item in store.list_items(doc_id=doc_id) if item.origin == "rule"}
+            court, register = rules["rule:kschg_4"], rules["rule:sgb3_38"]
+            assert court.due_date == "2026-10-12"
+            receipt = court.computation
+            assert (
+                receipt is not None and receipt.confidence == "low" and CONFLICTING_DATES in receipt.rule_ids
+            )
+            [warning] = [w for w in receipt.warnings if "gives two dates for itself" in w]
+            assert (
+                "Mon 21 Sep 2026" in warning and "Thu 24 Sep 2026" in warning and "Thu 15 Oct 2026" in warning
+            )
+            assert (
+                receipt.steps[-1].rule_id == CONFLICTING_DATES and "The law counts" in receipt.steps[-1].label
+            )
+            assert needs_check(court) and court.evidence and not court.evidence[0].value_consistent
+            assert register.due_date == "2026-09-30" and not needs_check(register)
+            assert document.status == "needs_review"
+
+            # once its arrival is confirmed, the law counts from that day: one date, nothing to check
+            patched = await api.client.patch(f"/api/documents/{doc_id}", json={"received_date": "2026-09-25"})
+            assert patched.status_code == 200
+            after = store.get_item(court.id)
+            assert after is not None and after.due_date == "2026-10-16"
+            assert after.computation is not None and CONFLICTING_DATES not in after.computation.rule_ids
+            assert not needs_check(after)
     finally:
         clock.set_today(None)
