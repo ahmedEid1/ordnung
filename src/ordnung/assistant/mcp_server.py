@@ -1544,13 +1544,18 @@ def answer_again(tools: LedgerTools, name: str, args: Mapping[str, Any]) -> str:
 async def _served_text(server: MCPServer, tool: str, args: dict[str, Any]) -> str:
     """The tool result's text as a client of ``server`` reads it: the result's text, or — for a failed
     call, which the server returns as an error result — the error's text (MCPServer's ``call_tool``
-    handler does the same)."""
+    handler does the same). An ``MCPError`` (none of the ledger tools raises one) is no result: the
+    handler lets it through as a protocol error, which reads ``MCP error <code>: <message>`` to a
+    TypeScript client — its text here, so a replay compares it rather than failing on it."""
     from mcp.server.mcpserver.exceptions import ToolError
+    from mcp.shared.exceptions import MCPError
 
     try:
         result = await server.call_tool(tool, args)
     except ToolError as exc:
         return str(exc)
+    except MCPError as exc:
+        return f"MCP error {exc.code}: {exc.message}"
     return "".join(getattr(block, "text", "") for block in getattr(result, "content", []))
 
 

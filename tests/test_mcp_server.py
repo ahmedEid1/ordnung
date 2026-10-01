@@ -1137,6 +1137,36 @@ async def test_a_replay_answers_a_call_as_the_server_does(store: Store, tools: L
             assert mcp_server.stale_tool_results(tools, events) == []
 
 
+async def test_replays_keep_no_connection_per_call(store: Store, tools: LedgerTools) -> None:
+    """Each replayed call runs on an event loop of its own, whose worker thread (the server runs a sync
+    tool in one) opened a connection that stayed open until the store closed: a full benchmark replay
+    kept 115 on one store and ran out of file descriptors under a limit of 256."""
+    first = mcp_server.answer_again(tools, "list_items", {"status": "all"})
+    for _ in range(60):
+        assert mcp_server.answer_again(tools, "list_items", {"status": "all"}) == first
+    assert len(store._connections) <= 2
+
+
+async def test_a_replay_reads_a_protocol_error_as_text(
+    tools: LedgerTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The server lets an MCPError through as a protocol error, not an error result; the replay reads its
+    text rather than failing in the middle of the stale check."""
+    from mcp.server.mcpserver import MCPServer
+    from mcp.shared.exceptions import MCPError
+
+    async def refuse(*_: object, **__: object) -> None:
+        raise MCPError(code=-32602, message="no such thing")
+
+    monkeypatch.setattr(MCPServer, "call_tool", refuse)
+    assert mcp_server.answer_again(tools, "list_items", {}) == "MCP error -32602: no such thing"
+    events = [
+        {"type": "tool_use", "tool_use_id": "t", "name": "mcp__ordnung__list_items", "input": {}},
+        {"type": "tool_result", "tool_use_id": "t", "text": "something else"},
+    ]
+    assert mcp_server.stale_tool_results(tools, events) == ["list_items"]
+
+
 def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: dict[str, str]) -> None:
     """Review round 4: list_contracts told Ask "no cancellation is needed" with no word on ending a job
     early. Final review: the replacement said it "may still need notice to end then" — wrong under § 15
