@@ -419,6 +419,7 @@ def _ordnung_item(verified: VerifiedItem, computed: ComputedDate) -> PredictedIt
         rule_ids=list(receipt.rule_ids) if receipt else [],
         explanation=receipt.summary if receipt else "",
         notes=list(receipt.warnings) if receipt else [],
+        origin="code" if verified.slot_key == CHECK_SLOT else "model",
     )
 
 
@@ -857,6 +858,7 @@ def _code_digest(condition: str) -> str:
     shared = [
         _SRC / "models.py",
         _SRC / "llm" / "schemas.py",
+        _SRC / "llm" / "claude_cli.py",  # extract_json parses every answer
         *(_SRC / "ingest" / f"{name}.py" for name in ("extract", "intake", "text")),
     ]
     if condition == TOOLS_CONDITION:  # the tools' answers come from the rules engine
@@ -880,7 +882,9 @@ def _code_digest(condition: str) -> str:
         )
     ]
     rules = sorted((_SRC / "rules").glob("*.py"))
-    return _digest([*own, *shared, *ingest, *rules, _SRC / "secretary" / "scam.py"])
+    # recurrence: a working day or day of the month graded by plan (needs_check); iban: the invalid-IBAN signal
+    others = [_SRC / "secretary" / "scam.py", _SRC / "recurrence.py", _SRC / "money" / "iban.py"]
+    return _digest([*own, *shared, *ingest, *rules, *others])
 
 
 def fingerprint(condition: str, model: str) -> str:

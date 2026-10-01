@@ -552,12 +552,14 @@ def _item_outcome(
         matched=item is not None,
         pred_index=pred_index,
     )
+    # the to-do code files for an incomplete reading: no reading of the model's to grade
+    read = item is not None and item.origin == "model"
     if item is not None:
         result.predicted = item.due_date
         result.flagged = item.flagged
         result.confidence = item.confidence
-        result.grounding = item.grounding
-        if item.spec is not None and truth.spec.type != "none":
+        result.grounding = item.grounding if read else None
+        if read and item.spec is not None and truth.spec.type != "none":
             result.reading_diffs = reading_differences(
                 truth,
                 truth_document_date=entry.truth.document_date,
@@ -580,7 +582,7 @@ def _item_outcome(
         result.days_off = (predicted - expected).days
         result.direction = "late" if predicted > expected else "early"
         result.region_ignored = truth.due_if_region_ignored == result.predicted
-        if item.spec is not None:
+        if read and item.spec is not None:
             result.cause = "reading" if result.reading_diffs else "computing"
     if pred.tools is not None and item is not None and predicted is not None:
         dates = item_tool_dates(pred, item)
@@ -749,9 +751,14 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         for index, item in enumerate(truth_items)
     ]
     matched_preds = set(matches.values())
-    matched_required = sum(1 for index in matches if index < required_count)
-    false_positives = sum(1 for index, item in enumerate(preds) if item.dated and index not in matched_preds)
-    pairs = [(truth_items[t], preds[p]) for t, p in matches.items()]
+    # extraction and grounding grade the model's reading: the to-do code filed (``origin="code"``) is no part
+    # of it — its date is scored with the others above
+    read = {index for index, item in enumerate(preds) if item.origin == "model"}
+    matched_required = sum(1 for index, p in matches.items() if index < required_count and p in read)
+    false_positives = sum(
+        1 for index, item in enumerate(preds) if item.dated and index not in matched_preds and index in read
+    )
+    pairs = [(truth_items[t], preds[p]) for t, p in matches.items() if p in read]
     false_grounded, by_level = _false_grounded(pairs)
     contract_pairs: list[tuple[str, str | None]] = []
     if truth.contract is not None:
@@ -807,7 +814,9 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
             len(pred.amounts),
         ),
         contract_dates=(sum(iso_or_none(p) == e for e, p in contract_pairs), len(contract_pairs)),
-        grounding=dict(Counter(item.grounding for item in preds if item.grounding)),
+        grounding=dict(
+            Counter(item.grounding for item in preds if item.grounding and item.origin == "model")
+        ),
         false_grounded=false_grounded,
         false_grounded_by_level=by_level,
         adversarial=_adversarial(entry, pred, outcomes),
