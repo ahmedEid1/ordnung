@@ -388,7 +388,9 @@ class ItemOutcome:
     outcome: ItemOutcomeName = "unscored"
     direction: Literal["late", "early"] | None = None
     days_off: int | None = None
-    cause: Literal["reading", "computing"] | None = None
+    #: Why an Ordnung date is wrong: the reading, the computing — or ``check``: the date is the one Ordnung's
+    #: check for incomplete readings filed itself (``PredictedItem.origin == "code"``), no reading of the model's.
+    cause: Literal["reading", "computing", "check"] | None = None
     reading_diffs: list[str] = field(default_factory=list)
     flagged: bool = False
     confidence: str | None = None
@@ -449,6 +451,10 @@ class DocScore:
     tool_refusals: int = 0
     #: The distinct dates the date tools (:data:`DATE_TOOLS`) returned on this letter.
     tool_dates: list[str] = field(default_factory=list)
+    #: The dated to-dos Ordnung's check for incomplete readings filed (``origin == "code"``), and those that match
+    #: no obligation of the letter: a false alarm of the check, counted in no extraction metric.
+    check_filed: int = 0
+    check_false_alarms: int = 0
 
     @property
     def deadline_calls(self) -> int:
@@ -584,6 +590,8 @@ def _item_outcome(
         result.region_ignored = truth.due_if_region_ignored == result.predicted
         if read and item.spec is not None:
             result.cause = "reading" if result.reading_diffs else "computing"
+        elif not read:
+            result.cause = "check"
     if pred.tools is not None and item is not None and predicted is not None:
         dates = item_tool_dates(pred, item)
         result.backing = tool_backing(result.predicted, dates, letter_dates=tool_dates(pred))
@@ -834,6 +842,12 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         tool_calls=dict(Counter(use.name for use in pred.tools)) if pred.tools is not None else None,
         tool_refusals=sum(1 for use in pred.tools or [] if not use.ok),
         tool_dates=tool_dates(pred),
+        check_filed=sum(1 for item in preds if item.origin == "code" and item.dated),
+        check_false_alarms=sum(
+            1
+            for index, item in enumerate(preds)
+            if item.origin == "code" and item.dated and index not in matched_preds
+        ),
     )
 
 
@@ -1045,6 +1059,7 @@ def taxonomy(scores: Sequence[DocScore]) -> dict[str, Any]:
         "flagged_wrong": sum(1 for i in wrong if i.flagged),
         "region_ignored": sum(1 for i in wrong if i.region_ignored),
         "lucky_reading": sum(1 for i in items if i.outcome == "correct" and i.reading_diffs),
+        "check": sum(1 for i in wrong if i.cause == "check"),
         "reading_fields": dict(sorted(fields.items())),
     }
 
@@ -1118,6 +1133,11 @@ def summarise_condition(
             for key in ("input", "output", "cache_read", "cache_creation")
         },
         "calls": sum(score.calls for score in scores),
+        # the dated to-dos the check for incomplete readings filed itself, and those matching no obligation
+        "reading_check": {
+            "filed": sum(score.check_filed for score in scores),
+            "unmatched": sum(score.check_false_alarms for score in scores),
+        },
         "failed": sum(1 for score in scores if score.failed),
         "errors": sum(1 for score in scores if score.error),
     }

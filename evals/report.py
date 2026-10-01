@@ -938,7 +938,7 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
     informed = (
         f"informed by its {len(late)} dangerously late date{'s' if len(late) != 1 else ''} ({listed})"
         if late
-        else "informed by its errors"
+        else "informed by it"
     )
     note = " ".join(str(meta.get("note") or "").split())
     return (
@@ -1155,6 +1155,12 @@ def _taxonomy_section(results: Mapping[str, Any]) -> str:
         + [cell(c, "flagged_wrong") for c in conditions],
         ["↳ wrong because a regional holiday was ignored"] + [cell(c, "region_ignored") for c in conditions],
     ]
+    if any(tax[c].get("check") for c in conditions):  # results files before the check have no such key
+        rows.insert(
+            3,
+            ["Wrong — date filed by the reading check (no reading of the model's)"]
+            + [cell(c, "check", separable=True) for c in conditions],
+        )
     table = _table(["Outcome (required items with a known date)", *[_label(c) for c in conditions]], rows)
     fields = tax.get("ordnung", {}).get("reading_fields") or {}
     fields_text = (

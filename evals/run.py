@@ -631,7 +631,8 @@ def _refuse_to_replace_a_recording(path: Path, backend: str) -> None:
         return
     if recorded == "live":
         raise ValueError(
-            f"{path} holds a live recording, which a {backend} run never overwrites: pass --results-dir <dir>"
+            f"{path} holds a live recording, which a {backend} run never overwrites: pass a different "
+            "--results-dir (or --date)"
         )
 
 
@@ -851,14 +852,20 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
             f"a {config.split} run never rewrites docs/evals.md: add it to the published page with "
             f"`python -m evals.report <published run>.json {option} <{config.split} run>.json`"
         )
-    if config.split in report.HELD_OUT_SPLITS and not config.live and ns.results_dir is None:
+    # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
+    config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
+    config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
+    # the gate writes no results file: it may replay a held-out split where it is
+    if (
+        config.split in report.HELD_OUT_SPLITS
+        and not config.live
+        and config.write_results
+        and ns.results_dir is None
+    ):
         parser.error(
             f"a replay of the {config.split} split scores its recordings with the checked-out code, not the "
             "held-out number: pass --results-dir <dir> so it never lands beside the held-out run"
         )
-    # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
-    config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
-    config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))
