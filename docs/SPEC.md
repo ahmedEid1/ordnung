@@ -1592,30 +1592,61 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 
 **Verification.** `spec_consistency`: numbers (digits and German/English number words), units
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
-DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
-English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
-quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
+DateSpec; fixed dates must parse from their quote (or be written elsewhere in the letter; a recurring
+item's date may be an occurrence of the schedule from a date its quote writes — "fällig am 15.11.2026"
+every 3 months covers 15.02.2027, never 15.12.2026 — or any date when its quote writes none:
+`plan._stated_in_document`); ambiguous numeric dates (e.g. 03/05/2026 in English) → `low` confidence. A
+recurrence's working day must be named as that ordinal in the item's quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
 working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
 likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
-"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): three
-or more dates on that day a whole number of the recurrence's intervals apart ("fällig jeweils am 10.03.,
-10.06., 10.09. und 10.12." every 3 months, also with dashes between them), or two such dates one list joins
-after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen"); a date without a
-year beside due wording for a recurrence of a year or more ("Hauptfälligkeit 01.12.", "zum 01.12. fällig");
-or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines jeden Jahres", "each year on
-…" for a yearly one, "every quarter on …", "every three months on …"). Never a date that starts the schedule
+"zur Monatsmitte", "Mitte des Monats" or "mid-month" for 15, "Monatsende" or "zum Letzten" for 31: a month's
+start, middle and end as § 192 BGB reads them; never after a word that makes it a bound or a stretch of
+time: "ab Monatsanfang", "nach der Monatsmitte", "vor dem Monatsende", "zwischen Monatsmitte und
+Monatsende"; "Mitte des Folgemonats" isn't read) or stated as a schedule of dates
+(`verify.schedule_days_named`): three or more dates on that day a whole number of the recurrence's intervals
+apart ("fällig jeweils am 10.03., 10.06., 10.09. und 10.12." every 3 months, also with dashes between them),
+or two such dates one list joins after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027
+zu zahlen"); a date without a year beside due wording for a recurrence of a year or more ("Hauptfälligkeit
+01.12.", "zum 01.12. fällig"); or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines
+jeden Jahres", "each year on …" for a yearly one, "every quarter on …", "every three months on …"). A list's
+dates count only together, for the day the whole list states: the day all of them are on, or 31 (each month's
+last day) when each is the last day of its month though not all on one day ("31.03., 30.06., 30.09. und
+31.12." every 3 months; February's last day only with its year, 28.02.2027 or 29.02.2028), and then only
+with schedule or due wording before or due wording after it ("Die Abschläge sind am …", "… fällig",
+"jeweils zum Quartalsende am …"; never notice dates: "Der Vertrag ist zum 31.03., … kündbar") — and only
+when every date fits the interval. A list with one date on another day or off the interval ("15.01.,
+15.04., 16.07. und 15.10.") names no day — debit dates a weekend moved ("15.01.2029, 16.04.2029,
+16.07.2029, 15.10.2029") included, by design: such a reading stays "Please check"; month ends all on the
+30th name the 30th only; calendar dates never name the last working day (-1), which only its words do.
+The middle of each quarter or three-month period ("in der
+Mitte eines Dreimonatszeitraums", § 7 Abs. 3 RBStV, also "eines Zeitraums von drei Monaten", "eines
+dreimonatigen Zeitraums", "middle of each 3-month period"; "zur Quartalsmitte", "Mitte des Quartals",
+"mid-quarter") names 15 for a recurrence every 3 months whose fixed date is that middle
+(`verify.mid_quarter_named`) and a date the letter itself writes, in its quote or on a page
+(`plan.first_date_written`: the phrase says nothing of which months make the periods, so a reading a month
+or two off the letter's own due date stays "Please check"; a period the letter states without its due date
+doesn't anchor it). Half a month is 15 days counted last (§§ 186, 189 BGB), so a period of three
+months from the 1st has its middle at the end of the 15th of its second month — any month's 15th for a
+three-month period, which runs from the month the duty to pay begins (§ 7 Abs. 1 RBStV), the 15th of
+February, May, August or November for a calendar quarter; another first date, none (a relative or undated
+reading) or another interval keep the reason. Never a date that starts the schedule
 ("ab dem 01.11.2026", "from 1 November 2026", "beginning …", "beginnt am", "Versicherungsbeginn:",
 "erstmals", "die erste Rate …", "first payment on …"), one that dates a letter or an invoice or ends
-something ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am", "Vertragsende"), a clause number that
+something, or is a notice date or a reference day ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am",
+"Vertragsende", "kündbar zum", "Kündigungstermine", "Stichtage" — a month's, quarter's or year's end is a
+calendar day, no end of something; with every date of the list such wording begins: "Die
+Abrechnungszeiträume enden am 31.03., 30.06., …"), a clause number that
 reads like a date ("Ziffer 1.3.", "Nr. 1.1.", "§ 2.1."), a single date on its own or a period's two dates
 ("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
 
 A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
-letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
-"Beitrag", "Miete", "debit" … as whole words or compound parts, never inside another word such as "Mieter"
-or "Anzahl"; never a sentence about a notice period, cancellation, objection, late fees or a contract's
-start or end, nor a date with a month name unless its dates state a schedule as above) name exactly one
+letter's own payment terms state it: its sentences about paying a sum when it falls due ("Abbuchung",
+"Lastschrift", "zahlbar", "zu zahlen", "eingezogen", "fällig", "debit", "due" … as whole words or compound
+parts, never inside another word such as "Anzahl", nor a sum's name alone: "Den neuen Rechnungsbetrag
+teilen wir Ihnen jeweils zur Monatsmitte mit" says when a letter comes; never a sentence about a notice
+period, cancellation, objection, late fees or a contract's start or end, nor a date with a month name unless its dates state a schedule as above; the middle of each
+quarter or three-month period as above, for the reading's interval and fixed date) name exactly one
 working day or day of the month, and it is the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
 hyphenated words ("Monats-" / "anfang"). That
 sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text
