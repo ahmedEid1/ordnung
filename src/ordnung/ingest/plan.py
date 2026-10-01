@@ -20,6 +20,7 @@ quote and per to-do, :mod:`ordnung.trace.facts`); without one they record nothin
 
 from __future__ import annotations
 
+import calendar
 import hashlib
 import re
 from collections import Counter
@@ -39,12 +40,14 @@ from ordnung.ingest.verify import (
     DATE_WITHOUT_YEAR,
     DAY_OF_MONTH_NOT_IN_QUOTE,
     WORKING_DAY_NOT_IN_QUOTE,
+    DateMention,
     DueDay,
     PageInput,
     check_quote,
     day_of_month_consistency,
     grade_reading,
     ground_evidence,
+    on_month_end,
     parse_amounts,
     parse_dates,
     payment_day_sentence,
@@ -67,6 +70,7 @@ from ordnung.models import (
     LetterKind,
     Party,
     PaymentDetails,
+    Recurrence,
     Remedy,
 )
 from ordnung.payments import is_collected_or_incoming, pays_on_site
@@ -224,7 +228,10 @@ def _page_text(page: PageInput) -> str:
 def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageInput]) -> bool:
     """Whether a value missing from the item's own sentence is written elsewhere in the letter
     (e.g. the invoice total two lines above "payable within 14 days", a monthly debit's day in the letter's
-    payment terms: :func:`day_evidence`), or is a schedule's occurrence rather than a single stated date."""
+    payment terms: :func:`day_evidence`), or is an occurrence of a schedule rather than a single stated date:
+    of one its quote dates (:func:`_on_schedule`: "fällig am 15.11.2026" every 3 months is 15.02.2027, never
+    15.12.2026), or any one when the quote dates none ("Abbuchung zum Monatsanfang": the month is the reading's,
+    its day is checked as the recurrence's day of the month)."""
     if reason in (WORKING_DAY_NOT_IN_QUOTE, DAY_OF_MONTH_NOT_IN_QUOTE):
         return day_evidence("", item, pages) is not None
     if reason == AMOUNT_NOT_IN_QUOTE and item.amount is not None:
@@ -232,38 +239,81 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
             abs(value - item.amount) < 0.005 for page in pages for value in parse_amounts(_page_text(page))
         )
     if reason in (DATE_NOT_IN_QUOTE, DATE_WITHOUT_YEAR) and item.date.type == "fixed":
-        if item.recurrence is not None:
-            return True  # "every month on the 15th": the date is the next occurrence of the schedule
-        target = item.date.date
+        target = _iso_date(item.date.date)
+        if target is None:
+            return False
+        rule = item.recurrence
+        quoted = [mention for mention in parse_dates(item.quote) if not mention.ambiguous]
+        if rule is not None and not quoted:
+            return True  # "Abbuchung zum Monatsanfang": any occurrence, the day is checked on its own
+        if rule is not None and any(_on_schedule(target, mention, rule) for mention in quoted):
+            return True  # "fällig am 15.11.2026" every 3 months: 15.02.2027 is its next occurrence
         for page in pages:
             for mention in parse_dates(_page_text(page)):
-                found = mention.as_date()
-                if target is not None and found is not None and found.isoformat() == target:
+                if mention.as_date() == target:
                     return True
     return False
 
 
-def _first_date(item: ExtractedItem) -> date | None:
-    """The reading's first date, which the middle of each quarter it states must be
-    (:func:`~ordnung.ingest.verify.mid_quarter_named`): its fixed DateSpec's date — ``None`` for a relative
-    or undated one, which states no such middle."""
-    if item.date.type != "fixed" or not item.date.date:
-        return None
+def _on_schedule(target: date, anchor: DateMention, rule: Recurrence) -> bool:
+    """Whether ``target`` is an occurrence of ``rule``'s schedule from ``anchor``, a date the item's quote writes:
+    a whole number of the rule's intervals on from it — a date without a year by its month, in any year — and
+    on its day (or both on the last day of their months); on the rule's own day of the month, on or after the
+    anchor (:mod:`ordnung.recurrence`, point 10); on any day of its month for a working day, which dates it
+    there (point 8)."""
+    if rule.unit in ("days", "weeks"):
+        found = anchor.as_date()
+        step = max(1, rule.interval) * (7 if rule.unit == "weeks" else 1)
+        return found is not None and target >= found and (target - found).days % step == 0
+    months = max(1, rule.interval) * (12 if rule.unit == "years" else 1)
+    apart = target.month - anchor.month
+    if anchor.year is not None:
+        apart += (target.year - anchor.year) * 12
+    if apart < 0 or apart % months:
+        return False
+    last = calendar.monthrange(target.year, target.month)[1]
+    found = anchor.as_date()
+    if rule.working_day is not None:
+        return True
+    if rule.day_of_month is not None:
+        return target.day == min(rule.day_of_month, last) and (found is None or target >= found)
+    return target.day == anchor.day or (target.day == last and on_month_end(anchor))
+
+
+def _iso_date(value: str | None) -> date | None:
     try:
-        return date.fromisoformat(item.date.date)
+        return date.fromisoformat(value) if value else None
     except ValueError:
         return None
 
 
-def _due_day(item: ExtractedItem) -> DueDay | None:
+def first_date_written(item: ExtractedItem, pages: Sequence[PageInput]) -> date | None:
+    """The reading's first date when its letter writes it: its fixed DateSpec's date, written with its year in
+    the item's quote or on one of the letter's pages — the date the middle of each quarter it states must be
+    (:func:`~ordnung.ingest.verify.mid_quarter_named`). ``None`` for a relative or undated reading, or a date
+    the letter doesn't write (a month or two off its own due date: 15.12.2026 for a fee due 15.11.2026)."""
+    first = _iso_date(item.date.date) if item.date.type == "fixed" else None
+    if first is None:
+        return None
+    texts = [item.quote, *(_page_text(page) for page in pages)]
+    written = any(
+        not mention.ambiguous and mention.as_date() == first
+        for text in texts
+        for mention in parse_dates(text)
+    )
+    return first if written else None
+
+
+def _due_day(item: ExtractedItem, first: date | None) -> DueDay | None:
     """The due day of the item's recurrence that its quote doesn't name: its working day, else the day of the
-    month it dates each month by (``None`` when the quote names it, or there is none)."""
+    month it dates each month by (``None`` when the quote names it, or there is none); ``first``: its first
+    date as the letter writes it (:func:`first_date_written`)."""
     rule = item.recurrence
     working_day = rule.working_day if rule is not None else None
     if working_day_consistency(item.quote, working_day):
         return ("working_day", working_day) if working_day is not None else None
     day = rule_day_of_month(rule)
-    if day_of_month_consistency(item.quote, day, rule, _first_date(item)):
+    if day_of_month_consistency(item.quote, day, rule, first):
         return ("day_of_month", day) if day is not None else None
     return None
 
@@ -276,11 +326,12 @@ def day_evidence(doc_id: str, item: ExtractedItem, pages: Sequence[PageInput]) -
     page, ``model_read`` on a transcript). ``None`` when the quote names the day, the letter states no such
     day, another one or two different ones, or the sentence isn't found on the pages — the day then stays
     unconfirmed (``WORKING_DAY_NOT_IN_QUOTE`` / ``DAY_OF_MONTH_NOT_IN_QUOTE``)."""
-    due = _due_day(item)
+    first = first_date_written(item, pages)
+    due = _due_day(item, first)
     if due is None:
         return None
     texts = [_page_text(page) for page in pages]
-    sentence = payment_day_sentence(texts, due, item.quote, item.recurrence, _first_date(item))
+    sentence = payment_day_sentence(texts, due, item.quote, item.recurrence, first)
     if sentence is None:
         return None
     evidence = ground_evidence(doc_id, sentence, pages)
@@ -304,17 +355,17 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     ("zur Monatsmitte" is the 15th), by dates that state it as the recurrence's schedule ("fällig jeweils am
     10.03., 10.06., 10.09. und 10.12.", "31.03., 30.06., 30.09. und 31.12." the last day, never a single start
     date: :func:`~ordnung.ingest.verify.schedule_days_named`), or as the middle of each quarter for a reading
-    every three months whose fixed date is that middle ("in der Mitte eines Dreimonatszeitraums", the 15th:
-    :func:`~ordnung.ingest.verify.mid_quarter_named`). Either day counts as stated, too, when the letter's one
-    sentence about when the payment is due states it (:func:`day_evidence`, which the to-do gets as its
-    evidence)."""
+    every three months whose fixed date is that middle and written in the letter ("in der Mitte eines
+    Dreimonatszeitraums", the 15th: :func:`~ordnung.ingest.verify.mid_quarter_named`,
+    :func:`first_date_written`). Either day counts as stated, too, when the letter's one sentence about when
+    the payment is due states it (:func:`day_evidence`, which the to-do gets as its evidence)."""
     found: list[str] = []
     if item.date.type != "none" or item.amount is not None:
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
     found += day_of_month_consistency(
-        item.quote, rule_day_of_month(item.recurrence), item.recurrence, _first_date(item)
+        item.quote, rule_day_of_month(item.recurrence), item.recurrence, first_date_written(item, pages)
     )
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 

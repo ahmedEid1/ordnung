@@ -105,7 +105,8 @@ limits, not bugs):
    10th, quarter ends the 31st, a yearly due day without a year, "Hauptfälligkeit 01.12.":
    :func:`~ordnung.ingest.verify.schedule_days_named`; a list with a date on another day names none), a
    single start date never does; and the middle of a month names the 15th, as does the middle of each
-   quarter for a rule every three months from that middle (:func:`~ordnung.ingest.verify.mid_quarter_named`).
+   quarter for a rule every three months from that middle, a date its letter writes
+   (:func:`~ordnung.ingest.verify.mid_quarter_named`).
 """
 
 from __future__ import annotations
