@@ -452,16 +452,57 @@ function layoutProbeInPage(opts) {
 
   // f. target size (WCAG 2.5.8), skipping targets inside running text (its "inline" exception: a link,
   // a glossary term — an inline box in a sentence, whose line height sets its size)
+  //
+  // A citation marker after the words it backs, drawn as a button: Ask's marker for a person or organisation
+  // opens their drawer (CitationMarker in features/ask/CitationChip.tsx; a letter's, to-do's or contract's
+  // marker is a link). Only a marker counts (its name "Source n: …", its number its only text), never any small
+  // text button: an "Undo" or "Remove" on its own line under a paragraph stands alone and needs its 24 px. It is
+  // no taller than its line, and the words it backs end on its line: the last character of text before it in
+  // its block, earlier markers skipped ("…94.99 €¹ ²": the second follows the words too), sits in inline content
+  // (no block of its own below the line's block: a <p>, a heading or a block span above it is another line)
+  // and its box takes in the marker's middle. A list item that is only markers has no words: each is reported.
+  const isMarker = (el) =>
+    el.matches("button, a[href]") && /^Source \d+: /.test(el.getAttribute("aria-label") ?? "") && /^\d+$/.test(clean(el.textContent));
+  const markerAfterWords = (el, block) => {
+    if (!el.matches("button") || !isMarker(el)) return false;
+    const bs = cs(block);
+    const line = bs.lineHeight === "normal" ? parseFloat(bs.fontSize) * 1.2 : parseFloat(bs.lineHeight);
+    const r = rectOf(el);
+    if (!(r.height <= line + 0.5)) return false;
+    // the text nodes before the marker in its block, nearest first
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    const before = [];
+    for (let n = walker.nextNode(); n && el.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_PRECEDING; n = walker.nextNode()) before.push(n);
+    for (const n of before.reverse()) {
+      // spaces, no-break spaces and the word joiner that keeps a marker on its word's line are no words
+      const at = Math.max(-1, ...Array.from(n.data.matchAll(/[^\s⁠​]/g), (m) => m.index));
+      if (at < 0) continue;
+      const mark = n.parentElement.closest("button, a[href]");
+      if (mark && block.contains(mark) && isMarker(mark)) continue; // an earlier marker of the run
+      for (let host = n.parentElement; host !== block; host = host.parentElement) {
+        const d = cs(host).display;
+        if (!(d.startsWith("inline") || d === "contents")) return false;
+      }
+      const last = document.createRange();
+      last.setStart(n, at);
+      last.setEnd(n, at + 1);
+      const boxes = last.getClientRects();
+      const c = boxes[boxes.length - 1];
+      const mid = r.top + r.height / 2;
+      return Boolean(c) && c.top <= mid && mid <= c.bottom;
+    }
+    return false;
+  };
   const inSentence = (el) => {
     const s = cs(el);
     if (!s.display.startsWith("inline")) return false;
-    // an inline box of its own (inline-flex, -grid, -block) is a button-like box — unless it is a link in the
-    // sentence (a citation marker after the words it backs)
-    if (s.display !== "inline" && !el.matches("a[href]")) return false;
     // the box its line belongs to: the first parent that isn't itself inline
     let block = el.parentElement;
     while (block && block !== document.body && (cs(block).display === "inline" || cs(block).display === "contents")) block = block.parentElement;
     if (!block) return false;
+    // an inline box of its own (inline-flex, -grid, -block) is a button-like box — unless it is a link in the
+    // sentence (a citation marker after the words it backs) or a marker button after its words (above)
+    if (s.display !== "inline" && !el.matches("a[href]") && !markerAfterWords(el, block)) return false;
     // the whole texts, never cut to a report's length: a link of 90+ characters (a long letter title after
     // "From") would be as long as its cut sentence and count as standing alone
     const own = clean(el.textContent, Infinity);

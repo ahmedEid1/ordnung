@@ -2,9 +2,11 @@
  * Ask on the real demo, where jsdom can't measure (UI audit round 1, ask): long words, an IBAN and a
  * law's web address never widen a 320 px phone, markers follow their word, sources and follow-up
  * chips wrap instead of cutting their text, two suggested questions in a row both replay, a question
- * without a recording gets a note (no Try again), and the question box leaves a phone room.
+ * without a recording gets a note (no Try again), the question box leaves a phone room, and the layout
+ * sweep's target-size probe tells a marker after its words from a marker alone.
  */
 import type { Page } from "@playwright/test";
+import { layoutFindings } from "../scripts/ui-audit/probes.mjs";
 import { apiGet, expect, open, setTour, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
@@ -78,6 +80,79 @@ test.describe("phone", () => {
     const source = turn.getByRole("link", { name: /^Source 1:/ }).last();
     const [chip, column] = await Promise.all([source.boundingBox(), turn.boundingBox()]);
     expect(chip!.x + chip!.width).toBeLessThanOrEqual(column!.x + column!.width + 0.5);
+  });
+
+  // The layout sweep's target-size probe exempts a marker after its words (WCAG 2.5.8's inline exception). A
+  // person's or organisation's marker is a button (it opens their drawer), not a link: it counts the same when
+  // it follows words, also right after another marker ("…94.99 €¹ ²"); a marker alone in a list item does not
+  // (the sweep's run after `pages` replayed list answers ending in a letter's and a person's marker).
+  test("the target-size probe exempts markers after their words, a person's button too, but not a marker alone", async ({ page }) => {
+    const docs = await apiGet<{ id: string; title: string | null }[]>(page, "/api/documents");
+    const parties = await apiGet<{ id: string; name: string }[]>(page, "/api/parties");
+    const doc = docs[0]!;
+    const party = parties[0]!;
+    await answerWith(page, [
+      { type: "text" },
+      {
+        type: "done",
+        text: `Due soon:\n\n- The phone bill, 94.99 € [doc:${doc.id}] [party:${party.id}]\n- Paid by transfer [party:${party.id}]\n- [party:${party.id}]`,
+        note: null,
+        note_label: "Checked by Ordnung:",
+        citations: [
+          { type: "document", id: doc.id, label: doc.title },
+          { type: "party", id: party.id, label: party.name },
+        ],
+        message_id: "msg_e2e_markers",
+        thread_id: "thr_e2e_markers",
+      },
+    ]);
+    await open(page, "/ask");
+    await page.getByRole("textbox").first().fill("What is due soon?");
+    await page.getByRole("textbox").first().press("Enter");
+    await expect(status(page)).toHaveText("Answer ready.");
+
+    // the answer's list (the sources under it are a list too)
+    const items = page.getByRole("article").last().getByRole("list").first().getByRole("listitem");
+    await expect(items).toHaveCount(3);
+    // the app draws them as the sweep sees them: small inline boxes, the person's a button
+    const alone = items.nth(2).getByRole("button", { name: /^Source 2: / });
+    await expect(items.nth(0).getByRole("button", { name: /^Source 2: / })).toBeVisible();
+    await expect(alone).toBeVisible();
+    expect((await alone.boundingBox())!.height).toBeLessThan(24);
+
+    const { findings } = await layoutFindings(page);
+    const markers = findings.filter((f) => f.probe === "target-size" && f.selector.includes('[aria-label="Source '));
+    const where = await alone.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.left + window.scrollX), y: Math.round(r.top + window.scrollY) };
+    });
+    expect(markers.map((f) => ({ x: f.rect!.x, y: f.rect!.y })), "only the marker alone in its list item").toEqual([where]);
+  });
+
+  // The exemption is a marker's, in the line of the words it backs (review of the rule above): a small text
+  // button on its own line under other text in the same box is still a standalone target, and so is a marker
+  // that starts its own line under a paragraph or after a line break.
+  test("the target-size probe still reports small buttons and markers on a line of their own", async ({ page }) => {
+    // drawn like Ask's marker (17 px, inline-grid, raised); `name` "Source n: …" makes it a marker
+    const btn = (id: string, text: string, name?: string) =>
+      `<button id="${id}" ${name ? `aria-label="${name}"` : ""} style="display:inline-grid;place-items:center;position:relative;top:-0.35em;height:17px;min-width:17px;padding:0 4px;margin-left:2px;border:0;font-size:11px;line-height:1;background:#eef">${text}</button>`;
+    const src = (n: number) => `Source ${n}: Person “Stadtwerke”`;
+    await page.setContent(`<!doctype html><html lang="en"><head><title>Probe</title></head>
+      <body style="font:16px/24px sans-serif;margin:16px"><main><h1>Probe</h1>
+      <p>The phone bill is due soon, 94.99 €&#8288;${btn("after-words", "1", src(1))}${btn("after-marker", "2", src(2))}</p>
+      <p>Paid by <strong>transfer</strong>&#8288;${btn("after-strong", "3", src(3))}</p>
+      <ul><li>${btn("alone", "4", src(4))}</li><li>${btn("alone-run-1", "5", src(5))}${btn("alone-run-2", "6", src(6))}</li></ul>
+      <div style="margin-top:40px"><p>A paragraph with plenty of words above the button.</p>${btn("undo-under-paragraph", "Undo")}</div>
+      <div style="margin-top:40px"><h3 style="margin:0">Reminder</h3><span style="display:block">Some text.</span>${btn("remove-under-heading", "Remove")}</div>
+      <div style="margin-top:40px"><label>Name</label><br>${btn("change-after-br", "Change")}</div>
+      <div style="margin-top:40px"><p>A paragraph with plenty of words above the marker.</p>${btn("marker-under-paragraph", "7", src(7))}</div>
+      <p style="margin-top:40px">Words on the line before<br>${btn("marker-after-br", "8", src(8))}</p>
+      </main></body></html>`);
+    const { findings } = await layoutFindings(page);
+    const reported = findings.filter((f) => f.probe === "target-size").map((f) => /#([\w-]+)/.exec(f.selector)?.[1] ?? f.selector);
+    expect(reported.sort()).toEqual(
+      ["alone", "alone-run-1", "alone-run-2", "undo-under-paragraph", "remove-under-heading", "change-after-br", "marker-under-paragraph", "marker-after-br"].sort(),
+    );
   });
 
   test("the question box leaves a 320 × 640 screen room: a one-line hint, no deep fade", async ({ page }) => {
