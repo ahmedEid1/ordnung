@@ -358,13 +358,18 @@ def municipal_decision() -> list[Case]:
 # ==================================================================================================
 
 
+#: Wohngeld and Unterhaltsvorschuss go to the administrative courts: the end of the Widerspruch period moves under the
+#: VwGO (or § 26 Abs. 3 SGB X, which § 62 SGB X keeps for the Widerspruch procedure), not § 64 Abs. 3 SGG.
+VWGO_SHIFT = "§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 26 Abs. 3 SGB X via § 62 SGB X"
+
+
 def social_decision() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, variant: str, org: Org, person: Person, salutation: str, posted: date, kind: str, subject: str,
              refs: list[tuple[str, str]], body: list[Block], belehrung: list[str], key: str, hand: str,
              amounts: list[float] | None = None, extra_items: list | None = None, photo: bool = False, notes: str = "",
-             rule: str | None = None, closing: tuple[str, ...] = ()) -> Case:  # fmt: skip
+             rule: str | None = None, closing: tuple[str, ...] = (), shift_citation: str | None = None) -> Case:  # fmt: skip
         item = check(
             objection_item(
                 posted=posted,
@@ -373,6 +378,7 @@ def social_decision() -> list[Case]:
                 region=org.region,
                 title="Widerspruchsfrist",
                 rule=rule,
+                shift_citation=shift_citation,
             ),
             hand,
         )
@@ -463,8 +469,10 @@ def social_decision() -> list[Case]:
          f"ab Bekanntgabe schriftlich oder zur Niederschrift beim {org.name}, {org.street}, {org.postcode} {org.city}. Schicken wir "
          "Ihnen den Bescheid mit der Post, ist er nach § 37 Abs. 2 SGB X am vierten Tag nach dem Absenden bekannt gegeben."],
         "Erheben Sie ihn binnen eines Monats ab Bekanntgabe", "2025-05-09", amounts=[312.0], extra_items=[task],
-        rule="Widerspruch against a Wohngeld decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); Wohngeld is a social benefit "
-             "(§ 68 Nr. 10 SGB I), so § 37 Abs. 2 SGB X governs the deemed delivery.",
+        rule="Widerspruch against a Wohngeld decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); Wohngeld disputes go to the "
+             "administrative courts (§ 40 VwGO), and as a social benefit (§ 68 Nr. 10 SGB I) its deemed delivery follows § 37 Abs. 2 "
+             "SGB X.",
+        shift_citation=VWGO_SHIFT,
         notes="The Widerspruch period ends on 08.05.2025, a one-off holiday in BE — moved to Friday.",
         closing=("Im Auftrag", "Szymański"),
     ))  # fmt: skip
@@ -483,8 +491,10 @@ def social_decision() -> list[Case]:
         [f"Gegen die Bewilligung in dieser Höhe ist ein Widerspruch möglich. Einen Widerspruch reichen Sie bitte binnen Monatsfrist "
          f"nach Bekanntgabe ein, und zwar schriftlich oder zur Niederschrift beim {org.name}, {org.street}, {org.postcode} {org.city}."],
         "binnen Monatsfrist nach Bekanntgabe", "2025-10-20", amounts=[299.0],
-        rule="Widerspruch against an Unterhaltsvorschuss decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); UVG is a social "
-             "benefit (§ 68 Nr. 14 SGB I), so § 37 Abs. 2 SGB X governs the deemed delivery.",
+        rule="Widerspruch against an Unterhaltsvorschuss decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); UVG disputes go "
+             "to the administrative courts (§ 40 VwGO), and as a social benefit (§ 68 Nr. 14 SGB I) its deemed delivery follows § 37 "
+             "Abs. 2 SGB X.",
+        shift_citation=VWGO_SHIFT,
         closing=("Im Auftrag", "Brückner"),
     ))  # fmt: skip
     return cases

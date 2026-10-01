@@ -56,9 +56,20 @@ Re-run at any time:
 
 - **Deemed delivery** of a posted administrative act: the 3rd day after posting for items posted up
   to 2024-12-31, the 4th day from 2025-01-01. Sources: § 122 Abs. 2 Nr. 1 AO with Art. 97 § 1 Abs. 15
-  EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs verified at 4 days (BY, BW from 7 Feb 2025, NW, HH,
-  SH from 10 Jun 2025); § 37 Abs. 2 SGB X. The posting date is the letter date unless the letter
-  names a posting day.
+  EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs at 4 days; § 37 Abs. 2 SGB X. The posting date is the
+  letter date unless the letter names a posting day. The Land VwVfGs took the 4th day at different
+  times, as the gazettes show:
+  - BY, NW and MV from 1 Jan 2025 (NW: GV. NRW. 2024 S. 1184, Art. 8 Abs. 3).
+  - HH from 14 May 2025: Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of
+    13 May 2025 S. 338. It has no in-force clause, so it took effect the day after promulgation
+    (Art. 54 of Hamburg's constitution).
+  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day.
+  - SH: counted from 10 Jun 2025, the day its text is confirmed. The bill (Drs. 20/2649 Art. 2
+    Abs. 2) says 1 Jan 2025, but the promulgated text was not checked; earlier postings keep the 3rd
+    day, which errs early.
+
+  `evals/verify_labels.py` fails if a Land VwVfG label of any split counts from a posting day on or
+  after 1 Jan 2025 and before HH's, BW's or SH's start (`land_window_problems`).
 - **Only the AO moves the deemed-delivery day** off a Saturday, Sunday or holiday (§ 108 Abs. 3 AO,
   BFH IX R 68/98), using holidays at the tax office's seat. Under VwVfG and SGB X that day does not
   move (OVG NRW 19 A 4216/99, BSG B 14 AS 12/09 R).
@@ -493,6 +504,8 @@ The same five steps as for the other splits:
    meant to fail.
 5. Checked the wording. No deadline sentence of a holdout2 letter appears in a dev, test or holdout
    letter (`shared_split_sentences` compares every pair of the four splits).
+6. Checked that no Land VwVfG label counts from a posting day in a Land's uncertain window
+   (`land_window_problems`, added after an independent audit; 0 in every split).
 
 Beyond the checker, every holdout2 sentence with a deadline cue was compared with every dev, test and
 holdout sentence by similarity (difflib), as for the holdout split. After the rewording (Q1) no
@@ -625,14 +638,29 @@ All of them now have their own wording. No date changed.
 **Q2 — first draws that did not fit how letters are sent. Redrawn.** The first draw let letter and
 posting days fall on holidays (a letter dated on New Year's Day, a decision posted on Christmas Day);
 they are now drawn among working days. Hamburg letters are drawn from 2026 on, as in the test and
-holdout splits; NW letters from June 2025 on (after the earliest verified NW letter) and SH letters
-from July 2025 on, so each Land decision is posted while that Land's 4-day rule is in force. Two tax
+holdout splits; NW letters from June 2025 on and SH letters from July 2025 on. So every holdout2 Land
+decision is drawn outside the uncertain windows (HH before 14.05.2025, BW before 07.02.2025, SH before
+10.06.2025; see Legal rules applied), and later than NW's start on 01.01.2025. Two tax
 letters first drew the same holiday (Pfingstmontag 2025); tax H2 was redrawn among other holidays. A
 Werktage letter first drew a period whose only holiday fell on a Sunday; the scenario now requires a
 holiday on a day that would otherwise count.
 
 **Q3 — real addresses. Replaced.** Some first drafts gave fictional senders the street address of a
 real authority; every sender now has a fictional address, and no sender name copies a real company.
+
+**Q4 — an independent blind audit (2026-10-01).** All 56 dated labels matched. Corrected after it, with
+no date changed:
+
+- price_increase G1: the price-change category is `gas` (a gas tariff, as in test C1), not `energy`.
+- contract_confirmation G1: the contract category and party kind are product enum values (`other`,
+  `company`) instead of `subscription` and `publisher`. Term end and cancel-by are unchanged.
+- social H1 and H2 (Wohngeld, Unterhaltsvorschuss): the derivation cites the VwGO / SGB X rule for the
+  end of the period, not § 64 Abs. 3 SGG (see Which law each sender uses).
+- adversarial conflicting_dates-2 (BW): the letter now states the application day (28.05.2025, drawn
+  like the other days), after 07.02.2025, so § 102b LVwVfG leaves no 3-day reading. The labels are
+  unchanged.
+- adversarial hidden_text-1: the yearly vehicle tax repeated the amount of a test letter; it now has an
+  amount of its own.
 
 ### Judgement calls kept on purpose (holdout2)
 
@@ -648,15 +676,19 @@ real authority; every sender now has a fictional address, and no sender name cop
   - conflicting_dates-2 (Saturday, from the text date)
 
   In every one of these cases the label is the earlier, safe reading.
-- **Land VwVfG letters come after the Land's 4-day rule took effect.** BW (since 07.02.2025): municipal
-  G1 posted 02.12.2026, conflicting_dates-2 dated 08.07./11.07.2025. SH (since 10.06.2025): municipal
-  G2 posted 02.07.2025. NW: municipal H1 posted 22.09.2025. HH: municipal H2 posted 13.04.2027 and
-  injection_visible-1 posted 06.11.2026.
+- **Land VwVfG letters come after the Land's 4-day rule took effect** (the dates in Legal rules
+  applied). BW (since 07.02.2025, § 102b LVwVfG): municipal G1 posted 02.12.2026 on an application of
+  28.10.2026; conflicting_dates-2 dated 08.07./11.07.2025 on an application of 28.05.2025, which the
+  letter states, so no 3-day reading is left. SH (counted from 10.06.2025): municipal G2 posted
+  02.07.2025. NW (since 01.01.2025): municipal H1 posted 22.09.2025. HH (since 14.05.2025): municipal H2
+  posted 13.04.2027 and injection_visible-1 posted 06.11.2026.
 - **Which law each sender uses:**
   - Kindergeld (EStG) is a tax matter: the Familienkasse's decision follows the AO (fiction day moved,
     Einspruch). So does the Hauptzollamt's vehicle-tax notice.
   - Wohngeld (§ 68 Nr. 10 SGB I) and Unterhaltsvorschuss (§ 68 Nr. 14 SGB I) are social benefits:
-    SGB X governs the Bekanntgabe, the Widerspruch period is one month (§ 70 VwGO).
+    SGB X governs the Bekanntgabe, the Widerspruch period is one month (§ 70 VwGO), and disputes go to
+    the administrative courts (§ 40 VwGO). The end moves under § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO
+    (or § 26 Abs. 3 SGB X via § 62 SGB X), not § 64 Abs. 3 SGG; the date is the same.
   - The IKK (SGB V), the Rentenversicherung (SGB VI), the Agentur für Arbeit (SGB III), the
     Versorgungsamt (SGB IX) and the Berufsgenossenschaft (SGB VII) follow SGB X.
 - **The Klage label** (municipal H1, NW) carries the legal date, as in the other NW letters.

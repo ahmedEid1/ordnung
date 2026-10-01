@@ -101,7 +101,7 @@
       "year_boundary": 6
     }
   },
-  "total_bytes": 15531577,
+  "total_bytes": 15531605,
   "entries": [
     {
       "id": "dev-appointment-A1",
@@ -6965,8 +6965,8 @@
       "family": "adversarial",
       "variant": "conflicting_dates",
       "file": "holdout2/adversarial-conflicting_dates-2.pdf",
-      "sha256": "1db52d56877bdbea7fd84e03e8097c8ed208f1b84f4fcc07bff1c405e1b77447",
-      "bytes": 25483,
+      "sha256": "c3aad68d79b0d7115607e6b761de6cedf8da8c19fdbfd19a67dfb8824a70984e",
+      "bytes": 25495,
       "media_type": "application/pdf",
       "photo": false,
       "source_id": null,
@@ -7039,8 +7039,8 @@
       "family": "adversarial",
       "variant": "hidden_text",
       "file": "holdout2/adversarial-hidden_text-1.pdf",
-      "sha256": "bf4553feb93f7504fdbba497b538727b4b1f021506ef71ed3d36404348f63dcd",
-      "bytes": 25841,
+      "sha256": "e0ec283fdd9d3c13b66d4bd53b226af6d463e1cb738b6f02f125cea279024524",
+      "bytes": 25857,
       "media_type": "application/pdf",
       "photo": false,
       "source_id": null,
@@ -7075,7 +7075,7 @@
           }
         ],
         "amounts": [
-          186.0
+          238.0
         ],
         "remedy_type": "einspruch",
         "items": [
@@ -8092,9 +8092,9 @@
         "items": [],
         "optional_items": [],
         "contract": {
-          "category": "subscription",
+          "category": "other",
           "regime": "bgb309_new",
-          "party_kind": "publisher",
+          "party_kind": "company",
           "is_consumer": true,
           "concluded_date": "2027-06-18",
           "start_date": "2027-06-25",
@@ -10078,7 +10078,7 @@
         "contract": null,
         "price_change": {
           "type": "price_increase",
-          "category": "energy",
+          "category": "gas",
           "effective_date": "2025-05-01",
           "old_amount": 89.0,
           "new_amount": 97.0,
@@ -10721,7 +10721,7 @@
               "shift": true
             },
             "amount": null,
-            "derivation": "Widerspruch against a Wohngeld decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); Wohngeld is a social benefit (§ 68 Nr. 10 SGB I), so § 37 Abs. 2 SGB X governs the deemed delivery. (1) Posted Fri 2025-04-04; § 37 Abs. 2 S. 1 SGB X (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Tue 2025-04-08. (2) Bekanntgabe Tue 2025-04-08 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Tue 2025-04-08 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Thu 2025-05-08. (4) Thu 2025-05-08 is a public holiday (80. Jahrestag der Befreiung (einmalig)) → next day (§ 64 Abs. 3 SGG / § 26 Abs. 3 SGB X). (5) Fri 2025-05-09 is the next working day (weekends + nationwide + BE holidays). Expected: Fri 2025-05-09.",
+            "derivation": "Widerspruch against a Wohngeld decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); Wohngeld disputes go to the administrative courts (§ 40 VwGO), and as a social benefit (§ 68 Nr. 10 SGB I) its deemed delivery follows § 37 Abs. 2 SGB X. (1) Posted Fri 2025-04-04; § 37 Abs. 2 S. 1 SGB X (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Tue 2025-04-08. (2) Bekanntgabe Tue 2025-04-08 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Tue 2025-04-08 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Thu 2025-05-08. (4) Thu 2025-05-08 is a public holiday (80. Jahrestag der Befreiung (einmalig)) → next day (§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 26 Abs. 3 SGB X via § 62 SGB X). (5) Fri 2025-05-09 is the next working day (weekends + nationwide + BE holidays). Expected: Fri 2025-05-09.",
             "region_sensitive": true,
             "due_if_region_ignored": "2025-05-08"
           },
@@ -10815,7 +10815,7 @@
               "shift": true
             },
             "amount": null,
-            "derivation": "Widerspruch against an Unterhaltsvorschuss decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); UVG is a social benefit (§ 68 Nr. 14 SGB I), so § 37 Abs. 2 SGB X governs the deemed delivery. (1) Posted Mon 2025-09-15; § 37 Abs. 2 S. 1 SGB X (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Fri 2025-09-19. (2) Bekanntgabe Fri 2025-09-19 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Fri 2025-09-19 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Sun 2025-10-19. (4) Sun 2025-10-19 is a Sunday → next day (§ 64 Abs. 3 SGG / § 26 Abs. 3 SGB X). (5) Mon 2025-10-20 is the next working day (weekends + nationwide + HE holidays). Expected: Mon 2025-10-20.",
+            "derivation": "Widerspruch against an Unterhaltsvorschuss decision: one month after Bekanntgabe (§ 70 Abs. 1 VwGO); UVG disputes go to the administrative courts (§ 40 VwGO), and as a social benefit (§ 68 Nr. 14 SGB I) its deemed delivery follows § 37 Abs. 2 SGB X. (1) Posted Mon 2025-09-15; § 37 Abs. 2 S. 1 SGB X (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Fri 2025-09-19. (2) Bekanntgabe Fri 2025-09-19 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Fri 2025-09-19 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Sun 2025-10-19. (4) Sun 2025-10-19 is a Sunday → next day (§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO; § 26 Abs. 3 SGB X via § 62 SGB X). (5) Mon 2025-10-20 is the next working day (weekends + nationwide + HE holidays). Expected: Mon 2025-10-20.",
             "region_sensitive": false
           }
         ],

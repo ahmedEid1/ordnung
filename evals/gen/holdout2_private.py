@@ -332,7 +332,7 @@ def contract_confirmation() -> list[Case]:
                       style="logo", tagline="Abonnentenservice", phone="0541 310 310", email="abo@beispielstaedter-tageblatt.example",
                       hr="AG Musterosna HRB 4410", account="3103100")  # fmt: skip
     case_id, concluded, start = "holdout2-contract_confirmation-G1", date(2027, 6, 18), date(2027, 6, 25)
-    contract = _contract_truth(category="subscription", regime="bgb309_new", party_kind="publisher", concluded=concluded, start=start,
+    contract = _contract_truth(category="other", regime="bgb309_new", party_kind="company", concluded=concluded, start=start,
                                initial=12, renewal="indefinite, cancellable any time with 1 month notice", notice=1, notice_unit="months",
                                today=today_after(concluded, case_id), price=42.90, interval="monthly",
                                citations="Consumer subscription concluded after 2022-03-01: § 309 Nr. 9 BGB (n.F.).")  # fmt: skip
@@ -449,7 +449,7 @@ def price_increase() -> list[Case]:
                      ("Monatlicher Abschlag", "89,00 € → 97,00 €")), header=("Preisbestandteil", "alt → neu"), value_width=62),
          P("Sie müssen nichts tun, wenn Sie einverstanden sind. Andernfalls haben Sie ein Sonderkündigungsrecht: Sie können den Vertrag "
            f"ohne Einhaltung einer Frist zum {de(eff)} kündigen (§ 41 Abs. 5 EnWG). Ihre Kündigung muss uns vor diesem Tag erreichen.")],
-        ["ohne Einhaltung einer Frist"], "energy",
+        ["ohne Einhaltung einer Frist"], "gas",
     ))  # fmt: skip
 
     net = O.company("Netzwelt Beispiel GmbH", "Glasfaserallee 9", "49084", "Musterosna", monogram="NW", accent=(0, 70, 140), style="minimal",

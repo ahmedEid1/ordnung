@@ -16,7 +16,9 @@ calculator built on ``datetime`` and the ``holidays`` package. Checks:
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
 4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2);
-5. photo entries share the truth of a one-page source PDF.
+5. photo entries share the truth of a one-page source PDF;
+6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
+   4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that).
 """
 
 from __future__ import annotations
@@ -669,6 +671,38 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
     return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
 
 
+#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025 (BY, NW and
+#: MV are; see VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
+LAND_FOUR_DAY_START: dict[str, date] = {
+    "HH": D(
+        2025, 5, 14
+    ),  # 12. Gesetz zur Änderung des HmbVwVfG, HmbGVBl. 2025 S. 338: in force the day after promulgation
+    "BW": D(2025, 2, 7),  # LVwVfG; § 102b keeps the 3rd day for procedures begun before this day
+    "SH": D(2025, 6, 10),  # counted from the day the promulgated text is confirmed
+}
+
+
+def check_land_windows(entries: list[dict[str, Any]]) -> list[str]:
+    """Every Land VwVfG deemed-delivery label (items, optional items) counts from a posting day outside the Land's uncertain
+    window: the label's ``posted_on``, else the letter's date."""
+    problems = []
+    for e in entries:
+        if e["photo"]:
+            continue
+        start = LAND_FOUR_DAY_START.get(e["authority_region"])
+        for slot, item in _slots(e["truth"]).items():
+            spec = item.get("spec") or {}
+            posted = spec.get("posted_on") or e["truth"]["document_date"]
+            if spec.get("delivery_scope") != "vwvfg" or start is None or posted is None:
+                continue
+            if D(2025, 1, 1) <= date.fromisoformat(posted) < start:
+                problems.append(
+                    f"{e['id']} {slot}: posted {posted}, before the {e['authority_region']} 4-day rule is certain "
+                    f"({start.isoformat()})"
+                )
+    return problems
+
+
 def check_photos(entries: list[dict[str, Any]]) -> list[str]:
     by_id = {e["id"]: e for e in entries}
     problems = []
@@ -687,6 +721,7 @@ def run(root: Path) -> dict[str, Any]:
     texts, text_problems = check_text(entries, root)
     leaks = shared_deadline_sentences(entries, texts)
     photo_problems = check_photos(entries)
+    land_window_problems = check_land_windows(entries)
     return {
         "letters": sum(1 for e in entries if not e["photo"]),
         "photos": sum(1 for e in entries if e["photo"]),
@@ -695,6 +730,7 @@ def run(root: Path) -> dict[str, Any]:
         "text_problems": text_problems,
         "shared_split_sentences": leaks,
         "photo_problems": photo_problems,
+        "land_window_problems": land_window_problems,
     }
 
 
@@ -707,7 +743,13 @@ def main(argv: list[str] | None = None) -> int:
         f"letters {report['letters']} (+ {report['photos']} photos), dated labels re-derived: {report['dated_labels_checked']}"
     )
     failed = False
-    for key in ("date_problems", "text_problems", "shared_split_sentences", "photo_problems"):
+    for key in (
+        "date_problems",
+        "text_problems",
+        "shared_split_sentences",
+        "photo_problems",
+        "land_window_problems",
+    ):
         print(f"{key}: {len(report[key])}")
         for line in report[key]:
             print(f"  - {line}")
