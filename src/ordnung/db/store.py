@@ -1,6 +1,6 @@
 """SQLite persistence — the only module that talks SQL (SPEC §5, contract in Appendix A).
 
-Connections: one per thread (``threading.local``), autocommit mode (``isolation_level=None``) with
+Connections: one per thread (``threading.local``, closed when the thread ends), autocommit mode (``isolation_level=None``) with
 ``journal_mode=WAL``, ``busy_timeout=5000``, ``synchronous=NORMAL`` and ``foreign_keys=ON``. Reads
 run directly; every write goes through :meth:`Store.tx` (``BEGIN IMMEDIATE`` … ``COMMIT``), which is
 re-entrant per thread and serialised process-wide by one ``RLock`` so threads never race for the
@@ -29,6 +29,7 @@ import sqlite3
 import threading
 import types
 import unicodedata
+import weakref
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -454,6 +455,28 @@ class _ThreadState(threading.local):
         self.conn: sqlite3.Connection | None = None
         self.depth = 0
         self.after_commit: list[Callable[[], None]] = []
+        # Held only here: dropped with the thread's state when the thread ends, which closes ``conn``.
+        self.closer: _ConnectionToken | None = None
+
+
+class _ConnectionToken:
+    """Lives as long as a thread's state in a store; its finalizer closes that thread's connection."""
+
+    __slots__ = ("__weakref__",)
+
+
+def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.Connection) -> None:
+    """Close the connection of a thread that ended and forget it (no-op once the store is closed).
+
+    Threads come and go — anyio's worker threads (the web API's sync routes, an MCP server's sync
+    tools) end after ten idle seconds or with their event loop — and each opened a connection that
+    :meth:`Store.close` alone would close, so a long-running process kept two file descriptors per
+    ended thread (Ask's replays, one event loop per tool call, ran out of them)."""
+    store = store_ref()
+    if store is not None:
+        with store._connections_lock, contextlib.suppress(ValueError):
+            store._connections.remove(conn)
+    conn.close()
 
 
 class Store:
@@ -474,7 +497,8 @@ class Store:
         self.read_only = read_only
         self._local = _ThreadState()
         self._connections: list[sqlite3.Connection] = []
-        self._connections_lock = threading.Lock()
+        # re-entrant: a thread's state may be dropped (closing its connection) wherever it is freed
+        self._connections_lock = threading.RLock()
         self._closed = False
         try:
             self.schema_version = self._check_schema() if read_only else self._migrate()
@@ -599,6 +623,10 @@ class Store:
                 raise RuntimeError("store is closed")
             self._connections.append(conn)
         self._local.conn = conn
+        closer = self._local.closer = _ConnectionToken()
+        ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn)
+        # not at exit: a daemon thread may still be using its connection then
+        ended.atexit = False  # type: ignore[misc]  # a property; typeshed's __slots__ leave it out
         return conn
 
     @contextmanager

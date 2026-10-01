@@ -229,6 +229,24 @@ def test_one_connection_per_thread(store: Store) -> None:
     assert other[0] is not store._conn()
 
 
+def test_a_threads_connection_is_closed_when_the_thread_ends(store: Store) -> None:
+    """Threads come and go (anyio's worker threads end after ten idle seconds or with their event loop,
+    and Ask's replays ran one loop per tool call); each ended thread's connection stayed open until
+    ``close()``, two file descriptors apiece, until a full benchmark replay ran out of them."""
+    mine = store._conn()
+    ended: list[sqlite3.Connection] = []
+    for _ in range(20):
+        assert not run_threads(1, lambda _: ended.append(store._conn()))
+    assert store._connections == [mine]
+    for conn in ended:
+        with pytest.raises(sqlite3.ProgrammingError):
+            conn.execute("SELECT 1")
+    store.set_meta("still", "usable")  # this thread's connection is untouched
+    assert store.get_meta("still") == "usable"
+    assert not run_threads(1, lambda _: store.set_meta("from", "a new thread"))
+    assert store.get_meta("from") == "a new thread" and store._connections == [mine]
+
+
 def test_tx_commits(store: Store) -> None:
     with store.tx() as conn:
         assert conn.in_transaction
