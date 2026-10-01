@@ -227,6 +227,52 @@ describe("answering on the letter's page", () => {
     await answerAfterItsEvent(useMockApi(), "Keep private", "held");
   });
 
+  /**
+   * The server skips an answer for a letter that no longer waits (answered in another window, in the trash, a proof):
+   * nothing changed, so the answer arms no focus move — a later, unrelated change of the letter (answered from the
+   * Inbox, arriving as a live event) leaves focus where the person put it instead of moving it to the page's heading.
+   */
+  async function skippedAnswer({ srv }: ReturnType<typeof useMockApi>, button: "Keep private" | "Read it with Claude") {
+    const mocked = globalThis.fetch;
+    const path = button === "Keep private" ? "keep-private" : "read";
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes(`/documents/held/${path}`)
+        ? Promise.resolve(
+            new Response(JSON.stringify({ documents: [], jobs: [], skipped: ["doc_folder_scan"] }), { status: 200, headers: { "content-type": "application/json" } }),
+          )
+        : mocked(input, init),
+    );
+    const user = userEvent.setup();
+    const { client } = renderPage("doc_folder_scan");
+    const card = await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" });
+    const answer = within(card).getByRole("button", { name: button });
+    await user.click(answer);
+    await waitFor(() => expect(answer).not.toHaveAttribute("aria-busy"));
+    expect(srv.db.document("doc_folder_scan")!.status).toBe("held"); // skipped: still waiting
+    // the person moves on; then the letter is answered elsewhere and the page hears of it
+    const elsewhere = document.body.appendChild(document.createElement("button"));
+    elsewhere.textContent = "Elsewhere";
+    try {
+      elsewhere.focus();
+      const other = button === "Keep private" ? "read" : "keep-private";
+      await srv.handle("POST", `/documents/held/${other}`, new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
+      act(() => handleServerEvent(client, { type: "document.updated", data: { doc_id: "doc_folder_scan" } }));
+      await waitFor(() => expect(screen.queryByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).toBeNull());
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+      expect(elsewhere).toHaveFocus();
+    } finally {
+      elsewhere.remove();
+    }
+  }
+
+  it("a skipped “Keep private” (the letter no longer waits) arms no focus move for a later change", async () => {
+    await skippedAnswer(useMockApi(), "Keep private");
+  });
+
+  it("a skipped “Read it with Claude” arms no focus move for a later change", async () => {
+    await skippedAnswer(useMockApi(), "Read it with Claude");
+  });
+
   it("an e-mail waits again with the attachment kept private with it", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();
