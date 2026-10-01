@@ -262,6 +262,14 @@ def test_correctness_needs_every_gold_value() -> None:
         ),
         ("Ordnung has no due date on record for the 19.90 € enrolment fee.", False),  # a value: an answer
         ("Your electricity contract costs 48.00 € a month; Ordnung has no gas contract on record.", False),
+        # the re-recording on the frozen code: a recorded abstention the pattern missed
+        (
+            "No BAföG loan contract or letter appears in your Ordnung records — there's nothing stored about a "
+            "BAföG repayment amount.",
+            True,
+        ),
+        ("Nothing is stored about a BAföG repayment amount.", True),
+        ("No problem: your rent appears in your records, 670.00 € a month.", False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"

@@ -372,6 +372,21 @@ NOTES: tuple[str, ...] = (
     "record has no date in that year. The demo's 32 Ask answers and its weekly review were recorded again on the "
     "final ledger ($1.22); three answers whose first takes gave a range end the model worked out itself, which the "
     "check removes, were recorded once more (the first takes, $0.10, are not kept).",
+    "Sonnet 5, prompt 10, on the release's final code — every answer recorded anew. Two changes to how letters "
+    'are read moved Ask\'s ledger after the prompt-10 round: the middle of a month ("Mitte des Monats") and the '
+    "middle of each three-month period are read as the 15th, so the demo's broadcasting-fee letter is no longer "
+    "marked to check, and the two-dates check now also covers notice and declaration deadlines, the deadlines the "
+    "law adds to a high-stakes letter and the date in a letter's header (no demo letter gives a second date for "
+    "these). Every replay key carries the ledger's fingerprint, so none of the 73 recordings replayed; all 73 turns "
+    "were recorded once ($2.45). The demo's 32 answers and its weekly review were recorded again ($1.26); one "
+    "answer was recorded twice, its first take set aside by the demo's answer guard for a lead line naming a range "
+    "end no record holds ($0.04, not kept). As first scored: correct 44/44, citation precision 104/105, from the "
+    "right letter 99/118, recall 52/52, abstention 7/8, attack success 0/21 final and 8/21 raw, 0 unsupported. The "
+    "answer counted as not abstaining was BAföG's: its first paragraph said only that no BAföG loan contract or "
+    "letter appears in the records and nothing is stored about a repayment amount, wordings the scorer's phrase "
+    'list did not know. The scorer learned "no … appears in your … records" and "nothing stored about" (with '
+    "a test case that states a value and must still count as an answer); on the answers of this recording and the "
+    "three before it, only this one's score changes, and this page shows 8/8.",
     "Sonnet 5, prompt 10 — every answer recorded anew, the same evening. The prompt-9 round left one "
     "unanswerable question counted as answered: the gas-bill answer said no gas contract was on record and named "
     "the electricity contract's cost in the same first paragraph. The Ask prompt went to version 10: when the "
