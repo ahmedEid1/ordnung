@@ -761,3 +761,336 @@ H_BG_RP = Org(
     accent=(100, 30, 60),
     monogram="KV",
 )
+
+
+# --------------------------------------------------------------------------------------------------
+# holdout2 split (variants G, H and the holdout2 adversarial letters): new senders and recipients,
+# none of them shared with the dev, test or holdout letters
+# --------------------------------------------------------------------------------------------------
+
+Q_TH = Person("Konrad Musterlein", "Am Rosengarten 7", "07745", "Musterjena")
+Q_BB = Person("Paulina Beispielwitz", "Havelufer 12", "14469", "Musterpotsdam")
+Q_SH = Person("Hauke Musterjensen", "Kiefernstieg 5", "24939", "Musterflens")
+Q_BW = Person("Selin Beispielbauer", "Rebenweg 18", "79104", "Musterfreiburg")
+Q_NW = Person("Dariusz Musterski", "Hüttenstraße 27", "44787", "Beispielbochum")
+Q_HH = Person("Thore Mustermöller", "Fleetstieg 9", "22041", "Hamburg")
+Q_BE = Person("Zeynep Musterkaya", "Spreebogenweg 12", "10557", "Berlin")
+Q_HE = Person("Elias Beispielhofer", "Uferweg 6", "60311", "Musterfurt am Main")
+Q_SN = Person("Henriette Musterlich", "Elbblick 3", "01067", "Beispieldresden")
+Q_ST = Person("Ronja Mustergrund", "Saaleweg 14", "06108", "Musterhalle")
+Q_HB = Person("Jasper Beispielhorst", "Weserstieg 22", "28199", "Bremen")
+Q_GEN = Person("Nele Musterkamp", "Ahornring 9", "49076", "Musterosna")
+Q_GEN2 = Person("Ruben Beispielgaard", "Wiesengrund 21", "21335", "Musterlüne")
+Q_EN = Person("Grace Mensah", "Ahornring 9", "49076", "Musterosna", country="Germany")
+Q_EN2 = Person("Tomás Herrera", "Fleetstieg 9", "22041", "Hamburg", country="GERMANY")
+Q_RECIPIENT_IBAN = _iban("26550105", "71830046")
+
+# tax offices (AO)
+Q_FA_TH = Org(
+    name="Finanzamt Musterjena",
+    kind="tax_office",
+    street="Steuerweg 4",
+    postcode="07743",
+    city="Musterjena",
+    region="TH",
+    head=("Freistaat Thüringen", "Thüringer Steuerverwaltung"),
+    phone="03641 378-0",
+    email="poststelle@fa-musterjena.example",
+    bank="Landesbank Muster-Thüringen",
+    iban=_iban("82050000", "3780001"),
+    bic="MUTHDEFFXXX",
+    style="minimal",
+    accent=(20, 60, 120),
+    hours=("Info- und Annahmestelle:", "Mo, Di, Do 8–15 Uhr", "Mi 8–17:30, Fr 8–12 Uhr"),
+)
+Q_FA_X = Org(
+    name="Finanzamt Beispielhain",
+    kind="tax_office",
+    street="Am Lindenhain 30",
+    postcode="49080",
+    city="Beispielhain",
+    head=("Steuerverwaltung", "Veranlagung Arbeitnehmerbezirke"),
+    phone="0541 3540-0",
+    email="poststelle@fa-beispielhain.example",
+    bank="Musterbank Nordwest",
+    iban=_iban("26550000", "3540000"),
+    style="band",
+    accent=(40, 70, 40),
+)
+Q_FA_BB = Org(
+    name="Finanzamt Musterpotsdam",
+    kind="tax_office",
+    street="Havelallee 11",
+    postcode="14473",
+    city="Musterpotsdam",
+    region="BB",
+    head=("Land Brandenburg · Steuerverwaltung",),
+    phone="0331 287-0",
+    email="poststelle.musterpotsdam@finanzamt.example",
+    bank="Brandenburgische Musterkasse",
+    iban=_iban("16050000", "2870000"),
+    bic="BRMUDE21XXX",
+    style="authority",
+    accent=(150, 20, 40),
+)
+Q_FA_SH = Org(
+    name="Finanzamt Musterflens",
+    kind="tax_office",
+    street="Hafendamm 15",
+    postcode="24937",
+    city="Musterflens",
+    region="SH",
+    head=("Land Schleswig-Holstein · Steuerverwaltung",),
+    phone="0461 813-0",
+    email="poststelle@fa-musterflens.example",
+    bank="Förde-Musterbank",
+    iban=_iban("21550000", "8130000"),
+    style="logo",
+    accent=(0, 70, 110),
+    monogram="FA",
+    hours=("Servicezentrum:", "Mo–Mi 7:30–15:30", "Do 7:30–17, Fr 7:30–12 Uhr"),
+)
+Q_FA_X2 = Org(
+    name="Finanzamt Musterwalde",
+    kind="tax_office",
+    street="Forsthausweg 2",
+    postcode="21339",
+    city="Musterlüne",
+    head=("Steuerverwaltung",),
+    phone="04131 302-0",
+    email="poststelle@fa-musterwalde.example",
+    bank="Musterbank Lüne",
+    iban=_iban("24050000", "3020000"),
+    style="minimal",
+    accent=(70, 50, 100),
+)
+
+# municipal authorities (Land VwVfG; Länder with the verified 4-day rule, posted after it took effect)
+Q_STADT_BW = Org(
+    name="Stadt Musterfreiburg",
+    kind="authority",
+    street="Rathausplatz 2–4",
+    postcode="79098",
+    city="Musterfreiburg",
+    region="BW",
+    head=("Land Baden-Württemberg", "Garten- und Tiefbauamt – Baumschutz"),
+    phone="0761 201-0",
+    email="baumschutz@musterfreiburg.example",
+    bank="Sparkasse Muster-Breisgau",
+    iban=_iban("68050101", "2010000"),
+    style="band",
+    accent=(30, 90, 50),
+)
+Q_AMT_SH = Org(
+    name="Amt Musterflens-Land",
+    kind="authority",
+    street="Amtsweg 1",
+    postcode="24983",
+    city="Beispielhusby",
+    region="SH",
+    head=("Land Schleswig-Holstein · Der Amtsvorsteher", "Ordnungsamt"),
+    phone="04608 609-0",
+    email="ordnungsamt@amt-musterflens-land.example",
+    bank="Nord-Ostsee Musterbank",
+    iban=_iban("21750000", "6090000"),
+    style="authority",
+    accent=(0, 60, 120),
+)
+Q_STADT_NW = Org(
+    name="Stadt Beispielbochum",
+    kind="authority",
+    street="Rathausallee 5",
+    postcode="44777",
+    city="Beispielbochum",
+    region="NW",
+    head=("Land Nordrhein-Westfalen · Der Oberbürgermeister", "Bauordnungsamt"),
+    phone="0234 910-0",
+    email="bauordnung@beispielbochum.example",
+    bank="Sparkasse Beispielbochum",
+    iban=_iban("43050001", "9100000"),
+    style="logo",
+    accent=(0, 80, 130),
+    monogram="BO",
+)
+Q_BA_HH = Org(
+    name="Bezirksamt Musterwandsbek",
+    kind="authority",
+    street="Am Musterschloss 12",
+    postcode="22041",
+    city="Hamburg",
+    region="HH",
+    head=("Freie und Hansestadt Hamburg", "Fachamt Management des öffentlichen Raumes"),
+    phone="040 42881-0",
+    email="sondernutzung@musterwandsbek.hamburg.example",
+    bank="Hamburger Musterkasse",
+    iban=_iban("20050000", "4288100"),
+    style="minimal",
+    accent=(170, 20, 30),
+)
+
+# social law (SGB X; Wohngeld and Unterhaltsvorschuss are social benefits under § 68 SGB I, so SGB X applies)
+Q_IKK = Org(
+    name="IKK Mustertal",
+    kind="health_insurer",
+    street="Handwerkerplatz 3",
+    postcode="57072",
+    city="Mustertal",
+    head=("Die Innungskrankenkasse (Musterausgabe)", "Leistungszentrum Häusliche Versorgung"),
+    phone="0800 455 4500",
+    email="leistung@ikk-mustertal.example",
+    web="www.ikk-mustertal.example",
+    bank="Musterbank",
+    iban=_iban("46050000", "4554500"),
+    style="band",
+    accent=(0, 95, 70),
+    legal=("Körperschaft des öffentlichen Rechts",),
+)
+Q_RV = Org(
+    name="Rentenversicherung Beispiel-Mitte",
+    kind="authority",
+    street="Am Versorgungspark 8",
+    postcode="34117",
+    city="Beispielkassel",
+    head=("Gesetzliche Rentenversicherung (fiktiv)", "Abteilung Rente – Erwerbsminderung"),
+    phone="Servicetelefon 0800 6000 410",
+    email="rente@rv-beispiel-mitte.example",
+    style="logo",
+    accent=(0, 70, 140),
+    monogram="RV",
+    legal=("Körperschaft des öffentlichen Rechts",),
+)
+Q_BA_BE = Org(
+    name="Bezirksamt Beispiel-Spreeufer von Berlin",
+    kind="authority",
+    street="Uferstraße 40",
+    postcode="10551",
+    city="Berlin",
+    region="BE",
+    head=("Land Berlin", "Amt für Bürgerdienste – Wohngeldstelle"),
+    phone="030 90298-0",
+    email="wohngeld@ba-beispiel-spreeufer.berlin.example",
+    bank="Berliner Musterkasse",
+    iban=_iban("10050000", "9029800"),
+    style="authority",
+    accent=(160, 20, 30),
+)
+Q_JA_HE = Org(
+    name="Landkreis Musterhöhe – Jugendamt",
+    kind="authority",
+    street="Kreishausstraße 1",
+    postcode="61169",
+    city="Beispielberg",
+    region="HE",
+    head=("Land Hessen · Der Kreisausschuss des Landkreises Musterhöhe", "Unterhaltsvorschusskasse"),
+    phone="06031 83-0",
+    email="uvg@lk-musterhoehe.example",
+    bank="Sparkasse Musterhöhe",
+    iban=_iban("51850079", "830000"),
+    style="band",
+    accent=(110, 30, 70),
+)
+
+# fines (OWiG)
+Q_BG_SN = Org(
+    name="Landkreis Beispielelbe – Bußgeldstelle",
+    kind="authority",
+    street="Schloßhof 2",
+    postcode="01796",
+    city="Musterpirna",
+    region="SN",
+    head=("Freistaat Sachsen · Landratsamt Beispielelbe", "Straßenverkehrsamt – Bußgeldstelle"),
+    phone="03501 515-0",
+    email="bussgeld@lra-beispielelbe.example",
+    bank="Ostsächsische Musterkasse",
+    iban=_iban("85050300", "5150000"),
+    style="authority",
+    accent=(0, 100, 60),
+)
+Q_BG_X = Org(
+    name="Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+    kind="authority",
+    street="Postfach 12 12",
+    postcode="34001",
+    city="Beispielkassel",
+    phone="0561 1060-0",
+    email="zbs@lva-musterhoehe.example",
+    bank="Musterbank",
+    iban=_iban("52050000", "10600"),
+    style="band",
+    accent=(50, 50, 90),
+)
+Q_BG_ST = Org(
+    name="Stadt Musterhalle – Bußgeldstelle",
+    kind="authority",
+    street="Marktplatz 1",
+    postcode="06108",
+    city="Musterhalle",
+    region="ST",
+    head=("Land Sachsen-Anhalt · Stadt Musterhalle", "Fachbereich Sicherheit – Bußgeldstelle"),
+    phone="0345 221-0",
+    email="bussgeldstelle@musterhalle.example",
+    bank="Saalesparkasse Muster",
+    iban=_iban("80053762", "2210000"),
+    style="logo",
+    accent=(120, 20, 40),
+    monogram="HA",
+)
+Q_BG_HB = Org(
+    name="Ordnungsamt Weserstadt – Bußgeldstelle",
+    kind="authority",
+    street="Ordnungsweg 21",
+    postcode="28207",
+    city="Bremen",
+    region="HB",
+    head=("Freie Hansestadt Bremen", "Verkehrsordnungswidrigkeiten"),
+    phone="0421 361-1",
+    email="bussgeld@ordnungsamt-weserstadt.bremen.example",
+    bank="Bremer Musterkasse",
+    iban=_iban("29050101", "3611000"),
+    style="minimal",
+    accent=(160, 20, 30),
+)
+
+# year boundary (AO: Finanzamt, Familienkasse for Kindergeld under the EStG; SGB X: Versorgungsamt, Berufsgenossenschaft)
+Q_FK = Org(
+    name="Familienkasse Beispiel-Nord",
+    kind="authority",
+    street="Kindergeldweg 5",
+    postcode="21337",
+    city="Musterlüne",
+    head=("Familienkasse (Musterausgabe)", "Kindergeld nach dem Einkommensteuergesetz"),
+    phone="0800 4 5555 30",
+    email="familienkasse-beispiel-nord@arbeitsagentur.example",
+    bank="Bundesbank Muster",
+    iban=_iban("76000000", "76005530"),
+    style="band",
+    accent=(140, 20, 30),
+)
+Q_VA = Org(
+    name="Versorgungsamt Beispielfeld",
+    kind="authority",
+    street="Am Versorgungsamt 1",
+    postcode="49074",
+    city="Musterosna",
+    head=("Feststellungen nach dem Schwerbehindertenrecht (SGB IX)",),
+    phone="0541 314-0",
+    email="sb-recht@versorgungsamt-beispielfeld.example",
+    style="authority",
+    accent=(60, 70, 90),
+)
+Q_BGN = Org(
+    name="Beispiel-Berufsgenossenschaft Bau und Holz",
+    kind="authority",
+    street="Unfallweg 4",
+    postcode="30159",
+    city="Musterhannover",
+    head=("Gesetzliche Unfallversicherung (fiktiv)", "Bezirksverwaltung Nord"),
+    phone="0511 9870-0",
+    email="bv-nord@bg-bau-holz-beispiel.example",
+    bank="Musterbank",
+    iban=_iban("25050000", "98700"),
+    style="logo",
+    accent=(0, 90, 60),
+    monogram="BG",
+    legal=("Körperschaft des öffentlichen Rechts",),
+)

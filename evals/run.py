@@ -26,6 +26,11 @@ once, with every condition and the prompts frozen; its run never rewrites ``docs
 with ``--docs``) — it joins the published page as a section of its own with ``python -m evals.report
 <published run>.json --holdout-run <holdout run>.json``.
 
+The ``holdout2`` split (``--split holdout2``, results ``<YYYY-MM-DD>-<model>-holdout2.json``) was written
+after the release's last code change; it follows the same rule: recorded once, nothing tuned on it, and
+its run never rewrites ``docs/evals.md`` (not even with ``--docs``). It joins the published page with
+``python -m evals.report <published run>.json --holdout2-run <holdout2 run>.json``.
+
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
 
@@ -96,7 +101,7 @@ DEFAULT_MODEL = (
     "claude-sonnet-5"  # a pinned id (ordnung.llm.base.DEFAULT_MODEL): an alias moves with releases
 )
 DEFAULT_SPLIT = "test"
-SPLITS = ("dev", "test", report.HOLDOUT_SPLIT)
+SPLITS = ("dev", "test", *report.HELD_OUT_SPLITS)
 DEFAULT_CONCURRENCY = 3
 DEFAULT_TIMEOUT_S = 300.0
 
@@ -123,7 +128,7 @@ class RunConfig:
     timeout_s: float = DEFAULT_TIMEOUT_S
     run_id: str | None = None
     run_date: str | None = None
-    write_docs: bool | None = None  # None: only for a complete test-split run without errors (never holdout)
+    write_docs: bool | None = None  # None: only for a complete test-split run without errors (not held-out)
     allow_errors: bool = False
     #: The CI gate checks Ordnung: the tool condition, whose recorded answers go missing on replay when
     #: the rules tools' descriptions change in code, is then left out with a warning (see
@@ -595,8 +600,9 @@ async def run_benchmark(
             and outcome.ok
             and not any(run.errors for run in outcome.runs)
         )
-    if config.split == report.HOLDOUT_SPLIT:
-        # The held-out run sits beside the published one (evals.report --holdout-run); it never replaces the page.
+    if config.split in report.HELD_OUT_SPLITS:
+        # A held-out run sits beside the published one (evals.report --holdout-run / --holdout2-run); it never
+        # replaces the page.
         write_docs = False
     if write_docs and finished:
         outcome.docs_path, outcome.chart_path = report.write_docs(
@@ -711,8 +717,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--split",
         choices=SPLITS,
         default=DEFAULT_SPLIT,
-        help="dataset split (default: test; holdout is recorded once with frozen prompts and never rewrites "
-        "docs/evals.md)",
+        help="dataset split (default: test; holdout and holdout2 are each recorded once, nothing is tuned on "
+        "them, and neither rewrites docs/evals.md)",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="model alias or id (default: sonnet)")
     parser.add_argument(
@@ -816,10 +822,11 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
-    if config.split == report.HOLDOUT_SPLIT and config.write_docs:
+    if config.split in report.HELD_OUT_SPLITS and config.write_docs:
+        option = "--holdout-run" if config.split == report.HOLDOUT_SPLIT else f"--{config.split}-run"
         parser.error(
-            "a holdout run never rewrites docs/evals.md: add it to the published page with "
-            "`python -m evals.report <published run>.json --holdout-run <holdout run>.json`"
+            f"a {config.split} run never rewrites docs/evals.md: add it to the published page with "
+            f"`python -m evals.report <published run>.json {option} <{config.split} run>.json`"
         )
     # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
