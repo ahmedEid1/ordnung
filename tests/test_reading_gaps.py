@@ -7,6 +7,7 @@ overriding rule tested throughout: the code-made date is never later than the le
 
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -476,19 +477,22 @@ def test_a_right_to_object_outside_an_administrative_act_is_no_gap() -> None:
 
 
 def test_an_administrative_act_only_in_hidden_text_is_none() -> None:
-    debit = "Einer Lastschrift können Sie innerhalb von acht Wochen nach der Belastung widersprechen."
+    """A live right to object of a contract: only the hidden text names a decision — never read."""
+    change = "Sie können dieser Vertragsänderung innerhalb von sechs Wochen widersprechen."
     hidden = Page(
         doc_id="d",
         page=1,
         width=10,
         height=10,
         image_path="p.jpg",
-        text=f"Beispielbank\n{debit}",
+        text=f"Beispielbank\n{change}",
         text_source="text",
         hidden="Gebührenbescheid. Mit diesem Bescheid setzen wir fest.",
     )
     reading = blank(sender=ExtractedParty(name="Beispielbank", kind="bank"), document_date="2026-11-02")
-    assert reading_gap(reading, [hidden], remedy_notices([hidden])) is None
+    [found] = remedy_notices([hidden])
+    assert found.live and not shows_administrative_act(hidden.text)
+    assert reading_gap(reading, [hidden], [found]) is None
 
 
 ORDER_TEXT = "Gegen diesen Bescheid können Sie innerhalb von zwei Wochen ab Zustellung Widerspruch erheben."
@@ -564,6 +568,54 @@ def test_a_planted_longer_period_never_dates_a_notice_that_isn_t_read() -> None:
     plant = "Ein Widerspruch gegen diesen Bescheid ist binnen zwölf Monaten möglich."
     found = check_item(blank(), [page(*HEAD, real, plant)])
     assert found is not None and found.kind == "undated" and found.item.date.type == "none"
+
+
+def test_a_notice_whose_period_can_t_be_read_undates_the_to_do_whatever_the_others_say() -> None:
+    """The real notice counts Werktage: a readable shorter period elsewhere never gives the date either."""
+    real = "Gegen diesen Bescheid kann binnen 10 Werktagen nach Zustellung Einspruch eingelegt werden."
+    other = "Der Widerspruch ist innerhalb von zwei Wochen nach Bekanntgabe einzulegen."
+    for lines in ((real, other), (other, real)):
+        found = check_item(blank(), [page(*HEAD, *lines)])
+        assert found is not None and found.kind == "undated" and found.item.date.type == "none"
+
+
+#: A decision without a date anywhere (the reading has none either).
+UNDATED_HEAD = (LETTERHEAD, "Frau Mara Probe", "Gebührenbescheid", "Sehr geehrte Frau Probe,")
+
+
+def test_without_a_start_a_month_and_thirty_days_can_t_be_ranked() -> None:
+    """Which ends first depends on the start (February or not): with none known, no date at all."""
+    month = "Der Widerspruch ist innerhalb eines Monats nach Zustellung einzulegen."
+    days = "Gegen diesen Bescheid kann innerhalb von 30 Tagen nach Zustellung Widerspruch erhoben werden."
+    found = check_item(blank(), [page(*UNDATED_HEAD, month, days)])
+    assert found is not None and found.kind == "undated" and found.item.date.type == "none"
+
+
+def test_without_a_start_four_weeks_end_before_a_month() -> None:
+    """A month is never shorter than four weeks: the four weeks count, whichever notice counts from what."""
+    weeks = "Der Widerspruch ist innerhalb von vier Wochen nach Bekanntgabe einzulegen."
+    month = "Gegen diesen Bescheid kann innerhalb eines Monats nach Zustellung Widerspruch erhoben werden."
+    for lines in ((weeks, month), (month, weeks)):
+        found = check_item(blank(), [page(*UNDATED_HEAD, *lines)])
+        assert found is not None and (found.item.date.amount, found.item.date.unit) == (4, "weeks")
+        assert found.item.date.anchor == "document_date" and found.item.date.delivery_rule == "none"
+
+
+@pytest.mark.parametrize("region", [None, "NW"])
+def test_delivery_days_only_when_the_period_ends_first_from_any_start_they_give(region: str | None) -> None:
+    """From Thu 28 Jan 2027 thirty days end before a month, but from the day the letter counts as delivered a
+    month ends first: with delivery days the thirty would end on Wed 3 Mar, after the month alone (Mon 1 Mar).
+    So no delivery days: never later than either notice alone."""
+    notices = (
+        "Gegen diesen Bescheid kann innerhalb von 30 Tagen nach Bekanntgabe Widerspruch erhoben werden.",
+        "Der Widerspruch ist innerhalb eines Monats nach Bekanntgabe einzulegen.",
+    )
+    pages = [page(*head("28.01.2027"), *notices)]
+    found = check_item(blank(), pages)
+    assert found is not None and found.item.date.delivery_rule == "none"
+    both = due(pages, region=region)
+    singles = [due([page(*head("28.01.2027"), notice)], region=region) for notice in notices]
+    assert both is not None and all(single is not None and both <= single for single in singles)
 
 
 def test_a_planted_shorter_period_only_makes_the_date_earlier() -> None:
@@ -664,12 +716,25 @@ def test_of_two_notices_with_different_starts_the_date_is_never_later_than_eithe
             "Gegen diesen Bescheid kann binnen eines Kalendermonats nach Zustellung Widerspruch erhoben werden.",
             "undated",
         ),
+        # one period read, one not: the one not read may be the shorter
+        (
+            "Gegen diesen Bescheid kann innerhalb eines Monats, spätestens jedoch binnen 10 Werktagen nach "
+            "Zustellung Widerspruch erhoben werden.",
+            "undated",
+        ),
     ],
 )
 def test_only_a_period_from_a_week_to_a_month_is_dated(text: str, kind: str) -> None:
     found = check_item(blank(), [page(*HEAD, text)])
     assert found is not None and found.kind == kind
     assert (found.item.date.type == "none") is (kind == "undated")
+
+
+def test_a_period_of_nothing_is_no_period() -> None:
+    found = notice(
+        "Gegen diesen Bescheid kann innerhalb von 0 Tagen nach Zustellung Widerspruch erhoben werden."
+    )
+    assert found.periods == () and not found.datable
 
 
 def test_a_monatsfrist_is_one_month() -> None:
@@ -731,6 +796,16 @@ def test_a_payment_sentence_after_the_notice_is_no_part_of_it(money: str) -> Non
     )
 
 
+def test_a_remark_after_a_notice_with_its_own_period_never_silences_it() -> None:
+    """The sentence after counts for the date, but whether the notice is live is read from its own words: a
+    remark about a direct debit after it (folded, as it names neither a remedy nor a payment) is no reason."""
+    text = f"{NOTIFIED} Ein bestehendes Lastschriftmandat bleibt davon unberührt."
+    [found] = remedy_notices([page(*HEAD, text)])
+    assert found.live and "Lastschriftmandat" in found.text
+    reading = blank(sender=SENDER, document_date="2026-11-06")
+    assert reading_gap(reading, [page(*HEAD, text)], [found]) == "remedy_left_out"
+
+
 def test_a_next_sentence_naming_a_remedy_is_its_own_notice_never_folded() -> None:
     text = (
         "Gegen diesen Bescheid ist ein Widerspruch statthaft. "
@@ -753,6 +828,8 @@ def test_a_next_sentence_naming_a_remedy_is_its_own_notice_never_folded() -> Non
         "Ein Widerspruch ist zwei Wochen, spätestens vor Beendigung des Verfahrens, zu begründen.",
         "An objection must be lodged two months before your tenancy ends.",
         "An objection must be lodged two weeks prior to the hearing.",
+        "An objection must be lodged two weeks before the hearing.",
+        "Ein Widerspruch ist spätestens zwei Wochen, bevor die Verhandlung beginnt, zu begründen.",
         # the backward period in the folded sentence after the notice
         "Gegen diesen Bescheid kann Widerspruch erhoben werden. Die Begründung ist zwei Wochen vor der Anhörung einzureichen.",
     ],
@@ -767,6 +844,8 @@ def test_a_period_counted_back_from_an_event_is_never_dated_forward(text: str) -
     [
         "Gegen diesen Bescheid kann innerhalb eines Monats nach Zustellung Klage vor dem Verwaltungsgericht Beispielstadt erhoben werden.",
         "Gegen diesen Bescheid kann innerhalb eines Monats Klage vor dem Sozialgericht Beispielstadt erhoben werden.",
+        # "vor" right after the start: the start runs forward from this letter
+        "Gegen diesen Bescheid kann innerhalb eines Monats nach Zustellung vor dem Sozialgericht Beispielstadt Klage erhoben werden.",
         "Der Widerspruch ist vor Ablauf eines Monats nach Bekanntgabe einzulegen.",
         "Der Widerspruch ist innerhalb eines Monats nach Bekanntgabe einzulegen; die Frist ist nur gewahrt, wenn er vor Ablauf der Frist eingeht.",
     ],
@@ -1089,6 +1168,20 @@ def test_a_notice_about_an_earlier_decision_counts_from_that_decision() -> None:
     assert letter_date(blank(), [close]) == date(2026, 11, 2)
 
 
+def test_the_decision_a_ruling_on_an_objection_reshapes_is_not_its_date() -> None:
+    """ "Den Bescheid vom 01.08.2026 in Gestalt dieses Widerspruchsbescheids": the court action runs from this
+    letter (06.11.2026), not from the old decision's date."""
+    ruling = (
+        "Gegen den Bescheid vom 01.08.2026 in Gestalt dieses Widerspruchsbescheids kann innerhalb eines Monats "
+        "nach Zustellung Klage beim Verwaltungsgericht Beispielstadt erhoben werden."
+    )
+    pages = [page(*HEAD, ruling)]
+    [found] = remedy_notices(pages)
+    assert found.issued == () and found.remedy == "klage"
+    assert letter_date(blank(), pages) == date(2026, 11, 6)
+    assert due(pages) == FROM_LETTER_DUE
+
+
 def test_the_page_with_the_notice_gives_its_own_date() -> None:
     first = page(LETTERHEAD, "Frau Mara Probe", "Sehr geehrte Frau Probe,", "anbei unser Bescheid.")
     second = page(
@@ -1132,7 +1225,7 @@ def test_a_place_and_date_after_the_notice_is_not_the_letter_s() -> None:
         "06.11.2026",
         "Sehr geehrte Frau Probe,",
         NOTIFIED,
-        "Beispielhausen, 20.11.2026",
+        "Beispielhausen, 30.11.2026",
     )
     assert letter_date(blank(), [page(*lines)]) == date(2026, 11, 6)
 
@@ -1140,6 +1233,9 @@ def test_a_place_and_date_after_the_notice_is_not_the_letter_s() -> None:
 def test_a_bare_date_in_the_body_or_not_ending_its_line_is_not_the_letter_s() -> None:
     body = ("Stadt Beispielhausen", "Sehr geehrte Frau Probe,", "Ihr Termin:", "01.10.2026", NOTIFIED)
     assert letter_date(blank(), [page(*body)]) is None
+    # under the salutation, a bare date is the body's, whatever the line above it says
+    dated = (LETTERHEAD, "Frau Mara Probe", "06.11.2026", "Sehr geehrte Frau Probe,", "30.11.2026", NOTIFIED)
+    assert letter_date(blank(), [page(*dated)]) == date(2026, 11, 6)
     assert written("06.11.2026 (Eingang)") is None
 
 
@@ -1196,6 +1292,27 @@ def test_an_earlier_stored_date_or_arrival_moves_it_earlier_never_later(text: st
         today=TODAY, document_date=date(2026, 11, 6), received_date=date(2026, 11, 4), received_confirmed=True
     )
     assert compute_item(verified, arrived, postal_buffer_days=3).due_date == "2026-12-04"
+
+
+def test_an_early_arrival_is_a_start_only_for_a_period_without_delivery_days() -> None:
+    """A period from notification already counts the delivery days from the letter's date: an arrival before
+    that date is no start of its own (it would add the delivery days to it)."""
+    arrived = RuleContext(
+        today=TODAY, document_date=date(2026, 11, 6), received_date=date(2026, 11, 4), received_confirmed=True
+    )
+    for rule, variants in (("de_admin_post", 1), ("de_admin_portal", 1), ("none", 2)):
+        spec = DateSpec(
+            type="relative",
+            amount=1,
+            unit="months",
+            anchor="explicit_date",
+            anchor_date="2026-11-06",
+            delivery_rule=rule,
+            nature="objection",
+        )
+        found = start_variants(spec, arrived)
+        assert len(found) == variants, rule
+        assert {variant.anchor_date for variant, _ in found} <= {"2026-11-06", "2026-11-04"}
 
 
 def test_an_old_check_item_without_a_start_counts_from_the_stored_letter_date() -> None:
@@ -1320,6 +1437,32 @@ def test_the_warnings_say_what_the_spec_says() -> None:
     assert gap_warning("empty", "read_yourself").endswith(
         "give the to-do “Read this letter yourself” that date."
     )
+
+
+def _web_regex(relative: str, name: str) -> re.Pattern[str]:
+    """A JavaScript regex literal of the web app (``const NAME = /…/;``), as Python reads it."""
+    source = (ROOT / "web" / "src" / relative).read_text(encoding="utf-8")
+    found = re.search(rf"const {name} = /(.+)/;\n", source)
+    assert found is not None, name
+    return re.compile(found.group(1))
+
+
+def test_the_web_app_knows_the_slot_the_warnings_and_the_note() -> None:
+    """The web app spells the slot, the warnings and the receipt's note out (review tests 13): a rename here
+    must be one there, or the card falls back to "doesn't match the sentence it came from", the warning reads
+    as a scam sign and Today's reason as a delivery-day aside."""
+    warnings = (ROOT / "web" / "src" / "features" / "document" / "Warnings.tsx").read_text(encoding="utf-8")
+    assert f'export const READING_CHECK_SLOT = "{CHECK_SLOT}";' in warnings
+    selection = (ROOT / "web" / "src" / "features" / "today" / "selection.ts").read_text(encoding="utf-8")
+    assert f'item.slot_key === "{CHECK_SLOT}"' in selection
+    gap = _web_regex("features/document/Warnings.tsx", "GAP_WARNING")
+    for name in ("empty", "remedy_left_out"):
+        for kind in ("dated", "undated", "read_yourself"):
+            for remedy in ("", "klage"):
+                assert gap.match(gap_warning(name, kind, remedy)), (name, kind, remedy)  # type: ignore[arg-type]
+    assert not gap.match("This letter explains how to object.")
+    note = _web_regex("features/today/selection.ts", "READING_INCOMPLETE_NOTE")
+    assert note.match(REASON_TEXT[READING_INCOMPLETE])
 
 
 # --------------------------------------------------------------------------------------------------

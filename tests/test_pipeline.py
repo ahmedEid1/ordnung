@@ -28,10 +28,11 @@ from ordnung.ingest.gaps import CHECK_SLOT, gap_warning
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
+from ordnung.ingest.verify import READING_INCOMPLETE, REASON_TEXT
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Item
 from ordnung.secretary.triggers import Ledger, please_check
-from test_api_support import ApiRouter, api_for
+from test_api_support import Api, ApiRouter, api_for
 
 
 @pytest.fixture(autouse=True)
@@ -453,6 +454,7 @@ async def test_letters_use_the_person_s_country_and_only_a_chosen_region(
 # A reading that came back incomplete (ingest/gaps.py): one "Please check" to-do written by code
 # --------------------------------------------------------------------------------------------------
 
+OWN_NOTE = REASON_TEXT[READING_INCOMPLETE]
 GAP_NOTICE = "Gegen diesen Gebührenbescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen."
 GAP_LETTER = Letter(
     marker="Sondernutzungsgebühr",
@@ -509,11 +511,32 @@ def gap_ctx(data_dir: Path, gap_router: Router) -> Iterator[AppContext]:
     context.close()
 
 
-def gap_api_router() -> ApiRouter:
+def gap_api_router(letter: Letter = GAP_LETTER) -> ApiRouter:
     router = ApiRouter()
-    router.letters = (*router.letters, GAP_LETTER)
-    router.payloads[GAP_LETTER.marker] = GAP_LETTER.extraction()
+    router.letters = (*router.letters, letter)
+    router.payloads[letter.marker] = letter.extraction()
     return router
+
+
+#: A notice that states the letter's date and its period: its quote leaves the engine nothing to doubt, so only
+#: Ordnung's own grade keeps the to-do "Please check".
+SERVED_LETTER = Letter(
+    marker="Abfallgebühr",
+    pages=(
+        (
+            "Landkreis Beispielhausen · Kreiskasse · Am Markt 2 · 12345 Beispielhausen",
+            "SPECIMEN",
+            "Beispielhausen, 15.09.2026",
+            "Festsetzung der Abfallgebühr",
+            "Sehr geehrter Herr Probe,",
+            "wir setzen die Abfallgebühr für das Jahr 2026 auf 120,00 EUR fest.",
+            "Rechtsbehelfsbelehrung",
+            "Gegen den Bescheid vom 15.09.2026 kann innerhalb von zwei Wochen",
+            "nach Zustellung Widerspruch erhoben werden.",
+        ),
+    ),
+    payload={"kind": "other", "title": "Waste fee", "summary": "A fee.", "explanation": "Pay it."},
+)
 
 
 async def _read_gap_letter(ctx: AppContext) -> str:
@@ -572,6 +595,64 @@ async def test_a_recompute_keeps_the_check_to_do_low_and_please_check(data_dir: 
         assert needs_check(check)
         document = api.ctx.store.get_document(doc_id)
         assert document is not None and document.status == "needs_review"
+
+
+async def _served_check(api: Api) -> tuple[str, Item]:
+    doc_id = (await api.upload(("abfall.pdf", SERVED_LETTER.pdf())))["documents"][0]["id"]
+    await api.read_all()
+    [check] = api.ctx.store.list_items(doc_id=doc_id)
+    assert check.slot_key == CHECK_SLOT
+    return doc_id, check
+
+
+def _graded_as_ordnung_s_own(check: Item) -> bool:
+    receipt = check.computation
+    return receipt is not None and receipt.confidence == "low" and OWN_NOTE in receipt.warnings
+
+
+async def test_a_recompute_keeps_ordnung_s_own_grade_until_the_person_confirms(data_dir: Path) -> None:
+    """Review (tests 1): only Ordnung's own reason keeps the to-do ``low`` — its quote states the letter's date
+    and the period. A recompute keeps it; once the person confirmed the date, a recompute no longer adds it."""
+    async with api_for(data_dir, router=gap_api_router(SERVED_LETTER)) as api:
+        doc_id, check = await _served_check(api)
+        # served (Zustellung): from the letter's date with no delivery days — Tue 29 Sep
+        assert check.due_date == "2026-09-29" and _graded_as_ordnung_s_own(check)
+        assert (
+            await api.client.put("/api/profile", json={"region": "HH", "onboarded": True})
+        ).status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.due_date == "2026-09-29" and _graded_as_ordnung_s_own(check) and needs_check(check)
+
+        assert (await api.client.post(f"/api/items/{check.id}/confirm")).status_code == 200
+        assert (
+            await api.client.put("/api/profile", json={"region": "BE", "onboarded": True})
+        ).status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.due_date == "2026-09-29" and not needs_check(check)
+        assert check.computation is not None and OWN_NOTE not in check.computation.warnings
+
+
+@pytest.mark.parametrize(
+    ("corrected", "due"),
+    [
+        ("2026-09-25", "2026-09-29"),  # later than the letter gives for itself: never later
+        ("2026-10-20", "2026-09-29"),
+        ("2026-09-10", "2026-09-24"),  # earlier: earlier
+    ],
+)
+async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(
+    data_dir: Path, corrected: str, due: str
+) -> None:
+    """Review (A3): the person's letter date moves the to-do only earlier; a later one gets a note."""
+    async with api_for(data_dir, router=gap_api_router(SERVED_LETTER)) as api:
+        doc_id, check = await _served_check(api)
+        response = await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": corrected})
+        assert response.status_code == 200
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.due_date == due and check.due_date <= "2026-09-29"
+        assert check.computation is not None
+        earlier_note = any(note.startswith("The letter gives") for note in check.computation.warnings)
+        assert earlier_note == (corrected > "2026-09-15")
 
 
 async def test_reading_again_completely_removes_the_untouched_check_to_do(

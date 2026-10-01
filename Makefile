@@ -15,7 +15,8 @@ web-dev:            ## run the Vite dev server (proxies /api to :8765)
 	cd web && npm run dev
 
 test:               ## backend tests + frontend unit tests
-	$(PY) -m pytest --cov=ordnung --cov-report=term-missing:skip-covered
+	$(PY) -m pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered
+	$(PY) -m pytest -m slow
 	cd web && npm test
 
 lint:

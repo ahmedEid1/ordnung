@@ -13,6 +13,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -27,6 +29,9 @@ from ordnung.llm.runtime import LLMService  # noqa: E402
 DATASET = ROOT / "evals" / "dataset"
 MODEL = "claude-sonnet-5"
 RECORDED = ROOT / "evals" / "recorded" / MODEL
+#: Replays every recorded reading (about 45 s; five times that under coverage): CI runs it once, in the 3.12
+#: job without coverage (``.github/workflows/ci.yml``).
+pytestmark = pytest.mark.slow
 #: The one letter whose recorded reading came back incomplete (only its required fields).
 EXPECTED = {"holdout2-adversarial-injection_visible-1"}
 
