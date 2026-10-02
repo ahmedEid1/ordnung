@@ -176,7 +176,15 @@ def test_transcription_request_is_keyed_by_the_image(tmp_path: Path) -> None:
 # Validation and repair
 # --------------------------------------------------------------------------------------------------
 
-VALID = {"kind": "other", "title": "T", "summary": "S", "explanation": "E"}
+#: A valid answer that names its sender: not "almost blank", so the reading check asks nothing more of it (the
+#: completeness re-ask has tests of its own: ``tests/test_reading_reask.py``).
+VALID = {
+    "kind": "other",
+    "title": "T",
+    "summary": "S",
+    "explanation": "E",
+    "sender": {"name": "Alpha Amt", "kind": "authority"},
+}
 
 
 async def run_extract(answers: list[dict[str, Any] | str]) -> tuple[Any, FakeBackend]:
@@ -194,7 +202,10 @@ async def test_valid_answer_needs_no_repair() -> None:
 
 async def test_json_in_text_is_accepted() -> None:
     result, _ = await run_extract(
-        ['```json\n{"kind": "invoice", "title": "T", "summary": "S", "explanation": "E"}\n```']
+        [
+            '```json\n{"kind": "invoice", "title": "T", "summary": "S", "explanation": "E", '
+            '"sender": {"name": "Alpha Amt", "kind": "authority"}}\n```'
+        ]
     )
     assert result.kind == "invoice"
 

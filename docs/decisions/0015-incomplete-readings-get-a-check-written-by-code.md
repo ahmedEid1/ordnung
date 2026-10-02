@@ -62,6 +62,9 @@ its answer would still need this check behind it. The code-only check needs no m
 recording, so "replays the same recorded outputs" stays literally true; a re-ask can be added on top later
 and measured separately.
 
+Since added on top of this check, which stays the last line of defence: the completeness re-ask
+([ADR 0016](0016-an-incomplete-reading-is-asked-for-once-more.md)).
+
 ## Measured basis (replay only)
 - On all 333 recorded readings (217 benchmark readings at the current prompt, 91 at the old one, 25 demo
   readings) the rules fire on `holdout2-adversarial-injection_visible-1` only; a guard test re-checks the

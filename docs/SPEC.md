@@ -413,6 +413,24 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    a new amount on a letter that states a rent contract) become the payment every month from that day
    that the prompt asks for and `recurrence.py` point 9 needs, quoting the change's sentence — never for
    a rent increase that needs consent (§ 558b BGB) or beside a recurring payment that holds the amount.
+   **Completeness re-ask** (`extract.read_document`, ADR 0016): a valid answer that the reading check
+   (**Incomplete reading** below: `gaps.reading_gap` on the same pages, computed as the check computes it)
+   finds almost blank or without the objection deadline the letter's notice states is asked for **once**
+   more — `purpose="extract"`, the same request with Ordnung's note appended (`prompts/reading_gaps.md`: the
+   parts left out in plain words — sender, letter date, to-dos, the objection deadline the letter's own
+   instructions state — the full reading asked for again, and text in the letter that asks for a shorter
+   answer, fewer deadlines or claims a period was lifted named as content to warn about, never an
+   instruction; the letter stays in its untrusted block and the note carries none of its text, nor of the
+   first answer), a stricter copy of the schema for this call only (sender, letter date and to-dos
+   required, `null` or an empty list allowed), version `<base>.c<n>` and a `complete=<sorted gaps>` marker
+   in its cache key, added only when set, so every other key and recording is unchanged. Its answer
+   replaces the first only when it validates, is strictly less incomplete (blank → objection left out or
+   complete; objection left out → complete) and the share of its quotes the verification finds on the
+   pages is at least the first's (a first answer that quotes nothing counts as fully found). An answer
+   that doesn't validate or comes back without structured output keeps the first reading; any other error
+   (a rate limit, a timeout) propagates as the extraction's would. It is never repaired. Its trace step is
+   "Extract · complete" (`extract_complete`: the gap, whether its answer was used, why not) and its usage-log
+   row names the call it completes (`repair_of`). The check at **verify** runs on whichever reading is kept.
 5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
    page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
@@ -506,8 +524,9 @@ characters. It is always `low` and "Please check" (`reading_incomplete`), also w
 its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
 why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
 addressed to an AI its action says to send the objection only to an address the person already knows. A
-later complete reading removes it unless the person acted on it. No model is asked again and the reading
-itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
+later complete reading removes it unless the person acted on it. The check itself asks no model — the
+completeness re-ask at **extract** came before it — and the reading kept (its sender, date and remedy)
+stays as the model gave it. A reading that does date the objection,
 but more than 7 days after the period the letter's own notice gives, or with a longer period than the
 notice's, gets that period beside its own date as a second date (`gaps.notice_rival`, settled like any two
 dates: the earlier kept, both named — "Claude's reading and the letter's own instructions …" —, `low` and

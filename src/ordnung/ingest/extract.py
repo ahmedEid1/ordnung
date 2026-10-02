@@ -6,26 +6,41 @@ the known parties (also document-derived, so also wrapped). The cache key holds 
 document hash, page text sources, language, region and a simulated today — never the known parties,
 which depend on ingestion order. An answer that does not validate gets one repair attempt with the
 validation problems appended; a second failure raises :class:`ExtractionError` with a readable message.
+
+A valid answer that the reading check (:func:`~ordnung.ingest.gaps.reading_gap`, on the same pages, the
+way ``verify_extraction`` computes it) finds incomplete — almost blank, or without the objection deadline
+the letter's own notice states — gets **one** completeness re-ask (:func:`completion_request`, ADR 0016):
+the same request with Ordnung's note naming the missing parts appended (the letter stays inside its
+untrusted block; the note quotes neither the letter nor the answer), a stricter schema, the version
+``<base>.c<n>`` and a ``complete`` marker in its cache key, so every other key stays as it was. Its answer
+replaces the first only when it is strictly less incomplete and its quotes are found on the pages at least
+as well (:func:`judge_completion`); an unusable answer keeps the first. The reading check still runs on
+whichever reading is kept, as the last line of defence.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
+from fractions import Fraction
+from typing import Any, Literal
 
 from pydantic import ValidationError
 
+from ordnung.ingest.gaps import Gap, reading_gap, remedy_notices
+from ordnung.ingest.plan import Verification, verify_extraction
 from ordnung.ingest.text import page_delimited
 from ordnung.llm import prompts
-from ordnung.llm.base import LLMRequest, LLMResponse
+from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
-from ordnung.llm.schemas import extraction_schema
+from ordnung.llm.schemas import completion_schema, extraction_schema
 from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem, Page, Party, Recurrence
+from ordnung.trace import facts
 from ordnung.trace.spans import NO_SPAN, Span
 
 LANGUAGE_NAMES: dict[str, str] = {
@@ -123,8 +138,12 @@ def canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def extraction_cache_key(data: ExtractionInput, *, repair: bool = False) -> str:
-    """Stable inputs only: document hash, page text sources, language, region, simulated today."""
+def extraction_cache_key(data: ExtractionInput, *, repair: bool = False, complete: Sequence[str] = ()) -> str:
+    """Stable inputs only: document hash, page text sources, language, region, simulated today.
+
+    ``repair`` marks the repair attempt, ``complete`` the gaps a completeness re-ask asks about
+    (:func:`completion_request`, sorted); each is added only when set, so the extraction's own key — and
+    every recording made with it — stays as it was."""
     key: dict[str, Any] = {
         "doc": data.sha256,
         "pages": [[page.page, page.text_source] for page in sorted(data.pages, key=lambda p: p.page)],
@@ -134,6 +153,8 @@ def extraction_cache_key(data: ExtractionInput, *, repair: bool = False) -> str:
     }
     if repair:
         key["repair"] = True
+    if complete:
+        key["complete"] = sorted(set(complete))
     return canonical_json(key)
 
 
@@ -185,6 +206,53 @@ def repair_request(request: LLMRequest, data: ExtractionInput, errors: str) -> L
             "cache_key": extraction_cache_key(data, repair=True),
             "prompt_version": f"{request.prompt_version}.r{version}",
             "prompt_name": "extract_repair",
+        }
+    )
+
+
+#: What the completeness re-ask names as left out, per gap (:mod:`ordnung.ingest.gaps`), in plain words of
+#: Ordnung's own — never the letter's or the first answer's. It is model-facing text outside the prompt file,
+#: so its digest is locked beside the prompt's (``evals.conditions.ordnung_prompt_hashes``,
+#: ``reading_gaps_parts``): change it only together with ``reading_gaps``'s version.
+MISSING_PARTS: dict[str, tuple[str, ...]] = {
+    "empty": (
+        "who sent it (`sender`)",
+        "the letter's own date (`document_date`)",
+        "what it asks the person to do, each with its date (`items`)",
+        "the deadline to object that its instructions on how to object state, if it has such instructions "
+        "(a to-do whose date has the nature `objection`)",
+    ),
+    "remedy_left_out": (
+        "the deadline to object that its instructions on how to object (Rechtsbehelfsbelehrung) state "
+        "(a to-do whose date has the nature `objection`, quoting those instructions)",
+    ),
+}
+
+
+def missing_parts(gaps: Sequence[str]) -> str:
+    """The note's list of what the reading left out (:data:`MISSING_PARTS`), one line per part."""
+    return "\n".join(f"- {part}" for gap in sorted(set(gaps)) for part in MISSING_PARTS[gap])
+
+
+def completion_request(request: LLMRequest, data: ExtractionInput, gaps: Sequence[str]) -> LLMRequest:
+    """The extraction ``request`` asked once more for what its answer left out (``gaps``).
+
+    The same system prompt and letter (still inside its ``<untrusted_document>`` block, which nothing is
+    added to), with Ordnung's note appended (``reading_gaps``): the missing parts in plain words, the full
+    reading asked for again, and text in the letter that asks for less, or claims a period was lifted, named
+    as content to warn about. The note carries no letter text and no word of the first answer. The stricter
+    schema (:func:`~ordnung.llm.schemas.completion_schema`) requires the sender, the letter's date and the
+    to-dos; the cache key gets the ``complete`` marker and the version ``.c<n>``, so the extraction's own key
+    is untouched. Built from the extraction's request, never its repair: the same re-ask whether or not a
+    repair came first."""
+    version, note = prompts.render("reading_gaps", missing=missing_parts(gaps))
+    return request.model_copy(
+        update={
+            "prompt": f"{request.prompt}\n\n{note}",
+            "schema_": completion_schema(),
+            "cache_key": extraction_cache_key(data, complete=gaps),
+            "prompt_version": f"{request.prompt_version}.c{version}",
+            "prompt_name": "reading_gaps",
         }
     )
 
@@ -262,19 +330,93 @@ def _parse_answer(response: LLMResponse) -> DocumentExtraction:
     return parse_extraction(response.data, response.text)
 
 
-async def extract_document(
-    llm: LLMService, data: ExtractionInput, *, model: str, use_cache: bool = True, trace: Span = NO_SPAN
-) -> DocumentExtraction:
-    """Run the extraction call, with one repair attempt if the answer does not validate.
+# --------------------------------------------------------------------------------------------------
+# Completeness
+# --------------------------------------------------------------------------------------------------
 
-    ``trace`` gets a model step per call; the repair's usage-log row names the call it retries
-    (``repair_of``) and the outcomes say which answer was usable (``invalid`` → ``repaired``/``failed``).
-    """
-    request = extraction_request(data, model=model)
+#: Why a completeness re-ask's answer was not used: no answer (a replay without its recording, in the
+#: benchmark), an unusable one (it doesn't validate, or no structured output came back), one no less
+#: incomplete than the first, or one whose quotes are found on the pages less well than the first's.
+KeptBecause = Literal["no_answer", "unusable", "not_better", "quotes"]
+
+#: How incomplete a reading is: a re-ask's answer must be strictly less so.
+_GAP_RANK: dict[Gap | None, int] = {"empty": 2, "remedy_left_out": 1, None: 0}
+
+
+@dataclass(frozen=True)
+class Completion:
+    """A completeness re-ask: the ``gap`` that triggered it, whether its answer replaced the first reading
+    (``accepted``) and, if not, why (``kept_because``)."""
+
+    gap: Gap
+    accepted: bool
+    kept_because: KeptBecause | None = None
+
+    @property
+    def outcome(self) -> Literal["accepted", "rejected", "missing"]:
+        """``missing`` when there was no answer to judge, else whether it was used."""
+        if self.accepted:
+            return "accepted"
+        return "missing" if self.kept_because == "no_answer" else "rejected"
+
+
+@dataclass(frozen=True)
+class Reading:
+    """The extraction kept for a letter, and its completeness re-ask if it had one."""
+
+    extraction: DocumentExtraction
+    completion: Completion | None = None
+
+
+def reading_gap_of(extraction: DocumentExtraction, pages: Sequence[Page]) -> Gap | None:
+    """Why ``extraction`` is incomplete, computed on ``pages`` the way the reading check computes it
+    (:func:`~ordnung.ingest.gaps.reading_gap` with the letter's remedy notices), or ``None``."""
+    return reading_gap(extraction, pages, remedy_notices(pages))
+
+
+def located(verification: Verification) -> Fraction:
+    """The share of a reading's quotes the verification found on the letter's pages (in its text layer or an
+    AI transcript): to-dos, key facts, contract terms, the change and the remedy. A reading that quotes
+    nothing counts as fully located — an answer replacing it must then be found in full."""
+    evidence = [
+        *(verified.evidence for verified in verification.items),
+        *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
+        *verification.contract_evidence,
+        *(e for e in (verification.change_evidence, verification.remedy_evidence) if e is not None),
+    ]
+    if not evidence:
+        return Fraction(1)
+    return Fraction(sum(e.grounding != "unverified" for e in evidence), len(evidence))
+
+
+def judge_completion(
+    doc_id: str,
+    first: DocumentExtraction,
+    second: DocumentExtraction,
+    pages: Sequence[Page],
+    *,
+    gap: Gap,
+) -> KeptBecause | None:
+    """Why the re-ask's answer ``second`` must not replace ``first`` (whose gap is ``gap``), or ``None`` to use
+    it: it must be strictly less incomplete (``empty`` → ``remedy_left_out`` or complete; ``remedy_left_out``
+    → complete), and the share of its quotes the existing verification
+    (:func:`~ordnung.ingest.plan.verify_extraction`) finds on the pages must be at least the first's."""
+    if _GAP_RANK[reading_gap_of(second, pages)] >= _GAP_RANK[gap]:
+        return "not_better"
+    if located(verify_extraction(doc_id, second, pages)) < located(verify_extraction(doc_id, first, pages)):
+        return "quotes"
+    return None
+
+
+async def _read(
+    llm: LLMService, request: LLMRequest, data: ExtractionInput, *, use_cache: bool, trace: Span
+) -> tuple[DocumentExtraction, int | None]:
+    """The extraction call, with one repair attempt if the answer does not validate: the reading and the
+    usage-log id of the call that gave it."""
     with trace.span("model", "Extract", key="extract", stage="extract") as step:
         response = await llm.complete(request, use_cache=use_cache, trace=step, validate=_parse_answer)
         try:
-            return parse_extraction(response.data, response.text)
+            return parse_extraction(response.data, response.text), response.call_id
         except ValidationError as first:
             problems = validation_problems(first)
             step.set(problems=len(first.errors()))
@@ -287,7 +429,7 @@ async def extract_document(
             repair_of=response.call_id,
         )
         try:
-            return parse_extraction(repaired.data, repaired.text)
+            return parse_extraction(repaired.data, repaired.text), repaired.call_id
         except ValidationError as second:
             step.set(problems=len(second.errors()))
             raise ExtractionError(
@@ -295,3 +437,92 @@ async def extract_document(
                 f"({len(second.errors())} problem(s), e.g. {validation_problems(second).splitlines()[0][2:]}). "
                 "Try “Reprocess” later."
             ) from second
+
+
+async def _complete(
+    llm: LLMService,
+    request: LLMRequest,
+    data: ExtractionInput,
+    first: DocumentExtraction,
+    *,
+    gap: Gap,
+    completes: int | None,
+    use_cache: bool,
+    trace: Span,
+    unrecorded: tuple[type[LLMError], ...],
+) -> Reading:
+    """The one completeness re-ask of a reading found incomplete (``gap``), on a model step of its own whose
+    usage-log row names the call it completes (``completes``, kept as the row's ``repair_of``)."""
+    kept = first
+    with trace.span("model", "Extract · complete", key="extract_complete", stage="extract") as step:
+        try:
+            response = await llm.complete(
+                completion_request(request, data, [gap]),
+                use_cache=use_cache,
+                trace=step,
+                validate=_parse_answer,
+                repair_of=completes,
+            )
+            second = parse_extraction(response.data, response.text)
+        except unrecorded:
+            completion = Completion(gap, accepted=False, kept_because="no_answer")
+        except (ValidationError, ClaudeBadOutput):
+            completion = Completion(gap, accepted=False, kept_because="unusable")
+        else:
+            reason = await asyncio.to_thread(
+                judge_completion, data.doc_id, first, second, data.pages, gap=gap
+            )
+            completion = Completion(gap, accepted=reason is None, kept_because=reason)
+            if completion.accepted:
+                kept = second
+        step.set(**facts.completion(gap, accepted=completion.accepted, kept_because=completion.kept_because))
+    return Reading(kept, completion)
+
+
+async def read_document(
+    llm: LLMService,
+    data: ExtractionInput,
+    *,
+    model: str,
+    use_cache: bool = True,
+    trace: Span = NO_SPAN,
+    unrecorded: tuple[type[LLMError], ...] = (),
+) -> Reading:
+    """The extraction call (with its repair attempt), then — only when the reading check finds the reading
+    incomplete — one completeness re-ask (module docstring).
+
+    ``trace`` gets a model step per call; a repair's and a re-ask's usage-log rows name the call they follow
+    (``repair_of``), and the re-ask's step says which gap triggered it and whether its answer was used
+    (:func:`ordnung.trace.facts.completion`). Only an unusable re-ask answer (``ValidationError``,
+    ``ClaudeBadOutput``) and the errors in ``unrecorded`` (the benchmark's replay miss: no answer was
+    recorded) keep the first reading; every other error propagates as the extraction's would.
+    """
+    request = extraction_request(data, model=model)
+    extraction, call_id = await _read(llm, request, data, use_cache=use_cache, trace=trace)
+    gap = await asyncio.to_thread(reading_gap_of, extraction, data.pages)
+    if gap is None:
+        return Reading(extraction)
+    return await _complete(
+        llm,
+        request,
+        data,
+        extraction,
+        gap=gap,
+        completes=call_id,
+        use_cache=use_cache,
+        trace=trace,
+        unrecorded=unrecorded,
+    )
+
+
+async def extract_document(
+    llm: LLMService, data: ExtractionInput, *, model: str, use_cache: bool = True, trace: Span = NO_SPAN
+) -> DocumentExtraction:
+    """The reading kept for the letter (:func:`read_document`): the extraction, repaired once if it does not
+    validate and asked once more if the reading check finds it incomplete.
+
+    ``trace`` gets a model step per call; the repair's usage-log row names the call it retries
+    (``repair_of``) and the outcomes say which answer was usable (``invalid`` → ``repaired``/``failed``).
+    """
+    reading = await read_document(llm, data, model=model, use_cache=use_cache, trace=trace)
+    return reading.extraction

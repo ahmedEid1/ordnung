@@ -22,7 +22,8 @@ run       ``reading`` (1, 2 …), ``trigger`` (``read`` | ``read_again``), ``pri
 ocr       :func:`text_layer` (pages, text pages, pages to transcribe, words, hidden text);
           the transcription group: ``pages`` (and ``parallel``)
 model     :func:`model_call` (call id, purpose, prompt, models, cache hit, outcome, repair of);
-          a page transcript adds :func:`transcript` (legible, characters — not the text)
+          a page transcript adds :func:`transcript` (legible, characters — not the text); the
+          completeness re-ask adds :func:`completion` (the gap that triggered it, whether it was used)
 verify    :func:`quote` per quote (target, grounding, page, scores, digit groups, reasons);
           the stage: :func:`verification` (counts per grounding) and, for a reading that came back
           incomplete, :func:`reading_check` (why, and which to-do code filed for it)
@@ -158,6 +159,13 @@ def verification(groundings: Sequence[str], needs_check: int) -> dict[str, Any]:
         "unverified": sum(g == "unverified" for g in groundings),
         "needs_check": needs_check,
     }
+
+
+def completion(gap: str, *, accepted: bool, kept_because: str | None) -> dict[str, object]:
+    """The completeness re-ask of a reading found incomplete (:func:`ordnung.ingest.extract.read_document`): the
+    gap that triggered it (``empty`` | ``remedy_left_out``), whether its answer replaced the first reading, and
+    if not why (``no_answer`` | ``unusable`` | ``not_better`` | ``quotes``) — codes only."""
+    return {"reading_gap": gap, "accepted": accepted, "kept_because": kept_because}
 
 
 def reading_check(gap: str, item: str) -> dict[str, object]:

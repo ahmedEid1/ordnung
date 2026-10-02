@@ -28,8 +28,31 @@ export const KIND_LABEL: Record<SpanKind, string> = {
   plan: "Filing",
 };
 
+/**
+ * The completeness re-ask (`src/ordnung/ingest/extract.py`): Claude asked once more for what its reading
+ * left out. A comparison's step has no facts: its key still says which call it was.
+ */
+const isCompletion = (span: TraceSpan): boolean =>
+  str(span.attributes, "prompt") === "reading_gaps" || span.key.endsWith("model:extract_complete");
+
+/** Why the reading was asked for again, by the gap Ordnung found (`reading_gap`). */
+const ASKED_BECAUSE: Record<string, string> = {
+  empty: "the reading came back almost blank",
+  remedy_left_out: "the reading left out the deadline to object",
+};
+
+/** Why the re-ask's answer wasn't used (`kept_because`): the first reading stays, Ordnung's check takes over. */
+const KEPT_BECAUSE: Record<string, string> = {
+  no_answer: "The first — no answer was recorded for this one",
+  unusable: "The first — this answer wasn't usable",
+  not_better: "The first — this answer was no more complete",
+  quotes: "The first — fewer of this answer's quotes were found in the letter",
+};
+
 /** Colour of a step's bar: Claude's calls stand out; steps of code are quiet. */
 export function barTone(span: TraceSpan): Tone {
+  // a re-ask whose answer wasn't used kept the first reading: nothing broke, Ordnung's check takes over
+  if (span.status !== "error" && isCompletion(span) && span.attributes.accepted === false) return "warn";
   if (span.status === "error" || str(span.attributes, "outcome") === "failed") return "danger";
   if (str(span.attributes, "outcome") === "invalid") return "warn";
   if (span.kind === "model") return "accent";
@@ -248,18 +271,34 @@ export function spanCopy(span: TraceSpan, today?: string, transfer?: boolean): S
       const page = num(a, "page");
       // a comparison's step has no facts: its key still says which call it was
       const repair = str(a, "prompt") === "extract_repair" || span.key.endsWith("model:extract_repair");
-      const title = page ? `Page ${page} read by Claude` : repair ? "Claude, asked again" : "Claude reads the letter";
+      const completion = isCompletion(span);
+      const title = page
+        ? `Page ${page} read by Claude`
+        : repair
+          ? "Claude, asked again"
+          : completion
+            ? "Claude, asked for what it left out"
+            : "Claude reads the letter";
+      // the re-ask says whether its answer was used, whatever the call's outcome (a usable answer may not be
+      // more complete than the first)
+      const used = completion && span.status !== "error" && typeof a.accepted === "boolean" ? (a.accepted as boolean) : null;
       const flag: SpanCopy["flag"] =
-        outcome === "invalid"
-          ? { text: "Answer didn't fit — asked again", tone: "warn" }
-          : outcome === "repaired"
-            ? { text: "Fixed on the second try", tone: "ok" }
-            : outcome === "failed" || span.status === "error"
-              ? { text: "Failed", tone: "danger" }
-              : bool(a, "cache_hit")
-                ? { text: "From the cache", tone: "ok" }
-                : undefined;
+        used !== null
+          ? used
+            ? { text: "Answer used", tone: "ok" }
+            : { text: "First reading kept", tone: "warn" }
+          : outcome === "invalid"
+            ? { text: "Answer didn't fit — asked again", tone: "warn" }
+            : outcome === "repaired"
+              ? { text: "Fixed on the second try", tone: "ok" }
+              : outcome === "failed" || span.status === "error"
+                ? { text: "Failed", tone: "danger" }
+                : bool(a, "cache_hit")
+                  ? { text: "From the cache", tone: "ok" }
+                  : undefined;
       const parts = [modelName(str(a, "served_model") ?? str(a, "request_model"))];
+      const asked = completion ? ASKED_BECAUSE[str(a, "reading_gap") ?? ""] : undefined;
+      if (asked) parts.push(`asked because ${asked}`);
       if (page) parts.push(bool(a, "legible") ? `${formatCompact(num(a, "chars") ?? 0)} characters` : "not legible");
       if (call && !call.cache_hit) parts.push(`${formatCompact(call.output_tokens)} tokens out`, formatUsd(call.cost_usd));
       return { title, summary: parts.join(" · "), flag };
@@ -444,8 +483,11 @@ export function spanDetails(
     case "model": {
       const call = span.call;
       const version = str(a, "prompt_version");
-      const prompt = (str(a, "prompt") ?? "—").replace(/_repair$/, " (repair)");
+      const prompt = (str(a, "prompt") ?? "—").replace(/_repair$/, " (repair)").replace(/^reading_gaps$/, "reading gaps (asked again)");
       add("Prompt", `${prompt}${version ? `, version ${version}` : ""}`);
+      const completion = isCompletion(span);
+      const because = completion ? ASKED_BECAUSE[str(a, "reading_gap") ?? ""] : undefined;
+      if (because) add("Asked because", `${because.charAt(0).toUpperCase()}${because.slice(1)}`);
       const asked = modelName(str(a, "request_model"));
       const served = str(a, "served_model");
       add("Model", served && modelName(served) !== asked ? `${asked} asked · ${modelName(served)} answered` : asked);
@@ -460,12 +502,19 @@ export function spanDetails(
         }
       }
       const outcome = str(a, "outcome");
+      if (completion && span.status !== "error" && typeof a.accepted === "boolean")
+        add(
+          "Reading kept",
+          a.accepted ? "This answer — more complete than the first" : (KEPT_BECAUSE[str(a, "kept_because") ?? ""] ?? "The first"),
+        );
       add(
         "Answer",
         outcome === "invalid"
           ? `Didn't match the form${num(a, "problems") ? ` (${plural(num(a, "problems")!, "problem")})` : ""} — asked again with the problems listed`
           : outcome === "repaired"
-            ? "Usable on the second try"
+            ? completion
+              ? "Usable"
+              : "Usable on the second try"
             : outcome === "failed"
               ? "Not usable"
               : call?.cache_hit

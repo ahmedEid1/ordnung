@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TraceChange, TraceRun, TraceSpan } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
-import { changeText, compareBase, exportCommand, formatMs, runResult, runTitle, shellPath, spanCopy, spanDetails, specText } from "./copy";
+import { barTone, changeText, compareBase, exportCommand, formatMs, runResult, runTitle, shellPath, spanCopy, spanDetails, specText } from "./copy";
 
 const span = (s: Partial<TraceSpan>): TraceSpan => ({
   id: "spn_1",
@@ -71,6 +71,68 @@ describe("trace copy", () => {
     const details = spanDetails(span({ kind: "model", attributes: { prompt: "extract_repair", prompt_version: "8.7.1.r1", outcome: "failed" } }));
     expect(details).toContainEqual({ label: "Prompt", value: "extract (repair), version 8.7.1.r1" });
     expect(details).toContainEqual({ label: "Answer", value: "Not usable" });
+  });
+
+  it("says when Claude was asked for what its reading left out, and whether that answer was used (ingest/extract.py)", () => {
+    const asked = { prompt: "reading_gaps", prompt_version: "12.7.1.c1", request_model: "sonnet" };
+    const used = span({
+      kind: "model",
+      key: "run/model:extract_complete",
+      attributes: { ...asked, outcome: "repaired", reading_gap: "empty", accepted: true, kept_because: null },
+    });
+    expect(spanCopy(used)).toEqual({
+      title: "Claude, asked for what it left out",
+      summary: "Sonnet · asked because the reading came back almost blank",
+      flag: { text: "Answer used", tone: "ok" },
+    });
+    expect(barTone(used)).toBe("accent");
+    const usedDetails = spanDetails(used);
+    expect(usedDetails).toContainEqual({ label: "Prompt", value: "reading gaps (asked again), version 12.7.1.c1" });
+    expect(usedDetails).toContainEqual({ label: "Asked because", value: "The reading came back almost blank" });
+    expect(usedDetails).toContainEqual({ label: "Reading kept", value: "This answer — more complete than the first" });
+    expect(usedDetails).toContainEqual({ label: "Answer", value: "Usable" });
+
+    // a usable answer no more complete than the first: the first reading stays, Ordnung's own check takes over
+    const kept = span({
+      kind: "model",
+      key: "run/model:extract_complete",
+      attributes: { ...asked, outcome: "repaired", reading_gap: "remedy_left_out", accepted: false, kept_because: "not_better" },
+    });
+    expect(spanCopy(kept).flag).toEqual({ text: "First reading kept", tone: "warn" });
+    expect(spanCopy(kept).summary).toBe("Sonnet · asked because the reading left out the deadline to object");
+    expect(barTone(kept)).toBe("warn");
+    expect(spanDetails(kept)).toContainEqual({ label: "Reading kept", value: "The first — this answer was no more complete" });
+
+    // an unusable answer is no failure of the reading: warn, not danger
+    const unusable = span({
+      kind: "model",
+      key: "run/model:extract_complete",
+      attributes: { ...asked, outcome: "failed", reading_gap: "empty", accepted: false, kept_because: "unusable" },
+    });
+    expect(barTone(unusable)).toBe("warn");
+    expect(spanCopy(unusable).flag).toEqual({ text: "First reading kept", tone: "warn" });
+    expect(spanDetails(unusable)).toContainEqual({ label: "Reading kept", value: "The first — this answer wasn't usable" });
+    expect(spanDetails(unusable)).toContainEqual({ label: "Answer", value: "Not usable" });
+    const fewer = spanDetails(span({ kind: "model", key: "run/model:extract_complete", attributes: { ...asked, accepted: false, kept_because: "quotes" } }));
+    expect(fewer).toContainEqual({ label: "Reading kept", value: "The first — fewer of this answer's quotes were found in the letter" });
+
+    // a call that broke off (a rate limit) is a failure like any other
+    const broken = span({ kind: "model", key: "run/model:extract_complete", status: "error", attributes: { ...asked, outcome: "failed" } });
+    expect(barTone(broken)).toBe("danger");
+    expect(spanCopy(broken).flag).toEqual({ text: "Failed", tone: "danger" });
+
+    // a comparison's step has no facts: its key still names it
+    expect(spanCopy(span({ kind: "model", key: "run/model:extract_complete" })).title).toBe("Claude, asked for what it left out");
+    expect(changeText(change({ kind: "model", name: "Extract · complete", key: "run/model:extract_complete", field: "present", before: false, after: true }))).toEqual({
+      what: "Claude, asked for what it left out",
+      detail: "Only in the newer reading",
+    });
+
+    for (const step of [used, kept, unusable, broken]) {
+      const copy = spanCopy(step);
+      assertNoRawEnums(`${copy.title} ${copy.summary} ${copy.flag?.text ?? ""}`);
+      for (const row of spanDetails(step)) assertNoRawEnums(`${row.label} ${row.value}`);
+    }
   });
 
   it("describes quotes, links and planning from their facts", () => {
