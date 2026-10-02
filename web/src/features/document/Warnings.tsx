@@ -23,7 +23,7 @@ import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
-import { arrivalSavedNote, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { arrivalSavedNote, isCourtServed, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
@@ -99,12 +99,20 @@ function withoutPleaseCheck(w: string): string {
 const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|This letter explains how to (?:object|challenge it in court), but Claude's reading)/;
 
 /**
+ * The warning that Claude's reading left out a date the letter sets (pay by, send by) and Ordnung added it as a
+ * to-do of its own (`deadline_warning` in `src/ordnung/ingest/gaps.py`): no scam sign, and said only while one of
+ * those to-dos still needs checking.
+ */
+const DEADLINE_WARNING = /^Claude's reading of this letter left out /;
+
+/**
  * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
  * own note sits in the verdict, the count of unconfirmed dates is said by their own cards, the incomplete
  * reading's note only while its to-do needs checking).
  */
 function otherWarnings(doc: Document, items: Item[]): string[] {
   const checking = items.some((i) => i.slot_key === READING_CHECK_SLOT && needsCheck(i));
+  const checkingDates = items.some((i) => isDeadlineCheck(i) && needsCheck(i));
   const shown = doc.warnings.filter(
     (w) =>
       w.trim() &&
@@ -112,7 +120,8 @@ function otherWarnings(doc: Document, items: Item[]): string[] {
       !(doc.hidden_text && isHiddenTextWarning(w)) &&
       !w.startsWith(DEMO_NOTE) &&
       !UNCONFIRMED_DATES.test(w.trim()) &&
-      (checking || !GAP_WARNING.test(w.trim())),
+      (checking || !GAP_WARNING.test(w.trim())) &&
+      (checkingDates || !DEADLINE_WARNING.test(w.trim())),
   );
   return squareIbanClaims(shown, doc.payment?.iban ? doc.payment.iban_valid : null);
 }
@@ -167,7 +176,9 @@ const TOP_SIGNS = 3;
 function scamSigns(reasons: string[]): string[] {
   const rank = (w: string) =>
     /^possible scam/i.test(w) ? 0 : /iban|payee|account|bank/i.test(w) ? 1 : /deadline|hours|threat|pressure|not to contact/i.test(w) ? 2 : 3;
-  return reasons.filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim())).sort((a, b) => rank(a) - rank(b));
+  return reasons
+    .filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim()) && !DEADLINE_WARNING.test(w.trim()))
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {
@@ -308,9 +319,11 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   const todayISO = useTodayISO();
   const qc = useQueryClient();
   const served = isServed(doc, items);
+  // a court's letter, or an authority's served with a Postzustellungsurkunde: the same envelope, other words
+  const sender = isCourtServed(doc, items) ? "the court's letter" : "the letter";
   const update = useUpdateDocument();
-  // A court's letter counts from the date the postman wrote on the envelope, often days before it was
-  // opened — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
+  // A court's letter, or an authority's served with a Postzustellungsurkunde, counts from the date the postman
+  // wrote on the yellow envelope, often days before it was opened or picked up — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
   // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
   // sets later by mistake (review round 2 of phase 2: a dismissal uploaded after a holiday saved "today").
   const highStakes = HIGH_STAKES.has(doc.kind ?? "");
@@ -392,8 +405,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink/85">
             {served ? (
               <>
-                {subject} from the day the court's letter was delivered — the postman wrote that date on the yellow envelope it
-                came in. Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
+                {subject} from the day {sender} was delivered — the postman wrote that date on the yellow envelope it came
+                in, also when it was left at the post office for you to pick up. Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
                 earliest possible.
               </>
             ) : (
@@ -456,6 +469,17 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
  */
 export const READING_CHECK_SLOT = "check:reading";
 
+/**
+ * The slot of a to-do Ordnung files itself for a fixed date the letter sets for the person (pay by, send by) that
+ * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps.py`): `check:deadline`, `check:deadline#2` …
+ */
+export const DEADLINE_CHECK_SLOT = "check:deadline";
+
+/** A to-do Ordnung filed for a date the reading left out ({@link DEADLINE_CHECK_SLOT}). */
+export function isDeadlineCheck(item: Pick<Item, "slot_key">): boolean {
+  return (item.slot_key ?? "").split("#")[0] === DEADLINE_CHECK_SLOT;
+}
+
 /** Why a to-do needs checking, under its title. */
 function checkReason(item: Item, scam: boolean, notFound: boolean): string {
   if (scam)
@@ -468,6 +492,8 @@ function checkReason(item: Item, scam: boolean, notFound: boolean): string {
       ? "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left it out."
       : "Ordnung found the letter's instructions on how to object but couldn't work out the date from them — enter the deadline with “Set a date”.";
   }
+  if (isDeadlineCheck(item))
+    return "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.";
   return notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from.";
 }
 

@@ -145,9 +145,16 @@ export function draftKindFor(item: Item): DraftKind | null {
   return null;
 }
 
+/** A to-do Ordnung filed itself for an incomplete reading: the objection's (`check:reading`) or a date the reading
+ * left out (`check:deadline`, `check:deadline#2` …; `ordnung.ingest.gaps.is_check_slot`). */
+function isOwnCheck(item: Pick<Item, "slot_key">): boolean {
+  const slot = item.slot_key ?? "";
+  return slot === "check:reading" || slot.split("#")[0] === "check:deadline";
+}
+
 function needsCheckFor(item: Item, reviewIds: Set<string>): boolean {
   // Ordnung's own to-do the person confirmed or dated: nothing left to check (as `needsCheck` on the letter page)
-  if (item.slot_key === "check:reading" && item.grounding === "user") return false;
+  if (isOwnCheck(item) && item.grounding === "user") return false;
   return (
     item.grounding === "unverified" ||
     item.computation?.confidence === "low" ||
@@ -192,9 +199,10 @@ function firstSentence(text: string | null | undefined): string | null {
 
 /**
  * The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`): its
- * wording now, and the one receipts stored before say ("worked this date out").
+ * wording now, and the one receipts stored before say ("worked this date out") — and that of a to-do for a date the
+ * reading left out (`REASON_TEXT[DEADLINE_LEFT_OUT]`).
  */
-const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions/;
+const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions|^Ordnung took this date from the letter's own words/;
 
 function reasonForItem(
   item: Item,
@@ -204,7 +212,7 @@ function reasonForItem(
 ): string | null {
   if (needsCheck) {
     // the to-do Ordnung added for an incomplete reading: why it's there, not a side note on delivery days
-    const own = item.slot_key === "check:reading" ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
+    const own = isOwnCheck(item) ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
     const w = own ?? item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
     if (w) return w;
   }
