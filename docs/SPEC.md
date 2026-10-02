@@ -418,7 +418,8 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
    `model_read`; not found → `unverified`. `value_consistent`: dates/amounts in the DateSpec/item
    appear in the quote (date formats `15.10.2026`, `15. Oktober 2026`, `2026-10-15`, amounts `1.234,56`).
-   Dated items with `unverified` evidence → document `needs_review` ("Please check").
+   Dated items with `unverified` evidence → document `needs_review` ("Please check"); so does the to-do
+   code files for an incomplete reading (**Incomplete reading** below), dated or not.
 6. **compute / link / plan** — inside `store.tx()` under a process-wide ledger lock: compute receipts
    and contract computations; resolve party (identifier → exact/alias → fuzzy ≥ 92, else new party);
    thread into a case by reference numbers/party; link contract changes and cancellation
@@ -459,6 +460,65 @@ and also when the date read is already the earlier (a header date later than the
 the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 692 ZPO, § 558b BGB …) count
 from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
 warning and "Please check" (its evidence the page's line with the other date).
+
+**Incomplete reading** (`ingest/gaps.py`, code only). The extraction schema requires only a letter's kind,
+title, summary and explanation, so a valid answer can leave out everything a person acts on (a prompt
+injection's aim). At **verify**, after the quotes are grounded, code checks every reading against the
+letter's visible text only (`Page.text`, a photo's transcript; never `Page.hidden`) with two rules, the
+first winning: **empty** — no to-do, no sender, no letter date, no key fact, no reference, no contract,
+change or payment details and no remedy; **remedy left out** — the letter states how to object within a
+period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period, or the
+sentence after it when that one names neither a remedy nor a payment; words split across lines joined as
+quotes are matched; never a sentence that only says when to pay or when to give reasons, nor list lines
+above the notice's heading) in words that speak of a remedy against *this* letter (not a later or
+hypothetical decision's, one already lodged, a direct debit's, one the letter rules out, or one counted back
+from an event), its text shows an administrative act (or a public body's "diese Entscheidung", or a heading
+"Bescheid"), it is not filed as a kind whose deadline the law files itself (court payment
+and enforcement orders, dismissals, landlord notices, rent increases) unless the letter's words bear that
+kind out or its notices give no shorter period than the law, and no to-do dates the objection with a
+date that computes (an objection item, or a dated to-do quoting the notice; a `remedy` read without its
+date doesn't count). Either way the letter gets **one** to-do in slot `check:reading`, never with a date
+later than the letter allows: the period of all the notices state (and the sentences after them) that
+ends first, counted from the letter's date — dated only when it is from a week to a month and no notice
+holds a period that can't be read or dated (Werktage, years) or counts back from an event ("zwei Wochen
+vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
+after a portal download; never on formal service: Postzustellungsurkunde, PZU, förmliche Zustellung,
+Empfangsbekenntnis, Rückschein); the start is the earliest date the letter gives for itself, carried in
+the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date:" label or a label
+of the letter's own date (Bescheid-, Brief-, Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "erstellt am"),
+a place and date among its header lines or DIN 5008's date line under the recipient's address (never under a
+line ending in ":"), a date alone on that date line, the reference line (the values under a "Datum" column,
+unless a due word stands before them), "mit diesem Bescheid vom …", the decision its notice names right
+before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit vom …")
+and the reading's date; never an appointment's "Datum:" ("Ihr Termin:" / "Uhrzeit"). None when those are
+more than 14 days apart (then no date at all), none from one date alone more than 60 days before the letter
+arrived, none after it arrived, and none on a Widerspruchsbescheid dated only by the decision it reshapes.
+Other dates (another "…datum", a print or copy date, a date alone, a continuation page's, a decision or
+period the notice names with words between) only lower it, within those 14 days; alone they set none. A
+notice about another decision named without a date ("Gegen den Gebührenbescheid …") lowers it to that
+decision's date where the letter gives it elsewhere. After a Widerspruchsbescheid a court action names the
+to-do on a tie. The letter's date
+once entered counts when it gives none. Recomputed, an earlier stored letter date or arrival moves it
+earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
+a notice — or for an almost blank reading of a letter whose notices are all ruled out — it is an undated
+"Read this letter yourself". Its quote is the notice's own words, at most 600
+characters. It is always `low` and "Please check" (`reading_incomplete`), also when
+its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
+why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
+addressed to an AI its action says to send the objection only to an address the person already knows. A
+later complete reading removes it unless the person acted on it. No model is asked again and the reading
+itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
+but more than 7 days after the period the letter's own notice gives, or with a longer period than the
+notice's, gets that period beside its own date as a second date (`gaps.notice_rival`, settled like any two
+dates: the earlier kept, both named — "Claude's reading and the letter's own instructions …" —, `low` and
+"Please check"); decided on the letter's words alone (a live notice that can be dated, its own sentence's
+periods, the one ending first; never the reading's kind or date), counted from the date the first page
+names as its own (none without one) and from every earlier start the letter's stored dates allow, without
+the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice whose own
+words count from service or arrival starts on an arrival the person confirmed (one from notification on a
+formally served letter keeps the letter's date). Recomputed too, also once the person confirmed it.
+Measured on every recorded reading, the reading's date is 0 to 7 days after the notice's, so it never
+fires there.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
@@ -1360,7 +1420,9 @@ a notice day of the month and notice before a fixed end; UI audit R1-backend-6, 
 checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
 run ("The prompt the app uses now", which says what the three test recordings mean). Version 12 adds a
 recurring payment's day of the month and last working day and the statutory notice periods a contract
-names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`).
+names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`). The Ordnung condition runs the
+app's check for incomplete readings (§ 8, `verify_extraction(check_reading=True)`): its code-made objection
+deadline is scored like any to-do, and its undated "read this letter yourself" placeholder is not scored.
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
@@ -1595,7 +1657,10 @@ Special-right windows are Ideas with rule citations.
 addressee, period_text, form_text, quote}` from the Rechtsbehelfsbelehrung. Objection drafts are
 offered only when `type ∈ {einspruch, widerspruch}`; type and addressee come from the remedy, never
 from a model guess. `klage`/missing/unclear → a warning card ("get advice"; missing instructions may
-mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) — no computed date.
+mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) and no objection draft. A
+court deadline the letter states (an item, or the `check:reading` to-do of §8 "Incomplete reading") is
+computed so it is not missed — always with the "get advice" warning and at most `medium` (`klage_1_month`,
+deadline-rules §6); Ordnung never drafts or files the court action.
 Legally operative sentences come from fixed templates (e.g. "…kündige ich den Vertrag … fristgerecht
 zum {date}, hilfsweise zum nächstmöglichen Zeitpunkt. Bitte bestätigen Sie mir den Eingang und das
 Beendigungsdatum schriftlich." / "…lege ich gegen den Bescheid vom {date}, {reference}, Einspruch ein.

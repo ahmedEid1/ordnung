@@ -110,6 +110,7 @@ export const CONSISTENCY_REASON: Record<string, string> = {
   amount_not_in_quote: "the quote doesn't state the amount",
   working_day_not_in_quote: "the quote doesn't state the working day",
   day_of_month_not_in_quote: "the quote doesn't state the day of the month",
+  reading_incomplete: "added by Ordnung because Claude's reading came back incomplete",
 };
 const reason = (code: unknown) => (typeof code === "string" ? (CONSISTENCY_REASON[code] ?? code.replace(/_/g, " ")) : "");
 
@@ -197,6 +198,8 @@ const natureOf = (a: Attrs): string | null => {
 
 function groundingText(a: Attrs): string {
   const page = num(a, "page");
+  // the to-do Ordnung added for an almost blank reading quotes nothing: nothing was looked for
+  if (str(a, "slot_key") === "check:reading" && str(a, "grounding") === "unverified") return "Added by Ordnung — no sentence to find";
   switch (str(a, "grounding")) {
     case "verified":
       return page ? `Found on page ${page}` : "Found in the letter";
@@ -269,10 +272,19 @@ export function spanCopy(span: TraceSpan, today?: string, transfer?: boolean): S
           num(a, "unverified") ? `${num(a, "unverified")} not found` : null,
         ].filter(Boolean);
         const check = num(a, "needs_check") ?? 0;
+        // a reading that came back incomplete: Ordnung filed a to-do of its own (src/ordnung/ingest/gaps.py)
+        const incomplete = str(a, "reading_gap") !== null;
         return {
           title: "Quotes checked on the page",
-          summary: `${plural(num(a, "quotes") ?? 0, "quote")}${counts.length ? `: ${counts.join(", ")}` : ""}`,
-          flag: check ? { text: `${check} to check`, tone: "warn" } : undefined,
+          summary: `${plural(num(a, "quotes") ?? 0, "quote")}${counts.length ? `: ${counts.join(", ")}` : ""}${
+            incomplete ? " · reading came back incomplete — Ordnung added a to-do" : ""
+          }`,
+          // the to-do Ordnung added is one of the `needs_check`: the others are said beside it
+          flag: incomplete
+            ? { text: check > 1 ? `Reading incomplete · ${check - 1} to check` : "Reading incomplete", tone: "warn" }
+            : check
+              ? { text: `${check} to check`, tone: "warn" }
+              : undefined,
         };
       }
       const target = QUOTE_TARGET[str(a, "target") ?? ""] ?? "Quote";

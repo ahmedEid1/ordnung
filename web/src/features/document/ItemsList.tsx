@@ -29,6 +29,7 @@ import { useToday } from "@/lib/today";
 import { asideNote } from "@/features/party/model";
 import { itemDateRole, undatedNote } from "./item-meta";
 import { isOpenItem, sortItems } from "./verdict";
+import { READING_CHECK_SLOT } from "./Warnings";
 
 /** The letters a set-aside note names (the payment reminder that replaced this letter's payment). */
 type NoteDocs = readonly Pick<Document, "id" | "doc_date" | "received_date">[];
@@ -134,6 +135,14 @@ function AsideNote({ aside, documents }: { aside: ItemAside; documents: NoteDocs
       </span>
     </p>
   );
+}
+
+/**
+ * The to-do Ordnung adds when Claude's reading came back almost blank ("Read this letter yourself"): it quotes
+ * no sentence, so no "couldn't find this" chip — it says who added it (UX review 2, R2UX-9).
+ */
+function quotesNothing(item: Item): boolean {
+  return item.slot_key === READING_CHECK_SLOT && !item.evidence.some((e) => e.quote.trim());
 }
 
 /** The title with German admin terms explained and money and dates the app's way; a German title is marked German. */
@@ -302,7 +311,10 @@ function ItemRow({
         {item.description ? <p className="mt-1.5 text-[13px] leading-5 text-muted">{item.description}</p> : null}
         {aside ? <AsideNote aside={aside} documents={documents} /> : null}
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {ev ? <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} pages={pages} anchorId={anchorId} what={item.title} compact /> : null}
+          {ev && !quotesNothing(item) ? (
+            <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} pages={pages} anchorId={anchorId} what={item.title} compact />
+          ) : null}
+          {quotesNothing(item) ? <span className="text-[12px] font-medium text-muted">Added by Ordnung</span> : null}
           {!ev && item.origin === "rule" ? (
             <span className="inline-flex items-center gap-1 text-[12px] font-medium text-muted" title="The letter doesn't state this date — the law sets it.">
               <Scale className="size-3.5" aria-hidden />

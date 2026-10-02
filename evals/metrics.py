@@ -388,7 +388,9 @@ class ItemOutcome:
     outcome: ItemOutcomeName = "unscored"
     direction: Literal["late", "early"] | None = None
     days_off: int | None = None
-    cause: Literal["reading", "computing"] | None = None
+    #: Why an Ordnung date is wrong: the reading, the computing — or ``check``: the date is the one Ordnung's
+    #: check for incomplete readings filed itself (``PredictedItem.origin == "code"``), no reading of the model's.
+    cause: Literal["reading", "computing", "check"] | None = None
     reading_diffs: list[str] = field(default_factory=list)
     flagged: bool = False
     confidence: str | None = None
@@ -449,6 +451,13 @@ class DocScore:
     tool_refusals: int = 0
     #: The distinct dates the date tools (:data:`DATE_TOOLS`) returned on this letter.
     tool_dates: list[str] = field(default_factory=list)
+    #: The dated to-dos Ordnung's check for incomplete readings filed (``origin == "code"``), and those that match
+    #: no obligation of the letter: a false alarm of the check, counted in no extraction metric.
+    check_filed: int = 0
+    check_false_alarms: int = 0
+    #: 1 when the check fired on this letter (the ``reading_incomplete`` signal), dated or not: an undated
+    #: to-do it filed is never scored, so only this counts it.
+    check_letters: int = 0
 
     @property
     def deadline_calls(self) -> int:
@@ -552,12 +561,14 @@ def _item_outcome(
         matched=item is not None,
         pred_index=pred_index,
     )
+    # the to-do code files for an incomplete reading: no reading of the model's to grade
+    read = item is not None and item.origin == "model"
     if item is not None:
         result.predicted = item.due_date
         result.flagged = item.flagged
         result.confidence = item.confidence
-        result.grounding = item.grounding
-        if item.spec is not None and truth.spec.type != "none":
+        result.grounding = item.grounding if read else None
+        if read and item.spec is not None and truth.spec.type != "none":
             result.reading_diffs = reading_differences(
                 truth,
                 truth_document_date=entry.truth.document_date,
@@ -580,8 +591,10 @@ def _item_outcome(
         result.days_off = (predicted - expected).days
         result.direction = "late" if predicted > expected else "early"
         result.region_ignored = truth.due_if_region_ignored == result.predicted
-        if item.spec is not None:
+        if read and item.spec is not None:
             result.cause = "reading" if result.reading_diffs else "computing"
+        elif not read:
+            result.cause = "check"
     if pred.tools is not None and item is not None and predicted is not None:
         dates = item_tool_dates(pred, item)
         result.backing = tool_backing(result.predicted, dates, letter_dates=tool_dates(pred))
@@ -749,9 +762,18 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         for index, item in enumerate(truth_items)
     ]
     matched_preds = set(matches.values())
-    matched_required = sum(1 for index in matches if index < required_count)
-    false_positives = sum(1 for index, item in enumerate(preds) if item.dated and index not in matched_preds)
-    pairs = [(truth_items[t], preds[p]) for t, p in matches.items()]
+    # extraction and grounding grade the model's reading, matched on its own to-dos alone: the to-do code filed
+    # (``origin="code"``) is no part of it and never takes a match from it — its date is scored with the others
+    # above (with no code-made to-do this is the same assignment)
+    read = [index for index, item in enumerate(preds) if item.origin == "model"]
+    own = {
+        t: read[p]
+        for t, p in match_items(truth_items, [preds[i] for i in read], required_count=required_count).items()
+    }
+    matched_read = set(own.values())
+    matched_required = sum(1 for index in own if index < required_count)
+    false_positives = sum(1 for index in read if preds[index].dated and index not in matched_read)
+    pairs = [(truth_items[t], preds[p]) for t, p in own.items()]
     false_grounded, by_level = _false_grounded(pairs)
     contract_pairs: list[tuple[str, str | None]] = []
     if truth.contract is not None:
@@ -807,7 +829,9 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
             len(pred.amounts),
         ),
         contract_dates=(sum(iso_or_none(p) == e for e, p in contract_pairs), len(contract_pairs)),
-        grounding=dict(Counter(item.grounding for item in preds if item.grounding)),
+        grounding=dict(
+            Counter(item.grounding for item in preds if item.grounding and item.origin == "model")
+        ),
         false_grounded=false_grounded,
         false_grounded_by_level=by_level,
         adversarial=_adversarial(entry, pred, outcomes),
@@ -825,6 +849,13 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         tool_calls=dict(Counter(use.name for use in pred.tools)) if pred.tools is not None else None,
         tool_refusals=sum(1 for use in pred.tools or [] if not use.ok),
         tool_dates=tool_dates(pred),
+        check_filed=sum(1 for item in preds if item.origin == "code" and item.dated),
+        check_false_alarms=sum(
+            1
+            for index, item in enumerate(preds)
+            if item.origin == "code" and item.dated and index not in matched_preds
+        ),
+        check_letters=int("reading_incomplete" in pred.signals),
     )
 
 
@@ -1036,6 +1067,7 @@ def taxonomy(scores: Sequence[DocScore]) -> dict[str, Any]:
         "flagged_wrong": sum(1 for i in wrong if i.flagged),
         "region_ignored": sum(1 for i in wrong if i.region_ignored),
         "lucky_reading": sum(1 for i in items if i.outcome == "correct" and i.reading_diffs),
+        "check": sum(1 for i in wrong if i.cause == "check"),
         "reading_fields": dict(sorted(fields.items())),
     }
 
@@ -1109,6 +1141,13 @@ def summarise_condition(
             for key in ("input", "output", "cache_read", "cache_creation")
         },
         "calls": sum(score.calls for score in scores),
+        # the dated to-dos the check for incomplete readings filed itself, those matching no obligation, and the
+        # letters it fired on (an undated to-do of its own is never scored)
+        "reading_check": {
+            "filed": sum(score.check_filed for score in scores),
+            "unmatched": sum(score.check_false_alarms for score in scores),
+            "letters": sum(score.check_letters for score in scores),
+        },
         "failed": sum(1 for score in scores if score.failed),
         "errors": sum(1 for score in scores if score.error),
     }

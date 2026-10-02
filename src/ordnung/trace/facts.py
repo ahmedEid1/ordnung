@@ -24,7 +24,8 @@ ocr       :func:`text_layer` (pages, text pages, pages to transcribe, words, hid
 model     :func:`model_call` (call id, purpose, prompt, models, cache hit, outcome, repair of);
           a page transcript adds :func:`transcript` (legible, characters — not the text)
 verify    :func:`quote` per quote (target, grounding, page, scores, digit groups, reasons);
-          the stage: :func:`verification` (counts per grounding)
+          the stage: :func:`verification` (counts per grounding) and, for a reading that came back
+          incomplete, :func:`reading_check` (why, and which to-do code filed for it)
 rules     :func:`dated` per to-do (the DateSpec's structure → due date, send-by, rule ids,
           confidence); a deadline the law adds: :func:`law_deadline`
 link      :func:`party_match` (decision, party id, candidates with scores, reference kind);
@@ -157,6 +158,12 @@ def verification(groundings: Sequence[str], needs_check: int) -> dict[str, Any]:
         "unverified": sum(g == "unverified" for g in groundings),
         "needs_check": needs_check,
     }
+
+
+def reading_check(gap: str, item: str) -> dict[str, object]:
+    """A reading found incomplete (:mod:`ordnung.ingest.gaps`): why (``empty`` | ``remedy_left_out``) and the
+    to-do code filed for it (``dated`` | ``undated`` | ``read_yourself``) — codes only."""
+    return {"reading_gap": gap, "check_item": item}
 
 
 def spec_structure(spec: DateSpec | None) -> dict[str, Any] | None:

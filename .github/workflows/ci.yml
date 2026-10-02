@@ -34,7 +34,10 @@ jobs:
       - name: Type check
         run: .venv/bin/mypy
       - name: Tests
-        run: .venv/bin/pytest --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
+        run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
+      - name: Slow tests (every recorded reading replayed; once, without coverage)
+        if: matrix.python == '3.12'
+        run: .venv/bin/pytest -m slow
       - name: Rules engine keeps 100 % line and branch coverage
         if: matrix.python == '3.12'
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100

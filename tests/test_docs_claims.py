@@ -192,9 +192,12 @@ def _words(n: int) -> str:
 
 
 def _latest_holdout() -> dict[str, Any]:
-    """The newest holdout results file (by its own generated_at): the one README's held-out row must match."""
+    """The newest holdout recording (live model calls, by its own generated_at): the one README's held-out row
+    must match — never a replay, which scores the recordings with later code."""
     runs = [_results(path.name) for path in (ROOT / "evals" / "results").glob("*-holdout.json")]
-    return max(runs, key=lambda run: run["meta"]["generated_at"])
+    return max(
+        (run for run in runs if run["meta"]["backend"] == "live"), key=lambda run: run["meta"]["generated_at"]
+    )
 
 
 def test_readme_prompt_now_and_held_out_rows_match_the_results() -> None:

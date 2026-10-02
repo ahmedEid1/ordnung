@@ -401,6 +401,9 @@ export type LangPart = { text: string; german: boolean };
 
 const WORD = /[\p{L}][\p{L}-]*/gu;
 
+/** The German remedies Ordnung names in parentheses in its own English ("a court action (Klage)"). */
+const REMEDY_TERMS = /^(?:Klage|Widerspruch|Einspruch|Rechtsbehelfsbelehrung)$/;
+
 /**
  * Split English text into runs, the German words flagged — "the commute (Werbungskosten/
  * Entfernungspauschale)" → [..., "Werbungskosten" (German), "/", "Entfernungspauschale" (German), ")"] —
@@ -423,7 +426,8 @@ export function germanRuns(text: string): LangPart[] {
     depth += (before.match(/\(/g)?.length ?? 0) - (before.match(/\)/g)?.length ?? 0);
     if (before) push(before, false);
     const word = m[0];
-    const german = germanWord(word, false) || (depth > 0 && /^\p{Lu}\p{Ll}{7,}/u.test(word));
+    const german =
+      germanWord(word, false) || (depth > 0 && (/^\p{Lu}\p{Ll}{7,}/u.test(word) || REMEDY_TERMS.test(word)));
     push(word, german);
     last = at + word.length;
   }

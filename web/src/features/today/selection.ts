@@ -138,12 +138,16 @@ export function isOpen(item: Pick<Item, "status" | "snoozed_until">, today: stri
 /** Which letter an item asks for, if any (cancellation for contract notice dates, objection for remedies). */
 export function draftKindFor(item: Item): DraftKind | null {
   const nature = item.date_spec?.nature;
+  // a court action (Klage) Ordnung took from the letter's notice: a letter to the authority doesn't stop it
+  if (item.slot_key === "check:reading" && /\(Klage\)\s*$/.test(item.title)) return null;
   if (nature === "objection") return "objection";
   if (item.contract_id && (item.kind === "deadline" || nature === "notice")) return "cancellation";
   return null;
 }
 
 function needsCheckFor(item: Item, reviewIds: Set<string>): boolean {
+  // Ordnung's own to-do the person confirmed or dated: nothing left to check (as `needsCheck` on the letter page)
+  if (item.slot_key === "check:reading" && item.grounding === "user") return false;
   return (
     item.grounding === "unverified" ||
     item.computation?.confidence === "low" ||
@@ -186,6 +190,12 @@ function firstSentence(text: string | null | undefined): string | null {
   return t ? t : null;
 }
 
+/**
+ * The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`): its
+ * wording now, and the one receipts stored before say ("worked this date out").
+ */
+const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions/;
+
 function reasonForItem(
   item: Item,
   needsCheck: boolean,
@@ -193,7 +203,9 @@ function reasonForItem(
   docTitles: ReadonlyMap<string, string> | undefined,
 ): string | null {
   if (needsCheck) {
-    const w = item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
+    // the to-do Ordnung added for an incomplete reading: why it's there, not a side note on delivery days
+    const own = item.slot_key === "check:reading" ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
+    const w = own ?? item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
     if (w) return w;
   }
   const title = item.doc_id ? docTitles?.get(item.doc_id) : undefined;

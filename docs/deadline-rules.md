@@ -361,6 +361,70 @@ December, which are skipped too (a payment due Mon 4 Jan 2027 should be ordered 
 by the due date (BGH VIII ZR 222/15), but tax payments count on the day of credit (§ 224 Abs. 2 AO).
 Example: tax back payment on the hero letter — due Wed 21 Oct 2026, order the transfer by Tue 20 Oct.
 
+### When the reading leaves the objection deadline out
+
+A reading can come back without the deadline to object although the letter states it: almost blank (no
+to-do, sender, letter date, key fact, reference, contract, change, payment or remedy), or without any to-do
+that dates an objection on a letter whose visible text shows an administrative act, with a notice that
+speaks of a remedy against that letter (not a later decision's, one already lodged, a direct debit's or one
+the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps.py`, SPEC
+§ 8; no model call) and files **one** to-do, always `low` and "Please check". Its date is never later than
+the letter allows:
+
+- **The period.** Every period a sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an
+  appeal states — and the sentence after it, when that names neither a remedy nor a payment ("Monatsfrist"
+  is one month; words split across lines are joined). The one that **ends first** counts, counted in the
+  calendar from the letter's date (from 1 Feb, one month ends on 1 Mar, 30 days on 3 Mar), so a planted
+  longer period never makes the date later. It is dated only when it lasts from a week to a month — every
+  domestic remedy period does (§ 70/§ 74 VwGO, § 355 AO, § 47 FGO, § 84/§ 87 SGG, § 67 OWiG, § 410 StPO,
+  § 692 ZPO) — and when no notice holds a period that can't be read or dated (Werktage, years, "binnen
+  eines Kalendermonats") or that counts back from an event ("spätestens zwei Monate vor Mietende"):
+  otherwise the to-do has no date, to be found in the letter. A period shorter than a week (an attacker's
+  "binnen eines Tages") never puts a date on Today.
+- **The start.** The earliest date the letter gives for itself. Only dates its words name as its own set
+  it: the first page's "Datum:" or "Date:" (or a label of the letter's own date: Bescheid-, Brief-,
+  Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "Erstellt am"), "Place, (Freitag,) (den) date" among its
+  header lines, DIN 5008's date line right under the recipient's address (a date alone or a place and date),
+  the reference line's value under a "Datum" column (never after a due word), "mit diesem Bescheid vom …",
+  the decision the notice names right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom"
+  or "für die Zeit vom …") and the reading's date — never an appointment's "Datum:". Any other date (another
+  "…datum" such as "Einzugsdatum", a print or copy date, a date alone, a continuation page's) is weak: it
+  lowers the start within 14 days, never sets it, and is ignored when later. A date after the letter arrived
+  is no start, and a Widerspruchsbescheid dated only by the decision it reshapes gets none. When the strong dates are more
+  than **14 days** apart one of them is another's (planted, an earlier decision's), so the to-do has no
+  date rather than a wrong one; so does one date alone more than 60 days before the letter arrived. A letter
+  giving no date at all counts from its date once the person enters it.
+- **Delivery days.** Deemed delivery (§ 5: the 3rd or 4th day) is added only when every notice counts from
+  notification (*Bekanntgabe*) and its period ends first from any start delivery can give; from a portal,
+  the day after the earliest download. A notice from formal service or arrival, one naming no start, a
+  letter served by *Postzustellungsurkunde*, or notices naming different starts count from the letter's
+  date with no delivery days. A sender filed as a company keeps that start and only loses the delivery
+  days.
+- **Kept the safe side.** The start travels in the DateSpec (`anchor_date`). Recomputed, an earlier letter
+  date the person enters, or (for a period from service or arrival) an earlier arrival, moves the to-do
+  earlier; a later one never moves it later. The person can set its date directly; confirming it ends
+  "Please check". The letter rules for the model's readings (§ 574b BGB counting back from a tenancy's
+  end) never apply to it.
+- **Without a notice** the to-do is an undated "Read this letter yourself".
+- **A reading that dates the objection later.** When the reading has its own objection to-do but its date
+  is more than **7 days** after the period the notice gives, or its period is longer than the notice's,
+  that period is set beside it as a second date (the "two different dates" rule of § 1: the earlier is
+  kept, both are named, `low` and "Please check"), also when recomputed and once confirmed. The notice's
+  date is decided on the letter's words alone: the live notices that can be dated, their own sentences'
+  periods, the one ending first, counted from the date the first page names as its own (never the
+  reading's date or kind), without the letter's kind, and from a confirmed arrival only for a period its
+  own words count from service or arrival (one from notification on a formally served letter keeps the
+  letter's date). On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a
+  weekend).
+
+| Letter dated | Notice | Sender's Land | Delivered | Deadline |
+|---|---|---|---|---|
+| Fri 6 Nov 2026 | one month after notification | unknown (3rd day, the app's case) | Mon 9 Nov | **Wed 9 Dec 2026** |
+| Fri 6 Nov 2026 | one month after notification | Hamburg (4th day) | Tue 10 Nov | **Thu 10 Dec 2026** |
+| Fri 6 Nov 2026 | one month after formal service or arrival, or no start named | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+| Fri 6 Nov 2026 | one month after notification, sender filed as a company | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+| Mon 1 Feb 2027 | one month and 30 days after service | any | counted from the letter's date | **Mon 1 Mar 2027** (one month ends first) |
+
 ---
 
 ## 7. High-stakes letters

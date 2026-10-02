@@ -135,8 +135,9 @@ class RunConfig:
     #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
     gate_ordnung_only: bool = False
     #: Whether the results file is written: the CI gate's replay (thresholds, no ``--live``) only checks and
-    #: writes nothing unless ``--results-dir`` is given (review round 3 of phase 2: running the gate locally
-    #: left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree).
+    #: writes no results file unless ``--results-dir`` is given (review round 3 of phase 2: running the gate
+    #: locally left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree). Its per-letter cache
+    #: still goes to ``<results dir>/cache/`` (gitignored under ``evals/results/``).
     write_results: bool = True
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
@@ -556,6 +557,12 @@ async def run_benchmark(
                 )
         model_backend = backend or make_backend(config, model, allowed)
         label = backend.name if backend is not None else ("live" if config.live else "replay")
+        if config.write_results:
+            _refuse_to_replace_a_recording(
+                config.results_dir
+                / report.results_filename(config.date, model, config.split, partial=config.partial),
+                "live" if config.live else label,
+            )
         say(f"{model}: {len(entries)} letters × {len(config.conditions)} conditions ({label})")
         started = time.perf_counter()
         run = await predict_model(config, model, entries, model_backend, progress=say)
@@ -610,6 +617,23 @@ async def run_benchmark(
         )
         say(f"docs → {outcome.docs_path}" + (f", chart → {outcome.chart_path}" if outcome.chart_path else ""))
     return outcome
+
+
+def _refuse_to_replace_a_recording(path: Path, backend: str) -> None:
+    """A results file of live model calls is the record of that recording (a held-out split is recorded
+    once): only another live run may replace it — a replay of the same day, split and model would overwrite it
+    with the checked-out code's numbers (review of the reading check, benchmark 6)."""
+    if backend == "live" or not path.exists():
+        return
+    try:
+        recorded = json.loads(path.read_text(encoding="utf-8")).get("meta", {}).get("backend")
+    except (OSError, ValueError, AttributeError):
+        return
+    if recorded == "live":
+        raise ValueError(
+            f"{path} holds a live recording, which a {backend} run never overwrites: pass a different "
+            "--results-dir (or --date)"
+        )
 
 
 REPLAY_MISS = "no recorded response"
@@ -831,6 +855,17 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
+    # the gate writes no results file: it may replay a held-out split where it is
+    if (
+        config.split in report.HELD_OUT_SPLITS
+        and not config.live
+        and config.write_results
+        and ns.results_dir is None
+    ):
+        parser.error(
+            f"a replay of the {config.split} split scores its recordings with the checked-out code, not the "
+            "held-out number: pass --results-dir <dir> so it never lands beside the held-out run"
+        )
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))

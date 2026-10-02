@@ -509,6 +509,12 @@ def human_date(value: str | None) -> str:
     return f"{parsed.strftime('%a')} {parsed.day} {parsed.strftime('%b %Y')}"
 
 
+def _long_date(value: str | None) -> str:
+    """``2026-10-01`` → ``1 October 2026``."""
+    parsed = parse_iso(value)
+    return f"{parsed.day} {parsed.strftime('%B %Y')}" if parsed is not None else (value or "?")
+
+
 def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
     lines = ["| " + " | ".join(header) + " |", "|" + "|".join("---" for _ in header) + "|"]
     lines += ["| " + " | ".join(cell.replace("|", "\\|") for cell in row) + " |" for row in rows]
@@ -932,7 +938,7 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
     informed = (
         f"informed by its {len(late)} dangerously late date{'s' if len(late) != 1 else ''} ({listed})"
         if late
-        else "informed by its errors"
+        else "informed by it"
     )
     note = " ".join(str(meta.get("note") or "").split())
     return (
@@ -950,9 +956,11 @@ def _held_out_intro(name: str) -> str:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
-read, are recorded once, and nothing was tuned on them.** No prompt and no change to the reading was
-informed by these letters; the one code change that came after them, a rules-table date their label
-audit found, changes no date on them (see the note below)."""
+read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
+code changes came after them: a rules-table date their label audit found, which changes no date on them
+(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
+objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+re-scored row only, never in the held-out row."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
@@ -1025,6 +1033,8 @@ def _holdout_section(
     else:
         misses = f"Ordnung got {wrong} dated item(s) of the {name} split wrong (see the results file)."
     note = " ".join(str(meta.get("holdout_note") or "").split())
+    if note:  # as written with the recording: a later change is said above, not in it
+        note = f"*Written with the recording on {_long_date(meta.get('date'))}:* {note}"
     after = _holdout_rescored_note(holdout, rescored) if rescored is not None else ""
     body = "\n\n".join(part for part in (note, table, after, paired, misses) if part)
     return f"""## Held-out run: the {name} split
@@ -1145,6 +1155,12 @@ def _taxonomy_section(results: Mapping[str, Any]) -> str:
         + [cell(c, "flagged_wrong") for c in conditions],
         ["↳ wrong because a regional holiday was ignored"] + [cell(c, "region_ignored") for c in conditions],
     ]
+    if any(tax[c].get("check") for c in conditions):  # results files before the check have no such key
+        rows.insert(
+            3,
+            ["Wrong — date filed by the reading check (no reading of the model's)"]
+            + [cell(c, "check", separable=True) for c in conditions],
+        )
     table = _table(["Outcome (required items with a known date)", *[_label(c) for c in conditions]], rows)
     fields = tax.get("ordnung", {}).get("reading_fields") or {}
     fields_text = (
@@ -1565,13 +1581,15 @@ simulated phone photos, and an adversarial set in the test and holdout splits (v
 prompt injection, scams, conflicting dates, missing letter date). Each letter has its own "today" (the
 day it is read) and, where the letterhead names a Land, a holiday region.
 
-**Splits.** Template variants A/B are the dev split, C/D the test split and E/F the holdout split;
-the test and holdout splits each have their own adversarial letters, dev has none; no
+**Splits.** Template variants A/B are the dev split, C/D the test split, E/F the holdout split and G/H
+the holdout2 split; the test, holdout and holdout2 splits each have their own adversarial letters, dev has none; no
 deadline-bearing sentence of one split recurs in another. Prompts were tuned on dev letters and the
 published numbers are the test split — but the test split is no longer held-out: extraction prompts
 9 to 12 were each recorded on it. The holdout split is a fresh sample of the same families and
 attack classes (new senders, wording, layout, dates and amounts): the holdout letters were written
 after prompt version 11 and before any holdout recording, and are recorded once with frozen prompts.
+The holdout2 split is a second such sample (new senders, recipients, wording, layout, dates, amounts and
+regions), written after the release's last change to how letters are read and recorded once.
 No split is blind: the same project wrote the letters, the labels, the prompts and the rules engine
 (see Limitations).
 
@@ -1643,14 +1661,15 @@ def _reproduce_section(
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
     held = (
-        f"\npython -m evals.run --split {holdout_split} --model {holdout_model}       # the held-out run, from its recorded outputs"
+        f"\npython -m evals.run --split {holdout_split} --model {holdout_model} --results-dir /tmp/{holdout_split}   "
+        "# replayed on the checked-out code (not the held-out number)"
         if holdout_model
         else ""
     )
     if holdout2_model:
         held += (
-            f"\npython -m evals.run --split {holdout2_split} --model {holdout2_model}      # the {holdout2_split} run, from its "
-            "recorded outputs"
+            f"\npython -m evals.run --split {holdout2_split} --model {holdout2_model} --results-dir /tmp/{holdout2_split} "
+            "# replayed on the checked-out code (not the held-out number)"
         )
         later_held = (
             " The run on the holdout2 split joins the page with `--holdout2-run evals/results/<holdout2 run>.json "

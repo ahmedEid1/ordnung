@@ -24,7 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
-from ordnung.api.routes.dates import recompute_document_items
+from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.drafts.proof import PROOF_SOURCE
@@ -515,6 +515,8 @@ def _patch(
         if not (kind_changed or (dates_changed and confirmed is not False)):
             return document, None
         changed = recompute_document_items(store, document, today, refile_rules=kind_changed)
+        # a recompute can flag a to-do (two dates) or unflag one: the letter's "Please check" follows
+        document = refresh_review_status(store, doc_id) or document
         if "received_date" in changes and document.received_date:
             store.log_activity(
                 "document.received_date",

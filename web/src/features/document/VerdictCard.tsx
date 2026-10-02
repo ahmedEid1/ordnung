@@ -61,6 +61,7 @@ import {
   scamSuggestion,
   usesLaw,
   verdictWords,
+  withoutIfYouDisagree,
   type AsideItem,
   type MainAction,
   type NotOwed,
@@ -375,7 +376,8 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
             </p>
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80 wrap-break-word">
               {/* the whole action here, however long: it is the small print under "Nothing to do" */}
-              <span className="font-medium">Only if you disagree:</span> <GlossaryText text={keepCitations(words.body ?? words.lead)} inline markGerman />
+              <span className="font-medium">Only if you disagree:</span>{" "}
+              <GlossaryText text={keepCitations(withoutIfYouDisagree(words.body ?? words.lead))} inline markGerman />
             </p>
             {words.quote ? <LetterSays text={words.quote} /> : null}
           </>
@@ -651,7 +653,8 @@ function DateBox({
         {item.computation ? (
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
             <WhyThisDate receipt={item.computation} spec={item.date_spec} area={item.area} origin={item.origin} item={item} />
-            {item.computation.confidence !== "high" ? (
+            {/* the person confirmed it: their date, not ours to doubt (a receipt keeps its low grade) */}
+            {item.computation.confidence !== "high" && item.grounding !== "user" ? (
               <span className="text-[12px] text-muted">{item.computation.confidence === "medium" ? "Worth a second look" : "Please check this date"}</span>
             ) : null}
           </div>

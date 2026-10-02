@@ -328,6 +328,15 @@ _EVENT = re.compile(
 )
 #: How far (a share of the page's height) a column's value may stand under its label.
 _UNDER_REACH = 0.05
+#: An appointment's block around a "Datum:" line: its heading above ("Ihr Termin:"), its time below ("Uhrzeit: …").
+_BLOCK_ABOVE = re.compile(
+    r"\b(?:termin\w*|appointment|einladung|vorsprache|vorladung|wann)\b[^:]*:\s*$", re.IGNORECASE
+)
+_BLOCK_BELOW = re.compile(
+    # never "Ort:" or "Raum:" alone: a sender's info block has them under its own "Datum:" line
+    r"^\s*(?:uhrzeit|time|beginn)\b|^\s*(?:(?:zeit|um)\s*:?\s*)?\d{1,2}[:.]\d{2}\s*uhr\b",
+    re.IGNORECASE,
+)
 #: Where a letter's body starts.
 _SALUTATION = re.compile(r"(?:sehr\s+geehrte|guten\s+tag|hallo\b|liebe[rs]?\b|dear\b|hello\b)", re.IGNORECASE)
 
@@ -349,6 +358,12 @@ class Rival:
     grounding: Grounding = "verified"
     letter_date: date | None = None
     quote: str = ""
+    #: The letter's own remedy notice set beside a reading's objection date (``gaps.notice_rival``), counted
+    #: from the date the letter's first page names: computed without the letter's kind (no letter rule), and
+    #: never left out as a reminder's or as before the reading's date.
+    notice: bool = False
+    #: That notice counts from formal service or arrival (a confirmed arrival is its start).
+    served: bool = False
 
     @property
     def evidence(self) -> str:
@@ -403,6 +418,12 @@ def _clauses(text: str) -> list[tuple[str, list[tuple[int, int, date]]]]:
         local = [(s - lo, e - lo, d) for s, e, d in spans if lo <= s and e <= hi]
         clauses.append((clause, local))
     return clauses
+
+
+def sentences(text: str) -> list[str]:
+    """The letter's text folded into sentences (:func:`_clauses`, without their dates): whitespace runs
+    collapsed, its line breaks kept, a full stop inside a date never ending one."""
+    return [clause for clause, _ in _clauses(text)]
 
 
 def _label_before(before: str) -> str:
@@ -627,6 +648,12 @@ def _header(lines: list[str]) -> list[str]:
     return lines
 
 
+def header(lines: list[str]) -> list[str]:
+    """The lines of a letter's header (:func:`_header`): those before its salutation, else before its first
+    sentence or table."""
+    return _header(lines)
+
+
 Box = tuple[str, float, float, float, float]
 
 
@@ -655,7 +682,9 @@ def _under(words: list[Box], value: str) -> bool:
     )
 
 
-def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Statement]:
+def _header_date(
+    text: str, words: list[Box], grounding: Grounding, *, blocks: bool = True
+) -> list[_Statement]:
     """The date the letter's header gives for it: the first "Datum:" / "Date:" label of its first page's
     header (:func:`_header`), with its date after it on the same line ("Datum: 02.03.2026", "Datum
     22.09.2026") or under it on the next (a column's label above its value: on the page, right under the
@@ -670,8 +699,15 @@ def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Sta
             if label is None:
                 continue
             day = _one_date(line, start, end)
-            if day is None or "|" in line or _EVENT.search(line):
-                return []
+            above = lines[index - 1] if index else ""
+            below = lines[index + 1] if index + 1 < len(lines) else ""
+            if (
+                day is None
+                or "|" in line
+                or _EVENT.search(line)
+                or (blocks and (_BLOCK_ABOVE.search(above) or _BLOCK_BELOW.search(below)))
+            ):
+                return []  # an appointment's block ("Ihr Termin:" / "Datum: …" / "Uhrzeit: …")
             phrase = re.sub(r"\s+", " ", line[label.start("label") : end]).strip()
             return [_Statement(DateSpec(type="none", text=phrase), phrase, line, grounding, letter_date=day)]
         label = _HEADER_LINE_END.search(line)
@@ -700,14 +736,16 @@ def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Sta
     return []
 
 
-def letter_statements(pages: Sequence[PageInput]) -> list[_Statement]:
+def letter_statements(pages: Sequence[PageInput], *, blocks: bool = True) -> list[_Statement]:
     """Every deadline statement :func:`find_rivals` can read in the letter, and the dates it gives for
-    itself (in its text, and in its first page's header: :func:`_header_date`)."""
+    itself (in its text, and in its first page's header: :func:`_header_date`). ``blocks``: a "Datum:" line in
+    an appointment's block ("Uhrzeit: …" under it) is no date of the letter's — for its start; a rival only
+    ever lowers a date, so it keeps that line (a print time under the letter's own date)."""
     found: list[_Statement] = []
     for index, page in enumerate(pages):
         text, grounding = _page_text(page)
         if index == 0:
-            found += _header_date(text, _page_words(page), grounding)
+            found += _header_date(text, _page_words(page), grounding, blocks=blocks)
         for clause, dates in _clauses(text):
             found += _explicit(clause, dates, grounding)
             found += _relative(clause, grounding)
@@ -799,7 +837,7 @@ def find_rivals(
         # an optional earlier day ("möglichst bis"): which date must be met is the reading's to tell
         nature = None
     rivals: list[Rival] = []
-    for statement in letter_statements(pages):
+    for statement in letter_statements(pages, blocks=False):
         if statement.letter_date is not None:
             if item.date.type == "relative":
                 rivals.append(
@@ -828,7 +866,7 @@ def law_rivals(spec: DateSpec, pages: Sequence[PageInput]) -> tuple[Rival, ...]:
         (statement.phrase, statement.letter_date): Rival(
             spec, statement.phrase, statement.grounding, statement.letter_date, statement.quote
         )
-        for statement in letter_statements(pages)
+        for statement in letter_statements(pages, blocks=False)
         if statement.letter_date is not None
     }
     return tuple(rivals.values())
@@ -887,6 +925,8 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         if abs((rival.letter_date - ctx.document_date).days) > _LETTER_DATE_REACH:
             return None
         counted = replace(ctx, document_date=rival.letter_date)
+    elif rival.notice:
+        counted = replace(ctx, quote=rival.statement, letter_kind=None)
     else:
         if rival.spec.type == "relative" and ctx.letter_kind in PAYMENT_DEMAND_KINDS:
             return None  # a reminder's "14 Tage nach Rechnungsdatum" counts from the old invoice's date
@@ -898,9 +938,18 @@ def _rival_candidate(rival: Rival, own: date, ctx: RuleContext, postal_buffer_da
         compute_due(rival.spec, counted, postal_buffer_days=postal_buffer_days), rival.grounding, ()
     )
     due = parse_date(receipt.due_date)
-    if due is None or due == own or (ctx.document_date is not None and due < ctx.document_date):
+    if due is None or due == own:
+        return None
+    if not rival.notice and ctx.document_date is not None and due < ctx.document_date:
         return None
     return _Candidate(due, receipt, rival.statement, rival.spec.type == "fixed", rival)
+
+
+def rival_due(rival: Rival, own: date, ctx: RuleContext, postal_buffer_days: int) -> date | None:
+    """The date ``rival`` gives, computed as :func:`settle` computes it (``None`` when it gives none, the same
+    date as ``own``, or one :func:`settle` leaves out)."""
+    found = _rival_candidate(rival, own, ctx, postal_buffer_days)
+    return found.due if found is not None else None
 
 
 def _warning(noun: str, own: _Candidate, other: _Candidate, kept: date, ctx: RuleContext) -> str:
@@ -912,7 +961,19 @@ def _warning(noun: str, own: _Candidate, other: _Candidate, kept: date, ctx: Rul
         return (
             f"The letter gives two dates for itself: {fmt_date(early)} and {fmt_date(late)} "
             f"(“{_short(rival.statement)}”), so this {noun} is {fmt_date(first.due)} or {fmt_date(second.due)}. "
-            f"We use the earlier one, {fmt_date(kept)} — please check which date applies."
+            + (
+                f"We use the earlier one, {fmt_date(kept)} — please check which date applies."
+                if kept >= first.due
+                # a third date found (the letter's own notice) is earlier than both
+                else f"We use the earliest of the dates found, {fmt_date(kept)} — please check which date applies."
+            )
+        )
+    if rival is not None and rival.notice:
+        return (
+            f"Claude's reading and the letter's own instructions on how to object give two dates for this "
+            f"{noun}: {fmt_date(first.due)} (“{_short(first.statement)}”) and {fmt_date(second.due)} "
+            f"(“{_short(second.statement)}”). We use the earlier one, {fmt_date(kept)} — please check which date "
+            "applies."
         )
     return (
         f"The letter gives two dates for this {noun}: {fmt_date(first.due)} (“{_short(first.statement)}”) "
@@ -948,6 +1009,13 @@ def _other_step(noun: str, candidate: _Candidate, kept: _Candidate, ctx: RuleCon
     """The step naming a date the letter gives that is not the one kept."""
     rival = candidate.rival
     if rival is None:  # the to-do's own date, as read
+        if (
+            kept.rival is not None and kept.rival.notice
+        ):  # beside the letter's own notice: the reading's, not the letter's
+            return _step(
+                f"Claude's reading gives {fmt_date(candidate.due)} (“{_short(candidate.statement)}”)",
+                candidate.due,
+            )
         if kept.rival is not None and kept.rival.letter_date is not None and ctx.document_date is not None:
             return _step(
                 f"Counted from {fmt_date(ctx.document_date)}, the letter's date as read: {fmt_date(candidate.due)}",
@@ -1016,12 +1084,19 @@ def settle(
     count = _COUNTS.get(dates, str(dates))
     lead = _lead_step(kept)
     own_dates = {ctx.document_date, *(other.rival.letter_date for other in others if other.rival is not None)}
+    # the letter's own notice set beside the reading's date: the other date is the reading's, not the letter's
+    noticed = any(other.rival is not None and other.rival.notice for other in others)
+    source = (
+        "Claude's reading and the letter's own instructions on how to object give"
+        if noticed
+        else "The letter gives"
+    )
     why = (
         f"The law counts this deadline from the letter's date or its arrival, and the letter gives "
         f"{_COUNTS.get(len(own_dates), str(len(own_dates)))} dates for itself: we keep the earliest, "
         f"{fmt_date(kept.due)} — acting by it is on time whichever date the letter really has"
         if law
-        else f"The letter gives {count} different dates for this {noun}: we keep the earliest, "
+        else f"{source} {count} different dates for this {noun}: we keep the earliest, "
         f"{fmt_date(kept.due)} — acting by it is on time whichever date applies"
     )
     steps = [
@@ -1032,7 +1107,12 @@ def settle(
     ]
     warnings = [_warning(noun, own, other, kept.due, ctx) for other in others]
     later = ", ".join(fmt_date(c.due) for c in sorted([own, *others], key=lambda c: c.due) if c is not kept)
-    summary = f"{kept.receipt.summary} The letter also gives {later}; this is the earlier date.".strip()
+    also = (
+        "Claude's reading also gives"
+        if noticed and len(others) == 1 and kept is not own
+        else "The letter also gives"
+    )
+    summary = f"{kept.receipt.summary} {also} {later}; this is the earlier date.".strip()
     rule_ids = [
         *kept.receipt.rule_ids,
         *([] if CONFLICTING_DATES in kept.receipt.rule_ids else [CONFLICTING_DATES]),
