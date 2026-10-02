@@ -264,7 +264,11 @@ class RuleContext:
     their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
     gives no day is due by the third (:mod:`ordnung.recurrence`, point 8). ``rent_due``: the to-do is a rent
     that changes an earlier one on the same rent contract, and keeps the day that one was due by
-    (:class:`RentDue`, :mod:`ordnung.recurrence` point 9); no rule here reads it.
+    (:class:`RentDue`, :mod:`ordnung.recurrence` point 9); no rule here reads it. ``formal_service``: the letter
+    says it is served on the person with a Postzustellungsurkunde (the yellow envelope, § 3 VwZG with §§ 177–182
+    ZPO; :func:`ordnung.ingest.gaps.formally_served`): a period from its arrival runs from the date the postman
+    wrote on the envelope, so the receipt cites ``pzu`` and the app asks for that date ("When was it delivered?"),
+    never for the day the person opened it or picked it up.
     """
 
     today: date
@@ -289,6 +293,7 @@ class RuleContext:
     collected: bool = False
     rent: bool = False
     rent_due: RentDue | None = None
+    formal_service: bool = False
 
 
 @dataclass
@@ -1318,7 +1323,12 @@ def _compute_relative(
     served = statute in _FORMAL_SERVICE or (
         ctx.court and (spec.anchor not in _OWN_DATE_ANCHORS or ctx.document_date is None)
     )
-    anchor = _served(spec, ctx, trace) if served else _resolve_anchor(spec, ctx, trace)
+    # a letter served with a Postzustellungsurkunde: a period from its arrival runs from the date on the yellow
+    # envelope (§ 3 VwZG with §§ 180, 181 ZPO) — asked for as that, never as the day the person opened it
+    envelope = not served and ctx.formal_service and spec.anchor == "receipt"
+    anchor = _served(spec, ctx, trace) if served else _resolve_anchor(spec, ctx, trace, served=envelope)
+    if envelope:
+        trace.use("pzu")
     if anchor is None:
         if from_receipt:  # the rule that makes the app ask for the arrival day, even without a date
             trace.step(

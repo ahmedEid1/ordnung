@@ -328,9 +328,13 @@ _EVENT = re.compile(
 )
 #: How far (a share of the page's height) a column's value may stand under its label.
 _UNDER_REACH = 0.05
-#: An appointment's block around a "Datum:" line: its heading above ("Ihr Termin:"), its time below ("Uhrzeit: …").
+#: An appointment's block around a "Datum:" line: its heading above ("Ihr Termin:", or a short heading without its
+#: colon: "Ihr Termin", "Einladung zum Gespräch"), its time below ("Uhrzeit: …").
 _BLOCK_ABOVE = re.compile(
-    r"\b(?:termin\w*|appointment|einladung|vorsprache|vorladung|wann)\b[^:]*:\s*$", re.IGNORECASE
+    r"\b(?:termin\w*|appointment|einladung|vorsprache|vorladung|wann)\b[^:]*:\s*$"
+    r"|^\s*(?:(?:ihr|ihre|unser|unsere|your)\s+)?(?:termin\w*|einladung\w*|vorladung\w*|vorsprache\w*|appointment\w*)"
+    r"(?:\s+[^\s:]+){0,3}\s*$",
+    re.IGNORECASE,
 )
 _BLOCK_BELOW = re.compile(
     # never "Ort:" or "Raum:" alone: a sender's info block has them under its own "Datum:" line

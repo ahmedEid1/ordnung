@@ -374,7 +374,9 @@ this):
 
 - **The period.** Every period a sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an
   appeal states — and the sentence after it, when that names neither a remedy nor a payment ("Monatsfrist"
-  is one month; words split across lines are joined). The one that **ends first** counts, counted in the
+  is one month; words split across lines are joined). A sentence that reports a remedy already lodged without
+  offering one (a Widerspruchsbescheid's reasoning: "…, da er nicht innerhalb eines Monats … erhoben wurde") is
+  none. The one that **ends first** counts, counted in the
   calendar from the letter's date (from 1 Feb, one month ends on 1 Mar, 30 days on 3 Mar), so a planted
   longer period never makes the date later. It is dated only when it lasts from a week to a month — every
   domestic remedy period does (§ 70/§ 74 VwGO, § 355 AO, § 47 FGO, § 84/§ 87 SGG, § 67 OWiG, § 410 StPO,
@@ -382,16 +384,26 @@ this):
   eines Kalendermonats") or that counts back from an event ("spätestens zwei Monate vor Mietende"):
   otherwise the to-do has no date, to be found in the letter. A period shorter than a week (an attacker's
   "binnen eines Tages") never puts a date on Today.
-- **The start.** The earliest date the letter gives for itself. Only dates its words name as its own set
+- **The start.** The earliest date the letter gives for itself. Only dates of the letter's own kinds set
   it: the first page's "Datum:" or "Date:" (or a label of the letter's own date: Bescheid-, Brief-,
   Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "Erstellt am"), "Place, (Freitag,) (den) date" among its
-  header lines, DIN 5008's date line right under the recipient's address (a date alone or a place and date),
-  the reference line's value under a "Datum" column (never after a due word), "mit diesem Bescheid vom …",
-  the decision the notice names right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom"
-  or "für die Zeit vom …") and the reading's date — never an appointment's "Datum:". Any other date (another
-  "…datum" such as "Einzugsdatum", a print or copy date, a date alone, a continuation page's) is weak: it
-  lowers the start within 14 days, never sets it, and is ignored when later. A date after the letter arrived
-  is no start, and a Widerspruchsbescheid dated only by the decision it reshapes gets none. When the strong dates are more
+  header lines (also "Ort, Datum: Place, date", and beside "Ihr Zeichen:") whose place the page names after a
+  postcode or in a line above it, DIN 5008's date line right under the recipient's address (a date alone —
+  never with an appointment's time under it — or such a place and date), a date alone on the page's first line
+  when the header gives no other, the reference line's value under a "Datum" column (never after a due word,
+  never a payments table's or a "Stichtag" column's), "mit diesem Bescheid vom …", the decision the notice names
+  right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or "für die Zeit vom …") and the
+  reading's date — never an appointment's "Datum:" ("Ihr Termin:", a heading "Ihr Termin" or "Einladung …" above
+  it, "Uhrzeit:" under it). Any other date (another "…datum" such as "Einzugsdatum", "Stand:", a print or copy
+  date, a date alone, a continuation page's, and a date named like the letter's own but of no own kind: a place
+  the page names nowhere else, "Abholung am Schalter, …", "Sprechtag, Dienstag, …") is weak: it lowers the start
+  within 14 days, never sets it, and is ignored when later. So while the letter's own date is unread, a planted
+  later line or an appointment's starts nothing without the reading's date beside it. A date after the letter arrived
+  is no start, and a Widerspruchsbescheid dated only by the decision it reshapes gets none. A notice about another
+  decision ("Gegen den Gebührenbescheid …", or "Hiergegen …" / "dagegen" on a letter that never names itself a
+  decision: a reminder, a cover letter) counts from that decision's date where the letter gives it, and from none
+  where it doesn't; "… nach Bekanntgabe des Bescheides" beside "Gegen diesen Bescheid ist der Widerspruch
+  gegeben." is this letter. When the strong dates are more
   than **14 days** apart one of them is another's (planted, an earlier decision's), so the to-do has no
   date rather than a wrong one; so does one date alone more than 60 days before the letter arrived. A letter
   giving no date at all counts from its date once the person enters it.
@@ -401,9 +413,21 @@ this):
   letter served by *Postzustellungsurkunde*, or notices naming different starts count from the letter's
   date with no delivery days. A sender filed as a company keeps that start and only loses the delivery
   days.
+- **The yellow envelope.** A letter that says it is served with a *Postzustellungsurkunde* — a short line of
+  its header ("Mit Postzustellungsurkunde", "Zustellung gegen PZU") or "Dieser Bescheid wird Ihnen mit
+  Postzustellungsurkunde zugestellt", never another decision's service or a tip to send the objection by
+  *Einschreiben mit Rückschein*, and every notice counting from notification or service — is served on the day
+  the postman wrote on the envelope: handed over, put in the letterbox (§ 180 ZPO) or, deposited at the post
+  office, the day the notice of the deposit was left (§ 181 ZPO), never the day it was picked up; § 3 VwZG
+  applies §§ 177–182 ZPO, and a decision served so is notified then (§ 41 Abs. 5 VwVfG). Every to-do counted
+  from its arrival cites `pzu`, so the app asks "When was it delivered?" for the date on the yellow envelope,
+  with nothing filled in. Once entered, that date starts the to-do (and the notice set beside a reading's date)
+  when it is after the letter's own date and within 14 days of it; a later one is no envelope date of this
+  letter's (a pickup weeks later, a planted service line on a plain letter) and the letter's date is kept.
 - **Kept the safe side.** The start travels in the DateSpec (`anchor_date`). Recomputed, an earlier letter
   date the person enters, or (for a period from service or arrival) an earlier arrival, moves the to-do
-  earlier; a later one never moves it later. The person can set its date directly; confirming it ends
+  earlier; a later one never moves it later — but the envelope's date of a letter served with a
+  *Postzustellungsurkunde*, within 14 days of its own (above). The person can set its date directly; confirming it ends
   "Please check". The letter rules for the model's readings (§ 574b BGB counting back from a tenancy's
   end) never apply to it.
 - **Without a notice** the to-do is an undated "Read this letter yourself".
@@ -414,8 +438,9 @@ this):
   date is decided on the letter's words alone: the live notices that can be dated, their own sentences'
   periods, the one ending first, counted from the date the first page names as its own (never the
   reading's date or kind), without the letter's kind, and from a confirmed arrival only for a period its
-  own words count from service or arrival (one from notification on a formally served letter keeps the
-  letter's date). On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a
+  own words count from service or arrival — or, on a letter served with a *Postzustellungsurkunde*, for one
+  from notification too, within 14 days of the letter's date (on any other letter it keeps the letter's date:
+  an arrival entered may be a pickup or a day saved later). On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a
   weekend).
 
 | Letter dated | Notice | Sender's Land | Delivered | Deadline |
@@ -425,6 +450,43 @@ this):
 | Fri 6 Nov 2026 | one month after formal service or arrival, or no start named | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
 | Fri 6 Nov 2026 | one month after notification, sender filed as a company | any | counted from the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
 | Mon 1 Feb 2027 | one month and 30 days after service | any | counted from the letter's date | **Mon 1 Mar 2027** (one month ends first) |
+| Fri 6 Nov 2026, *Postzustellungsurkunde* | one month after notification | any | envelope not yet entered: the letter's date | Sun 6 Dec → **Mon 7 Dec 2026** |
+| Fri 6 Nov 2026, *Postzustellungsurkunde* | one month after notification | any | envelope Mon 16 Nov | **Wed 16 Dec 2026** |
+| Fri 6 Nov 2026, *Postzustellungsurkunde* | one month after notification | any | envelope Sat 21 Nov (more than 14 days on) | the letter's date: **Mon 7 Dec 2026** |
+
+### When the reading leaves out a date the letter sets
+
+A reading can keep the sender and still drop a fixed date the letter sets for the person to pay or send
+something by. Code reads the letter's visible text for such dates (`ingest/gaps.py`, `deadline_items`; no model
+call) and files a to-do for each in slot `check:deadline` (`check:deadline#2` …), always `low` and "Please
+check":
+
+- **Strict wording only.** A full date with its year after a payment's label ("Zahlbar bis", "Fällig am:",
+  "Fälligkeit:", "Zahlungsziel:", "Due date:"), or with a second-person or imperative verb ("Bitte überweisen
+  Sie … bis zum …", "zahlen Sie … bis …", "… ist bis zum … zu zahlen", "… ist am … fällig", "Bitte reichen Sie …
+  bis zum … ein", "senden Sie … bis … zurück", "… bis spätestens … vorzulegen / einzureichen", "please pay /
+  submit / return … by …").
+- **Never** in a sentence that names a remedy (the objection has its own check above), a condition ("Falls
+  Sie …"), something past or already done ("war fällig", "bereits erhalten"), the sender's own act or a direct
+  debit ("Wir buchen … ab", "Lastschrift", money paid out to the person), an appointment ("um 10:00 Uhr"), a
+  discount or a preference ("Skonto", "möglichst"), or a validity ("gilt bis", "läuft bis"); never the letter's
+  own date or one before it (a reminder's old due day); never a period ("innerhalb von 14 Tagen").
+- **Only when the reading has none.** No dated to-do of the reading falls within 3 days of it, none quotes a
+  sentence with that date (the reading read it: a date it misread there is the quote check's to flag), and no
+  to-do of the reading has it as a second date already (a letter that gives one payment two dates: the
+  reading's to-do keeps the earlier and names the later, § 1). Reading the letter again never files one that a
+  to-do the person acted on covers (edited, paid, snoozed or dismissed, kept from an earlier reading; due within
+  3 days of it).
+- **Never overdue.** A date already past on the day the letter arrived (or was read) gets none.
+- **Its date is the letter's own**, never moved to a working day (`shift_rule: none`) — never later than the
+  letter says; its quote is the letter's sentence; a warning says the reading left it out.
+- **Not** for an almost blank reading (its own to-do already sends the person to the letter) or one whose
+  warnings call the letter a scam (a payment it rightly left out is never brought back).
+
+On every recorded reading (the four benchmark splits at the current and the old prompt, and the demo) it files
+no to-do; with the readings' to-dos removed it finds 15 dates on the benchmark letters and each to-do comes
+out on the labelled obligation's date (one, on a letter that gives a payment two dates, reads the later; the
+two-dates rule of § 1 then keeps the earlier), none on a scam letter.
 
 ---
 

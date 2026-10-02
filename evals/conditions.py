@@ -64,7 +64,7 @@ from ordnung.ingest.extract import (
     validation_problems,
     wrap_untrusted,
 )
-from ordnung.ingest.gaps import CHECK_SLOT
+from ordnung.ingest.gaps import CHECK_SLOT, DEADLINE_SLOT, is_check_slot
 from ordnung.ingest.intake import render_pages
 from ordnung.ingest.pipeline import HIDDEN_TEXT_WARNING, NO_TEXT_ERROR, injection_warnings
 from ordnung.ingest.plan import (
@@ -420,7 +420,7 @@ def _ordnung_item(verified: VerifiedItem, computed: ComputedDate) -> PredictedIt
         rule_ids=list(receipt.rule_ids) if receipt else [],
         explanation=receipt.summary if receipt else "",
         notes=list(receipt.warnings) if receipt else [],
-        origin="code" if verified.slot_key == CHECK_SLOT else "model",
+        origin="code" if is_check_slot(verified.slot_key) else "model",
     )
 
 
@@ -474,6 +474,9 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
     )
     if any(verified.slot_key == CHECK_SLOT for verified in verification.items):
         signals.append("reading_incomplete")
+    if any(verified.slot_key.split("#")[0] == DEADLINE_SLOT for verified in verification.items):
+        # a fixed date the letter sets (pay by, send by) that the reading left out: code filed it (origin "code")
+        signals.append("deadline_left_out")
     # the placeholder of an empty reading without a remedy notice names no obligation: it is never scored
     scored = [
         verified

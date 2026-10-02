@@ -1,6 +1,7 @@
 """Guard: on every recorded reading of the benchmark, the check for incomplete readings (``ingest/gaps.py``)
-fires on exactly one letter — the empty reading it was written after — and the letter's own notice is never
-set beside a reading's objection date (``gaps.notice_rival``: no recorded reading dates it weeks later).
+fires on exactly one letter — the empty reading it was written after —, the letter's own notice is never
+set beside a reading's objection date (``gaps.notice_rival``: no recorded reading dates it weeks later), and no
+reading left out a fixed date the letter sets (``gaps.deadline_items``: no ``check:deadline`` to-do).
 
 Every manifest entry is read as the benchmark's Ordnung condition reads it, on replay only (no model call):
 its pages rendered and their text layer read (``prepare_document``), photos transcribed from the recorded
@@ -37,13 +38,13 @@ pytestmark = pytest.mark.slow
 EXPECTED = {"holdout2-adversarial-injection_visible-1"}
 
 
-async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], int]:
+async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], set[str], int]:
     """The entries whose reading the check finds incomplete, those whose objection date the letter's own notice
-    replaced, and how many readings were checked."""
+    replaced, those that got a to-do for a date the reading left out, and how many readings were checked."""
     backend = RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False)
     limit = asyncio.Semaphore(8)
 
-    async def one(entry: Entry) -> tuple[str, bool, bool, bool]:
+    async def one(entry: Entry) -> tuple[str, bool, bool, bool, bool]:
         async with limit:
             document = await asyncio.to_thread(prepare_document, entry, DATASET, work)
             llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
@@ -54,19 +55,22 @@ async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], 
                 prediction.failed is None,
                 "reading_incomplete" in signals,
                 "objection_after_notice" in signals,
+                "deadline_left_out" in signals,
             )
 
     results = await asyncio.gather(*(one(entry) for entry in entries))
-    fired = {entry_id for entry_id, _, incomplete, _ in results if incomplete}
-    replaced = {entry_id for entry_id, _, _, notice in results if notice}
-    return fired, replaced, sum(read for _, read, _, _ in results)
+    fired = {entry_id for entry_id, _, incomplete, _, _ in results if incomplete}
+    replaced = {entry_id for entry_id, _, _, notice, _ in results if notice}
+    dropped = {entry_id for entry_id, _, _, _, left_out in results if left_out}
+    return fired, replaced, dropped, sum(read for _, read, _, _, _ in results)
 
 
 async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading(tmp_path: Path) -> None:
     entries = load_manifest(DATASET / "manifest.json")
-    fired, replaced, read = await _fires(entries, tmp_path)
+    fired, replaced, dropped, read = await _fires(entries, tmp_path)
     splits = {entry.split for entry in entries}
     assert splits >= {"dev", "test", "holdout", "holdout2"}
     assert read == len(entries)  # every letter's reading replayed: none failed or missing
     assert fired == EXPECTED
     assert replaced == set()
+    assert dropped == set()
