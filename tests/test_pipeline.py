@@ -885,8 +885,9 @@ async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_e
 
 
 async def test_the_check_s_own_to_do_never_gets_the_notice_beside_it_when_recomputed(data_dir: Path) -> None:
-    """R2T-9: the check to-do is stored as read, so a recompute meets it with the reading's to-dos; the letter's
-    notice is never set beside it (its own date is the notice's: no second date)."""
+    """R2T-9: the check to-do is stored as read, so a recompute meets it with the reading's to-dos; it gets no
+    second date. (Its own date is the notice's, so this can't tell whether ``with_notice`` skips it: the
+    ``CHECK_SLOT`` filter there is defensive — tests review 3, R3T-11.)"""
     async with api_for(data_dir, router=gap_api_router()) as api:
         doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
         await api.read_all()
@@ -933,3 +934,79 @@ async def test_a_reading_that_names_its_sender_of_a_letter_without_a_notice_file
     assert ctx.store.list_items(doc_id=document.id) == []
     stored = ctx.store.get_document(document.id)
     assert stored is not None and stored.status == "processed"
+
+
+#: A decision whose only date is months before the day it is read (the pinned 25.09.2026).
+OLD_DECISION = Letter(
+    marker="Altbescheid",
+    pages=(
+        (
+            "Stadt Beispielhausen · Ordnungsamt · Rathausplatz 1 · 12345 Beispielhausen",
+            "SPECIMEN Altbescheid",
+            "Datum: 02.06.2026",
+            "Bescheid über eine Sondernutzungsgebühr",
+            "Sehr geehrte Frau Probe,",
+            "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.",
+            "Rechtsbehelfsbelehrung",
+            "Gegen diesen Gebührenbescheid können Sie binnen eines Monats",
+            "nach seiner Bekanntgabe Widerspruch einlegen.",
+        ),
+    ),
+    payload={"kind": "other", "title": "Letter", "summary": "A letter.", "explanation": "Read it."},
+)
+
+
+async def test_a_letter_read_months_after_its_only_date_gets_an_undated_check(data_dir: Path) -> None:
+    """Tests review 3, R3T-8: the pipeline hands the check the day the letter is read, so a start resting on one
+    date months before it is none — never an overdue to-do."""
+    async with api_for(data_dir, router=gap_api_router(OLD_DECISION)) as api:
+        doc_id = (await api.upload(("alt.pdf", OLD_DECISION.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert check.slot_key == CHECK_SLOT and check.due_date is None
+
+
+async def test_reading_again_after_the_person_confirmed_the_check_brings_no_warning_back(
+    data_dir: Path,
+) -> None:
+    """UX review 3, R3UX-3(b): "Read again" after the person confirmed Ordnung's own to-do: its warning stays
+    gone (a first read still says it)."""
+    async with api_for(data_dir, router=gap_api_router()) as api:
+        doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and any(GAP_WARNING.match(w) for w in document.warnings)
+        [check] = api.ctx.store.list_items(doc_id=doc_id)
+        assert (await api.client.post(f"/api/items/{check.id}/confirm")).status_code == 200
+        assert (await api.client.post(f"/api/documents/{doc_id}/reprocess")).status_code == 202
+        await api.read_all()
+        document = api.ctx.store.get_document(doc_id)
+        assert document is not None and not any(GAP_WARNING.match(w) for w in document.warnings)
+
+
+async def test_a_confirmed_to_do_is_never_listed_as_unsure_in_the_please_check_idea(data_dir: Path) -> None:
+    """R3UX-4: once the person confirmed the check to-do, the Idea no longer says the reading came back
+    incomplete nor lists it (the letter's other unsure to-do keeps it in review)."""
+    pay = {
+        "kind": "payment",
+        "title": "Pay the fee",
+        "amount": 85.0,
+        "date": {"type": "fixed", "date": "2026-10-13", "nature": "payment"},
+        "quote": "Die Gebühr ist bis zum 13.10.2026 zu zahlen.",
+    }
+    lines = tuple("SPECIMEN Zweitesprobe" if line == "SPECIMEN" else line for line in GAP_LETTER.pages[0])
+    letter = Letter(
+        marker="Zweitesprobe",
+        pages=(lines,),
+        payload={**GAP_LETTER.payload, "kind": "authority_letter", "items": [pay]},
+    )
+    async with api_for(data_dir, router=gap_api_router(letter)) as api:
+        doc_id = (await api.upload(("bescheid.pdf", letter.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        check = next(item for item in api.ctx.store.list_items(doc_id=doc_id) if item.slot_key == CHECK_SLOT)
+        assert (await api.client.post(f"/api/items/{check.id}/confirm")).status_code == 200
+        ideas = [
+            idea for idea in please_check(Ledger(api.ctx.store, clock.today())) if idea.refs[0].id == doc_id
+        ]
+        assert ideas and "came back incomplete" not in ideas[0].body
+        assert check.id not in {ref.id for ref in ideas[0].refs}

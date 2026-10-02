@@ -382,12 +382,15 @@ the letter allows:
   otherwise the to-do has no date, to be found in the letter. A period shorter than a week (an attacker's
   "binnen eines Tages") never puts a date on Today.
 - **The start.** The earliest date the letter gives for itself. Only dates its words name as its own set
-  it: the first page's "Datum:" (or a label of the letter's own date: Bescheid-, Brief-, Ausstellungs-,
-  Ausfertigungs-, Erstellungs-, Druck-, Bearbeitungsdatum, "Erstellt am"), "Place, (den) date" among its
-  header lines, the reference line's last value under "… Datum", "mit diesem Bescheid vom …", the decision
-  the notice names ("Bescheid … vom …", never "Antrag vom" or "Ihr Schreiben vom") and the reading's date.
-  Any other date (another "…datum" such as "Einzugsdatum", a date alone, a continuation page's) is weak: it
-  lowers the start within 14 days, never sets it, and is ignored when later. When the strong dates are more
+  it: the first page's "Datum:" or "Date:" (or a label of the letter's own date: Bescheid-, Brief-,
+  Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "Erstellt am"), "Place, (Freitag,) (den) date" among its
+  header lines, DIN 5008's date line right under the recipient's address (a date alone or a place and date),
+  the reference line's value under a "Datum" column (never after a due word), "mit diesem Bescheid vom …",
+  the decision the notice names right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom"
+  or "für die Zeit vom …") and the reading's date — never an appointment's "Datum:". Any other date (another
+  "…datum" such as "Einzugsdatum", a print or copy date, a date alone, a continuation page's) is weak: it
+  lowers the start within 14 days, never sets it, and is ignored when later. A date after the letter arrived
+  is no start, and a Widerspruchsbescheid dated only by the decision it reshapes gets none. When the strong dates are more
   than **14 days** apart one of them is another's (planted, an earlier decision's), so the to-do has no
   date rather than a wrong one; so does one date alone more than 60 days before the letter arrived. A letter
   giving no date at all counts from its date once the person enters it.

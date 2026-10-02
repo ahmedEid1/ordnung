@@ -24,14 +24,17 @@ allows:
   (Werktage, years) or that counts back from an event ("zwei Wochen vor …") — otherwise the to-do is filed
   without a date, to be found in the letter;
 * **the start** is the earliest date the letter gives for itself (:func:`letter_date`): dates its words name
-  as its own (a "Datum" label, a place and date in its header, the reference line, "mit diesem Bescheid vom
-  …", the decision its notice names, the reading's date) set it — none when those are more than two weeks
-  apart, and none from one date alone long before the letter arrived; other dates (another "…datum", a date
-  alone, a continuation page's) only lower it, never set it. Deemed delivery is added only when every notice
+  as its own (a "Datum" label, a place and date in its header, the date line under the recipient's address,
+  the reference line, "mit diesem Bescheid vom …", the decision its notice names right before "vom", the
+  reading's date) set it — none when those are more than two weeks apart, none from one date alone long
+  before the letter arrived, none after it arrived; other dates (another "…datum", a print date, a date
+  alone, a continuation page's, a period's start the notice names) only lower it, never set it; an
+  appointment's date never counts. Deemed delivery is added only when every notice
   counts from notification, by post (or the day after a portal download), never on formal service.
   Recomputed later, an earlier letter date or arrival still moves it earlier (:func:`start_variants`), never
   later;
-* without a notice it is an undated "Read this letter yourself".
+* without a notice — or for an almost blank reading of a letter whose notices are all ruled out — it is an
+  undated "Read this letter yourself".
 
 A reading that does date the objection, but later than the period the letter's own notice gives (a planted
 "extended" period, a start moved later), gets that period beside its own date (:func:`notice_rival`, counted
@@ -50,7 +53,16 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any, Literal, NamedTuple
 
-from ordnung.ingest.conflicts import Rival, header, letter_statements, sentences
+from ordnung.ingest.conflicts import (
+    _BLOCK_ABOVE,
+    _BLOCK_BELOW,
+    _EVENT,
+    _SALUTATION,
+    Rival,
+    header,
+    letter_statements,
+    sentences,
+)
 from ordnung.ingest.normalize import fold_punctuation, join_hyphenated
 from ordnung.ingest.text import PageText
 from ordnung.ingest.verify import (
@@ -71,7 +83,7 @@ from ordnung.models import (
     PaymentDetails,
 )
 from ordnung.rules import RuleContext
-from ordnung.rules.delivery import shows_administrative_act
+from ordnung.rules.delivery import scope_for_party_kind, shows_administrative_act
 from ordnung.rules.routing import letter_kind, special_rule
 
 __all__ = [
@@ -135,10 +147,16 @@ class Check(NamedTuple):
     remedy: str
 
 
-_REMEDY = re.compile(r"widerspr\w*|einspr\w*|\bklage\w*|\bobjection\w*|\bobject\b|\bappeal\w*", re.IGNORECASE)
-_GERMAN_REMEDY = re.compile(r"widerspr\w*|einspr\w*|\bklage\w*", re.IGNORECASE)
+_REMEDY = re.compile(
+    r"widerspr\w*|einspr\w*|\bklage\w*|\b(?:anfechtungs|verpflichtungs)klage\w*|\bobjection\w*|\bobject\b|\bappeal\w*",
+    re.IGNORECASE,
+)
+_GERMAN_REMEDY = re.compile(
+    r"widerspr\w*|einspr\w*|\bklage\w*|\b(?:anfechtungs|verpflichtungs)klage\w*", re.IGNORECASE
+)
 #: The decision a remedy was already lodged against names no remedy: "in Gestalt dieses Widerspruchsbescheids
 #: kann … Klage …", "ohne Widerspruchsverfahren … Klage", "über Ihren Einspruch … Klage" are court actions.
+_DECIDED_REMEDY = re.compile(r"widerspruchsbescheid|einspruchsentscheidung", re.IGNORECASE)
 _DECISION_ON_REMEDY = re.compile(
     r"\w*(?:widerspruchsbescheid|einspruchsentscheidung|widerspruchsverfahren|vorverfahren)\w*"
     r"|\büber\s+(?:\w+\s+){0,2}(?:widerspruch|einspruch)\w*",
@@ -149,16 +167,24 @@ _PAYMENT = re.compile(r"zahl|überweis|fällig|betrag|\bpay\w*|\bdue\b", re.IGNO
 _MONTH_PERIOD = re.compile(r"\bmonatsfrist\b", re.IGNORECASE)
 #: A notice that is no live remedy against this letter: a later decision's, one already lodged or that should
 #: have been ("ist … eingegangen", never "wenn er … eingegangen ist"), a direct debit's (Lastschrift next to
-#: the remedy), a hint at a court action for inaction, or one on a decision not yet made ("gegen einen
-#: Bescheid", "sollten wir …") — only whether the check fires: never its date.
+#: the remedy, or the account holder's right "der Lastschrift … zu widersprechen"), a hint at a court action
+#: for inaction, or one on a decision not yet made ("gegen einen Bescheid", "gegen eine Ablehnung", "sollten
+#: wir …", "könnten Sie", "erst gegen den Bescheid") — only whether the check fires: never its date.
 _NOT_LIVE = re.compile(
     r"(?:späteren|künftigen)\s+\w*bescheid|\bhätten\b|\beingelegt\s+haben\b|"
-    r"\b(?:ist|sind|wurde|wurden)\s+(?:(?!wenn\b|sofern\b|falls\b|soweit\b)\S+\s+){0,4}?eingegangen\b|"
+    r"\b(?:ist|sind|wurde|wurden)\s+(?:(?!wenn\b|sofern\b|falls\b|soweit\b|ob\b|dass\b|sobald\b|wann\b)\S+\s+){0,4}?eingegangen\b|"
     r"\bbegründen\s+Sie\s+(?:Ihren|Ihre|die|den)\s+(?:widerspruch|einspruch|klage)|"
     r"lastschrift\W+(?:\w+\W+){0,2}widersprech|(?:widerspr|einspr)\w*\W+(?:\w+\W+){0,2}lastschrift|"
+    # the account holder's right against a direct debit: "der Lastschrift innerhalb von acht Wochen … widersprechen"
+    r"lastschrift[^.;:]{0,80}?\bwidersprech|\bwidersprech\w*[^.;:]{0,40}?\blastschrift|"
     r"\bkein(?:en)?\s+(?:neuer\s+)?(?:bescheid|verwaltungsakt)\b|"
-    r"untätigkeitsklage|\bgegen\s+(?:einen|eine|ein)\s+\w*(?:bescheid|entscheidung)|\bsollten\s+wir\b|"
-    # a remedy taken as lodged ("Wenn Sie Widerspruch einlegen, reichen Sie … nach"): its period is another's
+    r"untätigkeitsklage|\bgegen\s+(?:einen|eine|ein)\s+\w*(?:bescheid|entscheidung|ablehnung|versagung|aufhebung"
+    r"|rückforderung|festsetzung|verfügung)|\bsollten\s+wir\b|\bkönnten\s+sie\b|\berst\s+gegen\s+(?:den|die|das|einen|eine|ein)\b",
+    re.IGNORECASE,
+)
+#: "Wenn Sie Widerspruch einlegen, …": another's period — unless the sentence counts from this letter ("…, muss
+#: dieser innerhalb eines Monats nach Bekanntgabe eingehen").
+_TAKEN_AS_LODGED = re.compile(
     r"\b(?:wenn|falls|sofern|soweit)\s+sie\s+(?:\w+\s+){0,3}(?:widerspruch|einspruch|klage)\w*\s+(?:\w+\s+){0,2}"
     r"(?:einlegen|erheben|einreichen|eingelegt\s+haben|erhoben\s+haben),",
     re.IGNORECASE,
@@ -173,6 +199,7 @@ _NEGATED = re.compile(
     r"nicht\s+(?:möglich|zulässig|statthaft)|"
     rf"\b(?:ist|sind)\s+(?:ein|eine|der|die)\s+(?:widerspruch|einspruch)\w*\s+(?:{_NOT_FORM}\w+\s+){{0,2}}"
     r"nicht\s+(?:möglich|zulässig|statthaft)|"
+    r"(?<!telefonisch )(?<!mündlich )(?<!elektronisch )(?<!schriftlich )(?<!e-mail )(?<!email )(?<!fax )"
     r"\b(?:können|kann)\s+(?:\w+\s+){0,4}keinen?\s+(?:widerspruch|einspruch)\w*\s+(?:einlegen|erheben)",
     re.IGNORECASE,
 )
@@ -183,11 +210,84 @@ _HANDLED = re.compile(
 )
 _LODGED = re.compile(
     r"erheb|erhob|einleg|eingeleg|einzuleg|einreich|eingereich|einzureich|widersprech|widersproch|frist|"
-    r"einlegung|erhebung|eingegangen\s+sein|eingehen",
+    r"einlegung|erhebung|eingegangen\s+sein|eingehen|"
+    r"\bihren\s+(?:widerspruch|einspruch)\s+(?:\w+\s+){0,2}?(?:senden|richten|schicken|reichen)\s+sie\b",
+    re.IGNORECASE,
+)
+#: A sentence about paying ("Trotz eines Widerspruchs ist der Betrag innerhalb von zwei Wochen zu zahlen", "Die Kosten
+#: des Widerspruchsverfahrens sind …zu zahlen") that names no way of lodging a remedy is no notice.
+_PAYS = re.compile(
+    r"\bzu\s+(?:zahlen|überweisen|entrichten|begleichen)\b|\b(?:zahlen|überweisen)\s+sie\b|\bfällig\b|\bzahlbar\b",
+    re.IGNORECASE,
+)
+#: Words of how a remedy is lodged or open ("einlegen", "Widerspruchsfrist", "möglich"): a sentence naming money
+#: and one of these is still a notice ("Gegen diesen Zahlungsbescheid ist … der Widerspruch möglich").
+_LODGES = re.compile(
+    r"erheb|erhob|einleg|eingeleg|einzuleg|einreich|eingereich|einzureich|widersprech|widersproch|einlegung|erhebung|"
+    r"eingegangen\s+sein|eingehen|(?:widerspruchs|einspruchs|klage|rechtsbehelfs)frist|zulässig|statthaft|gegeben|anfecht|"
+    r"angefochten|möglich",
+    re.IGNORECASE,
+)
+
+#: A notice about another decision, named without "dies-" and without a date of its own ("Gegen den
+#: Gebührenbescheid kann …"): the dates the letter gives that decision elsewhere ("mit Gebührenbescheid vom …").
+_ANOTHER_DECISION = re.compile(
+    r"\b(?:gegen\s+(?:den|die|das|ihren|ihre)|(?:bekanntgabe|zustellung)\s+(?:des|der|ihres|ihrer))\s+(?:\w+\s+){0,2}?"
+    r"\w*(?:bescheid|festsetzung|entscheidung|verfügung)",
+    re.IGNORECASE,
+)
+#: A notice against "diese Entscheidung/Verfügung …" shows a decision too (a health insurer's "nach Erhalt").
+_AGAINST_DECISION = re.compile(
+    r"\b(?:gegen|mit)\s+(?:diese[nmrs]?|unsere[nmrs]?)\s+(?:\w+\s+){0,2}?\w*(?:entscheidung|verfügung|anordnung|festsetzung)",
+    re.IGNORECASE,
+)
+#: A sentence that sets only a period for the reasons ("Der Widerspruch sollte innerhalb von vier Wochen … begründet
+#: werden"), naming no way of lodging the remedy: no notice.
+_REASONS_ONLY = re.compile(r"\bzu\s+begründen\b|\bbegründet\s+(?:werden|sein)\b", re.IGNORECASE)
+#: A heading that names the letter a decision ("Bescheid", "Bescheid über …"): no "Bescheid geben".
+_DECISION_HEADING = re.compile(
+    r"^\s*bescheid(?:\s+(?:über|für|zur|zum|nach)\b[^\n]*)?\s*$", re.IGNORECASE | re.MULTILINE
+)
+#: A notice that names this letter ("gegen diesen Bescheid", "dieses Schreiben"): its date is this letter's.
+_SELF = re.compile(
+    r"\bdiese[nmrs]?\s+(?:\w+\s+){0,2}?\w*(?:bescheid|festsetzung|entscheidung|verfügung|schreiben|brief)",
+    re.IGNORECASE,
+)
+#: A period from the remedy's own lodging or from an obstacle's end ("innerhalb von zwei Wochen nach seiner Einlegung
+#: begründet", "nach Wegfall des Hindernisses Wiedereinsetzung"): another's period, unless the sentence also counts
+#: from this letter.
+_OTHER_START = re.compile(
+    r"\bnach\s+(?:(?:seiner|ihrer|dessen|deren|der)\s+)?(?:einlegung|erhebung)\b|\bwegfall\s+des\s+hindernisses\b",
+    re.IGNORECASE,
+)
+#: The main clause after "Wenn Sie Widerspruch einlegen," refers back to the remedy ("…, muss dieser …"): the
+#: sentence is the notice itself, not an instruction for a remedy taken as lodged.
+_REFERS_BACK = re.compile(
+    r"(?:einlegen|erheben|einreichen|eingelegt\s+haben|erhoben\s+haben),\s+(?:so\s+)?(?:muss|ist|sind|hat|kann|soll|sollte)\s+"
+    r"(?:dieser|diese|er|es|dies|der\s+widerspruch|der\s+einspruch|die\s+klage)\b",
     re.IGNORECASE,
 )
 #: A line that goes on with the sentence of the line before ("vom 01.10.2026 können Sie …", "eines Monats …").
 _CONTINUED = re.compile(r"\s*(?:vom\b|\d|[a-zäöüß])")
+#: A notice's heading ("Rechtsbehelfsbelehrung", "Rechtsmittelbelehrung:"): never inside the notice's sentence.
+_NOTICE_HEADING = re.compile(
+    r"^\s*(?:rechtsbehelfs?belehrung|rechtsmittelbelehrung|belehrung\s+über\s+(?:den|die)\s+rechts\w+)\b",
+    re.IGNORECASE,
+)
+
+
+def _from_heading(text: str) -> str:
+    """``text`` from the last notice heading before a remedy word on: what stands above it (a list's items, a
+    hint, without a full stop) is no part of the notice. Unchanged without such a heading."""
+    lines = text.split("\n")
+    heads = [
+        index
+        for index, line in enumerate(lines)
+        if _NOTICE_HEADING.match(line) and any(_REMEDY.search(rest) for rest in lines[index:])
+    ]
+    return "\n".join(lines[heads[-1] :]) if heads else text
+
+
 #: Where a clause of the notice starts ("…, vielmehr kann … Klage …").
 _CLAUSE = re.compile(
     r"[,;]\s+(?=(?:vielmehr|jedoch|aber|sie|gegen|stattdessen|ein|der|die)\b)", re.IGNORECASE
@@ -205,7 +305,8 @@ _UNIT_WORD = r"(?:tag|tage|tagen|tages|woche|wochen|monat|monate|monaten|monats|
 _BACKWARD = re.compile(
     rf"\b{_UNIT_WORD}\b[\s,]*"
     r"(?:(?!klage|widerspr|einspr|nach\b|ab\b|seit\b|of\b|after\b|from\b|following\b)[^\W\d_]+[\s,]+){0,2}?"
-    r"(?:vor(?!\s+(?:dem|der|einem|einer)\s+\w*(?:gericht|behörde)|\s+ort\b)|bevor|vorher|zuvor"
+    r"(?:vor(?!\s+(?:dem|der|einem|einer)\s+(?:(?:örtlich|[^\W\d_]+(?:en|em|er|es))\s+){0,2}?\w*(?:gericht|behörde)"
+    r"|\s+ort\b)|bevor|vorher|zuvor"
     r"|before(?!\s+(?:the\s+|an?\s+)?(?:\w+\s+){0,2}(?:court|authority|tribunal))|prior\s+to|in\s+advance)\b",
     re.IGNORECASE,
 )
@@ -247,7 +348,10 @@ _PORTAL = re.compile(
     re.IGNORECASE,
 )
 #: "Musterstadt, 06.11.2026" / "Musterstadt, den 06.11.2026": a place and the letter's date.
-_PLACE_DATE = re.compile(r"^[A-ZÄÖÜ][\w .\-/()]{1,40},\s*(?:den\s+)?$")
+_PLACE_DATE = re.compile(
+    r"^[A-ZÄÖÜ][\w .\-/()]{1,40},\s*(?:(?i:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag)"
+    r",?\s*)?(?:den\s+)?$"
+)
 #: "Datum 06.11.2026", "Bescheiddatum: …", "Erstellt am …": a label of the letter's own date.
 _DATE_LABEL = re.compile(
     r"(?:^|[\s·|])(?:\w*datum|datum\s+(?:des|der)\s+\w+|date|(?:erstellt|ausgestellt)\s+am)\s*:?\s*$",
@@ -265,17 +369,33 @@ _OTHER_DATE = re.compile(
 _CREATED_ON = re.compile(r"(?:erstellt|ausgestellt)\s+am", re.IGNORECASE)
 #: A label that names the letter's own date; any other "…datum" may be another's ("Einzugsdatum").
 _OWN_LABEL = re.compile(
-    r"(?:^|[\s·|])(?:(?:bescheid|brief|ausstellungs|ausfertigungs|erstellungs|druck|bearbeitungs)?datum|date"
-    r"|datum\s+(?:des|der)\s+(?:bescheid\w*|schreiben\w*|brief\w*)|(?:erstellt|ausgestellt)\s+am)\s*:?\s*$",
+    r"(?:(?:^|[\s·|])(?:(?:bescheid|brief|ausstellungs|erstellungs|bearbeitungs)?datum"
+    r"|datum\s+(?:des|der)\s+(?:bescheid\w*|schreiben\w*|brief\w*)|(?:erstellt|ausgestellt)\s+am)"
+    r"|(?:^|[·|]\s*|\s{2,})date)\s*:?\s*$",  # "Date:" only as the whole label, never "Effective date:"
     re.IGNORECASE,
 )
 #: The DIN 5008 reference line's labels, ending in "Datum" ("Ihr Zeichen  Unser Zeichen  Datum").
-_REFERENCE_LABELS = re.compile(r"(?:^|\s)datum\s*:?$", re.IGNORECASE)
+_REFERENCE_LABELS = re.compile(
+    r"(?:^|\s)(?:(?:bescheid|brief|ausstellungs|erstellungs|bearbeitungs)?datum"
+    r"|datum\s+(?:des|der)\s+(?:bescheid\w*|schreiben\w*|brief\w*))\s*:?$",
+    re.IGNORECASE,
+)
+#: A reference line's "Datum" column anywhere in its labels ("Unser Zeichen   Datum   Telefon").
+_DATUM_COLUMN = re.compile(r"(?:^|\s)datum(?=\s|$)(?!\s+(?:des|der|von)\b)", re.IGNORECASE)
+#: The recipient's postcode and town, the last line of the address block (DIN 5008: the date line follows it).
+_POSTCODE_LINE = re.compile(r"^(?:D-?\s?)?\d{5}\s[A-ZÄÖÜ][\w.\-()/]*(?:\s[\w.\-()/]+){0,4}$")
+#: The line above the postcode holds a number (a house number, a Postfach): an address, not a heading.
+_STREET_LINE = re.compile(r"\d")
+#: A town's name after a river or region ("Frankfurt am Main", "Mülheim an der Ruhr"): no weekday, no due word.
+_TOWN = re.compile(
+    r"\b(?:am|an\s+der|ob\s+der|im|in\s+der)\s+"
+    r"(?!(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonnabend|Sonntag)\b)[A-ZÄÖÜ][a-zäöüß]+"
+)
 _DECISION = (
     r"(?:bescheid\w*|festsetzung\w*|entscheidung\w*|verfügung\w*|beschluss\w*|urteil\w*|verwaltungsakt\w*)"
 )
 #: A word that dates something other than the decision when it stands right before "vom".
-_NOT_ISSUER = r"(?:antrag\w*|schreiben\w*|nachricht\w*|anhörung\w*|mitteilung\w*|widerspruch\w*|einspruch\w*)"
+_NOT_ISSUER = r"(?:\w*zeit\w*|antrag\w*|schreiben\w*|nachricht\w*|anhörung\w*|mitteilung\w*|widerspruch\w*|einspruch\w*)"
 #: "Bescheid (der Stadt Beispielhausen, über die Abfallgebühr, 2026) vom 01.10.2026" in a notice: the decision it
 #: is about was issued then — a decision's noun and words of its issuer or subject, within the clause (never past
 #: a comma: "Bescheid, mit dem Ihr Antrag vom …"), never "Antrag vom", "(Ihr) Schreiben vom", "Anhörung vom".
@@ -290,6 +410,10 @@ _AGAINST_ISSUED = re.compile(
     rf"\bgegen\s+(?:\w+\s+){{0,2}}\w*{_DECISION}(?:\s+(?!{_NOT_ISSUER}\s+vom\b)[^\s,;:]+){{0,8}}?\s+vom\s*$",
     re.IGNORECASE,
 )
+#: A decision on a remedy: its notice's "Bescheid vom …" is the decision it reshapes, not this letter.
+_ON_REMEDY = re.compile(r"widerspruchsbescheid\w*|einspruchsentscheidung\w*", re.IGNORECASE)
+#: A date that starts a range ("vom 01.12.2026 bis 31.05.2027", "01.12.2026 - 31.05.2027"): a period's start.
+_RANGE = re.compile(r"\s*(?:bis\b|-\s*\d)", re.IGNORECASE)
 #: The decision this letter reshapes ("Bescheid vom … in Gestalt dieses Widerspruchsbescheids"): its period runs
 #: from this letter.
 _RESHAPED = re.compile(r"\s*in\s+(?:der\s+)?(?:gestalt|fassung|form)\s+(?:dieses|des|der)\b", re.IGNORECASE)
@@ -444,7 +568,7 @@ def _remedy(sentence: str) -> str:
     found = _REMEDY.search(_DECISION_ON_REMEDY.sub(" ", _period_clause(sentence))) or _REMEDY.search(
         _DECISION_ON_REMEDY.sub(" ", sentence)
     )
-    word = found.group().casefold() if found else ""
+    word = re.sub(r"^(?:anfechtungs|verpflichtungs)", "", found.group().casefold()) if found else ""
     return next((remedy for stem, remedy in _REMEDIES if word.startswith(stem)), "objection")
 
 
@@ -533,6 +657,39 @@ def _issued(text: str, patterns: tuple[re.Pattern[str], ...] | None = None) -> t
     return tuple(dict.fromkeys(days))
 
 
+def _elsewhere(text: str, pages: Sequence[PageInput]) -> tuple[date, ...]:
+    """For a notice about another decision named without a date of its own ("Gegen den Gebührenbescheid kann
+    …"), the dates the letter's visible text gives a decision ("mit Gebührenbescheid vom 03.09.2026"): its period
+    may run from then, so they count as the letter's own (they only ever make the start earlier, or none)."""
+    if not _ANOTHER_DECISION.search(text) or _SELF.search(text) or date_spans(fold_punctuation(text)):
+        return ()
+    days: list[date] = []
+    for page in pages:  # the page's words as one run: "mit Gebührenbescheid vom" / "03.09.2026 …" wrapped
+        days += _issued(_flat(join_hyphenated(_visible(page))), (_ISSUED,))
+    return tuple(dict.fromkeys(days))
+
+
+#: A decision's noun right before "vom" ("Bescheid vom", "Festsetzung vom"): the decision's date for certain.
+_ISSUED_RIGHT = re.compile(rf"{_DECISION}\s+vom\s*$", re.IGNORECASE)
+
+
+def _named(text: str) -> tuple[tuple[date, ...], tuple[date, ...]]:
+    """The dates of the decisions the notice names (:func:`_issued`), split: right after a decision's noun and
+    starting no range ("Gegen den Bescheid vom 01.10.2026"; strong), or with words between ("Bescheid über
+    Leistungen vom 01.12.2026 an", "für die Zeit vom … bis …"; weak — a period's start, perhaps)."""
+    folded = fold_punctuation(text)
+    right = tuple(
+        day
+        for start, end, mention in date_spans(folded)
+        if not mention.ambiguous
+        and (day := mention.as_date()) is not None
+        and _ISSUED_RIGHT.search(folded[:start])
+        and not _RANGE.match(folded[end:])
+    )
+    named = _issued(text)
+    return tuple(day for day in named if day in right), tuple(day for day in named if day not in right)
+
+
 def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
     """Every sentence of the visible text naming a remedy (Widerspruch, Einspruch, Klage, objection, appeal)
     with a period in it or in the sentence after it — that one only when it names neither a remedy nor a
@@ -543,18 +700,26 @@ def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
     for page in pages:
         folded = sentences(join_hyphenated(_visible(page)))
         for index, sentence in enumerate(folded):
-            if not _REMEDY.search(sentence):
+            if not _REMEDY.search(sentence) or (_PAYS.search(sentence) and not _LODGES.search(sentence)):
                 continue
             following = folded[index + 1] if index + 1 < len(folded) else ""
-            foldable = bool(following) and not _REMEDY.search(following) and not _PAYMENT.search(following)
             own = _periods(sentence)
+            # a sentence after a notice with its own period that counts back ("einige Tage vor Fristablauf
+            # absenden"): a tip, never folded into it
+            foldable = (
+                bool(following)
+                and not _REMEDY.search(following)
+                and not _PAYMENT.search(following)
+                and not (own.found and _BACKWARD.search(following) and not _FORWARD.search(following))
+            )
             after = _periods(following) if foldable else _Periods((), False)
             if not own.found and not after.found:
                 continue
             text = f"{sentence} {following}" if foldable else sentence
             # the sentence after counts for the date whenever it may go on about the period (the shorter wins),
             # but for the check to fire only when the notice has no period of its own and it names its start
-            alone = sentence if own.found else text
+            alone = _from_heading(sentence if own.found else text)
+            mine = _periods(_from_heading(sentence))
             backward = bool(_BACKWARD.search(text)) and not _FORWARD.search(text)
             handled = _HANDLED.search(alone) and not _FORWARD.search(alone) and not _LODGED.search(alone)
             quote = _window(text)
@@ -567,18 +732,28 @@ def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
                     remedy=_remedy(sentence),
                     live=bool(_REMEDY.search(_CONTRADICTORY.sub(" ", sentence)))
                     and not _NOT_LIVE.search(alone)
+                    and not (_TAKEN_AS_LODGED.search(alone) and not _REFERS_BACK.search(alone))
+                    and not (_OTHER_START.search(alone) and not _FORWARD.search(alone))
                     and not handled  # the person's own objection being dealt with
-                    and not _NEGATED.search(_negation_scope(sentence, text, own.found))
+                    and not (_REASONS_ONLY.search(alone) and not _LODGES.search(alone))
+                    and not _NEGATED.search(
+                        _negation_scope(_from_heading(sentence), _from_heading(text), own.found)
+                    )
                     and not backward  # counted back from an event (a hearing): no deadline from this letter
                     and (own.found or bool(_LIVE_FOLD.search(following))),
                     # counted back from an event: never dated forward, whatever start words it also has
                     datable=not (own.odd or (not own.found and after.odd))
                     and not _BACKWARD.search(text)
                     and quote is not None,
-                    issued=_issued(text),
+                    issued=_named(text)[0],
                     grounding=_grounding(page),
-                    stated=own.good if own.found else after.good,
-                    mentioned=_issued(_own_lines(text), (_LETTER_ISSUED,)),
+                    # its own lines' periods below its heading; else (none there, or no heading) the sentence's
+                    stated=mine.good if mine.found else (own.good if own.found else after.good),
+                    mentioned=(
+                        *_issued(_own_lines(text), (_LETTER_ISSUED,)),
+                        *_named(text)[1],
+                        *_elsewhere(text, pages),
+                    ),
                 )
             )
     return found
@@ -698,9 +873,12 @@ def reading_gap(
 def _objection_due(extraction: DocumentExtraction, notices: Sequence[RemedyNotice], text: str) -> bool:
     """Whether the letter's text says an objection to it is due: a live notice, an administrative act, and
     not a kind of letter the law dates itself (:func:`reading_gap`)."""
+    sender = extraction.sender
+    public = sender is not None and scope_for_party_kind(sender.kind, name=sender.name) is not None
+    decision = public and bool(_AGAINST_DECISION.search(" ".join(text.split())))
     return (
         any(notice.live for notice in notices)
-        and shows_administrative_act(text)
+        and (shows_administrative_act(text) or decision or bool(_DECISION_HEADING.search(text)))
         and not _law_dated(extraction, notices, text)
     )
 
@@ -717,26 +895,48 @@ class _Dated(NamedTuple):
 def _header_dates(page: PageInput, *, first: bool = True) -> list[_Dated]:
     """The dates a page gives for its letter, before its remedy notice: one date that reads one way and ends
     its line, after a date label ("Datum 06.11.2026", "Bescheiddatum:", "Einzugsdatum:" — only a label of the
-    letter's own date is strong), after a place ("Musterstadt, (den) 06.11.2026"; strong among the header's
-    lines, never under a line ending in ":"), on the reference line under a line ending in "Datum" ("Ihr
-    Zeichen  Unser Zeichen  Datum" over "AB-1  ST-22  06.11.2026": its last date, strong) or — in the page's
-    header, not under a line that labels another date ("Antrag vom") — alone (weak). Never a due day, a
-    validity, an appointment or a date after a weekday ("Zahlbar bis Freitag, 04.12.2026"). A remedy word in
-    the letterhead or subject ("Widerspruchsstelle") doesn't end the scan; the notice does. On a page after
-    the first (``first`` false) every date is weak."""
+    letter's own date is strong, never a print or copy date it gets after it, "Druckdatum", nor an English
+    "… date:" but "Date:" — and only in the header or on the date line, never an appointment's block "Ihr
+    Termin:" / "Datum: …" / "Uhrzeit: …"), after a place ("Musterstadt, (Freitag,) (den) 06.11.2026"; strong
+    among the header's lines or on the date line, never under a line ending in ":"), on the reference line
+    under a line naming a "Datum" column ("Ihr Zeichen  Unser Zeichen  Datum" over "AB-1  ST-22  06.11.2026":
+    its last date, strong, unless a due word stands before it) or — in the page's header, not under a line that
+    labels another date ("Antrag vom") — alone (weak; strong on DIN 5008's date line right under the
+    recipient's postcode and street). Never a due day, a validity, an appointment or a date after a weekday
+    ("Zahlbar bis Freitag, 04.12.2026"); a town on a river ("Frankfurt am Main") is no appointment. A remedy
+    word in the letterhead or subject ("Widerspruchsstelle") doesn't end the scan; the notice does. On a page
+    after the first (``first`` false) every date is weak."""
     lines = fold_punctuation(join_hyphenated(_visible(page))).splitlines()
     rows = len(header(lines))
+    greeting = next((at for at, line in enumerate(lines) if _SALUTATION.match(line.strip())), len(lines))
     found: list[_Dated] = []
     for index, line in enumerate(lines):
         stripped = line.strip()
         if _GERMAN_REMEDY.search(stripped) and (index >= rows or _PERIOD_WORDS.search(stripped)):
             break  # the notice: what follows is no date of the letter's (a sign-off, an enclosure's)
         spans = date_spans(stripped)
-        previous = lines[index - 1].strip() if index else ""
-        if spans and index and index - 1 <= rows and _REFERENCE_LABELS.search(previous):
+        label_at = next((at for at in range(index - 1, -1, -1) if lines[at].strip()), -1)
+        labels = lines[label_at].strip() if label_at >= 0 else ""
+        column = (
+            len(spans) == 1
+            and bool(_DATUM_COLUMN.search(labels))
+            and not _OTHER_DATE.search(labels)
+            and not _EVENT.search(f"{labels} {stripped}")  # an appointment's date
+        )
+        if spans and 0 <= label_at <= rows and (_REFERENCE_LABELS.search(labels) or column):
             start, end, mention = spans[-1]
             day = mention.as_date()
-            if day is not None and end == len(stripped):
+            # the words before it on its line (never a reference code: "AB-1", "ST-22"): no due day's
+            words = [
+                w
+                for w in stripped[spans[-2][1] if len(spans) > 1 else 0 : start].split()
+                if not re.search(r"\d", w)
+            ]
+            if (
+                day is not None
+                and (end == len(stripped) or column)
+                and not _OTHER_DATE.search(" ".join(words))
+            ):
                 found.append(_Dated(day, first))
             continue
         if len(spans) != 1:
@@ -746,17 +946,32 @@ def _header_dates(page: PageInput, *, first: bool = True) -> list[_Dated]:
         if day is None or end != len(stripped):
             continue
         before = stripped[:start]
+        # right after the recipient's address (DIN 5008's date line): the letter's own date
+        filled = [line.strip() for line in reversed(lines[:index]) if line.strip()]
+        above = filled[0] if filled else ""
+        after_address = (
+            bool(_POSTCODE_LINE.match(above))
+            and len(filled) > 1
+            and bool(_STREET_LINE.search(filled[1]))
+            and not _OTHER_DATE.search(_TOWN.sub(" ", filled[1]))
+            and index < greeting
+        )
         if _DATE_LABEL.search(before):
             other = _OTHER_DATE.search(
-                _CREATED_ON.sub(" ", before)
+                _TOWN.sub(" ", _CREATED_ON.sub(" ", before))
             )  # "Fälligkeitsdatum:" is no letter's date
-            strong = bool(_OWN_LABEL.search(before))
+            following = lines[index + 1] if index + 1 < len(lines) else ""
+            strong = (
+                bool(_OWN_LABEL.search(before))
+                and (index < rows or after_address)  # not an appointment's "Datum:" in the body
+                and not (_BLOCK_ABOVE.search(above) or _BLOCK_BELOW.search(following))  # nor in its block
+            )
         elif _PLACE_DATE.match(before):
-            other = _OTHER_DATE.search(before)  # "Zahlbar bis Freitag, …"
-            strong = index < rows and not previous.endswith(":")
-        elif not before.strip() and index < rows:
-            other = _ANOTHER.search(previous) or _OTHER_DATE.search(previous)  # under "Antrag vom", "Termin:"
-            strong = False
+            other = _OTHER_DATE.search(_TOWN.sub(" ", before.split(",")[0]))  # "Zahlbar bis Freitag, …"
+            strong = (index < rows or after_address) and not above.endswith(":")
+        elif not before.strip() and (index < rows or after_address):
+            other = _ANOTHER.search(above) or _OTHER_DATE.search(_TOWN.sub(" ", above))  # under "Antrag vom"
+            strong = after_address
         else:
             continue
         if other is None:
@@ -800,8 +1015,16 @@ def _start(
       within that span of the strong ones — one earlier still leaves no start, as two strong ones would; one
       later than every strong date is another's and is ignored;
     * a start that rests on one date alone, more than :data:`STALE_DAYS` before ``today`` (the day the letter
-      arrived, or was read), is no start: never an overdue to-do from a stray date."""
+      arrived, or was read), is no start: never an overdue to-do from a stray date; nor is one after ``today``
+      (a misprint, a post-dated letter);
+    * on a decision on a remedy (a Widerspruchsbescheid) dated only by the decision its notice names, a date of
+      the letter's far later means that one is the decision it reshapes: no start."""
+    notices = remedy_notices(pages) if notices is None else notices
     strong, weak = _letter_dates(extraction, pages, notices)
+    own = list(strong)  # the letter's own words and the reading's: not the decisions its notice names
+    for day in (day for notice in notices for day in notice.issued):
+        own.remove(day)
+    on_remedy = any(_ON_REMEDY.search(notice.text) for notice in notices)
     found = bool(strong or weak)
     if not strong:
         return _Start(None, found)
@@ -811,8 +1034,15 @@ def _start(
     earlier = [day for day in weak if day < first]
     if any((last - day).days > LETTER_DATE_SPAN for day in earlier):
         return _Start(None, found)
+    # a decision on a remedy (a Widerspruchsbescheid) dated only by the decision its notice names, and a date of
+    # the letter's far later: that decision is the one it reshapes (an old one), never this letter's start
+    if on_remedy and not own and any((day - last).days > LETTER_DATE_SPAN for day in weak):
+        return _Start(None, found)
     first = min([first, *earlier])
-    alone = len({*strong, *weak}) == 1
+    # no other date of the letter's near it (a later one far off is another's, but no support either)
+    alone = not any(day != first and abs((day - first).days) <= LETTER_DATE_SPAN for day in (*strong, *weak))
+    if today is not None and first > today:
+        return _Start(None, found)  # dated after it arrived: a misprint, never a start
     if alone and today is not None and (today - first).days > STALE_DAYS:
         return _Start(None, found)
     return _Start(first, found)
@@ -878,10 +1108,18 @@ def _choose(notices: Sequence[RemedyNotice], start: date | None, text: str) -> _
     if not ranked:
         return _Choice(min(notices, key=lambda n: (n.remedy == "klage", n.notified)), None, "none")
 
+    # after a Widerspruchsbescheid or an Einspruchsentscheidung only a court action is left: it names a tie
+    after_remedy = bool(_DECIDED_REMEDY.search(text)) and any(n.remedy == "klage" for n in notices)
+
     def order(start_day: date | None, pick: tuple[RemedyNotice, tuple[int, Unit]]) -> tuple[object, ...]:
         notice, period = pick
         length = _end(start_day, period) if start_day else period[0] * _DAYS[period[1]]
-        return length, period[0] * _DAYS[period[1]], notice.remedy == "klage", notice.notified
+        return (
+            length,
+            period[0] * _DAYS[period[1]],
+            (notice.remedy == "klage") != after_remedy,
+            notice.notified,
+        )
 
     notice, period = min(ranked, key=lambda pick: order(start, pick))
     near_month = any(unit == "months" for _, (_, unit) in ranked) and any(
@@ -918,12 +1156,13 @@ def check_item(
     reading and keeps it when recomputed; when neither the letter nor the reading gives any date, from the
     letter's date once the person enters it) — or without a date (``DateSpec(type="none")``) when none can
     be worked out, also when the letter's dates for itself disagree (never from the later one stored).
-    Without one, a ``task``: read the letter."""
+    Without one — or for an almost blank reading when no notice is live and every one can be dated (a remedy
+    the letter rules out) — a ``task``: read the letter."""
     notices = remedy_notices(pages)
     gap = reading_gap(extraction, pages, notices)
     if gap is None:
         return None
-    if not notices:
+    if not notices or (gap == "empty" and not any(notice.live or not notice.datable for notice in notices)):
         placeholder = ExtractedItem(
             kind="task",
             title="Read this letter yourself",
@@ -985,7 +1224,9 @@ def notice_rival(
     of those the live notices' own sentences state (never an instruction folded in after one, nor a notice
     that can't be dated: a planted "ein Jahr" never switches it off); counted from the date the letter's first
     page names as its own (:func:`_own_start`), never the reading's date or a stray one — no first-page date,
-    no rival."""
+    no rival. A notice from notification is ranked from its latest deemed delivery (up to four days on), so a
+    month from service beats a month from notification; on a tie the one from notification. ``Rival.served``
+    when it counts from service or arrival, so it starts on an arrival the person confirmed."""
     notices = remedy_notices(pages) if notices is None else notices
     text = "\n".join(_visible(page) for page in pages)
     kind = letter_kind(extraction)
@@ -998,9 +1239,17 @@ def notice_rival(
     if start is None or not picks:
         return None
     # the period that ends first; on a tie the one with the delivery days (never an earlier date than it says)
-    notice, period = min(picks, key=lambda pick: (_end(start, pick[1]), not pick[0].notified))
+    formal = bool(_FORMAL_SERVICE.search(text))
+    shift = {True: timedelta(days=4), False: timedelta(0)}
+    notice, period = min(
+        picks,
+        key=lambda pick: (
+            _end(start + shift[pick[0].notified and not formal], pick[1]),
+            not pick[0].notified,
+        ),
+    )
     delivery: Literal["de_admin_post", "de_admin_portal", "none"] = "none"
-    if notice.notified and not _FORMAL_SERVICE.search(text):
+    if notice.notified and not formal:
         delivery = "de_admin_portal" if _PORTAL.search(text) else "de_admin_post"
     spec = DateSpec(
         type="relative",
@@ -1012,7 +1261,8 @@ def notice_rival(
         shift_rule="auto",
         nature="objection",
     )
-    return Rival(spec, notice.quote, notice.grounding, notice=True)
+    served = formal or bool(_ARRIVAL.search(notice.text))
+    return Rival(spec, notice.quote, notice.grounding, notice=True, served=served)
 
 
 def gap_warning(gap: Gap, kind: CheckKind, remedy: str = "") -> str:

@@ -45,8 +45,11 @@ never on the reading's date or kind. Within 7 days the reading's date stands (de
 holiday and a weekend part them by up to 7 days).
 
 The letter's own date counts only where its words name it so (a "Datum" label, a place and date in the
-header, the reference line, "mit diesem Bescheid vom …", the decision a notice names, or the reading's date);
-any other date only lowers it. A start resting on one date long before the letter arrived is none.
+header or on DIN 5008's date line under the recipient's address, the reference line, "mit diesem Bescheid vom
+…", the decision a notice names right before "vom", or the reading's date); any other date — a print date,
+an appointment's, a benefit period's start — only lowers it. A start resting on one date long before the
+letter arrived is none, and so is one after it arrived. A sentence that only says when to pay or when to give
+reasons, a hypothetical remedy, or list lines above the notice's heading make no notice.
 
 In the benchmark the dated to-do is scored like any other; the undated placeholder is never scored (it
 names no obligation, and would turn a miss into a decline). The held-out holdout2 row and file stay as they
@@ -66,14 +69,16 @@ and measured separately.
 - The notice finder finds a notice on exactly the 98 letters whose labels have an objection deadline, and
   each has one about this letter. Forced onto all 98 with a blank reading, **none is late** and no letter
   without an objection deadline gets a date: in the app's situation (the sender's Land unknown) 27 are
-  exact, 66 early (at most 8 days) and 2 get no date because their dates for themselves disagree; with the
-  authority's Land 46 are exact and 47 early. The letter's date taken is never later than the label's.
+  exact, 67 early (at most 8 days) and 1 gets no date because its dates for itself disagree; with the
+  authority's Land 46 are exact and 48 early. The letter's date taken is never later than the label's. A
+  fuzz of 297,660 headers (eleven layouts of the letter's own date, fifteen kinds of another date near it)
+  gives no start later than the letter's date; a bounded sample of it runs with the tests.
 - Synthetic letters that mention a remedy without one against them (reminders, hearings, a court's or an
   authority's acknowledgement, a direct debit, data-protection rights) stay silent; a test corpus keeps them
   so, beside real notices that must still be dated. These letters are not in the benchmark: it can't
   measure false alarms, since every benchmark letter that mentions an objection has one.
-- On the 76 benchmark letters whose reading dates the objection and whose first page names its own date,
-  the reading's date is 0 to 7 days after the notice's (55 the same day; in the app's situation too), and
+- On the 94 benchmark letters whose reading dates the objection and whose first page names its own date,
+  the reading's date is 0 to 7 days after the notice's (67 the same day; in the app's situation too), and
   no reading's period is longer than the notice's, so the notice is set beside none of them; the guard test
   checks this on every run.
 - Replaying dev, test, holdout and holdout2, only that letter changes: missed becomes correct
@@ -87,3 +92,7 @@ page names no date of its own.
 Remedy notices are only recognised in German and English wording; a period the parser can't read, or one
 longer than a month, leaves the to-do without a date. A notice that refers to an earlier decision whose
 period has already run can still file a to-do (dated no later than the letter allows).
+A general order (*Allgemeinverfügung*) deemed notified two weeks after its publication: a reading that counts
+its correct date from that notification gets the notice's earlier date beside it (counted from the letter's
+own date) and "Please check" — the 7-day reach can't tell that fiction from a planted later start; accepted
+as rare, never later.

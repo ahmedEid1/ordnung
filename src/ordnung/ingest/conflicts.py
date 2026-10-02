@@ -328,6 +328,9 @@ _EVENT = re.compile(
 )
 #: How far (a share of the page's height) a column's value may stand under its label.
 _UNDER_REACH = 0.05
+#: An appointment's block around a "Datum:" line: its heading above ("Ihr Termin:"), its time below ("Uhrzeit: …").
+_BLOCK_ABOVE = re.compile(r"\b(?:termin\w*|appointment|einladung|vorsprache)\b[^:]*:\s*$", re.IGNORECASE)
+_BLOCK_BELOW = re.compile(r"^\s*(?:uhrzeit|time|beginn)\b", re.IGNORECASE)
 #: Where a letter's body starts.
 _SALUTATION = re.compile(r"(?:sehr\s+geehrte|guten\s+tag|hallo\b|liebe[rs]?\b|dear\b|hello\b)", re.IGNORECASE)
 
@@ -353,6 +356,8 @@ class Rival:
     #: from the date the letter's first page names: computed without the letter's kind (no letter rule), and
     #: never left out as a reminder's or as before the reading's date.
     notice: bool = False
+    #: That notice counts from formal service or arrival (a confirmed arrival is its start).
+    served: bool = False
 
     @property
     def evidence(self) -> str:
@@ -686,8 +691,16 @@ def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Sta
             if label is None:
                 continue
             day = _one_date(line, start, end)
-            if day is None or "|" in line or _EVENT.search(line):
-                return []
+            above = lines[index - 1] if index else ""
+            below = lines[index + 1] if index + 1 < len(lines) else ""
+            if (
+                day is None
+                or "|" in line
+                or _EVENT.search(line)
+                or _BLOCK_ABOVE.search(above)
+                or _BLOCK_BELOW.search(below)
+            ):
+                return []  # an appointment's block ("Ihr Termin:" / "Datum: …" / "Uhrzeit: …")
             phrase = re.sub(r"\s+", " ", line[label.start("label") : end]).strip()
             return [_Statement(DateSpec(type="none", text=phrase), phrase, line, grounding, letter_date=day)]
         label = _HEADER_LINE_END.search(line)
@@ -939,7 +952,12 @@ def _warning(noun: str, own: _Candidate, other: _Candidate, kept: date, ctx: Rul
         return (
             f"The letter gives two dates for itself: {fmt_date(early)} and {fmt_date(late)} "
             f"(“{_short(rival.statement)}”), so this {noun} is {fmt_date(first.due)} or {fmt_date(second.due)}. "
-            f"We use the earlier one, {fmt_date(kept)} — please check which date applies."
+            + (
+                f"We use the earlier one, {fmt_date(kept)} — please check which date applies."
+                if kept >= first.due
+                # a third date found (the letter's own notice) is earlier than both
+                else f"We use the earliest of the dates found, {fmt_date(kept)} — please check which date applies."
+            )
         )
     if rival is not None and rival.notice:
         return (
@@ -982,6 +1000,13 @@ def _other_step(noun: str, candidate: _Candidate, kept: _Candidate, ctx: RuleCon
     """The step naming a date the letter gives that is not the one kept."""
     rival = candidate.rival
     if rival is None:  # the to-do's own date, as read
+        if (
+            kept.rival is not None and kept.rival.notice
+        ):  # beside the letter's own notice: the reading's, not the letter's
+            return _step(
+                f"Claude's reading gives {fmt_date(candidate.due)} (“{_short(candidate.statement)}”)",
+                candidate.due,
+            )
         if kept.rival is not None and kept.rival.letter_date is not None and ctx.document_date is not None:
             return _step(
                 f"Counted from {fmt_date(ctx.document_date)}, the letter's date as read: {fmt_date(candidate.due)}",
@@ -1050,12 +1075,19 @@ def settle(
     count = _COUNTS.get(dates, str(dates))
     lead = _lead_step(kept)
     own_dates = {ctx.document_date, *(other.rival.letter_date for other in others if other.rival is not None)}
+    # the letter's own notice set beside the reading's date: the other date is the reading's, not the letter's
+    noticed = any(other.rival is not None and other.rival.notice for other in others)
+    source = (
+        "Claude's reading and the letter's own instructions on how to object give"
+        if noticed
+        else "The letter gives"
+    )
     why = (
         f"The law counts this deadline from the letter's date or its arrival, and the letter gives "
         f"{_COUNTS.get(len(own_dates), str(len(own_dates)))} dates for itself: we keep the earliest, "
         f"{fmt_date(kept.due)} — acting by it is on time whichever date the letter really has"
         if law
-        else f"The letter gives {count} different dates for this {noun}: we keep the earliest, "
+        else f"{source} {count} different dates for this {noun}: we keep the earliest, "
         f"{fmt_date(kept.due)} — acting by it is on time whichever date applies"
     )
     steps = [
@@ -1066,7 +1098,12 @@ def settle(
     ]
     warnings = [_warning(noun, own, other, kept.due, ctx) for other in others]
     later = ", ".join(fmt_date(c.due) for c in sorted([own, *others], key=lambda c: c.due) if c is not kept)
-    summary = f"{kept.receipt.summary} The letter also gives {later}; this is the earlier date.".strip()
+    also = (
+        "Claude's reading also gives"
+        if noticed and len(others) == 1 and kept is not own
+        else "The letter also gives"
+    )
+    summary = f"{kept.receipt.summary} {also} {later}; this is the earlier date.".strip()
     rule_ids = [
         *kept.receipt.rule_ids,
         *([] if CONFLICTING_DATES in kept.receipt.rule_ids else [CONFLICTING_DATES]),

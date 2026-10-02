@@ -469,9 +469,11 @@ first winning: **empty** — no to-do, no sender, no letter date, no key fact, n
 change or payment details and no remedy; **remedy left out** — the letter states how to object within a
 period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period, or the
 sentence after it when that one names neither a remedy nor a payment; words split across lines joined as
-quotes are matched) in words that speak of a remedy against *this* letter (not a later decision's, one
-already lodged, a direct debit's, one the letter rules out, or one counted back from an event), its text
-shows an administrative act, it is not filed as a kind whose deadline the law files itself (court payment
+quotes are matched; never a sentence that only says when to pay or when to give reasons, nor list lines
+above the notice's heading) in words that speak of a remedy against *this* letter (not a later or
+hypothetical decision's, one already lodged, a direct debit's, one the letter rules out, or one counted back
+from an event), its text shows an administrative act (or a public body's "diese Entscheidung", or a heading
+"Bescheid"), it is not filed as a kind whose deadline the law files itself (court payment
 and enforcement orders, dismissals, landlord notices, rent increases) unless the letter's words bear that
 kind out or its notices give no shorter period than the law, and no to-do dates the objection with a
 date that computes (an objection item, or a dated to-do quoting the notice; a `remedy` read without its
@@ -482,17 +484,24 @@ holds a period that can't be read or dated (Werktage, years) or counts back from
 vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
 after a portal download; never on formal service: Postzustellungsurkunde, PZU, förmliche Zustellung,
 Empfangsbekenntnis, Rückschein); the start is the earliest date the letter gives for itself, carried in
-the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date" label or a label of
-the letter's own date (Bescheid-, Brief-, Ausstellungs-, Ausfertigungs-, Erstellungs-, Druck-,
-Bearbeitungsdatum, "erstellt am"), a place and date among its header lines (never under a line ending in
-":"), the DIN 5008 reference line (the values under a line ending in "Datum"), "mit diesem Bescheid vom …",
-the decision its notice names ("Bescheid/Festsetzung/Entscheidung … vom …", never "Antrag vom" or "Ihr
-Schreiben vom") and the reading's date; none when those are more than 14 days apart (then no date at all),
-none from one date alone more than 60 days before the letter arrived. Other dates (another "…datum", a date
-alone, a continuation page's) only lower it, within those 14 days; alone they set none. The letter's date
+the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date:" label or a label
+of the letter's own date (Bescheid-, Brief-, Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "erstellt am"),
+a place and date among its header lines or DIN 5008's date line under the recipient's address (never under a
+line ending in ":"), a date alone on that date line, the reference line (the values under a "Datum" column,
+unless a due word stands before them), "mit diesem Bescheid vom …", the decision its notice names right
+before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit vom …")
+and the reading's date; never an appointment's "Datum:" ("Ihr Termin:" / "Uhrzeit"). None when those are
+more than 14 days apart (then no date at all), none from one date alone more than 60 days before the letter
+arrived, none after it arrived, and none on a Widerspruchsbescheid dated only by the decision it reshapes.
+Other dates (another "…datum", a print or copy date, a date alone, a continuation page's, a decision or
+period the notice names with words between) only lower it, within those 14 days; alone they set none. A
+notice about another decision named without a date ("Gegen den Gebührenbescheid …") lowers it to that
+decision's date where the letter gives it elsewhere. After a Widerspruchsbescheid a court action names the
+to-do on a tie. The letter's date
 once entered counts when it gives none. Recomputed, an earlier stored letter date or arrival moves it
 earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
-a notice it is an undated "Read this letter yourself". Its quote is the notice's own words, at most 600
+a notice — or for an almost blank reading of a letter whose notices are all ruled out — it is an undated
+"Read this letter yourself". Its quote is the notice's own words, at most 600
 characters. It is always `low` and "Please check" (`reading_incomplete`), also when
 its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
 why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
@@ -505,7 +514,8 @@ dates: the earlier kept, both named — "Claude's reading and the letter's own i
 "Please check"); decided on the letter's words alone (a live notice that can be dated, its own sentence's
 periods, the one ending first; never the reading's kind or date), counted from the date the first page
 names as its own (none without one) and from every earlier start the letter's stored dates allow, without
-the letter's kind; a notice from service starts on an arrival the person confirmed. Recomputed too, also
+the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice from
+service or formal service starts on an arrival the person confirmed. Recomputed too, also
 once the person confirmed it. Measured on every recorded reading, the reading's date is 0 to 7 days after
 the notice's, so it never fires there.
 

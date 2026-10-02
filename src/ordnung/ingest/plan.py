@@ -45,6 +45,7 @@ from ordnung.ingest.gaps import (
     gap_warning,
     notice_rival,
     remedy_notices,
+    square_gap_warnings,
     start_variants,
 )
 from ordnung.ingest.link import LinkResult
@@ -873,7 +874,7 @@ def _served_on_arrival(notice: Rival, ctx: RuleContext) -> Rival:
         or start is None
         or arrived is None
         or arrived <= start
-        or not _FROM_SERVICE.search(notice.statement)
+        or not (notice.served or _FROM_SERVICE.search(notice.statement))
     ):
         return notice
     return replace(notice, spec=notice.spec.model_copy(update={"anchor_date": arrived.isoformat()}))
@@ -1715,7 +1716,8 @@ def write_plan(
         )
     items = [*items, *rule_items]
     # the stored to-dos decide: one the person confirmed, paid or dismissed was kept and needs no check
-    unsure = any(needs_check(item) for item in store.list_items(doc_id=document.id))
+    stored = store.list_items(doc_id=document.id)
+    unsure = any(needs_check(item) for item in stored)
     status: DocumentStatus = "needs_review" if unsure else "processed"
     step.set(status=status, needs_check=sum(needs_check(item) for item in items))
     stamp = now_iso()
@@ -1736,7 +1738,10 @@ def write_plan(
         text_mode=text_mode,
         key_facts=verification.key_facts,
         references=extraction.references,
-        warnings=unique([*square_iban_claims(extraction.warnings, payment), *warnings]),
+        # "Read again" after the person confirmed, dated or dismissed Ordnung's own to-do: its warning stays gone
+        warnings=square_gap_warnings(
+            unique([*square_iban_claims(extraction.warnings, payment), *warnings]), stored
+        ),
         tax_relevant=extraction.tax_relevant,
         tax_note=extraction.tax_note,
         remedy=extraction.remedy,

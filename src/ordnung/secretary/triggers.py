@@ -1456,10 +1456,12 @@ def proof_missing(ledger: Ledger) -> list[Suggestion]:
 
 
 def _unsure_items(items: Iterable[Item]) -> list[Item]:
+    # a to-do the person confirmed or dated is theirs: nothing left to check (``plan.needs_check``)
     return [
         item
         for item in items
-        if item.grounding == "unverified" or any(not ev.value_consistent for ev in item.evidence)
+        if item.grounding != "user"
+        and (item.grounding == "unverified" or any(not ev.value_consistent for ev in item.evidence))
     ]
 
 

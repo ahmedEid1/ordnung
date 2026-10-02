@@ -170,9 +170,7 @@ def test_the_letter_s_own_date_labels_are_strong() -> None:
         "Bescheiddatum",
         "Briefdatum",
         "Ausstellungsdatum",
-        "Ausfertigungsdatum",
         "Erstellungsdatum",
-        "Druckdatum",
         "Bearbeitungsdatum",
         "Datum des Bescheides",
         "Erstellt am",
@@ -180,6 +178,15 @@ def test_the_letter_s_own_date_labels_are_strong() -> None:
         assert letter_date(blank(), [page(*TOP, f"{label}: 06.11.2026", *BODY, NOTIFIED)]) == date(
             2026, 11, 6
         ), label
+
+
+@pytest.mark.parametrize("label", ["Druckdatum", "Ausfertigungsdatum"])
+def test_a_print_or_copy_date_is_weak(label: str) -> None:
+    """Dates review 3, D3-1: a letter is printed or copied after it is dated — such a date only lowers the start,
+    never sets it (a later one with an unread own date gave 2026-10-26 for 10-19)."""
+    assert letter_date(blank(), [page(*TOP, f"{label}: 06.11.2026", *BODY, NOTIFIED)]) is None
+    lines = (*TOP, "Datum: 06.11.2026", f"{label}: 13.11.2026", *BODY, NOTIFIED)
+    assert letter_date(blank(), [page(*lines)]) == date(2026, 11, 6)
 
 
 def test_weak_dates_lower_within_two_weeks_void_beyond_and_are_ignored_when_later() -> None:
@@ -290,7 +297,7 @@ def test_a_decision_named_over_three_lines_keeps_its_date(reference: str) -> Non
     )
     pages = [page(*REMINDER, *lines)]
     [found] = remedy_notices(pages)
-    assert date(2026, 10, 1) in found.issued
+    assert date(2026, 10, 1) in (*found.issued, *found.mentioned)  # weak: words between noun and "vom"
     reading = blank(sender=SENDER, document_date="2026-10-20", items=[payment()])
     got = check_due(pages, reading)
     assert got is None or got <= "2026-11-04"
