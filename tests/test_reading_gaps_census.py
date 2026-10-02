@@ -26,6 +26,7 @@ from evals.run import RecordedFailures  # noqa: E402
 
 from ordnung.llm.replay import ReplayBackend  # noqa: E402
 from ordnung.llm.runtime import LLMService  # noqa: E402
+from test_reading_reask import WithoutReask  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MODEL = "claude-sonnet-5"
@@ -40,7 +41,8 @@ EXPECTED = {"holdout2-adversarial-injection_visible-1"}
 async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], int]:
     """The entries whose reading the check finds incomplete, those whose objection date the letter's own notice
     replaced, and how many readings were checked."""
-    backend = RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False)
+    # the check guards the readings as first recorded: a completeness re-ask recorded since is missed here
+    backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     limit = asyncio.Semaphore(8)
 
     async def one(entry: Entry) -> tuple[str, bool, bool, bool]:

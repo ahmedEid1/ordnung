@@ -2,7 +2,10 @@
 
 By default every model call is **replayed** from ``evals/recorded/<model>/`` (fixtures keyed by
 :func:`ordnung.llm.runtime.request_key`, like the app's demo fixtures); a missing recording is an
-error, so a replay run recomputes the published numbers exactly and costs no tokens. ``--live``
+error, so a replay run recomputes the published numbers exactly and costs no tokens — with one named
+exception: the completeness re-ask (ADR 0016) of the letters :data:`evals.conditions.REASK_UNRECORDED` lists,
+recorded before the re-ask existed, keeps the first reading (signal ``reading_reask_missing``), said in a
+warning and in the results' ``meta.reading_reask_missing``; such a prediction is never cached. ``--live``
 calls the user's ``claude`` CLI and records every answer there (recordings are only allowed for the
 benchmark's own SPECIMEN letters); calls already recorded are replayed, so an interrupted live run
 resumes where it stopped (``--refresh`` records everything anew).
@@ -56,6 +59,7 @@ from pydantic import ValidationError
 
 from evals import __version__, report
 from evals.conditions import (
+    REASK_MISSING,
     TOOLS_CONDITION,
     CallLog,
     MeteredBackend,
@@ -306,6 +310,10 @@ def load_cached(path: Path, expected_fingerprint: str) -> Prediction | None:
         return None
     if prediction.fingerprint != expected_fingerprint or prediction.error:
         return None
+    if REASK_MISSING in prediction.signals:
+        # made without the completeness re-ask's recording, which no fingerprint covers: one recorded since must
+        # be replayed, and a live run must make the call, never resume past it
+        return None
     return prediction
 
 
@@ -412,7 +420,8 @@ async def predict_model(
             else:
                 prediction = await _predict(condition, entry)
                 status = "error" if prediction.error else "failed" if prediction.failed else "ok"
-                if not prediction.error:
+                # never one made without the completeness re-ask's recording (see load_cached)
+                if not prediction.error and REASK_MISSING not in prediction.signals:
                     try:
                         save_cached(path, prediction)
                     except OSError as exc:  # the prediction still counts; only resuming loses it
@@ -579,8 +588,14 @@ async def run_benchmark(
             _report_errors(run, config, say)
             continue
         evaluation = evaluate(entries, run.predictions, seed=config.seed, resamples=config.resamples)
+        meta = run_meta(config, model, entries, label, left_out=run.left_out)
+        unrecorded = reask_unrecorded(run)
+        if unrecorded:
+            # said loudly, and kept in the results: these letters were scored on their first reading
+            say(reask_unrecorded_warning(model, unrecorded))
+            meta["reading_reask_missing"] = unrecorded
         run.results = report.build_results(
-            meta=run_meta(config, model, entries, label, left_out=run.left_out),
+            meta=meta,
             entries=entries,
             predictions=run.predictions,
             evaluation=evaluation,
@@ -649,6 +664,26 @@ RECORD_AGAIN = (
 #: docstrings and schemas, which change with the code. The published baselines' prompts are files
 #: that must not change unnoticed, so their misses still fail the gate.
 GATE_MAY_LEAVE_OUT = frozenset({TOOLS_CONDITION})
+
+
+def reask_unrecorded(run: ModelRun) -> list[str]:
+    """The letters whose Ordnung prediction kept the first reading because the replay has no recording of their
+    completeness re-ask (:data:`~evals.conditions.REASK_MISSING`; only the letters
+    :data:`~evals.conditions.REASK_UNRECORDED` allows — any other such miss is a replay error)."""
+    return sorted(
+        entry_id
+        for entry_id, prediction in run.predictions.get("ordnung", {}).items()
+        if REASK_MISSING in prediction.signals
+    )
+
+
+def reask_unrecorded_warning(model: str, unrecorded: Sequence[str]) -> str:
+    """The warning naming :func:`reask_unrecorded`'s letters: said during the run, and after it under ``--quiet``."""
+    return (
+        f"warning: {model}: {len(unrecorded)} letter(s) replayed without their completeness re-ask's "
+        f"recording, scored on the first reading as recorded: {', '.join(unrecorded)} — record it with "
+        "--live --no-resume (ADR 0016)"
+    )
 
 
 def _leave_out_unrecorded(run: ModelRun, say: Progress) -> None:
@@ -881,6 +916,9 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
                 f"warning: {run.model}: left out of the gate, recorded answers missing: {condition} — "
                 f"{RECORD_AGAIN.format(condition=condition)}"
             )
+        unrecorded = reask_unrecorded(run)
+        if unrecorded and ns.quiet:  # said during the run otherwise
+            _stderr(reask_unrecorded_warning(run.model, unrecorded))
     for line in failures:
         _stderr(f"threshold missed: {line}")
     return 0 if outcome.ok and not failures else 1

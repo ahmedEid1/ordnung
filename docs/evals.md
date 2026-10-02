@@ -98,11 +98,13 @@ Ordnung got 3 dated item(s) of the holdout split wrong; from the failure gallery
 The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
-read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
-code changes came after them: a rules-table date their label audit found, which changes no date on them
-(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
-objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
-re-scored row only, never in the held-out row.
+read, are recorded once, and nothing was tuned on them.** Three changes came after them: a rules-table
+date their label audit found, which changes no date on them (see the note below);
+a check for incomplete readings (`ingest/gaps.py`), with a guard on readings' objection dates
+calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+re-scored row only, never in the held-out row; and, because of that same reading, a prompt that asks
+Claude once more when a reading comes back incomplete (ADR 0016) — the one prompt informed by these
+letters — which changes no row until its answer for that letter is recorded.
 
 > Run on 2026-10-01 from live model calls, model `claude-sonnet-5`, commit `0add891`:
 > 63 letters (11 phone photos, 12 adversarial),

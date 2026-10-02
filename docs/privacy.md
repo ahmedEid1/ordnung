@@ -47,6 +47,12 @@ privacy settings before processing sensitive documents.
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
 | **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it |
 
+Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
+the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
+blank, or without the deadline to object the letter's instructions state) it is asked once more for what it
+left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)). A letter you put in
+the trash or delete while it is being read is not sent again.
+
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
 

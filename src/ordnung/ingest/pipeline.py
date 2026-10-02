@@ -53,7 +53,13 @@ from ordnung.ingest.attachments import (
     email_parent,
     email_source,
 )
-from ordnung.ingest.extract import ExtractionError, ExtractionInput, extract_document, prompt_pages
+from ordnung.ingest.extract import (
+    ExtractionError,
+    ExtractionInput,
+    prompt_pages,
+    read_document,
+    reask_warning,
+)
 from ordnung.ingest.intake import (
     TEXT_TYPES,
     IntakeError,
@@ -140,6 +146,11 @@ HIDDEN_TEXT_WARNING = (
 NO_TEXT_ERROR = "We couldn't find any readable text in this document."
 UNEXPECTED_ERROR = "Something went wrong while reading this document. Try “Reprocess”; if it keeps failing, please report it."
 TRASHED_ERROR = "This letter was deleted before it was read, so it was not sent to Claude."
+#: The letter was put in the trash (or deleted) while Claude was reading it: no further call sends it again (the
+#: repair, the completeness re-ask) — it was sent once, so the message says so.
+TRASHED_AGAIN_ERROR = (
+    "This letter was deleted while Claude was reading it, so it was not sent to Claude again."
+)
 
 _LEDGER_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
     weakref.WeakKeyDictionary()
@@ -833,6 +844,16 @@ def _refuse_trashed(store: Store, doc_id: str) -> None:
         raise IntakeError(TRASHED_ERROR)
 
 
+def _refuse_gone(store: Store, doc_id: str) -> None:
+    """Before a further call sends the letter again (the repair, the completeness re-ask): never once it was
+    deleted for good or put in the trash while the call before it ran."""
+    current = store.get_document(doc_id)
+    if current is None:
+        raise NotFoundError(f"documents: no row with id {doc_id!r}")
+    if current.deleted_at is not None:
+        raise IntakeError(TRASHED_AGAIN_ERROR)
+
+
 def _extraction_input(ctx: AppContext, document: Document, pages: Sequence[Page]) -> ExtractionInput:
     profile = ctx.store.get_profile()
     today = person_today(ctx.store).isoformat()
@@ -958,13 +979,24 @@ async def _run_stages(
     warnings += injected
     _refuse_trashed(store, document.id)
     await progress.stage("extract")
-    extraction = await extract_document(
+    arrived = parse_date(document.received_date) or person_today(store)
+    reading = await read_document(
         ctx.llm,
         _extraction_input(ctx, document, pages),
         model=models.extract,
         use_cache=not force,
         trace=trace,
+        # a re-ask that gets no answer keeps the first reading and the check behind it: never a failed letter
+        unanswered=(LLMError,),
+        # the repair and the re-ask send the letter again: never once it was trashed or deleted meanwhile
+        before_again=lambda: _refuse_gone(store, document.id),
+        # judged against the very to-do the check at verify would file
+        arrived=arrived,
+        injected=bool(injected),
     )
+    extraction = reading.extraction
+    if reading.completion is not None and reading.completion.accepted:
+        warnings.append(reask_warning(reading.completion.gap, injected=bool(injected)))
     await progress.stage("verify")
     verification = await asyncio.to_thread(
         verify_extraction,
@@ -974,7 +1006,7 @@ async def _run_stages(
         trace=trace,
         check_reading=True,
         injected=bool(injected),
-        today=parse_date(document.received_date) or person_today(store),
+        today=arrived,
     )
     await progress.stage("compute")
     profile = store.get_profile()
@@ -1021,7 +1053,7 @@ def failure_code(exc: BaseException) -> str:
     """Why a reading failed, as the code its trace keeps (:data:`ordnung.trace.runs.FAILURES`) — an
     error's message may quote the letter or the model, so a trace never keeps it."""
     if isinstance(exc, IntakeError):
-        return "trashed" if str(exc) == TRASHED_ERROR else "file"
+        return {TRASHED_ERROR: "trashed", TRASHED_AGAIN_ERROR: "trashed_meanwhile"}.get(str(exc), "file")
     if isinstance(exc, ExtractionError):
         return "no_text" if str(exc) == NO_TEXT_ERROR else "unusable_answer"
     if isinstance(exc, NotFoundError):

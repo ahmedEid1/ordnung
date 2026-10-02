@@ -57,6 +57,7 @@ INTERRUPTED: frozenset[str] = frozenset({"paused", "stopped"})
 FAILURES: dict[str, str] = {
     "no_text": "We couldn't find any readable text in this document.",
     "trashed": "The letter was deleted before it was read, so it was not sent to Claude.",
+    "trashed_meanwhile": "The letter was deleted while it was being read, so it was not sent to Claude again.",
     "gone": "The letter no longer existed.",
     "file": "The file couldn't be read.",
     "not_installed": "Claude Code wasn't installed.",

@@ -236,10 +236,11 @@ split's two letters of the same class, whose dates it leaves as they were read a
 ⁷ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the last change
 to how letters are read and checked, by an agent that read neither the reading code nor the prompts nor
 any result; a second agent audited the labels blind (all 56 matched). Recorded once on Sonnet 5 with every
-condition, nothing tuned on them. Two code changes came after them: their label audit found that
+condition, nothing tuned on them. Three changes came after them: their label audit found that
 Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025 (no letter of any split is posted
-in that window, so it changes no date here); and the reading check of row ⁸, written because of this
-split's one missed date.
+in that window, so it changes no date here); the reading check of row ⁸, written because of this
+split's one missed date; and, because of the same letter, a prompt that asks Claude once more when a
+reading comes back incomplete (ADR 0016), which changes no row until its answer for that letter is recorded.
 ⁸ The same recorded outputs, replayed after a code-only check written because of that missed date: when
 Claude's reading comes back nearly blank, or leaves out the objection deadline that the letter's own
 instructions on how to object state, Ordnung files that deadline itself, counted from the earliest date

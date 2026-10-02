@@ -546,7 +546,12 @@ async def test_a_complete_reading_has_no_re_ask_step(data_dir: Path) -> None:
     assert trace.run is not None and trace.run.model_calls == 1
 
 
-async def test_a_rate_limit_on_the_re_ask_pauses_the_reading_as_any_call_s_would(data_dir: Path) -> None:
+async def test_a_rate_limit_on_the_re_ask_keeps_the_first_reading_and_the_check_s_to_do(
+    data_dir: Path,
+) -> None:
+    """The re-ask is optional: without an answer the letter ends as without it (the check's dated to-do), never
+    paused or failed (``tests/test_reading_reask_floor.py`` has every kind of error)."""
+
     def respond(request: LLMRequest) -> Any:
         if request.prompt_name == "reading_gaps":
             raise ClaudeRateLimited("Usage limit reached", reset_at=None)
@@ -555,11 +560,24 @@ async def test_a_rate_limit_on_the_re_ask_pauses_the_reading_as_any_call_s_would
     ctx, doc_id = await ingest(data_dir, DECISION, FakeBackend(respond))
     try:
         document = ctx.store.get_document(doc_id)
+        items = ctx.store.list_items(doc_id=doc_id)
         trace = document_trace(ctx.store, doc_id)
     finally:
         ctx.close()
-    assert document is not None and document.status not in ("processed", "needs_review")
-    assert trace.run is not None and trace.run.ended == "paused"
+    assert document is not None and document.status == "needs_review"
+    [check] = items
+    assert check.slot_key == CHECK_SLOT and check.due_date is not None and needs_check(check)
+    assert trace.run is not None and trace.run.ended == "done"
+    again = {span.key: span for span in trace.spans}["run/model:extract_complete"]
+    assert (again.attributes["accepted"], again.attributes["kept_because"]) == (False, "unanswered")
+
+
+async def test_the_app_s_unanswered_never_covers_a_replay_miss() -> None:
+    """The demo replays strictly: a re-ask it has no recording for is an error there, never a kept reading."""
+    result = await read(answering(BLANK, _raise(LLMError("no answer"))), unanswered=(LLMError,))
+    assert result.completion == Completion("empty", accepted=False, kept_because="unanswered")
+    with pytest.raises(ReplayMiss):
+        await read(answering(BLANK, _raise(ReplayMiss("no recorded response"))), unanswered=(LLMError,))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -578,13 +596,22 @@ def test_the_benchmark_signals() -> None:
         assert reask_signals(completion) == ["reading_reask:rejected"]
 
 
-class WithoutReask(ReplayBackend):
-    """The recordings as they were before the re-ask existed: its answer, if one was recorded since, is missed."""
+class WithoutReask:
+    """The recordings as they were before the re-ask existed: its answer — or its recorded failure — if one was
+    recorded since, is missed. It wraps the whole replay (recorded failures included), so the tests that guard the
+    first readings pass whatever the re-ask's recording says (none, accepted, rejected or failed)."""
+
+    def __init__(self, inner: Any) -> None:
+        self.inner = inner
+        self.name = inner.name
 
     async def complete(self, req: LLMRequest) -> Any:
         if req.prompt_name == "reading_gaps":
             raise ReplayMiss(f"no recorded response for {req.purpose} ({req.cache_key})")
-        return await super().complete(req)
+        return await self.inner.complete(req)
+
+    async def stream(self, req: LLMRequest) -> Any:  # pragma: no cover - an extraction never streams
+        raise NotImplementedError
 
 
 async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(tmp_path: Path) -> None:
@@ -593,7 +620,7 @@ async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(tm
     entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
     log = CallLog()
-    backend = RecordedFailures(WithoutReask(RECORDED), RECORDED, record=False)
+    backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
     llm = LLMService(MeteredBackend(backend, log, timeout_s=60))
     prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")
     assert prediction.error is None and prediction.failed is None
@@ -629,7 +656,14 @@ async def test_the_benchmark_takes_the_same_path_and_says_how_the_re_ask_ended(
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
     [notice, *_] = [notice for notice in remedy_notices(document.pages) if notice.live]
     item = {**OBJECTION, "quote": notice.quote, "date": {**OBJECTION["date"], "text": notice.quote}}
-    completed = {**HALF, "document_date": entry.truth.document_date, "remedy": None, "items": [item]}
+    # no sender: the dataset letter names its own, which this file never writes (an invented one is never used)
+    completed = {
+        **HALF,
+        "sender": None,
+        "document_date": entry.truth.document_date,
+        "remedy": None,
+        "items": [item],
+    }
 
     def respond(request: LLMRequest) -> Any:
         if request.purpose == "extract" and request.prompt_name == "reading_gaps" and complete:

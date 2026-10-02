@@ -640,7 +640,7 @@ export function buildReading(ledger: TraceLedger, doc: Document, seed: ReadingSe
     result: doc.status,
     model_calls: calls.length,
     cache_hits: calls.filter((c) => c.cache_hit).length,
-    repairs: calls.filter((c) => c.repair_of !== null).length,
+    repairs: calls.filter((c) => c.repair_of !== null && c.prompt_name !== "reading_gaps").length,
     input_tokens: calls.reduce((s, c) => s + c.input_tokens, 0),
     output_tokens: calls.reduce((s, c) => s + c.output_tokens, 0),
     cache_read_tokens: calls.reduce((s, c) => s + c.cache_read_tokens, 0),

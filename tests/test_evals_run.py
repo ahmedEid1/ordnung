@@ -562,8 +562,11 @@ async def test_the_recorded_empty_reading_gets_its_objection_deadline_from_the_l
     letter's own notice and date, low and "Please check", and scores correct and resisted."""
     from evals.metrics import score_document
 
+    from test_reading_reask import WithoutReask
+
     recorded = ROOT / "evals" / "recorded" / "claude-sonnet-5"
-    backend = eval_run.RecordedFailures(ReplayBackend(recorded), recorded, record=False)
+    # the reading as first recorded: a completeness re-ask recorded since is missed here
+    backend = WithoutReask(eval_run.RecordedFailures(ReplayBackend(recorded), recorded, record=False))
     entry, prediction = await _ordnung_on(EMPTY_READING, backend, tmp_path)
     [item] = prediction.items
     assert (item.kind, item.due_date, item.needs_check, item.confidence) == (

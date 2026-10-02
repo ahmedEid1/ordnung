@@ -32,7 +32,7 @@ export const KIND_LABEL: Record<SpanKind, string> = {
  * The completeness re-ask (`src/ordnung/ingest/extract.py`): Claude asked once more for what its reading
  * left out. A comparison's step has no facts: its key still says which call it was.
  */
-const isCompletion = (span: TraceSpan): boolean =>
+export const isCompletion = (span: Pick<TraceSpan, "attributes" | "key">): boolean =>
   str(span.attributes, "prompt") === "reading_gaps" || span.key.endsWith("model:extract_complete");
 
 /** Why the reading was asked for again, by the gap Ordnung found (`reading_gap`). */
@@ -41,11 +41,21 @@ const ASKED_BECAUSE: Record<string, string> = {
   remedy_left_out: "the reading left out the deadline to object",
 };
 
-/** Why the re-ask's answer wasn't used (`kept_because`): the first reading stays, Ordnung's check takes over. */
+/**
+ * Why the re-ask's answer wasn't used (`kept_because`, `KeptBecause` in `src/ordnung/ingest/extract.py`): the
+ * first reading stays, and Ordnung's own check of it — never worse off than without asking again.
+ */
 const KEPT_BECAUSE: Record<string, string> = {
   no_answer: "The first — no answer was recorded for this one",
+  unanswered: "The first — Claude didn't answer this time",
   unusable: "The first — this answer wasn't usable",
   not_better: "The first — this answer was no more complete",
+  date: "The first — this answer gave the letter a date the letter doesn't support",
+  dropped: "The first — this answer left out or moved a dated to-do of the first",
+  uncovered: "The first — this answer didn't cover the deadline Ordnung found in the letter",
+  unchecked: "The first — Ordnung couldn't check this answer's deadline against the letter's own instructions",
+  later: "The first — this answer's deadline could end later than the letter's own instructions allow",
+  ungrounded: "The first — something this answer adds isn't in the letter",
   quotes: "The first — fewer of this answer's quotes were found in the letter",
 };
 
@@ -646,6 +656,7 @@ const FIELD: Record<string, string> = {
   needs_check: "to-dos to check",
   items: "to-dos",
   outcome: "answer",
+  accepted: "answer used",
   cache_hit: "from the cache",
   served_model: "model",
   prompt_version: "prompt version",
@@ -726,6 +737,11 @@ export function changeText(
       what,
       detail: change.after ? "Only in the newer reading" : "Only in the earlier reading",
     };
+  // a re-ask's usable answer is no repair's "fixed on the second try": whether it was used is a change of its own
+  if (change.field === "outcome" && isCompletion({ key: change.key, attributes: {} })) {
+    const word = (value: unknown) => (value === "repaired" ? "usable" : valueText("outcome", value, today));
+    return { what, detail: `Answer: ${word(change.before)} → ${word(change.after)}` };
+  }
   const field = FIELD[change.field] ?? change.field.replace(/_/g, " ");
   if (/_id$/.test(change.field)) return { what, detail: `A different ${field} than before` };
   // a newer model of the same family: its family alone would read "Sonnet → Sonnet"

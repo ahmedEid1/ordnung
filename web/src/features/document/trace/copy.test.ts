@@ -128,6 +128,22 @@ describe("trace copy", () => {
       detail: "Only in the newer reading",
     });
 
+    // read again and compared: whether the re-ask's answer was used, and its usable answer is no repair's "fix"
+    const reask = { kind: "model" as const, name: "Extract · complete", key: "run/model:extract_complete" };
+    expect(changeText(change({ ...reask, field: "accepted", before: true, after: false })).detail).toBe("Answer used: yes → no");
+    expect(changeText(change({ ...reask, field: "outcome", before: "failed", after: "repaired" })).detail).toBe("Answer: not usable → usable");
+
+    // every reason the first reading was kept is said in words (KeptBecause in src/ordnung/ingest/extract.py)
+    const reasons = ["no_answer", "unanswered", "unusable", "not_better", "date", "dropped", "uncovered", "unchecked", "later", "ungrounded", "quotes"];
+    const labels = reasons.map((because) => {
+      const rows = spanDetails(span({ kind: "model", key: "run/model:extract_complete", attributes: { ...asked, accepted: false, kept_because: because } }));
+      const row = rows.find((r) => r.label === "Reading kept");
+      expect(row?.value).toMatch(/^The first — /);
+      assertNoRawEnums(row?.value ?? "");
+      return row?.value;
+    });
+    expect(new Set(labels).size).toBe(reasons.length);
+
     for (const step of [used, kept, unusable, broken]) {
       const copy = spanCopy(step);
       assertNoRawEnums(`${copy.title} ${copy.summary} ${copy.flag?.text ?? ""}`);

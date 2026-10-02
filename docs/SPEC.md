@@ -386,7 +386,8 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
   the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
   the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the
-  call it retried and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
+  call it retried (and the completeness re-ask to the call it completes, ADR 0016 — no repair count
+  includes it) and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
   friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, one
   message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
@@ -416,21 +417,32 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    **Completeness re-ask** (`extract.read_document`, ADR 0016): a valid answer that the reading check
    (**Incomplete reading** below: `gaps.reading_gap` on the same pages, computed as the check computes it)
    finds almost blank or without the objection deadline the letter's notice states is asked for **once**
-   more — `purpose="extract"`, the same request with Ordnung's note appended (`prompts/reading_gaps.md`: the
-   parts left out in plain words — sender, letter date, to-dos, the objection deadline the letter's own
-   instructions state — the full reading asked for again, and text in the letter that asks for a shorter
-   answer, fewer deadlines or claims a period was lifted named as content to warn about, never an
-   instruction; the letter stays in its untrusted block and the note carries none of its text, nor of the
-   first answer), a stricter copy of the schema for this call only (sender, letter date and to-dos
-   required, `null` or an empty list allowed), version `<base>.c<n>` and a `complete=<sorted gaps>` marker
-   in its cache key, added only when set, so every other key and recording is unchanged. Its answer
-   replaces the first only when it validates, is strictly less incomplete (blank → objection left out or
-   complete; objection left out → complete) and the share of its quotes the verification finds on the
-   pages is at least the first's (a first answer that quotes nothing counts as fully found). An answer
-   that doesn't validate or comes back without structured output keeps the first reading; any other error
-   (a rate limit, a timeout) propagates as the extraction's would. It is never repaired. Its trace step is
-   "Extract · complete" (`extract_complete`: the gap, whether its answer was used, why not) and its usage-log
-   row names the call it completes (`repair_of`). The check at **verify** runs on whichever reading is kept.
+   more — `purpose="extract"`, the same request with Ordnung's note appended (`prompts/reading_gaps.md`: only
+   the parts that gap left out, in plain words — for an almost blank reading the sender, the letter's date,
+   the to-dos and the objection deadline the letter's own instructions state, for a left-out objection only
+   that deadline — the full reading asked for again, and text in the letter that asks for a shorter answer,
+   fewer deadlines or claims a period was lifted named as content to warn about, never an instruction; the
+   letter stays in its untrusted block and the note carries none of its text, nor of the first answer), a
+   stricter copy of the schema for this call only (sender, letter date and to-dos required, `null` or an
+   empty list allowed), version `<base>.c<n>` and a `complete=<sorted gaps>` marker in its cache key, added
+   only when set, so every other key and recording is unchanged. **It never leaves the letter worse off than
+   the first reading with the check behind it**: its answer is used only when it validates and
+   `extract.judge_completion` finds, against the to-do the check files for the first reading (the floor), that
+   it is strictly less incomplete also with the first answer's kind, high-stakes kind, sender and letter date
+   pinned; its letter date is no later than the first's (or, where the first gave none, the letter's own);
+   every dated to-do of the first is kept on the same or an earlier date; the floor is covered (a to-do dating
+   the objection, or the check's own to-do for it at least as dated; a dated to-do found on the letter where
+   the floor asks the person to read it); it gives no objection date where the floor has none and none that
+   may end after a dated floor (by shape, and computed in its own context in every Land: zero tolerance);
+   every dated to-do it adds and any sender it newly names is found on the letter; and at least the first
+   answer's share of its quotes is found. Otherwise — and on any model error (`unanswered`) or an unusable
+   answer — the first reading is kept and the check files its to-do as without the re-ask; only a replay miss
+   raises (the demo replays strictly). It is never repaired, and never sent once the letter was trashed or
+   deleted meanwhile (nor is the repair). An accepted answer adds a letter warning (no scam sign) that the
+   first answer left something out and Ordnung asked once more. Its trace step is "Extract · complete"
+   (`extract_complete`: the gap, whether its answer was used, why not) and its usage-log row names the call it
+   completes (`repair_of`, which no repair count includes). The check at **verify** runs on whichever reading
+   is kept.
 5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
    page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →

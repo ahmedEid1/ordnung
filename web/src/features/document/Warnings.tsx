@@ -99,6 +99,12 @@ function withoutPleaseCheck(w: string): string {
 const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|This letter explains how to (?:object|challenge it in court), but Claude's reading)/;
 
 /**
+ * The warning that Claude's first answer left something out and Ordnung asked once more, using the second answer
+ * (`reask_warning` in `src/ordnung/ingest/extract.py`). Shown among the letter's warnings; never a scam sign.
+ */
+export const REASK_WARNING = /^Claude's first answer for this letter left out/;
+
+/**
  * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
  * own note sits in the verdict, the count of unconfirmed dates is said by their own cards, the incomplete
  * reading's note only while its to-do needs checking).
@@ -167,7 +173,9 @@ const TOP_SIGNS = 3;
 function scamSigns(reasons: string[]): string[] {
   const rank = (w: string) =>
     /^possible scam/i.test(w) ? 0 : /iban|payee|account|bank/i.test(w) ? 1 : /deadline|hours|threat|pressure|not to contact/i.test(w) ? 2 : 3;
-  return reasons.filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim())).sort((a, b) => rank(a) - rank(b));
+  return reasons
+    .filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim()) && !REASK_WARNING.test(w.trim()))
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {

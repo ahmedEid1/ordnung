@@ -16,7 +16,7 @@ import { isTransfer } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 import { useTodayISO } from "@/lib/today";
 import { WhyThisDate } from "../WhyThisDate";
-import { barTone, formatMs, spanCopy, spanDetails } from "./copy";
+import { barTone, formatMs, isCompletion, spanCopy, spanDetails } from "./copy";
 
 const KIND_ICON: Record<SpanKind, LucideIcon> = {
   run: FileSearch,
@@ -71,6 +71,8 @@ function transferOf(span: TraceSpan, ctx: WaterfallContext): boolean | undefined
 interface StepDetails {
   rows: { label: string; value: string }[];
   repairOf: TraceSpan | undefined;
+  /** The step is the completeness re-ask: it follows the call it names, it doesn't retry it. */
+  completion: boolean;
   /** The to-do of a date step (the rules engine's receipt is on it). */
   dated: Item | undefined;
 }
@@ -87,6 +89,7 @@ function stepDetails(span: TraceSpan, ctx: WaterfallContext): StepDetails {
   return {
     rows,
     repairOf: typeof a.repair_of === "number" ? ctx.callStep.get(a.repair_of) : undefined,
+    completion: isCompletion(span),
     dated: item?.computation ? item : undefined,
   };
 }
@@ -94,7 +97,7 @@ function stepDetails(span: TraceSpan, ctx: WaterfallContext): StepDetails {
 const hasDetails = (d: StepDetails) => Boolean(d.rows.length || d.repairOf || d.dated);
 
 function Details({ details, span, ctx }: { details: StepDetails; span: TraceSpan; ctx: WaterfallContext }) {
-  const { rows, repairOf, dated } = details;
+  const { rows, repairOf, completion, dated } = details;
   return (
     <div className="space-y-3">
       {rows.length ? (
@@ -110,7 +113,7 @@ function Details({ details, span, ctx }: { details: StepDetails; span: TraceSpan
       ) : null}
       {repairOf ? (
         <p className="text-[13px] leading-5 text-muted">
-          Retried the answer of{" "}
+          {completion ? "Asked for what the answer of" : "Retried the answer of"}{" "}
           <button
             type="button"
             onClick={() => ctx.reveal(repairOf.id)}
@@ -118,7 +121,7 @@ function Details({ details, span, ctx }: { details: StepDetails; span: TraceSpan
           >
             the call above
           </button>
-          , with the problems listed.
+          {completion ? " left out." : ", with the problems listed."}
         </p>
       ) : null}
       {dated ? <DateReceipt span={span} item={dated} today={ctx.today} /> : null}

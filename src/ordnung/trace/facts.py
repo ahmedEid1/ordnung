@@ -164,7 +164,9 @@ def verification(groundings: Sequence[str], needs_check: int) -> dict[str, Any]:
 def completion(gap: str, *, accepted: bool, kept_because: str | None) -> dict[str, object]:
     """The completeness re-ask of a reading found incomplete (:func:`ordnung.ingest.extract.read_document`): the
     gap that triggered it (``empty`` | ``remedy_left_out``), whether its answer replaced the first reading, and
-    if not why (``no_answer`` | ``unusable`` | ``not_better`` | ``quotes``) — codes only."""
+    if not why (:data:`ordnung.ingest.extract.KeptBecause`: ``no_answer`` | ``unanswered`` | ``unusable`` |
+    ``not_better`` | ``date`` | ``dropped`` | ``uncovered`` | ``unchecked`` | ``later`` | ``ungrounded`` |
+    ``quotes``) — codes only."""
     return {"reading_gap": gap, "accepted": accepted, "kept_because": kept_because}
 
 

@@ -33,7 +33,7 @@ from ordnung.models import DocumentTrace, SpanKind, TraceChange, TraceComparison
 
 DECIDED: dict[SpanKind, tuple[str, ...]] = {
     "run": ("result", "needs_check", "items"),
-    "model": ("outcome", "cache_hit", "served_model", "prompt_version", "legible"),
+    "model": ("outcome", "cache_hit", "served_model", "prompt_version", "legible", "accepted"),
     "ocr": ("pages", "text_pages", "to_transcribe", "hidden_text"),
     "verify": ("grounding", "page", "digits_matched", "consistent", "reasons"),
     "rules": ("due_date", "send_by", "confidence", "rule_ids", "filed"),

@@ -1615,7 +1615,9 @@ _NOT_A_SIGN = re.compile(
     r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
     r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection"
     r"|^Claude's reading of this letter came back almost blank|^This letter explains how to (?:object|challenge it "
-    r"in court), but Claude's reading",
+    r"in court), but Claude's reading"
+    # the completeness re-ask's answer was used (ordnung.ingest.extract.REASK_WARNING)
+    r"|^Claude's first answer for this letter left out",
     re.I,
 )
 HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."

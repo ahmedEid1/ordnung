@@ -171,6 +171,29 @@ describe("the to-do Ordnung adds for an incomplete reading", () => {
     expect(banner).toHaveTextContent("The warning sign");
   });
 
+  it("shows the warning that Claude was asked once more, and never lists it as a scam sign (ADR 0016)", () => {
+    // `reask_warning` in src/ordnung/ingest/extract.py
+    const reasked =
+      "Claude's first answer for this letter left out the deadline to object, so Ordnung asked once more and shows the second answer — check its deadlines against the letter before you rely on them.";
+    const { unmount } = renderWithProviders(
+      <DocumentWarnings detail={makeDetail({ document: makeDoc({ status: "processed", warnings: [reasked] }), items: [] })} />,
+      { client: client() },
+    );
+    expect(screen.getByText(/Ordnung asked once more and shows the second answer/)).toBeInTheDocument();
+    unmount();
+
+    const detail = makeDetail({
+      document: makeDoc({ status: "needs_review", warnings: [reasked, "The payee's name differs from the sender."] }),
+      items: [],
+      suggestions: [scam],
+      scam_signs: [],
+    });
+    renderWithProviders(<DocumentWarnings detail={detail} />, { client: client() });
+    const banner = screen.getByRole("alert");
+    expect(banner).toHaveTextContent("The payee's name differs from the sender.");
+    expect(banner).not.toHaveTextContent("asked once more");
+  });
+
   it("says the letter's warning only while the to-do still needs checking", () => {
     const warned = makeDoc({ status: "needs_review", warnings: [GAP_BLANK] });
     const { unmount } = renderWithProviders(<DocumentWarnings detail={makeDetail({ document: warned, items: [placeholder] })} />, {

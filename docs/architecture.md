@@ -147,6 +147,7 @@ flowchart LR
   run --> ocr["ocr · Text layer<br/>pages, words, hidden text"]
   run --> tr["ocr · Transcribe (parallel)"] --> p1["model · Page 1 …"]
   run --> ex["model · Extract"] -.->|"repair_of"| rep["model · Extract · repair"]
+  ex -.->|"repair_of"| cmp["model · Extract · complete"]
   run --> q["verify · Check quotes"] --> q1["verify · Quote per item, key fact …<br/>grounding, score, digit groups"]
   run --> snd["link · Sender<br/>decision, candidates + scores"]
   run --> d["rules · Compute dates"] --> d1["rules · Date<br/>DateSpec structure → due, send-by, rule ids"]
@@ -171,7 +172,8 @@ flowchart LR
 - **Model calls join by id.** `LLMService` writes one `llm_calls` row per call (never the prompt or
   the answer) with its replay/cache key, prompt name and version, the model the CLI says answered,
   job, stage and span, and an `outcome` decided by one policy (`ok`, `invalid` → a repair follows,
-  `repaired`, `failed`); a repair's row names the call it retried (`repair_of`).
+  `repaired`, `failed`); a repair's row names the call it retried (`repair_of`), and so does the
+  completeness re-ask's the call it completes (ADR 0016) — which the reading's repair count leaves out.
 - **No letter text.** A span holds counts, codes, scores, the dates Ordnung computed and the ids of
   the records it used — the written vocabulary is `trace/facts.py`. The view looks the records up
   when the trace is shown (a to-do's title, a sender's name), so a deleted record keeps its id and

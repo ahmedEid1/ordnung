@@ -929,6 +929,18 @@ def _holdout_row(label: str, metrics: Mapping[str, Any], published: Mapping[str,
     ]
 
 
+def reask_outcomes(results: Mapping[str, Any]) -> dict[str, str]:
+    """The letters whose Ordnung prediction used a recorded completeness re-ask (ADR 0016): entry id →
+    ``accepted`` or ``rejected`` — model answers a replay of a held-out run's recordings adds to them."""
+    found: dict[str, str] = {}
+    for entry in results.get("entries") or []:
+        prediction = ((entry.get("conditions") or {}).get("ordnung") or {}).get("prediction") or {}
+        for signal in prediction.get("signals") or []:
+            if str(signal).startswith("reading_reask:"):
+                found[str(entry["id"])] = str(signal).split(":", 1)[1]
+    return found
+
+
 def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, Any]) -> str:
     """What the re-scored row is: the held-out recordings replayed on code with a check written after the
     held-out run and informed by its late dates — so not held-out (the file's ``meta.note`` follows)."""
@@ -941,8 +953,18 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
         else "informed by it"
     )
     note = " ".join(str(meta.get("note") or "").split())
+    reasked = reask_outcomes(rescored)
+    outputs = (
+        "the held-out run's recorded outputs plus "
+        f"{len(reasked)} model answer{'s' if len(reasked) != 1 else ''} recorded after it — the completeness "
+        "re-ask (ADR 0016) of "
+        + ", ".join(f"`{entry}` ({outcome})" for entry, outcome in sorted(reasked.items()))
+        + " —"
+        if reasked
+        else "the same recorded outputs"
+    )
     return (
-        "**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the "
+        f"**Re-scored, not held-out.** The row “Ordnung, re-scored” replays {outputs} with the "
         f"code of commit `{meta.get('commit') or '?'}`{_commit_note(dict(meta))} ({meta.get('date')}). That code "
         f"has a check written after the held-out run and {informed}, so the {holdout['meta'].get('split')} split is no "
         "longer held-out for it: the held-out row above stays the held-out number."
@@ -956,11 +978,13 @@ def _held_out_intro(name: str) -> str:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
-read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
-code changes came after them: a rules-table date their label audit found, which changes no date on them
-(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
-objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
-re-scored row only, never in the held-out row."""
+read, are recorded once, and nothing was tuned on them.** Three changes came after them: a rules-table
+date their label audit found, which changes no date on them (see the note below);
+a check for incomplete readings (`ingest/gaps.py`), with a guard on readings' objection dates
+calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+re-scored row only, never in the held-out row; and, because of that same reading, a prompt that asks
+Claude once more when a reading comes back incomplete (ADR 0016) — the one prompt informed by these
+letters — which changes no row until its answer for that letter is recorded."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
