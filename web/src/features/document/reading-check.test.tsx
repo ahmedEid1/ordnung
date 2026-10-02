@@ -12,6 +12,7 @@ import { qk } from "@/api/hooks";
 import { DocumentWarnings, READING_CHECK_SLOT } from "./Warnings";
 import { ItemsList } from "./ItemsList";
 import { germanRuns } from "./fact-text";
+import { NO_REASON, PleaseCheckCard } from "@/features/today/SideCards";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "./fixtures";
 
 function client() {
@@ -58,6 +59,26 @@ const placeholder = makeItem({
 });
 
 const scam = makeSuggestion({ id: "sug_scam", kind: "scam", title: "Possible scam", refs: [{ type: "document", id: "doc_1" }] });
+
+describe("the to-do Ordnung adds, round 3 (UX review 3)", () => {
+  it("offers no “Correct” on an undated deadline of its own: there is no date to call correct (R3UX-2)", () => {
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: makeDoc({ status: "needs_review" }), items: [undatedDeadline] })} />, {
+      client: client(),
+    });
+    expect(screen.queryByRole("button", { name: "Correct" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Set a date" })).toBeInTheDocument();
+  });
+
+  it("keeps the evidence chip on a dated to-do of its own, which quotes the notice (V3T-2)", () => {
+    renderWithProviders(<ItemsList items={[dated]} docId="doc_1" />, { client: client() });
+    expect(screen.queryByText("Added by Ordnung")).toBeNull();
+  });
+
+  it("still says what to do on Today for a letter in review whose warnings name no reason (R3UX-3)", () => {
+    renderWithProviders(<PleaseCheckCard docs={[makeDoc({ status: "needs_review", warnings: [] })]} />, { client: client() });
+    expect(screen.getByText(NO_REASON)).toBeInTheDocument();
+  });
+});
 
 describe("the to-do Ordnung adds, round 2 (UX review 2)", () => {
   it("marks the remedy in parentheses German (R2UX-8)", () => {

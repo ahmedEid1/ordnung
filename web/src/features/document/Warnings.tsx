@@ -560,7 +560,8 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
             <Button size="sm" variant="secondary" icon={Check} onClick={() => markDone(item, { title: "Marked as read" })} disabled={pending}>
               I've read it — nothing to do
             </Button>
-          ) : (
+          ) : own && !item.due_date ? null : (
+            // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
             <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
               Correct
             </Button>

@@ -138,12 +138,16 @@ export function isOpen(item: Pick<Item, "status" | "snoozed_until">, today: stri
 /** Which letter an item asks for, if any (cancellation for contract notice dates, objection for remedies). */
 export function draftKindFor(item: Item): DraftKind | null {
   const nature = item.date_spec?.nature;
+  // a court action (Klage) Ordnung took from the letter's notice: a letter to the authority doesn't stop it
+  if (item.slot_key === "check:reading" && /\(Klage\)\s*$/.test(item.title)) return null;
   if (nature === "objection") return "objection";
   if (item.contract_id && (item.kind === "deadline" || nature === "notice")) return "cancellation";
   return null;
 }
 
 function needsCheckFor(item: Item, reviewIds: Set<string>): boolean {
+  // Ordnung's own to-do the person confirmed or dated: nothing left to check (as `needsCheck` on the letter page)
+  if (item.slot_key === "check:reading" && item.grounding === "user") return false;
   return (
     item.grounding === "unverified" ||
     item.computation?.confidence === "low" ||
