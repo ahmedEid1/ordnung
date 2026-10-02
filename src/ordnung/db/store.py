@@ -626,7 +626,7 @@ class Store:
         closer = self._local.closer = _ConnectionToken()
         ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn)
         # not at exit: a daemon thread may still be using its connection then
-        ended.atexit = False  # type: ignore[misc]  # a property; typeshed's __slots__ leave it out
+        ended.atexit = False  # type: ignore[misc, unused-ignore]  # older typeshed declares no atexit
         return conn
 
     @contextmanager
