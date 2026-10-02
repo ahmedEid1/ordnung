@@ -522,16 +522,30 @@ def test_of_two_notices_the_earliest_counts_whatever_their_start() -> None:
     assert got == FROM_LETTER_DUE and computed.notice
 
 
-def test_a_formally_served_notice_from_notification_starts_on_the_confirmed_service() -> None:
-    """D3-5: formal service ("Postzustellungsurkunde") of a notice counted from notification starts on the service
-    date the person confirmed — never the letter's date's earlier, passed one."""
+def _served(arrived: date) -> Any:
+    """A notice from notification on a letter served formally (Postzustellungsurkunde), a reading counting a
+    month from the arrival, and the arrival the person entered."""
     pages = [page(*HEAD[:4], "Per Postzustellungsurkunde", *HEAD[4:], NOTICE, WHERE)]
     spec = {"type": "relative", "amount": 1, "unit": "months", "anchor": "receipt", "delivery_rule": "none"}
     reading = reading_with(objection(spec, quote=NOTICE))
     [verified] = verify_extraction("doc_x", reading, pages, check_reading=True).items
-    ctx = replace(ctx_for(reading), received_date=date(2026, 11, 16), received_confirmed=True)
-    computed = compute_item(verified, ctx, postal_buffer_days=3)
-    assert computed.due_date == "2026-12-16" and not computed.conflict
+    ctx = replace(ctx_for(reading), received_date=arrived, received_confirmed=True)
+    return compute_item(verified, ctx, postal_buffer_days=3)
+
+
+def test_a_formally_served_notice_keeps_the_letter_s_date_beside_a_late_arrival() -> None:
+    """Later audit, round 4, R4L-1 (round 3's D3-5 undone): an arrival 10 days after the letter's date may be the
+    pickup after a deposit at the post office, or "today" saved weeks later, while the yellow envelope's date is
+    earlier — the notice counted from the letter's date is kept, the earlier, and the to-do is "Please check"
+    (2026-12-07, never 2026-12-16)."""
+    computed = _served(date(2026, 11, 16))
+    assert computed.due_date == "2026-12-07" and computed.conflict and computed.notice
+
+
+def test_a_formally_served_notice_within_reach_of_the_letter_s_date_keeps_the_arrival() -> None:
+    """R4L-1: an arrival within the reach of the notice's date stands (2026-12-10, no second date)."""
+    computed = _served(date(2026, 11, 10))
+    assert computed.due_date == "2026-12-10" and not computed.conflict
 
 
 LIST_ABOVE = (

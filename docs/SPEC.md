@@ -514,10 +514,11 @@ dates: the earlier kept, both named — "Claude's reading and the letter's own i
 "Please check"); decided on the letter's words alone (a live notice that can be dated, its own sentence's
 periods, the one ending first; never the reading's kind or date), counted from the date the first page
 names as its own (none without one) and from every earlier start the letter's stored dates allow, without
-the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice from
-service or formal service starts on an arrival the person confirmed. Recomputed too, also
-once the person confirmed it. Measured on every recorded reading, the reading's date is 0 to 7 days after
-the notice's, so it never fires there.
+the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice whose own
+words count from service or arrival starts on an arrival the person confirmed (one from notification on a
+formally served letter keeps the letter's date). Recomputed too, also once the person confirmed it.
+Measured on every recorded reading, the reading's date is 0 to 7 days after the notice's, so it never
+fires there.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**

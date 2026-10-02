@@ -329,8 +329,14 @@ _EVENT = re.compile(
 #: How far (a share of the page's height) a column's value may stand under its label.
 _UNDER_REACH = 0.05
 #: An appointment's block around a "Datum:" line: its heading above ("Ihr Termin:"), its time below ("Uhrzeit: …").
-_BLOCK_ABOVE = re.compile(r"\b(?:termin\w*|appointment|einladung|vorsprache)\b[^:]*:\s*$", re.IGNORECASE)
-_BLOCK_BELOW = re.compile(r"^\s*(?:uhrzeit|time|beginn)\b", re.IGNORECASE)
+_BLOCK_ABOVE = re.compile(
+    r"\b(?:termin\w*|appointment|einladung|vorsprache|vorladung|wann)\b[^:]*:\s*$", re.IGNORECASE
+)
+_BLOCK_BELOW = re.compile(
+    # never "Ort:" or "Raum:" alone: a sender's info block has them under its own "Datum:" line
+    r"^\s*(?:uhrzeit|time|beginn)\b|^\s*(?:(?:zeit|um)\s*:?\s*)?\d{1,2}[:.]\d{2}\s*uhr\b",
+    re.IGNORECASE,
+)
 #: Where a letter's body starts.
 _SALUTATION = re.compile(r"(?:sehr\s+geehrte|guten\s+tag|hallo\b|liebe[rs]?\b|dear\b|hello\b)", re.IGNORECASE)
 
@@ -676,7 +682,9 @@ def _under(words: list[Box], value: str) -> bool:
     )
 
 
-def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Statement]:
+def _header_date(
+    text: str, words: list[Box], grounding: Grounding, *, blocks: bool = True
+) -> list[_Statement]:
     """The date the letter's header gives for it: the first "Datum:" / "Date:" label of its first page's
     header (:func:`_header`), with its date after it on the same line ("Datum: 02.03.2026", "Datum
     22.09.2026") or under it on the next (a column's label above its value: on the page, right under the
@@ -697,8 +705,7 @@ def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Sta
                 day is None
                 or "|" in line
                 or _EVENT.search(line)
-                or _BLOCK_ABOVE.search(above)
-                or _BLOCK_BELOW.search(below)
+                or (blocks and (_BLOCK_ABOVE.search(above) or _BLOCK_BELOW.search(below)))
             ):
                 return []  # an appointment's block ("Ihr Termin:" / "Datum: …" / "Uhrzeit: …")
             phrase = re.sub(r"\s+", " ", line[label.start("label") : end]).strip()
@@ -729,14 +736,16 @@ def _header_date(text: str, words: list[Box], grounding: Grounding) -> list[_Sta
     return []
 
 
-def letter_statements(pages: Sequence[PageInput]) -> list[_Statement]:
+def letter_statements(pages: Sequence[PageInput], *, blocks: bool = True) -> list[_Statement]:
     """Every deadline statement :func:`find_rivals` can read in the letter, and the dates it gives for
-    itself (in its text, and in its first page's header: :func:`_header_date`)."""
+    itself (in its text, and in its first page's header: :func:`_header_date`). ``blocks``: a "Datum:" line in
+    an appointment's block ("Uhrzeit: …" under it) is no date of the letter's — for its start; a rival only
+    ever lowers a date, so it keeps that line (a print time under the letter's own date)."""
     found: list[_Statement] = []
     for index, page in enumerate(pages):
         text, grounding = _page_text(page)
         if index == 0:
-            found += _header_date(text, _page_words(page), grounding)
+            found += _header_date(text, _page_words(page), grounding, blocks=blocks)
         for clause, dates in _clauses(text):
             found += _explicit(clause, dates, grounding)
             found += _relative(clause, grounding)
@@ -828,7 +837,7 @@ def find_rivals(
         # an optional earlier day ("möglichst bis"): which date must be met is the reading's to tell
         nature = None
     rivals: list[Rival] = []
-    for statement in letter_statements(pages):
+    for statement in letter_statements(pages, blocks=False):
         if statement.letter_date is not None:
             if item.date.type == "relative":
                 rivals.append(
@@ -857,7 +866,7 @@ def law_rivals(spec: DateSpec, pages: Sequence[PageInput]) -> tuple[Rival, ...]:
         (statement.phrase, statement.letter_date): Rival(
             spec, statement.phrase, statement.grounding, statement.letter_date, statement.quote
         )
-        for statement in letter_statements(pages)
+        for statement in letter_statements(pages, blocks=False)
         if statement.letter_date is not None
     }
     return tuple(rivals.values())

@@ -412,8 +412,10 @@ the letter allows:
   kept, both are named, `low` and "Please check"), also when recomputed and once confirmed. The notice's
   date is decided on the letter's words alone: the live notices that can be dated, their own sentences'
   periods, the one ending first, counted from the date the first page names as its own (never the
-  reading's date or kind), without the letter's kind, and from a confirmed arrival for a period from
-  service. On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a weekend).
+  reading's date or kind), without the letter's kind, and from a confirmed arrival only for a period its
+  own words count from service or arrival (one from notification on a formally served letter keeps the
+  letter's date). On every recorded reading the two are 0 to 7 days apart (deemed delivery, a holiday, a
+  weekend).
 
 | Letter dated | Notice | Sender's Land | Delivered | Deadline |
 |---|---|---|---|---|
