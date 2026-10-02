@@ -369,7 +369,8 @@ that dates an objection on a letter whose visible text shows an administrative a
 speaks of a remedy against that letter (not a later decision's, one already lodged, a direct debit's or one
 the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps.py`, SPEC
 § 8; no model call) and files **one** to-do, always `low` and "Please check". Its date is never later than
-the letter allows:
+the letter allows when the letter's own date is read (ADR 0015 lists the planted layouts that can defeat
+this):
 
 - **The period.** Every period a sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an
   appeal states — and the sentence after it, when that names neither a remedy nor a payment ("Monatsfrist"

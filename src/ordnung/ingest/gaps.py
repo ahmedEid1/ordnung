@@ -15,7 +15,7 @@ photo's transcript; never ``Page.hidden``), with two rules (:func:`reading_gap`;
 
 Either way the letter gets **one** to-do in slot :data:`CHECK_SLOT` (:func:`check_item`), always ``low`` and
 "Please check" (:data:`~ordnung.ingest.verify.READING_INCOMPLETE`). Its date is never later than the letter
-allows:
+allows when the letter's own date is read (ADR 0015 lists the planted layouts that can defeat this):
 
 * **the period** is the one of every period the notices state (and the sentence after each, when that one
   goes on about it) that ends first, counted from the letter's date; it is dated only when that is at least a

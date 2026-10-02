@@ -96,3 +96,24 @@ A general order (*Allgemeinverfügung*) deemed notified two weeks after its publ
 its correct date from that notification gets the notice's earlier date beside it (counted from the letter's
 own date) and "Please check" — the 7-day reach can't tell that fiction from a planted later start; accepted
 as rare, never later.
+
+## Review and known limits
+The check was reviewed in four adversarial rounds, six lenses each (dates, false alarms, attacks, tests,
+the benchmark, what the person sees), every finding reproduced or refuted by an independent verifier and
+every fix checked against all earlier rounds' probes; the owner capped the loop after round 4. No fuzzed
+header and no realistic probe gives the check a date later than the letter allows; the planted layouts in
+the second point below can. Every to-do the check files is low and "Please check". Left as known limits:
+- An authority letter served formally (*Postzustellungsurkunde*) whose notice counts from notification:
+  an envelope date entered ten days or more after the letter's date gets a false, early "Please check".
+  A notice counted from service follows the arrival the person enters, so a post-office pickup day entered
+  as the arrival counts later than the envelope's date.
+- Some own-date forms are read weakly or not at all (a bare first-line date, "Ort, Datum:", a place-date
+  merged with "Ihr Zeichen:"); the check then files no date. Where the letter's own date is unread, a
+  planted later "place, date" line or a few appointment-block layouts in the header can set its start, so
+  its date can come out later than the letter allows (the start is never after the day the letter arrived
+  or today).
+- A reminder that restates another decision's notice with "Hiergegen …" can still date the check from the
+  reminder. A decision whose notice refers to other "…bescheid vom" dates, or a Widerspruchsbescheid's own
+  reasoning, can leave the to-do undated or up to twelve days early.
+- When two dates the first page names as its own lie more than 14 days apart, the guard counts the
+  letter's notice from the later one; it can only lower a reading's date, so a later start only weakens it.
