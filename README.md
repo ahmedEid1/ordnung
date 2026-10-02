@@ -202,6 +202,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 | **Ordnung**, held-out split with the two-dates check⁶ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | 96.4 % [90.9–100] | **0 %** | yes |
+| **Ordnung**, second held-out split with the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -235,9 +236,17 @@ split's two letters of the same class, whose dates it leaves as they were read a
 ⁷ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the last change
 to how letters are read and checked, by an agent that read neither the reading code nor the prompts nor
 any result; a second agent audited the labels blind (all 56 matched). Recorded once on Sonnet 5 with every
-condition, nothing tuned on them. One code change came after them: their label audit found that
-Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025; no letter of any split is posted
-in that window, so it changes no date here.
+condition, nothing tuned on them. Two code changes came after them: their label audit found that
+Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025 (no letter of any split is posted
+in that window, so it changes no date here); and the reading check of row ⁸, written because of this
+split's one missed date.
+⁸ The same recorded outputs, replayed after a code-only check written because of that missed date: when
+Claude's reading comes back nearly blank, or leaves out the objection deadline that the letter's own
+instructions on how to object state, Ordnung files that deadline itself, counted from the earliest date
+the letter gives for itself, at low confidence and marked "Please check" (with no date when the letter's
+dates or periods disagree). The split informed it, so this row is not held-out; the row above stays the
+held-out number. It fires on no other letter of the four splits or the demo. In the app, which doesn't
+know the sender's Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
 
 What the numbers say:
 
@@ -275,7 +284,9 @@ What the numbers say:
   the model alone 43 of 56 with six. One miss is the deliberate count from a tax notice's own date (early).
   The other is new: on a letter with a visible instruction to AI assistants, the reading came back with no
   sender, no date and no to-do. Ordnung warned that the letter addresses an AI, but did not report its
-  objection deadline.
+  objection deadline. Ordnung now catches such a reading itself and files the deadline from the letter's
+  own instructions on how to object, marked "Please check": replayed, the same readings give 55 of 56 and
+  no late date (row ⁸, not held-out any more).
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
@@ -441,6 +452,11 @@ More in [docs/architecture.md](docs/architecture.md).
   date: Ordnung doesn't invent a start. A letter read before extraction prompt version 12 holds no day of
   the month, no last working day and no statutory notice periods; *Read again* reads it with the current
   prompt.
+- The check for incomplete readings works from the letter's text with fixed rules, in German and English
+  wording only. When the letter's dates or periods disagree, or its own date can't be read, it files the
+  to-do without a date for you to fill in. It doesn't catch a reading that keeps the sender but drops a
+  deadline other than the objection deadline, and some layouts an attacker plants can still mislead it
+  ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - A single user on a single computer. There is no sync between computers (calendar sync only sends
@@ -456,7 +472,7 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0014 proof files are deleted for good](docs/decisions/0014-proof-files-are-deleted-for-good.md)
+  [0015 incomplete readings get a check written by code](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md)
 
 ## How this was built
 

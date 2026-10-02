@@ -320,6 +320,37 @@ def test_readme_second_held_out_row_matches_its_one_recording() -> None:
     assert ordnung["adversarial"]["conflicting_dates_handled"]["k"] == 2
 
 
+def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
+    """Row ⁸: the same holdout2 recordings replayed with the reading check (not held-out); only the empty
+    reading of the injection letter changes, to its labelled date, and the row above stays held-out."""
+    readme = _readme()
+    rescored = _results("2026-10-01-claude-sonnet-5-holdout2-rescored.json")
+    held = _results("2026-10-01-claude-sonnet-5-holdout2.json")
+    meta = rescored["meta"]
+    assert meta["split"] == "holdout2" and meta["backend"] == "replay" and meta["conditions"] == ["ordnung"]
+    after = rescored["metrics"]["ordnung"]
+    assert after["dangerous_late_rate"]["k"] == 0
+    assert (
+        "| **Ordnung**, second held-out split with the reading check⁸ | "
+        f"{_with_interval(after['due_date_accuracy'])} | **0 %** | no |"
+    ) in readme
+    assert f"give {int(after['due_date_accuracy']['k'])} of 56 and\n  no late date (row ⁸" in readme
+    assert after["reading_check"] == {"filed": 1, "unmatched": 0, "letters": 1}
+
+    def outcomes(run: dict[str, Any]) -> dict[str, str]:
+        return {
+            entry["id"]: entry["conditions"]["ordnung"]["score"]["items"][0]["outcome"]
+            for entry in run["entries"]
+            if entry["conditions"]["ordnung"]["score"]["items"]
+        }
+
+    before, now = outcomes(held), outcomes(rescored)
+    changed = {key for key in before if before[key] != now.get(key)}
+    assert changed == {"holdout2-adversarial-injection_visible-1"}
+    assert now["holdout2-adversarial-injection_visible-1"] == "correct"
+    assert "holdout2-adversarial-injection_visible-1" in meta["note"]
+
+
 def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
     """README's Ask benchmark table and its sizes are the newest recorded Ask run's."""
     readme = _readme()
