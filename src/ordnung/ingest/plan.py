@@ -4,6 +4,8 @@
   AI transcript → ``model_read``, not found → ``unverified``) and checks each item's DateSpec and
   amount against its quote (:func:`~ordnung.ingest.verify.spec_consistency`); a recurring to-do's due
   day its quote doesn't name is grounded on the letter's sentence that states it (:func:`day_evidence`).
+  With ``check_reading`` it also checks the reading itself against the letter's visible text, and files
+  the one to-do an incomplete reading gets (:mod:`ordnung.ingest.gaps`).
 * :func:`compute_item` runs the rules engine and lowers the confidence per the § 21 rubric using
   the grounding and consistency results, listing the reasons in the receipt's warnings.
 * :func:`write_plan` upserts items by ``slot_key`` (never touching rows the person edited), deletes
@@ -20,6 +22,7 @@ quote and per to-do, :mod:`ordnung.trace.facts`); without one they record nothin
 
 from __future__ import annotations
 
+import calendar
 import hashlib
 import re
 from collections import Counter
@@ -30,7 +33,21 @@ from typing import Any, Literal
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.ingest.conflicts import Rival, find_rivals, settle
+from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, rival_due, settle, settle_law
+from ordnung.ingest.gaps import (
+    CHECK_SLOT,
+    LETTER_DATE_SPAN,
+    NOTICE_REACH,
+    RemedyNotice,
+    check_item,
+    check_reasons,
+    dates_the_objection,
+    gap_warning,
+    notice_rival,
+    remedy_notices,
+    square_gap_warnings,
+    start_variants,
+)
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
 from ordnung.ingest.verify import (
@@ -39,12 +56,14 @@ from ordnung.ingest.verify import (
     DATE_WITHOUT_YEAR,
     DAY_OF_MONTH_NOT_IN_QUOTE,
     WORKING_DAY_NOT_IN_QUOTE,
+    DateMention,
     DueDay,
     PageInput,
     check_quote,
     day_of_month_consistency,
     grade_reading,
     ground_evidence,
+    on_month_end,
     parse_amounts,
     parse_dates,
     payment_day_sentence,
@@ -67,6 +86,7 @@ from ordnung.models import (
     LetterKind,
     Party,
     PaymentDetails,
+    Recurrence,
     Remedy,
 )
 from ordnung.payments import is_collected_or_incoming, pays_on_site
@@ -93,6 +113,7 @@ from ordnung.rules.advice import (
     statement_late,
 )
 from ordnung.rules.deadlines import parse_date
+from ordnung.rules.explain import fmt_date
 from ordnung.rules.routing import (
     DerivedDeadline,
     alternative_notice,
@@ -152,7 +173,9 @@ class VerifiedItem:
     """An extracted item with its evidence and the problems found between its values and quote, and the
     sentence elsewhere in the letter that states its recurrence's due day when its quote doesn't
     (:func:`day_evidence`). ``rivals``: the letter's other statements that date the same obligation
-    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle."""
+    (:func:`~ordnung.ingest.conflicts.find_rivals`), for :func:`compute_item` to settle. ``notice``: for a to-do
+    that dates the objection, the period the letter's own remedy notice gives
+    (:func:`~ordnung.ingest.gaps.notice_rival`), a rival only when it ends weeks earlier."""
 
     item: ExtractedItem
     evidence: Evidence
@@ -160,6 +183,7 @@ class VerifiedItem:
     slot_key: str
     rivals: tuple[Rival, ...] = ()
     day_evidence: Evidence | None = None
+    notice: Rival | None = None
 
     @property
     def all_evidence(self) -> list[Evidence]:
@@ -180,8 +204,10 @@ class VerifiedItem:
 
     @property
     def needs_check(self) -> bool:
-        """A dated item whose quote was not found or does not state its values ("Please check")."""
-        return self.dated and (self.evidence.grounding == "unverified" or bool(self.reasons))
+        """A dated item whose quote was not found or does not state its values ("Please check") — and the
+        to-do code files for an incomplete reading, dated or not (:data:`~ordnung.ingest.gaps.CHECK_SLOT`)."""
+        dated = self.dated or self.slot_key == CHECK_SLOT
+        return dated and (self.evidence.grounding == "unverified" or bool(self.reasons))
 
 
 def needs_check(item: Item) -> bool:
@@ -189,8 +215,10 @@ def needs_check(item: Item) -> bool:
     (a to-do marked done or "not a real to-do" leaves nothing to check). A deadline the law adds
     (``origin="rule"``) quotes nothing, so it has nothing to check — unless it counts from an end date
     the letter doesn't write (:func:`sync_rule_items` gives it the termination's sentence as evidence,
-    not stating that date)."""
+    not stating that date). The to-do code files for an incomplete reading counts as dated whether or not
+    it has a date (:data:`~ordnung.ingest.gaps.CHECK_SLOT`): it is "Please check" until the person acts on it."""
     dated = item.due_date is not None or (item.date_spec is not None and item.date_spec.type != "none")
+    dated = dated or item.slot_key == CHECK_SLOT
     if not dated or item.grounding == "user" or item.status not in ("open", "snoozed"):
         return False
     if item.origin == "rule":
@@ -224,7 +252,10 @@ def _page_text(page: PageInput) -> str:
 def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageInput]) -> bool:
     """Whether a value missing from the item's own sentence is written elsewhere in the letter
     (e.g. the invoice total two lines above "payable within 14 days", a monthly debit's day in the letter's
-    payment terms: :func:`day_evidence`), or is a schedule's occurrence rather than a single stated date."""
+    payment terms: :func:`day_evidence`), or is an occurrence of a schedule rather than a single stated date:
+    of one its quote dates (:func:`_on_schedule`: "fällig am 15.11.2026" every 3 months is 15.02.2027, never
+    15.12.2026), or any one when the quote dates none ("Abbuchung zum Monatsanfang": the month is the reading's,
+    its day is checked as the recurrence's day of the month)."""
     if reason in (WORKING_DAY_NOT_IN_QUOTE, DAY_OF_MONTH_NOT_IN_QUOTE):
         return day_evidence("", item, pages) is not None
     if reason == AMOUNT_NOT_IN_QUOTE and item.amount is not None:
@@ -232,26 +263,81 @@ def _stated_in_document(item: ExtractedItem, reason: str, pages: Sequence[PageIn
             abs(value - item.amount) < 0.005 for page in pages for value in parse_amounts(_page_text(page))
         )
     if reason in (DATE_NOT_IN_QUOTE, DATE_WITHOUT_YEAR) and item.date.type == "fixed":
-        if item.recurrence is not None:
-            return True  # "every month on the 15th": the date is the next occurrence of the schedule
-        target = item.date.date
+        target = _iso_date(item.date.date)
+        if target is None:
+            return False
+        rule = item.recurrence
+        quoted = [mention for mention in parse_dates(item.quote) if not mention.ambiguous]
+        if rule is not None and not quoted:
+            return True  # "Abbuchung zum Monatsanfang": any occurrence, the day is checked on its own
+        if rule is not None and any(_on_schedule(target, mention, rule) for mention in quoted):
+            return True  # "fällig am 15.11.2026" every 3 months: 15.02.2027 is its next occurrence
         for page in pages:
             for mention in parse_dates(_page_text(page)):
-                found = mention.as_date()
-                if target is not None and found is not None and found.isoformat() == target:
+                if mention.as_date() == target:
                     return True
     return False
 
 
-def _due_day(item: ExtractedItem) -> DueDay | None:
+def _on_schedule(target: date, anchor: DateMention, rule: Recurrence) -> bool:
+    """Whether ``target`` is an occurrence of ``rule``'s schedule from ``anchor``, a date the item's quote writes:
+    a whole number of the rule's intervals on from it — a date without a year by its month, in any year — and
+    on its day (or both on the last day of their months); on the rule's own day of the month, on or after the
+    anchor (:mod:`ordnung.recurrence`, point 10); on any day of its month for a working day, which dates it
+    there (point 8)."""
+    if rule.unit in ("days", "weeks"):
+        found = anchor.as_date()
+        step = max(1, rule.interval) * (7 if rule.unit == "weeks" else 1)
+        return found is not None and target >= found and (target - found).days % step == 0
+    months = max(1, rule.interval) * (12 if rule.unit == "years" else 1)
+    apart = target.month - anchor.month
+    if anchor.year is not None:
+        apart += (target.year - anchor.year) * 12
+    if apart < 0 or apart % months:
+        return False
+    last = calendar.monthrange(target.year, target.month)[1]
+    found = anchor.as_date()
+    if rule.working_day is not None:
+        return True
+    if rule.day_of_month is not None:
+        return target.day == min(rule.day_of_month, last) and (found is None or target >= found)
+    return target.day == anchor.day or (target.day == last and on_month_end(anchor))
+
+
+def _iso_date(value: str | None) -> date | None:
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
+def first_date_written(item: ExtractedItem, pages: Sequence[PageInput]) -> date | None:
+    """The reading's first date when its letter writes it: its fixed DateSpec's date, written with its year in
+    the item's quote or on one of the letter's pages — the date the middle of each quarter it states must be
+    (:func:`~ordnung.ingest.verify.mid_quarter_named`). ``None`` for a relative or undated reading, or a date
+    the letter doesn't write (a month or two off its own due date: 15.12.2026 for a fee due 15.11.2026)."""
+    first = _iso_date(item.date.date) if item.date.type == "fixed" else None
+    if first is None:
+        return None
+    texts = [item.quote, *(_page_text(page) for page in pages)]
+    written = any(
+        not mention.ambiguous and mention.as_date() == first
+        for text in texts
+        for mention in parse_dates(text)
+    )
+    return first if written else None
+
+
+def _due_day(item: ExtractedItem, first: date | None) -> DueDay | None:
     """The due day of the item's recurrence that its quote doesn't name: its working day, else the day of the
-    month it dates each month by (``None`` when the quote names it, or there is none)."""
+    month it dates each month by (``None`` when the quote names it, or there is none); ``first``: its first
+    date as the letter writes it (:func:`first_date_written`)."""
     rule = item.recurrence
     working_day = rule.working_day if rule is not None else None
     if working_day_consistency(item.quote, working_day):
         return ("working_day", working_day) if working_day is not None else None
     day = rule_day_of_month(rule)
-    if day_of_month_consistency(item.quote, day, rule):
+    if day_of_month_consistency(item.quote, day, rule, first):
         return ("day_of_month", day) if day is not None else None
     return None
 
@@ -264,10 +350,12 @@ def day_evidence(doc_id: str, item: ExtractedItem, pages: Sequence[PageInput]) -
     page, ``model_read`` on a transcript). ``None`` when the quote names the day, the letter states no such
     day, another one or two different ones, or the sentence isn't found on the pages — the day then stays
     unconfirmed (``WORKING_DAY_NOT_IN_QUOTE`` / ``DAY_OF_MONTH_NOT_IN_QUOTE``)."""
-    due = _due_day(item)
+    first = first_date_written(item, pages)
+    due = _due_day(item, first)
     if due is None:
         return None
-    sentence = payment_day_sentence([_page_text(page) for page in pages], due, item.quote, item.recurrence)
+    texts = [_page_text(page) for page in pages]
+    sentence = payment_day_sentence(texts, due, item.quote, item.recurrence, first)
     if sentence is None:
         return None
     evidence = ground_evidence(doc_id, sentence, pages)
@@ -287,17 +375,22 @@ def consistency_reasons(item: ExtractedItem, pages: Sequence[PageInput]) -> tupl
     grade_reading`), for every occurrence of its schedule (:func:`~ordnung.ingest.verify.regrade`). The
     working day still dates the to-do (:mod:`ordnung.recurrence`, point 8). A day of the month that dates it
     (``recurrence.day_of_month`` without a working day, point 10) is graded the same way
-    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words,
-    or by dates that state it as the recurrence's schedule ("fällig jeweils am 10.03., 10.06., 10.09. und
-    10.12.", never a single start date: :func:`~ordnung.ingest.verify.schedule_days_named`). Either day
-    counts as stated, too, when the letter's one sentence about when the payment is due states it
-    (:func:`day_evidence`, which the to-do gets as its evidence)."""
+    (:func:`~ordnung.ingest.verify.day_of_month_consistency`, ``DAY_OF_MONTH_NOT_IN_QUOTE``) — named in words
+    ("zur Monatsmitte" is the 15th), by dates that state it as the recurrence's schedule ("fällig jeweils am
+    10.03., 10.06., 10.09. und 10.12.", "31.03., 30.06., 30.09. und 31.12." the last day, never a single start
+    date: :func:`~ordnung.ingest.verify.schedule_days_named`), or as the middle of each quarter for a reading
+    every three months whose fixed date is that middle and written in the letter ("in der Mitte eines
+    Dreimonatszeitraums", the 15th: :func:`~ordnung.ingest.verify.mid_quarter_named`,
+    :func:`first_date_written`). Either day counts as stated, too, when the letter's one sentence about when
+    the payment is due states it (:func:`day_evidence`, which the to-do gets as its evidence)."""
     found: list[str] = []
     if item.date.type != "none" or item.amount is not None:
         found = spec_consistency(item.quote, item.date, item.amount)[1]
     working_day = item.recurrence.working_day if item.recurrence is not None else None
     found += working_day_consistency(item.quote, working_day)
-    found += day_of_month_consistency(item.quote, rule_day_of_month(item.recurrence), item.recurrence)
+    found += day_of_month_consistency(
+        item.quote, rule_day_of_month(item.recurrence), item.recurrence, first_date_written(item, pages)
+    )
     return tuple(reason for reason in found if not _stated_in_document(item, reason, pages))
 
 
@@ -314,6 +407,8 @@ def _verify_item(
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
         reasons = consistency_reasons(item, pages)
+        if key == CHECK_SLOT:  # Ordnung's own to-do: graded as such (ordnung.ingest.gaps.check_reasons)
+            reasons = check_reasons(reasons)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
         day = day_evidence(doc_id, item, pages)
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
@@ -347,11 +442,28 @@ def _optional_evidence(
 
 
 def verify_extraction(
-    doc_id: str, extraction: DocumentExtraction, pages: Sequence[PageInput], *, trace: Span = NO_SPAN
+    doc_id: str,
+    extraction: DocumentExtraction,
+    pages: Sequence[PageInput],
+    *,
+    trace: Span = NO_SPAN,
+    check_reading: bool = False,
+    injected: bool = False,
+    today: date | None = None,
 ) -> Verification:
     """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
 
-    ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`).
+    With ``check_reading`` (the pipeline and the benchmark's Ordnung condition) the reading itself is checked
+    against the letter's visible text: an implausibly empty one, or one that leaves out the objection deadline
+    the letter's remedy notice states, gets one more to-do in slot :data:`~ordnung.ingest.gaps.CHECK_SLOT`
+    (:func:`~ordnung.ingest.gaps.check_item`, graded ``READING_INCOMPLETE``: ``low`` and "Please check") and a
+    warning that says why — and, for a court action the reading's remedy doesn't name, the "get advice"
+    warning a Klage gets (:func:`remedy_warnings`). ``injected``: the letter carries text addressed to an AI
+    (the to-do's action then says where to send the objection); ``today``: the day the letter arrived or is
+    read (a start resting on one date long before it is none: :func:`~ordnung.ingest.gaps.check_item`).
+
+    ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`); a reading
+    found incomplete adds what was wrong and which to-do it got (:func:`ordnung.trace.facts.reading_check`).
     """
     with trace.span("verify", "Check quotes", key="quotes", stage="verify") as step:
         items = [
@@ -389,9 +501,35 @@ def verify_extraction(
                 trace=step,
             ),
         )
+        if check_reading:
+            items[:] = with_notice(items, extraction, pages)
+        found = check_item(extraction, pages, injected=injected, today=today) if check_reading else None
+        if found is not None:
+            items.append(
+                _verify_item(
+                    doc_id,
+                    found.item,
+                    CHECK_SLOT,
+                    pages,
+                    others=extraction.items,
+                    index=len(items),
+                    trace=step,
+                )
+            )
+            step.set(**facts.reading_check(found.gap, found.kind))
         verification.warnings = _verification_warnings(verification)
+        if found is not None:
+            verification.warnings.append(gap_warning(found.gap, found.kind, found.remedy))
+            if found.remedy == "klage" and (extraction.remedy is None or extraction.remedy.type != "klage"):
+                verification.warnings += remedy_warnings(Remedy(type="klage"))
         grounded = [
-            *(evidence for verified in items for evidence in verified.all_evidence),
+            # the placeholder "Read this letter yourself" quotes nothing: it is no quote looked for
+            *(
+                evidence
+                for verified in items
+                for evidence in verified.all_evidence
+                if verified.slot_key != CHECK_SLOT or verified.item.quote
+            ),
             *(fact.evidence for fact in verification.key_facts if fact.evidence is not None),
             *verification.contract_evidence,
             *(e for e in (verification.change_evidence, verification.remedy_evidence) if e is not None),
@@ -405,9 +543,40 @@ def verify_extraction(
     return verification
 
 
+def with_notice(
+    items: Sequence[VerifiedItem],
+    extraction: DocumentExtraction | None,
+    pages: Sequence[PageInput],
+    notices: Sequence[RemedyNotice] | None = None,
+) -> list[VerifiedItem]:
+    """The reading's to-dos, each one that dates the objection with the period the letter's own notice gives
+    beside it (:attr:`VerifiedItem.notice`, :func:`~ordnung.ingest.gaps.notice_rival`) — never the to-do
+    Ordnung files itself. One the person confirmed keeps it too: the date they confirmed was the earlier one,
+    and a recompute never moves it later. ``notices``: the letter's remedy notices, when already found
+    (:func:`~ordnung.ingest.gaps.remedy_notices`)."""
+    if extraction is None:
+        return list(items)
+    notices = remedy_notices(pages) if notices is None else notices
+    # every to-do that dates the objection, also one a letter rule counts back from a tenancy's end (the
+    # rival only ever lowers its date)
+    dating = [
+        verified.slot_key != CHECK_SLOT and dates_the_objection(verified.item, notices) for verified in items
+    ]
+    rival = notice_rival(extraction, pages, notices) if any(dating) else None
+    if rival is None:
+        return list(items)
+    return [
+        replace(verified, notice=rival) if date else verified
+        for verified, date in zip(items, dating, strict=True)
+    ]
+
+
 def _verification_warnings(verification: Verification) -> list[str]:
     warnings = []
-    unchecked = sum(verified.needs_check for verified in verification.items)
+    # the to-do an incomplete reading gets has a warning of its own (ordnung.ingest.gaps.gap_warning)
+    unchecked = sum(
+        verified.needs_check for verified in verification.items if verified.slot_key != CHECK_SLOT
+    )
     if unchecked:
         dates = "1 date" if unchecked == 1 else f"{unchecked} dates"
         # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
@@ -595,6 +764,9 @@ class ComputedDate:
     send_by: str | None
     source: DueDateSource
     conflict: bool = False
+    #: The letter's own notice ended weeks before the reading's objection date and was set beside it
+    #: (:attr:`VerifiedItem.notice`).
+    notice: bool = False
 
 
 def grade_receipt(receipt: ComputationReceipt, verified: VerifiedItem) -> ComputationReceipt:
@@ -610,14 +782,25 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
     is the period's own words too (``RuleContext.quote``): for a sender filed as private, one naming an
     administrative act keeps a late arrival from moving the date later, as the spec's words do
     (:func:`ordnung.rules.deadlines.may_be_public`); it never brings deemed delivery back.
+
+    The to-do code files for an incomplete reading (:data:`~ordnung.ingest.gaps.CHECK_SLOT`) gets the earliest
+    date of its own start and every earlier one the letter's dates as stored allow
+    (:func:`~ordnung.ingest.gaps.start_variants`), so neither a corrected letter date nor an arrival day can
+    move it later, and a note when the letter's own date is earlier than the one stored.
     """
     spec = verified.item.date
     if spec.type == "none":
         return ComputedDate(receipt=None, due_date=None, send_by=None, source="none")
     ctx = replace(ctx, quote=verified.item.quote)
-    receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
+    if verified.slot_key == CHECK_SLOT:
+        receipt = _check_receipt(verified, ctx, postal_buffer_days=postal_buffer_days)
+    else:
+        receipt = grade_receipt(compute_due(spec, ctx, postal_buffer_days=postal_buffer_days), verified)
     fixed = spec.type == "fixed"
-    settled = settle(receipt, verified.item, verified.rivals, ctx, postal_buffer_days=postal_buffer_days)
+    notice = _notice_beside(verified, receipt, ctx, postal_buffer_days=postal_buffer_days)
+    settled = settle(
+        receipt, verified.item, (*verified.rivals, *notice), ctx, postal_buffer_days=postal_buffer_days
+    )
     if settled is not None:
         receipt, fixed = settled.receipt, settled.fixed
     source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
@@ -627,7 +810,112 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         send_by=receipt.send_by,
         source=source,
         conflict=settled is not None,
+        notice=bool(notice) and settled is not None,
     )
+
+
+def _notice_beside(
+    verified: VerifiedItem, receipt: ComputationReceipt, ctx: RuleContext, *, postal_buffer_days: int
+) -> tuple[Rival, ...]:
+    """The letter's own notice as a rival of the reading's objection date (:attr:`VerifiedItem.notice`) when,
+    counted in the same context from its earliest start, it ends more than
+    :data:`~ordnung.ingest.gaps.NOTICE_REACH` days earlier, or the reading's period is longer than the notice's
+    (:func:`_longer_period`) — :func:`~ordnung.ingest.conflicts.settle` then keeps it, the earlier. Counted
+    without the letter's kind: no letter rule meant for a model's reading (§ 574b BGB, § 558b BGB) applies to it.
+    A notice from service starts on a confirmed later arrival (:func:`_served_on_arrival`)."""
+    notice, own = verified.notice, parse_date(receipt.due_date)
+    if notice is None or own is None:
+        return ()
+    served = _served_on_arrival(notice, ctx)
+    start = parse_date(served.spec.anchor_date)
+    # from a confirmed later arrival: that start alone (an earlier one would undo what the person said)
+    variants = [(served.spec, ctx)] if served is not notice else start_variants(notice.spec, ctx)
+    notice = served
+    # the earliest the notice gives from every start the letter's dates as stored allow (a corrected letter
+    # date, an arrival before it: gaps.start_variants) near the letter's own — never a reading's date weeks
+    # earlier, which would give a passed date — counted without the letter's kind
+    found = [
+        (early, candidate)
+        for spec, variant in variants
+        if _near(parse_date(spec.anchor_date), start)
+        and (early := rival_due(candidate := replace(notice, spec=spec), own, variant, postal_buffer_days))
+        is not None
+    ]
+    if not found:
+        return ()
+    early, candidate = min(found, key=lambda pick: pick[0])
+    if early >= own:
+        return ()  # the reading's own date is the earlier
+    if (own - early).days > NOTICE_REACH or _longer_period(
+        verified, candidate, early, ctx, postal_buffer_days
+    ):
+        return (candidate,)
+    return ()
+
+
+def _near(day: date | None, start: date | None) -> bool:
+    """Whether a start for the notice is within :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days of the
+    letter's own (a corrected letter date, an arrival a few days early)."""
+    return day is not None and start is not None and abs((day - start).days) <= LETTER_DATE_SPAN
+
+
+#: A period from formal service or arrival (not from notification).
+_FROM_SERVICE = re.compile(r"zustell\w*|zugestellt|\bzugang\b|zugegangen|\berhalt\b", re.IGNORECASE)
+
+
+def _served_on_arrival(notice: Rival, ctx: RuleContext) -> Rival:
+    """A notice counted from service or arrival starts on the day the person confirmed the letter arrived
+    (the yellow envelope's date), as the reading's own does, when that is after the letter's date: only the
+    person sets a confirmed arrival, so the notice never overrides it."""
+    start = parse_date(notice.spec.anchor_date)
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    if (
+        notice.spec.delivery_rule != "none"
+        or start is None
+        or arrived is None
+        or arrived <= start
+        or not (notice.served or _FROM_SERVICE.search(notice.statement))
+    ):
+        return notice
+    return replace(notice, spec=notice.spec.model_copy(update={"anchor_date": arrived.isoformat()}))
+
+
+def _longer_period(
+    verified: VerifiedItem, notice: Rival, early: date, ctx: RuleContext, postal_buffer_days: int
+) -> bool:
+    """The reading's own period, counted from the notice's start as the notice counts, ends after the notice's
+    date: a longer period than the letter states (the reach is only for a start or delivery days read
+    differently)."""
+    spec = verified.item.date
+    if spec.type != "relative" or not spec.amount or spec.unit not in ("days", "weeks", "months"):
+        return False
+    same = notice.spec.model_copy(update={"amount": spec.amount, "unit": spec.unit})
+    plain = replace(ctx, letter_kind=None, quote=notice.statement)
+    found = parse_date(compute_due(same, plain, postal_buffer_days=postal_buffer_days).due_date)
+    return found is not None and found > early
+
+
+def _check_receipt(
+    verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days: int
+) -> ComputationReceipt:
+    """The receipt of the code-made to-do (:func:`compute_item`): the earliest of its start variants."""
+    spec = verified.item.date
+    receipts = [
+        grade_receipt(compute_due(variant, variant_ctx, postal_buffer_days=postal_buffer_days), verified)
+        for variant, variant_ctx in start_variants(spec, ctx)
+    ]
+    dated = [receipt for receipt in receipts if receipt.due_date is not None]
+    receipt = min(dated, key=lambda found: found.due_date or "") if dated else receipts[0]
+    written = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
+    stored = ctx.document_date
+    if written is not None and stored is not None and written < stored:
+        note = (
+            f"The letter gives {fmt_date(written)} for itself, earlier than the date stored for it "
+            f"({fmt_date(stored)}), so we count from {fmt_date(written)} to be safe — change this to-do's date "
+            "if the letter says otherwise."
+        )
+        receipt = receipt.model_copy(update={"warnings": [*receipt.warnings, note]})
+    return receipt
 
 
 def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:
@@ -1266,7 +1554,11 @@ def sync_rule_items(
     is no quote to grade — except the end a termination announces, which the model read: a to-do that
     counts from an end the letter doesn't write (the engine cites ``termination_end``, ``low``) gets the
     termination's sentence (``end_evidence``) as evidence that doesn't state its value, so it is marked
-    "Please check" (:func:`needs_check`). Rule to-dos the letter no longer has (its kind was corrected) are deleted
+    "Please check" (:func:`needs_check`). When the letter gives two dates for itself (its stored pages:
+    :func:`~ordnung.ingest.conflicts.law_rivals`), a deadline counted from its date or its arrival is counted
+    from each and keeps the earlier (:func:`~ordnung.ingest.conflicts.settle_law`: a step says why, a warning
+    names both, ``low``); its evidence is the letter's other date, not stating its value, so it is "Please
+    check" too. Rule to-dos the letter no longer has (its kind was corrected) are deleted
     unless the person acted on them; those the person edited are kept as they are. With ``create``
     false (a recompute after the region, buffer or arrival day changed) only the rule to-dos that still
     exist are updated: one the person deleted stays deleted — only reading the letter or choosing its
@@ -1280,10 +1572,24 @@ def sync_rule_items(
         for item in store.list_items(doc_id=document.id)
         if item.origin == "extracted" and item.date_spec is not None and item.computation is not None
     ]
-    receipts = {
-        entry.rule_id: compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
-        for entry in derived
-    }
+    pages = store.list_pages(document.id) if derived else []
+    receipts: dict[str, ComputationReceipt] = {}
+    # per rule that counts from the letter's date: the other dates the letter gives for itself
+    two_dates: dict[str, list[Evidence]] = {}
+    for entry in derived:
+        receipt = compute_due(entry.spec, ctx, postal_buffer_days=postal_buffer_days)
+        rivals = law_rivals(entry.spec, pages)
+        settled = settle_law(receipt, entry.spec, rivals, ctx, postal_buffer_days=postal_buffer_days)
+        if settled is not None:
+            receipt = settled.receipt
+            two_dates[entry.rule_id] = [
+                ground_evidence(document.id, rival.evidence, pages).model_copy(
+                    update={"value_consistent": False}
+                )
+                for rival in rivals
+                if rival.letter_date != ctx.document_date
+            ]
+        receipts[entry.rule_id] = receipt
     wanted = [
         entry
         for entry in derived
@@ -1316,6 +1622,7 @@ def sync_rule_items(
             if END_NOT_WRITTEN in receipt.rule_ids:
                 quote = end_evidence or Evidence(doc_id=document.id, quote="", grounding="unverified")
                 evidence = [quote.model_copy(update={"value_consistent": False})]
+            evidence += two_dates.get(entry.rule_id, [])
             fields = _rule_item_fields(entry, receipt, document=document, today=today, evidence=evidence)
             item = store.upsert_item_by_slot(document.id, slot, **fields)
             step.set(
@@ -1409,7 +1716,8 @@ def write_plan(
         )
     items = [*items, *rule_items]
     # the stored to-dos decide: one the person confirmed, paid or dismissed was kept and needs no check
-    unsure = any(needs_check(item) for item in store.list_items(doc_id=document.id))
+    stored = store.list_items(doc_id=document.id)
+    unsure = any(needs_check(item) for item in stored)
     status: DocumentStatus = "needs_review" if unsure else "processed"
     step.set(status=status, needs_check=sum(needs_check(item) for item in items))
     stamp = now_iso()
@@ -1430,7 +1738,10 @@ def write_plan(
         text_mode=text_mode,
         key_facts=verification.key_facts,
         references=extraction.references,
-        warnings=unique([*square_iban_claims(extraction.warnings, payment), *warnings]),
+        # "Read again" after the person confirmed, dated or dismissed Ordnung's own to-do: its warning stays gone
+        warnings=square_gap_warnings(
+            unique([*square_iban_claims(extraction.warnings, payment), *warnings]), stored
+        ),
         tax_relevant=extraction.tax_relevant,
         tax_note=extraction.tax_note,
         remedy=extraction.remedy,

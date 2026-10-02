@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"3c839d7c0064d8146a32690e7f8e23dab9fe719a9845990f5e40fdda4f076321\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2027-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-H2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterflens\",\"document_date\":\"2027-04-02\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"15/287/40312\"}],\"amounts\":[2766,3489,723],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.\",\"computation\":\"Letter dated (posting day) 02.04.2027, a Friday; no separate 'Tag der Aufgabe zur Post' is stated, so the document date is taken as the posting day. Deemed delivery per § 122 Abs. 2 Nr. 1 AO = 4th day after posting = 06.04.2027 (Tuesday) - not a Saturday, Sunday or holiday, so for the Finanzamt (§ 108 Abs. 3 AO) no shift of the delivery day is needed. The one-month objection period under § 355 Abs. 1 AO / §§ 187, 188 BGB starts the next day (delivery day itself not counted) and ends on the day with the same number in the following month: 06.05.2027. That day, 06.05.2027, is Christi Himmelfahrt (Ascension Day), a nationwide public holiday, so under § 108 Abs. 3 AO the period end moves to the next working day: 07.05.2027 (Friday), which is not itself a weekend or holiday.\",\"due_date\":\"2027-05-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The posting day was assumed to equal the printed document date (02.04.2027) because no separate 'Tag der Aufgabe zur Post' is stated in the letter; if the envelope was actually postmarked later, the deadline would shift accordingly.\",\"The refund of 723,00 € will be paid to the bank account given in the original tax return; no new bank details are requested in this letter, and none should ever be provided in response to such a letter without verification.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterflens",
+      "document_date": "2027-04-02",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "15/287/40312"
+        }
+      ],
+      "amounts": [
+        2766,
+        3489,
+        723
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.",
+          "computation": "Letter dated (posting day) 02.04.2027, a Friday; no separate 'Tag der Aufgabe zur Post' is stated, so the document date is taken as the posting day. Deemed delivery per § 122 Abs. 2 Nr. 1 AO = 4th day after posting = 06.04.2027 (Tuesday) - not a Saturday, Sunday or holiday, so for the Finanzamt (§ 108 Abs. 3 AO) no shift of the delivery day is needed. The one-month objection period under § 355 Abs. 1 AO / §§ 187, 188 BGB starts the next day (delivery day itself not counted) and ends on the day with the same number in the following month: 06.05.2027. That day, 06.05.2027, is Christi Himmelfahrt (Ascension Day), a nationwide public holiday, so under § 108 Abs. 3 AO the period end moves to the next working day: 07.05.2027 (Friday), which is not itself a weekend or holiday.",
+          "due_date": "2027-05-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The posting day was assumed to equal the printed document date (02.04.2027) because no separate 'Tag der Aufgabe zur Post' is stated in the letter; if the envelope was actually postmarked later, the deadline would shift accordingly.",
+        "The refund of 723,00 € will be paid to the bank account given in the original tax return; no new bank details are requested in this letter, and none should ever be provided in response to such a letter without verification."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4279,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2378,
+      "cost_usd": 0.053411999999999994,
+      "duration_ms": 38837,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

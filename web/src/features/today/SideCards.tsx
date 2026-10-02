@@ -32,6 +32,12 @@ export function checkReason(warning: string): string {
   return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : warning;
 }
 
+/**
+ * What the card says for a letter in review whose warnings name no reason (an undone "Not a real to-do", a
+ * to-do with two dates): its to-do says what to check (UX review 3, R3UX-3).
+ */
+export const NO_REASON = "Open the letter to check its to-do.";
+
 /** "Please check": letters where something needs a quick look (unknown arrival date, possible scam…). */
 export function PleaseCheckCard({ docs }: { docs: Document[] }) {
   if (!docs.length) return null;
@@ -55,7 +61,10 @@ export function PleaseCheckCard({ docs }: { docs: Document[] }) {
               <KindIcon docKind={d.kind} size="sm" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[13.5px] font-medium leading-snug text-ink [overflow-wrap:anywhere]">{d.title ?? d.filename}</span>
-                {d.warnings[0] ? <span className="mt-0.5 block text-[12.5px] leading-snug text-ink/75">{checkReason(d.warnings[0])}</span> : null}
+                {/* no warning left (an undone action, a to-do of two dates): still say what to do */}
+                <span className="mt-0.5 block text-[12.5px] leading-snug text-ink/75">
+                  {d.warnings[0] ? checkReason(d.warnings[0]) : NO_REASON}
+                </span>
               </span>
               <span className="mt-0.5 inline-flex shrink-0 items-center text-[12.5px] font-semibold text-accent">
                 Check <ChevronRight className="size-3.5" aria-hidden />

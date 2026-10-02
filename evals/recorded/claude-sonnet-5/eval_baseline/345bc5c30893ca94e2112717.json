@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"96a7655fe3ce6a044d550ea23327890e9cdcd77678f79c01c826cc840db94711\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-07-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-H2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-07-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"rent_lease\",\"sender_name\":\"Beispiel Living Apartments GmbH\",\"document_date\":\"2027-07-07\",\"references\":[{\"label\":\"Reference\",\"value\":\"BL-APT-3.12\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed lease and proof of deposit transfer\",\"quote\":\"To complete the booking, please return the signed lease together with proof that you have transferred the deposit by 08/09/2027.\",\"computation\":\"The letter gives an explicit calendar date, '08/09/2027', for this private, non-statutory deadline, so no delivery-fiction or statutory counting rules apply — the date is used as written. However, the date format is ambiguous: it could be DD/MM/YYYY (8 September 2027) or MM/DD/YYYY (9 August 2027), both of which are valid calendar dates. The letter's own date, '07/07/2027', does not disambiguate the format since day and month are identical (07/07) in either reading. Per the rule to pick the earliest plausible date when a date is genuinely ambiguous, the earliest reading (MM/DD/YYYY → 9 August 2027) is used, with confidence lowered and a warning added.\",\"due_date\":\"2027-08-09\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The deadline date '08/09/2027' is written in an ambiguous numeric format: it could mean 8 September 2027 (DD/MM/YYYY) or 9 August 2027 (MM/DD/YYYY); the letter's own date '07/07/2027' does not resolve the ambiguity since day and month coincide. The due date above uses the earlier (MM/DD) reading as a precaution — please confirm the intended date directly with the landlord.\",\"The letter does not state the deposit amount, so it cannot be verified from this document alone; check the signed lease or booking confirmation for the exact figure before transferring funds to the given IBAN (DE34 3705 0198 0005 5560 60).\"]}",
+    "data": {
+      "kind": "rent_lease",
+      "sender_name": "Beispiel Living Apartments GmbH",
+      "document_date": "2027-07-07",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "BL-APT-3.12"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed lease and proof of deposit transfer",
+          "quote": "To complete the booking, please return the signed lease together with proof that you have transferred the deposit by 08/09/2027.",
+          "computation": "The letter gives an explicit calendar date, '08/09/2027', for this private, non-statutory deadline, so no delivery-fiction or statutory counting rules apply — the date is used as written. However, the date format is ambiguous: it could be DD/MM/YYYY (8 September 2027) or MM/DD/YYYY (9 August 2027), both of which are valid calendar dates. The letter's own date, '07/07/2027', does not disambiguate the format since day and month are identical (07/07) in either reading. Per the rule to pick the earliest plausible date when a date is genuinely ambiguous, the earliest reading (MM/DD/YYYY → 9 August 2027) is used, with confidence lowered and a warning added.",
+          "due_date": "2027-08-09",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The deadline date '08/09/2027' is written in an ambiguous numeric format: it could mean 8 September 2027 (DD/MM/YYYY) or 9 August 2027 (MM/DD/YYYY); the letter's own date '07/07/2027' does not resolve the ambiguity since day and month coincide. The due date above uses the earlier (MM/DD) reading as a precaution — please confirm the intended date directly with the landlord.",
+        "The letter does not state the deposit amount, so it cannot be verified from this document alone; check the signed lease or booking confirmation for the exact figure before transferring funds to the given IBAN (DE34 3705 0198 0005 5560 60)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2708,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1797,
+      "cost_usd": 0.035378,
+      "duration_ms": 24383,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

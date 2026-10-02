@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"15d3094755f391ff4704f9eb67f973e6f0124fb2815cf9f7174a945f3da4c491\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-07-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-G2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-07-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amt Musterflens-Land · Ordnungsamt\",\"document_date\":\"2025-07-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"32.1-HU-25/0611\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Comply with leash and muzzle order for the dog\",\"quote\":\"Nach dem Gesetz über das Halten von Hunden ordne ich deshalb an, dass Sie Ihren Hund außerhalb Ihres eingefriedeten Grundstücks ab sofort an einer höchstens zwei Meter langen Leine führen und ihm einen Maulkorb anlegen.\",\"computation\":\"The order takes effect 'ab sofort' (immediately). Treating the deemed-notification date as the point from which the order is in force: letter dated 02.07.2025 (Wed); applying the letter's own stated fictitious-delivery rule of 4 days after posting (posting assumed same day as the document date), day 1=03.07 (Thu), day2=04.07 (Fri), day3=05.07 (Sat), day4=06.07 (Sun); since the 4th day falls on a Sunday, the deemed notification date moves to the next business day, Monday 07.07.2025. The leash/muzzle requirement therefore must be observed from this date onward.\",\"due_date\":\"2025-07-07\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the leash/muzzle order\",\"quote\":\"Gegen diese Anordnung ist innerhalb eines Monats nach ihrer Bekanntgabe der Widerspruch beim Amt Musterflens-Land, Amtsweg 1, 24983 Beispielhusby, gegeben – schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated 02.07.2025 (Wednesday); assumed posted same day. Per the letter's own stated rule ('Ein per Post versandtes Schreiben gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben'), count 4 days from posting: 03.07 (Thu)=1, 04.07 (Fri)=2, 05.07 (Sat)=3, 06.07 (Sun)=4. Since the 4th day falls on a Sunday, under the standard adjustment rule (analogous to §41 Abs.2 VwVfG) the deemed notification (Bekanntgabe) shifts to the next business day: Monday 07.07.2025. The one-month Widerspruchsfrist then runs per §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (07.07.) is not counted, the period starts 08.07.2025, and ends one month later on the date matching the day-number of the Bekanntgabe event, i.e. 07.08.2025 (Thursday) — not a Saturday, Sunday or public holiday in Schleswig-Holstein, so no further shift applies.\",\"due_date\":\"2025-08-07\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter states an unusual four-day fictitious-delivery rule ('vierten Tag nach Aufgabe zur Post') instead of the standard three-day rule under §41 VwVfG; this was used as stated, but the person should double-check this with the authority or a lawyer since it affects the Widerspruch deadline.\",\"The exact postal mailing date (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the document date (02.07.2025), which could shift the computed deadline if posting actually occurred later.\",\"No explicit statement on immediate enforceability (sofortige Vollziehung) is given despite the 'ab sofort' wording; it is unclear whether filing a Widerspruch would have suspensive effect, so the person should seek legal advice promptly.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amt Musterflens-Land · Ordnungsamt",
+      "document_date": "2025-07-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "32.1-HU-25/0611"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Comply with leash and muzzle order for the dog",
+          "quote": "Nach dem Gesetz über das Halten von Hunden ordne ich deshalb an, dass Sie Ihren Hund außerhalb Ihres eingefriedeten Grundstücks ab sofort an einer höchstens zwei Meter langen Leine führen und ihm einen Maulkorb anlegen.",
+          "computation": "The order takes effect 'ab sofort' (immediately). Treating the deemed-notification date as the point from which the order is in force: letter dated 02.07.2025 (Wed); applying the letter's own stated fictitious-delivery rule of 4 days after posting (posting assumed same day as the document date), day 1=03.07 (Thu), day2=04.07 (Fri), day3=05.07 (Sat), day4=06.07 (Sun); since the 4th day falls on a Sunday, the deemed notification date moves to the next business day, Monday 07.07.2025. The leash/muzzle requirement therefore must be observed from this date onward.",
+          "due_date": "2025-07-07",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the leash/muzzle order",
+          "quote": "Gegen diese Anordnung ist innerhalb eines Monats nach ihrer Bekanntgabe der Widerspruch beim Amt Musterflens-Land, Amtsweg 1, 24983 Beispielhusby, gegeben – schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated 02.07.2025 (Wednesday); assumed posted same day. Per the letter's own stated rule ('Ein per Post versandtes Schreiben gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben'), count 4 days from posting: 03.07 (Thu)=1, 04.07 (Fri)=2, 05.07 (Sat)=3, 06.07 (Sun)=4. Since the 4th day falls on a Sunday, under the standard adjustment rule (analogous to §41 Abs.2 VwVfG) the deemed notification (Bekanntgabe) shifts to the next business day: Monday 07.07.2025. The one-month Widerspruchsfrist then runs per §§187 Abs.1, 188 Abs.2 BGB: the day of Bekanntgabe (07.07.) is not counted, the period starts 08.07.2025, and ends one month later on the date matching the day-number of the Bekanntgabe event, i.e. 07.08.2025 (Thursday) — not a Saturday, Sunday or public holiday in Schleswig-Holstein, so no further shift applies.",
+          "due_date": "2025-08-07",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter states an unusual four-day fictitious-delivery rule ('vierten Tag nach Aufgabe zur Post') instead of the standard three-day rule under §41 VwVfG; this was used as stated, but the person should double-check this with the authority or a lawyer since it affects the Widerspruch deadline.",
+        "The exact postal mailing date (Aufgabe zur Post) is not stated separately in the letter; it was assumed to be the same as the document date (02.07.2025), which could shift the computed deadline if posting actually occurred later.",
+        "No explicit statement on immediate enforceability (sofortige Vollziehung) is given despite the 'ab sofort' wording; it is unclear whether filing a Widerspruch would have suspensive effect, so the person should seek legal advice promptly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4439,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2238,
+      "cost_usd": 0.053970399999999995,
+      "duration_ms": 41169,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

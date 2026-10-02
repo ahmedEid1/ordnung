@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"15d3094755f391ff4704f9eb67f973e6f0124fb2815cf9f7174a945f3da4c491\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2025-07-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-G2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-07-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Amt Musterflens-Land, Ordnungsamt\",\"document_date\":\"2025-07-02\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"32.1-HU-25/0611\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against leash/muzzle order\",\"quote\":\"Gegen diese Anordnung ist innerhalb eines Monats nach ihrer Bekanntgabe der Widerspruch beim Amt Musterflens-Land, Amtsweg 1, 24983 Beispielhusby, gegeben – schriftlich oder zur Niederschrift.\",\"computation\":\"No separate 'zur Post gegeben am' date is stated, so the posting day is the date printed on the letter: Wednesday 02.07.2025. The letter itself states the statutory 4-day fiction ('Ein per Post versandtes Schreiben gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben'), applicable since the letter was posted after 1 Jan 2025. Counting 4 calendar days after 02.07.2025 gives Sunday 06.07.2025. The Amt Musterflens-Land is a general (non-tax) authority, so unlike Finanzamt cases under § 108 Abs. 3 AO, the deemed-delivery day does NOT move even though it falls on a Sunday (§ 37 Abs. 2 SGB X / general administrative procedure law reasoning applies analogously; no shifting rule exists for the delivery fiction of general authorities). Deemed delivery (Bekanntgabe) = Sunday 06.07.2025. The one-month Widerspruch period under § 70 VwGO, counted per §§ 187 Abs. 1, 188 Abs. 2 BGB (event-day not counted, period ends on the day of the following month bearing the same number as the day of the event), runs from 06.07.2025 and ends on 06.08.2025 (Wednesday). 06.08.2025 is not a Saturday, Sunday, or public holiday in Schleswig-Holstein, so no shift under § 31 Abs. 3 VwVfG/Landesrecht or § 193 BGB is needed.\",\"due_date\":\"2025-08-06\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Comply with leash and muzzle requirement for the dog\",\"quote\":\"ordne ich deshalb an, dass Sie Ihren Hund außerhalb Ihres eingefriedeten Grundstücks ab sofort an einer höchstens zwei Meter langen Leine führen und ihm einen Maulkorb anlegen.\",\"computation\":\"The order states the leash/muzzle duty applies 'ab sofort' (immediately). An administrative order generally becomes binding upon its notification (Bekanntgabe) to the addressee (§ 43 VwVfG analogue). Using the same deemed-delivery date computed above (posting 02.07.2025 + 4 calendar days, not shifted for weekends for a non-tax authority) gives Sunday 06.07.2025 as the day the order takes effect and the duty to comply begins; it then continues indefinitely until a Wesenstest proves otherwise, so there is no later single due date, only the start date of the ongoing obligation.\",\"due_date\":\"2025-07-06\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter is dated 02.07.2025 and the computed Widerspruch deadline (06.08.2025) is purely historical; the environment's stated current date (2026-10-01) is far later than the letter's own timeline, which is a contradiction worth double-checking — if this letter is in fact newly received, verify its actual posting/receipt date rather than relying on the printed 02.07.2025 date.\",\"The ongoing leash/muzzle duty ('ab sofort', until a Wesenstest proves otherwise) has no fixed end date in the letter; the 2025-07-06 date given for it marks only the start of the obligation, not a deadline to complete a one-off task.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Amt Musterflens-Land, Ordnungsamt",
+      "document_date": "2025-07-02",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "32.1-HU-25/0611"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against leash/muzzle order",
+          "quote": "Gegen diese Anordnung ist innerhalb eines Monats nach ihrer Bekanntgabe der Widerspruch beim Amt Musterflens-Land, Amtsweg 1, 24983 Beispielhusby, gegeben – schriftlich oder zur Niederschrift.",
+          "computation": "No separate 'zur Post gegeben am' date is stated, so the posting day is the date printed on the letter: Wednesday 02.07.2025. The letter itself states the statutory 4-day fiction ('Ein per Post versandtes Schreiben gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben'), applicable since the letter was posted after 1 Jan 2025. Counting 4 calendar days after 02.07.2025 gives Sunday 06.07.2025. The Amt Musterflens-Land is a general (non-tax) authority, so unlike Finanzamt cases under § 108 Abs. 3 AO, the deemed-delivery day does NOT move even though it falls on a Sunday (§ 37 Abs. 2 SGB X / general administrative procedure law reasoning applies analogously; no shifting rule exists for the delivery fiction of general authorities). Deemed delivery (Bekanntgabe) = Sunday 06.07.2025. The one-month Widerspruch period under § 70 VwGO, counted per §§ 187 Abs. 1, 188 Abs. 2 BGB (event-day not counted, period ends on the day of the following month bearing the same number as the day of the event), runs from 06.07.2025 and ends on 06.08.2025 (Wednesday). 06.08.2025 is not a Saturday, Sunday, or public holiday in Schleswig-Holstein, so no shift under § 31 Abs. 3 VwVfG/Landesrecht or § 193 BGB is needed.",
+          "due_date": "2025-08-06",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Comply with leash and muzzle requirement for the dog",
+          "quote": "ordne ich deshalb an, dass Sie Ihren Hund außerhalb Ihres eingefriedeten Grundstücks ab sofort an einer höchstens zwei Meter langen Leine führen und ihm einen Maulkorb anlegen.",
+          "computation": "The order states the leash/muzzle duty applies 'ab sofort' (immediately). An administrative order generally becomes binding upon its notification (Bekanntgabe) to the addressee (§ 43 VwVfG analogue). Using the same deemed-delivery date computed above (posting 02.07.2025 + 4 calendar days, not shifted for weekends for a non-tax authority) gives Sunday 06.07.2025 as the day the order takes effect and the duty to comply begins; it then continues indefinitely until a Wesenstest proves otherwise, so there is no later single due date, only the start date of the ongoing obligation.",
+          "due_date": "2025-07-06",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter is dated 02.07.2025 and the computed Widerspruch deadline (06.08.2025) is purely historical; the environment's stated current date (2026-10-01) is far later than the letter's own timeline, which is a contradiction worth double-checking — if this letter is in fact newly received, verify its actual posting/receipt date rather than relying on the printed 02.07.2025 date.",
+        "The ongoing leash/muzzle duty ('ab sofort', until a Wesenstest proves otherwise) has no fixed end date in the letter; the 2025-07-06 date given for it marks only the start of the obligation, not a deadline to complete a one-off task."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3609,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2240,
+      "cost_usd": 0.04615999999999999,
+      "duration_ms": 33523,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"c201213b2b73fc616327a8fb57c0ebe3c6266950f8d190445e03405fa5978442\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-09-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Branchenregister Musterland – Verzeichnisservice\",\"document_date\":\"2027-09-09\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"BRM 27-0909-4471\"}],\"amounts\":[569.06],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay 'Branchenregister' directory entry invoice\",\"quote\":\"Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.\",\"computation\":\"The letter states a fixed calendar date for payment, 16.09.2027, with no period to calculate — the due date is simply the date as printed.\",\"due_date\":\"2027-09-16\",\"confidence\":\"high\",\"amount\":569.06}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter matches the well-known 'Branchenbuch/Branchenregister' scam pattern: an unsolicited business-directory entry is presented as an official confirmation and invoice, but the text itself says 'Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an' — i.e. it is only an offer and no contract exists unless you pay, so you are very likely under no obligation to pay at all.\",\"The IBAN printed for payment (DE39 5001 0517 0447 1209 00) fails the official German IBAN checksum validation, indicating it is mistyped or fabricated — do not transfer money to it.\",\"The payee named for the transfer, 'BRM Verlagsservice Ltd.', does not match the sender named in the letterhead, 'Branchenregister Musterland' — a mismatched payee is a classic sign of this type of scam.\",\"The letter uses high-pressure tactics (a 7-day deadline and an immediate threat of debt collection with 'ohne weitere Mahnung') typical of fake directory-entry invoices; recommend not paying and, if desired, reporting it to consumer protection (Verbraucherzentrale) or the police.\",\"Sender address is only a PO box in Berlin ('Postfach 44 71') with no verifiable company register details shown, which should be checked independently before any action is taken.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Branchenregister Musterland – Verzeichnisservice",
+      "document_date": "2027-09-09",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "BRM 27-0909-4471"
+        }
+      ],
+      "amounts": [
+        569.06
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay 'Branchenregister' directory entry invoice",
+          "quote": "Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.",
+          "computation": "The letter states a fixed calendar date for payment, 16.09.2027, with no period to calculate — the due date is simply the date as printed.",
+          "due_date": "2027-09-16",
+          "confidence": "high",
+          "amount": 569.06
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter matches the well-known 'Branchenbuch/Branchenregister' scam pattern: an unsolicited business-directory entry is presented as an official confirmation and invoice, but the text itself says 'Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an' — i.e. it is only an offer and no contract exists unless you pay, so you are very likely under no obligation to pay at all.",
+        "The IBAN printed for payment (DE39 5001 0517 0447 1209 00) fails the official German IBAN checksum validation, indicating it is mistyped or fabricated — do not transfer money to it.",
+        "The payee named for the transfer, 'BRM Verlagsservice Ltd.', does not match the sender named in the letterhead, 'Branchenregister Musterland' — a mismatched payee is a classic sign of this type of scam.",
+        "The letter uses high-pressure tactics (a 7-day deadline and an immediate threat of debt collection with 'ohne weitere Mahnung') typical of fake directory-entry invoices; recommend not paying and, if desired, reporting it to consumer protection (Verbraucherzentrale) or the police.",
+        "Sender address is only a PO box in Berlin ('Postfach 44 71') with no verifiable company register details shown, which should be checked independently before any action is taken."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 4020,
+      "cache_read_tokens": 24857,
+      "cache_creation_tokens": 5769,
+      "cost_usd": 0.06825940000000001,
+      "duration_ms": 37776,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE39 5001 0517 0447 1209 00"
+        },
+        "result": "{\"iban\":\"DE39 5001 0517 0447 1209 00\",\"valid\":false,\"problems\":[\"The check digits do not match: a character is wrong, missing or swapped.\"],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":false,\"note\":\"It may be misprinted, misread or fake — compare it with the letter and ask the sender before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

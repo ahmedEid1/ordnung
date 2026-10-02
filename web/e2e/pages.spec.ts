@@ -296,7 +296,9 @@ test.describe("phone", () => {
           const range = document.createRange();
           range.setStart(before, i);
           range.setEnd(before, i + 1);
-          if (range.getBoundingClientRect().bottom <= chip.getBoundingClientRect().top + 1) found.push(`${chip.textContent} after “${text.slice(-30)}”`);
+          // the marker that is seen (its `::before`): the link or button round it is a 24 px target, 3.5 px taller each way
+          const drawnTop = chip.getBoundingClientRect().top + (parseFloat(getComputedStyle(chip, "::before").top) || 0);
+          if (range.getBoundingClientRect().bottom <= drawnTop + 1) found.push(`${chip.textContent} after “${text.slice(-30)}”`);
         }
         return found;
       });

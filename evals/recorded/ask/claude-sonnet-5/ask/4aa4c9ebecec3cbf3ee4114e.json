@@ -1,0 +1,148 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"When do I have to pay the dog tax (Hundesteuer)?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to pay the dog tax (Hundesteuer)?\n"
+  },
+  "response": {
+    "text": "I couldn't find anything about Hundesteuer (dog tax) in your records — no letters, to-dos, or contracts mention it. I don't have a due date to give you for it.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 269,
+      "cache_read_tokens": 20400,
+      "cache_creation_tokens": 1915,
+      "cost_usd": 0.014442,
+      "duration_ms": 7219,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hundesteuer"
+      },
+      "tool_use_id": "toolu_01SKEF1zGwaBruibNTZoJ28n"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01SKEF1zGwaBruibNTZoJ28n"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "dog tax"
+      },
+      "tool_use_id": "toolu_01RPdetBC5wkqfQR8NXu2SK8"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01RPdetBC5wkqfQR8NXu2SK8"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Hund"
+      },
+      "tool_use_id": "toolu_012XZqYY2vXFtFEBTaPvLT5b"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_012XZqYY2vXFtFEBTaPvLT5b"
+    },
+    {
+      "type": "text",
+      "text": "I cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find an"
+    },
+    {
+      "type": "text",
+      "text": "ything about"
+    },
+    {
+      "type": "text",
+      "text": " Hundesteuer ("
+    },
+    {
+      "type": "text",
+      "text": "dog tax) in your records"
+    },
+    {
+      "type": "text",
+      "text": " — no letters"
+    },
+    {
+      "type": "text",
+      "text": ", to"
+    },
+    {
+      "type": "text",
+      "text": "-dos, or contracts"
+    },
+    {
+      "type": "text",
+      "text": " mention it."
+    },
+    {
+      "type": "text",
+      "text": " I"
+    },
+    {
+      "type": "text",
+      "text": " don't have a"
+    },
+    {
+      "type": "text",
+      "text": " due date to"
+    },
+    {
+      "type": "text",
+      "text": " give"
+    },
+    {
+      "type": "text",
+      "text": " you for"
+    },
+    {
+      "type": "text",
+      "text": " it."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find anything about Hundesteuer (dog tax) in your records — no letters, to-dos, or contracts mention it. I don't have a due date to give you for it.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 269,
+          "cache_read_tokens": 20400,
+          "cache_creation_tokens": 1915,
+          "cost_usd": 0.014442,
+          "duration_ms": 7219,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

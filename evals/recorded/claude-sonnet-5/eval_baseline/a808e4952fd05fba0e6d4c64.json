@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1db629bb2205f8790801f44850a5c25ef8cd91944b101f09c29f27356c37d9fb\",\"mode\":\"text\",\"region\":\"HE\",\"today\":\"2025-09-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-social_decision-H2"
+    ],
+    "prompt_head": "Today is Friday, 2025-09-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hessen (HE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Musterhöhe – Jugendamt (Unterhaltsvorschusskasse)\",\"document_date\":\"2025-09-15\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"51.4-UV-2025-0718\"}],\"amounts\":[299],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against benefit amount\",\"quote\":\"Einen Widerspruch reichen Sie bitte binnen Monatsfrist nach Bekanntgabe ein, und zwar schriftlich oder zur Niederschrift beim Landkreis Musterhöhe – Jugendamt, Kreishausstraße 1, 61169 Beispielberg.\",\"computation\":\"Letter dated Monday 15.09.2025, sent by ordinary mail from a German authority. Under § 37 Abs. 2 SGB X, a letter is deemed delivered (Bekanntgabe) on the third day after it was given to the post, i.e. 15.09.2025 + 3 days = Thursday 18.09.2025 (not a weekend/holiday, so no shift). The Widerspruchsfrist is one month from Bekanntgabe. Per § 26 Abs. 1 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of Bekanntgabe (18.09.2025) is excluded and the period runs to the day of the following month bearing the same number, i.e. 18.10.2025. That date is a Saturday, so under § 193 BGB the deadline shifts to the next working day: Monday 20.10.2025 (no Hessian public holiday on that date). Final deadline: 20.10.2025.\",\"due_date\":\"2025-10-20\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Immediately report changes affecting entitlement (child moving out, marriage, other parent paying support)\",\"quote\":\"Teilen Sie uns bitte unverzüglich mit, wenn Mila nicht mehr bei Ihnen lebt, wenn Sie heiraten oder wenn der andere Elternteil Unterhalt zahlt.\",\"computation\":\"The letter requires 'unverzüglich' (without culpable delay) notification whenever one of the listed events occurs, but gives no fixed calendar date or period — the obligation is ongoing and event-triggered, so no concrete due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The notification duty ('unverzüglich mitteilen') has no fixed deadline in the letter; it must be acted on promptly whenever a relevant change occurs, but no exact due date could be computed.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Musterhöhe – Jugendamt (Unterhaltsvorschusskasse)",
+      "document_date": "2025-09-15",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "51.4-UV-2025-0718"
+        }
+      ],
+      "amounts": [
+        299
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against benefit amount",
+          "quote": "Einen Widerspruch reichen Sie bitte binnen Monatsfrist nach Bekanntgabe ein, und zwar schriftlich oder zur Niederschrift beim Landkreis Musterhöhe – Jugendamt, Kreishausstraße 1, 61169 Beispielberg.",
+          "computation": "Letter dated Monday 15.09.2025, sent by ordinary mail from a German authority. Under § 37 Abs. 2 SGB X, a letter is deemed delivered (Bekanntgabe) on the third day after it was given to the post, i.e. 15.09.2025 + 3 days = Thursday 18.09.2025 (not a weekend/holiday, so no shift). The Widerspruchsfrist is one month from Bekanntgabe. Per § 26 Abs. 1 SGB X i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of Bekanntgabe (18.09.2025) is excluded and the period runs to the day of the following month bearing the same number, i.e. 18.10.2025. That date is a Saturday, so under § 193 BGB the deadline shifts to the next working day: Monday 20.10.2025 (no Hessian public holiday on that date). Final deadline: 20.10.2025.",
+          "due_date": "2025-10-20",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Immediately report changes affecting entitlement (child moving out, marriage, other parent paying support)",
+          "quote": "Teilen Sie uns bitte unverzüglich mit, wenn Mila nicht mehr bei Ihnen lebt, wenn Sie heiraten oder wenn der andere Elternteil Unterhalt zahlt.",
+          "computation": "The letter requires 'unverzüglich' (without culpable delay) notification whenever one of the listed events occurs, but gives no fixed calendar date or period — the obligation is ongoing and event-triggered, so no concrete due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The notification duty ('unverzüglich mitteilen') has no fixed deadline in the letter; it must be acted on promptly whenever a relevant change occurs, but no exact due date could be computed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3269,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2183,
+      "cost_usd": 0.0420504,
+      "duration_ms": 31918,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

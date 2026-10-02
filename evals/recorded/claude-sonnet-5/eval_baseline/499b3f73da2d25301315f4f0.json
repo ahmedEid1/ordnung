@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3c839d7c0064d8146a32690e7f8e23dab9fe719a9845990f5e40fdda4f076321\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2027-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-H2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"amounts\":[2766,723],\"contract\":null,\"document_date\":\"2027-04-02\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch (objection) against the tax assessment\",\"quote\":\"Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.\",\"computation\":\"Letter dated Friday 02.04.2027, sent by ordinary post. Under § 122 Abs. 2 Nr. 1 AO, a letter sent by ordinary post is deemed delivered (bekanntgegeben) on the 4th day after posting: 02.04.2027 + 4 days = 06.04.2027 (Tuesday); this day is not a Saturday/Sunday/holiday, so no shift is needed for the fiction itself. The one-month Einspruchsfrist (§ 355 AO) then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB (via § 108 Abs. 1 AO): the day of Bekanntgabe (06.04.2027) is not counted, and the period of one month ends on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 06.05.2027. However, 06.05.2027 is Christi Himmelfahrt (Ascension Day, calculated as Easter Sunday 28.03.2027 + 39 days), a statutory holiday in all German Länder including Schleswig-Holstein. Under § 108 Abs. 3 AO, if the last day of a period falls on a Saturday, Sunday or public holiday, the period ends on the next working day, which is Friday 07.05.2027.\",\"due_date\":\"2027-05-07\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"15/287/40312\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterflens\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        2766,
+        723
+      ],
+      "contract": null,
+      "document_date": "2027-04-02",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch (objection) against the tax assessment",
+          "quote": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.",
+          "computation": "Letter dated Friday 02.04.2027, sent by ordinary post. Under § 122 Abs. 2 Nr. 1 AO, a letter sent by ordinary post is deemed delivered (bekanntgegeben) on the 4th day after posting: 02.04.2027 + 4 days = 06.04.2027 (Tuesday); this day is not a Saturday/Sunday/holiday, so no shift is needed for the fiction itself. The one-month Einspruchsfrist (§ 355 AO) then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB (via § 108 Abs. 1 AO): the day of Bekanntgabe (06.04.2027) is not counted, and the period of one month ends on the day of the following month bearing the same number as the day of Bekanntgabe, i.e. 06.05.2027. However, 06.05.2027 is Christi Himmelfahrt (Ascension Day, calculated as Easter Sunday 28.03.2027 + 39 days), a statutory holiday in all German Länder including Schleswig-Holstein. Under § 108 Abs. 3 AO, if the last day of a period falls on a Saturday, Sunday or public holiday, the period ends on the next working day, which is Friday 07.05.2027.",
+          "due_date": "2027-05-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "15/287/40312"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterflens",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5480,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2376,
+      "cost_usd": 0.06493239999999999,
+      "duration_ms": 50850,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

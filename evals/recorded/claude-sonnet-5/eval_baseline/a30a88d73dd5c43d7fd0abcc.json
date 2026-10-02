@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0ec49d501e53cb950c1fa9ef75db4adb3fc05323f43624c6073e5556f654c316\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G2"
+    ],
+    "prompt_head": "Today is Friday, 2026-12-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle\",\"document_date\":\"2026-12-14\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 26-1119-0583\"},{\"label\":\"Kennzeichen\",\"value\":\"LÜ-RB 207\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the fine notice\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"This is a formal delivery (Zustellungsurkunde); the date written on the delivery certificate counts as the delivery day with no days added: 18.12.2026 (Friday). Under § 67 OWiG/§ 43 StPO the two-week objection period starts the day after delivery (§ 187 Abs. 1 BGB) and, counted in weeks, ends on the same weekday two weeks later: Friday, 01.01.2027. That day is New Year's Day, a nationwide public holiday, so under § 43 Abs. 2 StPO/§ 193 BGB the period moves to the next working day. Saturday 02.01.2027 and Sunday 03.01.2027 are not working days, so the deadline moves to Monday, 04.01.2027.\",\"due_date\":\"2027-01-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount once the notice is final\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.\",\"computation\":\"The notice becomes rechtskräftig (final), assuming no Einspruch is filed, upon expiry of the two-week objection period, i.e. on 04.01.2027 (Monday). The letter sets the payment deadline at 'at the latest two weeks after' finality: counting from 04.01.2027 (not counted itself, § 187 Abs. 1 BGB), two weeks later on the same weekday (Monday) is 18.01.2027. That day is not a Saturday, Sunday or public holiday in NW, so no further adjustment applies.\",\"due_date\":\"2027-01-18\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The delivery certificate on page 2 is partly illegible, reading '18.12.20' next to a stray '26'; I assumed the formal delivery date is 18 December 2026 based on the document date and context, but the original envelope should be checked to confirm this exactly, as both deadlines depend on it.\",\"The payment deadline (18.01.2027) is only valid if no Einspruch is filed; filing an objection by 04.01.2027 suspends the obligation to pay and the case may instead be decided by the Amtsgericht.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+      "document_date": "2026-12-14",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 26-1119-0583"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LÜ-RB 207"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the fine notice",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "This is a formal delivery (Zustellungsurkunde); the date written on the delivery certificate counts as the delivery day with no days added: 18.12.2026 (Friday). Under § 67 OWiG/§ 43 StPO the two-week objection period starts the day after delivery (§ 187 Abs. 1 BGB) and, counted in weeks, ends on the same weekday two weeks later: Friday, 01.01.2027. That day is New Year's Day, a nationwide public holiday, so under § 43 Abs. 2 StPO/§ 193 BGB the period moves to the next working day. Saturday 02.01.2027 and Sunday 03.01.2027 are not working days, so the deadline moves to Monday, 04.01.2027.",
+          "due_date": "2027-01-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount once the notice is final",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.",
+          "computation": "The notice becomes rechtskräftig (final), assuming no Einspruch is filed, upon expiry of the two-week objection period, i.e. on 04.01.2027 (Monday). The letter sets the payment deadline at 'at the latest two weeks after' finality: counting from 04.01.2027 (not counted itself, § 187 Abs. 1 BGB), two weeks later on the same weekday (Monday) is 18.01.2027. That day is not a Saturday, Sunday or public holiday in NW, so no further adjustment applies.",
+          "due_date": "2027-01-18",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The delivery certificate on page 2 is partly illegible, reading '18.12.20' next to a stray '26'; I assumed the formal delivery date is 18 December 2026 based on the document date and context, but the original envelope should be checked to confirm this exactly, as both deadlines depend on it.",
+        "The payment deadline (18.01.2027) is only valid if no Einspruch is filed; filing an objection by 04.01.2027 suspends the obligation to pay and the case may instead be decided by the Amtsgericht."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7034,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2845,
+      "cost_usd": 0.08283,
+      "duration_ms": 61631,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

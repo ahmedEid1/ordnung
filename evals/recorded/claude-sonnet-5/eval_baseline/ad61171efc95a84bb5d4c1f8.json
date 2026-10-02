@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0f6aa4a2293d328d78c9b70905e71dbb110425c1da82009b349dadaa7b47119c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-social_decision-G1"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"IKK Mustertal\",\"document_date\":\"2027-04-20\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"R512077348\"},{\"label\":\"Vorgang\",\"value\":\"HH-27-04412\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Haushaltshilfe\",\"quote\":\"Ihr Widerspruch muss uns innerhalb eines Monats erreichen, nachdem Ihnen der Bescheid bekannt gegeben wurde\",\"computation\":\"Letter is dated and presumably posted 20.04.2027 (Tuesday) by a statutory health insurer (Krankenkasse), a social-law body under §37 Abs.2 SGB X. Delivery fiction: 4th day after posting = 24.04.2027 (Saturday). For social-law bodies the deemed delivery day does NOT shift even if it falls on a weekend/holiday (unlike tax offices under §108 Abs.3 AO). So delivery = Sat 24.04.2027. One-month Widerspruch period under §84 SGG/§37 Abs.2 SGB X, counted per §§187 Abs.1, 188 Abs.2 BGB: the delivery day itself is not counted, the period runs from 25.04.2027 and ends one month later on the day bearing the same number as the delivery day, i.e. 24.05.2027 (Monday). 24.05.2027 is not a Saturday, Sunday or public holiday in NRW (Whit Monday 2027 falls on 17.05.2027, not 24.05.2027), so no further shift under §26 Abs.3 SGB X applies. Deadline: 24.05.2027.\",\"due_date\":\"2027-05-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "IKK Mustertal",
+      "document_date": "2027-04-20",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "R512077348"
+        },
+        {
+          "label": "Vorgang",
+          "value": "HH-27-04412"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Haushaltshilfe",
+          "quote": "Ihr Widerspruch muss uns innerhalb eines Monats erreichen, nachdem Ihnen der Bescheid bekannt gegeben wurde",
+          "computation": "Letter is dated and presumably posted 20.04.2027 (Tuesday) by a statutory health insurer (Krankenkasse), a social-law body under §37 Abs.2 SGB X. Delivery fiction: 4th day after posting = 24.04.2027 (Saturday). For social-law bodies the deemed delivery day does NOT shift even if it falls on a weekend/holiday (unlike tax offices under §108 Abs.3 AO). So delivery = Sat 24.04.2027. One-month Widerspruch period under §84 SGG/§37 Abs.2 SGB X, counted per §§187 Abs.1, 188 Abs.2 BGB: the delivery day itself is not counted, the period runs from 25.04.2027 and ends one month later on the day bearing the same number as the delivery day, i.e. 24.05.2027 (Monday). 24.05.2027 is not a Saturday, Sunday or public holiday in NRW (Whit Monday 2027 falls on 17.05.2027, not 24.05.2027), so no further shift under §26 Abs.3 SGB X applies. Deadline: 24.05.2027.",
+          "due_date": "2027-05-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2078,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2206,
+      "cost_usd": 0.030713999999999998,
+      "duration_ms": 20220,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

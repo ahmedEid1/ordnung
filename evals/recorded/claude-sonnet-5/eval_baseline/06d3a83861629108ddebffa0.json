@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0ec49d501e53cb950c1fa9ef75db4adb3fc05323f43624c6073e5556f654c316\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G2"
+    ],
+    "prompt_head": "Today is Friday, 2026-12-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle\",\"document_date\":\"2026-12-14\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 26-1119-0583\"},{\"label\":\"Kennzeichen\",\"value\":\"LÜ-RB 207\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"The attached Zustellungsurkunde (§182 ZPO) shows the notice was formally served (zugestellt) on 18.12.2026 (Friday). This is the proven delivery date, so the statutory presumption for ordinary mail (3-day rule) does not apply; the actual documented delivery date governs. Per §187 Abs.1 BGB, since the period runs 'nach' the event (Zustellung), the day of service itself is not counted; the period starts 18.12.2026 and runs two weeks. Per §188 Abs.2 BGB, a weekly period ends on the day in the final week bearing the same name as the day of the triggering event (Friday), i.e. Friday 01.01.2027 (18.12.2026 + 14 days). 01.01.2027 is Neujahr, a public holiday in NW (and nationwide); per §193 BGB the deadline shifts to the next business day. 02.01.2027 is a Saturday and 03.01.2027 a Sunday, so the next business day is Monday 04.01.2027.\",\"due_date\":\"2027-01-04\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount (Geldbuße, Gebühr, Auslagen)\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.\",\"computation\":\"Payment is due at the latest two weeks after the Bescheid becomes rechtskräftig (final). Assuming no Einspruch is filed, the Bescheid becomes rechtskräftig upon expiry of the objection period, i.e. at the end of Monday 04.01.2027 (see Einspruch item). Treating 04.01.2027 as the triggering event (Rechtskraft), and applying §187 Abs.1/§188 Abs.2 BGB (period starts the next day, ends two weeks later on the day bearing the same name as the triggering day, Monday): 04.01.2027 + 14 days = 18.01.2027 (Monday), which is not a weekend day or public holiday in NW, so no shift under §193 BGB is needed. This date is contingent on no Einspruch being lodged in time.\",\"due_date\":\"2027-01-18\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The service date on the attached Zustellungsurkunde scan is printed as 'zugestellt am 18.12.20' with the last two digits of the year apparently cut off; I assumed 18.12.2026 (4 days after the letter's own date of 14.12.2026, consistent with a Friday delivery), but this should be verified against the original envelope/Zustellungsurkunde.\",\"The payment deadline of 2027-01-18 only applies if no Einspruch is filed by the 2027-01-04 deadline; if an Einspruch is lodged, the Bescheid does not become rechtskräftig and this payment deadline does not take effect.\",\"Always double-check the stated IBAN (DE67 5205 0000 0000 0106 00) against the Landesverwaltungsamt's official payment details before transferring money, as fake fine notices with altered bank details are a known scam pattern.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+      "document_date": "2026-12-14",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 26-1119-0583"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LÜ-RB 207"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "The attached Zustellungsurkunde (§182 ZPO) shows the notice was formally served (zugestellt) on 18.12.2026 (Friday). This is the proven delivery date, so the statutory presumption for ordinary mail (3-day rule) does not apply; the actual documented delivery date governs. Per §187 Abs.1 BGB, since the period runs 'nach' the event (Zustellung), the day of service itself is not counted; the period starts 18.12.2026 and runs two weeks. Per §188 Abs.2 BGB, a weekly period ends on the day in the final week bearing the same name as the day of the triggering event (Friday), i.e. Friday 01.01.2027 (18.12.2026 + 14 days). 01.01.2027 is Neujahr, a public holiday in NW (and nationwide); per §193 BGB the deadline shifts to the next business day. 02.01.2027 is a Saturday and 03.01.2027 a Sunday, so the next business day is Monday 04.01.2027.",
+          "due_date": "2027-01-04",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount (Geldbuße, Gebühr, Auslagen)",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.",
+          "computation": "Payment is due at the latest two weeks after the Bescheid becomes rechtskräftig (final). Assuming no Einspruch is filed, the Bescheid becomes rechtskräftig upon expiry of the objection period, i.e. at the end of Monday 04.01.2027 (see Einspruch item). Treating 04.01.2027 as the triggering event (Rechtskraft), and applying §187 Abs.1/§188 Abs.2 BGB (period starts the next day, ends two weeks later on the day bearing the same name as the triggering day, Monday): 04.01.2027 + 14 days = 18.01.2027 (Monday), which is not a weekend day or public holiday in NW, so no shift under §193 BGB is needed. This date is contingent on no Einspruch being lodged in time.",
+          "due_date": "2027-01-18",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The service date on the attached Zustellungsurkunde scan is printed as 'zugestellt am 18.12.20' with the last two digits of the year apparently cut off; I assumed 18.12.2026 (4 days after the letter's own date of 14.12.2026, consistent with a Friday delivery), but this should be verified against the original envelope/Zustellungsurkunde.",
+        "The payment deadline of 2027-01-18 only applies if no Einspruch is filed by the 2027-01-04 deadline; if an Einspruch is lodged, the Bescheid does not become rechtskräftig and this payment deadline does not take effect.",
+        "Always double-check the stated IBAN (DE67 5205 0000 0000 0106 00) against the Landesverwaltungsamt's official payment details before transferring money, as fake fine notices with altered bank details are a known scam pattern."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6574,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2849,
+      "cost_usd": 0.0777644,
+      "duration_ms": 59260,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

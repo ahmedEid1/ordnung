@@ -2,8 +2,9 @@
 
 * the manifest loads and every entry's file exists with the recorded SHA-256;
 * the truth uses the product's vocabularies (DocumentKind, item kinds, natures, remedies);
-* template variants never leak across splits (A/B = dev, C/D = test, E/F = holdout; adversarial
-  letters in test and holdout only), and no deadline-bearing sentence recurs in two splits;
+* template variants never leak across splits (A/B = dev, C/D = test, E/F = holdout, G/H = holdout2;
+  adversarial letters in test, holdout and holdout2 only), and no deadline-bearing sentence recurs in two
+  splits;
 * every dated label matches an independent re-derivation (``evals/verify_labels.py``);
 * every text PDF contains its key date phrases; invisible text exists only where it is expected;
 * regenerating into a temporary directory is byte-identical (and matches the committed dataset
@@ -38,7 +39,8 @@ if str(EVALS) not in sys.path:
 
 from gen import law  # noqa: E402
 
-SPLITS = ("dev", "test", "holdout")
+SPLITS = ("dev", "test", "holdout", "holdout2")
+HELD_OUT = ("holdout", "holdout2")  # fresh samples of the test split's families and attack classes
 ITEM_KINDS = {"deadline", "payment", "appointment", "task", "expiry"}
 NATURES = {"objection", "payment", "declaration", "notice", "appointment", "other"}
 REMEDIES = {"einspruch", "widerspruch", "klage", "none", "unclear"}
@@ -83,16 +85,19 @@ def test_manifest_loads(manifest: dict[str, Any]) -> None:
     assert sum(map(len, split.values())) == len(entries)
     assert 20 <= len(split["dev"]) <= 35
     assert 50 <= len(split["test"]) <= 70
-    assert 50 <= len(split["holdout"]) <= 70  # a fresh sample about the size of test
-    for name in ("test", "holdout"):
+    for name in HELD_OUT:
+        assert 50 <= len(split[name]) <= 70, name  # a fresh sample about the size of test
+    for name in ("test", *HELD_OUT):
         assert sum(1 for e in split[name] if e["family"] == "adversarial" and not e["photo"]) >= 10, name
         assert all(e["id"].startswith(f"{name}-") for e in split[name]), name
     scored = {name: sum(1 for e in split[name] for item in e["truth"]["items"] if item["expected_due"] not in (None, "ambiguous"))
-              for name in ("test", "holdout")}  # fmt: skip
-    assert abs(scored["holdout"] - scored["test"]) <= 10, scored  # dated obligations of a similar number
+              for name in ("test", *HELD_OUT)}  # fmt: skip
+    for name in HELD_OUT:
+        assert abs(scored[name] - scored["test"]) <= 10, scored  # dated obligations of a similar number
     photos = [e for e in entries if e["photo"]]
     assert 0.12 <= len(photos) / len(entries) <= 0.3
-    assert 0.12 <= sum(e["photo"] for e in split["holdout"]) / len(split["holdout"]) <= 0.25
+    for name in HELD_OUT:
+        assert 0.12 <= sum(e["photo"] for e in split[name]) / len(split[name]) <= 0.25, name
     assert manifest["total_bytes"] < 25 * 1024 * 1024
     for name in SPLITS:
         assert manifest["counts"][name]["entries"] == len(split[name]), name
@@ -166,15 +171,17 @@ def test_splits_do_not_share_variants(manifest: dict[str, Any]) -> None:
     assert {v for _, v in variants["dev"]} == {"A", "B"}
     assert {v for _, v in variants["test"]} == {"C", "D"}
     assert {v for _, v in variants["holdout"]} == {"E", "F"}
+    assert {v for _, v in variants["holdout2"]} == {"G", "H"}
     assert all(e["family"] != "adversarial" for e in _entries(manifest) if e["split"] == "dev")
     families = {f for f, _ in variants["dev"]}
     for name in SPLITS:  # every template family is represented in every split, with both of its variants
         assert {(f, v) for f in families for v in {v for _, v in variants[name]}} == variants[name], name
-    # the holdout letters come from new senders
+    # the holdout letters come from new senders, and the holdout2 letters from senders of no other split
     senders = {
         name: {e["truth"]["sender_name"] for e in _entries(manifest) if e["split"] == name} for name in SPLITS
     }
     assert not senders["holdout"] & (senders["dev"] | senders["test"])
+    assert not senders["holdout2"] & (senders["dev"] | senders["test"] | senders["holdout"])
 
 
 def test_each_split_takes_only_its_own_template_variants() -> None:
@@ -192,15 +199,21 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
         return Case(id=f"{split}-{family}-{variant}1", split=split, family=family, variant=variant, letter=letter,
                     truth=t, today=date(2026, 1, 1), authority_region=None, key_phrases=[])  # fmt: skip
 
-    assert SPLIT_VARIANTS == {"dev": ("A", "B"), "test": ("C", "D"), "holdout": ("E", "F")}
+    assert SPLIT_VARIANTS == {
+        "dev": ("A", "B"),
+        "test": ("C", "D"),
+        "holdout": ("E", "F"),
+        "holdout2": ("G", "H"),
+    }
     for split, own in SPLIT_VARIANTS.items():
-        for variant in "ABCDEF":
+        for variant in "ABCDEFGH":
             if variant in own:
                 case(split, "invoice_relative", variant)
             else:
                 with pytest.raises(AssertionError):
                     case(split, "invoice_relative", variant)
     case("holdout", "adversarial", "scam")
+    case("holdout2", "adversarial", "scam")
     with pytest.raises(AssertionError):
         case("dev", "adversarial", "scam")
 
@@ -280,26 +293,54 @@ def test_labels_survive_the_independent_recheck() -> None:
     """``evals/verify_labels.py`` re-derives every dated label from facts read off each letter by hand, with its
     own calculator (datetime + holidays package; no code shared with evals/gen or ordnung.rules), checks that
     the letters state what the truth claims, and that no deadline sentence recurs in letters of two splits
-    (dev, test, holdout). See evals/dataset/VERIFICATION.md."""
+    (dev, test, holdout, holdout2). See evals/dataset/VERIFICATION.md."""
     import verify_labels
 
     report = verify_labels.run(DATASET)
-    assert report["dated_labels_checked"] >= 152  # 92 of dev and test, 60 of holdout
+    assert report["dated_labels_checked"] >= 212  # 92 of dev and test, 60 of holdout, 60 of holdout2
     assert not report["date_problems"], report["date_problems"]
     assert not report["text_problems"], report["text_problems"]
     assert not report["shared_split_sentences"], report["shared_split_sentences"]
     assert not report["photo_problems"], report["photo_problems"]
+    assert not report["land_window_problems"], report["land_window_problems"]
 
 
-@pytest.mark.parametrize("pair", [("dev", "test"), ("dev", "holdout"), ("test", "holdout")])
+@pytest.mark.parametrize(
+    ("region", "posted", "scope", "flagged"),
+    [
+        ("HH", "2025-03-03", "vwvfg", True),  # before the HmbVwVfG change took effect (14.05.2025)
+        ("HH", "2025-05-14", "vwvfg", False),
+        ("BW", "2025-02-06", "vwvfg", True),
+        ("BW", "2025-02-07", "vwvfg", False),
+        ("SH", "2025-06-09", "vwvfg", True),
+        ("SH", "2024-12-20", "vwvfg", False),  # the old 3-day rule, certain in every Land
+        ("SH", "2025-03-03", "sgbx", False),  # not a Land VwVfG label
+        ("NW", "2025-01-02", "vwvfg", False),  # NW, BY and MV: 4 days from 1 Jan 2025
+    ],
+)
+def test_land_vwvfg_labels_avoid_the_uncertain_start_windows(
+    region: str, posted: str, scope: str, flagged: bool
+) -> None:
+    """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a letter posted where that is not sure."""
+    import verify_labels
+
+    item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}
+    entry = {"id": "x", "photo": False, "authority_region": region,
+             "truth": {"document_date": None, "items": [item], "optional_items": [], "contract": None}}  # fmt: skip
+    assert bool(verify_labels.check_land_windows([entry])) == flagged
+
+
+@pytest.mark.parametrize("pair", [(a, b) for i, a in enumerate(SPLITS) for b in SPLITS[i + 1 :]])
 def test_the_wording_check_covers_every_pair_of_splits(pair: tuple[str, str]) -> None:
     """A deadline sentence shared by any two splits is reported (it used to compare dev with test only)."""
     import verify_labels
 
     shared = "Bitte antworten Sie uns binnen vierzehn Tagen nach dem Datum dieses Schreibens schriftlich."
     entries = [{"id": f"{name}-x-A1", "split": name, "photo": False} for name in SPLITS]
-    texts = {
-        e["id"]: shared if e["split"] in pair else "Ein Satz ohne jede Frist und ohne Termin, nur zur Info."
+    texts = {  # each other split has a sentence of its own
+        e["id"]: shared
+        if e["split"] in pair
+        else f"Ein Satz ohne jede Frist und ohne Termin, nur zur Info ({e['split']})."
         for e in entries
     }
     assert verify_labels.shared_deadline_sentences(entries, texts) == [f"{'+'.join(sorted(pair))}: {shared}"]

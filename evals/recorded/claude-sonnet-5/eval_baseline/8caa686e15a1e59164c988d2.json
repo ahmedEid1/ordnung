@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"8d5addc81fe01b4e429255e97453b07384ee7cdad4123d41f0f4fe41e51042ce\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2024-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwalde\",\"document_date\":\"2024-12-06\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/20877\"}],\"amounts\":[5118,5530,412],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2023 income tax assessment\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter dated Fri 06.12.2024, sent by ordinary post from the tax office (Finanzamt), so § 122 Abs. 2 Nr. 1 AO (as applicable to this 2024 letter, before the 2025 amendment) applies: it counts as delivered (Bekanntgabe) on the 3rd day after posting, i.e. Mon 09.12.2024 (as the letter itself states: 'der dritte Tag nach der Aufgabe zur Post'). That day is not a weekend/holiday, so it stands as the Bekanntgabe date. The one-month Einspruch period of § 355 Abs. 1 AO then starts the next day (09.12.2024, § 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later, on the day with the same number, i.e. Thu 09.01.2025 (§ 188 Abs. 2 BGB). 09.01.2025 is a Thursday and not a public holiday in NW, so no further shift applies (§ 108 Abs. 3 AO).\",\"due_date\":\"2025-01-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Refund of overpaid tax to be received\",\"quote\":\"Abzüglich der einbehaltenen Lohnsteuer von 5.530,00 € ergibt sich eine Erstattung von 412,00 €, die auf das in der Erklärung genannte Konto überwiesen wird.\",\"computation\":\"The letter states a refund of 412,00 € will be transferred to the account given in the tax return, but gives no specific date or deadline for this transfer; such refunds are typically processed within a few weeks of the assessment but no exact date can be derived from the letter's text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":412}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no specific date for when the 412,00 € refund will actually be paid out; if it does not arrive within a reasonable time, contact the Finanzamt using the reference number above.\",\"The IBAN printed in the footer (Musterbank Lüne, DE84 2405 0000 0003 0200 00) is the tax office's own account for payments owed to it; it is not relevant to the refund, which goes to the account already on file from the tax return — do not send any payment to it based on this letter.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwalde",
+      "document_date": "2024-12-06",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/20877"
+        }
+      ],
+      "amounts": [
+        5118,
+        5530,
+        412
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2023 income tax assessment",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter dated Fri 06.12.2024, sent by ordinary post from the tax office (Finanzamt), so § 122 Abs. 2 Nr. 1 AO (as applicable to this 2024 letter, before the 2025 amendment) applies: it counts as delivered (Bekanntgabe) on the 3rd day after posting, i.e. Mon 09.12.2024 (as the letter itself states: 'der dritte Tag nach der Aufgabe zur Post'). That day is not a weekend/holiday, so it stands as the Bekanntgabe date. The one-month Einspruch period of § 355 Abs. 1 AO then starts the next day (09.12.2024, § 187 Abs. 1 BGB / § 108 Abs. 1 AO) and ends one month later, on the day with the same number, i.e. Thu 09.01.2025 (§ 188 Abs. 2 BGB). 09.01.2025 is a Thursday and not a public holiday in NW, so no further shift applies (§ 108 Abs. 3 AO).",
+          "due_date": "2025-01-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Refund of overpaid tax to be received",
+          "quote": "Abzüglich der einbehaltenen Lohnsteuer von 5.530,00 € ergibt sich eine Erstattung von 412,00 €, die auf das in der Erklärung genannte Konto überwiesen wird.",
+          "computation": "The letter states a refund of 412,00 € will be transferred to the account given in the tax return, but gives no specific date or deadline for this transfer; such refunds are typically processed within a few weeks of the assessment but no exact date can be derived from the letter's text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 412
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no specific date for when the 412,00 € refund will actually be paid out; if it does not arrive within a reasonable time, contact the Finanzamt using the reference number above.",
+        "The IBAN printed in the footer (Musterbank Lüne, DE84 2405 0000 0003 0200 00) is the tax office's own account for payments owed to it; it is not relevant to the refund, which goes to the account already on file from the tax return — do not send any payment to it based on this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2743,
+      "cache_read_tokens": 15138,
+      "cache_creation_tokens": 4662,
+      "cost_usd": 0.0491136,
+      "duration_ms": 25845,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 355 AO, § 122 Abs. 2 Nr. 1 AO",
+            "text": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe"
+          },
+          "document_date": "2024-12-06",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterwalde",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch",
+          "today": "2024-12-10"
+        },
+        "result": "{\"due_date\":\"2025-01-09\",\"weekday\":\"Thursday\",\"send_by\":\"2025-01-03\",\"summary\":\"Letter dated Fri 6 Dec 2024 counts as delivered on Mon 9 Dec; one month later is Thu 9 Jan 2025.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 6 Dec 2024 (the letter's date; the real posting day can only be later)\",\"date\":\"2024-12-06\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 3rd day after posting: Mon 9 Dec 2024\",\"date\":\"2024-12-09\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Mon 9 Dec 2024\",\"date\":\"2024-12-09\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 9 Jan 2025\",\"date\":\"2025-01-09\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 9 Jan 2025 is a working day, so it stays\",\"date\":\"2025-01-09\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 3 Jan 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-01-03\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2024-12-10\",\"letter_date\":\"2024-12-06\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

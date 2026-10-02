@@ -1,0 +1,50 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"ffa994c10cda9ace66666ce0c122a3f7bb4286ad744165de99a72dcc6ea5c9b0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-relative_business_days-G2"
+    ],
+    "prompt_head": "Today is Thursday, 2026-05-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Verwaltung Musterhof GmbH\",\"document_date\":\"2026-05-20\",\"references\":[],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Schedule drying appointment with Trocknungstechnik Beispiel\",\"quote\":\"Bitte vereinbaren Sie binnen 5 Arbeitstagen ab Briefdatum einen Termin mit der Firma\\nTrocknungstechnik Beispiel (Telefon 0541 22 11 00); Arbeitstage sind Montag bis Freitag,\\ngesetzliche Feiertage ausgenommen.\",\"computation\":\"Letter is dated Wednesday 20.05.2026. The period runs 'ab Briefdatum' (from the letter date), so per §187 Abs. 1 BGB the day of the event (20.05.2026) is not counted; counting starts the next day, Thursday 21.05.2026. Business days (Mon-Fri, excluding statutory holidays) are counted: Day 1 = Thu 21.05.2026; Day 2 = Fri 22.05.2026; weekend Sat 23.05./Sun 24.05.2026 not counted; Mon 25.05.2026 is Pfingstmontag (Whit Monday), a statutory holiday in NRW (Easter Sunday 2026 = 05.04.2026, so Pentecost = 24.05.2026, Whit Monday = 25.05.2026) and therefore not counted as a business day; Day 3 = Tue 26.05.2026; Day 4 = Wed 27.05.2026; Day 5 = Thu 28.05.2026. The 5th business day, Thursday 28.05.2026, is the deadline by which the appointment must be arranged (not itself a holiday or weekend day, so no further shift under §193 BGB is needed).\",\"due_date\":\"2026-05-28\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Verwaltung Musterhof GmbH",
+      "document_date": "2026-05-20",
+      "references": [],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Schedule drying appointment with Trocknungstechnik Beispiel",
+          "quote": "Bitte vereinbaren Sie binnen 5 Arbeitstagen ab Briefdatum einen Termin mit der Firma\nTrocknungstechnik Beispiel (Telefon 0541 22 11 00); Arbeitstage sind Montag bis Freitag,\ngesetzliche Feiertage ausgenommen.",
+          "computation": "Letter is dated Wednesday 20.05.2026. The period runs 'ab Briefdatum' (from the letter date), so per §187 Abs. 1 BGB the day of the event (20.05.2026) is not counted; counting starts the next day, Thursday 21.05.2026. Business days (Mon-Fri, excluding statutory holidays) are counted: Day 1 = Thu 21.05.2026; Day 2 = Fri 22.05.2026; weekend Sat 23.05./Sun 24.05.2026 not counted; Mon 25.05.2026 is Pfingstmontag (Whit Monday), a statutory holiday in NRW (Easter Sunday 2026 = 05.04.2026, so Pentecost = 24.05.2026, Whit Monday = 25.05.2026) and therefore not counted as a business day; Day 3 = Tue 26.05.2026; Day 4 = Wed 27.05.2026; Day 5 = Thu 28.05.2026. The 5th business day, Thursday 28.05.2026, is the deadline by which the appointment must be arranged (not itself a holiday or weekend day, so no further shift under §193 BGB is needed).",
+          "due_date": "2026-05-28",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2066,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2001,
+      "cost_usd": 0.029292400000000003,
+      "duration_ms": 17580,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

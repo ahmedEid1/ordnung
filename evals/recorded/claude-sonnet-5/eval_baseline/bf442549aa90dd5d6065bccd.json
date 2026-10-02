@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f81a58816132fe0c830f99fd0cd2529bf4aaacd8e047618f8faef90fe3f5c044\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-H1"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docume"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Stadt Musterhalle – Bußgeldstelle\",\"document_date\":\"2027-04-21\",\"references\":[{\"label\":\"Az.\",\"value\":\"32.21-OWI-2027-03390\"},{\"label\":\"Fahrzeug\",\"value\":\"HAL-RM 63\"}],\"amounts\":[60,25,3.5,88.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift bei der Stadt Musterhalle – Bußgeldstelle.\",\"computation\":\"This is a formal delivery (Postzustellungsurkunde, § 182 ZPO); the attached Zustellungsurkunde copy is annotated with the delivery date '24.04.2027' (Saturday), which counts as the Zustellung day without adding further days. Under § 187 Abs. 1 BGB the day of delivery (Sat 24.04.2027) is not counted; the two-week period (§ 67 Abs. 1 OWiG, counted per § 43 Abs. 1 StPO) ends on the day two weeks later bearing the same name, i.e. Saturday 08.05.2027. Since that day is a Saturday, § 43 Abs. 2 StPO / § 193 BGB move the deadline to the next working day: Monday 10.05.2027 (no public holiday intervenes in Sachsen-Anhalt).\",\"due_date\":\"2027-05-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and costs (Gesamtbetrag)\",\"quote\":\"Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.\",\"computation\":\"Rechtskraft (finality) is reached when the two-week Einspruch period lapses without an objection, i.e. the day after the Einspruch deadline of 10.05.2027, so Rechtskraft occurs on 11.05.2027. Under § 187 Abs. 1 BGB that day is not counted; two weeks later (same weekday) falls on Tuesday 25.05.2027, which is not a Saturday, Sunday or public holiday in Sachsen-Anhalt, so no further shift applies. This assumes no Einspruch is filed; filing one would suspend finality and this due date.\",\"due_date\":\"2027-05-25\",\"confidence\":\"medium\",\"amount\":88.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (two weeks after Rechtskraft) is calculated assuming no Einspruch is filed; if an objection is lodged by 10.05.2027, the fine does not become final and this payment date no longer applies.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Stadt Musterhalle – Bußgeldstelle",
+      "document_date": "2027-04-21",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "32.21-OWI-2027-03390"
+        },
+        {
+          "label": "Fahrzeug",
+          "value": "HAL-RM 63"
+        }
+      ],
+      "amounts": [
+        60,
+        25,
+        3.5,
+        88.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Sie können diesen Bußgeldbescheid mit dem Einspruch anfechten; er muss innerhalb von zwei Wochen ab der Zustellung vorliegen (§ 67 Abs. 1 OWiG), schriftlich oder zur Niederschrift bei der Stadt Musterhalle – Bußgeldstelle.",
+          "computation": "This is a formal delivery (Postzustellungsurkunde, § 182 ZPO); the attached Zustellungsurkunde copy is annotated with the delivery date '24.04.2027' (Saturday), which counts as the Zustellung day without adding further days. Under § 187 Abs. 1 BGB the day of delivery (Sat 24.04.2027) is not counted; the two-week period (§ 67 Abs. 1 OWiG, counted per § 43 Abs. 1 StPO) ends on the day two weeks later bearing the same name, i.e. Saturday 08.05.2027. Since that day is a Saturday, § 43 Abs. 2 StPO / § 193 BGB move the deadline to the next working day: Monday 10.05.2027 (no public holiday intervenes in Sachsen-Anhalt).",
+          "due_date": "2027-05-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and costs (Gesamtbetrag)",
+          "quote": "Der Gesamtbetrag ist zwei Wochen nach Rechtskraft fällig.",
+          "computation": "Rechtskraft (finality) is reached when the two-week Einspruch period lapses without an objection, i.e. the day after the Einspruch deadline of 10.05.2027, so Rechtskraft occurs on 11.05.2027. Under § 187 Abs. 1 BGB that day is not counted; two weeks later (same weekday) falls on Tuesday 25.05.2027, which is not a Saturday, Sunday or public holiday in Sachsen-Anhalt, so no further shift applies. This assumes no Einspruch is filed; filing one would suspend finality and this due date.",
+          "due_date": "2027-05-25",
+          "confidence": "medium",
+          "amount": 88.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (two weeks after Rechtskraft) is calculated assuming no Einspruch is filed; if an objection is lodged by 10.05.2027, the fine does not become final and this payment date no longer applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3965,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2687,
+      "cost_usd": 0.051508,
+      "duration_ms": 35525,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

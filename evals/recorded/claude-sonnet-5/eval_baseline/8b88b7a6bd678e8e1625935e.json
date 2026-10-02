@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"bc936247fa2add7fb7889837a37292324d267a54cca0e75e313ce5db96d32227\",\"mode\":\"text\",\"region\":\"SN\",\"today\":\"2026-11-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-11-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen (SN), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> t"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Beispielelbe – Bußgeldstelle\",\"document_date\":\"2026-10-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 2026/08-77412\"},{\"label\":\"Kennzeichen\",\"value\":\"PIR-HM 418\"}],\"amounts\":[150,25,3.5,178.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"The attached Postzustellungsurkunde (formal delivery certificate, page 2) states the notice was delivered on 04.11.2026 ('zugestellt am 04.11.20[26]'). For formal delivery the printed date is the delivery day itself, no extra days are added (Zustellung per PZU). The objection period is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day (04.11.2026, a Wednesday) is not counted; the two-week period ends on the same weekday two weeks later, i.e. 18.11.2026 (Wednesday). That day is not a Saturday, Sunday or Sachsen public holiday, so the deadline stands at 18.11.2026 and does not move.\",\"due_date\":\"2026-11-18\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine amount once the notice becomes final\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.\",\"computation\":\"Payment is due 'as soon as' the notice is final, 'at the latest two weeks after'. Absent an Einspruch, the notice becomes final (rechtskräftig) upon expiry of the two-week objection period calculated above, i.e. at the end of 18.11.2026. Counting a further two weeks from that date under §§ 187, 188 BGB (18.11.2026, Wednesday, not counted; two weeks later on the same weekday) gives 02.12.2026 (Wednesday), which is not a weekend day or Sachsen holiday, so the deadline stands. This assumes no Einspruch is filed; if one is filed, this payment deadline does not apply and the matter instead goes to court.\",\"due_date\":\"2026-12-02\",\"confidence\":\"medium\",\"amount\":178.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The scanned proof of formal delivery on page 2 is visually garbled ('26 zugestellt am 04.11.20'); I read this as a delivery date of 04.11.2026 based on context (letter dated 30.10.2026), but the person should check the original envelope to confirm this date, since both the Einspruch deadline and the payment deadline are calculated from it.\",\"The payment due date (02.12.2026) is only valid if no Einspruch is filed by 18.11.2026; filing an objection suspends the payment obligation and sends the case to the Amtsgericht instead.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Beispielelbe – Bußgeldstelle",
+      "document_date": "2026-10-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 2026/08-77412"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "PIR-HM 418"
+        }
+      ],
+      "amounts": [
+        150,
+        25,
+        3.5,
+        178.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "The attached Postzustellungsurkunde (formal delivery certificate, page 2) states the notice was delivered on 04.11.2026 ('zugestellt am 04.11.20[26]'). For formal delivery the printed date is the delivery day itself, no extra days are added (Zustellung per PZU). The objection period is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day (04.11.2026, a Wednesday) is not counted; the two-week period ends on the same weekday two weeks later, i.e. 18.11.2026 (Wednesday). That day is not a Saturday, Sunday or Sachsen public holiday, so the deadline stands at 18.11.2026 and does not move.",
+          "due_date": "2026-11-18",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine amount once the notice becomes final",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE77 8505 0300 0005 1500 00.",
+          "computation": "Payment is due 'as soon as' the notice is final, 'at the latest two weeks after'. Absent an Einspruch, the notice becomes final (rechtskräftig) upon expiry of the two-week objection period calculated above, i.e. at the end of 18.11.2026. Counting a further two weeks from that date under §§ 187, 188 BGB (18.11.2026, Wednesday, not counted; two weeks later on the same weekday) gives 02.12.2026 (Wednesday), which is not a weekend day or Sachsen holiday, so the deadline stands. This assumes no Einspruch is filed; if one is filed, this payment deadline does not apply and the matter instead goes to court.",
+          "due_date": "2026-12-02",
+          "confidence": "medium",
+          "amount": 178.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The scanned proof of formal delivery on page 2 is visually garbled ('26 zugestellt am 04.11.20'); I read this as a delivery date of 04.11.2026 based on context (letter dated 30.10.2026), but the person should check the original envelope to confirm this date, since both the Einspruch deadline and the payment deadline are calculated from it.",
+        "The payment due date (02.12.2026) is only valid if no Einspruch is filed by 18.11.2026; filing an objection suspends the payment obligation and sends the case to the Amtsgericht instead."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6462,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2845,
+      "cost_usd": 0.07711,
+      "duration_ms": 58626,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

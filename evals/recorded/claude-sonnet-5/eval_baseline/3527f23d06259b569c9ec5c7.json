@@ -1,0 +1,134 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"c3c586f8b2b3bb6df06a6deec3dcb51e29901684c0e7565ecb88a0dfa125d9f1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-06-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-06-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispielstädter Tageblatt Verlag GmbH\",\"document_date\":\"2027-06-18\",\"references\":[{\"label\":\"Abo-Nummer\",\"value\":\"TK-0098 4417\"},{\"label\":\"Kundennummer\",\"value\":\"551 207\"}],\"amounts\":[42.9],\"items\":[{\"kind\":\"milestone\",\"title\":\"Start of printed newspaper delivery\",\"quote\":\"Die gedruckte Zeitung erhalten Sie ab dem 25.06.2027 montags bis samstags; das E-Paper ist ab sofort freigeschaltet.\",\"computation\":\"The letter states the delivery start date directly as 25.06.2027; no period calculation is needed, the date is simply taken as printed.\",\"due_date\":\"2027-06-25\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-06-25\",\"cancel_by\":\"2028-05-24\"},\"warnings\":[\"The cancellation deadline falls on Thu 25 May 2028 (Christi Himmelfahrt, a public holiday); notice deadlines do not move to the next working day, so to be safe the cancellation should reach the provider by Wed 24 May 2028 at the latest.\",\"The current term end (25.06.2028, computed from '12 Monate ab Lieferbeginn' per §187/188 BGB) falls on a Sunday, which is normal for a contract term end and does not shift the cancellation deadline.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+      "document_date": "2027-06-18",
+      "references": [
+        {
+          "label": "Abo-Nummer",
+          "value": "TK-0098 4417"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "551 207"
+        }
+      ],
+      "amounts": [
+        42.9
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Start of printed newspaper delivery",
+          "quote": "Die gedruckte Zeitung erhalten Sie ab dem 25.06.2027 montags bis samstags; das E-Paper ist ab sofort freigeschaltet.",
+          "computation": "The letter states the delivery start date directly as 25.06.2027; no period calculation is needed, the date is simply taken as printed.",
+          "due_date": "2027-06-25",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-06-25",
+        "cancel_by": "2028-05-24"
+      },
+      "warnings": [
+        "The cancellation deadline falls on Thu 25 May 2028 (Christi Himmelfahrt, a public holiday); notice deadlines do not move to the next working day, so to be safe the cancellation should reach the provider by Wed 24 May 2028 at the latest.",
+        "The current term end (25.06.2028, computed from '12 Monate ab Lieferbeginn' per §187/188 BGB) falls on a Sunday, which is normal for a contract term end and does not shift the cancellation deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 6508,
+      "cache_read_tokens": 44100,
+      "cache_creation_tokens": 10989,
+      "cost_usd": 0.117872,
+      "duration_ms": 62388,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 12,
+            "unit": "months",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-06-25",
+            "nature": "other",
+            "shift_rule": "none",
+            "legal_basis": "§ 188 BGB",
+            "text": "Mindestbezugsdauer 12 Monate ab Lieferbeginn"
+          },
+          "sender_kind": "company",
+          "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+          "document_date": "2027-06-18",
+          "region": "NW",
+          "today": "2027-06-22"
+        },
+        "result": "{\"due_date\":\"2028-06-25\",\"weekday\":\"Sunday\",\"summary\":\"12 months after Fri 25 Jun 2027 is Sun 25 Jun 2028.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 25 Jun 2027\",\"date\":\"2027-06-25\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 months later: Sun 25 Jun 2028\",\"date\":\"2028-06-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"}],\"assumed\":{\"today\":\"2027-06-22\",\"letter_date\":\"2027-06-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": -1,
+            "unit": "months",
+            "anchor": "explicit_date",
+            "anchor_date": "2028-06-24",
+            "nature": "notice",
+            "shift_rule": "none",
+            "legal_basis": "§ 188 BGB",
+            "text": "Kündigungsfrist 1 Monat zum Ende der Mindestbezugsdauer"
+          },
+          "sender_kind": "company",
+          "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+          "document_date": "2027-06-18",
+          "region": "NW",
+          "today": "2027-06-22"
+        },
+        "result": "{\"due_date\":\"2028-05-24\",\"weekday\":\"Wednesday\",\"send_by\":\"2028-05-18\",\"safe_date\":\"2028-05-24\",\"summary\":\"One month before Sat 24 Jun 2028 is Wed 24 May 2028.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"One month before Sat 24 Jun 2028: it must arrive by Wed 24 May 2028\",\"date\":\"2028-05-24\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Thu 18 May 2028 to allow 4 business days for a letter to arrive\",\"date\":\"2028-05-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-06-22\",\"letter_date\":\"2027-06-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": -1,
+            "unit": "months",
+            "anchor": "explicit_date",
+            "anchor_date": "2028-06-25",
+            "nature": "notice",
+            "shift_rule": "none",
+            "legal_basis": "§ 188 BGB",
+            "text": "Kündigungsfrist 1 Monat zum Ende der Mindestbezugsdauer"
+          },
+          "sender_kind": "company",
+          "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+          "document_date": "2027-06-18",
+          "region": "NW",
+          "today": "2027-06-22"
+        },
+        "result": "{\"due_date\":\"2028-05-25\",\"weekday\":\"Thursday\",\"send_by\":\"2028-05-18\",\"safe_date\":\"2028-05-24\",\"summary\":\"One month before Sun 25 Jun 2028 is Thu 25 May 2028, a public holiday, Christi Himmelfahrt; notice deadlines don't move, so aim for Wed 24 May 2028.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"One month before Sun 25 Jun 2028: it must arrive by Thu 25 May 2028\",\"date\":\"2028-05-25\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 25 May 2028 is a public holiday, Christi Himmelfahrt, but notice deadlines never move to the next working day\",\"date\":\"2028-05-25\",\"rule_id\":\"notice_no_shift\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\"},{\"label\":\"Safe date: make sure it arrives by Wed 24 May 2028\",\"date\":\"2028-05-24\",\"rule_id\":\"safe_date\",\"citation\":\"Ordnung safety policy\"},{\"label\":\"Send by Thu 18 May 2028 to allow 4 business days for a letter to arrive\",\"date\":\"2028-05-18\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"notice_no_shift\",\"title\":\"Notice periods never move to Monday\",\"citation\":\"BGH III ZR 172/04 (NJW 2005, 1354)\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=17.02.2005&Aktenzeichen=III+ZR+172/04\"},{\"id\":\"safe_date\",\"title\":\"Safe date\",\"citation\":\"Ordnung safety policy\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-06-22\",\"letter_date\":\"2027-06-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

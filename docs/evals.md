@@ -7,6 +7,7 @@
 > LLM + rules tool was run on 2026-09-26 (live, commit `be9f638`) on the same letters and added to this run.
 > Ordnung was run again on 2026-09-30 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
 > Every condition was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
+> Every condition was also recorded once on the fresh holdout2 split (2026-10-01), written after the release's last change to how letters are read (“Held-out run: the holdout2 split”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -66,7 +67,7 @@ page, “the held-out run” is the first recording on the test split.
 > 63 letters (11 phone photos, 12 adversarial),
 > 56 required items with a known date.
 
-The holdout split was recorded twice on 30 September, once per model, with nothing changed between the two recordings but the model: first on Sonnet 5.5 (Ordnung alone: 53 of 56, two late, one early; `evals/results/2026-09-30-sonnet-holdout.json`), then, when the account lost access to Sonnet 5.5 the same day, on Sonnet 5 (`claude-sonnet-5`, the pinned id the app uses now) with every condition. This section shows the Sonnet 5 run; Ordnung's three misses are the same three letters in both. Recording cost $14.57 (API-equivalent): Ordnung $4.92, LLM only $3.13, LLM + rules text $2.95, LLM + rules tool $3.57.
+*Written with the recording on 30 September 2026:* The holdout split was recorded twice on 30 September, once per model, with nothing changed between the two recordings but the model: first on Sonnet 5.5 (Ordnung alone: 53 of 56, two late, one early; `evals/results/2026-09-30-sonnet-holdout.json`), then, when the account lost access to Sonnet 5.5 the same day, on Sonnet 5 (`claude-sonnet-5`, the pinned id the app uses now) with every condition. This section shows the Sonnet 5 run; Ordnung's three misses are the same three letters in both. Recording cost $14.57 (API-equivalent): Ordnung $4.92, LLM only $3.13, LLM + rules text $2.95, LLM + rules tool $3.57.
 
 | Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Published run, test split |
 |---|---|---|---|---|---|---|
@@ -91,6 +92,46 @@ Ordnung got 3 dated item(s) of the holdout split wrong; from the failure gallery
 - `holdout-adversarial-conflicting_dates-1` — *Rechnung DB-26-0117 bezahlen*: expected Mon 9 Feb 2026, got Mon 16 Feb 2026 (wrong, late, reading error)
 - `holdout-adversarial-conflicting_dates-2` — *Einspruchsfrist*: expected Wed 12 May 2027, got Thu 13 May 2027 (wrong, late, reading error)
 - `holdout-tax_assessment-F1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Fri 20 Jun 2025, got Mon 16 Jun 2025 (wrong, early, computing error)
+
+## Held-out run: the holdout2 split
+
+The holdout2 split is a second fresh sample of the same template families (variants G and H, with
+new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
+attack classes. **The holdout2 letters were written after the release's last change to how letters are
+read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
+code changes came after them: a rules-table date their label audit found, which changes no date on them
+(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
+objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+re-scored row only, never in the held-out row.
+
+> Run on 2026-10-01 from live model calls, model `claude-sonnet-5`, commit `0add891`:
+> 63 letters (11 phone photos, 12 adversarial),
+> 56 required items with a known date.
+
+*Written with the recording on 1 October 2026:* The holdout2 split was written after the release's last change to how letters are read and checked (the wider two-dates check and the new payment-day phrasings), by an agent that did not read the reading code, the prompts or any earlier result. A second agent then audited its labels blind: it worked out every dated obligation from the letters and the law before opening a label, and all 56 matched. Its fixes, made before any recording, touched only fields the scorer does not read, one statute cited in two derivations, one repeated amount, and a letter that now states when its procedure began. The split was recorded once, on 1 October on Sonnet 5 (`claude-sonnet-5`, the pinned id the app uses) with every condition, and nothing was changed after it. One code change came after the letters were written: the audit found that Hamburg's 4-day rule starts on 14 May 2025, not 1 January 2025, read in the gazette (HmbGVBl. Nr. 17 of 13 May 2025, S. 338), and the rules table now says so. No letter of any split is posted in that window, so it changes no date here, and the label checker now fails on any letter that is. Recording cost $14.12 (API-equivalent): Ordnung $5.02, LLM only $2.92, LLM + rules text $2.71, LLM + rules tool $3.48.
+
+| Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Published run, test split |
+|---|---|---|---|---|---|---|
+| **Ordnung** | 96.4 % [90.9–100.0] | 54/56 | 0.0 % | 1.8 % | 1.8 % | 89.3 % [78.9–96.7] |
+| **LLM only** | 76.8 % [64.4–88.2] | 43/56 | 10.7 % | 12.5 % | 0.0 % | 82.1 % [70.9–91.7] |
+| **LLM + rules text** | 85.7 % [75.9–94.5] | 48/56 | 1.8 % | 12.5 % | 0.0 % | 92.9 % [83.9–100.0] |
+| **LLM + rules tool** | 98.2 % [94.2–100.0] | 55/56 | 1.8 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
+| **Ordnung, re-scored** (not held-out) | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
+
+**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the code of commit `d8fc8ba` (2026-10-01). That code has a check written after the held-out run and informed by it, so the holdout2 split is no longer held-out for it: the held-out row above stays the held-out number. The check (`src/ordnung/ingest/gaps.py`, ADR 0015) runs after the quotes are verified: when a reading comes back nearly blank, or leaves out the objection deadline that the letter's own instructions on how to object state, Ordnung files that deadline itself from those instructions, counted from the earliest date the letter gives for itself, always at low confidence and marked "Please check" (with no date when the letter's dates or periods disagree). It was written after, and because of, Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`. No model was called for it. On that letter the replay files Thu 10 Dec 2026, because the benchmark passes the authority's Land; the app, which does not know the Land, files Wed 9 Dec (a day early). A second guard sets the letter's own notice beside a reading's objection date when that date ends more than a week after it; it fires on no recorded reading of any split. Both were measured on the recordings of all four splits and the demo (the check fires on this one letter only) and reviewed in four adversarial rounds, so neither is held-out on any split.
+
+Paired differences on the holdout2 letters:
+
+- Ordnung − LLM only: accuracy +19.6 pp [+7.6, +32.7], dangerous-late rate -10.7 pp [-20.0, -2.1].
+- Ordnung − LLM + rules text: accuracy +10.7 pp [+0.0, +21.8], dangerous-late rate -1.8 pp [-5.8, +0.0].
+- Ordnung − LLM + rules tool: accuracy -1.8 pp [-8.1, +3.8], dangerous-late rate -1.8 pp [-5.8, +0.0].
+- LLM + rules tool − LLM only: accuracy +21.4 pp [+10.2, +34.0], dangerous-late rate -8.9 pp [-19.4, +0.0].
+- LLM + rules tool − LLM + rules text: accuracy +12.5 pp [+4.0, +22.0], dangerous-late rate +0.0 pp [+0.0, +0.0].
+
+Ordnung got 2 dated item(s) of the holdout2 split wrong; from the failure gallery:
+
+- `holdout2-adversarial-injection_visible-1` — *Widerspruchsfrist*: expected Thu 10 Dec 2026, got none (missed, no date)
+- `holdout2-tax_assessment-H1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Wed 30 Jul 2025, got Mon 28 Jul 2025 (wrong, early, computing error)
 
 ## After the held-out run
 
@@ -327,13 +368,15 @@ simulated phone photos, and an adversarial set in the test and holdout splits (v
 prompt injection, scams, conflicting dates, missing letter date). Each letter has its own "today" (the
 day it is read) and, where the letterhead names a Land, a holiday region.
 
-**Splits.** Template variants A/B are the dev split, C/D the test split and E/F the holdout split;
-the test and holdout splits each have their own adversarial letters, dev has none; no
+**Splits.** Template variants A/B are the dev split, C/D the test split, E/F the holdout split and G/H
+the holdout2 split; the test, holdout and holdout2 splits each have their own adversarial letters, dev has none; no
 deadline-bearing sentence of one split recurs in another. Prompts were tuned on dev letters and the
 published numbers are the test split — but the test split is no longer held-out: extraction prompts
 9 to 12 were each recorded on it. The holdout split is a fresh sample of the same families and
 attack classes (new senders, wording, layout, dates and amounts): the holdout letters were written
 after prompt version 11 and before any holdout recording, and are recorded once with frozen prompts.
+The holdout2 split is a second such sample (new senders, recipients, wording, layout, dates, amounts and
+regions), written after the release's last change to how letters are read and recorded once.
 No split is blind: the same project wrote the letters, the labels, the prompts and the rules engine
 (see Limitations).
 
@@ -396,7 +439,8 @@ condition's.
 ```bash
 python -m evals.run --split test --model claude-sonnet-5          # recompute from recorded outputs (no tokens)
 python -m evals.run --live --split test --model claude-sonnet-5   # call the model and record new outputs
-python -m evals.run --split holdout --model claude-sonnet-5       # the held-out run, from its recorded outputs
+python -m evals.run --split holdout --model claude-sonnet-5 --results-dir /tmp/holdout   # replayed on the checked-out code (not the held-out number)
+python -m evals.run --split holdout2 --model claude-sonnet-5 --results-dir /tmp/holdout2 # replayed on the checked-out code (not the held-out number)
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
 
@@ -406,5 +450,5 @@ rules engine of the checked-out commit; this run's numbers come from commit `17f
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
 [--prompt-run evals/results/<later run>.json --prompt-note <why>.md] [--holdout-run
-evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself.
+evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself. The run on the holdout2 split joins the page with `--holdout2-run evals/results/<holdout2 run>.json [--holdout2-rescored …] [--holdout2-note …]` and never rewrites it either.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model claude-sonnet-5 --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).

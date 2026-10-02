@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c3c586f8b2b3bb6df06a6deec3dcb51e29901684c0e7565ecb88a0dfa125d9f1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-06-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-06-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispielstädter Tageblatt Verlag GmbH\",\"document_date\":\"2027-06-18\",\"references\":[{\"label\":\"Abo-Nummer\",\"value\":\"TK-0098 4417\"},{\"label\":\"Kundennummer\",\"value\":\"551 207\"}],\"amounts\":[42.9],\"items\":[{\"kind\":\"milestone\",\"title\":\"Print newspaper delivery begins\",\"quote\":\"Die gedruckte Zeitung erhalten Sie ab dem 25.06.2027 montags bis samstags; das E-Paper ist ab sofort freigeschaltet.\",\"computation\":\"The letter states the delivery start date explicitly as 25.06.2027; no further counting needed, this is a fixed calendar date given in the letter.\",\"due_date\":\"2027-06-25\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-06-24\",\"cancel_by\":\"2028-05-24\"},\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispielstädter Tageblatt Verlag GmbH",
+      "document_date": "2027-06-18",
+      "references": [
+        {
+          "label": "Abo-Nummer",
+          "value": "TK-0098 4417"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "551 207"
+        }
+      ],
+      "amounts": [
+        42.9
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Print newspaper delivery begins",
+          "quote": "Die gedruckte Zeitung erhalten Sie ab dem 25.06.2027 montags bis samstags; das E-Paper ist ab sofort freigeschaltet.",
+          "computation": "The letter states the delivery start date explicitly as 25.06.2027; no further counting needed, this is a fixed calendar date given in the letter.",
+          "due_date": "2027-06-25",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-06-24",
+        "cancel_by": "2028-05-24"
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3522,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2141,
+      "cost_usd": 0.0444124,
+      "duration_ms": 34005,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

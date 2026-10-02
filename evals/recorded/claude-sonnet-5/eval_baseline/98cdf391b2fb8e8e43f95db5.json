@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"8d5addc81fe01b4e429255e97453b07384ee7cdad4123d41f0f4fe41e51042ce\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2024-12-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwalde\",\"document_date\":\"2024-12-06\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/20877\"}],\"amounts\":[5118,5530,412],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2023 income tax assessment\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Document dated Friday 06.12.2024, sent by simple letter (einfacher Brief). Under § 122 Abs. 2 Nr. 1 AO, a letter sent by ordinary mail is deemed delivered (Bekanntgabe) on the 3rd day after posting, unless it did not arrive or arrived later (no indication of that here). 06.12.2024 + 3 days = 09.12.2024 (Monday), which is a normal business day in NW (not a weekend or holiday), so no shift of the Bekanntgabe date is needed. The one-month Einspruch period under § 355 Abs. 1 AO runs per § 108 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (09.12.2024) is not counted, the period begins the next day, and ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 09.01.2025. 09.01.2025 is a Thursday, not a Saturday, Sunday or public holiday in NW, so the deadline stands.\",\"due_date\":\"2025-01-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund transferred to taxpayer's account\",\"quote\":\"Abzüglich der einbehaltenen Lohnsteuer von 5.530,00 € ergibt sich eine Erstattung von 412,00 €, die auf das in der Erklärung genannte Konto überwiesen wird.\",\"computation\":\"The letter states a refund of 412,00 € will be transferred to the account given in the tax return, but gives no specific transfer date or deadline, so no exact due date can be determined from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":412}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter gives no specific date for the actual transfer of the 412,00 € refund, only that it will be sent to the account named in the tax return – verify that this account is correct and still active.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwalde",
+      "document_date": "2024-12-06",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/20877"
+        }
+      ],
+      "amounts": [
+        5118,
+        5530,
+        412
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2023 income tax assessment",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Document dated Friday 06.12.2024, sent by simple letter (einfacher Brief). Under § 122 Abs. 2 Nr. 1 AO, a letter sent by ordinary mail is deemed delivered (Bekanntgabe) on the 3rd day after posting, unless it did not arrive or arrived later (no indication of that here). 06.12.2024 + 3 days = 09.12.2024 (Monday), which is a normal business day in NW (not a weekend or holiday), so no shift of the Bekanntgabe date is needed. The one-month Einspruch period under § 355 Abs. 1 AO runs per § 108 AO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (09.12.2024) is not counted, the period begins the next day, and ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 09.01.2025. 09.01.2025 is a Thursday, not a Saturday, Sunday or public holiday in NW, so the deadline stands.",
+          "due_date": "2025-01-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund transferred to taxpayer's account",
+          "quote": "Abzüglich der einbehaltenen Lohnsteuer von 5.530,00 € ergibt sich eine Erstattung von 412,00 €, die auf das in der Erklärung genannte Konto überwiesen wird.",
+          "computation": "The letter states a refund of 412,00 € will be transferred to the account given in the tax return, but gives no specific transfer date or deadline, so no exact due date can be determined from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 412
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter gives no specific date for the actual transfer of the 412,00 € refund, only that it will be sent to the account named in the tax return – verify that this account is correct and still active."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3105,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2026,
+      "cost_usd": 0.0397824,
+      "duration_ms": 28791,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

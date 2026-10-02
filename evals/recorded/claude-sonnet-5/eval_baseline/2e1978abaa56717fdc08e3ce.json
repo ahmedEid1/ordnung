@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"96118ff7d5fa1637834553ddc2d15790d6c7d169230b063f20fa08b24aaf9e62\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-05-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-H1"
+    ],
+    "prompt_head": "Today is Friday, 2026-05-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Versorgungsamt Beispielfeld\",\"document_date\":\"2026-05-27\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"SB 61-0447/26\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against GdB determination\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.\",\"computation\":\"The notice is dated 27.05.2026 (Wednesday); assuming it was handed to the post (Aufgabe zur Post) on that same day, the letter's own rule applies: it 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' -> 27.05.2026 + 4 days = 31.05.2026 (a Sunday). This fictional notice date is not itself a procedural deadline, so case law does not shift it to the next business day for falling on a Sunday. The one-month Widerspruchsfrist begins the day after Bekanntgabe (§187 Abs. 1 BGB analog, per § 26 Abs. 1 SGB X) and, per § 188 Abs. 2 BGB, ends on the day of the following month that bears the same date number as the day of the triggering event (31). June has only 30 days, so under § 188 Abs. 3 BGB the period ends on the last day of June: 30.06.2026 (Tuesday). This day is a normal working day in NRW (Fronleichnam 2026 falls on 04.06.2026, not on 30.06.2026), so § 193 BGB causes no further shift.\",\"due_date\":\"2026-06-30\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact date the Bescheid was actually handed to the post (Aufgabe zur Post) is not stated in the letter; the computation assumes it matches the printed document date (27.05.2026), which affects the computed Widerspruch deadline.\",\"Note for the reader: by today's date (2026-10-01) this one-month Widerspruchsfrist (computed as 30.06.2026) has already expired; if a Widerspruch is still needed, check with the Versorgungsamt about possible reinstatement (Wiedereinsetzung in den vorigen Stand) or whether the notice was actually received on a different date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Versorgungsamt Beispielfeld",
+      "document_date": "2026-05-27",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "SB 61-0447/26"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against GdB determination",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.",
+          "computation": "The notice is dated 27.05.2026 (Wednesday); assuming it was handed to the post (Aufgabe zur Post) on that same day, the letter's own rule applies: it 'gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben' -> 27.05.2026 + 4 days = 31.05.2026 (a Sunday). This fictional notice date is not itself a procedural deadline, so case law does not shift it to the next business day for falling on a Sunday. The one-month Widerspruchsfrist begins the day after Bekanntgabe (§187 Abs. 1 BGB analog, per § 26 Abs. 1 SGB X) and, per § 188 Abs. 2 BGB, ends on the day of the following month that bears the same date number as the day of the triggering event (31). June has only 30 days, so under § 188 Abs. 3 BGB the period ends on the last day of June: 30.06.2026 (Tuesday). This day is a normal working day in NRW (Fronleichnam 2026 falls on 04.06.2026, not on 30.06.2026), so § 193 BGB causes no further shift.",
+          "due_date": "2026-06-30",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date the Bescheid was actually handed to the post (Aufgabe zur Post) is not stated in the letter; the computation assumes it matches the printed document date (27.05.2026), which affects the computed Widerspruch deadline.",
+        "Note for the reader: by today's date (2026-10-01) this one-month Widerspruchsfrist (computed as 30.06.2026) has already expired; if a Widerspruch is still needed, check with the Versorgungsamt about possible reinstatement (Wiedereinsetzung in den vorigen Stand) or whether the notice was actually received on a different date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5456,
+      "cache_read_tokens": 8392,
+      "cache_creation_tokens": 6655,
+      "cost_usd": 0.0828664,
+      "duration_ms": 54231,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

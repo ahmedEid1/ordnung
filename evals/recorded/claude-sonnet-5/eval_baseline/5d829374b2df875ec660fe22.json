@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1b34c79e4a74a276e643dc4c29fd75b9267670bf224dbda21dc638afbab5d36e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-07-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Beispiel Messdienst GmbH\",\"document_date\":\"2026-07-24\",\"references\":[{\"label\":\"Nutzer-Nr.\",\"value\":\"0214-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Technician visit to replace heating cost allocators and water meters\",\"quote\":\"Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.\",\"computation\":\"The letter states the appointment date and time directly as Saturday, 22.08.2026, 08:45. No period calculation is needed; the date is used as printed. (Verified: 22 Aug 2026 does fall on a Saturday.)\",\"due_date\":\"2026-08-22\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The recipient's address in the letterhead (Wiesengrund 21, 21335 Musterlüne) uses a postal code that does not correspond to the property address region (45127 Musteressen, implied to be in NRW); this inconsistency suggests the document may be a template/sample with placeholder data, so the address details should be double-checked.\",\"No fixed deadline is given for requesting a new appointment if 22.08.2026 does not suit the recipient ('Passt der Termin nicht, melden Sie sich bitte...') — only an open-ended invitation to contact the company, so no due date could be set for that optional task.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Beispiel Messdienst GmbH",
+      "document_date": "2026-07-24",
+      "references": [
+        {
+          "label": "Nutzer-Nr.",
+          "value": "0214-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Technician visit to replace heating cost allocators and water meters",
+          "quote": "Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.",
+          "computation": "The letter states the appointment date and time directly as Saturday, 22.08.2026, 08:45. No period calculation is needed; the date is used as printed. (Verified: 22 Aug 2026 does fall on a Saturday.)",
+          "due_date": "2026-08-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The recipient's address in the letterhead (Wiesengrund 21, 21335 Musterlüne) uses a postal code that does not correspond to the property address region (45127 Musteressen, implied to be in NRW); this inconsistency suggests the document may be a template/sample with placeholder data, so the address details should be double-checked.",
+        "No fixed deadline is given for requesting a new appointment if 22.08.2026 does not suit the recipient ('Passt der Termin nicht, melden Sie sich bitte...') — only an open-ended invitation to contact the company, so no due date could be set for that optional task."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1715,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2009,
+      "cost_usd": 0.026296,
+      "duration_ms": 16393,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

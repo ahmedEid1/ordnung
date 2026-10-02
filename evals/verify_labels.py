@@ -15,8 +15,10 @@ calculator built on ``datetime`` and the ``holidays`` package. Checks:
 2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable;
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
-4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout);
-5. photo entries share the truth of a one-page source PDF.
+4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2);
+5. photo entries share the truth of a one-page source PDF;
+6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
+   4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that).
 """
 
 from __future__ import annotations
@@ -332,6 +334,74 @@ FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
     "holdout-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
     "holdout-adversarial-scam-1": {"o0": (stated, (D(2025, 4, 11),), None)},
     "holdout-adversarial-scam-2": {"o0": (stated, (D(2026, 11, 9),), None)},
+    # ---- holdout2 split (variants G, H and the holdout2 adversarial letters) ------------------------------------------
+    # tax (AO); H1 names its posting day ('Tag der Aufgabe zur Post 24.06.2025') in the info block, a day after the Bescheid
+    "holdout2-tax_assessment-G1": {"i0": (remedy, (D(2027, 8, 16), "ao"), "TH")},  # end on Weltkindertag (TH)
+    "holdout2-tax_assessment-G2": {"i0": (remedy, (D(2025, 6, 5), "ao"), None)},  # fiction day Pfingstmontag
+    "holdout2-tax_assessment-H1": {"i0": (remedy, (D(2025, 6, 24), "ao"), "BB"), "i1": (stated, (D(2025, 7, 22),), "BB")},
+    "holdout2-tax_assessment-H2": {"i0": (remedy, (D(2027, 4, 2), "ao"), "SH")},  # end on Christi Himmelfahrt
+    # municipal (Land VwVfG, posted after the 4-day rule was in force in the Land)
+    "holdout2-municipal_decision-G1": {"i0": (remedy, (D(2026, 12, 2), "vwvfg"), "BW")},  # end on Heilige Drei Könige (BW)
+    "holdout2-municipal_decision-G2": {"i0": (remedy, (D(2025, 7, 2), "vwvfg"), "SH")},  # Sunday fiction day stays
+    "holdout2-municipal_decision-H1": {"i0": (remedy, (D(2025, 9, 22), "vwvfg"), "NW"), "i1": (stated, (D(2025, 11, 28),), "NW")},
+    "holdout2-municipal_decision-H2": {"i0": (remedy, (D(2027, 4, 13), "vwvfg"), "HH")},  # end on Pfingstmontag
+    # social (SGB X; Wohngeld § 68 Nr. 10 SGB I and UVG § 68 Nr. 14 SGB I → SGB X)
+    "holdout2-social_decision-G1": {"i0": (remedy, (D(2027, 4, 20), "sgbx"), None)},
+    "holdout2-social_decision-G2": {"i0": (remedy, (D(2027, 9, 29), "sgbx"), None)},  # fiction day 03.10. (Sunday) stays
+    "holdout2-social_decision-H1": {"i0": (remedy, (D(2025, 4, 4), "sgbx"), "BE"), "i1": (stated, (D(2025, 4, 24),), "BE")},
+    "holdout2-social_decision-H2": {"i0": (remedy, (D(2025, 9, 15), "sgbx"), "HE")},
+    # Bußgeld: two weeks from the date the carrier noted on the envelope (page 2)
+    "holdout2-fine_bussgeld-G1": {"i0": (after_weeks, (D(2026, 11, 4), 2), "SN")},  # end on Buß- und Bettag (SN)
+    "holdout2-fine_bussgeld-G2": {"i0": (after_weeks, (D(2026, 12, 18), 2), None)},  # end on Neujahr
+    "holdout2-fine_bussgeld-H1": {"i0": (after_weeks, (D(2027, 4, 24), 2), "ST")},  # served on a Saturday
+    "holdout2-fine_bussgeld-H2": {"i0": (after_weeks, (D(2027, 9, 6), 2), "HB")},
+    # invoices, periods counted from the invoice date
+    "holdout2-invoice_relative-G1": {"i0": (after_days, (D(2026, 11, 25), 10), None)},
+    "holdout2-invoice_relative-G2": {"i0": (after_days, (D(2025, 9, 8), 7), None)},
+    "holdout2-invoice_relative-H1": {"i0": (after_days, (D(2026, 6, 26), 30), None)},
+    "holdout2-invoice_relative-H2": {"i0": (after_days, (D(2025, 5, 26), 14), None)},
+    # reminders with a stated date
+    "holdout2-dunning_fixed-G1": {"i0": (stated, (D(2025, 9, 2),), None)},
+    "holdout2-dunning_fixed-G2": {"i0": (stated, (D(2027, 3, 2),), None)},
+    "holdout2-dunning_fixed-H1": {"i0": (stated, (D(2025, 4, 23),), None)},
+    # appointments
+    "holdout2-appointment-G1": {"i0": (appointment, (D(2026, 8, 26),), None)},
+    "holdout2-appointment-G2": {"i0": (appointment, (D(2025, 6, 2),), "HE")},
+    "holdout2-appointment-H1": {"i0": (appointment, (D(2026, 8, 22),), None)},  # a Saturday — stays
+    # contracts: (start of service, minimum term in months, notice in months)
+    "holdout2-contract_confirmation-G1": {"term_end": (term_end, (D(2027, 6, 25), 12), None),  # 12 Monate ab Lieferbeginn 25.06.
+                                          "cancel_by": (cancel_by, (D(2027, 6, 25), 12, 1), None)},
+    "holdout2-contract_confirmation-H1": {"term_end": (term_end, (D(2027, 2, 1), 12), None),
+                                          "cancel_by": (cancel_by, (D(2027, 2, 1), 12, 3), None)},  # a Sunday — not moved
+    # price increases
+    "holdout2-price_increase-G1": {"o0": (day_before, (D(2025, 5, 1),), None)},
+    "holdout2-price_increase-H1": {"o0": (day_before, (D(2025, 6, 1),), None)},
+    # English letters
+    "holdout2-english_letter-G1": {"i0": (stated, (D(2025, 10, 29),), None)},
+    "holdout2-english_letter-G2": {"i0": (after_days, (D(2025, 12, 30), 10), None)},
+    "holdout2-english_letter-H1": {"i0": (stated, (D(2025, 3, 26),), None)},
+    "holdout2-english_letter-H2": {"i0": (AMBIGUOUS, ["2027-08-09", "2027-09-08"])},
+    # Werktage / Arbeitstage
+    "holdout2-relative_business_days-G1": {"i0": (werktage, (D(2025, 10, 2), 8), None)},
+    "holdout2-relative_business_days-G2": {"i0": (arbeitstage, (D(2026, 5, 20), 5), None)},
+    "holdout2-relative_business_days-H1": {"i0": (werktage, (D(2026, 7, 20), 10), None)},
+    # year boundary / old 3-day rule / month end
+    "holdout2-year_boundary-G1": {"i0": (remedy, (D(2024, 12, 6), "ao"), None)},
+    "holdout2-year_boundary-G2": {"i0": (remedy, (D(2027, 8, 27), "ao"), None)},  # Familienkasse, Kindergeld (EStG) → AO
+    "holdout2-year_boundary-G3": {"i0": (remedy, (D(2025, 12, 29), "ao"), None)},
+    "holdout2-year_boundary-H1": {"i0": (remedy, (D(2026, 5, 27), "sgbx"), None)},  # Versorgungsamt (SGB IX) → SGB X
+    "holdout2-year_boundary-H2": {"i0": (remedy, (D(2024, 12, 13), "sgbx"), None)},  # Berufsgenossenschaft (SGB VII) → SGB X
+    # adversarial
+    "holdout2-adversarial-conflicting_dates-1": {"i0": (stated, (D(2026, 6, 10),), None)},  # earlier of 10.06. / 19.06.
+    "holdout2-adversarial-conflicting_dates-2": {"i0": (remedy, (D(2025, 7, 8), "vwvfg"), "BW")},  # text 08.07.; header 11.07.
+    "holdout2-adversarial-hidden_text-1": {"i0": (remedy, (D(2025, 10, 22), "ao"), None)},  # Hauptzollamt, Kfz-Steuer → AO
+    "holdout2-adversarial-hidden_text-2": {"i0": (stated, (D(2026, 12, 15),), None)},
+    "holdout2-adversarial-injection_visible-1": {"i0": (remedy, (D(2026, 11, 6), "vwvfg"), "HH")},
+    "holdout2-adversarial-injection_visible-2": {"i0": (after_days, (D(2026, 11, 24), 14), None)},
+    "holdout2-adversarial-missing_date-1": {"i0": None},  # 'innerhalb von 30 Tagen nach Zugang dieser Abrechnung', no date
+    "holdout2-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
+    "holdout2-adversarial-scam-1": {"o0": (stated, (D(2026, 7, 29),), None)},
+    "holdout2-adversarial-scam-2": {"o0": (stated, (D(2027, 9, 16),), None)},
 }  # fmt: skip
 
 # price changes: effective date, letter date, legal basis, old and new monthly amount (as printed)
@@ -342,6 +412,8 @@ PRICE_CHANGES: dict[str, tuple[date, date, str, float, float]] = {
     "test-price_increase-D1": (D(2026, 2, 1), D(2025, 12, 5), "§ 57 Abs. 1 TKG", 19.99, 22.99),
     "holdout-price_increase-E1": (D(2025, 8, 1), D(2025, 6, 18), "§ 41 Abs. 5 EnWG", 64.0, 71.0),
     "holdout-price_increase-F1": (D(2027, 6, 1), D(2027, 4, 19), "§ 57 Abs. 1 TKG", 34.99, 37.99),
+    "holdout2-price_increase-G1": (D(2025, 5, 1), D(2025, 3, 7), "§ 41 Abs. 5 EnWG", 89.0, 97.0),
+    "holdout2-price_increase-H1": (D(2025, 6, 1), D(2025, 4, 15), "§ 57 Abs. 1 TKG", 44.99, 49.99),
 }
 
 # the second candidate of a conflicting-dates item (checked like a label)
@@ -350,6 +422,8 @@ CONFLICT_ALTERNATIVES: dict[str, Rule] = {
     "test-adversarial-conflicting_dates-2": (remedy, (D(2026, 3, 16), "sgbx"), None),
     "holdout-adversarial-conflicting_dates-1": (stated, (D(2026, 2, 16),), None),
     "holdout-adversarial-conflicting_dates-2": (remedy, (D(2027, 4, 9), "ao"), None),
+    "holdout2-adversarial-conflicting_dates-1": (stated, (D(2026, 6, 19),), None),
+    "holdout2-adversarial-conflicting_dates-2": (remedy, (D(2025, 7, 11), "vwvfg"), "BW"),
 }
 
 
@@ -585,7 +659,7 @@ _CUE = re.compile(
 
 def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, str]) -> list[str]:
     """Sentences (numbers normalised) with a deadline cue that occur in letters of more than one split
-    (dev, test, holdout), each prefixed with the splits it occurs in."""
+    (dev, test, holdout, holdout2), each prefixed with the splits it occurs in."""
     where: dict[str, set[str]] = defaultdict(set)
     for e in entries:
         if e["photo"]:
@@ -595,6 +669,38 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
             if len(norm) >= 40 and _CUE.search(norm):
                 where[norm].add(e["split"])
     return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
+
+
+#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025 (BY, NW and
+#: MV are; see VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
+LAND_FOUR_DAY_START: dict[str, date] = {
+    "HH": D(
+        2025, 5, 14
+    ),  # 12. Gesetz zur Änderung des HmbVwVfG, HmbGVBl. 2025 S. 338: in force the day after promulgation
+    "BW": D(2025, 2, 7),  # LVwVfG; § 102b keeps the 3rd day for procedures begun before this day
+    "SH": D(2025, 6, 10),  # counted from the day the promulgated text is confirmed
+}
+
+
+def check_land_windows(entries: list[dict[str, Any]]) -> list[str]:
+    """Every Land VwVfG deemed-delivery label (items, optional items) counts from a posting day outside the Land's uncertain
+    window: the label's ``posted_on``, else the letter's date."""
+    problems = []
+    for e in entries:
+        if e["photo"]:
+            continue
+        start = LAND_FOUR_DAY_START.get(e["authority_region"])
+        for slot, item in _slots(e["truth"]).items():
+            spec = item.get("spec") or {}
+            posted = spec.get("posted_on") or e["truth"]["document_date"]
+            if spec.get("delivery_scope") != "vwvfg" or start is None or posted is None:
+                continue
+            if D(2025, 1, 1) <= date.fromisoformat(posted) < start:
+                problems.append(
+                    f"{e['id']} {slot}: posted {posted}, before the {e['authority_region']} 4-day rule is certain "
+                    f"({start.isoformat()})"
+                )
+    return problems
 
 
 def check_photos(entries: list[dict[str, Any]]) -> list[str]:
@@ -615,6 +721,7 @@ def run(root: Path) -> dict[str, Any]:
     texts, text_problems = check_text(entries, root)
     leaks = shared_deadline_sentences(entries, texts)
     photo_problems = check_photos(entries)
+    land_window_problems = check_land_windows(entries)
     return {
         "letters": sum(1 for e in entries if not e["photo"]),
         "photos": sum(1 for e in entries if e["photo"]),
@@ -623,6 +730,7 @@ def run(root: Path) -> dict[str, Any]:
         "text_problems": text_problems,
         "shared_split_sentences": leaks,
         "photo_problems": photo_problems,
+        "land_window_problems": land_window_problems,
     }
 
 
@@ -635,7 +743,13 @@ def main(argv: list[str] | None = None) -> int:
         f"letters {report['letters']} (+ {report['photos']} photos), dated labels re-derived: {report['dated_labels_checked']}"
     )
     failed = False
-    for key in ("date_problems", "text_problems", "shared_split_sentences", "photo_problems"):
+    for key in (
+        "date_problems",
+        "text_problems",
+        "shared_split_sentences",
+        "photo_problems",
+        "land_window_problems",
+    ):
         print(f"{key}: {len(report[key])}")
         for line in report[key]:
             print(f"  - {line}")

@@ -61,67 +61,65 @@ interface CheckedLetter {
 /** The reading's own count of the dates it couldn't confirm ("1 date could not be confirmed against the letter's text."). */
 const UNCONFIRMED_COUNT = /^\d+ dates? could not be confirmed against the letter/;
 
-/** A letter's things to check: the open to-dos whose quote wasn't found or doesn't match, the reading's own warnings, and whether it counts the dates it couldn't confirm. */
-interface ThingsToCheck {
-  id: string;
-  file: string;
-  toCheck: string[];
-  own: string[];
-  counted: boolean;
-  /** A scam letter's warnings are its signs: the page folds them into the scam alert, under no "Please check". */
-  scam: boolean;
-}
-
-/**
- * Every inbox letter's things to check, from the API. A demo letter's reading changes with each re-recording,
- * so the letter of a scenario is found by what its reading holds, never by its file or title.
- */
-async function thingsToCheck(page: Page): Promise<ThingsToCheck[]> {
-  const docs = await apiGet<{ id: string }[]>(page, "/api/documents");
-  return Promise.all(
-    docs.map(async ({ id }) => {
-      const { document, items, scam_signs } = await apiGet<CheckedLetter>(page, `/api/documents/${id}`);
-      const toCheck = items.filter((i) => i.status === "open" && i.evidence.some((e) => e.grounding === "unverified" || !e.value_consistent));
-      // the hidden-text warning has a banner of its own (Warnings.tsx), so it is no "Please check" either
-      const own = document.warnings
-        .map((w) => w.trim())
-        .filter((w) => w && !UNCONFIRMED_COUNT.test(w) && !(document.hidden_text && /hidden text/i.test(w)));
-      return {
-        id,
-        file: document.filename,
-        toCheck: toCheck.map((i) => i.title),
-        own,
-        counted: document.warnings.some((w) => UNCONFIRMED_COUNT.test(w.trim())),
-        scam: scam_signs.length > 0,
-      };
-    }),
-  );
-}
-
 /** A warning as its card shows it: a "Please check:" prefix goes under the card's own heading. */
 const withoutPleaseCheck = (w: string) => {
   const rest = w.replace(/^please check\s*[:—–-]\s*/i, "");
   return rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : w;
 };
 
+interface LetterDetail {
+  document: CheckedLetter["document"];
+  items: (CheckedLetter["items"][number] & { id: string; grounding: string })[];
+  scam_signs: string[];
+}
+
+/**
+ * The open to-dos to check (their quote wasn't found or doesn't match) and the reading's own warnings of
+ * `detail`, as the letter page sorts them: the count of unconfirmed dates is said by the to-dos' own cards,
+ * and the hidden-text warning has a banner of its own (Warnings.tsx), so neither is a "Please check".
+ */
+function toCheckOf({ document, items }: LetterDetail): { toCheck: string[]; own: string[] } {
+  return {
+    toCheck: items
+      .filter((i) => i.status === "open" && i.grounding !== "user" && (i.grounding === "unverified" || i.evidence.some((e) => e.grounding === "unverified" || !e.value_consistent)))
+      .map((i) => i.title),
+    own: document.warnings.map((w) => w.trim()).filter((w) => w && !UNCONFIRMED_COUNT.test(w) && !(document.hidden_text && /hidden text/i.test(w))),
+  };
+}
+
 // UI audit round 1 (document-c): "Please check" three times on one letter — a to-do whose date doesn't match
 // the sentence it came from (a card of its own), a warning of the reading's own (a card for all of them) and
 // the reading's count of the dates it couldn't confirm, which that to-do's card already says. Each recording
-// of the demo leaves the count on other letters (with prompt 11 it was the residence permit's appointment,
-// with one warning of its own; now it is a contract or a fee request with none), so the test takes the letter
-// whose reading counts unconfirmed dates and has the most to check, and expects one heading per to-do to check
-// plus one for the reading's own warnings, if it has any — and the count nowhere.
+// of the demo left the count on another letter (with prompt 11 the residence permit's appointment, then the
+// broadcasting fee, whose day is now read from its letter) and the final one on none, so the test makes the
+// state itself: it serves the demo letter with an open to-do and the most warnings of its own as a reading
+// that couldn't confirm that to-do's date would come back — the count among its warnings, the to-do's date
+// not matching its quote — and expects one heading per to-do to check plus one for the reading's own
+// warnings, if it has any, and the count nowhere.
 test("a letter whose reading counts unconfirmed dates says 'Please check' once per thing to check", async ({ page }) => {
-  const all = await thingsToCheck(page);
-  const counted = all.filter((l) => l.counted && !l.scam).sort((a, b) => b.toCheck.length + b.own.length - (a.toCheck.length + a.own.length));
-  const letter = counted[0];
-  expect(
-    letter && letter.toCheck.length > 0 ? `${letter.file}: ${letter.toCheck.length} to-do(s) to check, ${letter.own.length} own warning(s)` : null,
-    `a demo letter whose reading counts the dates it couldn't confirm and leaves a to-do to check (the Inbox has ${
-      counted.map((l) => `${l.file} (${l.toCheck.length} to check, ${l.own.length} own)`).join(", ") || "no letter with that count"
-    })`,
-  ).toBeTruthy();
-  const { id, toCheck, own } = letter!;
+  const docs = await apiGet<{ id: string }[]>(page, "/api/documents");
+  const details = await Promise.all(docs.map(({ id }) => apiGet<LetterDetail>(page, `/api/documents/${id}`).then((detail) => ({ id, detail }))));
+  const open_ = (i: LetterDetail["items"][number]) => i.status === "open" && i.grounding !== "user" && i.evidence.length > 0;
+  const candidates = details
+    .filter(({ detail }) => !detail.scam_signs.length && detail.items.some(open_))
+    .sort((a, b) => toCheckOf(b.detail).own.length - toCheckOf(a.detail).own.length);
+  expect(candidates.length, "a demo letter with an open to-do (no scam letter)").toBeGreaterThan(0);
+  const { id, detail } = candidates[0];
+  const target = detail.items.find(open_)!;
+  const unconfirmed: LetterDetail = {
+    ...detail,
+    document: { ...detail.document, warnings: [...detail.document.warnings, "1 date could not be confirmed against the letter's text."] },
+    items: detail.items.map((i) => (i.id === target.id ? { ...i, evidence: i.evidence.map((e, n) => (n === 0 ? { ...e, value_consistent: false } : e)) } : i)),
+  };
+  await page.route(
+    (url) => url.pathname === `/api/documents/${id}`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      await route.fulfill({ response: await route.fetch(), json: unconfirmed });
+    },
+  );
+  const { toCheck, own } = toCheckOf(unconfirmed);
+  expect(toCheck).toContain(target.title);
 
   await open(page, `/documents/${id}`);
   const warnings = page.getByRole("region", { name: "Warnings and things to check" });

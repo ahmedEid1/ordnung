@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"dbdfb5464114902cf0966f56ca150c37f2c73620cab528511d0ec97f7e3d37de\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2026-12-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-municipal_decision-G1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-12-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterfreiburg – Garten- und Tiefbauamt, Baumschutz\",\"document_date\":\"2026-12-02\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"67.20-BS-2026-1184\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal to fell the beech tree\",\"quote\":\"Gegen diesen Bescheid ist innerhalb eines Monats nach seiner Bekanntgabe der Widerspruch bei der Stadt Musterfreiburg, Rathausplatz 2–4, 79098 Musterfreiburg, zulässig.\",\"computation\":\"Letter dated (posted) Wed 02.12.2026, no separate 'Tag der Aufgabe zur Post' given so the printed date is the posting date. This is a municipal authority (Stadt Musterfreiburg, Garten- und Tiefbauamt), not a tax office, so the delivery day is the 4th day after posting and does NOT move even if it falls on a weekend (§ 41 Abs. 2 LVwVfG, as the letter itself states). 02.12.2026 + 4 days = Sun 06.12.2026 → deemed delivered (bekannt gegeben) on Sun 06.12.2026. Widerspruch period is one month after Bekanntgabe (§ 70 VwGO analog, per the Rechtsbehelfsbelehrung). Under §§ 187 Abs. 1, 188 Abs. 2 BGB the day of delivery itself is not counted; a one-month period starting from an event on 06.12.2026 ends on the day of the following month bearing the same number, i.e. 06.01.2027 (Wednesday). 06.01.2027 is Epiphany (Heilige Drei Könige), a public holiday in Baden-Württemberg, so under § 31 Abs. 3 LVwVfG / § 193 BGB the deadline moves to the next working day: Thursday 07.01.2027 (not a weekend or holiday).\",\"due_date\":\"2027-01-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterfreiburg – Garten- und Tiefbauamt, Baumschutz",
+      "document_date": "2026-12-02",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "67.20-BS-2026-1184"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal to fell the beech tree",
+          "quote": "Gegen diesen Bescheid ist innerhalb eines Monats nach seiner Bekanntgabe der Widerspruch bei der Stadt Musterfreiburg, Rathausplatz 2–4, 79098 Musterfreiburg, zulässig.",
+          "computation": "Letter dated (posted) Wed 02.12.2026, no separate 'Tag der Aufgabe zur Post' given so the printed date is the posting date. This is a municipal authority (Stadt Musterfreiburg, Garten- und Tiefbauamt), not a tax office, so the delivery day is the 4th day after posting and does NOT move even if it falls on a weekend (§ 41 Abs. 2 LVwVfG, as the letter itself states). 02.12.2026 + 4 days = Sun 06.12.2026 → deemed delivered (bekannt gegeben) on Sun 06.12.2026. Widerspruch period is one month after Bekanntgabe (§ 70 VwGO analog, per the Rechtsbehelfsbelehrung). Under §§ 187 Abs. 1, 188 Abs. 2 BGB the day of delivery itself is not counted; a one-month period starting from an event on 06.12.2026 ends on the day of the following month bearing the same number, i.e. 06.01.2027 (Wednesday). 06.01.2027 is Epiphany (Heilige Drei Könige), a public holiday in Baden-Württemberg, so under § 31 Abs. 3 LVwVfG / § 193 BGB the deadline moves to the next working day: Thursday 07.01.2027 (not a weekend or holiday).",
+          "due_date": "2027-01-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3383,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2366,
+      "cost_usd": 0.044404,
+      "duration_ms": 30261,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

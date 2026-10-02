@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3c839d7c0064d8146a32690e7f8e23dab9fe719a9845990f5e40fdda4f076321\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2027-04-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-H2"
+    ],
+    "prompt_head": "Today is Monday, 2027-04-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterflens\",\"document_date\":\"2027-04-02\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"15/287/40312\"}],\"amounts\":[2766,723],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2025 income tax assessment\",\"quote\":\"Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.\",\"computation\":\"The letter is dated Fri 2 Apr 2027 and was sent by ordinary post, so under § 122 Abs. 2 Nr. 1 AO it counts as delivered (bekannt gegeben) on the 4th day after posting, i.e. Tue 6 Apr 2027. Under § 187 Abs. 1 BGB / § 108 Abs. 1 AO the day of delivery itself does not count, so the one-month Einspruch period (§ 355 Abs. 1 AO) starts on Wed 7 Apr 2027 and would end, per § 188 Abs. 2 BGB, on Thu 6 May 2027. That day is Christi Himmelfahrt, a public holiday in Schleswig-Holstein (and nationwide), so under § 108 Abs. 3 AO the deadline shifts to the next business day, Fri 7 May 2027.\",\"due_date\":\"2027-05-07\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterflens",
+      "document_date": "2027-04-02",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "15/287/40312"
+        }
+      ],
+      "amounts": [
+        2766,
+        723
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2025 income tax assessment",
+          "quote": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.",
+          "computation": "The letter is dated Fri 2 Apr 2027 and was sent by ordinary post, so under § 122 Abs. 2 Nr. 1 AO it counts as delivered (bekannt gegeben) on the 4th day after posting, i.e. Tue 6 Apr 2027. Under § 187 Abs. 1 BGB / § 108 Abs. 1 AO the day of delivery itself does not count, so the one-month Einspruch period (§ 355 Abs. 1 AO) starts on Wed 7 Apr 2027 and would end, per § 188 Abs. 2 BGB, on Thu 6 May 2027. That day is Christi Himmelfahrt, a public holiday in Schleswig-Holstein (and nationwide), so under § 108 Abs. 3 AO the deadline shifts to the next business day, Fri 7 May 2027.",
+          "due_date": "2027-05-07",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2032,
+      "cache_read_tokens": 15496,
+      "cache_creation_tokens": 5332,
+      "cost_usd": 0.0447552,
+      "duration_ms": 21008,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2027-04-02",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterflens",
+          "recipient_region": "SH",
+          "region": "SH",
+          "remedy_type": "einspruch",
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2027-04-02",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 122 Abs. 2 Nr. 1 AO, § 355 AO",
+            "text": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit. Wird der Bescheid mit einfachem Brief übermittelt, gilt er mit dem vierten Tag nach seiner Aufgabe zur Post als bekannt gegeben"
+          }
+        },
+        "result": "{\"due_date\":\"2027-05-07\",\"weekday\":\"Friday\",\"send_by\":\"2027-04-30\",\"summary\":\"Letter dated Fri 2 Apr 2027 counts as delivered on Tue 6 Apr; one month later is Thu 6 May 2027, a public holiday, Christi Himmelfahrt, so the deadline moves to Fri 7 May 2027.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Fri 2 Apr 2027 (the letter's date; the real posting day can only be later)\",\"date\":\"2027-04-02\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Tue 6 Apr 2027\",\"date\":\"2027-04-06\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Tue 6 Apr 2027\",\"date\":\"2027-04-06\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Thu 6 May 2027\",\"date\":\"2027-05-06\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 6 May 2027 is a public holiday, Christi Himmelfahrt, so the deadline moves to Fri 7 May 2027\",\"date\":\"2027-05-07\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Fri 30 Apr 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-04-30\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-04-05\",\"letter_date\":\"2027-04-02\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Schleswig-Holstein\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

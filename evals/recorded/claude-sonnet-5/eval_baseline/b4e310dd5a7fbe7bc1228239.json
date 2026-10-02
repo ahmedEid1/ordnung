@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4f1268313ca80a159b635a86de9c33f82d7af07504ae16b868a26fac1b7672a5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-06-01\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Monday, 2026-06-01 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Reitstall Beispielhof\",\"document_date\":\"2026-05-29\",\"references\":[{\"label\":\"Mitglied\",\"value\":\"RB-118\"}],\"amounts\":[240],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding Reitbeteiligung fees for April/May 2026\",\"quote\":\"Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.\",\"computation\":\"This is a private payment reminder (Zahlungserinnerung) from a riding stable, not a public authority, so no statutory delivery fiction applies; the letter simply states two different dates for the same payment. The running text asks for payment 'bis zum 10.06.2026' (10 June 2026), while the boxed payment information below states 'Fälligkeit: 19.06.2026' (19 June 2026). These two dates contradict each other within the same letter. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 10.06.2026 as the due date. 10 June 2026 is a Wednesday, a normal working day, so no weekend/holiday adjustment is needed even if it were treated as moving (it wouldn't move anyway, since this is a private payment, not a statutory period subject to §193 BGB end-of-period extension in a way that would change a Wednesday).\",\"due_date\":\"2026-06-10\",\"confidence\":\"low\",\"amount\":240}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter gives two different deadlines for the same 240,00 € payment: the body text says 'bis zum 10.06.2026' while the boxed payment details say 'Fälligkeit: 19.06.2026'; the earlier date (10.06.2026) was used as a precaution, but the recipient should clarify the correct date with the stable.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Reitstall Beispielhof",
+      "document_date": "2026-05-29",
+      "references": [
+        {
+          "label": "Mitglied",
+          "value": "RB-118"
+        }
+      ],
+      "amounts": [
+        240
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding Reitbeteiligung fees for April/May 2026",
+          "quote": "Bitte überweisen Sie die 240,00 € bis zum 10.06.2026, damit wir die Reitzeiten für Juni wie gewohnt einplanen können.",
+          "computation": "This is a private payment reminder (Zahlungserinnerung) from a riding stable, not a public authority, so no statutory delivery fiction applies; the letter simply states two different dates for the same payment. The running text asks for payment 'bis zum 10.06.2026' (10 June 2026), while the boxed payment information below states 'Fälligkeit: 19.06.2026' (19 June 2026). These two dates contradict each other within the same letter. Per the rule to use the earliest plausible date when a letter contradicts itself, I take 10.06.2026 as the due date. 10 June 2026 is a Wednesday, a normal working day, so no weekend/holiday adjustment is needed even if it were treated as moving (it wouldn't move anyway, since this is a private payment, not a statutory period subject to §193 BGB end-of-period extension in a way that would change a Wednesday).",
+          "due_date": "2026-06-10",
+          "confidence": "low",
+          "amount": 240
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter gives two different deadlines for the same 240,00 € payment: the body text says 'bis zum 10.06.2026' while the boxed payment details say 'Fälligkeit: 19.06.2026'; the earlier date (10.06.2026) was used as a precaution, but the recipient should clarify the correct date with the stable."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2131,
+      "cache_read_tokens": 0,
+      "cache_creation_tokens": 7462,
+      "cost_usd": 0.051162,
+      "duration_ms": 19393,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

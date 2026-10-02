@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1b34c79e4a74a276e643dc4c29fd75b9267670bf224dbda21dc638afbab5d36e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-07-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-07-24\",\"items\":[{\"kind\":\"appointment\",\"title\":\"Technician visit to replace heat cost allocators and water meters\",\"quote\":\"Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.\",\"computation\":\"The letter states the scheduled appointment date and time directly: Saturday, 22.08.2026 at 08:45. Appointments keep the stated date/time as given; no period calculation or weekend-shift rule applies to a fixed appointment slot (the fact that it falls on a Saturday is simply when the technician will come).\",\"due_date\":\"2026-08-22\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"appointment\",\"references\":[{\"label\":\"Nutzer-Nr.\",\"value\":\"0214-07\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispiel Messdienst GmbH\",\"warnings\":[\"The appointment is on a Saturday (22.08.2026), which is unusual for a tradesperson visit — worth double-checking with the company that this is correct.\",\"If the scheduled slot does not work, the letter asks the recipient to reschedule online or by phone rather than giving a fixed deadline for doing so, so no separate deadline item was created for rescheduling.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-07-24",
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Technician visit to replace heat cost allocators and water meters",
+          "quote": "Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.",
+          "computation": "The letter states the scheduled appointment date and time directly: Saturday, 22.08.2026 at 08:45. Appointments keep the stated date/time as given; no period calculation or weekend-shift rule applies to a fixed appointment slot (the fact that it falls on a Saturday is simply when the technician will come).",
+          "due_date": "2026-08-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "appointment",
+      "references": [
+        {
+          "label": "Nutzer-Nr.",
+          "value": "0214-07"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispiel Messdienst GmbH",
+      "warnings": [
+        "The appointment is on a Saturday (22.08.2026), which is unusual for a tradesperson visit — worth double-checking with the company that this is correct.",
+        "If the scheduled slot does not work, the letter asks the recipient to reschedule online or by phone rather than giving a fixed deadline for doing so, so no separate deadline item was created for rescheduling."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1529,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2015,
+      "cost_usd": 0.023978399999999997,
+      "duration_ms": 14427,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

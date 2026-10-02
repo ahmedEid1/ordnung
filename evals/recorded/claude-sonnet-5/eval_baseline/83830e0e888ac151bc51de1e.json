@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"dd8371a4a058b724888f26a1b3b82e8c471af7b79c865fa752407eac9d033852\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-11-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-invoice_relative-G1"
+    ],
+    "prompt_head": "Today is Monday, 2026-11-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[258.11],\"contract\":null,\"document_date\":\"2026-11-25\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for heating maintenance\",\"quote\":\"Den Rechnungsbetrag erbitten wir ohne Abzug binnen 10 Tagen ab Rechnungsdatum auf das unten genannte Konto.\",\"computation\":\"Invoice date (Rechnungsdatum) is 25.11.2026. The period 'binnen 10 Tagen ab Rechnungsdatum' is a civil-law deadline counted from an event (the invoice date itself), so under §187(1) BGB the day of the event is excluded and counting starts on 26.11.2026 (day 1). Counting 10 days: 26,27,28,29,30 Nov (days 1-5) and 1,2,3,4,5 Dec (days 6-10) lands on 05.12.2026, which is a Saturday. Under §193 BGB, when the last day of a period for a payment falls on a Saturday, Sunday or public holiday, it is replaced by the next business day, so the deadline moves to Monday 07.12.2026.\",\"due_date\":\"2026-12-07\",\"confidence\":\"high\",\"amount\":258.11}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"KD-2026-11873\"},{\"label\":\"Kundennummer\",\"value\":\"40 517\"}],\"remedy_type\":\"none\",\"sender_name\":\"Heizungsbau Beispielwärme GmbH\",\"warnings\":[\"The customer-information block (name, 'Kundennummer' label, address and the number '40 517') appears garbled/misaligned in the extracted text, so the printed Kundennummer value is uncertain and should be verified against the original document.\",\"Verify the IBAN (DE26 3705 0198 0007 7065 00) and other bank details against a previous, independently-obtained invoice from this company before paying, as a general precaution against invoice/payment fraud.\"]}",
+    "data": {
+      "amounts": [
+        258.11
+      ],
+      "contract": null,
+      "document_date": "2026-11-25",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for heating maintenance",
+          "quote": "Den Rechnungsbetrag erbitten wir ohne Abzug binnen 10 Tagen ab Rechnungsdatum auf das unten genannte Konto.",
+          "computation": "Invoice date (Rechnungsdatum) is 25.11.2026. The period 'binnen 10 Tagen ab Rechnungsdatum' is a civil-law deadline counted from an event (the invoice date itself), so under §187(1) BGB the day of the event is excluded and counting starts on 26.11.2026 (day 1). Counting 10 days: 26,27,28,29,30 Nov (days 1-5) and 1,2,3,4,5 Dec (days 6-10) lands on 05.12.2026, which is a Saturday. Under §193 BGB, when the last day of a period for a payment falls on a Saturday, Sunday or public holiday, it is replaced by the next business day, so the deadline moves to Monday 07.12.2026.",
+          "due_date": "2026-12-07",
+          "confidence": "high",
+          "amount": 258.11
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "KD-2026-11873"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "40 517"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Heizungsbau Beispielwärme GmbH",
+      "warnings": [
+        "The customer-information block (name, 'Kundennummer' label, address and the number '40 517') appears garbled/misaligned in the extracted text, so the printed Kundennummer value is uncertain and should be verified against the original document.",
+        "Verify the IBAN (DE26 3705 0198 0007 7065 00) and other bank details against a previous, independently-obtained invoice from this company before paying, as a general precaution against invoice/payment fraud."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2948,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2053,
+      "cost_usd": 0.038320400000000004,
+      "duration_ms": 24785,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

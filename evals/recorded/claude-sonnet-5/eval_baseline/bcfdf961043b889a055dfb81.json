@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"994491cc0c3b0a100028a98542ee1c18c6d4f9d81b16da721c317b1cf6db2c8b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-10-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-social_decision-G2"
+    ],
+    "prompt_head": "Today is Monday, 2027-10-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-09-29\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of disability pension\",\"quote\":\"dafür steht ab der Bekanntgabe ein Monat zur Verfügung.\",\"computation\":\"Sender is a statutory pension insurance carrier (social-law body under SGB X), not a tax office, so the 4-day delivery fiction (§ 37 Abs. 2 SGB X) applies without weekend/holiday shift. Letter dated (posted) Wednesday 29.09.2027; no separate 'zur Post gegeben am' date is stated, so posting day = document date. Counting 4 calendar days: 30.09, 01.10, 02.10, 03.10 → deemed delivery Sunday 03.10.2027 (not moved, since only tax-office deliveries shift for weekends/holidays). The one-month Widerspruch period (§ 84 SGG) runs from delivery: per §§ 187, 188 BGB the delivery day is not counted, and the period ends on the day in the following month bearing the same number as the delivery day → 03.11.2027. That date (Wednesday) is not a Saturday, Sunday or public holiday in NW, so no further shift under § 26 Abs. 3 SGB X / § 64 Abs. 3 SGG applies.\",\"due_date\":\"2027-11-03\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"23 140983 K 517\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Rentenversicherung Beispiel-Mitte\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-09-29",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of disability pension",
+          "quote": "dafür steht ab der Bekanntgabe ein Monat zur Verfügung.",
+          "computation": "Sender is a statutory pension insurance carrier (social-law body under SGB X), not a tax office, so the 4-day delivery fiction (§ 37 Abs. 2 SGB X) applies without weekend/holiday shift. Letter dated (posted) Wednesday 29.09.2027; no separate 'zur Post gegeben am' date is stated, so posting day = document date. Counting 4 calendar days: 30.09, 01.10, 02.10, 03.10 → deemed delivery Sunday 03.10.2027 (not moved, since only tax-office deliveries shift for weekends/holidays). The one-month Widerspruch period (§ 84 SGG) runs from delivery: per §§ 187, 188 BGB the delivery day is not counted, and the period ends on the day in the following month bearing the same number as the delivery day → 03.11.2027. That date (Wednesday) is not a Saturday, Sunday or public holiday in NW, so no further shift under § 26 Abs. 3 SGB X / § 64 Abs. 3 SGG applies.",
+          "due_date": "2027-11-03",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "23 140983 K 517"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Rentenversicherung Beispiel-Mitte",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2781,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2172,
+      "cost_usd": 0.037608,
+      "duration_ms": 24642,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

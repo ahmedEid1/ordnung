@@ -57,14 +57,15 @@ NATURES = {"objection", "payment", "declaration", "notice", "appointment", "othe
 REMEDIES = {"einspruch", "widerspruch", "klage", "none", "unclear"}
 WARNINGS = {"scam", "injection", "hidden_text", "conflicting_dates", "missing_date"}
 #: The template variants of each split: dev (prompts may be tuned on it), test (published), holdout (written after
-#: extraction prompt 11, recorded once with frozen prompts). Adversarial letters are one-offs in test and holdout.
-SPLIT_VARIANTS = {"dev": ("A", "B"), "test": ("C", "D"), "holdout": ("E", "F")}
+#: extraction prompt 11, recorded once with frozen prompts), holdout2 (written after the release's last change to how letters are read,
+#: recorded once, nothing tuned on it). Adversarial letters are one-offs in test, holdout and holdout2.
+SPLIT_VARIANTS = {"dev": ("A", "B"), "test": ("C", "D"), "holdout": ("E", "F"), "holdout2": ("G", "H")}
 
 
 @dataclass
 class Case:
     id: str
-    split: str  # dev | test | holdout
+    split: str  # dev | test | holdout | holdout2
     family: str
     variant: str
     letter: Letter
@@ -244,11 +245,15 @@ def objection_item(
     nature: str = "objection",
     rule: str | None = None,
     money: float | None = None,
+    shift_citation: str | None = None,
 ) -> dict[str, Any]:
     """One-month period after the deemed notification of a posted administrative act (remedy period,
-    or a payment period the authority set 'innerhalb eines Monats nach Bekanntgabe')."""
+    or a payment period the authority set 'innerhalb eines Monats nach Bekanntgabe'). ``shift_citation``
+    names the rule that moves the end where it is not the scope's usual one (e.g. an SGB X decision that
+    goes to the administrative courts)."""
     key = "ao" if scope == "ao" else ("sgbx" if scope == "sgbx" else f"vwvfg_{remedy}")
-    shift_citation, default_rule = REMEDY_RULES[key]
+    default_shift, default_rule = REMEDY_RULES[key]
+    shift_citation = shift_citation or default_shift
     rule = rule or default_rule
 
     def calc(region: str | None) -> tuple[date, Derivation]:

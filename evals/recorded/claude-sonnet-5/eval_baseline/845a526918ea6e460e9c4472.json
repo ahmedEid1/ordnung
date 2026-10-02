@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1b34c79e4a74a276e643dc4c29fd75b9267670bf224dbda21dc638afbab5d36e\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-H1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-07-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Beispiel Messdienst GmbH\",\"document_date\":\"2026-07-24\",\"references\":[{\"label\":\"Nutzer-Nr.\",\"value\":\"0214-07\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Technician visit to replace heating cost allocators and water meters\",\"quote\":\"Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.\",\"computation\":\"The letter states a fixed calendar date and time for the appointment: Saturday, 22.08.2026 at 08:45. No period calculation is needed; the date is printed directly. (22 August 2026 does fall on a Saturday, consistent with the letter's own label.) If this date does not suit the recipient, the letter asks them to contact the sender by phone or online, but it sets no separate deadline for doing so.\",\"due_date\":\"2026-08-22\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter is from a private metering service company (not a German authority), so statutory deemed-delivery rules for authority letters do not apply; the appointment date is simply the one printed.\",\"If Saturday 22.08.2026 does not suit the recipient, the letter asks them to reschedule via phone (0201 88 00 40) or online rather than stating a strict deadline for doing so.\"]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Beispiel Messdienst GmbH",
+      "document_date": "2026-07-24",
+      "references": [
+        {
+          "label": "Nutzer-Nr.",
+          "value": "0214-07"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Technician visit to replace heating cost allocators and water meters",
+          "quote": "Für Ihre Wohnung haben wir Samstag, 22.08.2026, 08:45 Uhr eingeplant.",
+          "computation": "The letter states a fixed calendar date and time for the appointment: Saturday, 22.08.2026 at 08:45. No period calculation is needed; the date is printed directly. (22 August 2026 does fall on a Saturday, consistent with the letter's own label.) If this date does not suit the recipient, the letter asks them to contact the sender by phone or online, but it sets no separate deadline for doing so.",
+          "due_date": "2026-08-22",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter is from a private metering service company (not a German authority), so statutory deemed-delivery rules for authority letters do not apply; the appointment date is simply the one printed.",
+        "If Saturday 22.08.2026 does not suit the recipient, the letter asks them to reschedule via phone (0201 88 00 40) or online rather than stating a strict deadline for doing so."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1449,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2251,
+      "cost_usd": 0.024786000000000002,
+      "duration_ms": 13178,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

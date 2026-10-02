@@ -46,6 +46,7 @@ from ordnung.ingest.verify import (
     grade_reading,
     ground_evidence,
     locate_quote,
+    mid_quarter_named,
     parse_amounts,
     parse_dates,
     parse_periods,
@@ -762,6 +763,13 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("jeweils zum Monatsersten", {1}),
         ("am Ersten eines jeden Monats", {1}),
         ("zum ersten Tag des Monats", {1}),
+        # a month's middle is its 15th (§ 192 BGB)
+        ("Der Abschlag wird jeweils zur Monatsmitte abgebucht.", {15}),
+        ("Die Miete ist bis Mitte des Monats zu zahlen.", {15}),
+        ("fällig zur Mitte eines jeden Monats", {15}),
+        ("Mitte jeden Kalendermonats", {15}),
+        ("The fee is debited mid-month.", {15}),
+        ("payable in the middle of each month", {15}),
         # a month's end is its last day: 31
         ("Die Miete ist jeweils zum Monatsende zu zahlen.", {31}),
         ("zum Letzten eines Monats", {31}),
@@ -779,6 +787,25 @@ def test_a_working_day_not_in_its_quote_lowers_the_grade_with_a_note() -> None:
         ("am 32. eines Monats", set()),
         ("am ersten Werktag eines Monats", set()),
         ("Der Beitrag ist monatlich im Voraus zu zahlen.", set()),
+        # … nor does a middle that is no month's: one month's (a date), a word that only starts like it, the
+        # middle of a quarter or three-month period without the reading it is read for (mid_quarter_named)
+        ("Die Abrechnung erhalten Sie Mitte Oktober.", set()),
+        ("Ihre Monatsmitteilung", set()),
+        ("the middle of the monthly statement", set()),
+        ("jeweils in der Mitte eines Dreimonatszeitraums", set()),
+        ("zur Quartalsmitte", set()),
+        ("Der Beitrag ist zur Mitte des Folgemonats zu zahlen.", set()),  # the following month's: not read
+        # … nor a month's start, middle or end that bounds a stretch of time, as digits after "ab dem" don't
+        ("Der Abschlag wird nach der Monatsmitte abgebucht.", set()),
+        ("Der Abschlag wird ab Monatsanfang abgebucht.", set()),
+        ("Die Zahlung muss vor dem Monatsende eingehen.", set()),
+        ("Die Abbuchung erfolgt um die Monatsmitte.", set()),
+        ("Die Abbuchung erfolgt gegen Monatsende.", set()),
+        ("Die Abbuchung erfolgt seit Anfang des Monats.", set()),
+        ("Die Abbuchung erfolgt zwischen Monatsmitte und Monatsende.", set()),
+        ("Die Abbuchung erfolgt zwischen Mitte und Ende des Monats.", set()),
+        ("The fee is debited after the middle of the month.", set()),
+        ("The fee is collected from the start of each month.", set()),
     ],
 )
 def test_days_of_month_named(text: str, expected: set[int]) -> None:
@@ -824,9 +851,23 @@ QUARTERLY_DATES = (
         ("Abbuchung am 01.12.2026 und am 01.12.2027.", YEARLY, {1}),
         ("Abbuchung am 03.11.2026 und 03.12.2026.", MONTHLY, {3}),
         ("Abbuchung am 10.03. und 10.06.", QUARTERLY, {10}),
-        ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, {10}),  # another date's day aside
+        # another date's day aside, outside the list
+        ("Raten: 10.03., 10.06., 10.09. und 10.12.; Beratungstermin am 12.06.2026.", QUARTERLY, {10}),
         # … a list with dashes between three or more dates
         ("Vorauszahlungen fällig: 10.03.2026 – 10.06.2026 – 10.09.2026 – 10.12.2026", QUARTERLY, {10}),
+        # a list of dates each on the last day of its month names the 31st (each month's last day) — and no
+        # other day, though some of its dates share one (31.03. and 31.12., 30.06. and 30.09.)
+        ("Die Abschläge sind am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
+        ("Abschläge fällig jeweils zum 31.03.2027, 30.06.2027, 30.09.2027 und 31.12.2027", QUARTERLY, {31}),
+        ("Die Raten sind am 30.06., 30.09. und 31.12. zu zahlen.", QUARTERLY, {31}),
+        ("Die Raten sind am 30.06. und 31.12. zu zahlen.", Recurrence(interval=6, unit="months"), {31}),
+        ("Abbuchung am 31.07.2027 und 30.09.2027.", Recurrence(interval=2, unit="months"), {31}),
+        # … February's by its year: the 28th in a common year, the 29th in a leap year
+        ("Die Raten sind am 28.02.2027, 31.05.2027, 31.08.2027 und 30.11.2027 zu zahlen.", QUARTERLY, {31}),
+        ("Abbuchung am 28.02.2027 und am 29.02.2028.", YEARLY, {31}),
+        # … with due wording after it, or the quarter's end named before it (a calendar day, no end of something)
+        ("Der Beitrag ist am 31.03., 30.06., 30.09. und 31.12. fällig.", QUARTERLY, {31}),
+        ("jeweils zum Quartalsende am 31.03., 30.06., 30.09. und 31.12. fällig", QUARTERLY, {31}),
         # a date without a year, for a rule of a year or more
         ("Der Jahresbeitrag ist zum 01.12. fällig.", YEARLY, {1}),
         ("The annual fee is due on 1 December.", YEARLY, {1}),
@@ -882,6 +923,20 @@ QUARTERLY_DATES = (
         ("Mietbeginn 01.11.2026, Mindestmietdauer bis 01.11.2027, Miete 670 € monatlich", MONTHLY, set()),
         ("Stand 01.09.2026, Vertragsende 01.11.2027, Beitrag fällig am 01.12.2026", MONTHLY, set()),
         ("Das Versicherungsjahr endet am 01.12. eines jeden Jahres.", YEARLY, set()),
+        # … also for every date of a list after such wording: periods that end on month ends, or on one day
+        ("Die Abrechnungszeiträume enden am 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
+        ("Die Abrechnungszeiträume enden am 10.03., 10.06., 10.09. und 10.12.", QUARTERLY, set()),
+        # … and notice dates or reference days, though a payment word is near
+        (
+            "Die Abschläge werden zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.",
+            QUARTERLY,
+            set(),
+        ),
+        ("Kündigungstermine sind der 31.03., 30.06., 30.09. und 31.12.", QUARTERLY, set()),
+        ("Der Vertrag ist kündbar zum 15.01., 15.04., 15.07. und 15.10.", QUARTERLY, set()),
+        # month ends on different days without schedule or due wording are no schedule (a notice date here)
+        ("Der Vertrag ist zum 31.03., 30.06., 30.09. oder 31.12. kündbar.", QUARTERLY, set()),
+        ("Der Zins wird zu den Stichtagen 31.03., 30.06., 30.09. und 31.12. berechnet.", QUARTERLY, set()),
         # … or one other date: two dates are a schedule only as a list after schedule or due wording
         ("Lieferung am 15.10.2026 und 15.11.2026.", MONTHLY, set()),
         ("Die Rate ist am 15.10.2026 eingegangen; die nächste ist am 15.11.2026 fällig.", MONTHLY, set()),
@@ -899,6 +954,23 @@ QUARTERLY_DATES = (
         # dates on different days
         ("Die Raten sind am 01.03.2026 und am 15.06.2026 fällig.", QUARTERLY, set()),
         ("Die Raten sind am 10.03., 11.06., 12.09. und 13.12. fällig.", QUARTERLY, set()),
+        # … also when most of a list's dates share a day: every date of a list must fit, one on another day
+        # (or off the interval) makes it state another schedule than the reading's, whatever wording is before it
+        ("Die Raten sind am 15.01., 15.04., 16.07. und 15.10. zu zahlen.", QUARTERLY, set()),
+        ("Die Raten sind jeweils am 15.01., 15.04., 14.07. und 15.10. fällig.", QUARTERLY, set()),
+        ("Termine: 10.03., 10.06. und 12.06.2026 (Beratung).", QUARTERLY, set()),
+        ("Der Beitrag ist jeweils am 15.01. und 15.02. fällig.", QUARTERLY, set()),
+        ("Hauptfälligkeit 01.03. und 01.09.", YEARLY, set()),
+        # … or a list of month ends with one date that ends no month, or a February date that ends its month
+        # in some years only (without a year, or the 28th of a leap year)
+        ("Die Raten sind am 31.03., 30.06., 29.09. und 31.12. zu zahlen.", QUARTERLY, set()),
+        ("Die Raten sind am 28.02., 31.05., 31.08. und 30.11. zu zahlen.", QUARTERLY, set()),
+        ("Die Raten sind am 28.02.2028, 31.05.2028, 31.08.2028 und 30.11.2028 zu zahlen.", QUARTERLY, set()),
+        # … and month ends all on one day name that day only (the 30th: 30.03. and 30.12. are no month ends)
+        ("Die Raten sind am 30.06. und 30.09. zu zahlen.", QUARTERLY, {30}),
+        # month ends off the rule's interval, or one on its own, name no last day either
+        ("Die Raten sind am 31.03., 30.06., 30.09. und 31.12. zu zahlen.", YEARLY, set()),
+        ("Die Rate ist am 30.06.2027 fällig.", QUARTERLY, set()),
         # dates whose spacing does not fit the rule's interval
         ("Die Raten sind am 15.11.2026 und 15.12.2026 fällig.", QUARTERLY, set()),
         ("Die Raten sind am 10.03. und 10.04. fällig.", QUARTERLY, set()),
@@ -938,6 +1010,93 @@ def test_a_day_stated_as_a_schedule_of_dates_is_named_by_the_quote() -> None:
     assert day_of_month_consistency(single, 1, YEARLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
     assert days_of_month_named("jeweils zum 15. eines Monats, erstmals am 15.11.2026", QUARTERLY) == {15}
     assert days_of_month_named(QUARTERLY_DATES, QUARTERLY) == {10}
+
+
+QUARTER_ENDS = "Die Abschläge von 300,00 € sind am 31.03., 30.06., 30.09. und 31.12. fällig."
+
+
+def test_a_list_of_month_ends_names_the_last_day_and_nothing_else() -> None:
+    """Quarter ends (31.03., 30.06., 30.09., 31.12.) state the last day of each third month — a reading of the
+    31st (each month's last day) — never the 30th, which would be the 30th of March and December too; the
+    last working day is no calendar day such dates state (``working_day_consistency``: only its words name
+    it); and without its recurrence a list names no day."""
+    assert day_of_month_consistency(QUARTER_ENDS, 31, QUARTERLY) == []
+    assert day_of_month_consistency(QUARTER_ENDS, 30, QUARTERLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(QUARTER_ENDS, 31) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert working_day_consistency(QUARTER_ENDS, -1) == [WORKING_DAY_NOT_IN_QUOTE]
+    halves = "Die Raten sind am 30.06. und 31.12. zu zahlen."
+    assert day_of_month_consistency(halves, 31, Recurrence(interval=6, unit="months")) == []
+
+
+def test_a_list_with_a_date_on_another_day_names_no_day() -> None:
+    """Every date of a list must fit: "15.01., 15.04., 14.07. und 15.10." is no schedule on the 15th — a reading
+    of the 15th would date July a day after the letter's date, so it stays to be checked."""
+    off = "Die Raten sind jeweils am 15.01., 15.04., 14.07. und 15.10. fällig."
+    assert day_of_month_consistency(off, 15, QUARTERLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(off, 14, QUARTERLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    fits = "Die Raten sind jeweils am 15.01., 15.04., 15.07. und 15.10. fällig."
+    assert day_of_month_consistency(fits, 15, QUARTERLY) == []
+
+
+def test_the_middle_of_a_month_is_its_15th() -> None:
+    mid_month = "Der Abschlag wird jeweils zur Monatsmitte abgebucht."
+    assert day_of_month_consistency(mid_month, 15, MONTHLY) == []
+    assert day_of_month_consistency(mid_month, 1, MONTHLY) == [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(mid_month, 15) == []  # in words, without a recurrence too
+
+
+RBSTV = (
+    "Der Rundfunkbeitrag ist monatlich geschuldet und jeweils in der Mitte eines Dreimonatszeitraums für "
+    "drei Monate zu zahlen."
+)
+QUARTERLY_ON_15TH = Recurrence(interval=3, unit="months", day_of_month=15)
+
+
+@pytest.mark.parametrize(
+    ("text", "rule", "first", "expected"),
+    [
+        # the middle of a three-month period (§ 7 Abs. 3 RBStV): the 15th of its middle month, which runs
+        # from the month the duty to pay begins, so any 15th can be one
+        (RBSTV, QUARTERLY_ON_15TH, date(2026, 11, 15), {15}),
+        (RBSTV, QUARTERLY, date(2027, 2, 15), {15}),
+        (RBSTV, QUARTERLY, date(2027, 1, 15), {15}),  # a duty from December
+        ("payable in the middle of each three-month period", QUARTERLY, date(2026, 12, 15), {15}),
+        ("in der Mitte eines Zeitraums von drei Monaten zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+        ("in der Mitte eines dreimonatigen Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+        ("in der Mitte eines 3-Monats-Zeitraums zu zahlen", QUARTERLY, date(2026, 11, 15), {15}),
+        ("payable in the middle of each 3-month period", QUARTERLY, date(2026, 11, 15), {15}),
+        # the middle of a calendar quarter: the 15th of February, May, August or November
+        ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2026, 11, 15), {15}),
+        ("fällig in der Mitte eines jeden Quartals", QUARTERLY, date(2027, 2, 15), {15}),
+        ("Mitte des Kalendervierteljahres", QUARTERLY, date(2027, 5, 15), {15}),
+        ("The fee is due mid-quarter.", QUARTERLY, date(2027, 8, 15), {15}),
+        ("due in the middle of each quarter", QUARTERLY, date(2027, 8, 15), {15}),
+        # … never another month's 15th for a quarter, nor a first date off the 15th, nor none (a relative or
+        # undated reading), nor another interval than three months
+        ("Der Abschlag ist jeweils zur Quartalsmitte fällig.", QUARTERLY, date(2027, 1, 15), set()),
+        ("due in the middle of each quarter", QUARTERLY, date(2026, 12, 15), set()),
+        (RBSTV, QUARTERLY, date(2026, 11, 1), set()),
+        (RBSTV, QUARTERLY, date(2026, 11, 16), set()),
+        (RBSTV, QUARTERLY, None, set()),
+        (RBSTV, MONTHLY, date(2026, 11, 15), set()),
+        (RBSTV, Recurrence(interval=6, unit="months"), date(2026, 11, 15), set()),
+        (RBSTV, YEARLY, date(2026, 11, 15), set()),
+        (RBSTV, Recurrence(interval=13, unit="weeks"), date(2026, 11, 15), set()),
+        (RBSTV, None, date(2026, 11, 15), set()),
+        # … nor a quarter without its middle
+        ("Der Rundfunkbeitrag ist vierteljährlich zu zahlen.", QUARTERLY, date(2026, 11, 15), set()),
+    ],
+)
+def test_the_middle_of_each_quarter_names_the_15th_for_its_reading(
+    text: str, rule: Recurrence | None, first: date | None, expected: set[int]
+) -> None:
+    """The middle of each quarter or three-month period names the 15th only for a reading every three months
+    whose first date is that middle (``mid_quarter_named``): a three-month period's middle is one and a half
+    months on, the end of the 15th of its second month (§§ 186, 189, 192 BGB)."""
+    assert mid_quarter_named(text, rule, first) == expected
+    assert (15 in days_of_month_named(text, rule, first)) == bool(expected)
+    reason = [] if expected else [DAY_OF_MONTH_NOT_IN_QUOTE]
+    assert day_of_month_consistency(text, 15, rule, first) == reason
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1072,3 +1231,53 @@ def test_payment_day_sentence_needs_exactly_the_one_day_the_reading_gives() -> N
     assert payment_day_sentence([twice], first) == TICKET_DEBIT  # the same day twice is one day
     # a quote naming another day contradicts the letter's
     assert payment_day_sentence([TICKET_LETTER], first, "Der Beitrag wird zum 15. abgebucht.") is None
+
+
+FEE_LETTER = (
+    "Der Rundfunkbeitrag ist monatlich geschuldet und jeweils in der Mitte\n"
+    "eines Dreimonatszeitraums für drei Monate zu zahlen (§ 7 Abs. 3 Rundfunkbeitragsstaatsvertrag).\n"
+    "\n"
+    "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026.\n"
+)
+FEE_TERMS = (
+    "Der Rundfunkbeitrag ist monatlich geschuldet und jeweils in der Mitte eines Dreimonatszeitraums für drei "
+    "Monate zu zahlen (§ 7 Abs. 3 Rundfunkbeitragsstaatsvertrag)."
+)
+FEE_DUE = "Der Betrag von 55,08 € für den Zeitraum 10.2026 bis 12.2026 ist fällig am 15.11.2026."
+
+
+def test_a_due_day_stated_as_the_middle_of_each_quarter_is_found_for_its_reading() -> None:
+    """The broadcasting fee's terms ("in der Mitte eines Dreimonatszeitraums", across a line break) state the
+    15th for its reading — every three months from 15.11.2026 — and so vouch for the day the quote (one due
+    date) doesn't name; never for a reading from another day, every month, or without a first date."""
+    middle: DueDay = ("day_of_month", 15)
+    first = date(2026, 11, 15)
+    assert payment_days_stated(FEE_LETTER, QUARTERLY, first) == [(FEE_TERMS, {middle})]
+    assert payment_day_sentence([FEE_LETTER], middle, FEE_DUE, QUARTERLY, first) == FEE_TERMS
+    assert payment_day_sentence([FEE_LETTER], middle, FEE_DUE, QUARTERLY) is None
+    assert payment_day_sentence([FEE_LETTER], middle, FEE_DUE, MONTHLY, first) is None
+    assert payment_day_sentence([FEE_LETTER], middle, FEE_DUE, QUARTERLY, date(2026, 11, 1)) is None
+    assert payment_day_sentence([FEE_LETTER], ("day_of_month", 1), FEE_DUE, QUARTERLY, first) is None
+    # a month's middle in a payment sentence is its 15th, for any reading
+    mid_month = "Der Abschlag wird jeweils zur Monatsmitte abgebucht."
+    assert payment_days_stated(mid_month) == [(mid_month, {middle})]
+    assert payment_day_sentence([f"{TICKET_LETTER}{mid_month}"], ("day_of_month", 1)) is None  # two days
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # a sum's name alone is no payment's due day: when a new amount is announced or recalculated
+        "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit.",
+        "Der Beitrag von 20,00 € wird zum Monatsanfang neu berechnet.",
+        "Monatlicher Abschlag: 48,00 € (Mitte des Monats)",
+    ],
+)
+def test_a_sentence_naming_a_sum_without_a_due_word_states_no_due_day(sentence: str) -> None:
+    """A letter's sentence vouches for a payment's day only with a word of paying it when due ("abgebucht",
+    "fällig", "zu zahlen", "eingezogen", "due" …), never a sum's name alone ("Rechnungsbetrag", "Beitrag",
+    "Abschlag"); with one, such a sentence states its day."""
+    assert payment_days_stated(sentence) == []
+    assert payment_day_sentence([sentence], ("day_of_month", 15)) is None
+    due = "Der Beitrag beträgt monatlich 20,00 € und ist zur Monatsmitte fällig."
+    assert payment_days_stated(due) == [(due, {("day_of_month", 15)})]

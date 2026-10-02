@@ -128,6 +128,7 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-q"
 markers = [
   "live: calls the real claude CLI (skipped unless ORDNUNG_LIVE_TESTS=1)",
+  "slow: replays every recorded reading; CI runs these once, without coverage (-m slow)",
 ]
 
 [tool.coverage.run]

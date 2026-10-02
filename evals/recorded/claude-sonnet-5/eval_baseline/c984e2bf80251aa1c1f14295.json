@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c3aad68d79b0d7115607e6b761de6cedf8da8c19fdbfd19a67dfb8824a70984e\",\"mode\":\"text\",\"region\":\"BW\",\"today\":\"2025-07-16\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-07-16 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Baden-Württemberg (BW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterbreisgau – Amt für Schule und Bildung – Schülerbeförderung\",\"document_date\":\"2025-07-11\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"40.3-SB-2025-0718\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of school transport cost reimbursement\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe beim Landratsamt Musterbreisgau, Stadtstraße 2, 79104 Musterfreiburg, Widerspruch eingelegt werden, schriftlich oder zur Niederschrift.\",\"computation\":\"The letter is headed 11.07.2025 (a Friday); no separate 'zur Post gegeben am' date is stated, so this counts as the posting date. Posted on/after 1 Jan 2025 → delivery (Bekanntgabe) = posting date + 4 calendar days = 15.07.2025 (Tuesday). The Landratsamt is a general (non-tax) authority in BW, so even if this day fell on a weekend/holiday it would not move; here it is a Tuesday. Per § 70 VwGO the one-month Widerspruch period starts the day after delivery (§ 187 Abs. 1 BGB, delivery day itself not counted) and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): 15.08.2025. 15.08.2025 is a Friday and is not a public holiday in Baden-Württemberg (Mariä Himmelfahrt/Assumption Day is not a BW holiday), so the deadline is not shifted (§ 31 Abs. 3 VwVfG / § 57 VwGO i.V.m. § 222 ZPO would only shift it if it fell on a weekend/holiday).\",\"due_date\":\"2025-08-15\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter's header date (11.07.2025) differs from the Bescheid's own date mentioned in the text ('diesem Bescheid vom 08.07.2025'); the header date was used as the posting date for the delivery-fiction calculation, which is the earlier/stricter assumption (using 08.07.2025 instead would move delivery and the deadline a few days earlier still, so double-check the actual postmark date if available).\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterbreisgau – Amt für Schule und Bildung – Schülerbeförderung",
+      "document_date": "2025-07-11",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "40.3-SB-2025-0718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of school transport cost reimbursement",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe beim Landratsamt Musterbreisgau, Stadtstraße 2, 79104 Musterfreiburg, Widerspruch eingelegt werden, schriftlich oder zur Niederschrift.",
+          "computation": "The letter is headed 11.07.2025 (a Friday); no separate 'zur Post gegeben am' date is stated, so this counts as the posting date. Posted on/after 1 Jan 2025 → delivery (Bekanntgabe) = posting date + 4 calendar days = 15.07.2025 (Tuesday). The Landratsamt is a general (non-tax) authority in BW, so even if this day fell on a weekend/holiday it would not move; here it is a Tuesday. Per § 70 VwGO the one-month Widerspruch period starts the day after delivery (§ 187 Abs. 1 BGB, delivery day itself not counted) and ends one month later on the day with the same number (§ 188 Abs. 2 BGB): 15.08.2025. 15.08.2025 is a Friday and is not a public holiday in Baden-Württemberg (Mariä Himmelfahrt/Assumption Day is not a BW holiday), so the deadline is not shifted (§ 31 Abs. 3 VwVfG / § 57 VwGO i.V.m. § 222 ZPO would only shift it if it fell on a weekend/holiday).",
+          "due_date": "2025-08-15",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's header date (11.07.2025) differs from the Bescheid's own date mentioned in the text ('diesem Bescheid vom 08.07.2025'); the header date was used as the posting date for the delivery-fiction calculation, which is the earlier/stricter assumption (using 08.07.2025 instead would move delivery and the deadline a few days earlier still, so double-check the actual postmark date if available)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2973,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2118,
+      "cost_usd": 0.039312,
+      "duration_ms": 26608,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

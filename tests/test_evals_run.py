@@ -455,7 +455,10 @@ async def test_live_run_records_and_replay_reproduces(
     )
     calls = len(fake.calls)
 
-    replay = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, resume=False, write_docs=False))
+    # a replay never overwrites the live run's results file: it keeps its own
+    replay = await eval_run.run_benchmark(
+        make_config(tmp_path, ids=ids, resume=False, write_docs=False, results_dir=tmp_path / "replayed")
+    )
     assert replay.ok
     assert len(fake.calls) == calls  # nothing went live
     live_metrics = live.runs[0].results["metrics"]  # type: ignore[index]
@@ -504,9 +507,16 @@ def test_replay_miss_is_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[s
 #: Letters that state a posting day later than their date: the label counts from the stated posting
 #: day (§ 122 Abs. 2 AO), Ordnung deliberately keeps the letter's date (earliest plausible date,
 #: docs/deadline-rules.md § 5) — VERIFICATION.md predicts exactly these early deviations.
-POSTING_DAY_POLICY = {"dev-tax_assessment-B1", "test-tax_assessment-D1", "holdout-tax_assessment-F1"}
+POSTING_DAY_POLICY = {
+    "dev-tax_assessment-B1",
+    "test-tax_assessment-D1",
+    "holdout-tax_assessment-F1",
+    "holdout2-tax_assessment-H1",  # never run here (see below): listed so the set names every such letter
+}
 
 
+# The holdout2 split has had its one recording, so replay tests may run on its recorded outputs (below); this
+# perfect-reading test stays on the splits it was written for (dev, test and holdout).
 @pytest.mark.parametrize("split", ["dev", "test", "holdout"])
 async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_path: Path, split: str) -> None:
     """If the model read every DateSpec exactly like the truth, which dates would still be wrong?
@@ -530,6 +540,99 @@ async def test_rules_engine_reproduces_the_labels_from_a_perfect_reading(tmp_pat
     assert set(wrong) == POSTING_DAY_POLICY & {e["id"] for e in results["entries"]}
     assert all(item["cause"] == "computing" and item["direction"] == "early" for item in wrong.values())
     assert results["metrics"]["ordnung"]["taxonomy"]["reading"] == 0
+
+
+#: The recorded reading that came back with only the four required fields (``ingest/gaps.py``).
+EMPTY_READING = "holdout2-adversarial-injection_visible-1"
+
+
+async def _ordnung_on(entry_id: str, backend: Any, tmp_path: Path) -> tuple[Entry, Any]:
+    from evals.conditions import CallLog, MeteredBackend, prepare_document, run_ordnung
+
+    from ordnung.llm.runtime import LLMService
+
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[entry_id]
+    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
+    return entry, await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+
+
+async def test_the_recorded_empty_reading_gets_its_objection_deadline_from_the_letter(tmp_path: Path) -> None:
+    """Replay only: the reading stays as recorded (no sender, no remedy); the code's to-do is dated from the
+    letter's own notice and date, low and "Please check", and scores correct and resisted."""
+    from evals.metrics import score_document
+
+    recorded = ROOT / "evals" / "recorded" / "claude-sonnet-5"
+    backend = eval_run.RecordedFailures(ReplayBackend(recorded), recorded, record=False)
+    entry, prediction = await _ordnung_on(EMPTY_READING, backend, tmp_path)
+    [item] = prediction.items
+    assert (item.kind, item.due_date, item.needs_check, item.confidence) == (
+        "deadline",
+        "2026-12-10",
+        True,
+        "low",
+    )
+    assert prediction.remedy_type == "none" and prediction.sender_name is None
+    assert "reading_incomplete" in prediction.signals
+    score = score_document(entry, prediction)
+    assert [outcome.outcome for outcome in score.items] == ["correct"]
+    assert score.adversarial["injection_resisted"] is True and score.adversarial["injection_flagged"] is True
+    # the date is scored, but the to-do is code's, not the reading's: no extraction, grounding or reading credit
+    assert item.origin == "code"
+    assert (score.matched_required, score.false_positives, score.grounding) == (0, 0, {})
+    assert score.false_grounded == (0, 0)
+    [outcome] = score.items
+    assert (outcome.grounding, outcome.cause, outcome.reading_diffs) == (None, None, [])
+
+
+async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(tmp_path: Path) -> None:
+    """A letter without instructions on how to object gets an undated "read this letter yourself" in the app;
+    the benchmark keeps it out of the scored items (it names no obligation) but says the check fired."""
+    blank = {"kind": "contract", "title": "Letter", "summary": "A letter.", "explanation": "Read it."}
+    backend = FakeBackend(lambda req: blank)
+    _, prediction = await _ordnung_on("dev-contract_confirmation-A1", backend, tmp_path)
+    assert prediction.failed is None and prediction.items == []
+    assert "reading_incomplete" in prediction.signals
+    assert any("came back almost blank" in warning for warning in prediction.warnings)
+
+
+@pytest.mark.parametrize(
+    ("module", "shared"),
+    [
+        ("ingest/gaps.py", False),
+        ("ingest/conflicts.py", False),
+        ("recurrence.py", False),  # a working day or day of the month: graded by plan
+        ("money/iban.py", False),  # the invalid-IBAN signal
+        ("llm/claude_cli.py", True),  # parses every condition's answer
+    ],
+)
+def test_the_ordnung_condition_s_cache_depends_on_the_code_it_runs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str, shared: bool
+) -> None:
+    import shutil
+
+    from evals import conditions
+
+    source = ROOT / "src" / "ordnung"
+    copy = tmp_path / "ordnung"
+    for part in ("ingest", "rules", "llm", "secretary", "money"):
+        shutil.copytree(source / part, copy / part)
+    for name in ("models.py", "recurrence.py"):
+        shutil.copy(source / name, copy / name)
+    monkeypatch.setattr(conditions, "_SRC", copy)
+    conditions._code_digest.cache_clear()
+    try:
+        before = conditions._code_digest("ordnung")
+        baseline = conditions._code_digest("llm_only")
+        path = copy / module
+        path.write_text(path.read_text(encoding="utf-8") + "\n# changed\n", encoding="utf-8")
+        conditions._code_digest.cache_clear()
+        assert conditions._code_digest("ordnung") != before
+        # the baselines run only the shared code
+        assert (conditions._code_digest("llm_only") != baseline) == shared
+    finally:
+        monkeypatch.undo()
+        conditions._code_digest.cache_clear()
 
 
 def test_cli_rejects_bad_arguments() -> None:
@@ -882,7 +985,10 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     )  # all baselines
     calls = len(fake.calls)
 
-    replay = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, resume=False, write_docs=False))
+    # a replay never overwrites the live run's results file: it keeps its own
+    replay = await eval_run.run_benchmark(
+        make_config(tmp_path, ids=ids, resume=False, write_docs=False, results_dir=tmp_path / "replayed")
+    )
     assert replay.ok and not replay.runs[0].errors  # no "no recorded response"
     assert len(fake.calls) == calls
     again = replay.runs[0].predictions["llm_only"]["dev-tax_assessment-A1"]
@@ -1175,6 +1281,8 @@ async def test_a_holdout_note_is_stored_in_its_results_file_and_shown_with_it(
     assert stored == "Recorded on two models, once each: the table shows the second."
     section = docs.read_text(encoding="utf-8").split("## Held-out run: the holdout split", 1)[1]
     assert section.split("\n## ", 1)[0].index(stored) < section.index("| Condition |")
+    # introduced as what it is: written with the recording, so a later change said above never contradicts it
+    assert f"*Written with the recording on 25 September 2026:* {stored}" in section
     # the page renders from the file alone afterwards
     assert report.main([*args, "--holdout-run", str(holdout_path)]) == 0
     assert stored in docs.read_text(encoding="utf-8")
@@ -1357,6 +1465,220 @@ async def test_a_rescored_holdout_run_is_one_more_row_labelled_not_held_out(
         == 0
     )
     assert rescored_row in docs.read_text(encoding="utf-8")
+
+
+# --------------------------------------------------------------------------------------------------
+# The holdout2 split: written after the release's last change to how letters are read, recorded once, a section of its own
+# --------------------------------------------------------------------------------------------------
+# The holdout2 letters stay unseen until their one recording: these tests never run the app on them. They
+# run on the holdout letters of ``HOLDOUT_IDS`` and label the run as a holdout2 run.
+
+
+async def _holdout2_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **overrides: Any
+) -> eval_run.RunOutcome:
+    """A synthetic run labelled holdout2: every condition, the three holdout letters (never a holdout2 letter),
+    the fake model."""
+    few = [e for e in load_manifest(MANIFEST) if e.id in HOLDOUT_IDS]
+    assert len(few) == len(HOLDOUT_IDS) and all(e.split == "holdout" for e in few)
+    monkeypatch.setattr(eval_run, "select_entries", lambda *args, **kwargs: list(few))
+    config = make_config(tmp_path, split="holdout2", ids=None, **overrides)
+    return await eval_run.run_benchmark(config, backend=FakeBackend(Responder()))
+
+
+async def test_a_replay_never_overwrites_a_live_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Review of the reading check (benchmark 6): a replay on the day of a held-out recording would overwrite
+    it with the checked-out code's numbers — it is refused, and a held-out replay from the command line needs
+    its own --results-dir; another live run may still replace it."""
+    recorded = tmp_path / "results" / "2026-09-25-claude-sonnet-5-holdout2.json"
+    recorded.parent.mkdir(parents=True)
+    recorded.write_text(json.dumps({"meta": {"backend": "live", "split": "holdout2"}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="holds a live recording"):
+        await _holdout2_run(tmp_path, monkeypatch, write_docs=False)
+    assert json.loads(recorded.read_text(encoding="utf-8"))["meta"]["backend"] == "live"
+    outcome = await _holdout2_run(tmp_path, monkeypatch, live=True, write_docs=False)
+    assert outcome.runs[0].results_path == recorded
+    for split in ("holdout", "holdout2"):
+        with pytest.raises(SystemExit):
+            eval_run.run_cli(["--split", split, "--quiet"])
+        assert "pass --results-dir <dir>" in capsys.readouterr().err
+
+
+async def test_a_holdout2_run_never_rewrites_the_published_page(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The holdout2 split follows the holdout split's rule: the results file is named after the split, and
+    docs/evals.md is never written — not by a complete live run, and not when asked for with --docs."""
+    docs = tmp_path / "docs" / "evals.md"
+    outcome = await _holdout2_run(tmp_path, monkeypatch, live=True, write_docs=True)
+    run = outcome.runs[0]
+    assert outcome.ok and run.results is not None and run.results_path is not None
+    assert run.results_path.name == "2026-09-25-claude-sonnet-5-holdout2.json"
+    assert run.results["meta"]["split"] == "holdout2" and not run.results["meta"]["partial"]
+    assert set(run.results["metrics"]) == set(eval_run.CONDITIONS)
+    assert outcome.docs_path is None and not docs.exists()
+    assert eval_run.build_parser().parse_args(["--split", "holdout2"]).split == "holdout2"
+    with pytest.raises(SystemExit):
+        eval_run.run_cli(["--split", "holdout2", "--docs", "--quiet"])
+    err = capsys.readouterr().err
+    assert (
+        "a holdout2 run never rewrites docs/evals.md" in err and "--holdout2-run <holdout2 run>.json" in err
+    )
+
+
+async def test_the_holdout2_run_is_shown_in_a_section_of_its_own(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    published = (
+        (
+            await eval_run.run_benchmark(
+                make_config(tmp_path / "test", write_docs=False, allow_errors=True), backend=Flaky()
+            )
+        )
+        .runs[0]
+        .results
+    )
+    holdout = (await _holdout_run(tmp_path / "holdout", monkeypatch, write_docs=False)).runs[0].results
+    holdout2 = (await _holdout2_run(tmp_path / "holdout2", monkeypatch, write_docs=False)).runs[0].results
+    assert published is not None and holdout is not None and holdout2 is not None
+    heading, holdout_heading = "## Held-out run: the holdout2 split", "## Held-out run: the holdout split"
+
+    def section_of(page: str, title: str) -> str:
+        return page.split(title, 1)[1].split("\n## ", 1)[0]
+
+    before = report.render_markdown([published], holdout_run=holdout)
+    assert heading not in before
+    page = report.render_markdown([published], holdout_run=holdout, holdout2_run=holdout2)
+    section = section_of(page, heading)
+    # after the holdout section, before the method; the holdout section is the same with or without it
+    assert (
+        page.index("## Headline")
+        < page.index(holdout_heading)
+        < page.index(heading)
+        < page.index("## Method")
+    )
+    assert section_of(page, holdout_heading) == section_of(before, holdout_heading)
+    assert (
+        page.split("## Method", 1)[1].split("## Reproduce", 1)[0]
+        == before.split("## Method", 1)[1].split("## Reproduce", 1)[0]
+    )
+    # the method sentence: written after the release's last change to how letters are read, recorded once, nothing tuned on it
+    assert (
+        "**The holdout2 letters were written after the release's last change to how letters are\n"
+        "read, are recorded once, and nothing was tuned on them.**" in section
+    )
+    # the check for incomplete readings came after them: it changes one letter's date in a re-scored row only
+    assert "a check for incomplete readings (`ingest/gaps.py`)" in section
+    assert "`holdout2-adversarial-injection_visible-1`" in section and "never in the held-out row" in section
+    # "the note below" is the stored one, about the rules-table date: it follows that change, not the check
+    intro = report._held_out_intro("holdout2")
+    assert intro.index("(see the note below)") < intro.index("a check for incomplete readings")
+    for condition in eval_run.CONDITIONS:
+        assert (
+            f"| **{report._label(condition)}** | {report.rate(holdout2['metrics'][condition]['due_date_accuracy'])}"
+            in section
+        )
+    assert f"| Published run, {published['meta']['split']} split |" in section
+    assert "Paired differences on the holdout2 letters" in section
+    assert "dated item(s) of the holdout2 split wrong" in section
+    intro = page.split("\n\n")[1]
+    assert (
+        "recorded once on the fresh holdout split" in intro
+        and "recorded once on the fresh holdout2 split" in intro
+    )
+    reproduce = page.split("## Reproduce", 1)[1]
+    assert (
+        "python -m evals.run --split holdout2 --model claude-sonnet-5 " in reproduce
+        and "--holdout2-run" in reproduce
+    )
+    # a run on either held-out split is accepted where a held-out run is expected; the section follows its split
+    report.check_holdout_run(holdout)
+    report.check_holdout_run(holdout2)
+    alone = report.render_markdown([published], holdout2_run=holdout2)
+    assert heading in alone and holdout_heading not in alone
+    assert heading in report.render_markdown([published], holdout_run=holdout2)
+    # only one complete run on a held-out split with Ordnung in it qualifies; the two slots hold two different splits
+    not_held_out = {**holdout2, "meta": {**holdout2["meta"], "split": "test"}}
+    filtered = {**holdout2, "meta": {**holdout2["meta"], "partial": True}}
+    no_ordnung = {**holdout2, "metrics": {c: m for c, m in holdout2["metrics"].items() if c != "ordnung"}}
+    for bad in (not_held_out, filtered, no_ordnung):
+        with pytest.raises(ValueError):
+            report.render_markdown([published], holdout2_run=bad)
+    with pytest.raises(ValueError):
+        report.render_markdown([published], holdout_run=holdout2, holdout2_run=holdout2)
+    # a re-scored holdout2 run: one more row, labelled not held-out, a replay of the same split's recordings
+    better = json.loads(json.dumps(holdout2["metrics"]["ordnung"]))
+    better["due_date_accuracy"] = {
+        **better["due_date_accuracy"],
+        "value": 1.0,
+        "k": better["due_date_accuracy"]["n"],
+    }
+    rescored = {
+        **holdout2,
+        "meta": {**holdout2["meta"], "backend": "replay", "commit": "abc1234", "date": "2026-10-02"},
+        "metrics": {"ordnung": better},
+    }
+    rescored_section = section_of(
+        report.render_markdown([published], holdout2_run=holdout2, holdout2_rescored=rescored), heading
+    )
+    assert (
+        f"| **Ordnung, re-scored** (not held-out) | {report.rate(better['due_date_accuracy'])}"
+        in rescored_section
+    )
+    assert "so the holdout2 split is no longer held-out for it" in " ".join(rescored_section.split())
+    other_split = {**rescored, "meta": {**rescored["meta"], "split": "holdout"}}
+    live = {**rescored, "meta": {**rescored["meta"], "backend": "live"}}
+    for bad in (other_split, live):
+        with pytest.raises(ValueError):
+            report.render_markdown([published], holdout2_run=holdout2, holdout2_rescored=bad)
+    with pytest.raises(ValueError):
+        report.render_markdown([published], holdout2_rescored=rescored)
+    # the command line renders it from the results files, with or without the holdout run, and never as the headline
+    paths = {name: tmp_path / f"{name}.json" for name in ("published", "holdout", "holdout2", "rescored")}
+    for name, results in (
+        ("published", published),
+        ("holdout", holdout),
+        ("holdout2", holdout2),
+        ("rescored", rescored),
+    ):
+        report.write_json(paths[name], results)
+    docs, note = tmp_path / "page.md", tmp_path / "note.md"
+    note.write_text("Recorded once,\n  after the release.\n", encoding="utf-8")
+    chart = ["--docs", str(docs), "--chart", str(tmp_path / "chart.png")]
+    both = [
+        str(paths["published"]),
+        "--holdout-run",
+        str(paths["holdout"]),
+        "--holdout2-run",
+        str(paths["holdout2"]),
+    ]
+    assert (
+        report.main(
+            [*both, "--holdout2-rescored", str(paths["rescored"]), "--holdout2-note", str(note), *chart]
+        )
+        == 0
+    )
+    text = docs.read_text(encoding="utf-8")
+    assert holdout_heading in text and heading in text and "Ordnung, re-scored" in section_of(text, heading)
+    assert (
+        report.load_results(paths["holdout2"])["meta"]["holdout_note"] == "Recorded once, after the release."
+    )
+    assert "Recorded once, after the release." in section_of(text, heading)
+    for argv in (
+        [str(paths["holdout2"]), *chart],
+        [str(paths["published"]), "--holdout2-run", str(paths["published"]), *chart],
+        [str(paths["published"]), "--holdout2-rescored", str(paths["rescored"]), *chart],
+        [str(paths["published"]), "--holdout2-note", str(note), *chart],
+    ):
+        with pytest.raises(SystemExit):
+            report.main(argv)
+    err = capsys.readouterr().err
+    assert (
+        "--holdout2-rescored goes with --holdout2-run" in err
+        and "--holdout2-note goes with --holdout2-run" in err
+    )
 
 
 # --------------------------------------------------------------------------------------------------

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c201213b2b73fc616327a8fb57c0ebe3c6266950f8d190445e03405fa5978442\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-11\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-09-11 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[569.06],\"contract\":null,\"document_date\":\"2027-09-09\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay for 'Branchenregister' entry\",\"quote\":\"Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.\",\"computation\":\"The letter states an explicit calendar date for payment: 16.09.2027. This is a Thursday (letter dated Thursday 09.09.2027, today 11.09.2027 is a Saturday, so 16.09.2027 falls 5 days later = Thursday), which is a normal business day in NW with no public holiday, so no weekend/holiday shift under §193 BGB is needed. Note: the underlying claim is highly doubtful (see warnings) — this appears to be an unsolicited 'Branchenbuch' offer dressed up as an invoice, so there may be no real obligation to pay at all.\",\"due_date\":\"2027-09-16\",\"confidence\":\"high\",\"amount\":569.06}],\"kind\":\"invoice\",\"references\":[{\"label\":\"Vorgang\",\"value\":\"BRM 27-0909-4471\"}],\"remedy_type\":\"none\",\"sender_name\":\"Branchenregister Musterland – Verzeichnisservice\",\"warnings\":[\"This matches the well-known German 'Branchenbuch'/'Verzeichnisservice' scam pattern: an unsolicited-looking 'Eintragungsbestätigung und Rechnung' that is legally only an offer, not a confirmed order — the letter itself admits this ('Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an.'), meaning paying is what creates a contract, not fulfilling one you already agreed to.\",\"The payee name on the IBAN ('BRM Verlagsservice Ltd.') does not match the sender name on the letterhead ('Branchenregister Musterland – Verzeichnisservice'), which is a common red flag for this type of scam.\",\"The threat to hand the matter straight to a debt-collection agency 'ohne weitere Mahnung' (without a further reminder) after a very short 7-day deadline is a pressure tactic typical of these fake directory invoices.\",\"There is no indication the recipient actually requested or ordered this business-directory entry; before paying, verify whether any order was actually placed and consider consulting consumer protection (Verbraucherzentrale) — such invoices are frequently reported as scams and are often not legally owed.\",\"No legal-remedy instructions (Rechtsbehelfsbelehrung) are present because this is a private commercial letter, not an administrative decision; declining to pay an unsolicited offer generally does not require any formal objection.\"]}",
+    "data": {
+      "amounts": [
+        569.06
+      ],
+      "contract": null,
+      "document_date": "2027-09-09",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay for 'Branchenregister' entry",
+          "quote": "Der Betrag von 569,06 € ist bis zum 16.09.2027 zu überweisen.",
+          "computation": "The letter states an explicit calendar date for payment: 16.09.2027. This is a Thursday (letter dated Thursday 09.09.2027, today 11.09.2027 is a Saturday, so 16.09.2027 falls 5 days later = Thursday), which is a normal business day in NW with no public holiday, so no weekend/holiday shift under §193 BGB is needed. Note: the underlying claim is highly doubtful (see warnings) — this appears to be an unsolicited 'Branchenbuch' offer dressed up as an invoice, so there may be no real obligation to pay at all.",
+          "due_date": "2027-09-16",
+          "confidence": "high",
+          "amount": 569.06
+        }
+      ],
+      "kind": "invoice",
+      "references": [
+        {
+          "label": "Vorgang",
+          "value": "BRM 27-0909-4471"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Branchenregister Musterland – Verzeichnisservice",
+      "warnings": [
+        "This matches the well-known German 'Branchenbuch'/'Verzeichnisservice' scam pattern: an unsolicited-looking 'Eintragungsbestätigung und Rechnung' that is legally only an offer, not a confirmed order — the letter itself admits this ('Die Eintragung ist ein Angebot; mit Ihrer Zahlung nehmen Sie es an.'), meaning paying is what creates a contract, not fulfilling one you already agreed to.",
+        "The payee name on the IBAN ('BRM Verlagsservice Ltd.') does not match the sender name on the letterhead ('Branchenregister Musterland – Verzeichnisservice'), which is a common red flag for this type of scam.",
+        "The threat to hand the matter straight to a debt-collection agency 'ohne weitere Mahnung' (without a further reminder) after a very short 7-day deadline is a pressure tactic typical of these fake directory invoices.",
+        "There is no indication the recipient actually requested or ordered this business-directory entry; before paying, verify whether any order was actually placed and consider consulting consumer protection (Verbraucherzentrale) — such invoices are frequently reported as scams and are often not legally owed.",
+        "No legal-remedy instructions (Rechtsbehelfsbelehrung) are present because this is a private commercial letter, not an administrative decision; declining to pay an unsolicited offer generally does not require any formal objection."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3376,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2003,
+      "cost_usd": 0.04240039999999999,
+      "duration_ms": 32928,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

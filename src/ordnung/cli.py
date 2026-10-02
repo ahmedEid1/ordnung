@@ -634,7 +634,7 @@ def _print_summary(rows: Sequence[tuple[Document, str | None, Sequence[Item]]], 
     console.print(summary_table(rows, today))
     if any(document.status == "needs_review" for document, _, _ in rows):
         console.print(
-            "[dim]“Please check”: a date or amount couldn't be found in the letter — open it to confirm.[/]"
+            "[dim]“Please check”: Ordnung couldn't confirm something it read in the letter — open it to check.[/]"
         )
 
 

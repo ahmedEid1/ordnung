@@ -92,17 +92,27 @@ function withoutPleaseCheck(w: string): string {
 }
 
 /**
- * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
- * own note sits in the verdict, the count of unconfirmed dates is said by their own cards).
+ * The warning that Claude's reading came back incomplete and Ordnung added a to-do of its own
+ * (`gap_warning` in `src/ordnung/ingest/gaps.py`). It is no scam sign, and it is said only while that to-do
+ * still needs checking: once the person confirmed, dated, finished or dismissed it, it is out of date.
  */
-function otherWarnings(doc: Document): string[] {
+const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|This letter explains how to (?:object|challenge it in court), but Claude's reading)/;
+
+/**
+ * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
+ * own note sits in the verdict, the count of unconfirmed dates is said by their own cards, the incomplete
+ * reading's note only while its to-do needs checking).
+ */
+function otherWarnings(doc: Document, items: Item[]): string[] {
+  const checking = items.some((i) => i.slot_key === READING_CHECK_SLOT && needsCheck(i));
   const shown = doc.warnings.filter(
     (w) =>
       w.trim() &&
       w.trim() !== SAFE_NOTE &&
       !(doc.hidden_text && isHiddenTextWarning(w)) &&
       !w.startsWith(DEMO_NOTE) &&
-      !UNCONFIRMED_DATES.test(w.trim()),
+      !UNCONFIRMED_DATES.test(w.trim()) &&
+      (checking || !GAP_WARNING.test(w.trim())),
   );
   return squareIbanClaims(shown, doc.payment?.iban ? doc.payment.iban_valid : null);
 }
@@ -113,7 +123,7 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const checks = detail.items.filter(needsCheck);
   const arrival = detail.items.filter((i) => needsArrivalDate(i, doc));
   const remedy = doc.remedy?.type;
-  const warnings = otherWarnings(doc);
+  const warnings = otherWarnings(doc, detail.items);
   // the arrival question already explains the "we don't know when it arrived / was delivered" warning — and
   // once the person has dealt with the letter (objected, paid), when it arrived no longer matters
   const general =
@@ -157,7 +167,7 @@ const TOP_SIGNS = 3;
 function scamSigns(reasons: string[]): string[] {
   const rank = (w: string) =>
     /^possible scam/i.test(w) ? 0 : /iban|payee|account|bank/i.test(w) ? 1 : /deadline|hours|threat|pressure|not to contact/i.test(w) ? 2 : 3;
-  return reasons.filter((w) => !/^please check\b/i.test(w)).sort((a, b) => rank(a) - rank(b));
+  return reasons.filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim())).sort((a, b) => rank(a) - rank(b));
 }
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {
@@ -266,7 +276,7 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
       {type === "klage" ? (
         <p>
           The letter says the next step is a <span lang="de">Klage</span> (court action){addressee ? ` at ${addressee}` : ""}. Ordnung
-          doesn't compute court deadlines or draft court papers. Please talk to an advice service soon.
+          can't draft or file court actions. Please talk to an advice service soon.
         </p>
       ) : (
         <p>
@@ -440,22 +450,67 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
 }
 
 /**
+ * The slot of the to-do Ordnung files itself when Claude's reading of a letter came back incomplete
+ * (`CHECK_SLOT` in `src/ordnung/ingest/gaps.py`): the objection deadline worked out from the letter's own
+ * instructions on how to object, or — without them — an undated "Read this letter yourself".
+ */
+export const READING_CHECK_SLOT = "check:reading";
+
+/** Why a to-do needs checking, under its title. */
+function checkReason(item: Item, scam: boolean, notFound: boolean): string {
+  if (scam)
+    return "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know.";
+  if (item.slot_key === READING_CHECK_SLOT) {
+    // the placeholder "Read this letter yourself" is a task; the objection deadline, dated or not, a deadline
+    if (item.kind === "task")
+      return "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do something by a date, give this to-do that date with “Set a date”.";
+    return item.due_date
+      ? "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left it out."
+      : "Ordnung found the letter's instructions on how to object but couldn't work out the date from them — enter the deadline with “Set a date”.";
+  }
+  return notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from.";
+}
+
+/** The German terms Ordnung writes into its own titles and notes, marked for screen readers. */
+const GERMAN_TERM = /\b(Widerspruch|Einspruch|Klage|Rechtsbehelfsbelehrung)\b/;
+
+function WithGermanTerms({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(GERMAN_TERM).map((part, i) =>
+        i % 2 ? (
+          <span key={i} lang="de">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+/**
  * A to-do whose date or amount Ordnung couldn't confirm against the letter. On a letter with scam signs it
  * is the demand not to pay: no date to correct — only "not a real to-do" or "it's a real to-do" (walkthrough of
- * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment).
+ * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment). The to-do Ordnung
+ * filed for an incomplete reading says so instead ({@link READING_CHECK_SLOT}).
  */
 function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean }) {
-  const { dismiss, changeDate, confirmItem, pending } = useItemActions();
+  const { dismiss, changeDate, confirmItem, markDone, pending } = useItemActions();
   const { select } = useEvidence();
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(item.due_date ?? "");
   const ev = item.evidence.find((e) => e.grounding === "unverified" || !e.value_consistent) ?? item.evidence[0];
   const notFound = item.grounding === "unverified" || ev?.grounding === "unverified";
+  const own = item.slot_key === READING_CHECK_SLOT;
+  // "Read this letter yourself": reading it is the whole task — when the letter asks for nothing, it's done
+  const placeholder = own && item.kind === "task";
 
   return (
     <CheckCard>
       <p className="mt-1 text-[15px] font-medium leading-snug text-ink wrap-break-word">
-        {item.title}
+        {own ? <WithGermanTerms text={item.title} /> : item.title}
         {item.due_date && !scam ? (
           <span className="font-normal text-ink/80">
             {" "}
@@ -463,13 +518,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
           </span>
         ) : null}
       </p>
-      <p className="mt-1 text-[13px] leading-5 text-ink/75">
-        {scam
-          ? "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know."
-          : notFound
-            ? GROUNDING_COPY.unverified.label + "."
-            : "The date or amount doesn't match the sentence it came from."}
-      </p>
+      <p className="mt-1 text-[13px] leading-5 text-ink/75">{checkReason(item, scam, notFound)}</p>
       {ev?.quote ? (
         <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
           <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="min-h-6 text-left hover:underline">
@@ -507,11 +556,18 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
         </form>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
-            Correct
-          </Button>
+          {placeholder ? (
+            <Button size="sm" variant="secondary" icon={Check} onClick={() => markDone(item, { title: "Marked as read" })} disabled={pending}>
+              I've read it — nothing to do
+            </Button>
+          ) : own && !item.due_date ? null : (
+            // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
+            <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+              Correct
+            </Button>
+          )}
           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
-            Change date
+            {item.due_date ? "Change date" : "Set a date"}
           </Button>
           <Button size="sm" variant="ghost" icon={X} onClick={() => dismiss(item)} disabled={pending}>
             Not a real to-do
@@ -547,13 +603,17 @@ function GeneralWarnings({ warnings }: { warnings: string[] }) {
   return (
     <CheckCard>
       {lines.length === 1 ? (
-        <p className={cn("mt-1", text)}>{glueText(lines[0]!)}</p>
+        <p className={cn("mt-1", text)}>
+          <WithGermanTerms text={glueText(lines[0]!)} />
+        </p>
       ) : (
         <ul className="mt-1.5 space-y-1.5">
           {lines.map((w) => (
             <li key={w} className={cn("flex gap-2", text)}>
               <span aria-hidden className="mt-[9px] size-1.5 shrink-0 rounded-full bg-warn" />
-              <span className="min-w-0">{glueText(w)}</span>
+              <span className="min-w-0">
+                <WithGermanTerms text={glueText(w)} />
+              </span>
             </li>
           ))}
         </ul>

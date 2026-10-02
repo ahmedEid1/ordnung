@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"beb39d5e68ae72093f4f7b2a831cb045b0707c6cae8b2320bc5443cf58cc3bfd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-04\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-G3"
+    ],
+    "prompt_head": "Today is Sunday, 2026-01-04 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[186.3],\"contract\":null,\"document_date\":\"2025-12-29\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against amended income tax assessment 2024\",\"quote\":\"Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.\",\"computation\":\"Letter is dated Monday 29.12.2025 and presumably handed to the post on the same day. The letter itself states the current statutory Bekanntgabe-fiction for simple mail (since the 2025 amendment to §122 Abs. 2 AO: notice is deemed received on the 4th day after posting, unless it arrived later or not at all). Day of posting = 29.12.2025; counting the 4 days (30.12., 31.12., 01.01.2026, 02.01.2026) gives Bekanntgabe on 02.01.2026 (a Friday, not a Sunday/holiday, so the fiction applies as computed). Under §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB the one-month Einspruchsfrist begins on the day after Bekanntgabe (03.01.2026). Under §188 Abs. 2 BGB the month-long period ends on the day of the following month bearing the same number as the day of the triggering event (the Bekanntgabe day, 2 January), i.e. 02.02.2026. That day is a Monday (not a Saturday, Sunday or NRW public holiday), so no further shift under §108 Abs. 3 AO/§193 BGB is needed. Deadline: 02.02.2026.\",\"due_date\":\"2026-02-02\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"33/451/31206\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Musterwalde\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        186.3
+      ],
+      "contract": null,
+      "document_date": "2025-12-29",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against amended income tax assessment 2024",
+          "quote": "Einzulegen ist er innerhalb eines Monats seit der Bekanntgabe – schriftlich, elektronisch oder mündlich zur Niederschrift.",
+          "computation": "Letter is dated Monday 29.12.2025 and presumably handed to the post on the same day. The letter itself states the current statutory Bekanntgabe-fiction for simple mail (since the 2025 amendment to §122 Abs. 2 AO: notice is deemed received on the 4th day after posting, unless it arrived later or not at all). Day of posting = 29.12.2025; counting the 4 days (30.12., 31.12., 01.01.2026, 02.01.2026) gives Bekanntgabe on 02.01.2026 (a Friday, not a Sunday/holiday, so the fiction applies as computed). Under §108 Abs. 1 AO i.V.m. §187 Abs. 1 BGB the one-month Einspruchsfrist begins on the day after Bekanntgabe (03.01.2026). Under §188 Abs. 2 BGB the month-long period ends on the day of the following month bearing the same number as the day of the triggering event (the Bekanntgabe day, 2 January), i.e. 02.02.2026. That day is a Monday (not a Saturday, Sunday or NRW public holiday), so no further shift under §108 Abs. 3 AO/§193 BGB is needed. Deadline: 02.02.2026.",
+          "due_date": "2026-02-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "33/451/31206"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Musterwalde",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2781,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2073,
+      "cost_usd": 0.0367304,
+      "duration_ms": 26880,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

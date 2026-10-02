@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a41b701927638f34b301b94c41551defffb131355362dbb7e4715cf856866367\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2025-06-27\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-tax_assessment-H1"
+    ],
+    "prompt_head": "Today is Friday, 2025-06-27 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document>"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterpotsdam\",\"document_date\":\"2025-06-23\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"046/219/05731\"}],\"amounts\":[8213,1238],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay remaining income tax 2024\",\"quote\":\"Bitte überweisen Sie den Betrag von 1.238,00 € so, dass er spätestens am 22.07.2025 auf unserem Konto gutgeschrieben ist (Brandenburgische Musterkasse, IBAN DE49 1605 0000 0002 8700 00).\",\"computation\":\"The letter states an explicit calendar due date for the payment: the amount of 1,238.00 € must be credited to the Finanzamt's account by 22.07.2025 at the latest. A fixed calendar date in the letter is used as written and is not subject to weekend/holiday shifting rules (those apply to computed periods, not to stated dates); 22.07.2025 is a Tuesday in any case, so no adjustment would be needed regardless.\",\"due_date\":\"2025-07-22\",\"confidence\":\"high\",\"amount\":1238},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.\",\"computation\":\"The letter gives a separate 'Tag der Aufgabe zur Post' of 24.06.2025 (Tuesday), which under the rules governs over the printed letter date (23.06.2025) as the start of the delivery fiction. Bekanntgabefiktion for a Finanzamt: delivery on the 4th day after posting = 24.06.2025 + 4 days = 28.06.2025 (Saturday). Because this is a tax office, if the 4th day is a Saturday, Sunday or public holiday it moves to the next working day (§108 Abs.3 AO) → Monday, 30.06.2025 is the day of deemed delivery (Bekanntgabe). Per the letter and §108 Abs.1 AO/§187 Abs.1 BGB, the day of Bekanntgabe itself (30.06.2025) does not count; the one-month Einspruch period therefore runs from 30.06.2025 and ends, per §188 Abs.2 BGB, on the day in the following month bearing the same number: 30.07.2025. 30.07.2025 is a Wednesday and not a public holiday in Brandenburg, so no further shift applies.\",\"due_date\":\"2025-07-30\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterpotsdam",
+      "document_date": "2025-06-23",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "046/219/05731"
+        }
+      ],
+      "amounts": [
+        8213,
+        1238
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay remaining income tax 2024",
+          "quote": "Bitte überweisen Sie den Betrag von 1.238,00 € so, dass er spätestens am 22.07.2025 auf unserem Konto gutgeschrieben ist (Brandenburgische Musterkasse, IBAN DE49 1605 0000 0002 8700 00).",
+          "computation": "The letter states an explicit calendar due date for the payment: the amount of 1,238.00 € must be credited to the Finanzamt's account by 22.07.2025 at the latest. A fixed calendar date in the letter is used as written and is not subject to weekend/holiday shifting rules (those apply to computed periods, not to stated dates); 22.07.2025 is a Tuesday in any case, so no adjustment would be needed regardless.",
+          "due_date": "2025-07-22",
+          "confidence": "high",
+          "amount": 1238
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Ein Einspruch ist innerhalb eines Monats zu erheben; der Tag, an dem Ihnen der Bescheid bekannt gegeben wird, zählt dabei nicht mit.",
+          "computation": "The letter gives a separate 'Tag der Aufgabe zur Post' of 24.06.2025 (Tuesday), which under the rules governs over the printed letter date (23.06.2025) as the start of the delivery fiction. Bekanntgabefiktion for a Finanzamt: delivery on the 4th day after posting = 24.06.2025 + 4 days = 28.06.2025 (Saturday). Because this is a tax office, if the 4th day is a Saturday, Sunday or public holiday it moves to the next working day (§108 Abs.3 AO) → Monday, 30.06.2025 is the day of deemed delivery (Bekanntgabe). Per the letter and §108 Abs.1 AO/§187 Abs.1 BGB, the day of Bekanntgabe itself (30.06.2025) does not count; the one-month Einspruch period therefore runs from 30.06.2025 and ends, per §188 Abs.2 BGB, on the day in the following month bearing the same number: 30.07.2025. 30.07.2025 is a Wednesday and not a public holiday in Brandenburg, so no further shift applies.",
+          "due_date": "2025-07-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3564,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2441,
+      "cost_usd": 0.046514,
+      "duration_ms": 30181,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

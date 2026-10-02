@@ -1,0 +1,127 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0ec49d501e53cb950c1fa9ef75db4adb3fc05323f43624c6073e5556f654c316\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-fine_bussgeld-G2"
+    ],
+    "prompt_head": "Today is Friday, 2026-12-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle\",\"document_date\":\"2026-12-14\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS 26-1119-0583\"},{\"label\":\"Kennzeichen\",\"value\":\"LÜ-RB 207\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.\",\"computation\":\"This is a formal Zustellung (Postzustellungsurkunde, § 182 ZPO), so no statutory 'deemed delivery' fiction applies; the start is the actual service date printed on the returned Zustellungsurkunde (page 2): 'zugestellt am 18.12.20[26]' = 18 Dec 2026 (Friday). Under § 187 Abs. 1 BGB the day of service itself is not counted, so the two-week Einspruchsfrist (§ 67 Abs. 1 OWiG, § 43 StPO via § 46 Abs. 1 OWiG) starts 19 Dec 2026 and runs 14 days to Fri 1 Jan 2027 (§ 188 Abs. 1, 2 BGB). 1 Jan 2027 is Neujahr, a public holiday nationwide, so under § 43 StPO the deadline shifts to the next working day, Mon 4 Jan 2027 (confirmed by the compute_deadline tool).\",\"due_date\":\"2027-01-04\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the total fine, fee and costs (Gesamtbetrag)\",\"quote\":\"Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.\",\"computation\":\"Rechtskraft (finality) is reached the day after the Einspruch period expires without an objection having been filed, i.e. the day after 4 Jan 2027 = 5 Jan 2027 (assuming no Einspruch is lodged). The letter sets the outer payment limit at 'spätestens zwei Wochen danach' (at the latest two weeks after that). Counting from 5 Jan 2027 (day not counted, § 187 Abs. 1 BGB), two weeks later is Tue 19 Jan 2027 (§ 188 Abs. 1, 2 BGB), which is a normal working day in NRW, so no shift applies (confirmed by the compute_deadline tool). The total due is 128,50 € (100,00 € Geldbuße + 25,00 € Gebühr + 3,50 € Auslagen).\",\"due_date\":\"2027-01-19\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The service date on the returned Zustellungsurkunde (page 2) is printed as 'zugestellt am 18.12.20' with the year cut off; it was read as 18.12.2026 because that fits the document date (14.12.2026) and today's date, but the original envelope should be checked to confirm the exact service date, since both the Einspruch deadline and the payment deadline are counted from it.\",\"The payment deadline (2027-01-19) assumes no Einspruch is filed and that the decision becomes final the day after the Einspruch period (4 Jan 2027) expires; filing an Einspruch would stop both the Rechtskraft and this payment obligation.\",\"Before paying, verify the account holder name behind IBAN DE67 5205 0000 0000 0106 00 matches the Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle, as is good practice for any payment demand, even though the IBAN itself is a validly formatted German account.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+      "document_date": "2026-12-14",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS 26-1119-0583"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "LÜ-RB 207"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig, und die Geldbuße kann vollstreckt werden.",
+          "computation": "This is a formal Zustellung (Postzustellungsurkunde, § 182 ZPO), so no statutory 'deemed delivery' fiction applies; the start is the actual service date printed on the returned Zustellungsurkunde (page 2): 'zugestellt am 18.12.20[26]' = 18 Dec 2026 (Friday). Under § 187 Abs. 1 BGB the day of service itself is not counted, so the two-week Einspruchsfrist (§ 67 Abs. 1 OWiG, § 43 StPO via § 46 Abs. 1 OWiG) starts 19 Dec 2026 and runs 14 days to Fri 1 Jan 2027 (§ 188 Abs. 1, 2 BGB). 1 Jan 2027 is Neujahr, a public holiday nationwide, so under § 43 StPO the deadline shifts to the next working day, Mon 4 Jan 2027 (confirmed by the compute_deadline tool).",
+          "due_date": "2027-01-04",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the total fine, fee and costs (Gesamtbetrag)",
+          "quote": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach – unter Angabe des Aktenzeichens auf das Konto DE67 5205 0000 0000 0106 00.",
+          "computation": "Rechtskraft (finality) is reached the day after the Einspruch period expires without an objection having been filed, i.e. the day after 4 Jan 2027 = 5 Jan 2027 (assuming no Einspruch is lodged). The letter sets the outer payment limit at 'spätestens zwei Wochen danach' (at the latest two weeks after that). Counting from 5 Jan 2027 (day not counted, § 187 Abs. 1 BGB), two weeks later is Tue 19 Jan 2027 (§ 188 Abs. 1, 2 BGB), which is a normal working day in NRW, so no shift applies (confirmed by the compute_deadline tool). The total due is 128,50 € (100,00 € Geldbuße + 25,00 € Gebühr + 3,50 € Auslagen).",
+          "due_date": "2027-01-19",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The service date on the returned Zustellungsurkunde (page 2) is printed as 'zugestellt am 18.12.20' with the year cut off; it was read as 18.12.2026 because that fits the document date (14.12.2026) and today's date, but the original envelope should be checked to confirm the exact service date, since both the Einspruch deadline and the payment deadline are counted from it.",
+        "The payment deadline (2027-01-19) assumes no Einspruch is filed and that the decision becomes final the day after the Einspruch period (4 Jan 2027) expires; filing an Einspruch would stop both the Rechtskraft and this payment obligation.",
+        "Before paying, verify the account holder name behind IBAN DE67 5205 0000 0000 0106 00 matches the Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle, as is good practice for any payment demand, even though the IBAN itself is a validly formatted German account."
+      ]
+    },
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 7369,
+      "cache_read_tokens": 44328,
+      "cache_creation_tokens": 11712,
+      "cost_usd": 0.1294196,
+      "duration_ms": 63301,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2026-12-18",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 67 OWiG",
+            "text": "Legen Sie nicht binnen zwei Wochen nach der Zustellung Einspruch ein, wird dieser Bescheid rechtskräftig"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+          "document_date": "2026-12-14",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2027-01-04\",\"weekday\":\"Monday\",\"send_by\":\"2026-12-28\",\"summary\":\"Two weeks after delivery on Fri 18 Dec 2026 (as stated on the letter) is Fri 1 Jan 2027, a public holiday, Neujahr, so the deadline moves to Mon 4 Jan 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 18 Dec 2026\",\"date\":\"2026-12-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Fri 1 Jan 2027\",\"date\":\"2027-01-01\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 1 Jan 2027 is a public holiday, Neujahr, so the deadline moves to Mon 4 Jan 2027\",\"date\":\"2027-01-04\",\"rule_id\":\"stpo_43\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\"},{\"label\":\"Send by Mon 28 Dec 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-12-28\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"owig_67\",\"title\":\"Objection to a fine (Einspruch gegen Bußgeldbescheid): two weeks\",\"citation\":\"§ 67 Abs. 1 OWiG; § 43 StPO\",\"url\":\"https://www.gesetze-im-internet.de/owig_1968/__67.html\"},{\"id\":\"stpo_43\",\"title\":\"Week periods in fine and criminal proceedings\",\"citation\":\"§ 43 StPO (with § 46 Abs. 1 OWiG)\",\"url\":\"https://www.gesetze-im-internet.de/stpo/__43.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-12-18\",\"letter_date\":\"2026-12-14\",\"received_date\":\"2026-12-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE67 5205 0000 0000 0106 00"
+        },
+        "result": "{\"iban\":\"DE67 5205 0000 0000 0106 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"52050000\"},\"account_number\":\"0000010600\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-01-05",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "text": "Den Gesamtbetrag zahlen Sie bitte, sobald dieser Bescheid rechtskräftig ist – spätestens zwei Wochen danach"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Landesverwaltungsamt Musterhöhe – Zentrale Bußgeldstelle",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-01-19\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-01-18\",\"summary\":\"Two weeks after Tue 5 Jan 2027 is Tue 19 Jan 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 5 Jan 2027\",\"date\":\"2027-01-05\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 19 Jan 2027\",\"date\":\"2027-01-19\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 19 Jan 2027 is a working day, so it stays\",\"date\":\"2027-01-19\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 18 Jan 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-01-18\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-12-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

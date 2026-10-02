@@ -1,0 +1,103 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"53f4763b137596cb36821d7b7abf395779b0b07013b347347bef418cdcc8e85b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-dunning_fixed-G2"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Inkasso Service GmbH\",\"document_date\":\"2027-02-09\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BIS-27-018834\"},{\"label\":\"Rechnung\",\"value\":\"GM-26-77410\"}],\"amounts\":[236.4,3.62,42.49,282.51],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total debt to collection agency\",\"quote\":\"Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.\",\"computation\":\"The letter states a fixed calendar date: 'bis zum 02.03.2027'. This is a deadline set directly by the sender (a private debt-collection company), not a statutory period, so no delivery-fiction or §187/188 BGB counting applies - the date as written is the due date. 2027-03-02 is a Tuesday, not a weekend or public holiday in NW, so no shift is needed under §193 BGB. To actually arrive by that date, a bank transfer should be sent by around 2027-03-01 (one business day for the transfer under §675s BGB), but the legal due date for payment itself is 2027-03-02.\",\"due_date\":\"2027-03-02\",\"confidence\":\"high\",\"amount\":282.51},{\"kind\":\"task\",\"title\":\"Respond in writing if disputing the debt\",\"quote\":\"Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.\",\"computation\":\"'Innerhalb dieser Zeit' refers back to the same period just given for payment, i.e. 'bis zum 02.03.2027'. So any written objection to the claim must reach the agency by the same date, 2027-03-02 (Tuesday, no weekend/holiday adjustment needed).\",\"due_date\":\"2027-03-02\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection agency's demand letter, not a court or authority decision - it carries no formal legal remedy instructions (Rechtsbehelfsbelehrung), so 'remedy_type' is set to none; if the underlying claim is disputed, check the original order/invoice from Beispiel Gartenmarkt GmbH before paying.\",\"Before transferring money, verify the IBAN and creditor details against any earlier correspondence from Beispiel Gartenmarkt GmbH or Beispiel Inkasso Service GmbH, since the IBAN's validity (checksum and format) does not confirm who actually controls the account.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Inkasso Service GmbH",
+      "document_date": "2027-02-09",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BIS-27-018834"
+        },
+        {
+          "label": "Rechnung",
+          "value": "GM-26-77410"
+        }
+      ],
+      "amounts": [
+        236.4,
+        3.62,
+        42.49,
+        282.51
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total debt to collection agency",
+          "quote": "Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.",
+          "computation": "The letter states a fixed calendar date: 'bis zum 02.03.2027'. This is a deadline set directly by the sender (a private debt-collection company), not a statutory period, so no delivery-fiction or §187/188 BGB counting applies - the date as written is the due date. 2027-03-02 is a Tuesday, not a weekend or public holiday in NW, so no shift is needed under §193 BGB. To actually arrive by that date, a bank transfer should be sent by around 2027-03-01 (one business day for the transfer under §675s BGB), but the legal due date for payment itself is 2027-03-02.",
+          "due_date": "2027-03-02",
+          "confidence": "high",
+          "amount": 282.51
+        },
+        {
+          "kind": "task",
+          "title": "Respond in writing if disputing the debt",
+          "quote": "Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.",
+          "computation": "'Innerhalb dieser Zeit' refers back to the same period just given for payment, i.e. 'bis zum 02.03.2027'. So any written objection to the claim must reach the agency by the same date, 2027-03-02 (Tuesday, no weekend/holiday adjustment needed).",
+          "due_date": "2027-03-02",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection agency's demand letter, not a court or authority decision - it carries no formal legal remedy instructions (Rechtsbehelfsbelehrung), so 'remedy_type' is set to none; if the underlying claim is disputed, check the original order/invoice from Beispiel Gartenmarkt GmbH before paying.",
+        "Before transferring money, verify the IBAN and creditor details against any earlier correspondence from Beispiel Gartenmarkt GmbH or Beispiel Inkasso Service GmbH, since the IBAN's validity (checksum and format) does not confirm who actually controls the account."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3774,
+      "cache_read_tokens": 26231,
+      "cache_creation_tokens": 6202,
+      "cost_usd": 0.06780620000000001,
+      "duration_ms": 33658,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-03-02",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§ 13e RDG / Forderungsschreiben",
+            "text": "Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen."
+          },
+          "document_date": "2027-02-09",
+          "sender_kind": "company",
+          "sender_name": "Beispiel Inkasso Service GmbH",
+          "region": "HH",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-03-02\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-03-01\",\"summary\":\"The date given is Tue 2 Mar 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Tue 2 Mar 2027\",\"date\":\"2027-03-02\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Mon 1 Mar 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-03-01\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-02-15\",\"letter_date\":\"2027-02-09\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE36 3705 0198 0003 0066 70"
+        },
+        "result": "{\"iban\":\"DE36 3705 0198 0003 0066 70\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0003006670\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

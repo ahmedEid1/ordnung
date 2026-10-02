@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"15c5c7742645df7d05ccf0a7f57ba3c7106e932c0c739d293020cada618473b0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-H2"
+    ],
+    "prompt_head": "Today is Tuesday, 2024-12-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Beispiel-Berufsgenossenschaft Bau und Holz\",\"document_date\":\"2024-12-13\",\"references\":[{\"label\":\"Unfallaktenzeichen\",\"value\":\"UV 24-08-55193-N\"}],\"amounts\":[1064.25],\"items\":[{\"kind\":\"deadline\",\"title\":\"Object to the Verletztengeld decision (Widerspruch)\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift bei der Beispiel-Berufsgenossenschaft Bau und Holz, Unfallweg 4, 30159 Musterhannover.\",\"computation\":\"The letter is dated 13.12.2024 (Friday) and no separate 'Tag der Aufgabe zur Post' is given, so the posting date is taken as 13.12.2024. As this posting is on or before 31.12.2024, the 3-day fiction applies (per PostModG transitional rule, and as the letter itself states: 'gilt am dritten Tag nach der Aufgabe zur Post als bekannt gegeben'). Day 3 after 13.12.2024 is 16.12.2024 (Monday). The Berufsgenossenschaft is a social-insurance body under SGB VII/SGB X; for such bodies the deemed-delivery day does not move even if it fell on a weekend or holiday (it does not here anyway, since 16.12.2024 is a Monday). The one-month Widerspruch period (§ 84 SGG / § 37 Abs. 2, § 26 SGB X with §§ 187, 188 BGB) starts the day after delivery (17.12.2024) and ends on the day in the following month bearing the same number as the delivery day, i.e. 16.01.2025 (Thursday) — not a weekend or public holiday in Niedersachsen (seat of the Bezirksverwaltung in Hannover) or NRW, so no shift under § 26 Abs. 3 SGB X is needed.\",\"due_date\":\"2025-01-16\",\"confidence\":\"high\"},{\"kind\":\"milestone\",\"title\":\"Verletztengeld (injury benefit) entitlement ends\",\"quote\":\"Den Anspruch auf Verletztengeld stellen wir deshalb mit Ablauf des 15.12.2024 ein (§ 46 Abs. 3 SGB VII).\",\"computation\":\"The letter states the benefit is discontinued 'mit Ablauf des 15.12.2024', i.e. as of the end of that calendar day, so the last day of entitlement is 15.12.2024 as explicitly printed.\",\"due_date\":\"2024-12-15\",\"confidence\":\"high\"},{\"kind\":\"payment\",\"title\":\"Remaining Verletztengeld payment for 1–15 Dec 2024\",\"quote\":\"Für die Zeit vom 01.12. bis 15.12.2024 überweisen wir Ihnen noch 1.064,25 €.\",\"computation\":\"The letter confirms that 1.064,25 € for the period 01.–15.12.2024 will still be transferred to the recipient, but it does not state a specific transfer or value date, so no exact due date can be computed from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1064.25}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter does not state a specific date on which the remaining Verletztengeld payment of 1.064,25 € will actually be transferred, so no payment due date could be determined.\",\"The sending office's address (Unfallweg 4, 30159 Musterhannover) is in Niedersachsen, not in the recipient's home Land (the letter's own address, 21335 Musterlüne, also appears to be in Niedersachsen); this did not change the outcome here, but should be checked against the real letter if the office is actually elsewhere.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Beispiel-Berufsgenossenschaft Bau und Holz",
+      "document_date": "2024-12-13",
+      "references": [
+        {
+          "label": "Unfallaktenzeichen",
+          "value": "UV 24-08-55193-N"
+        }
+      ],
+      "amounts": [
+        1064.25
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Object to the Verletztengeld decision (Widerspruch)",
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift bei der Beispiel-Berufsgenossenschaft Bau und Holz, Unfallweg 4, 30159 Musterhannover.",
+          "computation": "The letter is dated 13.12.2024 (Friday) and no separate 'Tag der Aufgabe zur Post' is given, so the posting date is taken as 13.12.2024. As this posting is on or before 31.12.2024, the 3-day fiction applies (per PostModG transitional rule, and as the letter itself states: 'gilt am dritten Tag nach der Aufgabe zur Post als bekannt gegeben'). Day 3 after 13.12.2024 is 16.12.2024 (Monday). The Berufsgenossenschaft is a social-insurance body under SGB VII/SGB X; for such bodies the deemed-delivery day does not move even if it fell on a weekend or holiday (it does not here anyway, since 16.12.2024 is a Monday). The one-month Widerspruch period (§ 84 SGG / § 37 Abs. 2, § 26 SGB X with §§ 187, 188 BGB) starts the day after delivery (17.12.2024) and ends on the day in the following month bearing the same number as the delivery day, i.e. 16.01.2025 (Thursday) — not a weekend or public holiday in Niedersachsen (seat of the Bezirksverwaltung in Hannover) or NRW, so no shift under § 26 Abs. 3 SGB X is needed.",
+          "due_date": "2025-01-16",
+          "confidence": "high"
+        },
+        {
+          "kind": "milestone",
+          "title": "Verletztengeld (injury benefit) entitlement ends",
+          "quote": "Den Anspruch auf Verletztengeld stellen wir deshalb mit Ablauf des 15.12.2024 ein (§ 46 Abs. 3 SGB VII).",
+          "computation": "The letter states the benefit is discontinued 'mit Ablauf des 15.12.2024', i.e. as of the end of that calendar day, so the last day of entitlement is 15.12.2024 as explicitly printed.",
+          "due_date": "2024-12-15",
+          "confidence": "high"
+        },
+        {
+          "kind": "payment",
+          "title": "Remaining Verletztengeld payment for 1–15 Dec 2024",
+          "quote": "Für die Zeit vom 01.12. bis 15.12.2024 überweisen wir Ihnen noch 1.064,25 €.",
+          "computation": "The letter confirms that 1.064,25 € for the period 01.–15.12.2024 will still be transferred to the recipient, but it does not state a specific transfer or value date, so no exact due date can be computed from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1064.25
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not state a specific date on which the remaining Verletztengeld payment of 1.064,25 € will actually be transferred, so no payment due date could be determined.",
+        "The sending office's address (Unfallweg 4, 30159 Musterhannover) is in Niedersachsen, not in the recipient's home Land (the letter's own address, 21335 Musterlüne, also appears to be in Niedersachsen); this did not change the outcome here, but should be checked against the real letter if the office is actually elsewhere."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4775,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2212,
+      "cost_usd": 0.057708,
+      "duration_ms": 43499,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

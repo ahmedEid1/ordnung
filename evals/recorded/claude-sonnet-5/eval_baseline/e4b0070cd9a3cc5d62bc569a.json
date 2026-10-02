@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"53f4763b137596cb36821d7b7abf395779b0b07013b347347bef418cdcc8e85b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-dunning_fixed-G2"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Inkasso Service GmbH\",\"document_date\":\"2027-02-09\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BIS-27-018834\"},{\"label\":\"Rechnungsnummer\",\"value\":\"GM-26-77410\"}],\"amounts\":[236.4,3.62,42.49,282.51],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total outstanding debt to collection agency\",\"quote\":\"Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.\",\"computation\":\"The letter states an explicit calendar due date of 02.03.2027 for payment of the total claim (Gesamtforderung) of EUR 282.51. Checking the weekday: 2027-01-01 is a Friday (verified via day-count from a known anchor), so 2027-02-28 is a Sunday and 2027-03-01 is a Monday, making 2027-03-02 a Tuesday — a regular business day, so no weekend/holiday adjustment under §193 BGB is needed. The stated date stands as the due date.\",\"due_date\":\"2027-03-02\",\"confidence\":\"high\",\"amount\":282.51},{\"kind\":\"deadline\",\"title\":\"Respond in writing if disputing the claim\",\"quote\":\"Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.\",\"computation\":\"\\\"Innerhalb dieser Zeit\\\" refers back to the period just given for payment, i.e. up to and including 02.03.2027 (confirmed to be a Tuesday, a regular business day, no adjustment needed). So any written objection to the claim must reach the agency by the same date.\",\"due_date\":\"2027-03-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection (Inkasso) letter, not a court order or official authority decision; there is no statutory Rechtsbehelfsbelehrung, and the underlying claim's validity should be checked independently (e.g. against the original invoice GM-26-77410) before paying.\",\"The IBAN given for payment (DE36 3705 0198 0003 0066 70) is a German account matching the Hamburg-based sender; verify it still matches official contact details before transferring money, as is good practice with any collection demand.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Inkasso Service GmbH",
+      "document_date": "2027-02-09",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BIS-27-018834"
+        },
+        {
+          "label": "Rechnungsnummer",
+          "value": "GM-26-77410"
+        }
+      ],
+      "amounts": [
+        236.4,
+        3.62,
+        42.49,
+        282.51
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total outstanding debt to collection agency",
+          "quote": "Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.",
+          "computation": "The letter states an explicit calendar due date of 02.03.2027 for payment of the total claim (Gesamtforderung) of EUR 282.51. Checking the weekday: 2027-01-01 is a Friday (verified via day-count from a known anchor), so 2027-02-28 is a Sunday and 2027-03-01 is a Monday, making 2027-03-02 a Tuesday — a regular business day, so no weekend/holiday adjustment under §193 BGB is needed. The stated date stands as the due date.",
+          "due_date": "2027-03-02",
+          "confidence": "high",
+          "amount": 282.51
+        },
+        {
+          "kind": "deadline",
+          "title": "Respond in writing if disputing the claim",
+          "quote": "Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.",
+          "computation": "\"Innerhalb dieser Zeit\" refers back to the period just given for payment, i.e. up to and including 02.03.2027 (confirmed to be a Tuesday, a regular business day, no adjustment needed). So any written objection to the claim must reach the agency by the same date.",
+          "due_date": "2027-03-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection (Inkasso) letter, not a court order or official authority decision; there is no statutory Rechtsbehelfsbelehrung, and the underlying claim's validity should be checked independently (e.g. against the original invoice GM-26-77410) before paying.",
+        "The IBAN given for payment (DE36 3705 0198 0003 0066 70) is a German account matching the Hamburg-based sender; verify it still matches official contact details before transferring money, as is good practice with any collection demand."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2804,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2241,
+      "cost_usd": 0.0376324,
+      "duration_ms": 24570,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

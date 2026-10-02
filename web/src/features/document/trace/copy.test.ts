@@ -106,6 +106,32 @@ describe("trace copy", () => {
     expect(candidates).toContainEqual({ label: "Compared with", value: "Stadt Musterstadt (67 %)" });
   });
 
+  it("says when a reading came back incomplete and Ordnung added a to-do of its own (ingest/gaps.py)", () => {
+    const facts = { quotes: 1, verified: 1, model_read: 0, unverified: 0, needs_check: 1 };
+    const checked = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: { ...facts, reading_gap: "empty", check_item: "dated" } }));
+    expect(checked.title).toBe("Quotes checked on the page");
+    expect(checked.summary).toBe("1 quote: 1 in the text · reading came back incomplete — Ordnung added a to-do");
+    // its own to-do is the one to check: not counted twice
+    expect(checked.flag).toEqual({ text: "Reading incomplete", tone: "warn" });
+    const more = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: { ...facts, needs_check: 3, reading_gap: "remedy_left_out", check_item: "dated" } }));
+    expect(more.flag).toEqual({ text: "Reading incomplete · 2 to check", tone: "warn" });
+    // a complete reading's step is as before
+    const complete = spanCopy(span({ kind: "verify", name: "Check quotes", attributes: facts }));
+    expect(complete.summary).toBe("1 quote: 1 in the text");
+    expect(complete.flag).toEqual({ text: "1 to check", tone: "warn" });
+    // the to-do's own quote step names the reason in words, never its code
+    const todo = spanCopy(
+      span({ kind: "verify", label: "Deadline to object", attributes: { target: "item", grounding: "verified", page: 2, reasons: ["reading_incomplete"] } }),
+    );
+    expect(todo.summary).toBe("To-do · Found on page 2 · added by Ordnung because Claude's reading came back incomplete");
+    // "Read this letter yourself" quotes nothing: nothing was looked for (UX review 2, R2UX-9)
+    const placeholder = spanCopy(
+      span({ kind: "verify", label: "Read this letter yourself", attributes: { target: "item", grounding: "unverified", slot_key: "check:reading", reasons: ["reading_incomplete"] } }),
+    );
+    expect(placeholder.summary).toMatch(/^To-do · Added by Ordnung — no sentence to find/);
+    expect(todo.flag?.text).toBe("Please check");
+  });
+
   it("puts what changed between two readings in words, never raw codes or ids", () => {
     expect(changeText(change({ label: "Pay the fine", field: "grounding", before: "unverified", after: "verified" }))).toEqual({
       what: "Pay the fine",

@@ -418,7 +418,8 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
    `model_read`; not found → `unverified`. `value_consistent`: dates/amounts in the DateSpec/item
    appear in the quote (date formats `15.10.2026`, `15. Oktober 2026`, `2026-10-15`, amounts `1.234,56`).
-   Dated items with `unverified` evidence → document `needs_review` ("Please check").
+   Dated items with `unverified` evidence → document `needs_review` ("Please check"); so does the to-do
+   code files for an incomplete reading (**Incomplete reading** below), dated or not.
 6. **compute / link / plan** — inside `store.tx()` under a process-wide ledger lock: compute receipts
    and contract computations; resolve party (identifier → exact/alias → fuzzy ≥ 92, else new party);
    thread into a case by reference numbers/party; link contract changes and cancellation
@@ -434,16 +435,90 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 **Two dates for one obligation** (`ingest/conflicts.py`, code only). At **verify**, each dated to-do
 (not a recurring one, money coming in, or one whose sentence speaks of a discount) is checked against
 the letter's other statements of the same nature — a payment's date or period ("Zahlbar bis",
-"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, and for a period counted from the letter a
-date the letter gives for itself ("mit diesem Bescheid vom …") — never its own sentence, another
-to-do's date, a statement naming another amount, another kind of payment (instalments, a prepayment,
-a fee, a direct debit, "erstmals am …") or another remedy, one in the past tense, a due word of another
-label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), or an early-payment discount (*Skonto*:
-paying after it is not late). At **compute** the engine dates each; a same date, or a written date on or
-before the letter's own (the letter's date itself, a reminder's original due date; before the day it
-arrived when the letter's date is unknown), is no conflict. Otherwise the
-to-do keeps the **earlier** date, its receipt names both and says why (`conflicting_dates`), and it is
-`low` and "Please check" — also when the letter's dates are recomputed.
+"binnen 14 Tagen nach Rechnungsdatum"), an objection's date, a notice's or a declaration's date or
+period: a deadline word ("bis (zum)", "spätestens", "by", "no later than"; never a bare "zum": a notice
+"zum 31.12." names its end) or a deadline label ("Abgabefrist:"), with the act it is the last day for
+("einreichen", "vorlegen", "zurücksenden", "bei uns eingehen", "vorliegen", "submit", "be received";
+for a notice the cancellation named before the date in its own clause, or "bis … kündigen"), never a
+date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis", "verlängert sich bis",
+"weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
+and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
+…", or the first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
+page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
+Bescheids") — never its own sentence, another to-do's date, a statement naming another amount, another
+kind of payment (instalments, a prepayment, a fee, a direct debit, "erstmals am …"), another remedy,
+something else to send (the documents' date is not the questionnaire's) or another right to cancel, one
+in the past tense, a due word of another label on the page ("Rechnungsdatum:" above "Zahlbar bis:"), an
+early-payment discount (*Skonto*: paying after it is not late) or an optional earlier day ("möglichst
+bis"). At **compute** the engine dates each; a same date, or a written date on or before the letter's
+own (the letter's date itself, a reminder's original due date; before the day it arrived when the
+letter's date is unknown), a date before the letter's own date as read, or a date the letter gives for
+itself more than 14 days from the one read (another's: an old invoice's, an offence's), is no conflict.
+Otherwise the to-do keeps the **earlier** date, its receipt names both and says why
+(`conflicting_dates`), and it is `low` and "Please check" — also when the letter's dates are recomputed,
+and also when the date read is already the earlier (a header date later than the one read is named all
+the same). The deadlines the law adds to a high-stakes letter (§ 4 KSchG, § 692 ZPO, § 558b BGB …) count
+from the earlier of the letter's two dates for itself in the same way, with the same receipt step,
+warning and "Please check" (its evidence the page's line with the other date).
+
+**Incomplete reading** (`ingest/gaps.py`, code only). The extraction schema requires only a letter's kind,
+title, summary and explanation, so a valid answer can leave out everything a person acts on (a prompt
+injection's aim). At **verify**, after the quotes are grounded, code checks every reading against the
+letter's visible text only (`Page.text`, a photo's transcript; never `Page.hidden`) with two rules, the
+first winning: **empty** — no to-do, no sender, no letter date, no key fact, no reference, no contract,
+change or payment details and no remedy; **remedy left out** — the letter states how to object within a
+period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period, or the
+sentence after it when that one names neither a remedy nor a payment; words split across lines joined as
+quotes are matched; never a sentence that only says when to pay or when to give reasons, nor list lines
+above the notice's heading) in words that speak of a remedy against *this* letter (not a later or
+hypothetical decision's, one already lodged, a direct debit's, one the letter rules out, or one counted back
+from an event), its text shows an administrative act (or a public body's "diese Entscheidung", or a heading
+"Bescheid"), it is not filed as a kind whose deadline the law files itself (court payment
+and enforcement orders, dismissals, landlord notices, rent increases) unless the letter's words bear that
+kind out or its notices give no shorter period than the law, and no to-do dates the objection with a
+date that computes (an objection item, or a dated to-do quoting the notice; a `remedy` read without its
+date doesn't count). Either way the letter gets **one** to-do in slot `check:reading`, never with a date
+later than the letter allows: the period of all the notices state (and the sentences after them) that
+ends first, counted from the letter's date — dated only when it is from a week to a month and no notice
+holds a period that can't be read or dated (Werktage, years) or counts back from an event ("zwei Wochen
+vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
+after a portal download; never on formal service: Postzustellungsurkunde, PZU, förmliche Zustellung,
+Empfangsbekenntnis, Rückschein); the start is the earliest date the letter gives for itself, carried in
+the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date:" label or a label
+of the letter's own date (Bescheid-, Brief-, Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "erstellt am"),
+a place and date among its header lines or DIN 5008's date line under the recipient's address (never under a
+line ending in ":"), a date alone on that date line, the reference line (the values under a "Datum" column,
+unless a due word stands before them), "mit diesem Bescheid vom …", the decision its notice names right
+before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit vom …")
+and the reading's date; never an appointment's "Datum:" ("Ihr Termin:" / "Uhrzeit"). None when those are
+more than 14 days apart (then no date at all), none from one date alone more than 60 days before the letter
+arrived, none after it arrived, and none on a Widerspruchsbescheid dated only by the decision it reshapes.
+Other dates (another "…datum", a print or copy date, a date alone, a continuation page's, a decision or
+period the notice names with words between) only lower it, within those 14 days; alone they set none. A
+notice about another decision named without a date ("Gegen den Gebührenbescheid …") lowers it to that
+decision's date where the letter gives it elsewhere. After a Widerspruchsbescheid a court action names the
+to-do on a tie. The letter's date
+once entered counts when it gives none. Recomputed, an earlier stored letter date or arrival moves it
+earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
+a notice — or for an almost blank reading of a letter whose notices are all ruled out — it is an undated
+"Read this letter yourself". Its quote is the notice's own words, at most 600
+characters. It is always `low` and "Please check" (`reading_incomplete`), also when
+its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
+why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
+addressed to an AI its action says to send the objection only to an address the person already knows. A
+later complete reading removes it unless the person acted on it. No model is asked again and the reading
+itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
+but more than 7 days after the period the letter's own notice gives, or with a longer period than the
+notice's, gets that period beside its own date as a second date (`gaps.notice_rival`, settled like any two
+dates: the earlier kept, both named — "Claude's reading and the letter's own instructions …" —, `low` and
+"Please check"); decided on the letter's words alone (a live notice that can be dated, its own sentence's
+periods, the one ending first; never the reading's kind or date), counted from the date the first page
+names as its own (none without one) and from every earlier start the letter's stored dates allow, without
+the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice whose own
+words count from service or arrival starts on an arrival the person confirmed (one from notification on a
+formally served letter keeps the letter's date). Recomputed too, also once the person confirmed it.
+Measured on every recorded reading, the reading's date is 0 to 7 days after the notice's, so it never
+fires there.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
@@ -1345,7 +1420,9 @@ a notice day of the month and notice before a fixed end; UI audit R1-backend-6, 
 checked on the dev split and recorded on the test split, shown in `docs/evals.md` beside the published
 run ("The prompt the app uses now", which says what the three test recordings mean). Version 12 adds a
 recurring payment's day of the month and last working day and the statutory notice periods a contract
-names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`).
+names (`Recurrence.day_of_month`, `working_day` -1, `notice_statutory`). The Ordnung condition runs the
+app's check for incomplete readings (§ 8, `verify_extraction(check_reading=True)`): its code-made objection
+deadline is scored like any to-do, and its undated "read this letter yourself" placeholder is not scored.
 
 **Ask benchmark** (`evals/ask/`, `python -m evals.ask`): ~50 questions about the demo's sample life
 asked through the real Ask on the demo ledger (deadlines, payments, contract cancel-by dates and
@@ -1580,7 +1657,10 @@ Special-right windows are Ideas with rule citations.
 addressee, period_text, form_text, quote}` from the Rechtsbehelfsbelehrung. Objection drafts are
 offered only when `type ∈ {einspruch, widerspruch}`; type and addressee come from the remedy, never
 from a model guess. `klage`/missing/unclear → a warning card ("get advice"; missing instructions may
-mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) — no computed date.
+mean a 1-year period: § 356 Abs. 2 AO, § 58 Abs. 2 VwGO, § 66 Abs. 2 SGG) and no objection draft. A
+court deadline the letter states (an item, or the `check:reading` to-do of §8 "Incomplete reading") is
+computed so it is not missed — always with the "get advice" warning and at most `medium` (`klage_1_month`,
+deadline-rules §6); Ordnung never drafts or files the court action.
 Legally operative sentences come from fixed templates (e.g. "…kündige ich den Vertrag … fristgerecht
 zum {date}, hilfsweise zum nächstmöglichen Zeitpunkt. Bitte bestätigen Sie mir den Eingang und das
 Beendigungsdatum schriftlich." / "…lege ich gegen den Bescheid vom {date}, {reference}, Einspruch ein.
@@ -1592,30 +1672,61 @@ handwritten signature → "print, sign, send by Einwurf-Einschreiben"). No brand
 
 **Verification.** `spec_consistency`: numbers (digits and German/English number words), units
 (Tag/Woche/Monat/Werktag/day/week/month) and explicit dates parsed from the quote must match the
-DateSpec; fixed dates must parse from their quote; ambiguous numeric dates (e.g. 03/05/2026 in
-English) → `low` confidence. A recurrence's working day must be named as that ordinal in the item's
-quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
+DateSpec; fixed dates must parse from their quote (or be written elsewhere in the letter; a recurring
+item's date may be an occurrence of the schedule from a date its quote writes — "fällig am 15.11.2026"
+every 3 months covers 15.02.2027, never 15.12.2026 — or any date when its quote writes none:
+`plan._stated_in_document`); ambiguous numeric dates (e.g. 03/05/2026 in English) → `low` confidence. A
+recurrence's working day must be named as that ordinal in the item's quote ("dritten Werktag", "3. Werktag", "dritten Arbeitstag", "third working day", "3rd business day";
 1–10, and "letzten Bankarbeitstag", "last working day" for -1), else `working_day_not_in_quote`: the
 working day still dates the item, one confidence level lower with a note. A recurrence's day of the month
 likewise ("zum 1. eines Monats", "jeweils zum 15.", "on the 1st", "Monatsanfang" or "Monatsersten" for 1,
-"Monatsende" or "zum Letzten" for 31) or stated as a schedule of dates (`verify.schedule_days_named`): three
-or more dates on that day a whole number of the recurrence's intervals apart ("fällig jeweils am 10.03.,
-10.06., 10.09. und 10.12." every 3 months, also with dashes between them), or two such dates one list joins
-after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027 zu zahlen"); a date without a
-year beside due wording for a recurrence of a year or more ("Hauptfälligkeit 01.12.", "zum 01.12. fällig");
-or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines jeden Jahres", "each year on
-…" for a yearly one, "every quarter on …", "every three months on …"). Never a date that starts the schedule
+"zur Monatsmitte", "Mitte des Monats" or "mid-month" for 15, "Monatsende" or "zum Letzten" for 31: a month's
+start, middle and end as § 192 BGB reads them; never after a word that makes it a bound or a stretch of
+time: "ab Monatsanfang", "nach der Monatsmitte", "vor dem Monatsende", "zwischen Monatsmitte und
+Monatsende"; "Mitte des Folgemonats" isn't read) or stated as a schedule of dates
+(`verify.schedule_days_named`): three or more dates on that day a whole number of the recurrence's intervals
+apart ("fällig jeweils am 10.03., 10.06., 10.09. und 10.12." every 3 months, also with dashes between them),
+or two such dates one list joins after schedule or due wording ("Die Raten sind am 15.02.2027 und 15.08.2027
+zu zahlen"); a date without a year beside due wording for a recurrence of a year or more ("Hauptfälligkeit
+01.12.", "zum 01.12. fällig"); or a date that wording makes recur ("jeweils am …", "jährlich zum …", "… eines
+jeden Jahres", "each year on …" for a yearly one, "every quarter on …", "every three months on …"). A list's
+dates count only together, for the day the whole list states: the day all of them are on, or 31 (each month's
+last day) when each is the last day of its month though not all on one day ("31.03., 30.06., 30.09. und
+31.12." every 3 months; February's last day only with its year, 28.02.2027 or 29.02.2028), and then only
+with schedule or due wording before or due wording after it ("Die Abschläge sind am …", "… fällig",
+"jeweils zum Quartalsende am …"; never notice dates: "Der Vertrag ist zum 31.03., … kündbar") — and only
+when every date fits the interval. A list with one date on another day or off the interval ("15.01.,
+15.04., 16.07. und 15.10.") names no day — debit dates a weekend moved ("15.01.2029, 16.04.2029,
+16.07.2029, 15.10.2029") included, by design: such a reading stays "Please check"; month ends all on the
+30th name the 30th only; calendar dates never name the last working day (-1), which only its words do.
+The middle of each quarter or three-month period ("in der
+Mitte eines Dreimonatszeitraums", § 7 Abs. 3 RBStV, also "eines Zeitraums von drei Monaten", "eines
+dreimonatigen Zeitraums", "middle of each 3-month period"; "zur Quartalsmitte", "Mitte des Quartals",
+"mid-quarter") names 15 for a recurrence every 3 months whose fixed date is that middle
+(`verify.mid_quarter_named`) and a date the letter itself writes, in its quote or on a page
+(`plan.first_date_written`: the phrase says nothing of which months make the periods, so a reading a month
+or two off the letter's own due date stays "Please check"; a period the letter states without its due date
+doesn't anchor it). Half a month is 15 days counted last (§§ 186, 189 BGB), so a period of three
+months from the 1st has its middle at the end of the 15th of its second month — any month's 15th for a
+three-month period, which runs from the month the duty to pay begins (§ 7 Abs. 1 RBStV), the 15th of
+February, May, August or November for a calendar quarter; another first date, none (a relative or undated
+reading) or another interval keep the reason. Never a date that starts the schedule
 ("ab dem 01.11.2026", "from 1 November 2026", "beginning …", "beginnt am", "Versicherungsbeginn:",
 "erstmals", "die erste Rate …", "first payment on …"), one that dates a letter or an invoice or ends
-something ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am", "Vertragsende"), a clause number that
+something, or is a notice date or a reference day ("Rechnungsdatum", "Schreiben vom", "Stand", "endet am",
+"Vertragsende", "kündbar zum", "Kündigungstermine", "Stichtage" — a month's, quarter's or year's end is a
+calendar day, no end of something; with every date of the list such wording begins: "Die
+Abrechnungszeiträume enden am 31.03., 30.06., …"), a clause number that
 reads like a date ("Ziffer 1.3.", "Nr. 1.1.", "§ 2.1."), a single date on its own or a period's two dates
 ("01.12. – 30.11."), else `day_of_month_not_in_quote`. Mismatch → "Please check".
 
 A day the quote doesn't name (a monthly debit quoted by its price line) still counts as stated when the
-letter's own payment terms state it: its sentences about paying ("Abbuchung", "Lastschrift", "zahlbar",
-"Beitrag", "Miete", "debit" … as whole words or compound parts, never inside another word such as "Mieter"
-or "Anzahl"; never a sentence about a notice period, cancellation, objection, late fees or a contract's
-start or end, nor a date with a month name unless its dates state a schedule as above) name exactly one
+letter's own payment terms state it: its sentences about paying a sum when it falls due ("Abbuchung",
+"Lastschrift", "zahlbar", "zu zahlen", "eingezogen", "fällig", "debit", "due" … as whole words or compound
+parts, never inside another word such as "Anzahl", nor a sum's name alone: "Den neuen Rechnungsbetrag
+teilen wir Ihnen jeweils zur Monatsmitte mit" says when a letter comes; never a sentence about a notice
+period, cancellation, objection, late fees or a contract's start or end, nor a date with a month name unless its dates state a schedule as above; the middle of each
+quarter or three-month period as above, for the reading's interval and fixed date) name exactly one
 working day or day of the month, and it is the reading's. Sentences are read across line breaks inside a phrase ("am dritten" / "Werktag") and
 hyphenated words ("Monats-" / "anfang"). That
 sentence becomes the to-do's second evidence, grounded like any quote (`verified` with boxes on a text

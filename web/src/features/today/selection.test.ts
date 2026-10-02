@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Contract, Item, Suggestion } from "@/api/types";
 import { createMockServer } from "@/mocks/server";
 import { parsePrefill } from "@/features/letters/logic";
+import { makeReceipt } from "@/features/document/fixtures";
 import type { Dashboard, Document } from "@/api/types";
 import {
   actionFromContract,
@@ -173,6 +174,45 @@ describe("actions from to-dos & dates", () => {
     expect(a.needsCheck).toBe(true);
     expect(a.verb).toBe("check");
     expect(a.reason).toBe("We don't know when this letter arrived.");
+  });
+
+  it("gives the to-do Ordnung added for an incomplete reading its own reason, not a side note (check:reading)", () => {
+    const own = "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.";
+    const receipt = makeReceipt({ due_date: "2026-12-09", confidence: "low", warnings: ["Counted from 3 days after the letter's date.", own] });
+    const a = actionFromItem(item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: receipt }), {
+      today: TODAY,
+      reviewDocs: [{ id: "doc_r", warnings: ["This letter explains how to object, but Claude's reading left out the deadline to object."] }],
+    })!;
+    expect(a.needsCheck).toBe(true);
+    expect(a.reason).toBe(own);
+    // any other to-do keeps its first note
+    const other = actionFromItem(item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", computation: receipt }), {
+      today: TODAY,
+      reviewDocs: [],
+    })!;
+    expect(other.reason).toBe("Counted from 3 days after the letter's date.");
+    // a receipt stored before the note was reworded keeps its reason too
+    const stored = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter.";
+    const old = actionFromItem(
+      item({ kind: "deadline", title: "Deadline to object", due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: { ...receipt, warnings: [receipt.warnings[0]!, stored] } }),
+      { today: TODAY, reviewDocs: [] },
+    )!;
+    expect(old.reason).toBe(stored);
+  });
+
+  it("never asks to check Ordnung's own to-do once the person confirmed or dated it (R3UX-1)", () => {
+    const own = "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.";
+    const receipt = makeReceipt({ due_date: "2026-12-09", confidence: "low", warnings: [own] });
+    const ctx = { today: TODAY, reviewDocs: [] };
+    const objection = { kind: "deadline" as const, due_date: "2026-12-09", doc_id: "doc_r", slot_key: "check:reading", computation: receipt };
+    const confirmed = actionFromItem(item({ ...objection, title: "Deadline to object (Widerspruch)", grounding: "user", date_spec: { type: "relative", nature: "objection" } as Item["date_spec"] }), ctx)!;
+    expect(confirmed.needsCheck).toBe(false);
+    expect(confirmed.verb).toBe("draft");
+    // a court action: a letter to the authority wouldn't stop it, so no objection draft
+    const klage = actionFromItem(item({ ...objection, title: "Deadline for a court action (Klage)", grounding: "user", date_spec: { type: "relative", nature: "objection" } as Item["date_spec"] }), ctx)!;
+    expect(klage.verb).not.toBe("draft");
+    // still unconfirmed: checked as before
+    expect(actionFromItem(item({ ...objection, title: "Deadline to object (Widerspruch)", grounding: "verified" }), ctx)!.needsCheck).toBe(true);
   });
 
   it("skips done, dismissed, undated and still-snoozed items but includes snoozes that ended", () => {

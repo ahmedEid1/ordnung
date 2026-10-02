@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f16d80915d7b296fce05e858aea5c03db50b75a084e03ea23284664e2e6db953\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-19\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-dunning_fixed-H1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-04-19 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Energie Nordost GmbH\",\"document_date\":\"2025-04-16\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"300 4471 882\"},{\"label\":\"Zählernummer\",\"value\":\"1EBZ0100447218\"}],\"amounts\":[198.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue electricity advance payments and dunning fee\",\"quote\":\"Bitte begleichen Sie den Gesamtbetrag bis zum 23. April 2025.\",\"computation\":\"The letter gives an explicit calendar due date, 23 April 2025, for the total outstanding amount of EUR 198.50. This is used as written since it is a stated calendar date, not a period to be counted. 23 April 2025 is a Wednesday, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2025-04-23\",\"confidence\":\"high\",\"amount\":198.5},{\"kind\":\"milestone\",\"title\":\"Earliest possible date for disconnection of electricity supply\",\"quote\":\"sind wir nach § 19 StromGVV berechtigt, die Versorgung frühestens vier Wochen nach dieser Androhung durch den Netzbetreiber unterbrechen zu lassen\",\"computation\":\"The 'Androhung' (warning/notice) is this letter itself, dated 16.04.2025 (Wednesday). Per § 19 StromGVV, the supply may be interrupted at the earliest four weeks after this notice. Counting under §§ 187, 188 BGB (the day of the notice itself is not counted, the period ends on the same weekday four weeks later): 16.04.2025 + 4 weeks = 14.05.2025 (Wednesday). This is only the earliest possible date; the actual interruption date, if payment remains unpaid, would be separately announced at least eight working days ('acht Werktage vorher') in advance.\",\"due_date\":\"2025-05-14\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter is dated 16.04.2025, more than a year before today's date (01.10.2026); the stated payment deadline (23.04.2025) has long since passed, so the recipient should check whether this balance was already settled or superseded by later correspondence before acting on it.\",\"The threatened disconnection date (earliest 14.05.2025) is likewise far in the past relative to today; verify the current status of the account and whether supply was actually interrupted or the matter resolved.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Energie Nordost GmbH",
+      "document_date": "2025-04-16",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "300 4471 882"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1EBZ0100447218"
+        }
+      ],
+      "amounts": [
+        198.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue electricity advance payments and dunning fee",
+          "quote": "Bitte begleichen Sie den Gesamtbetrag bis zum 23. April 2025.",
+          "computation": "The letter gives an explicit calendar due date, 23 April 2025, for the total outstanding amount of EUR 198.50. This is used as written since it is a stated calendar date, not a period to be counted. 23 April 2025 is a Wednesday, so no weekend/holiday adjustment is needed.",
+          "due_date": "2025-04-23",
+          "confidence": "high",
+          "amount": 198.5
+        },
+        {
+          "kind": "milestone",
+          "title": "Earliest possible date for disconnection of electricity supply",
+          "quote": "sind wir nach § 19 StromGVV berechtigt, die Versorgung frühestens vier Wochen nach dieser Androhung durch den Netzbetreiber unterbrechen zu lassen",
+          "computation": "The 'Androhung' (warning/notice) is this letter itself, dated 16.04.2025 (Wednesday). Per § 19 StromGVV, the supply may be interrupted at the earliest four weeks after this notice. Counting under §§ 187, 188 BGB (the day of the notice itself is not counted, the period ends on the same weekday four weeks later): 16.04.2025 + 4 weeks = 14.05.2025 (Wednesday). This is only the earliest possible date; the actual interruption date, if payment remains unpaid, would be separately announced at least eight working days ('acht Werktage vorher') in advance.",
+          "due_date": "2025-05-14",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter is dated 16.04.2025, more than a year before today's date (01.10.2026); the stated payment deadline (23.04.2025) has long since passed, so the recipient should check whether this balance was already settled or superseded by later correspondence before acting on it.",
+        "The threatened disconnection date (earliest 14.05.2025) is likewise far in the past relative to today; verify the current status of the account and whether supply was actually interrupted or the matter resolved."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3338,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2111,
+      "cost_usd": 0.042934,
+      "duration_ms": 30280,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

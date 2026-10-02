@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"442e24facefc2ee9ab2aedcc8220e9cbdd3c8ab0742aa16c97fd0b3e75963d7a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-invoice_relative-G2"
+    ],
+    "prompt_head": "Today is Sunday, 2025-09-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Fahrschule Musterfahrt\",\"document_date\":\"2025-09-08\",\"references\":[{\"label\":\"Rechnungsnr.\",\"value\":\"FS-25-0938\"},{\"label\":\"Schüler-Nr.\",\"value\":\"B-2214\"}],\"amounts\":[817.53],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for final driving lessons and exam\",\"quote\":\"Bitte überweise den Gesamtbetrag binnen 7 Tagen nach dem Rechnungsdatum auf unser Konto bei der Musterbank AG (siehe unten).\",\"computation\":\"The invoice is a private commercial document, so the general period rules of §§ 187, 188 BGB apply (no statutory delivery-fiction for authority letters here). The triggering event is the invoice date, 2025-09-08 (Monday). Under § 187(1) BGB the day of the event itself is not counted; counting starts the next day, 2025-09-09. A 7-day period starting 2025-09-09 runs: 09, 10, 11, 12, 13, 14, 15 — so day 7 (the last day of the period, § 188(1) BGB) is 2025-09-15 (Monday). This date is not a Saturday, Sunday, or a Nordrhein-Westfalen public holiday, so no shift under § 193 BGB is needed.\",\"due_date\":\"2025-09-15\",\"confidence\":\"high\",\"amount\":817.53}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Fahrschule Musterfahrt",
+      "document_date": "2025-09-08",
+      "references": [
+        {
+          "label": "Rechnungsnr.",
+          "value": "FS-25-0938"
+        },
+        {
+          "label": "Schüler-Nr.",
+          "value": "B-2214"
+        }
+      ],
+      "amounts": [
+        817.53
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for final driving lessons and exam",
+          "quote": "Bitte überweise den Gesamtbetrag binnen 7 Tagen nach dem Rechnungsdatum auf unser Konto bei der Musterbank AG (siehe unten).",
+          "computation": "The invoice is a private commercial document, so the general period rules of §§ 187, 188 BGB apply (no statutory delivery-fiction for authority letters here). The triggering event is the invoice date, 2025-09-08 (Monday). Under § 187(1) BGB the day of the event itself is not counted; counting starts the next day, 2025-09-09. A 7-day period starting 2025-09-09 runs: 09, 10, 11, 12, 13, 14, 15 — so day 7 (the last day of the period, § 188(1) BGB) is 2025-09-15 (Monday). This date is not a Saturday, Sunday, or a Nordrhein-Westfalen public holiday, so no shift under § 193 BGB is needed.",
+          "due_date": "2025-09-15",
+          "confidence": "high",
+          "amount": 817.53
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2191,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2017,
+      "cost_usd": 0.0306064,
+      "duration_ms": 19644,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

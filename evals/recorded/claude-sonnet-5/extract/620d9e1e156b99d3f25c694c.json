@@ -1,0 +1,116 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"96118ff7d5fa1637834553ddc2d15790d6c7d169230b063f20fa08b24aaf9e62\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2026-05-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-year_boundary-H1"
+    ],
+    "prompt_head": "Today is 2026-05-29. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"title\":\"Grad der Behinderung festgestellt: GdB 40\",\"summary\":\"The Versorgungsamt Beispielfeld determined a degree of disability (Grad der Behinderung, GdB) of 40, based on the application of 19 February 2026, counting an individual GdB of 30 for a spinal disorder and 20 for high blood pressure. No Merkzeichen were granted, and a disability ID card is only issued from a GdB of 50.\",\"explanation\":\"This letter is the authority's decision on how severe your disability is officially rated (GdB of 40). With a GdB below 50 you cannot get a Schwerbehindertenausweis, but you may ask the Agentur für Arbeit for \\\"Gleichstellung\\\" (equal status), which gives some similar workplace protections. If you think the rating should be higher, you can file an objection (Widerspruch) with the Versorgungsamt; the app shows the deadline for this below. If you do nothing, the decision becomes final as stated. You may want advice from a Sozialverband (e.g. VdK) if you plan to object.\",\"language\":\"de\",\"document_date\":\"2026-05-27\",\"sender\":{\"name\":\"Versorgungsamt Beispielfeld\",\"kind\":\"authority\",\"address\":\"Am Versorgungsamt 1, 49074 Musterosna\",\"phone\":\"0541 314-0\",\"email\":\"sb-recht@versorgungsamt-beispielfeld.example\",\"identifiers\":[]},\"recipient_name\":\"Nele Musterkamp\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"SB 61-0447/26\"}],\"key_facts\":[{\"label\":\"Degree of disability (Grad der Behinderung, GdB)\",\"value\":\"40\",\"quote\":\"auf Ihren Antrag vom 19.02.2026 stellen wir bei Ihnen einen Grad der Behinderung (GdB) von 40 fest.\"},{\"label\":\"Individual GdB for spinal disorder (Einzel-GdB)\",\"value\":\"30\",\"quote\":\"Berücksichtigt haben wir: eine Funktionsstörung der Wirbelsäule mit Bandscheibenschaden (Einzel-GdB 30) und ein Bluthochdruckleiden (Einzel-GdB 20).\"},{\"label\":\"Individual GdB for high blood pressure (Einzel-GdB)\",\"value\":\"20\",\"quote\":\"Berücksichtigt haben wir: eine Funktionsstörung der Wirbelsäule mit Bandscheibenschaden (Einzel-GdB 30) und ein Bluthochdruckleiden (Einzel-GdB 20).\"},{\"label\":\"Minimum GdB for a disability ID card (Ausweis)\",\"value\":\"50\",\"quote\":\"Einen Ausweis stellen wir erst ab einem GdB von 50 aus; mit einem GdB von 30 oder 40 können Sie bei der Agentur für Arbeit die Gleichstellung beantragen.\"},{\"label\":\"Application date (Antrag vom)\",\"value\":\"19.02.2026\",\"quote\":\"auf Ihren Antrag vom 19.02.2026 stellen wir bei Ihnen einen Grad der Behinderung (GdB) von 40 fest.\"}],\"remedy\":{\"type\":\"widerspruch\",\"addressee\":\"Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna\",\"period_text\":\"innerhalb eines Monats\",\"form_text\":\"schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna\",\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.\"},\"items\":[{\"kind\":\"deadline\",\"title\":\"File an objection (Widerspruch) if you disagree with the GdB\",\"action\":\"Submit a written objection (Widerspruch) to the Versorgungsamt Beispielfeld, or have it recorded in person there, if you disagree with the determined GdB of 40.\",\"consequence\":\"If you miss the deadline shown, this decision on your GdB becomes final.\",\"priority\":\"high\",\"date\":{\"type\":\"relative\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"nature\":\"objection\",\"text\":\"innerhalb eines Monats\",\"shift_rule\":\"auto\"},\"quote\":\"Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna.\"}],\"contract\":null,\"change\":null,\"payment\":null,\"warnings\":[],\"urgency\":\"high\",\"high_stakes_kind\":null,\"tax_relevant\":true,\"tax_note\":\"A recognized degree of disability (GdB) of 40 can entitle you to a disability lump sum (Behinderten-Pauschbetrag) on your German tax return; keep this letter as proof.\",\"area\":\"health\",\"case_title\":\"GdB Feststellung (GdB 40) – Versorgungsamt Beispielfeld\"}",
+    "data": {
+      "kind": "authority_letter",
+      "title": "Grad der Behinderung festgestellt: GdB 40",
+      "summary": "The Versorgungsamt Beispielfeld determined a degree of disability (Grad der Behinderung, GdB) of 40, based on the application of 19 February 2026, counting an individual GdB of 30 for a spinal disorder and 20 for high blood pressure. No Merkzeichen were granted, and a disability ID card is only issued from a GdB of 50.",
+      "explanation": "This letter is the authority's decision on how severe your disability is officially rated (GdB of 40). With a GdB below 50 you cannot get a Schwerbehindertenausweis, but you may ask the Agentur für Arbeit for \"Gleichstellung\" (equal status), which gives some similar workplace protections. If you think the rating should be higher, you can file an objection (Widerspruch) with the Versorgungsamt; the app shows the deadline for this below. If you do nothing, the decision becomes final as stated. You may want advice from a Sozialverband (e.g. VdK) if you plan to object.",
+      "language": "de",
+      "document_date": "2026-05-27",
+      "sender": {
+        "name": "Versorgungsamt Beispielfeld",
+        "kind": "authority",
+        "address": "Am Versorgungsamt 1, 49074 Musterosna",
+        "phone": "0541 314-0",
+        "email": "sb-recht@versorgungsamt-beispielfeld.example",
+        "identifiers": []
+      },
+      "recipient_name": "Nele Musterkamp",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "SB 61-0447/26"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Degree of disability (Grad der Behinderung, GdB)",
+          "value": "40",
+          "quote": "auf Ihren Antrag vom 19.02.2026 stellen wir bei Ihnen einen Grad der Behinderung (GdB) von 40 fest."
+        },
+        {
+          "label": "Individual GdB for spinal disorder (Einzel-GdB)",
+          "value": "30",
+          "quote": "Berücksichtigt haben wir: eine Funktionsstörung der Wirbelsäule mit Bandscheibenschaden (Einzel-GdB 30) und ein Bluthochdruckleiden (Einzel-GdB 20)."
+        },
+        {
+          "label": "Individual GdB for high blood pressure (Einzel-GdB)",
+          "value": "20",
+          "quote": "Berücksichtigt haben wir: eine Funktionsstörung der Wirbelsäule mit Bandscheibenschaden (Einzel-GdB 30) und ein Bluthochdruckleiden (Einzel-GdB 20)."
+        },
+        {
+          "label": "Minimum GdB for a disability ID card (Ausweis)",
+          "value": "50",
+          "quote": "Einen Ausweis stellen wir erst ab einem GdB von 50 aus; mit einem GdB von 30 oder 40 können Sie bei der Agentur für Arbeit die Gleichstellung beantragen."
+        },
+        {
+          "label": "Application date (Antrag vom)",
+          "value": "19.02.2026",
+          "quote": "auf Ihren Antrag vom 19.02.2026 stellen wir bei Ihnen einen Grad der Behinderung (GdB) von 40 fest."
+        }
+      ],
+      "remedy": {
+        "type": "widerspruch",
+        "addressee": "Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna",
+        "period_text": "innerhalb eines Monats",
+        "form_text": "schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna",
+        "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna."
+      },
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File an objection (Widerspruch) if you disagree with the GdB",
+          "action": "Submit a written objection (Widerspruch) to the Versorgungsamt Beispielfeld, or have it recorded in person there, if you disagree with the determined GdB of 40.",
+          "consequence": "If you miss the deadline shown, this decision on your GdB becomes final.",
+          "priority": "high",
+          "date": {
+            "type": "relative",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "text": "innerhalb eines Monats",
+            "shift_rule": "auto"
+          },
+          "quote": "Gegen diesen Bescheid können Sie innerhalb eines Monats Widerspruch erheben, schriftlich oder zur Niederschrift beim Versorgungsamt Beispielfeld, Am Versorgungsamt 1, 49074 Musterosna."
+        }
+      ],
+      "contract": null,
+      "change": null,
+      "payment": null,
+      "warnings": [],
+      "urgency": "high",
+      "high_stakes_kind": null,
+      "tax_relevant": true,
+      "tax_note": "A recognized degree of disability (GdB) of 40 can entitle you to a disability lump sum (Behinderten-Pauschbetrag) on your German tax return; keep this letter as proof.",
+      "area": "health",
+      "case_title": "GdB Feststellung (GdB 40) – Versorgungsamt Beispielfeld"
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5661,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2051,
+      "cost_usd": 0.0666086,
+      "duration_ms": 45523,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d6592791a39b68da6acd27ff38e55346ba96b5842c700d247185d19e0daa4d27\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Friday, 2027-02-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Musterlüne\",\"document_date\":null,\"references\":[{\"label\":\"Kundennummer\",\"value\":\"214B330987\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Sperrzeit decision\",\"quote\":\"Gegen diese Entscheidung ist innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch möglich – schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlüne.\",\"computation\":\"The one-month Widerspruch period under § 84 SGG / § 37 Abs. 2 SGB X starts to run from the day the decision is deemed delivered. For a social-law body such as the Agentur für Arbeit, a posted letter is deemed delivered on the 4th day after the posting date shown on the letter (no shift even if that day is a weekend or holiday). However, this letter carries no printed date (no 'Datum' field anywhere in the document), so the posting day and therefore the deemed delivery day cannot be established. Without a known starting point, the one-month period (which would otherwise run under §§ 187, 188 BGB with its end shifted to the next working day under § 26 Abs. 3 SGB X if it fell on a Saturday, Sunday or NW public holiday) cannot be computed. Due date cannot be determined; the person must check the postmark/envelope date or contact the Agentur für Arbeit to confirm the delivery date.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter itself shows no date (no 'Datum' field anywhere), so the posting date, the deemed delivery date, and therefore the exact last day to file a Widerspruch cannot be computed; the person should check the postmark on the original envelope or contact the Agentur für Arbeit to confirm the delivery date and count one month from it (moving to the next working day if that day falls on a weekend or NW public holiday).\",\"The 12-week Sperrzeit (90-day reduction of entitlement) is stated as a consequence of the decision, but the letter does not give a start date for this suspension period, so no exact date range could be computed for it; it is not independently actionable by the person and was therefore not listed as a separate item.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Musterlüne",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "214B330987"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Sperrzeit decision",
+          "quote": "Gegen diese Entscheidung ist innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch möglich – schriftlich oder zur Niederschrift bei der Agentur für Arbeit Musterlüne.",
+          "computation": "The one-month Widerspruch period under § 84 SGG / § 37 Abs. 2 SGB X starts to run from the day the decision is deemed delivered. For a social-law body such as the Agentur für Arbeit, a posted letter is deemed delivered on the 4th day after the posting date shown on the letter (no shift even if that day is a weekend or holiday). However, this letter carries no printed date (no 'Datum' field anywhere in the document), so the posting day and therefore the deemed delivery day cannot be established. Without a known starting point, the one-month period (which would otherwise run under §§ 187, 188 BGB with its end shifted to the next working day under § 26 Abs. 3 SGB X if it fell on a Saturday, Sunday or NW public holiday) cannot be computed. Due date cannot be determined; the person must check the postmark/envelope date or contact the Agentur für Arbeit to confirm the delivery date.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter itself shows no date (no 'Datum' field anywhere), so the posting date, the deemed delivery date, and therefore the exact last day to file a Widerspruch cannot be computed; the person should check the postmark on the original envelope or contact the Agentur für Arbeit to confirm the delivery date and count one month from it (moving to the next working day if that day falls on a weekend or NW public holiday).",
+        "The 12-week Sperrzeit (90-day reduction of entitlement) is stated as a consequence of the decision, but the letter does not give a start date for this suspension period, so no exact date range could be computed for it; it is not independently actionable by the person and was therefore not listed as a separate item."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2780,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2104,
+      "cost_usd": 0.037326,
+      "duration_ms": 25751,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"51d3c392156e46f401e106cd876ccf69201b357419c125cf8e3f52620ffae27a\",\"mode\":\"text\",\"region\":\"BE\",\"today\":\"2025-04-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-social_decision-H1"
+    ],
+    "prompt_head": "Today is Monday, 2025-04-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Berlin (BE), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tags"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Beispiel-Spreeufer von Berlin, Amt für Bürgerdienste – Wohngeldstelle\",\"document_date\":\"2025-04-04\",\"references\":[{\"label\":\"Wohngeldnummer\",\"value\":\"WG 0417-25-2291\"}],\"amounts\":[312],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit new Mietbescheinigung (rent certificate)\",\"quote\":\"Bitte senden Sie uns bis zum 24.04.2025 die Mietbescheinigung Ihrer Vermieterin für die neue Miete ab Januar 2025 zu.\",\"computation\":\"The letter states a fixed calendar deadline, 'bis zum 24.04.2025', for submitting the landlord's rent certificate for the new rent from January 2025. This is a date printed in the letter, used as written; no period calculation is needed.\",\"due_date\":\"2025-04-24\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Wohngeld decision\",\"quote\":\"Erheben Sie ihn binnen eines Monats ab Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispiel-Spreeufer von Berlin, Uferstraße 40, 10551 Berlin.\",\"computation\":\"Letter dated Friday 04.04.2025; no separate 'Tag der Aufgabe zur Post' is given, so the posting day equals the document date. Per § 37 Abs. 2 SGB X (cited in the letter), delivery is deemed on the 4th calendar day after posting: day 1 = Sat 05.04, day 2 = Sun 06.04, day 3 = Mon 07.04, day 4 = Tue 08.04.2025. The Wohngeldstelle is a social-law body under SGB X, so the delivery day would not move even if it fell on a weekend/holiday (it is a Tuesday here, so no issue). Bekanntgabe (deemed delivery) = 08.04.2025. The one-month Widerspruch period (§ 84 SGG) starts the day after delivery (§ 187 Abs. 1 BGB, the event day itself is not counted) and ends one month later on the day bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 08.04.2025 + 1 month = 08.05.2025, a Thursday, which is neither a weekend day nor a public holiday in Berlin, so the deadline does not shift (§ 26 Abs. 3 SGB X).\",\"due_date\":\"2025-05-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Beispiel-Spreeufer von Berlin, Amt für Bürgerdienste – Wohngeldstelle",
+      "document_date": "2025-04-04",
+      "references": [
+        {
+          "label": "Wohngeldnummer",
+          "value": "WG 0417-25-2291"
+        }
+      ],
+      "amounts": [
+        312
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit new Mietbescheinigung (rent certificate)",
+          "quote": "Bitte senden Sie uns bis zum 24.04.2025 die Mietbescheinigung Ihrer Vermieterin für die neue Miete ab Januar 2025 zu.",
+          "computation": "The letter states a fixed calendar deadline, 'bis zum 24.04.2025', for submitting the landlord's rent certificate for the new rent from January 2025. This is a date printed in the letter, used as written; no period calculation is needed.",
+          "due_date": "2025-04-24",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Wohngeld decision",
+          "quote": "Erheben Sie ihn binnen eines Monats ab Bekanntgabe schriftlich oder zur Niederschrift beim Bezirksamt Beispiel-Spreeufer von Berlin, Uferstraße 40, 10551 Berlin.",
+          "computation": "Letter dated Friday 04.04.2025; no separate 'Tag der Aufgabe zur Post' is given, so the posting day equals the document date. Per § 37 Abs. 2 SGB X (cited in the letter), delivery is deemed on the 4th calendar day after posting: day 1 = Sat 05.04, day 2 = Sun 06.04, day 3 = Mon 07.04, day 4 = Tue 08.04.2025. The Wohngeldstelle is a social-law body under SGB X, so the delivery day would not move even if it fell on a weekend/holiday (it is a Tuesday here, so no issue). Bekanntgabe (deemed delivery) = 08.04.2025. The one-month Widerspruch period (§ 84 SGG) starts the day after delivery (§ 187 Abs. 1 BGB, the event day itself is not counted) and ends one month later on the day bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 08.04.2025 + 1 month = 08.05.2025, a Thursday, which is neither a weekend day nor a public holiday in Berlin, so the deadline does not shift (§ 26 Abs. 3 SGB X).",
+          "due_date": "2025-05-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4911,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2290,
+      "cost_usd": 0.059379999999999995,
+      "duration_ms": 40383,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

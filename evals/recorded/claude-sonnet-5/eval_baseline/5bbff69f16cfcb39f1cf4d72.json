@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b3f70007e884aa9d6b2bbeb2eddb5e4d8abafe7c7c5432e769ab0c4401a186ec\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-english_letter-H1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-03-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Example Analytics, Inc.\",\"document_date\":\"2025-03-12\",\"references\":[{\"label\":\"Requisition\",\"value\":\"REQ-2025-0318\"}],\"amounts\":[92000],\"items\":[{\"kind\":\"deadline\",\"title\":\"Sign and return offer letter\",\"quote\":\"To accept, please sign the enclosed offer letter and return it to People Operations no later than March 26, 2025.\",\"computation\":\"The letter states an explicit calendar date ('no later than March 26, 2025') for returning the signed offer. A printed calendar date is used as written, with no further period-counting needed.\",\"due_date\":\"2025-03-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Employment start date\",\"quote\":\"working remotely from Germany through our employer of record, starting May 5, 2025, at an annual base salary of EUR 92,000.00.\",\"computation\":\"The letter states the employment start date explicitly as May 5, 2025; used as written.\",\"due_date\":\"2025-05-05\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private US employer's offer letter, not a notice from a German authority; it carries no Rechtsbehelfsbelehrung, consistent with 'remedy_type: none'.\",\"Both the offer-acceptance deadline (March 26, 2025) and the proposed start date (May 5, 2025) are already in the past relative to today's date; double-check whether this offer is still current or has been superseded by a later version.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Example Analytics, Inc.",
+      "document_date": "2025-03-12",
+      "references": [
+        {
+          "label": "Requisition",
+          "value": "REQ-2025-0318"
+        }
+      ],
+      "amounts": [
+        92000
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Sign and return offer letter",
+          "quote": "To accept, please sign the enclosed offer letter and return it to People Operations no later than March 26, 2025.",
+          "computation": "The letter states an explicit calendar date ('no later than March 26, 2025') for returning the signed offer. A printed calendar date is used as written, with no further period-counting needed.",
+          "due_date": "2025-03-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Employment start date",
+          "quote": "working remotely from Germany through our employer of record, starting May 5, 2025, at an annual base salary of EUR 92,000.00.",
+          "computation": "The letter states the employment start date explicitly as May 5, 2025; used as written.",
+          "due_date": "2025-05-05",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private US employer's offer letter, not a notice from a German authority; it carries no Rechtsbehelfsbelehrung, consistent with 'remedy_type: none'.",
+        "Both the offer-acceptance deadline (March 26, 2025) and the proposed start date (May 5, 2025) are already in the past relative to today's date; double-check whether this offer is still current or has been superseded by a later version."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1472,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 1794,
+      "cost_usd": 0.023006,
+      "duration_ms": 13969,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

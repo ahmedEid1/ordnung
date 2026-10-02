@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f4202dc6885067a239a159a8ca1a43e72975da8e24dc34be2f4a4d0d3fe27c03\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-20\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-05-20 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"utility_bill\",\"sender_name\":\"Hausverwaltung Musterkamp & Söhne GbR\",\"document_date\":null,\"references\":[{\"label\":\"Mieternummer\",\"value\":\"M-0517\"}],\"amounts\":[2193.78,1851.96,341.82],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay Betriebskosten-Nachzahlung (service charge back-payment)\",\"quote\":\"Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.\",\"computation\":\"The letter sets a 30-day payment period running 'nach Zugang dieser Abrechnung' (from receipt of this statement), not from a printed document date. The letter itself bears no date (no 'Datum' field is printed anywhere on it), and no actual receipt date was given either. Since the landlord is a private company, not a public authority, no statutory deemed-delivery rule (Zugangsfiktion) applies automatically to fix the start of the period — the actual day the tenant received the statement must be used instead. Without that day, the 30-day deadline under § 187(1)/§ 188(1) BGB (period starts the day after receipt, ends 30 days later, shifted to the next business day if it would fall on a Saturday, Sunday or public holiday per § 193 BGB) cannot be pinned to a calendar date. The person should check the postmark or the actual day the letter arrived and count 30 days from the day after that.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":341.82}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter carries no printed date (no 'Datum' field), so the start of the 30-day payment period ('nach Zugang dieser Abrechnung') cannot be computed exactly; use the actual day the statement arrived (e.g. envelope postmark) to count 30 days from the next day.\",\"The IBAN DE47 3705 0198 0003 3221 10 is well-formed and passes the checksum, but this only confirms its format, not that it truly belongs to Hausverwaltung Musterkamp & Söhne GbR; verify the payee name shown by your bank's mandatory recipient check (Empfängerüberprüfung) before transferring the 341,82 € Nachzahlung.\"]}",
+    "data": {
+      "kind": "utility_bill",
+      "sender_name": "Hausverwaltung Musterkamp & Söhne GbR",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Mieternummer",
+          "value": "M-0517"
+        }
+      ],
+      "amounts": [
+        2193.78,
+        1851.96,
+        341.82
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay Betriebskosten-Nachzahlung (service charge back-payment)",
+          "quote": "Bitte überweisen Sie die Nachzahlung innerhalb von 30 Tagen nach Zugang dieser Abrechnung.",
+          "computation": "The letter sets a 30-day payment period running 'nach Zugang dieser Abrechnung' (from receipt of this statement), not from a printed document date. The letter itself bears no date (no 'Datum' field is printed anywhere on it), and no actual receipt date was given either. Since the landlord is a private company, not a public authority, no statutory deemed-delivery rule (Zugangsfiktion) applies automatically to fix the start of the period — the actual day the tenant received the statement must be used instead. Without that day, the 30-day deadline under § 187(1)/§ 188(1) BGB (period starts the day after receipt, ends 30 days later, shifted to the next business day if it would fall on a Saturday, Sunday or public holiday per § 193 BGB) cannot be pinned to a calendar date. The person should check the postmark or the actual day the letter arrived and count 30 days from the day after that.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 341.82
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter carries no printed date (no 'Datum' field), so the start of the 30-day payment period ('nach Zugang dieser Abrechnung') cannot be computed exactly; use the actual day the statement arrived (e.g. envelope postmark) to count 30 days from the next day.",
+        "The IBAN DE47 3705 0198 0003 3221 10 is well-formed and passes the checksum, but this only confirms its format, not that it truly belongs to Hausverwaltung Musterkamp & Söhne GbR; verify the payee name shown by your bank's mandatory recipient check (Empfängerüberprüfung) before transferring the 341,82 € Nachzahlung."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2526,
+      "cache_read_tokens": 15140,
+      "cache_creation_tokens": 4050,
+      "cost_usd": 0.044496,
+      "duration_ms": 25883,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE47 3705 0198 0003 3221 10"
+        },
+        "result": "{\"iban\":\"DE47 3705 0198 0003 3221 10\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0003322110\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

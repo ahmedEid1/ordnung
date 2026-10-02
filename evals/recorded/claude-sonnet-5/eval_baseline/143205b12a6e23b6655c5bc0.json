@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"fbf873370405c579a968f9ec3ff4c03240c364c60de924fd076af4fb0bce5fc5\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-08-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-appointment-G1"
+    ],
+    "prompt_head": "Today is Tuesday, 2026-08-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Medizinischer Dienst Beispielland\",\"document_date\":\"2026-08-14\",\"references\":[{\"label\":\"Auftragsnummer\",\"value\":\"PG-2026-118 734\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"Home visit for care-need assessment (Begutachtung Pflegebedürftigkeit)\",\"quote\":\"Unsere Gutachterin, Frau Rehberg, besucht Sie dazu am Mittwoch, 26.08.2026 um 10:30 Uhr in Ihrer Wohnung, Ahornring 9.\",\"computation\":\"The letter states a fixed calendar date and time for the home visit: Wednesday, 26.08.2026 at 10:30. Appointments keep the date and time as printed and are never moved for weekends or holidays (26.08.2026 is a Wednesday in any case, so no adjustment would apply anyway).\",\"due_date\":\"2026-08-26\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Medizinischer Dienst Beispielland",
+      "document_date": "2026-08-14",
+      "references": [
+        {
+          "label": "Auftragsnummer",
+          "value": "PG-2026-118 734"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Home visit for care-need assessment (Begutachtung Pflegebedürftigkeit)",
+          "quote": "Unsere Gutachterin, Frau Rehberg, besucht Sie dazu am Mittwoch, 26.08.2026 um 10:30 Uhr in Ihrer Wohnung, Ahornring 9.",
+          "computation": "The letter states a fixed calendar date and time for the home visit: Wednesday, 26.08.2026 at 10:30. Appointments keep the date and time as printed and are never moved for weekends or holidays (26.08.2026 is a Wednesday in any case, so no adjustment would apply anyway).",
+          "due_date": "2026-08-26",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 958,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2058,
+      "cost_usd": 0.018922,
+      "duration_ms": 8177,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

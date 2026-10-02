@@ -10,18 +10,33 @@ function useOpen(info: RefInfo) {
 }
 
 /**
+ * A citation marker's link or button: a 24 px high target, at least 24 px wide (WCAG 2.5.8) — a marker may
+ * stand alone, in a list item of markers only or wrapped onto a line of its own, where the inline exception
+ * doesn't hold. The marker that is seen is its `::before`, 3.5 px in from every side, so the target is
+ * centred on it: 17 px high, at least 17 px wide, its digits 3 px from its top and 4 px from its sides (7.5
+ * from the target's), as it always looked. The target's own box takes no room: negative margins of the same
+ * 3.5 px keep its footprint the drawn marker's, 2 px after its word as before, so the line is no taller and
+ * the words around it stay put. Two markers in a row ("…94.99 €¹ ²") stand at least 7 px apart (Markdown's
+ * gap between chips), so neither target covers the other. Raised like a footnote, both together.
+ *
+ * Keyboard focus rings the drawn marker (its `::before`), not the invisible target round it. `isolate` keeps
+ * the `::before` behind the digits and above whatever is under the answer.
+ */
+const MARKER =
+  "relative isolate -top-[0.35em] -my-[3.5px] -ml-[1.5px] -mr-[3.5px] inline-grid h-6 min-w-6 place-items-center px-[7.5px] align-baseline text-[11px] font-semibold leading-none tabular-nums text-accent outline-none " +
+  "before:absolute before:inset-[3.5px] before:-z-10 before:rounded-[5px] before:bg-accent-soft " +
+  "transition-colors before:transition-colors hover:text-on-accent hover:before:bg-accent " +
+  "focus-visible:before:outline-2 focus-visible:before:outline-offset-1 focus-visible:before:outline-accent";
+
+/**
  * Inline citation: a small numbered marker right after the fact it supports ("…by Thu 8 Oct²"),
  * like a footnote: it follows the word without a space. Hover/focus shows what it is; click opens
- * the letter, to-do, contract or person. It sits in a line of text (WCAG 2.5.8's inline exception),
- * and still reacts 4 px around its 17 px box, so a finger or a shaky pointer hits it.
+ * the letter, to-do, contract or person. Its target reaches 3.5 px round the 17 px marker, 24 × 24 px
+ * (`MARKER`), so a finger or a shaky pointer hits it, also where it stands alone.
  */
 export function CitationMarker({ info, n }: { info: RefInfo; n: number }) {
   const onOpen = useOpen(info);
   const label = `Source ${n}: ${info.kindLabel} “${info.title}”`;
-  const cls =
-    "relative -top-[0.35em] ml-[2px] inline-grid h-[17px] min-w-[17px] place-items-center rounded-[5px] bg-accent-soft px-[4px] align-baseline text-[11px] font-semibold leading-none tabular-nums text-accent " +
-    "after:absolute after:-inset-1 after:rounded-md " +
-    "transition-colors hover:bg-accent hover:text-on-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
   const tip = (
     <span className="flex items-center gap-1.5">
       <info.icon className="size-3.5 shrink-0 opacity-80" aria-hidden />
@@ -34,11 +49,11 @@ export function CitationMarker({ info, n }: { info: RefInfo; n: number }) {
   return (
     <Tooltip content={tip}>
       {onOpen ? (
-        <button type="button" className={cls} onClick={onOpen} aria-label={label}>
+        <button type="button" className={MARKER} onClick={onOpen} aria-label={label}>
           {n}
         </button>
       ) : (
-        <Link to={info.href ?? "/"} className={cls} aria-label={label}>
+        <Link to={info.href ?? "/"} className={MARKER} aria-label={label}>
           {n}
         </Link>
       )}

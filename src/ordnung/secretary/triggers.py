@@ -34,6 +34,7 @@ from ordnung.drafts.proof import (
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
+from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
@@ -1455,10 +1456,12 @@ def proof_missing(ledger: Ledger) -> list[Suggestion]:
 
 
 def _unsure_items(items: Iterable[Item]) -> list[Item]:
+    # a to-do the person confirmed or dated is theirs: nothing left to check (``plan.needs_check``)
     return [
         item
         for item in items
-        if item.grounding == "unverified" or any(not ev.value_consistent for ev in item.evidence)
+        if item.grounding != "user"
+        and (item.grounding == "unverified" or any(not ev.value_consistent for ev in item.evidence))
     ]
 
 
@@ -1474,7 +1477,13 @@ def please_check(ledger: Ledger) -> list[Suggestion]:
         unsure = _unsure_items(doc_items)
         days = [day for day in (action_day(item) for item in doc_items) if day is not None]
         first = min(days) if days else None
-        if unsure:
+        if any(item.slot_key == CHECK_SLOT for item in unsure):
+            # the to-do Ordnung added itself: nothing was "not found" — the reading came back incomplete
+            body = (
+                "Claude's reading of this letter came back incomplete, so Ordnung added a to-do from the "
+                "letter's own words. Open the letter and check it."
+            )
+        elif unsure:
             listed = ", ".join(item.title for item in unsure[:3])
             body = f"We couldn't find some dates or amounts in the letter ({listed}). Open it and confirm or correct them."
         else:
@@ -1599,11 +1608,14 @@ def iban_fails_checksum(doc: Document) -> bool:
 
 
 #: Warnings that are no scam sign of their own: the reading's count of dates it couldn't confirm, a "Please
-#: check" note, and text meant for software — said once, as hidden text (as ``otherWarnings`` and
+#: check" note, the note that the reading came back incomplete (``ordnung.ingest.gaps.gap_warning``), and text
+#: meant for software — said once, as hidden text (as ``otherWarnings``, ``scamSigns`` and
 #: ``isHiddenTextWarning`` in ``web/src/features/document/Warnings.tsx``).
 _NOT_A_SIGN = re.compile(
     r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
-    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection",
+    r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection"
+    r"|^Claude's reading of this letter came back almost blank|^This letter explains how to (?:object|challenge it "
+    r"in court), but Claude's reading",
     re.I,
 )
 HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."

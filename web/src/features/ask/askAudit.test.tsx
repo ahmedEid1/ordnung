@@ -5,12 +5,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { FileText } from "lucide-react";
+import { FileText, Users } from "lucide-react";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { qk } from "@/api/hooks";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { AskTurnView, QuestionBubble } from "./AskTurnView";
+import { citationIndex } from "./citations";
 import { Markdown } from "./Markdown";
 import { makeRefResolver } from "./refs";
 import { RefText, splitLinks, trustedHost } from "./RefText";
@@ -77,12 +78,94 @@ describe("sources and markers", () => {
     expect(chip.querySelector("[aria-hidden]")?.className).toContain("shrink-0");
   });
 
-  it("a marker reacts around its small box and its digits are 11 px", () => {
+  // jsdom lays nothing out: the size is read off the classes that make it (Tailwind's 6 is 24 px)
+  const px = (el: Element, pattern: RegExp): number => {
+    const m = [...el.classList].map((c) => pattern.exec(c)).find(Boolean);
+    if (!m) throw new Error(`no class like ${pattern} on <${el.tagName.toLowerCase()} class="${el.className}">`);
+    return m[1]!.endsWith("px") ? parseFloat(m[1]!) : Number(m[1]) * 4;
+  };
+  const person: RefInfo = { type: "party", id: "pty_x", title: "Stadtwerke Musterstadt", kindLabel: "Person or organisation", icon: Users, href: null };
+
+  it("a marker's target is 24 × 24 px round its drawn 17 px marker, a letter's link and a person's button alike (WCAG 2.5.8)", () => {
     useMockApi();
-    renderIn(<CitationMarker info={info("Phone contract")} n={1} />);
-    const marker = screen.getByRole("link", { name: "Source 1: Letter “Phone contract”" });
-    expect(marker.className).toContain("after:-inset-1");
-    expect(marker.className).toContain("text-[11px]");
+    renderIn(
+      <p>
+        Due soon<CitationMarker info={info("Phone contract")} n={1} />
+        {"\u00a0"}
+        <CitationMarker info={person} n={2} />
+      </p>,
+    );
+    const link = screen.getByRole("link", { name: "Source 1: Letter “Phone contract”" });
+    const button = screen.getByRole("button", { name: "Source 2: Person or organisation “Stadtwerke Musterstadt”" });
+    expect(link).toHaveAttribute("href", "/documents/doc_x");
+    expect(button).toHaveAttribute("type", "button");
+    for (const [marker, n] of [
+      [link, "1"],
+      [button, "2"],
+    ] as const) {
+      // its number is its only content (the layout sweep tells a marker by its name and its digits)
+      expect(marker.textContent).toBe(n);
+      expect(marker.children).toHaveLength(0);
+      // the target is the link or button itself, the box a pointer, axe and the sweep measure: 24 px high and at
+      // least 24 wide, the digits centred in it
+      expect(marker).toHaveClass("inline-grid", "place-items-center", "h-6", "min-w-6");
+      const high = px(marker, /^h-(\d+)$/);
+      const wide = px(marker, /^min-w-(\d+)$/);
+      expect(high).toBeGreaterThanOrEqual(24);
+      expect(wide).toBeGreaterThanOrEqual(24);
+      // the marker that is seen is its ::before, the same room in from every side (centred): 17 px high and at
+      // least 17 wide, rounded and tinted as before, its 11 px digits 4 px from its sides
+      expect(marker).toHaveClass("before:absolute", "before:rounded-[5px]", "before:bg-accent-soft", "text-accent");
+      expect(marker).toHaveClass("text-[11px]", "font-semibold", "leading-none", "tabular-nums");
+      const reach = px(marker, /^before:inset-\[(.+)\]$/);
+      expect(high - 2 * reach).toBe(17);
+      expect(wide - 2 * reach).toBe(17);
+      expect(px(marker, /^px-\[(.+)\]$/) - reach).toBe(4);
+      // drawn behind the digits, in the marker's own stacking context (never behind the answer's background)
+      expect(marker).toHaveClass("isolate", "before:-z-10");
+      // the target takes no room of its own: margins pull it in by the same reach, so the line is as high as the
+      // drawn marker makes it, which starts 2 px after its word, and the words after it stay where they were
+      expect(high - 2 * px(marker, /^-my-\[(.+)\]$/)).toBe(17);
+      expect(reach - px(marker, /^-ml-\[(.+)\]$/)).toBe(2);
+      expect(px(marker, /^-mr-\[(.+)\]$/)).toBe(reach);
+      // raised like a footnote, target and drawn marker together
+      expect(marker).toHaveClass("relative", "-top-[0.35em]", "align-baseline");
+      // no ::after reaching past the box (UI audit round 1's 4 px): the sweep and axe measure only the box
+      expect(marker.className).not.toMatch(/(^|\s)after:/);
+      // keyboard focus rings the marker that is seen, not the invisible target round it; hover fills it
+      expect(marker).toHaveClass("outline-none", "focus-visible:before:outline-2", "focus-visible:before:outline-offset-1", "focus-visible:before:outline-accent");
+      expect(marker.className.split(/\s+/).filter((c) => c.startsWith("focus-visible:") && !c.startsWith("focus-visible:before:"))).toEqual([]);
+      expect(marker).toHaveClass("hover:before:bg-accent", "hover:text-on-accent");
+    }
+  });
+
+  it("two markers in a row stand 7 px apart, so neither 24 px target covers the other", () => {
+    useMockApi();
+    const { container } = renderIn(
+      <Markdown
+        text="The phone bill, 94.99 € [doc:doc_x] [party:pty_x]."
+        citations={citationIndex([
+          { type: "document", id: "doc_x" },
+          { type: "party", id: "pty_x" },
+        ])}
+        renderCitation={(ref, key) => <CitationMarker key={key} info={ref.type === "party" ? person : info("Phone bill")} n={ref.type === "party" ? 2 : 1} />}
+      />,
+    );
+    const [first, second] = [...container.querySelectorAll("[aria-label^='Source']")];
+    // between them a no-break space (selected and copied as before), in a box at least 5 px wide
+    const gap = first!.parentElement!.nextSibling as HTMLElement;
+    expect(gap.textContent).toBe("\u00a0");
+    expect(gap).toHaveClass("inline-block");
+    expect(gap.nextSibling).toBe(second!.parentElement);
+    expect(container.textContent).toBe("The phone bill, 94.99\u00a0€1\u00a02.");
+    // along the line, from the right edge of the first drawn marker: its target reaches `before:inset` past it,
+    // and its footprint ends `-mr` before that; the gap follows, then the second target, pulled `-ml` into the gap
+    const reach = (el: Element) => px(el, /^before:inset-\[(.+)\]$/);
+    const firstEnds = reach(first!);
+    const secondStarts = reach(first!) - px(first!, /^-mr-\[(.+)\]$/) + px(gap, /^min-w-\[(.+)\]$/) - px(second!, /^-ml-\[(.+)\]$/);
+    expect(secondStarts).toBeGreaterThanOrEqual(firstEnds);
+    // and the drawn markers stand 7 px apart or more
+    expect(secondStarts + reach(second!)).toBeGreaterThanOrEqual(7);
   });
 });
 

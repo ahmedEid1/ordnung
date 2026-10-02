@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"575c3bfe781646fa538bcb3cfb72f73d5f1e50f1ab87b9bc2bfaeb8ec066f214\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-contract_confirmation-H1"
+    ],
+    "prompt_head": "Today is Sunday, 2026-12-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[298.4,150],\"contract\":{\"current_term_end\":\"2028-01-31\",\"cancel_by\":\"2027-10-31\"},\"document_date\":\"2026-12-09\",\"items\":[{\"kind\":\"payment\",\"title\":\"First annual premium collected by direct debit\",\"quote\":\"Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.\",\"computation\":\"The policy's 'Versicherungsbeginn' (start of insurance) is stated as 01.02.2027, 0:00 Uhr. The letter says the first annual premium is debited 'zum Versicherungsbeginn', i.e. on the start date itself. No separate due date or period is given, so the due date equals the start date: 2027-02-01.\",\"due_date\":\"2027-02-01\",\"confidence\":\"high\",\"amount\":298.4},{\"kind\":\"milestone\",\"title\":\"End of waiting period (Wartezeit) for most coverage types\",\"quote\":\"Wartezeit   3 Monate (nicht für Verkehrsrechtsschutz)\",\"computation\":\"Versicherungsbeginn is 01.02.2027, 0:00 Uhr. A 3-month waiting period (Wartezeit) applies for all coverage except Verkehrsrechtsschutz, per § 188 Abs. 2 BGB a period of months ending on the day of the last month bearing the same number as the start day: 01.02.2027 + 3 months = 01.05.2027. From this date onward, covered legal cases (other than traffic law) are insured. This is informational, not an action the policyholder must take.\",\"due_date\":\"2027-05-01\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"insurance\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"RS 4471-0098-22\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispiel Rechtsschutz Versicherung AG\",\"warnings\":[\"This is a specimen/example document (addresses and names like 'Musterwiesbaden', 'Musterlüne', 'Beispiel Rechtsschutz Versicherung AG' are clearly placeholders), so figures and dates should be verified against the real policy document.\",\"The contract's automatic annual renewal clause means cancellation must reach the insurer in writing (Textform) by 2027-10-31 to prevent renewal beyond the first term ending 2028-01-31; missing this deadline silently extends the contract by another year.\"]}",
+    "data": {
+      "amounts": [
+        298.4,
+        150
+      ],
+      "contract": {
+        "current_term_end": "2028-01-31",
+        "cancel_by": "2027-10-31"
+      },
+      "document_date": "2026-12-09",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "First annual premium collected by direct debit",
+          "quote": "Den ersten Jahresbeitrag ziehen wir zum Versicherungsbeginn per Lastschrift ein.",
+          "computation": "The policy's 'Versicherungsbeginn' (start of insurance) is stated as 01.02.2027, 0:00 Uhr. The letter says the first annual premium is debited 'zum Versicherungsbeginn', i.e. on the start date itself. No separate due date or period is given, so the due date equals the start date: 2027-02-01.",
+          "due_date": "2027-02-01",
+          "confidence": "high",
+          "amount": 298.4
+        },
+        {
+          "kind": "milestone",
+          "title": "End of waiting period (Wartezeit) for most coverage types",
+          "quote": "Wartezeit   3 Monate (nicht für Verkehrsrechtsschutz)",
+          "computation": "Versicherungsbeginn is 01.02.2027, 0:00 Uhr. A 3-month waiting period (Wartezeit) applies for all coverage except Verkehrsrechtsschutz, per § 188 Abs. 2 BGB a period of months ending on the day of the last month bearing the same number as the start day: 01.02.2027 + 3 months = 01.05.2027. From this date onward, covered legal cases (other than traffic law) are insured. This is informational, not an action the policyholder must take.",
+          "due_date": "2027-05-01",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "insurance",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "RS 4471-0098-22"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispiel Rechtsschutz Versicherung AG",
+      "warnings": [
+        "This is a specimen/example document (addresses and names like 'Musterwiesbaden', 'Musterlüne', 'Beispiel Rechtsschutz Versicherung AG' are clearly placeholders), so figures and dates should be verified against the real policy document.",
+        "The contract's automatic annual renewal clause means cancellation must reach the insurer in writing (Textform) by 2027-10-31 to prevent renewal beyond the first term ending 2028-01-31; missing this deadline silently extends the contract by another year."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3287,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2113,
+      "cost_usd": 0.04195039999999999,
+      "duration_ms": 29191,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

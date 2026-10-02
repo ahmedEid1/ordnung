@@ -26,6 +26,11 @@ once, with every condition and the prompts frozen; its run never rewrites ``docs
 with ``--docs``) — it joins the published page as a section of its own with ``python -m evals.report
 <published run>.json --holdout-run <holdout run>.json``.
 
+The ``holdout2`` split (``--split holdout2``, results ``<YYYY-MM-DD>-<model>-holdout2.json``) was written
+after the release's last change to how letters are read; it follows the same rule: recorded once, nothing tuned on it, and
+its run never rewrites ``docs/evals.md`` (not even with ``--docs``). It joins the published page with
+``python -m evals.report <published run>.json --holdout2-run <holdout2 run>.json``.
+
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
 
@@ -96,7 +101,7 @@ DEFAULT_MODEL = (
     "claude-sonnet-5"  # a pinned id (ordnung.llm.base.DEFAULT_MODEL): an alias moves with releases
 )
 DEFAULT_SPLIT = "test"
-SPLITS = ("dev", "test", report.HOLDOUT_SPLIT)
+SPLITS = ("dev", "test", *report.HELD_OUT_SPLITS)
 DEFAULT_CONCURRENCY = 3
 DEFAULT_TIMEOUT_S = 300.0
 
@@ -123,15 +128,16 @@ class RunConfig:
     timeout_s: float = DEFAULT_TIMEOUT_S
     run_id: str | None = None
     run_date: str | None = None
-    write_docs: bool | None = None  # None: only for a complete test-split run without errors (never holdout)
+    write_docs: bool | None = None  # None: only for a complete test-split run without errors (not held-out)
     allow_errors: bool = False
     #: The CI gate checks Ordnung: the tool condition, whose recorded answers go missing on replay when
     #: the rules tools' descriptions change in code, is then left out with a warning (see
     #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
     gate_ordnung_only: bool = False
     #: Whether the results file is written: the CI gate's replay (thresholds, no ``--live``) only checks and
-    #: writes nothing unless ``--results-dir`` is given (review round 3 of phase 2: running the gate locally
-    #: left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree).
+    #: writes no results file unless ``--results-dir`` is given (review round 3 of phase 2: running the gate
+    #: locally left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree). Its per-letter cache
+    #: still goes to ``<results dir>/cache/`` (gitignored under ``evals/results/``).
     write_results: bool = True
     seed: int = DEFAULT_SEED
     resamples: int = DEFAULT_RESAMPLES
@@ -551,6 +557,12 @@ async def run_benchmark(
                 )
         model_backend = backend or make_backend(config, model, allowed)
         label = backend.name if backend is not None else ("live" if config.live else "replay")
+        if config.write_results:
+            _refuse_to_replace_a_recording(
+                config.results_dir
+                / report.results_filename(config.date, model, config.split, partial=config.partial),
+                "live" if config.live else label,
+            )
         say(f"{model}: {len(entries)} letters × {len(config.conditions)} conditions ({label})")
         started = time.perf_counter()
         run = await predict_model(config, model, entries, model_backend, progress=say)
@@ -595,8 +607,9 @@ async def run_benchmark(
             and outcome.ok
             and not any(run.errors for run in outcome.runs)
         )
-    if config.split == report.HOLDOUT_SPLIT:
-        # The held-out run sits beside the published one (evals.report --holdout-run); it never replaces the page.
+    if config.split in report.HELD_OUT_SPLITS:
+        # A held-out run sits beside the published one (evals.report --holdout-run / --holdout2-run); it never
+        # replaces the page.
         write_docs = False
     if write_docs and finished:
         outcome.docs_path, outcome.chart_path = report.write_docs(
@@ -604,6 +617,23 @@ async def run_benchmark(
         )
         say(f"docs → {outcome.docs_path}" + (f", chart → {outcome.chart_path}" if outcome.chart_path else ""))
     return outcome
+
+
+def _refuse_to_replace_a_recording(path: Path, backend: str) -> None:
+    """A results file of live model calls is the record of that recording (a held-out split is recorded
+    once): only another live run may replace it — a replay of the same day, split and model would overwrite it
+    with the checked-out code's numbers (review of the reading check, benchmark 6)."""
+    if backend == "live" or not path.exists():
+        return
+    try:
+        recorded = json.loads(path.read_text(encoding="utf-8")).get("meta", {}).get("backend")
+    except (OSError, ValueError, AttributeError):
+        return
+    if recorded == "live":
+        raise ValueError(
+            f"{path} holds a live recording, which a {backend} run never overwrites: pass a different "
+            "--results-dir (or --date)"
+        )
 
 
 REPLAY_MISS = "no recorded response"
@@ -711,8 +741,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--split",
         choices=SPLITS,
         default=DEFAULT_SPLIT,
-        help="dataset split (default: test; holdout is recorded once with frozen prompts and never rewrites "
-        "docs/evals.md)",
+        help="dataset split (default: test; holdout and holdout2 are each recorded once, nothing is tuned on "
+        "them, and neither rewrites docs/evals.md)",
     )
     parser.add_argument("--model", default=DEFAULT_MODEL, help="model alias or id (default: sonnet)")
     parser.add_argument(
@@ -816,14 +846,26 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
-    if config.split == report.HOLDOUT_SPLIT and config.write_docs:
+    if config.split in report.HELD_OUT_SPLITS and config.write_docs:
+        option = "--holdout-run" if config.split == report.HOLDOUT_SPLIT else f"--{config.split}-run"
         parser.error(
-            "a holdout run never rewrites docs/evals.md: add it to the published page with "
-            "`python -m evals.report <published run>.json --holdout-run <holdout run>.json`"
+            f"a {config.split} run never rewrites docs/evals.md: add it to the published page with "
+            f"`python -m evals.report <published run>.json {option} <{config.split} run>.json`"
         )
     # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
+    # the gate writes no results file: it may replay a held-out split where it is
+    if (
+        config.split in report.HELD_OUT_SPLITS
+        and not config.live
+        and config.write_results
+        and ns.results_dir is None
+    ):
+        parser.error(
+            f"a replay of the {config.split} split scores its recordings with the checked-out code, not the "
+            "held-out number: pass --results-dir <dir> so it never lands beside the held-out run"
+        )
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))

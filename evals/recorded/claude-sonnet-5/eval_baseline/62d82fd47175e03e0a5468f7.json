@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"53f4763b137596cb36821d7b7abf395779b0b07013b347347bef418cdcc8e85b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout2-dunning_fixed-G2"
+    ],
+    "prompt_head": "Today is Monday, 2027-02-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispiel Inkasso Service GmbH\",\"document_date\":\"2027-02-09\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"BIS-27-018834\"},{\"label\":\"Rechnung\",\"value\":\"GM-26-77410\"}],\"amounts\":[236.4,3.62,42.49,282.51],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay total debt to collection agency\",\"quote\":\"Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.\",\"computation\":\"The letter states a fixed calendar date for payment: 02.03.2027. This is a calendar date printed in the letter, so it is used as written without further counting; it is a private-law demand, not a statutory period subject to weekend/holiday extension rules for authorities, and the date is explicit regardless of the weekday it falls on.\",\"due_date\":\"2027-03-02\",\"confidence\":\"high\",\"amount\":282.51},{\"kind\":\"task\",\"title\":\"Submit written objection to the claim if disputed\",\"quote\":\"Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.\",\"computation\":\"'Innerhalb dieser Zeit' refers back to the same deadline given for payment, i.e. 02.03.2027, as stated in the preceding sentence of the letter. No separate period calculation is needed since the reference period is explicitly tied to the payment deadline already printed.\",\"due_date\":\"2027-03-02\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection (Inkasso) letter, not a decision by a court or authority, so it carries no formal legal-remedy instructions (Rechtsbehelfsbelehrung); if the underlying debt is disputed, independent legal advice (e.g. consumer advice centre) is recommended before paying.\",\"Double-check the collection agency's registration and the creditor's identity (Beispiel Gartenmarkt GmbH) independently before transferring money, as debt-collection letters are a common vector for fraudulent demands.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispiel Inkasso Service GmbH",
+      "document_date": "2027-02-09",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "BIS-27-018834"
+        },
+        {
+          "label": "Rechnung",
+          "value": "GM-26-77410"
+        }
+      ],
+      "amounts": [
+        236.4,
+        3.62,
+        42.49,
+        282.51
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay total debt to collection agency",
+          "quote": "Wir fordern Sie auf, die Gesamtforderung bis zum 02.03.2027 auf das unten angegebene Konto zu zahlen.",
+          "computation": "The letter states a fixed calendar date for payment: 02.03.2027. This is a calendar date printed in the letter, so it is used as written without further counting; it is a private-law demand, not a statutory period subject to weekend/holiday extension rules for authorities, and the date is explicit regardless of the weekday it falls on.",
+          "due_date": "2027-03-02",
+          "confidence": "high",
+          "amount": 282.51
+        },
+        {
+          "kind": "task",
+          "title": "Submit written objection to the claim if disputed",
+          "quote": "Wenn Sie die Forderung für unberechtigt halten, teilen Sie uns Ihre Gründe bitte innerhalb dieser Zeit schriftlich mit.",
+          "computation": "'Innerhalb dieser Zeit' refers back to the same deadline given for payment, i.e. 02.03.2027, as stated in the preceding sentence of the letter. No separate period calculation is needed since the reference period is explicitly tied to the payment deadline already printed.",
+          "due_date": "2027-03-02",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection (Inkasso) letter, not a decision by a court or authority, so it carries no formal legal-remedy instructions (Rechtsbehelfsbelehrung); if the underlying debt is disputed, independent legal advice (e.g. consumer advice centre) is recommended before paying.",
+        "Double-check the collection agency's registration and the creditor's identity (Beispiel Gartenmarkt GmbH) independently before transferring money, as debt-collection letters are a common vector for fraudulent demands."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2948,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2241,
+      "cost_usd": 0.039554,
+      "duration_ms": 27149,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
