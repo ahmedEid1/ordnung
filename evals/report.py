@@ -958,8 +958,8 @@ new senders, recipients, wording, layout, dates, amounts and regions) and of the
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
 read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
 code changes came after them: a rules-table date their label audit found, which changes no date on them
-(see the note below); and a check for incomplete readings (`ingest/gaps.py`), written after Ordnung's
-empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
+objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
 re-scored row only, never in the held-out row."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
@@ -1581,13 +1581,15 @@ simulated phone photos, and an adversarial set in the test and holdout splits (v
 prompt injection, scams, conflicting dates, missing letter date). Each letter has its own "today" (the
 day it is read) and, where the letterhead names a Land, a holiday region.
 
-**Splits.** Template variants A/B are the dev split, C/D the test split and E/F the holdout split;
-the test and holdout splits each have their own adversarial letters, dev has none; no
+**Splits.** Template variants A/B are the dev split, C/D the test split, E/F the holdout split and G/H
+the holdout2 split; the test, holdout and holdout2 splits each have their own adversarial letters, dev has none; no
 deadline-bearing sentence of one split recurs in another. Prompts were tuned on dev letters and the
 published numbers are the test split — but the test split is no longer held-out: extraction prompts
 9 to 12 were each recorded on it. The holdout split is a fresh sample of the same families and
 attack classes (new senders, wording, layout, dates and amounts): the holdout letters were written
 after prompt version 11 and before any holdout recording, and are recorded once with frozen prompts.
+The holdout2 split is a second such sample (new senders, recipients, wording, layout, dates, amounts and
+regions), written after the release's last change to how letters are read and recorded once.
 No split is blind: the same project wrote the letters, the labels, the prompts and the rules engine
 (see Limitations).
 

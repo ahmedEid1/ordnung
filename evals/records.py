@@ -278,8 +278,8 @@ class PredictedItem(BaseModel):
     explanation: str = ""  # Ordnung: the receipt's summary; baselines: the model's own computation
     notes: list[str] = Field(default_factory=list)  # Ordnung: the receipt's warnings
     #: ``code``: the to-do Ordnung files itself for an incomplete reading (``ingest/gaps.py``), not one the
-    #: model read — its date is scored, but it counts for none of the reading's own metrics (extraction,
-    #: grounding, reading vs computing).
+    #: model read — its date is scored (a wrong one has cause "check"), but it counts for none of the reading's
+    #: extraction and grounding metrics, which match the reading's own to-dos alone.
     origin: Literal["model", "code"] = "model"
 
     @property

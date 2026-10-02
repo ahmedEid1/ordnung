@@ -47,7 +47,79 @@ def test_an_unmatched_code_made_to_do_is_counted_as_the_check_s_false_alarm_neve
     assert (by_model.false_positives, by_code.false_positives) == (1, 0)
     assert (by_code.check_filed, by_code.check_false_alarms) == (1, 1)
     assert (by_model.check_filed, by_model.check_false_alarms) == (0, 0)
-    assert summarise_condition([by_code], resamples=50)["reading_check"] == {"filed": 1, "unmatched": 1}
+    assert summarise_condition([by_code], resamples=50)["reading_check"] == {
+        "filed": 1,
+        "unmatched": 1,
+        "letters": 0,
+    }
+
+
+def test_only_dated_unmatched_code_items_are_the_check_s_false_alarms() -> None:
+    """R3T-10: a matched dated code item, an undated one (the placeholder) and a stray dated one: two filed, one
+    unmatched."""
+    entry = _entry("dev-municipal_decision-A1")
+    [truth] = entry.truth.items[:1]
+    matched = PredictedItem(kind=truth.kind, title=truth.title, due_date=truth.expected_due, origin="code")
+    undated = PredictedItem(kind="task", title="Read this letter yourself", origin="code")
+    stray = PredictedItem(kind="deadline", title="Deadline to object", due_date="2031-01-01", origin="code")
+    score = score_document(
+        entry, Prediction(entry_id=entry.id, condition="ordnung", model="m", items=[matched, undated, stray])
+    )
+    assert (score.check_filed, score.check_false_alarms) == (2, 1)
+    assert summarise_condition([score], resamples=50)["reading_check"] == {
+        "filed": 2,
+        "unmatched": 1,
+        "letters": 0,
+    }
+
+
+def test_the_check_s_to_do_never_takes_the_match_from_the_reading_s_own() -> None:
+    """Benchmark review 3, R3B-1: a reading's objection to-do whose date doesn't compute (no letter date read)
+    beside the check's dated one: the reading's recall, false positives and grounding are as without the check;
+    the letter's date is the check's, correct."""
+    entry = _entry("dev-municipal_decision-A1")
+    truth = entry.truth.items[0]
+    spec = {
+        "type": "relative",
+        "amount": 1,
+        "unit": "months",
+        "anchor": "document_date",
+        "nature": "objection",
+    }
+    model = PredictedItem(kind=truth.kind, title=truth.title, due_date=None, spec=spec, origin="model")
+    code = PredictedItem(
+        kind="deadline",
+        title="Deadline to object",
+        due_date=truth.expected_due,
+        spec=spec,
+        origin="code",
+        needs_check=True,
+        confidence="low",
+    )
+
+    def scored(*items: PredictedItem) -> Any:
+        return score_document(
+            entry, Prediction(entry_id=entry.id, condition="ordnung", model="m", items=list(items))
+        )
+
+    alone, beside = scored(model), scored(model, code)
+    reading = lambda s: (s.matched_required, s.false_positives, s.false_grounded, s.grounding)  # noqa: E731
+    assert reading(beside) == reading(alone)
+    assert beside.items[0].outcome == "correct"
+    assert (beside.check_filed, beside.check_false_alarms) == (1, 0)
+
+
+def test_the_letters_the_check_fired_on_are_counted_dated_or_not() -> None:
+    """R3B-3: an undated to-do of the check's is never scored; the letters with its signal are counted."""
+    entry = _entry("dev-contract_confirmation-A1")
+    signalled = Prediction(
+        entry_id=entry.id, condition="ordnung", model="m", items=[], signals=["reading_incomplete"]
+    )
+    quiet = Prediction(entry_id=entry.id, condition="ordnung", model="m", items=[])
+    summary = summarise_condition(
+        [score_document(entry, signalled), score_document(entry, quiet)], resamples=50
+    )
+    assert summary["reading_check"] == {"filed": 0, "unmatched": 0, "letters": 1}
 
 
 def test_a_wrong_code_made_date_is_the_check_s_never_the_reading_s_or_the_computing_s() -> None:

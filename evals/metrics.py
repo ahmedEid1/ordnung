@@ -455,6 +455,9 @@ class DocScore:
     #: no obligation of the letter: a false alarm of the check, counted in no extraction metric.
     check_filed: int = 0
     check_false_alarms: int = 0
+    #: 1 when the check fired on this letter (the ``reading_incomplete`` signal), dated or not: an undated
+    #: to-do it filed is never scored, so only this counts it.
+    check_letters: int = 0
 
     @property
     def deadline_calls(self) -> int:
@@ -759,14 +762,18 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         for index, item in enumerate(truth_items)
     ]
     matched_preds = set(matches.values())
-    # extraction and grounding grade the model's reading: the to-do code filed (``origin="code"``) is no part
-    # of it — its date is scored with the others above
-    read = {index for index, item in enumerate(preds) if item.origin == "model"}
-    matched_required = sum(1 for index, p in matches.items() if index < required_count and p in read)
-    false_positives = sum(
-        1 for index, item in enumerate(preds) if item.dated and index not in matched_preds and index in read
-    )
-    pairs = [(truth_items[t], preds[p]) for t, p in matches.items() if p in read]
+    # extraction and grounding grade the model's reading, matched on its own to-dos alone: the to-do code filed
+    # (``origin="code"``) is no part of it and never takes a match from it — its date is scored with the others
+    # above (with no code-made to-do this is the same assignment)
+    read = [index for index, item in enumerate(preds) if item.origin == "model"]
+    own = {
+        t: read[p]
+        for t, p in match_items(truth_items, [preds[i] for i in read], required_count=required_count).items()
+    }
+    matched_read = set(own.values())
+    matched_required = sum(1 for index in own if index < required_count)
+    false_positives = sum(1 for index in read if preds[index].dated and index not in matched_read)
+    pairs = [(truth_items[t], preds[p]) for t, p in own.items()]
     false_grounded, by_level = _false_grounded(pairs)
     contract_pairs: list[tuple[str, str | None]] = []
     if truth.contract is not None:
@@ -848,6 +855,7 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
             for index, item in enumerate(preds)
             if item.origin == "code" and item.dated and index not in matched_preds
         ),
+        check_letters=int("reading_incomplete" in pred.signals),
     )
 
 
@@ -1133,10 +1141,12 @@ def summarise_condition(
             for key in ("input", "output", "cache_read", "cache_creation")
         },
         "calls": sum(score.calls for score in scores),
-        # the dated to-dos the check for incomplete readings filed itself, and those matching no obligation
+        # the dated to-dos the check for incomplete readings filed itself, those matching no obligation, and the
+        # letters it fired on (an undated to-do of its own is never scored)
         "reading_check": {
             "filed": sum(score.check_filed for score in scores),
             "unmatched": sum(score.check_false_alarms for score in scores),
+            "letters": sum(score.check_letters for score in scores),
         },
         "failed": sum(1 for score in scores if score.failed),
         "errors": sum(1 for score in scores if score.error),
