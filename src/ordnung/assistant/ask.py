@@ -32,16 +32,18 @@ with the note under its label (in the answer's language) as its last paragraph, 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
 from collections import deque
-from collections.abc import AsyncIterator, Collection, Iterable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal, Protocol
 
 from ordnung import clock
+from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.citations import (
     REF_TYPES,
     Citation,
@@ -95,10 +97,23 @@ UNSUPPORTED_ANSWER_DE = (
     "können den Brief, die Aufgabe oder den Vertrag in Ordnung öffnen und dort Daten und Beträge ansehen."
 )
 CHECK_FAILED = "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again."
+#: What an answer that broke off with an unexpected error says (the error itself goes to the log).
+UNEXPECTED_STOP = (
+    "Something went wrong while answering, so there is no answer. Please ask again; if it keeps happening, "
+    "run “ordnung doctor”."
+)
 #: The one message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``).
 DEMO_MISS = (
     "The demo replays answers recorded for its sample letters, and there is none for this question. "
     "Try one of the suggested questions."
+)
+#: The message for a suggested question the demo recorded, asked after the person changed the letters or to-dos
+#: (sent with ``error_code`` ``demo_changed``): its answers were recorded on Sam's letters as the demo started,
+#: so every suggested question misses until the demo starts over.
+DEMO_CHANGED = (
+    "The demo's answers were recorded for Sam's letters as the demo started, and you have changed his "
+    "to-dos or letters since, so they no longer fit. To ask the suggested questions again, start the demo "
+    "over: Settings → Data, or run “ordnung demo --reset”."
 )
 EMPTY_QUESTION = "Please type a question."
 
@@ -123,8 +138,10 @@ class AskContext(Protocol):
 
 
 #: Why an answer could not be given, when the UI shows more than the message: ``demo_miss`` — the demo
-#: has no recorded answer for the question (asking again cannot help, a suggested question can).
-AskErrorCode = Literal["demo_miss"]
+#: has no recorded answer for the question (asking again cannot help, a suggested question can);
+#: ``demo_changed`` — a suggested question the demo recorded, but the person changed the letters or to-dos
+#: since the demo started (only starting the demo over helps).
+AskErrorCode = Literal["demo_miss", "demo_changed"]
 
 
 class AskEvent(StreamEvent):
@@ -267,8 +284,19 @@ async def ask_stream(
     one :class:`AskEvent` ``done`` event with the checked answer — or a single ``error`` event, also
     when the check itself fails (it fails closed). The model's words are never sent before the check
     (ADR 0008): an answer that stops, fails or cannot be checked shows none of them. The check runs
-    in a worker thread.
+    in a worker thread. An unexpected error (``claude`` moved or not executable, a database that can't be
+    written) ends the stream with :data:`UNEXPECTED_STOP` instead of cutting it off without a word.
     """
+    try:
+        async with contextlib.aclosing(_answer(ctx, question, thread_id)) as events:
+            async for event in events:
+                yield event
+    except Exception:
+        logger.exception("Ask: the answer stopped with an unexpected error")
+        yield StreamEvent(type="error", error=UNEXPECTED_STOP)
+
+
+async def _answer(ctx: AskContext, question: str, thread_id: str | None) -> AsyncGenerator[StreamEvent, None]:
     question = question.strip()
     if not question:
         yield StreamEvent(type="error", error=EMPTY_QUESTION)
@@ -328,6 +356,12 @@ def demo_miss_event() -> AskEvent:
     return AskEvent(type="error", error=DEMO_MISS, text=DEMO_MISS, error_code="demo_miss")
 
 
+def demo_changed_event() -> AskEvent:
+    """The event shown instead of a recorded answer that no longer fits: a suggested question asked after
+    the person changed the demo's letters or to-dos (:data:`DEMO_CHANGED`; nothing was stored)."""
+    return AskEvent(type="error", error=DEMO_CHANGED, text=DEMO_CHANGED, error_code="demo_changed")
+
+
 @dataclass
 class _Turn:
     """What one question's stream produced: the tool trace, tool results and text deltas."""
@@ -365,8 +399,25 @@ class _Turn:
         if doc is not None and not doc.ai_private and doc_id not in self.request.doc_ids:
             self.request.doc_ids.append(doc_id)
 
+    def _letters_in(self, text: str) -> Iterator[str]:
+        """The letters a ledger tool result sends text of: every record its letter-text part is keyed by —
+        a letter itself (a search hit's title and snippet), or the letter a to-do or contract was read
+        from (its title, terms or quote). A party's name stands in many letters and names none of them."""
+        for ref_id in parse_tool_result(text).letters:
+            prefix = ref_id.split("_", 1)[0]
+            if prefix == "doc":
+                yield ref_id
+            elif prefix == "itm":
+                item = self.store.get_item(ref_id)
+                if item is not None and item.doc_id:
+                    yield item.doc_id
+            elif prefix == "ctr":
+                contract = self.store.get_contract(ref_id)
+                if contract is not None and contract.source_doc_id:
+                    yield contract.source_doc_id
+
     def tool_result(self, event: StreamEvent) -> StreamEvent:
-        """Keep the result for validation and summarise it for the trace.
+        """Keep the result for validation, note the letters it sent text of and summarise it for the trace.
 
         A result belongs to the call with its ``tool_use_id`` (parallel calls may answer out of
         order); a result without an id (fakes, older recordings) to the oldest call without an id still
@@ -383,6 +434,8 @@ class _Turn:
         name = self.calls[index]["name"] if index is not None else "tool"
         if name in TOOL_NAMES:
             self.results.append(text)
+            for doc_id in self._letters_in(text):
+                self._note_sent(doc_id)
         summary = result_summary(name, text)
         if index is not None:
             self.calls[index]["result"] = summary

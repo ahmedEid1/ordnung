@@ -11,7 +11,7 @@ from ordnung.api.deps import _status_detail
 from ordnung.api.routes.data import DEMO_MESSAGE
 from ordnung.api.routes.documents import DEMO_UPLOAD_MESSAGE
 from ordnung.api.routes.drafts import DEMO_TRANSLATE_MESSAGE
-from ordnung.assistant.ask import DEMO_MISS
+from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS, UNEXPECTED_STOP
 from ordnung.demo.tour import DEMO_UNRECORDED_MESSAGE
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "ordnung"
@@ -56,6 +56,13 @@ def test_no_markdown_code_in_what_the_api_says() -> None:
 def test_commands_are_named_in_quotes() -> None:
     assert "“claude”" in _status_detail(True, False)
     assert "“ordnung serve”" in DEMO_UPLOAD_MESSAGE and "“ordnung serve”" in DEMO_TRANSLATE_MESSAGE
-    assert "“ordnung demo --reset”" in DEMO_MESSAGE
-    for message in (DEMO_MISS, DEMO_UNRECORDED_MESSAGE, _status_detail(False, None)):
+    assert "“ordnung demo --reset”" in DEMO_MESSAGE and "“ordnung demo --reset”" in DEMO_CHANGED
+    assert "“ordnung doctor”" in UNEXPECTED_STOP
+    for message in (
+        DEMO_MISS,
+        DEMO_CHANGED,
+        UNEXPECTED_STOP,
+        DEMO_UNRECORDED_MESSAGE,
+        _status_detail(False, None),
+    ):
         assert "`" not in message

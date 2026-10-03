@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
 import type { Brief, Dashboard, Document, Party, Profile } from "@/api/types";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer } from "@/mocks/server";
+import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { TodayView } from "./TodayView";
 
@@ -15,11 +17,14 @@ async function seededClient(mutate?: (d: Dashboard) => Dashboard) {
   qc.setQueryData(qk.dashboard, mutate ? mutate(dash) : dash);
   qc.setQueryData(qk.parties.list(), await get<Party[]>("/parties"));
   qc.setQueryData(qk.documents.list({ status: "needs_review" }), await get<Document[]>("/documents", "status=needs_review"));
+  qc.setQueryData(qk.documents.list({ status: "failed" }), await get<Document[]>("/documents", "status=failed"));
   qc.setQueryData(qk.documents.list({}), await get<Document[]>("/documents"));
   qc.setQueryData(qk.brief, await get<Brief>("/brief"));
   qc.setQueryData(qk.profile, await get<Profile>("/profile"));
   return qc;
 }
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("Today page", () => {
   it("renders the day for Sam without raw enum values", async () => {
@@ -103,5 +108,47 @@ describe("Today page", () => {
     expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
     expect(screen.queryByText(/All clear/)).toBeNull();
     expect(screen.queryByText(/Nothing needs you/)).toBeNull();
+  });
+
+  it("never says 'all clear' while letters couldn't be read, and offers to try again", async () => {
+    // UX U2: with two failed letters Today said "All clear" three times while the Inbox said "Please check 2"
+    const { calls } = useMockApi();
+    const client = await seededClient((d) => ({
+      ...d,
+      attention: [],
+      decisions: [],
+      waiting: 0,
+      upcoming: d.upcoming.filter((i) => (i.send_by ?? i.due_date ?? "") >= "2026-10-14"),
+    }));
+    const docs = client.getQueryData<Document[]>(qk.documents.list({})) ?? [];
+    const failed = docs.slice(0, 2).map((d) => ({ ...d, status: "failed" as const, error: "Claude is not signed in." }));
+    client.setQueryData(qk.documents.list({ status: "failed" }), failed);
+    client.setQueryData(qk.brief, undefined);
+    renderWithProviders(<TodayView />, { client });
+    const card = await screen.findByRole("region", { name: "2 letters couldn't be read" });
+    expect(card).toHaveTextContent("Ordnung can't tell you what they ask or by when until they're read.");
+    expect(within(card).getByRole("link", { name: /See them/ })).toHaveAttribute("href", "/inbox?filter=check");
+    expect(screen.getByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
+    expect(screen.getByText("2 letters aren't read yet — their dates show up here once they're read.")).toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.queryByText(/Nothing needs you/)).toBeNull();
+
+    const user = userEvent.setup();
+    await user.click(within(card).getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/reprocess")).map((c) => c.path)).toEqual(
+        failed.map((d) => `/documents/${d.id}/reprocess`),
+      ),
+    );
+  });
+
+  it("names the one letter that couldn't be read and leads to it", async () => {
+    const client = await seededClient();
+    const [doc] = client.getQueryData<Document[]>(qk.documents.list({})) ?? [];
+    client.setQueryData(qk.documents.list({ status: "failed" }), [{ ...doc!, status: "failed" as const }]);
+    renderWithProviders(<TodayView />, { client });
+    const card = await screen.findByRole("region", { name: "1 letter couldn't be read" });
+    expect(card).toHaveTextContent("Ordnung can't tell you what it asks or by when until it's read.");
+    expect(within(card).getByRole("link", { name: /Open it/ })).toHaveAttribute("href", `/documents/${doc!.id}`);
   });
 });

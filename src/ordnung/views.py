@@ -39,7 +39,7 @@ from ordnung.numbers import NumbersInput, build_my_numbers
 from ordnung.payments import is_collected_or_incoming, is_direct_debit, pays_on_site
 from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
-from ordnung.secretary.brief import build_agenda
+from ordnung.secretary.brief import build_agenda, is_unread
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -328,7 +328,9 @@ def _collect_areas(ledger: Ledger) -> dict[str, _AreaFacts]:
     today = ledger.today
     facts: dict[str, _AreaFacts] = {}
     for doc in ledger.documents.values():
-        if not is_held(doc):  # waiting letters are not filed yet (Dashboard.waiting counts them)
+        # letters not read (waiting from the folder, being read, couldn't be read) are filed nowhere yet: an
+        # area of them alone would say "All good · 2 letters, nothing due" (UX U2)
+        if not is_unread(doc):
             facts.setdefault(document_area(ledger, doc), _AreaFacts()).documents += 1
     for item in ledger.actionable_items():
         area = facts.setdefault(item_area(ledger, item), _AreaFacts())

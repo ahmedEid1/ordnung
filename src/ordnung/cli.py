@@ -867,7 +867,9 @@ async def _ask_in_process(ctx: AppContext, question: str, printer: _AnswerPrinte
     from ordnung.assistant.ask import ask_stream
     from ordnung.demo.tour import demo_safe_stream
 
-    events: AsyncIterator[Any] = demo_safe_stream(ask_stream(ctx, question), demo=ctx.settings.demo)
+    events: AsyncIterator[Any] = demo_safe_stream(
+        ask_stream(ctx, question), demo=ctx.settings.demo, question=question
+    )
     async for event in events:
         printer.handle(event.model_dump(exclude={"response"}, mode="json"))
 

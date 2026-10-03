@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from ordnung import clock
 from ordnung.api.app import create_app
 from ordnung.app_context import build_context
-from ordnung.assistant.ask import DEMO_MISS
+from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS
 from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
@@ -251,4 +251,20 @@ async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Pa
                 "error": DEMO_MISS,
                 "error_code": "demo_miss",
             }
+        ]
+
+
+async def test_demo_says_how_to_start_over_when_a_suggested_question_misses(
+    data_dir: Path, tmp_path: Path
+) -> None:
+    """FEAT G2: a suggested question misses only once the person changed the demo; the API (and the CLI
+    through it) says so instead of "try one of the suggested questions"."""
+    tour = pytest.importorskip("ordnung.demo.tour")
+    async with api_for(data_dir, demo=True) as api:
+        api.ctx.llm.backend = ReplayBackend(tmp_path / "no-fixtures")
+        question = tour.suggested_questions()[0]
+        response = await api.client.post("/api/ask", json={"question": question})
+        events = [json.loads(message["data"]) for message in sse_messages(response.text)]
+        assert events == [
+            {"type": "error", "text": DEMO_CHANGED, "error": DEMO_CHANGED, "error_code": "demo_changed"}
         ]

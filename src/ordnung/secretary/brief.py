@@ -6,7 +6,8 @@ model, so a note is always available. :func:`brief_text` asks the model for 2–
 in the person's language and accepts them only if every date and amount they mention is in the
 agenda (and no § appears) and no send-by day is called a due date — otherwise the code-generated
 text is used. Model calls are cached per day and agenda hash; the latest brief of a day is kept in
-meta ``brief:<date>``.
+meta ``brief:<date>`` with the key of the agenda it was written from, and a note by the model is shown
+only while the agenda still has that key (:func:`current_brief`).
 """
 
 from __future__ import annotations
@@ -21,14 +22,13 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
-from ordnung.ingest.held import is_held
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import parse_amounts, parse_dates
 from ordnung.llm.base import LLMError, LLMRequest
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.llm.schemas import brief_schema
-from ordnung.models import AppSettings, BriefOutput, Item, Profile, RefLink, Suggestion
+from ordnung.models import AppSettings, BriefOutput, Document, Item, Profile, RefLink, Suggestion
 from ordnung.secretary.review import (
     Facts,
     correct_weekdays,
@@ -59,6 +59,9 @@ MAX_IDEAS = 3
 MAX_LISTED = 3
 MAX_BRIEF_CHARS = 700
 BRIEF_META_PREFIX = "brief:"
+#: Statuses of a letter Ordnung has not read: it waits in the watched folder for the person, it is being read,
+#: or it couldn't be read (Claude missing or signed out, an answer that could not be used).
+UNREAD_STATUSES = frozenset({"held", "queued", "processing", "failed"})
 
 
 class AgendaEntry(BaseModel):
@@ -96,8 +99,9 @@ class Agenda(BaseModel):
     payments_total_other_currencies: dict[str, float] = Field(default_factory=dict)
     decisions: list[AgendaEntry] = Field(default_factory=list)
     new_ideas: list[AgendaEntry] = Field(default_factory=list)
-    #: Letters from the watched folder that wait for the person: not read, so nothing of them is above
-    #: (never sent to the model; the code-written note then never says "all clear").
+    #: Letters Ordnung has not read (:func:`is_unread`): from the watched folder waiting for the person,
+    #: being read, or that couldn't be read — nothing of them is above, so the code-written note never says
+    #: "all clear" while there are any (never sent to the model).
     waiting: int = 0
 
     def entries(self) -> list[AgendaEntry]:
@@ -125,6 +129,17 @@ class Brief(BaseModel):
     text: str
     source: Literal["llm", "template"]
     generated_at: str | None = None
+
+
+class StoredBrief(Brief):
+    """The brief of a day as kept in meta ``brief:<date>``, with the key of the agenda it was written from
+    (:func:`brief_cache_key`; ``None`` for a brief stored before it was kept)."""
+
+    agenda: str | None = None
+
+    def served(self) -> Brief:
+        """The brief as ``GET /api/brief`` serves it (without the agenda's key)."""
+        return Brief.model_validate(self.model_dump(exclude={"agenda"}))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -211,6 +226,12 @@ def _decisions(ledger: Ledger) -> list[AgendaEntry]:
     return _sorted(entries)
 
 
+def is_unread(doc: Document) -> bool:
+    """Whether Ordnung has not read ``doc``: held from the watched folder, queued or being read, or failed
+    (and not in the trash). A letter kept private was looked through by the person, not left unread."""
+    return doc.deleted_at is None and doc.status in UNREAD_STATUSES
+
+
 def build_agenda(store: Store, today: date) -> Agenda:
     """The deterministic agenda for ``today`` (entries sorted by date, title, id)."""
     ledger = Ledger(store, today)
@@ -255,7 +276,7 @@ def build_agenda(store: Store, today: date) -> Agenda:
         },
         decisions=_decisions(ledger),
         new_ideas=[_idea_entry(idea) for idea in ideas],
-        waiting=sum(1 for doc in ledger.documents.values() if is_held(doc)),
+        waiting=sum(1 for doc in ledger.documents.values() if is_unread(doc)),
     )
 
 
@@ -732,33 +753,42 @@ def brief_key(day: date) -> str:
     return f"{BRIEF_META_PREFIX}{day.isoformat()}"
 
 
-def get_brief(store: Store, day: date) -> Brief | None:
+def get_brief(store: Store, day: date) -> StoredBrief | None:
     """The stored brief of ``day`` (``None`` if none was generated yet)."""
     raw = store.get_meta(brief_key(day))
-    return Brief.model_validate_json(raw) if raw else None
+    return StoredBrief.model_validate_json(raw) if raw else None
 
 
 def current_brief(store: Store, day: date) -> Brief:
-    """The note to show for ``day``: the stored one written by the model, else the code-written note
-    as the ledger stands now — the stored one (with the time it was written) while it still says the
-    same. A code-written note costs nothing to write again, so it never goes stale: a letter picked up
-    from the watched folder or answered since changes it at once."""
+    """The note to show for ``day``: the stored one written by the model while the agenda it was written
+    from still has the same key (:func:`brief_cache_key`), else the code-written note as the ledger stands
+    now — the stored one (with the time it was written) while it still says the same. A to-do marked paid
+    or a letter read since makes the model's note stale ("the most urgent thing is" the reminder just
+    paid); the code-written note costs nothing to write again, so it never goes stale: a letter picked up
+    from the watched folder or answered since changes it at once. "Write a new note" asks the model again."""
     stored = get_brief(store, day)
-    if stored is not None and stored.source == "llm":
-        return stored
     agenda = build_agenda(store, day)
+    if (
+        stored is not None
+        and stored.source == "llm"
+        and stored.agenda == brief_cache_key(agenda, store.get_profile())
+    ):
+        return stored.served()
     text = agenda_text(agenda)
-    if stored is not None and stored.text == text:
-        return stored
+    if stored is not None and stored.source == "template" and stored.text == text:
+        return stored.served()
     return Brief(date=agenda.date, text=text, source="template")
 
 
 async def generate_brief(store: Store, llm: LLMService | None, today: date) -> Brief:
-    """Build the agenda, write the note (model if ``llm`` is given, else code) and store it in meta."""
+    """Build the agenda, write the note (model if ``llm`` is given, else code) and store it in meta with
+    the key of the agenda it was written from."""
     agenda = build_agenda(store, today)
+    profile = store.get_profile()
     if llm is None:
         brief = Brief(date=agenda.date, text=agenda_text(agenda), source="template", generated_at=now_iso())
     else:
-        brief = await brief_text(llm, agenda, store.get_profile(), settings=store.get_settings())
-    store.set_meta(brief_key(today), brief.model_dump_json())
+        brief = await brief_text(llm, agenda, profile, settings=store.get_settings())
+    stored = StoredBrief(**brief.model_dump(), agenda=brief_cache_key(agenda, profile))
+    store.set_meta(brief_key(today), stored.model_dump_json())
     return brief

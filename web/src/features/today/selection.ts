@@ -552,12 +552,15 @@ function verbPhrase(a: TodayAction): string {
  * Code-generated fallback for the secretary's note (when the AI note is unavailable): one or two
  * plain sentences built only from the ledger, so every date and amount is right by construction.
  */
-export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0): string {
-  // letters from the watched folder nobody read: their dates are unknown, so nothing is "all clear"
-  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
+export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0, failed = 0): string {
+  // letters from the watched folder nobody read, and letters that couldn't be read: their dates are unknown,
+  // so nothing is "all clear"
+  const held = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
+  const broken = failed ? ` ${failed === 1 ? "One letter" : `${failed} letters`} couldn't be read.` : "";
+  const unread = `${held}${broken}`;
   if (!top.length) {
     const next = upcoming[0];
-    if (waiting) return `Nothing due from the letters that were read.${unread}`;
+    if (unread) return `Nothing due from the letters that were read.${unread}`;
     if (!next) return "Nothing needs you right now. New letters will show up here as soon as they're read.";
     return `Nothing needs you this week. Next up: ${verbPhrase(next)} ${next.dateRole === "on" ? "on" : "by"} ${shortDay(next.actionDate, today)}.`;
   }

@@ -21,6 +21,7 @@ from ordnung.secretary.brief import (
     brief_request,
     brief_text,
     build_agenda,
+    current_brief,
     generate_brief,
     get_brief,
     grounded_note,
@@ -103,6 +104,28 @@ def test_agenda_text_is_never_all_clear_while_letters_wait() -> None:
     assert brief_request(agenda, Profile(), AppSettings()) == brief_request(unread, Profile(), AppSettings())
 
 
+@pytest.mark.parametrize("status", ["failed", "held", "queued", "processing"])
+def test_letters_not_read_are_waiting_so_the_note_is_never_all_clear(store: Store, status: str) -> None:
+    """UX U2: a letter that couldn't be read (Claude signed out, an answer that could not be used) — or that
+    waits in the folder or is being read — is in no section of the agenda, so the note says nothing is due
+    from the letters that were read instead of "All clear" (Today said it three times while the Inbox said
+    "Please check 2")."""
+    add_doc(store, "read")
+    add_doc(store, "unread", status=status)
+    deleted = add_doc(store, "deleted", status="failed")
+    store.update_document(deleted, deleted_at="2026-09-27T10:00:00Z")
+    agenda = build_agenda(store, TODAY)
+    assert agenda.waiting == 1 and agenda.is_empty()
+    assert agenda_text(agenda) == "Nothing is due in the next 7 days from the letters that were read."
+    assert "All clear" not in current_brief(store, TODAY).text
+
+
+def test_a_letter_kept_private_is_not_waiting(store: Store) -> None:
+    """The person chose to look through a private letter themselves: it is not left unread."""
+    add_doc(store, "private", ai_private=True)
+    assert build_agenda(store, TODAY).waiting == 0
+
+
 def test_grounded_note_rejects_invented_facts(store: Store, ids: dict[str, str]) -> None:
     agenda = build_agenda(store, TODAY)
     assert grounded_note(GOOD_NOTE, agenda)
@@ -171,12 +194,49 @@ async def test_generate_brief_stores_the_brief_of_the_day(store: Store, ids: dic
     assert get_brief(store, TODAY) is None
     stored = await generate_brief(store, None, TODAY)
     assert stored.source == "template"
-    assert get_brief(store, TODAY) == stored
+    kept = get_brief(store, TODAY)
+    assert kept is not None and kept.served() == stored
+    # with the key of the agenda it was written from
+    assert kept.agenda == brief_cache_key(build_agenda(store, TODAY), store.get_profile())
     llm = LLMService(FakeBackend({"brief": {"text": GOOD_NOTE}}), sink=store)
     updated = await generate_brief(store, llm, TODAY)
     assert updated.source == "llm"
     loaded = get_brief(store, TODAY)
     assert loaded is not None and loaded.text == GOOD_NOTE
+
+
+async def test_the_models_note_is_shown_only_while_its_agenda_is_unchanged(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """FEAT N1: after the TechMarkt reminder is paid, a note that calls it "the most urgent thing" (with a
+    footer saying every amount was checked) gives way to the code-written note of the agenda as it is."""
+    llm = LLMService(FakeBackend({"brief": {"text": GOOD_NOTE}}), sink=store)
+    written = await generate_brief(store, llm, TODAY)
+    assert written.source == "llm"
+    assert current_brief(store, TODAY) == written  # served as written, without the agenda's key
+    assert "agenda" not in current_brief(store, TODAY).model_dump()
+
+    store.update_item(ids["dunning_payment"], status="done")
+    now = current_brief(store, TODAY)
+    assert now.source == "template" and now.generated_at is None
+    assert now.text == agenda_text(build_agenda(store, TODAY))
+    assert "TechMarkt" not in now.text
+
+    store.update_item(ids["dunning_payment"], status="open")  # put back: the note fits again
+    assert current_brief(store, TODAY) == written
+
+
+async def test_a_models_note_stored_without_its_agendas_key_is_not_vouched_for(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """A note kept before the key was stored (an update during the day) can't be checked against the
+    agenda, so the code-written one is shown until the next note."""
+    llm = LLMService(FakeBackend({"brief": {"text": GOOD_NOTE}}), sink=store)
+    await generate_brief(store, llm, TODAY)
+    kept = get_brief(store, TODAY)
+    assert kept is not None
+    store.set_meta(f"brief:{TODAY.isoformat()}", kept.served().model_dump_json())
+    assert current_brief(store, TODAY).source == "template"
 
 
 # --------------------------------------------------------------------------------------------------

@@ -798,6 +798,26 @@ def test_a_letter_waiting_or_kept_private_unread_is_never_filed(store: Store, id
     assert notes[filed] == ("Nothing to do — filed.", "ok")
 
 
+def test_older_letters_not_read_are_listed_every_week(store: Store, ids: dict[str, str]) -> None:
+    """UX U2: Today counts the letters that couldn't be read (or wait from the folder) until they are read,
+    so the review lists them too, whenever they came — not only in the week they arrived."""
+    _all_created(store, _stamp(TODAY - timedelta(days=20)))
+    store.set_meta(SESSION_KEY, _stored(TODAY - timedelta(days=7)))
+    failed = add_doc(store, "failed-scan", status="failed")
+    held = add_doc(store, "held-scan", status="held", ai_private=True)
+    old_filed = add_doc(store, "old-filed", kind="invoice", title="Filed long ago")
+    for doc in (failed, held, old_filed):
+        _created(store, doc, _stamp(TODAY - timedelta(days=20)))
+    fresh = add_doc(store, "fresh", kind="invoice", title="This week's letter")
+    _created(store, fresh, _stamp(TODAY - timedelta(days=1)))
+    new = _step(weekly_session(store, TODAY), "new")
+    assert set(_refs(new)) == {failed, held, fresh}
+    assert _refs(new)[-1] == fresh  # the two that need the person first
+    notes = {entry.ref.id: entry.note for entry in new.entries}
+    assert notes[failed] == "Couldn't be read — open it to try again."
+    assert new.summary == "1 letter since Mon 21 Sep · 2 older letters not read yet"
+
+
 def test_the_first_session_looks_back_a_week(store: Store, ids: dict[str, str]) -> None:
     _all_created(store, _stamp(TODAY - timedelta(days=8)))
     recent = add_doc(store, "recent", kind="invoice", title="Recent")

@@ -565,11 +565,11 @@ def _fake_demo_module(monkeypatch: pytest.MonkeyPatch, api: Api) -> dict[str, An
         opened["doc_id"] = document.id
         return document, job
 
-    def suggested_questions() -> list[str]:
+    def recorded_questions(ctx: object) -> list[str]:
         return ["What do I have to pay?", "When does my phone contract end?"]
 
     module = types.ModuleType("ordnung_test_demo")
-    for function in (get_tour, update_tour, list_mail, open_mail, suggested_questions):
+    for function in (get_tour, update_tour, list_mail, open_mail, recorded_questions):
         setattr(module, function.__name__, function)
     monkeypatch.setitem(sys.modules, "ordnung_test_demo", module)
     monkeypatch.setattr(demo_routes, "DEMO_MODULES", ("ordnung_test_demo_missing", "ordnung_test_demo"))
