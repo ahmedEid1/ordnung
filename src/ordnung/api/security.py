@@ -13,11 +13,10 @@ Ordnung listens on 127.0.0.1 only, but any web page the person visits can try to
   that cookie or ``Authorization: Bearer <token>``. The cookie is named per port because browsers send
   a cookie to every port of a host: the demo and the real app would otherwise sign each other out (the
   cookie still reaches other servers on localhost; only a token kept out of cookies would not).
-  ``ordnung serve``
-  opens the browser with a private local page that forwards to that link (so the token is never on a
-  command line); that page load is cross-site, so a page load carrying the *valid* token is accepted
-  from anywhere and answered with a same-origin forward instead of a redirect (knowing the token is
-  already full access). ``/api/health`` answers without it (with minimal information). The token is
+  ``ordnung serve`` opens the browser with a private local page that forwards to that link (so the
+  token is never on a command line); that page load is cross-site, so a page load carrying the *valid*
+  token is accepted from anywhere and answered with a same-origin forward instead of a redirect
+  (knowing the token is already full access). ``/api/health`` answers without it (with minimal information). The token is
   never accepted in an API URL, where it would end up in other programs. ``token=None`` turns the
   token check off (tests, ``--no-token``).
 
