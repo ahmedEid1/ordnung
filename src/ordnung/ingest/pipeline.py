@@ -1007,6 +1007,7 @@ async def _run_stages(
         check_reading=True,
         injected=bool(injected),
         today=arrived,
+        cross_check=reading.cross_check,
     )
     await progress.stage("compute")
     profile = store.get_profile()

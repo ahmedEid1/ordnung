@@ -429,17 +429,21 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    the first reading with the check behind it**: its answer is used only when it validates and
    `extract.judge_completion` finds, against the to-do the check files for the first reading (the floor), that
    it is strictly less incomplete also with the first answer's kind, high-stakes kind, sender and letter date
-   pinned; its letter date is no later than the first's (or, where the first gave none, the letter's own);
-   every dated to-do of the first is kept on the same or an earlier date; the floor is covered (a to-do dating
-   the objection, or the check's own to-do for it at least as dated; a dated to-do found on the letter where
-   the floor asks the person to read it); it gives no objection date where the floor has none and none that
-   may end after a dated floor (by shape, and computed in its own context in every Land: zero tolerance);
-   every dated to-do it adds and any sender it newly names is found on the letter; and at least the first
-   answer's share of its quotes is found. Otherwise — and on any model error (`unanswered`) or an unusable
-   answer — the first reading is kept and the check files its to-do as without the re-ask; only a replay miss
-   raises (the demo replays strictly). It is never repaired, and never sent once the letter was trashed or
-   deleted meanwhile (nor is the repair). An accepted answer adds a letter warning (no scam sign) that the
-   first answer left something out and Ordnung asked once more. Its trace step is "Extract · complete"
+   pinned; its letter date is the first's, or (earlier, or where the first gave none) the one the letter gives
+   for itself; every dated to-do of the first is kept on the same or an earlier date, also as computed in each
+   reading's own context in every Land; the floor is covered (a to-do dating the objection, or the check's own
+   to-do for it at least as dated; a dated to-do found on the letter where the floor asks the person to read
+   it); it gives no objection date — nor a dated to-do naming a remedy under another nature — where the floor
+   has none, and none that may end after a dated floor (by shape, and computed in every Land with the floor in
+   the first reading's context: zero tolerance, even where the later date is legally right); every dated to-do
+   it adds and any sender it names anew or otherwise is found on the letter; and at least the first answer's
+   share of its quotes is found. Otherwise — and on any model error (`unanswered`) or an unusable answer — the
+   first reading is kept and the check files its to-do as without the re-ask; only a replay miss raises (the
+   demo replays strictly). It is never repaired, and never sent once the letter was trashed or deleted meanwhile
+   (nor is the repair). An accepted answer adds a letter warning (no scam sign) that the first answer left
+   something out and Ordnung asked once more; where the floor was "Read this letter yourself", that to-do stays
+   beside the answer as a low "Please check" cross-check ("Check the letter for a missed deadline",
+   `extract.cross_check`). Its trace step is "Extract · complete"
    (`extract_complete`: the gap, whether its answer was used, why not) and its usage-log row names the call it
    completes (`repair_of`, which no repair count includes). The check at **verify** runs on whichever reading
    is kept.

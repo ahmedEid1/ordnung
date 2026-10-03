@@ -105,6 +105,12 @@ const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|
 export const REASK_WARNING = /^Claude's first answer for this letter left out/;
 
 /**
+ * The action of the cross-check Ordnung keeps beside that second answer after an almost blank first one, in the
+ * slot of its own to-do (`CROSS_CHECK_ACTION` in `src/ordnung/ingest/extract.py`).
+ */
+export const CROSS_CHECK = /^Ordnung's first reading of this letter came back blank/;
+
+/**
  * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
  * own note sits in the verdict, the count of unconfirmed dates is said by their own cards, the incomplete
  * reading's note only while its to-do needs checking).
@@ -469,9 +475,12 @@ function checkReason(item: Item, scam: boolean, notFound: boolean): string {
   if (scam)
     return "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know.";
   if (item.slot_key === READING_CHECK_SLOT) {
-    // the placeholder "Read this letter yourself" is a task; the objection deadline, dated or not, a deadline
+    // the placeholder "Read this letter yourself" is a task, and so is its cross-check beside a second answer
+    // Ordnung used (ADR 0016); the objection deadline, dated or not, a deadline
     if (item.kind === "task")
-      return "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do something by a date, give this to-do that date with “Set a date”.";
+      return CROSS_CHECK.test(item.action ?? "")
+        ? "Ordnung's first reading of this letter came back blank, so it asked Claude once more and used the second answer. Check the letter for a deadline Claude may have missed; if it gives one, give this to-do that date with “Set a date”."
+        : "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do something by a date, give this to-do that date with “Set a date”.";
     return item.due_date
       ? "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left it out."
       : "Ordnung found the letter's instructions on how to object but couldn't work out the date from them — enter the deadline with “Set a date”.";

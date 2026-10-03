@@ -1,0 +1,1 @@
+import{lr as e}from"./scale-DH8NwxaN.js";var t={name:`chart-no-axes-gantt`,size:24,node:[[`path`,{d:`M6 5h12`,key:`fvfigv`}],[`path`,{d:`M4 12h10`,key:`oujl3d`}],[`path`,{d:`M12 19h8`,key:`baeox8`}]],aliases:[`gantt-chart`]};t.node;var n=e(t),r={name:`chevron-up`,size:24,node:[[`path`,{d:`m18 15-6-6-6 6`,key:`153udz`}]]};r.node;var i=e(r);export{n,i as t};

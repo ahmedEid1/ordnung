@@ -18,7 +18,8 @@ untrusted block; the note quotes neither the letter nor the answer), a stricter 
 (the *baseline*): its answer replaces the first only when :func:`judge_completion` finds every rule kept —
 less incomplete with the first answer's facts pinned, the letter's date no later, no dated to-do of the first
 lost or later, the check's to-do covered, no objection date later than the check's (and none at all where the
-check can't date it), every new dated to-do found on the letter, and its quotes found at least as well.
+check can't date it), every new dated to-do found on the letter, and its quotes found at least as well; a
+"Read this letter yourself" the check filed stays beside the accepted answer as a cross-check.
 Every other outcome — a rejected, unusable or missing answer — is exactly the baseline: the first reading is
 kept and the reading check files its to-do as without the re-ask.
 """
@@ -395,6 +396,10 @@ _CHECK_RANK = {"dated": 2, "undated": 1, "read_yourself": 0}
 #: The Länder an objection date is compared in (``None``: nationwide holidays only).
 _REGIONS: tuple[str | None, ...] = (None, *REGION_NAMES)
 _UNITS = ("days", "weeks", "months")
+#: A remedy named in a to-do's title or quote (as the reading check names one).
+_NAMES_REMEDY = re.compile(
+    r"widerspr\w*|einspr\w*|\bklage\w*|\bobjection\w*|\bobject\b|\bappeal\w*", re.IGNORECASE
+)
 
 
 @dataclass(frozen=True)
@@ -416,10 +421,34 @@ class Completion:
 
 @dataclass(frozen=True)
 class Reading:
-    """The extraction kept for a letter, and its completeness re-ask if it had one."""
+    """The extraction kept for a letter, and its completeness re-ask if it had one. ``cross_check``: the to-do
+    the reading check filed for the first reading, kept beside an accepted re-ask's answer when it asked the person
+    to read the letter (:func:`cross_check`) — :func:`~ordnung.ingest.plan.verify_extraction` files it."""
 
     extraction: DocumentExtraction
     completion: Completion | None = None
+    cross_check: Check | None = None
+
+
+#: The to-do kept beside an accepted answer after an almost blank first reading the check could only answer with
+#: "Read this letter yourself" (:func:`cross_check`): a cross-check, low and "Please check" like the check's own.
+CROSS_CHECK_TITLE = "Check the letter for a missed deadline"
+CROSS_CHECK_ACTION = (
+    "Ordnung's first reading of this letter came back blank — check the letter for a deadline Claude may have "
+    "missed. If it gives one, give this to-do that date; mark it done once you have checked."
+)
+
+
+def cross_check(floor: Check | None) -> Check | None:
+    """The check's to-do for the first reading (``floor``) that stays beside an accepted re-ask's answer: only
+    "Read this letter yourself" — an answer can't be held against it (the check found no notice it could read), so
+    it is kept as a cross-check: undated, low priority, in the check's slot (graded "Please check")."""
+    if floor is None or floor.kind != "read_yourself":
+        return None
+    item = floor.item.model_copy(
+        update={"title": CROSS_CHECK_TITLE, "action": CROSS_CHECK_ACTION, "priority": "low"}
+    )
+    return floor._replace(item=item)
 
 
 #: What the first answer left out, as the letter's warning says it once the re-ask's answer was used.
@@ -517,13 +546,52 @@ def _same_or_earlier(mine: ExtractedItem, theirs: ExtractedItem) -> bool:
     return first.model_dump(include=set(_DATING)) == second.model_dump(include=set(_DATING))
 
 
-def _kept(item: ExtractedItem, second: DocumentExtraction) -> bool:
+def _kept(item: ExtractedItem, first: DocumentExtraction, second: DocumentExtraction, today: date) -> bool:
     """Whether a dated to-do of the first answer is in the re-ask's: the same kind, the same sentence, a date
-    no later."""
+    no later — by its DateSpec, and as computed in each reading's own context in every Land (the same DateSpec
+    counts later under another sender: a tax office's weekend move, a court's arrival)."""
     return any(
-        other.kind == item.kind and _same_place(item.quote, other.quote) and _same_or_earlier(item, other)
+        other.kind == item.kind
+        and _same_place(item.quote, other.quote)
+        and _same_or_earlier(item, other)
+        and _due_no_later(item, other, first, second, today)
         for other in second.items
     )
+
+
+def _due_no_later(
+    mine: ExtractedItem,
+    theirs: ExtractedItem,
+    first: DocumentExtraction,
+    second: DocumentExtraction,
+    today: date,
+) -> bool:
+    """Whether ``theirs`` (the re-ask's) ends no later than ``mine`` (the first answer's), each computed in its own
+    reading's context in every Land, with or without an arrival on ``today`` confirmed (a court's or a private
+    sender's period runs from it): the re-ask's latest against the first's earliest. A date the first's context
+    can't compute is held to the DateSpec alone."""
+    if mine.date.type == "none":
+        return True  # dated by its recurrence alone: held to the same recurrence
+
+    def dues(item: ExtractedItem, reading: DocumentExtraction, region: str | None) -> list[date | None]:
+        ctx = replace(_context(reading, today, region), quote=item.quote)
+        return [
+            _iso_day(
+                compute_due(
+                    item.date,
+                    replace(ctx, received_date=arrival, received_confirmed=arrival is not None),
+                    postal_buffer_days=0,
+                ).due_date
+            )
+            for arrival in (None, today)
+        ]
+
+    for region in _REGIONS:
+        was = [day for day in dues(mine, first, region) if day is not None]
+        now = dues(theirs, second, region)
+        if was and (None in now or max(day for day in now if day is not None) > min(was)):
+            return False
+    return True
 
 
 def _repeated(item: ExtractedItem, first: DocumentExtraction) -> bool:
@@ -534,11 +602,12 @@ def _repeated(item: ExtractedItem, first: DocumentExtraction) -> bool:
 def _sender_found(
     doc_id: str, first: DocumentExtraction, second: DocumentExtraction, pages: Sequence[Page]
 ) -> bool:
-    """Whether a sender the re-ask names where the first answer named none is found on the letter (its name
-    looked up like a quote): an invented sender never becomes the letter's — nor decides its delivery rules."""
-    if first.sender is not None and first.sender.name.strip():
-        return True
+    """Whether a sender the re-ask names — where the first answer named none, or another — is found on the letter
+    (its name looked up like a quote): an invented or renamed sender never becomes the letter's, nor decides its
+    delivery rules. The first answer's own sender, named again, needs no looking up."""
     if second.sender is None or not second.sender.name.strip():
+        return True
+    if first.sender is not None and _words(first.sender.name) == _words(second.sender.name):
         return True
     evidence, _ = check_quote(doc_id, second.sender.name, pages)
     return evidence.grounding != "unverified"
@@ -559,16 +628,16 @@ def _pinned(first: DocumentExtraction, second: DocumentExtraction) -> DocumentEx
 def _date_kept(
     first: DocumentExtraction, second: DocumentExtraction, pages: Sequence[Page], notices: Any, today: date
 ) -> bool:
-    """Whether the re-ask's letter date may stand: the first answer's, or an earlier one the letter's own dates
-    agree with (never a later one), and where the first gave none, exactly the date the letter gives for
-    itself."""
+    """Whether the re-ask's letter date may stand: the first answer's, or — earlier, or where the first gave
+    none — exactly the date the letter gives for itself (:func:`~ordnung.ingest.gaps.letter_date` without any
+    reading's date); never a later one, nor an earlier one only the reading gives."""
     mine, theirs = _iso_day(first.document_date), _iso_day(second.document_date)
-    if mine is not None:
-        return theirs is not None and (
-            theirs == mine or (theirs < mine and letter_date(second, pages, notices, today=today) is not None)
-        )
+    if mine is not None and theirs == mine:
+        return True
     if theirs is None:
-        return not second.document_date  # a date it gives must be readable
+        return mine is None and not second.document_date  # a date it gives must be readable
+    if mine is not None and theirs > mine:
+        return False
     own = letter_date(first.model_copy(update={"document_date": None}), pages, notices, today=today)
     return own is not None and theirs == own
 
@@ -650,25 +719,41 @@ def _floor_due(floor: DateSpec, ctx: RuleContext) -> date | None:
     return min(found) if found else None
 
 
+def _arrived(ctx: RuleContext, region: str | None, arrival: date | None) -> RuleContext:
+    """``ctx`` in Land ``region``, with ``arrival`` confirmed as the day the letter arrived (``None``: no day)."""
+    return replace(ctx, region=region, received_date=arrival, received_confirmed=arrival is not None)
+
+
 def _never_later(
-    floor: DateSpec, dating: Sequence[tuple[DateSpec, str, bool]], second: DocumentExtraction, today: date
+    floor: DateSpec,
+    dating: Sequence[tuple[DateSpec, str, bool]],
+    first: DocumentExtraction,
+    second: DocumentExtraction,
+    today: date,
 ) -> bool:
     """Whether every objection date of the re-ask's reading (``dating``: its DateSpec, its quote, and whether it
     is the check's own to-do for that reading) ends no later than the check's date for the first: by shape
-    (:func:`_not_later_spec`), and computed by the rules engine in the reading's own context in every Land."""
+    (:func:`_not_later_spec`), and computed by the rules engine — the floor in the first reading's context, as the
+    baseline dates it, each date of the re-ask's in its own — in every Land, without an arrival day and with
+    ``today`` confirmed as one (a period from formal service runs from it)."""
     base = _context(second, today, None)
     if not all(_not_later_spec(floor, spec, second, base) for spec, _, _ in dating):
         return False
+    # the floor as the baseline dates it: in the first reading's context (its sender, or none), never the second's
+    floor_base = _context(first, today, None)
     for region in _REGIONS:
-        ctx = replace(base, region=region)
-        limit = _floor_due(floor, replace(ctx, letter_kind=None))
-        for spec, quote, own in dating:
-            if own:
-                due = _floor_due(spec, replace(ctx, letter_kind=None))
-            else:
-                due = _iso_day(compute_due(spec, replace(ctx, quote=quote), postal_buffer_days=0).due_date)
-            if limit is None or due is None or due > limit:
-                return False
+        for arrival in (None, today):
+            ctx = _arrived(base, region, arrival)
+            limit = _floor_due(floor, replace(_arrived(floor_base, region, arrival), letter_kind=None))
+            for spec, quote, own in dating:
+                if own:
+                    due = _floor_due(spec, replace(ctx, letter_kind=None))
+                else:
+                    due = _iso_day(
+                        compute_due(spec, replace(ctx, quote=quote), postal_buffer_days=0).due_date
+                    )
+                if limit is None or due is None or due > limit:
+                    return False
     return True
 
 
@@ -689,16 +774,19 @@ def judge_completion(
 
     1. strictly less incomplete, also with the first answer's kind, high-stakes kind, sender and letter date
        pinned wherever it gave them, and filed as the same high-stakes kind;
-    2. a letter date no later than the first answer's (and agreeing with the letter's own dates), or where the
-       first gave none, exactly the date the letter gives for itself;
-    3. every dated to-do of the first answer kept, on the same or an earlier date;
+    2. the first answer's letter date, or — earlier, or where the first gave none — exactly the date the letter
+       gives for itself;
+    3. every dated to-do of the first answer kept, on the same or an earlier date: by its DateSpec, and as
+       computed in each reading's own context (sender, letter kind) in every Land, with and without an arrival;
     4. the floor covered: a to-do dating the objection (read as the check reads it, with the letter's date as
        :func:`~ordnung.ingest.gaps.reading_gap` knows it), or the check's own to-do for this reading at least
-       as dated; where the floor asks the person to read the letter, a dated to-do found on it;
-    5. no objection date where the floor has none (the check couldn't date it: nothing to hold the answer's
-       date against), and none that may end after a dated floor (:func:`_never_later`);
+       as dated; where the floor asks the person to read the letter, a dated to-do found on it (the floor is
+       then kept beside it as a cross-check: :func:`cross_check`);
+    5. no objection date — nor a dated to-do naming a remedy, whatever nature it is filed under — where the
+       floor has none (the check couldn't date it: nothing to hold the answer's date against), and none that may
+       end after a dated floor, the floor dated in the first reading's context (:func:`_never_later`);
     6. every dated to-do it adds found on the letter (in its text layer or a photo's transcript), and so the
-       sender it names where the first answer named none;
+       sender it names where the first answer named none or another;
     7. at least the first answer's share of its quotes found on the letter (:func:`located`)."""
     day = today or date.today()
     notices = remedy_notices(pages)
@@ -711,7 +799,7 @@ def judge_completion(
         return "not_better"
     if not _date_kept(first, second, pages, notices, day):
         return "date"
-    if not all(_kept(item, second) for item in first.items if _is_dated(item)):
+    if not all(_kept(item, first, second, day) for item in first.items if _is_dated(item)):
         return "dropped"
     floor: Check | None = check_item(first, pages, injected=injected, today=day)
     own: Check | None = check_item(second, pages, injected=injected, today=day) if own_gap else None
@@ -719,6 +807,18 @@ def judge_completion(
     # the letter gives none the check could count from
     dated = _iso_day(second.document_date) is not None or letter_date(second, pages, notices) is None
     objections = [item for item in second.items if dates_the_objection(item, notices, second, dated=dated)]
+    # a dated to-do it adds that names a remedy but isn't read as dating the objection (filed under another nature,
+    # quoting words outside the notice): held to the floor like one — never a later "Widerspruch" beside it
+    named = [
+        item
+        for item in second.items
+        if item not in objections
+        and item.kind != "payment"
+        and item.date.nature != "payment"
+        and _is_dated(item)
+        and not _repeated(item, first)
+        and _NAMES_REMEDY.search(f"{item.title} {item.quote}")
+    ]
     verified = verify_extraction(doc_id, second, pages)
     found = [v for v in verified.items if _is_dated(v.item) and v.evidence.grounding != "unverified"]
     if floor is not None:
@@ -730,15 +830,15 @@ def judge_completion(
             )
         if not covered:
             return "uncovered"
-    if objections and (floor is None or floor.kind != "dated"):
+    if (objections or named) and (floor is None or floor.kind != "dated"):
         return "unchecked"
     if floor is not None and floor.kind == "dated":
-        dating = [(item.date, item.quote, False) for item in objections]
+        dating = [(item.date, item.quote, False) for item in (*objections, *named)]
         if own is not None:
             if own.kind != "dated":
                 return "uncovered"
             dating.append((own.item.date, own.item.quote, True))
-        if not _never_later(floor.item.date, dating, second, day):
+        if not _never_later(floor.item.date, dating, first, second, day):
             return "later"
     if any(
         _is_dated(v.item) and v.evidence.grounding == "unverified" and not _repeated(v.item, first)
@@ -807,7 +907,7 @@ async def _complete(
 ) -> Reading:
     """The one completeness re-ask of a reading found incomplete (``gap``), on a model step of its own whose
     usage-log row names the call it completes (``completes``, kept as the row's ``repair_of``)."""
-    kept = first
+    kept, kept_check = first, None
     with trace.span("model", "Extract · complete", key="extract_complete", stage="extract") as step:
         try:
             response = await llm.complete(
@@ -840,8 +940,10 @@ async def _complete(
             completion = Completion(gap, accepted=reason is None, kept_because=reason)
             if completion.accepted:
                 kept = second
+                floor = await asyncio.to_thread(check_item, first, data.pages, injected=injected, today=today)
+                kept_check = cross_check(floor)
         step.set(**facts.completion(gap, accepted=completion.accepted, kept_because=completion.kept_because))
-    return Reading(kept, completion)
+    return Reading(kept, completion, kept_check)
 
 
 async def read_document(
@@ -870,7 +972,9 @@ async def read_document(
     ``before_again`` runs right before a further call sends the letter again (the repair, the re-ask) and
     raises to stop it (the app: the letter was trashed or deleted meanwhile). ``arrived`` and ``injected`` are
     what the reading check at verify gets (the day the letter arrived, default ``data.today``; text addressed
-    to software), so the re-ask is judged against the very to-do the check would file.
+    to software), so the re-ask is judged against the very to-do the check would file. An accepted answer
+    after a first reading the check could only meet with "Read this letter yourself" carries that to-do as
+    :attr:`Reading.cross_check`, for ``verify_extraction(cross_check=…)`` to file beside it.
     """
     request = extraction_request(data, model=model)
     extraction, call_id = await _read(

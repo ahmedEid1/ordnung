@@ -38,6 +38,7 @@ from ordnung.ingest.gaps import (
     CHECK_SLOT,
     LETTER_DATE_SPAN,
     NOTICE_REACH,
+    Check,
     RemedyNotice,
     check_item,
     check_reasons,
@@ -450,6 +451,7 @@ def verify_extraction(
     check_reading: bool = False,
     injected: bool = False,
     today: date | None = None,
+    cross_check: Check | None = None,
 ) -> Verification:
     """Ground every quote of ``extraction`` on ``pages`` and collect "please check" warnings.
 
@@ -461,6 +463,9 @@ def verify_extraction(
     warning a Klage gets (:func:`remedy_warnings`). ``injected``: the letter carries text addressed to an AI
     (the to-do's action then says where to send the objection); ``today``: the day the letter arrived or is
     read (a start resting on one date long before it is none: :func:`~ordnung.ingest.gaps.check_item`).
+    ``cross_check``: the check's "Read this letter yourself" for a first reading that a completeness re-ask's
+    answer (``extraction``) replaced (:func:`ordnung.ingest.extract.cross_check`, ADR 0016) — filed in the same
+    slot, graded the same, when the check files nothing for this reading; the re-ask's own warning says why.
 
     ``trace`` gets a ``verify`` step with one step per quote (:func:`ordnung.trace.facts.quote`); a reading
     found incomplete adds what was wrong and which to-do it got (:func:`ordnung.trace.facts.reading_check`).
@@ -504,11 +509,12 @@ def verify_extraction(
         if check_reading:
             items[:] = with_notice(items, extraction, pages)
         found = check_item(extraction, pages, injected=injected, today=today) if check_reading else None
-        if found is not None:
+        filed = found or (cross_check if check_reading else None)
+        if filed is not None:
             items.append(
                 _verify_item(
                     doc_id,
-                    found.item,
+                    filed.item,
                     CHECK_SLOT,
                     pages,
                     others=extraction.items,
@@ -516,6 +522,7 @@ def verify_extraction(
                     trace=step,
                 )
             )
+        if found is not None:
             step.set(**facts.reading_check(found.gap, found.kind))
         verification.warnings = _verification_warnings(verification)
         if found is not None:

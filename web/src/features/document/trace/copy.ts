@@ -54,7 +54,7 @@ const KEPT_BECAUSE: Record<string, string> = {
   dropped: "The first — this answer left out or moved a dated to-do of the first",
   uncovered: "The first — this answer didn't cover the deadline Ordnung found in the letter",
   unchecked: "The first — Ordnung couldn't check this answer's deadline against the letter's own instructions",
-  later: "The first — this answer's deadline could end later than the letter's own instructions allow",
+  later: "The first — this answer's deadline could end later than the one Ordnung worked out from the letter",
   ungrounded: "The first — something this answer adds isn't in the letter",
   quotes: "The first — fewer of this answer's quotes were found in the letter",
 };

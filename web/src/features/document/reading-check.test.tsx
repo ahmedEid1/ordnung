@@ -194,6 +194,23 @@ describe("the to-do Ordnung adds for an incomplete reading", () => {
     expect(banner).not.toHaveTextContent("asked once more");
   });
 
+  it("words the cross-check kept beside a second answer as a cross-check, not as a blank reading (ADR 0016)", () => {
+    // `cross_check` in src/ordnung/ingest/extract.py: the placeholder's slot, its own title and action
+    const crossCheck = {
+      ...placeholder,
+      id: "itm_cross",
+      title: "Check the letter for a missed deadline",
+      action:
+        "Ordnung's first reading of this letter came back blank — check the letter for a deadline Claude may have missed. If it gives one, give this to-do that date; mark it done once you have checked.",
+    };
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: makeDoc({ status: "needs_review" }), items: [crossCheck] })} />, {
+      client: client(),
+    });
+    expect(screen.getByText(/Check the letter for a deadline Claude may have missed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Claude's reading of this letter came back almost blank/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Set a date" })).toBeInTheDocument();
+  });
+
   it("says the letter's warning only while the to-do still needs checking", () => {
     const warned = makeDoc({ status: "needs_review", warnings: [GAP_BLANK] });
     const { unmount } = renderWithProviders(<DocumentWarnings detail={makeDetail({ document: warned, items: [placeholder] })} />, {

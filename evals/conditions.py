@@ -519,6 +519,7 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
         check_reading=True,
         injected=bool(found_injection),
         today=date.fromisoformat(entry.today),
+        cross_check=reading.cross_check,
     )
     if any(verified.slot_key == CHECK_SLOT for verified in verification.items):
         signals.append("reading_incomplete")
