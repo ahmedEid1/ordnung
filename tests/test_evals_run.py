@@ -1949,3 +1949,10 @@ def test_the_benchmarks_rule_context_marks_court_letters_as_the_app_does() -> No
         doc_id="x", page=1, width=1, height=1, text=quote, words=[], text_source="text", image_path=""
     )
     assert ordnung_rule_context(entry, notice, [page]).end_date_grounding == "none"  # misread end
+
+
+def test_eval_help_names_the_real_default_model() -> None:
+    """``ordnung eval --help`` names the model a run uses when none is given (docs audit G9): the pinned id the
+    recordings are made for, not the alias ``sonnet``."""
+    help_text = " ".join(eval_run.build_parser().format_help().split())
+    assert f"(default: {eval_run.DEFAULT_MODEL})" in help_text and "(default: sonnet)" not in help_text

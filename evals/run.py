@@ -779,7 +779,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="dataset split (default: test; holdout and holdout2 are each recorded once, nothing is tuned on "
         "them, and neither rewrites docs/evals.md)",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL, help="model alias or id (default: sonnet)")
+    parser.add_argument(
+        "--model", default=DEFAULT_MODEL, help=f"model alias or id (default: {DEFAULT_MODEL})"
+    )
     parser.add_argument(
         "--models", nargs="+", metavar="MODEL", help="compare several models (overrides --model)"
     )

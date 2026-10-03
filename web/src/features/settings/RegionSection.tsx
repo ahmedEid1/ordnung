@@ -24,7 +24,7 @@ export function RegionSection({ profile }: { profile: Profile }) {
     const language = form.language !== saved.language ? LANGUAGES.find((l) => l.code === form.language) : undefined;
     return update.mutateAsync(form).then((p) => {
       setForm(pick(p));
-      if (regionChanged && state) return `Your dates were recalculated with the holidays of ${state.name}.`;
+      if (regionChanged && state) return `Your dates were recalculated: payments you make now count the holidays of ${state.name}.`;
       if (language) return `New explanations are written in ${language.label}.`;
       return undefined;
     });
@@ -32,7 +32,11 @@ export function RegionSection({ profile }: { profile: Profile }) {
 
   return (
     <section aria-labelledby="set-region">
-      <SectionHeading id="set-region" title="Region & language" description="Where you live decides which public holidays count for your deadlines." />
+      <SectionHeading
+        id="set-region"
+        title="Region & language"
+        description="Where you live decides the holidays for payments you make. Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state in its details."
+      />
       <SettingsCard footer={<SaveBar dirty={dirty} saving={update.isPending} onSave={save} onDiscard={() => setForm(saved)} />}>
         <div className="grid gap-6">
           <Field
@@ -40,7 +44,7 @@ export function RegionSection({ profile }: { profile: Profile }) {
             hint={
               <>
                 A deadline that ends on a public holiday moves to the next working day — and holidays differ between states.
-                {state ? ` Using the holidays of ${state.name}${state.en ? ` (${state.en})` : ""}.` : ""}
+                {state ? ` Payments you make count the holidays of ${state.name}${state.en ? ` (${state.en})` : ""}.` : ""}
               </>
             }
           >

@@ -104,7 +104,9 @@ failure → `low`. The reasons are listed in `warnings` in plain English.
   send-by, safe or backward date passes it (`check_partial_holidays`; the app and the rules tools
   alike).
 - **Whose holidays?** Those at the place where the declaration must be received — the seat of the
-  authority, court or company (BAG 8 AZN 808/11, BGH VI ZA 27/11), i.e. `Party.region`. A **payment**
+  authority, court or company (BAG 8 AZN 808/11, BGH VI ZA 27/11), i.e. `Party.region`. Only you set it,
+  for each sender (*Which state is this sender in?* in its drawer); reading a letter never does, and
+  section 5 describes what happens while it is unknown. A **payment**
   to a company or person is owed at the payer's home (§§ 269, 270 Abs. 4 BGB), so § 193 BGB uses the
   holidays where you live (`RuleContext.recipient_region`; research *zahlungsziel*); payments to an
   authority use the authority's seat. For a tax letter's deemed delivery day, a regional holiday
@@ -264,6 +266,12 @@ federal law.
 For Hessen (still showing the 3rd day), Bremen, Saarland and Thüringen — and whenever the Land is
 unknown — Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Baden-Württemberg keeps 3 days for procedures begun before 7 Feb 2025
 (§ 102b LVwVfG); Ordnung cannot see when a procedure began and notes this here.
+In the app a sender's Land is unknown until you set it for that sender (*Which state is this sender in?*
+in its drawer): reading a letter never sets it. Until then a Land authority's letter gets the 3rd day and
+nationwide holidays, at lower confidence — early, never late. The benchmark gives Ordnung the Land the
+letterhead prints; replayed without it, Ordnung scores 85.7 % on the test split, 89.3 % on the holdout
+split and 83.9 % on the holdout2 split instead of 98.2 %, with no late date
+([evals.md](evals.md#without-the-senders-land)).
 
 **Posting day.** The day the letter was handed to the post counts, not the printed date — but the
 printed date is the conservative stand-in, because posting can only be the same day or later. If a

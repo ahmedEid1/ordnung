@@ -38,6 +38,8 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PartyDetail,
+  PartyPatch,
   ProfilePatch,
   ProofOverview,
   ProofPatch,
@@ -494,6 +496,22 @@ export function useUpdateContract() {
 
 export function useParties() {
   return useQuery({ queryKey: qk.parties.list(), queryFn: api.parties, staleTime: MINUTE });
+}
+
+/**
+ * Set the Land a sender is in. The drawer shows it at once; the server recomputed the dates of its letters,
+ * so every ledger view refreshes.
+ */
+export function useUpdateParty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: PartyPatch }) => api.updateParty(id, patch),
+    meta: { errorTitle: "Couldn't save their state" },
+    onSuccess: (party) => {
+      qc.setQueryData<PartyDetail>(qk.parties.detail(party.id), (detail) => (detail ? { ...detail, party } : detail));
+      return invalidateLedger(qc);
+    },
+  });
 }
 
 export function useParty(id: string | null | undefined) {

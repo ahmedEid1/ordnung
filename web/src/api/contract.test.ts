@@ -213,6 +213,7 @@ const CASES = {
   updateContract: { run: (ids) => api.updateContract(ids.contract, { cost_amount: 19.99, cost_interval: "monthly" }) },
   parties: { run: () => api.parties() },
   party: { run: (ids) => api.party(ids.party) },
+  updateParty: { run: (ids) => api.updateParty(ids.party, { region: "NW" }) },
   case: { run: (ids) => api.case(ids.case) },
 
   timeline: { run: () => api.timeline("2026-09-01", "2026-12-31") },
