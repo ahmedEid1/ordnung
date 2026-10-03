@@ -22,6 +22,7 @@ from ordnung.assistant.ask import (
     EMPTY_QUESTION,
     NO_ANSWER,
     NO_ANSWER_DE,
+    UNEXPECTED_STOP,
     UNSUPPORTED_ANSWER,
     AskEvent,
     _Turn,
@@ -922,6 +923,50 @@ async def test_demo_replay_miss_is_one_coded_note(
     assert (events[0].error, events[0].error_code) == (DEMO_MISS, "demo_miss")
     assert "`" not in DEMO_MISS
     assert store.counts()["chat_messages"] == 0
+
+
+async def test_an_unexpected_error_ends_the_stream_with_an_error_event(
+    paths: Paths, store: Store, ids: dict[str, str]
+) -> None:
+    """ROB G3: ``claude`` moved or not executable raised out of the stream, so the answer stopped without a
+    word (the API had already started its response); now it ends with one error event."""
+
+    class Unstartable(FakeBackend):
+        async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+            yield StreamEvent(type="tool_use", name="mcp__ordnung__today", input={})
+            raise PermissionError(13, "Permission denied", "/opt/claude")
+
+    events = await collect(make_ctx(paths, store, Unstartable()), "What is due?")
+    assert [(e.type, e.error) for e in events] == [("tool_use", None), ("error", UNEXPECTED_STOP)]
+    assert "`" not in UNEXPECTED_STOP
+    assert store.counts()["chat_messages"] == 0
+
+
+async def test_every_letter_a_tool_result_sends_text_of_is_listed_as_sent(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """SEC S6: a search hit's title and snippet, a to-do's title and a contract's terms come from their
+    letters too, so "What was sent" lists those letters — not only the ones opened with get_document."""
+    script = turn(
+        tools,
+        "Here is what you pay.",
+        ("search", {"query": "tax"}),
+        ("list_items", {"kind": "payment"}),
+        ("list_contracts", {}),
+    )
+    await collect(make_ctx(paths, store, ScriptedBackend(script)), "What do I pay?")
+    (call,) = store.usage_stats().recent
+    sent = set(call.doc_ids)
+    # the search hit, the open payments' letters and the phone contract's letter
+    assert {
+        ids["doc_tax"],
+        ids["doc_dunning"],
+        ids["doc_parking"],
+        ids["doc_scam"],
+        ids["doc_phone"],
+    } <= sent
+    assert ids["doc_private"] not in sent  # the private payment's letter is never sent
+    assert len(call.doc_ids) == len(sent)
 
 
 async def test_backend_error_is_passed_on_and_nothing_is_stored(

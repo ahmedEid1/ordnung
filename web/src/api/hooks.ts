@@ -134,6 +134,7 @@ const LEDGER_PREFIXES = [
   qk.jobs,
   qk.folder,
   qk.waiting,
+  qk.questions,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -328,6 +329,16 @@ export function useReprocessDocument() {
   return useMutation({
     mutationFn: (id: string) => api.reprocessDocument(id),
     meta: { errorTitle: "Couldn't read the letter again" },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+/** "Try again" for every letter that couldn't be read (Today's card): each one is read again. */
+export function useReprocessDocuments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: readonly string[]) => Promise.all(ids.map((id) => api.reprocessDocument(id))),
+    meta: { errorTitle: "Couldn't read the letters again" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -1065,9 +1076,12 @@ export function useUpdateTour() {
   });
 }
 
-/** The demo's suggested Ask questions, served by the backend so they always match its recordings. */
+/**
+ * The demo's suggested Ask questions, served by the backend so they always match its recordings — none once
+ * the letters or to-dos changed since the demo started (the recorded answers no longer fit), so a ledger key.
+ */
 export function useDemoQuestions(enabled = true) {
-  return useQuery({ queryKey: qk.questions, queryFn: api.demoQuestions, staleTime: Infinity, enabled });
+  return useQuery({ queryKey: qk.questions, queryFn: api.demoQuestions, enabled });
 }
 
 export function useMailTray(enabled = true) {

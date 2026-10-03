@@ -443,6 +443,13 @@ describe("words", () => {
     const tm = actionFromItem(item({ kind: "payment", title: "Pay TechMarkt reminder", due_date: "2026-09-30", amount: 94.99 }), ctx)!;
     expect(agendaSentence([tm], [], TODAY, 1)).toMatch(/by Wednesday\. One letter from your folder isn't read yet\.$/);
   });
+
+  it("never says 'nothing needs you' while letters couldn't be read (UX U2)", () => {
+    expect(agendaSentence([], [], TODAY, 0, 2)).toBe("Nothing due from the letters that were read. 2 letters couldn't be read.");
+    expect(agendaSentence([], [], TODAY, 1, 1)).toBe(
+      "Nothing due from the letters that were read. One letter from your folder isn't read yet. One letter couldn't be read.",
+    );
+  });
 });
 
 describe("Ideas that came with new mail", () => {

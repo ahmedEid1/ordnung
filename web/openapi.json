@@ -4150,7 +4150,7 @@
           "demo"
         ],
         "summary": "Suggested Questions",
-        "description": "The Ask page's suggested questions — word for word the ones the demo has recorded answers for.",
+        "description": "The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none\nonce the letters or to-dos changed since the demo started (the recorded answers no longer fit).",
         "operationId": "suggested_questions_api_demo_questions_get",
         "responses": {
           "200": {
@@ -13916,14 +13916,17 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "demo_miss"
+                "enum": [
+                  "demo_miss",
+                  "demo_changed"
+                ]
               },
               {
                 "type": "null"
               }
             ],
             "title": "Error Code",
-            "description": "why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question"
+            "description": "why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos changed since the demo started (it has to start over)"
           },
           "note": {
             "anyOf": [

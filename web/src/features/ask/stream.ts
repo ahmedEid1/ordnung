@@ -44,8 +44,11 @@ export interface AnswerState {
   messageId: string | null;
   threadId: string | null;
   error: string | null;
-  /** why there is no answer when asking again can't help: `demo_miss` — the demo has no recording for it */
-  errorCode: "demo_miss" | null;
+  /**
+   * why there is no answer when asking again can't help: `demo_miss` — the demo has no recording for it;
+   * `demo_changed` — a suggested question, asked after the letters or to-dos changed (the demo has to start over)
+   */
+  errorCode: NonNullable<StreamEvent["error_code"]> | null;
 }
 
 export const EMPTY_ANSWER: AnswerState = {

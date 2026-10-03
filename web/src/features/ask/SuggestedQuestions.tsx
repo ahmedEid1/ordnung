@@ -23,9 +23,10 @@ export function SuggestedQuestions({
   const served = useDemoQuestions(demo);
   const profile = useProfile();
   const today = useToday();
-  // the demo's chips are the backend's recorded questions, word for word; anyone else's fit their situation
+  // the demo's chips are the backend's recorded questions, word for word — none once the letters or to-dos
+  // changed and the recordings no longer fit (the Ask page says how to start over); anyone else's fit their situation
   const all = demo
-    ? served.data?.length
+    ? served.data
       ? withIcons(served.data)
       : SUGGESTED_QUESTIONS
     : suggestedQuestions({ today, studentVisa: Boolean(profile.data?.is_student_visa) });

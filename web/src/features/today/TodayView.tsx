@@ -21,6 +21,7 @@ import { SecretaryNote } from "./SecretaryNote";
 import { CalendarCard, PLEASE_CHECK_SHOWN, PleaseCheckCard, repeatsPleaseCheck } from "./SideCards";
 import { TopThree } from "./TopThree";
 import { WaitingCard } from "./WaitingCard";
+import { FailedCard } from "./FailedCard";
 import { AttentionCard } from "./AttentionCard";
 import { stagger } from "./motion";
 import { agendaSentence, toPayTotals } from "./selection";
@@ -203,10 +204,10 @@ export function TodayView() {
     );
   }
 
-  const { dash, derived, partyById, reviewDocs } = data;
+  const { dash, derived, partyById, reviewDocs, failedDocs, unread } = data;
   const name = dash.greeting_name || profileName;
 
-  if (!dash.stats.documents && !dash.recent_documents.length && !derived.candidates.length && !dash.stats.contracts && !dash.waiting) {
+  if (!dash.stats.documents && !dash.recent_documents.length && !derived.candidates.length && !dash.stats.contracts && !unread) {
     return (
       <motion.div variants={stagger} initial="hidden" animate="show" className="flex flex-col gap-8 sm:gap-10">
         <Greeting name={name} today={derived.day} hour={hour} />
@@ -215,7 +216,7 @@ export function TodayView() {
     );
   }
 
-  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day, dash.waiting);
+  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day, dash.waiting, failedDocs.length);
   // an Idea that only says "Please check: <letter>" repeats the card that lists that letter
   const listed = new Set(reviewDocs.slice(0, PLEASE_CHECK_SHOWN).map((d) => d.id));
   const ideas = [...derived.ideas.shown, ...derived.ideas.more].filter((s) => !repeatsPleaseCheck(s, listed));
@@ -226,13 +227,14 @@ export function TodayView() {
     <motion.div variants={stagger} initial="hidden" animate="show" className="@container flex flex-col gap-8 sm:gap-10">
       <div className="flex flex-col gap-6">
         <Greeting name={name} today={derived.day} money={dash.money} toPay={toPayTotals(derived.candidates)} hour={hour} />
-        {/* the note never names the letters that wait unread: the card right below it does */}
+        {/* the note never names the letters that wait unread or couldn't be read: the cards right below it do */}
         <SecretaryNote fallback={fallback} />
         <WaitingCard count={dash.waiting} />
+        <FailedCard docs={failedDocs} />
         <AttentionCard />
       </div>
 
-      <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} waiting={dash.waiting} />
+      <TopThree actions={derived.top} next={derived.nextUp} partyById={partyById} today={derived.day} waiting={unread} />
 
       <WeeklyPrompt />
 

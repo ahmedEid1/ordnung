@@ -27,10 +27,11 @@ how many it left out:
 0. *Act now* (only when there is something) — deadlines, tasks and appointments that are overdue or to
    act on today (a missed send-by day included), not payments (step 3) nor replies awaited (step 5).
 1. *New since the last session* (the first time: *new in the last 7 days*) — letters that entered Ordnung
-   after the last session's moment (without one: in the last 7 days), letters that need the person first
-   (Please check, open or snoozed to-dos, scam signs, not read yet — being read, waiting for the person's
-   answer from the watched folder, or kept private and never read, which is never "nothing to do"), then
-   newest first.
+   after the last session's moment (without one: in the last 7 days), and older letters Ordnung has not read
+   (:func:`~ordnung.secretary.brief.is_unread`: Today counts them until they are read, so the review lists
+   them every week too); letters that need the person first (Please check, open or snoozed to-dos, scam
+   signs, not read yet — being read, waiting for the person's answer from the watched folder, couldn't be
+   read, or kept private and never read, which is never "nothing to do"), then newest first.
 2. *Compare with the letter* — to-dos whose date Ordnung could not confirm against the letter
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
    photo, or not matching its sentence — never once the person confirmed it) with a day to compare (a
@@ -107,7 +108,7 @@ from ordnung.models import (
 )
 from ordnung.payments import is_direct_debit
 from ordnung.rules.send import same_day_channels, send_guidance
-from ordnung.secretary.brief import Agenda, AgendaEntry
+from ordnung.secretary.brief import Agenda, AgendaEntry, is_unread
 from ordnung.secretary.girocode_gate import amount_confirmed
 from ordnung.secretary.triggers import (
     Ledger,
@@ -528,6 +529,7 @@ def _never_read(doc: Document) -> bool:
 def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
     pending = pending_items(ledger)
     fresh = [doc for doc in ledger.documents.values() if window.after(doc.created_at)]
+    unread = [doc for doc in ledger.documents.values() if not window.after(doc.created_at) and is_unread(doc)]
 
     def open_count(doc: Document) -> int:
         return sum(1 for item in pending if item.doc_id == doc.id)
@@ -562,12 +564,12 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
             or _never_read(doc)
         )
 
-    newest = sorted(fresh, key=lambda doc: (doc.created_at, doc.id), reverse=True)
+    newest = sorted([*fresh, *unread], key=lambda doc: (doc.created_at, doc.id), reverse=True)
     ordered = [doc for doc in newest if needs_you(doc)] + [doc for doc in newest if not needs_you(doc)]
     since = day_label(window.since_day, window.today)
-    summary = (
-        f"{_count(len(ordered), 'letter')} since {since}" if ordered else f"No new letters since {since}"
-    )
+    summary = f"{_count(len(fresh), 'letter')} since {since}" if fresh else f"No new letters since {since}"
+    if unread:
+        summary += f" · {_count(len(unread), 'older letter')} not read yet"
     title = f"New in the last {WEEK} days" if first else "New since your last review"
     return _step("new", title, [row(doc) for doc in ordered], summary)
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useReducedMotion } from "motion/react";
 import { Lock, MessagesSquare, Plus, RotateCw, SquarePen } from "lucide-react";
-import { useDocuments, useHealth } from "@/api/hooks";
+import { useDemoQuestions, useDocuments, useHealth } from "@/api/hooks";
 import { isStaticDemo } from "@/mocks/mode";
 import { Page } from "@/components/shell/Page";
 import { ACCEPTED_ONE, useOptionalAddLetters } from "@/components/shell/AddLetters";
@@ -12,10 +12,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton, SkeletonText, LoadingLabel } from "@/components/ui/Skeleton";
 import { dismissToast, toast } from "@/components/ui/Toast";
 import { AskComposer } from "@/features/ask/AskComposer";
-import { AskTurnView } from "@/features/ask/AskTurnView";
+import { AskTurnView, DemoChangedNote } from "@/features/ask/AskTurnView";
 import { SuggestedQuestions } from "@/features/ask/SuggestedQuestions";
 import { useAskThread } from "@/features/ask/useAskThread";
 import { useRefResolver } from "@/features/ask/refs";
+import { TOUR_TARGETS } from "@/features/tour/steps";
 
 /** The "Started a new chat" toast (asking the next question closes it: its Undo would drop that question). */
 const NEW_CHAT_TOAST = "ask-new-chat";
@@ -42,6 +43,11 @@ export default function AskPage() {
   const adder = useOptionalAddLetters();
   // nothing to ask about yet: offer to add letters instead of questions about someone else's (UI audit round 1)
   const noLetters = !demo && documents.data?.length === 0;
+  // the demo's answers were recorded on Sam's letters as it started: once the person changed them, the backend
+  // offers no suggested question (each would miss) and a question asked says so — the page then says how to
+  // start over instead of offering what just failed (FEAT G2)
+  const recorded = useDemoQuestions(demo);
+  const demoChanged = demo && (recorded.data?.length === 0 || thread.all.some((t) => t.answer.errorCode === "demo_changed"));
 
   // `?q=` (e.g. "Ask about them" in the People drawer) pre-fills the question once
   useEffect(() => {
@@ -161,7 +167,9 @@ export default function AskPage() {
           : last.answer.status === "error"
             ? last.answer.errorCode === "demo_miss"
               ? "No recorded answer for this question."
-              : "The answer could not be completed."
+              : last.answer.errorCode === "demo_changed"
+                ? "The recorded answers no longer fit."
+                : "The answer could not be completed."
             : "Stopped."
       : "";
 
@@ -222,12 +230,17 @@ export default function AskPage() {
               <p className="mt-6 text-center text-[13px] text-muted">Once they are in, you can ask things like:</p>
               <SuggestedQuestions className="mt-3" onPick={send} disabled />
             </>
+          ) : demoChanged ? (
+            // where the chips were: the tour's "Ask anything" step rings this note instead
+            <div data-tour={TOUR_TARGETS.askChips} className="mt-8">
+              <DemoChangedNote />
+            </div>
           ) : (
             <SuggestedQuestions className="mt-8" onPick={send} />
           )}
-          {replayDemo ? (
+          {replayDemo && !demoChanged ? (
             <p className="mx-auto mt-5 max-w-lg text-balance text-center text-[12.5px] leading-5 text-muted">
-              Demo: the suggested questions replay answers recorded for the sample letters.
+              Demo: the suggested questions replay answers recorded for the sample letters as the demo starts.
             </p>
           ) : null}
           {/* the lock sits in the line, beside the words it is about (not floating left of a centred block) */}
@@ -269,12 +282,14 @@ export default function AskPage() {
                 resolve={resolve}
                 titleOf={titleOf}
                 // a question the demo has no recording for can't be answered by asking it again
-                onRetry={thread.turns.includes(turn) && turn.answer.errorCode !== "demo_miss" ? () => thread.retry(turn.key) : undefined}
+                onRetry={thread.turns.includes(turn) && !turn.answer.errorCode ? () => thread.retry(turn.key) : undefined}
+                demoChanged={demoChanged}
               />
             ))}
           </div>
 
-          {!thread.streaming && !thread.loadingHistory ? (
+          {/* once the demo changed, the answer's note says how to start over: no chips that would miss */}
+          {!thread.streaming && !thread.loadingHistory && !demoChanged ? (
             <div className="mt-10">
               <SuggestedQuestions variant="row" exclude={asked} onPick={send} />
             </div>

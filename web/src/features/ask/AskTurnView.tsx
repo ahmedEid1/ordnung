@@ -1,8 +1,9 @@
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { motion, useReducedMotion } from "motion/react";
-import { Check, Copy, Info, RotateCw, Square, TriangleAlert } from "lucide-react";
+import { Check, Copy, Info, RotateCcw, RotateCw, Square, TriangleAlert } from "lucide-react";
 import { LogoMark } from "@/components/shell/Logo";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { useClipboard } from "@/features/today/clipboard";
 import { looksGerman } from "@/lib/format";
@@ -134,18 +135,51 @@ export interface AnswerViewProps {
    * this year out ("Thu 15 Oct"), as on every other page (UI audit round 2). Display only.
    */
   today?: string;
+  /** The demo's letters or to-dos changed since it started: its recorded answers no longer fit. */
+  demoChanged?: boolean;
 }
 
 /**
  * What the demo shows for a question it has no recorded answer for (`error_code: "demo_miss"`): a note,
  * not a failure — "Try again" could never work (UI audit round 1). The same words in the local demo and
- * the online one, which also says how to ask about your own letters.
+ * the online one, which also says how to ask about your own letters. Once the demo's letters or to-dos
+ * changed (`changed`), the suggested questions would miss too, so it doesn't point to them.
  */
-export function DemoMissNote() {
+export function DemoMissNote({ changed = false }: { changed?: boolean }) {
   return (
     <Callout tone="info" className="mt-2" title="No recorded answer for this question">
-      The demo replays answers recorded for its sample letters — try one of the suggested questions.
+      {changed
+        ? "The demo replays answers recorded for its sample letters, and there is none for this question."
+        : "The demo replays answers recorded for its sample letters — try one of the suggested questions."}
       {isStaticDemo() ? " To ask about your own letters, install Ordnung." : null}
+    </Callout>
+  );
+}
+
+/** Where the demo is started over: Settings → Data → "Start over" (the command that resets it). */
+export const START_OVER_HREF = "/settings?section=data";
+
+/**
+ * What the demo shows once the person changed its letters or to-dos (`error_code: "demo_changed"`, and on
+ * the Ask page instead of the suggested questions): its answers were recorded on Sam's letters as the demo
+ * started, so every suggested question misses until it starts over (FEAT G2: the note said to try a
+ * suggested question — what had just failed). The words of the backend's `DEMO_CHANGED`.
+ */
+export function DemoChangedNote({ className }: { className?: string }) {
+  return (
+    <Callout
+      tone="info"
+      className={className}
+      title="The recorded answers no longer fit"
+      action={
+        <Link to={START_OVER_HREF} className={buttonVariants({ size: "sm" })}>
+          <RotateCcw aria-hidden />
+          Start the demo over
+        </Link>
+      }
+    >
+      The demo's answers were recorded for Sam's letters as the demo started, and you have changed his to-dos or letters since. To ask the
+      suggested questions again, start the demo over.
     </Callout>
   );
 }
@@ -154,10 +188,11 @@ export function DemoMissNote() {
  * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
  * While the answer streams only the trace and a "writing" line show: its words appear once checked.
  */
-export function AnswerView({ answer, resolve, titleOf, onRetry, today }: AnswerViewProps) {
+export function AnswerView({ answer, resolve, titleOf, onRetry, today, demoChanged = false }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
   const demoMiss = answer.status === "error" && answer.errorCode === "demo_miss";
+  const changed = answer.status === "error" && answer.errorCode === "demo_changed";
   const done = answer.status === "done";
   const body = done ? answer.text : "";
   const note = answer.note;
@@ -202,8 +237,10 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, today }: AnswerV
           </p>
         ) : null}
 
-        {demoMiss ? (
-          <DemoMissNote />
+        {changed ? (
+          <DemoChangedNote className="mt-2" />
+        ) : demoMiss ? (
+          <DemoMissNote changed={demoChanged} />
         ) : answer.status === "error" ? (
           <Callout
             tone="warn"
@@ -261,11 +298,13 @@ export function AskTurnView({
   resolve,
   titleOf,
   onRetry,
+  demoChanged,
 }: {
   turn: AskTurn;
   resolve: AnswerViewProps["resolve"];
   titleOf?: TitleLookup;
   onRetry?: () => void;
+  demoChanged?: boolean;
 }) {
   const reduce = useReducedMotion();
   const today = useTodayISO();
@@ -279,7 +318,7 @@ export function AskTurnView({
       data-turn={turn.key}
     >
       {turn.question ? <QuestionBubble text={turn.question} /> : null}
-      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} today={today} />
+      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} today={today} demoChanged={demoChanged} />
     </motion.article>
   );
 }

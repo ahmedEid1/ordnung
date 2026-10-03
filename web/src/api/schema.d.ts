@@ -1554,7 +1554,8 @@ export interface paths {
         };
         /**
          * Suggested Questions
-         * @description The Ask page's suggested questions — word for word the ones the demo has recorded answers for.
+         * @description The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none
+         *     once the letters or to-dos changed since the demo started (the recorded answers no longer fit).
          */
         get: operations["suggested_questions_api_demo_questions_get"];
         put?: never;
@@ -4926,9 +4927,9 @@ export interface components {
             error?: string | null;
             /**
              * Error Code
-             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question
+             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos changed since the demo started (it has to start over)
              */
-            error_code?: "demo_miss" | null;
+            error_code?: ("demo_miss" | "demo_changed") | null;
             /**
              * Note
              * @description what the answer check left out or quoted (done); shown apart from the text
