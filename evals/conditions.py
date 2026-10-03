@@ -64,7 +64,7 @@ from ordnung.ingest.extract import (
     validation_problems,
     wrap_untrusted,
 )
-from ordnung.ingest.gaps import CHECK_SLOT, DEADLINE_SLOT, is_check_slot
+from ordnung.ingest.gaps import CHECK_SLOT, DEADLINE_SLOT, formally_served, is_check_slot
 from ordnung.ingest.intake import render_pages
 from ordnung.ingest.pipeline import HIDDEN_TEXT_WARNING, NO_TEXT_ERROR, injection_warnings
 from ordnung.ingest.plan import (
@@ -359,6 +359,7 @@ def ordnung_rule_context(
         end_date_grounding=end_date_grounding(extraction, pages),
         court=is_court(name),
         labour_court=is_labour_court(name),
+        formal_service=formally_served(pages),
     )
 
 

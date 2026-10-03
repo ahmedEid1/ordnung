@@ -451,13 +451,18 @@ class DocScore:
     tool_refusals: int = 0
     #: The distinct dates the date tools (:data:`DATE_TOOLS`) returned on this letter.
     tool_dates: list[str] = field(default_factory=list)
-    #: The dated to-dos Ordnung's check for incomplete readings filed (``origin == "code"``), and those that match
-    #: no obligation of the letter: a false alarm of the check, counted in no extraction metric.
+    #: The dated to-dos Ordnung's check for incomplete readings filed (``origin == "code"``, ``check:reading``), and
+    #: those that match no obligation of the letter: a false alarm of the check, counted in no extraction metric.
     check_filed: int = 0
     check_false_alarms: int = 0
     #: 1 when the check fired on this letter (the ``reading_incomplete`` signal), dated or not: an undated
     #: to-do it filed is never scored, so only this counts it.
     check_letters: int = 0
+    #: The same for the to-dos code files for a fixed date the reading left out (``check:deadline``, the
+    #: ``deadline_left_out`` signal): counted apart from the objection check's.
+    deadline_filed: int = 0
+    deadline_false_alarms: int = 0
+    deadline_letters: int = 0
 
     @property
     def deadline_calls(self) -> int:
@@ -849,14 +854,32 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
         tool_calls=dict(Counter(use.name for use in pred.tools)) if pred.tools is not None else None,
         tool_refusals=sum(1 for use in pred.tools or [] if not use.ok),
         tool_dates=tool_dates(pred),
-        check_filed=sum(1 for item in preds if item.origin == "code" and item.dated),
+        check_filed=sum(1 for item in preds if _code_check(item, dropped=False) and item.dated),
         check_false_alarms=sum(
             1
             for index, item in enumerate(preds)
-            if item.origin == "code" and item.dated and index not in matched_preds
+            if _code_check(item, dropped=False) and item.dated and index not in matched_preds
         ),
         check_letters=int("reading_incomplete" in pred.signals),
+        deadline_filed=sum(1 for item in preds if _code_check(item, dropped=True) and item.dated),
+        deadline_false_alarms=sum(
+            1
+            for index, item in enumerate(preds)
+            if _code_check(item, dropped=True) and item.dated and index not in matched_preds
+        ),
+        deadline_letters=int("deadline_left_out" in pred.signals),
     )
+
+
+#: How the receipt of code's to-do for a date the reading left out starts (``REASON_TEXT[DEADLINE_LEFT_OUT]`` in
+#: ``ordnung.ingest.verify``): it tells that to-do from the objection check's (``check:reading``).
+DROPPED_DATE_NOTE = "Ordnung took this date from the letter's own words, because Claude's reading left it out"
+
+
+def _code_check(item: PredictedItem, *, dropped: bool) -> bool:
+    """A to-do code filed itself (``origin == "code"``): for a date the reading left out (``dropped``) or the
+    objection check's."""
+    return item.origin == "code" and any(note.startswith(DROPPED_DATE_NOTE) for note in item.notes) == dropped
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1147,6 +1170,12 @@ def summarise_condition(
             "filed": sum(score.check_filed for score in scores),
             "unmatched": sum(score.check_false_alarms for score in scores),
             "letters": sum(score.check_letters for score in scores),
+        },
+        # the same for the dates the reading left out that code filed (check:deadline), counted apart
+        "deadline_check": {
+            "filed": sum(score.deadline_filed for score in scores),
+            "unmatched": sum(score.deadline_false_alarms for score in scores),
+            "letters": sum(score.deadline_letters for score in scores),
         },
         "failed": sum(1 for score in scores if score.failed),
         "errors": sum(1 for score in scores if score.error),

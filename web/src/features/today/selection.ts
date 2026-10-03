@@ -146,7 +146,7 @@ export function draftKindFor(item: Item): DraftKind | null {
 }
 
 /** A to-do Ordnung filed itself for an incomplete reading: the objection's (`check:reading`) or a date the reading
- * left out (`check:deadline`, `check:deadline#2` …; `ordnung.ingest.gaps.is_check_slot`). */
+ * left out (`check:deadline#<date>-<nature>`; `ordnung.ingest.gaps.is_check_slot`). */
 function isOwnCheck(item: Pick<Item, "slot_key">): boolean {
   const slot = item.slot_key ?? "";
   return slot === "check:reading" || slot.split("#")[0] === "check:deadline";

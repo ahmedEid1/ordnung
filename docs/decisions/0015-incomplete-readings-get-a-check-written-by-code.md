@@ -135,6 +135,38 @@ tightened the limits round 4 left (every earlier round's probes re-run, replay o
   recorded reading (333: the four splits at the current and the old prompt, and the demo); with the readings'
   to-dos removed it files 15 on the benchmark letters, each coming out on the labelled date.
 
+That fifth pass was reviewed in turn — five lenses (dates, false alarms, the envelope, attacks, tests and docs),
+each finding reproduced or refuted by an independent verifier — and given one capped fix pass:
+
+- **Town forms.** The town after a postcode is read within its line and column (no "Berlin" run into the
+  recipient's name below it), and a place and date may give it shortened, with its river or district, or with its
+  umlauts spelled out ("Frankfurt a. M." for "Frankfurt am Main", "Halle (Saale)", "Berlin-Mitte", "Muenchen") —
+  never with another word after it ("Frankfurt Hauptwache"). "Stand: …" is a weak date of the letter's only in its
+  header or on its date line; in the body ("Forderungsaufstellung, Stand: …") it is none.
+- **Stamps.** A date alone on the first line, or alone on the date line, is lowered to a date the page names as its
+  own at its foot ("Beispielhausen, den 06.11.2026" over the signature) and leaves no start when that one is more
+  than 14 days earlier: a received stamp ("20.11.2026" over "EINGANG") never starts the check late when the letter
+  is dated at its foot.
+- **What hides the date line.** Opening hours that say so or run Mo–Fr, a line naming its own date and time
+  ("Meldeaufforderung zum … um 9:00 Uhr"), an info block's rule for visits ("Termine nach Vereinbarung", "Vorsprache
+  nur mit Termin") and a department's name ("Terminvergabe") no longer make the letter's own date an appointment's.
+- **Notices.** A reported remedy is dropped only on a decision on a remedy, and never in a condition ("…, wenn nicht
+  innerhalb von zwei Wochen … Einspruch eingelegt worden ist"). With "Hiergegen", the hearing before the decision
+  ("Mit Schreiben vom … haben wir Sie angehört") is no other decision; a reminder ("Zahlungserinnerung", "die noch
+  offen ist") whose "Hiergegen" restates a decision it doesn't date is undated — 21 days late before, on main too.
+- **The envelope.** A notice naming an earlier decision turns the envelope off unless it names this letter too or a
+  decision on a remedy (a Widerspruchsbescheid stays served, § 74 VwGO); copies, representatives' service,
+  negations and reference numbers ("PZU-2026-…") mark no letter served. A conflicted reading's settled receipt keeps
+  `pzu`, so the app keeps asking for the envelope date (it asked "When did it arrive?" with Today before: 7 days
+  late); a reading of a served letter gets no deemed delivery days; an envelope date more than 14 days on is said
+  to be kept back; the question says "not the day you picked it up or opened it".
+- **Dropped dates.** `check:deadline` to-dos are slotted by date and kind and carried over by date (a paid one
+  moves onto the new reading's payment of its day; another date never takes over its status), worded as a
+  cross-check ("Check this date in the letter"), never a "Pay" Idea, at most three. They are never filed for an
+  option the person may take, a period's end, an instalment of a recurring to-do of the reading (its very day), a
+  direct debit's, paid or credited box or a payout's (label dates only), the full price beside a reading's
+  discount, or a payment a reading's warning doubts.
+
 A fuzz of 297,660 headers (eleven layouts of the letter's own date, fifteen kinds of another date near it) gives
 no start of the check later than the letter's date and leaves fewer undated than before (56,334 of the 270,600
 outside one layout, from 64,534); that one, "Frankfurt am Main, …" on a "Beispielhausen" letter, is now undated in
@@ -146,22 +178,36 @@ it no longer moves the start later. The notice set beside a reading's date still
 own dates more than 14 days apart; it can only lower a reading's date. Every to-do the check files is low and
 "Please check". Left as known limits:
 - A planted line of the letter's own kinds — "Datum: …", a place the page names with a later date, a date alone
-  on the date line, "mit diesem Bescheid vom …" — on a letter whose own date is unread or absent can start the
-  check late; it is indistinguishable from the letter's own (the start is never after the day the letter arrived
-  or today).
+  on the date line, "mit diesem Bescheid vom …", a district or short form of the page's town ("Frankfurt (Oder),
+  …" on a "Frankfurt am Main" letter, "Berlin-Tegel, …") — on a letter whose own date is unread or absent can
+  start the check late; it is indistinguishable from the letter's own (the start is never after the day the letter
+  arrived or today). So can a received stamp alone on the first line or the date line of a letter that names no
+  date of its own anywhere else (as before this round).
 - An envelope date the person enters for a letter served with a Postzustellungsurkunde starts the check and the
-  notice: a pickup day entered instead of the envelope's, or a planted service line on a plain letter with a late
-  arrival entered, counts up to 14 days late. Beyond 14 days the letter's date is kept. The served letter marked
-  only in its body without "dies…" ("Der Bußgeldbescheid wird mit PZU zugestellt") keeps R4L-1's guard (an early
-  "Please check" for an envelope date 10 or more days on).
-- A place and date naming a town the page gives nowhere else (a letterhead without its town) is no own date: an
-  empty reading of such a letter is undated. Of the earlier rounds' probes this undates ten lines (letters from a
-  "Beispielhausen" dated "Frankfurt am Main, …" or "Weil am Rhein, …", and "Ref AW-77, …"), none of the recorded
-  letters.
+  notice: a pickup or opening day typed instead of the envelope's, or a planted service line on a plain letter with
+  a late arrival entered, counts up to 14 days late; so does an arrival saved under the old "When did it arrive?"
+  question on such a letter, once the letter is planned again (a re-read, a region or letter-date change). A
+  reading's start up to 7 days later than the envelope's is no longer flagged on such a letter. Beyond 14 days the
+  letter's date is kept. The served letter marked only in its body without "dies…" ("Der Bußgeldbescheid wird mit
+  PZU zugestellt") keeps R4L-1's guard (an early "Please check" for an envelope date 10 or more days on), and a
+  notice naming a decision dated the day before the letter ("Gegen den Bescheid vom 05.11." on a letter of 06.11.)
+  turns the envelope off (early, never late). A reading whose own date differs from the header's keeps the earlier
+  of the letter's date and the envelope's (early, `pzu` kept).
+- A place and date naming a town the page gives nowhere else (a letterhead without its town), or gives only above
+  without a postcode and in another form, is no own date: an empty reading of such a letter is undated. Of the
+  earlier rounds' probes this undates lines like a "Beispielhausen" letter dated "Frankfurt am Main, …" or "Weil am
+  Rhein, …", and "Ref AW-77, …"; none of the recorded letters. A phone line with times under the date line and no
+  run of weekdays ("Telefon: 0123 4567-0 (8-16 Uhr)") still hides the date line (undated, never late).
 - A "Hiergegen" or "dagegen" notice on a decision that doesn't name itself one and mentions an older decision's
-  date is undated (never early or late); "Gegen diesen Bescheid" in a reminder still dates the check from the
-  reminder.
+  date is undated (never early or late) — also a change of a benefit naming the decision it changes ("mit Bescheid
+  vom 01.06.2026 wurde Ihnen Wohngeld bewilligt"); a reminder whose "Hiergegen" covers its own reminder fee is
+  undated too. "Gegen diesen Bescheid" in a reminder still dates the check from the reminder.
 - When two dates the first page names as its own lie more than 14 days apart, the guard counts the
   letter's notice from the later one; it can only lower a reading's date, so a later start only weakens it.
 - A dropped date in looser words ("Die Zahlung wird bis … erwartet", a date without its year, a period) gets no
-  to-do; a second payment date beside a reading's payment is named in that to-do's receipt, never filed apart.
+  to-do; a second payment date beside a reading's payment is named in that to-do's receipt, never filed apart. An
+  optional request a strict verb carries can still file a cross-check (an RSVP, "Bitte teilen Sie uns bis … mit, ob
+  Sie … teilnehmen"; a voucher or a form for a benefit to hand in by a date), and a real request right after a
+  question offering an option ("Möchten Sie …? Bitte überweisen Sie …") files none. A reading's to-do within 3 days
+  of a dropped date covers it, whatever it is for; a reading's payment without a date gets the letter's dated one
+  beside it.

@@ -182,7 +182,8 @@ export function openItemsByDoc(items: readonly (Item & Partial<Pick<ListedItem, 
     const s = out.get(i.doc_id) ?? { count: 0, next: null };
     out.set(i.doc_id, s);
     // how the letter came (formal service), whatever becomes of its to-dos
-    if (i.computation?.rule_ids.includes("zpo_180")) s.served = true;
+    // a court's letter (`zpo_180`) or one served with a Postzustellungsurkunde (`pzu`): the yellow envelope
+    if (i.computation?.rule_ids.some((r) => r === "zpo_180" || r === "pzu")) s.served = true;
     if (i.aside) continue;
     s.count += 1;
     const d = i.send_by ?? i.due_date;

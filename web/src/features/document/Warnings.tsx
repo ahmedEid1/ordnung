@@ -14,7 +14,7 @@ import { api } from "@/api/endpoints";
 import { qk, useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY } from "@/lib/copy";
-import { formatDate, glueText, toISODate } from "@/lib/format";
+import { daysUntil, formatDate, glueText, toISODate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/DateText";
@@ -315,6 +315,9 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
  * kind may be an authority's (a company, insurer, utility or employer), so a late arrival may not move
  * the date — the question says so, and the toast after saving says what the engine did.
  */
+/** How many days after the letter's own date an envelope date still counts (`LETTER_DATE_SPAN` in src/ordnung/ingest/gaps.py). */
+const ENVELOPE_SPAN_DAYS = 14;
+
 function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: Item[]; mayBePublic: boolean }) {
   const todayISO = useTodayISO();
   const qc = useQueryClient();
@@ -376,9 +379,14 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     title?.focus({ preventScroll: true });
     title?.scrollIntoView({ block: "start" });
     if (served) {
+      // an authority's letter served with a Postzustellungsurkunde: a date more than two weeks after the letter's own
+      // is no envelope date of this letter's — the letter's date is kept (`envelope_start` in src/ordnung/ingest/gaps.py)
+      const far = sender === "the letter" && Boolean(doc.doc_date) && daysUntil(date, doc.doc_date!) > ENVELOPE_SPAN_DAYS;
       // a start the letter itself names counts when it is earlier (see "Why this date?")
       toast.success("Thanks — dates updated", {
-        description: `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
+        description: far
+          ? `${formatDate(date, { style: "short" })} is more than two weeks after the letter's date, so we still count from the letter's date, the earliest it can be — see “Why this date?”.`
+          : `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
       });
       return;
     }
@@ -406,7 +414,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
             {served ? (
               <>
                 {subject} from the day {sender} was delivered — the postman wrote that date on the yellow envelope it came
-                in, also when it was left at the post office for you to pick up. Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
+                in, also when it was left at the post office for you to pick up (not the day you picked it up or opened it). Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
                 earliest possible.
               </>
             ) : (
@@ -471,7 +479,7 @@ export const READING_CHECK_SLOT = "check:reading";
 
 /**
  * The slot of a to-do Ordnung files itself for a fixed date the letter sets for the person (pay by, send by) that
- * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps.py`): `check:deadline`, `check:deadline#2` …
+ * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps.py`): `check:deadline#2026-10-15-payment`, one per date and kind
  */
 export const DEADLINE_CHECK_SLOT = "check:deadline";
 

@@ -68,6 +68,7 @@ import {
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
+import { isDeadlineCheck, READING_CHECK_SLOT } from "./Warnings";
 import { canSuspend, needsTypedCourt } from "@/features/letters/logic";
 import { composerHref } from "@/features/today/selection";
 import { PayPanel } from "./PayPanel";
@@ -634,7 +635,11 @@ function DateBox({
         {checkDate ? (
           <p className="mt-2.5 flex items-start gap-1.5 text-[13px] leading-5 text-warn-ink">
             <TriangleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-            <span>We couldn't find this date in the letter — please check it below.</span>
+            <span>
+              {item.slot_key === READING_CHECK_SLOT || isDeadlineCheck(item)
+                ? "Ordnung took this date from the letter itself — please check it below."
+                : "We couldn't find this date in the letter — please check it below."}
+            </span>
           </p>
         ) : null}
         {askArrival ? (

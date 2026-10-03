@@ -203,9 +203,9 @@ describe("actions from to-dos & dates", () => {
   it("gives a date the reading left out its own reason, and asks no check once the person confirmed it (check:deadline)", () => {
     const own = "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.";
     const receipt = makeReceipt({ due_date: "2026-10-15", confidence: "low", warnings: ["Weekends and holidays don't move this date.", own] });
-    const payment = { kind: "payment" as const, title: "Payment the letter asks for", due_date: "2026-10-15", doc_id: "doc_d", computation: receipt };
+    const payment = { kind: "payment" as const, title: "Check this date in the letter", due_date: "2026-10-15", doc_id: "doc_d", computation: receipt };
     const ctx = { today: TODAY, reviewDocs: [{ id: "doc_d", warnings: ["Claude's reading of this letter left out a date the letter sets for you."] }] };
-    const a = actionFromItem(item({ ...payment, slot_key: "check:deadline#2" }), ctx)!;
+    const a = actionFromItem(item({ ...payment, slot_key: "check:deadline#2026-10-15-payment" }), ctx)!;
     expect(a.needsCheck).toBe(true);
     expect(a.reason).toBe(own);
     const confirmed = actionFromItem(item({ ...payment, slot_key: "check:deadline", grounding: "user" }), { today: TODAY, reviewDocs: [] })!;

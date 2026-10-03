@@ -245,7 +245,7 @@ async def test_reprocess_drops_stale_items_that_nobody_edited(ctx: AppContext, r
     # the payment date the letter sets in so many words, left out by this reading, comes back as Ordnung's own
     # "Please check" to-do (ADR 0015, check:deadline) — never as the old to-do
     [check] = [item for item in after if is_check_slot(item.slot_key)]
-    assert check.slot_key == DEADLINE_SLOT and check.kind == "payment" and needs_check(check)
+    assert check.slot_key.split("#")[0] == DEADLINE_SLOT and check.kind == "payment" and needs_check(check)
 
 
 async def test_second_read_uses_the_cache(ctx: AppContext) -> None:

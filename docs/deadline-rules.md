@@ -369,14 +369,16 @@ that dates an objection on a letter whose visible text shows an administrative a
 speaks of a remedy against that letter (not a later decision's, one already lodged, a direct debit's or one
 the letter rules out). Code then reads the letter's own instructions on how to object (`ingest/gaps.py`, SPEC
 § 8; no model call) and files **one** to-do, always `low` and "Please check". Its date is never later than
-the letter allows when the letter's own date is read (ADR 0015 lists the planted layouts that can defeat
-this):
+the letter allows when the letter's own date is read — but for an envelope date the person types for a letter
+served with a *Postzustellungsurkunde* (below) — and ADR 0015 lists the planted layouts that can defeat this:
 
 - **The period.** Every period a sentence naming a *Widerspruch*, *Einspruch*, *Klage*, an objection or an
   appeal states — and the sentence after it, when that names neither a remedy nor a payment ("Monatsfrist"
-  is one month; words split across lines are joined). A sentence that reports a remedy already lodged without
-  offering one (a Widerspruchsbescheid's reasoning: "…, da er nicht innerhalb eines Monats … erhoben wurde") is
-  none. The one that **ends first** counts, counted in the
+  is one month; words split across lines are joined). On a decision on a remedy (a Widerspruchsbescheid), a
+  sentence that reports a remedy already lodged without offering one ("…, da er nicht innerhalb eines Monats …
+  erhoben wurde") is none — never a condition ("…, wenn nicht innerhalb von zwei Wochen … Einspruch eingelegt
+  worden ist", "Ist … kein Widerspruch erhoben worden, …", "die Frist ist gewahrt, wenn …"), and on any other
+  letter every such sentence stays a notice. The one that **ends first** counts, counted in the
   calendar from the letter's date (from 1 Feb, one month ends on 1 Mar, 30 days on 3 Mar), so a planted
   longer period never makes the date later. It is dated only when it lasts from a week to a month — every
   domestic remedy period does (§ 70/§ 74 VwGO, § 355 AO, § 47 FGO, § 84/§ 87 SGG, § 67 OWiG, § 410 StPO,
@@ -388,22 +390,32 @@ this):
   it: the first page's "Datum:" or "Date:" (or a label of the letter's own date: Bescheid-, Brief-,
   Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "Erstellt am"), "Place, (Freitag,) (den) date" among its
   header lines (also "Ort, Datum: Place, date", and beside "Ihr Zeichen:") whose place the page names after a
-  postcode or in a line above it, DIN 5008's date line right under the recipient's address (a date alone —
-  never with an appointment's time under it — or such a place and date), a date alone on the page's first line
-  when the header gives no other, the reference line's value under a "Datum" column (never after a due word,
+  postcode on the same line, or in a line above it — the same town shortened, with its river or its district
+  ("Frankfurt a. M." for "60311 Frankfurt am Main", "Halle (Saale)", "Berlin-Mitte" for "Berlin", umlauts spelled
+  out: "Muenchen"), never another word after it ("Frankfurt Hauptwache") —, DIN 5008's date line right under the
+  recipient's address (a date alone — never with an appointment's time under it, though opening hours that say so
+  or run Mo–Fr and a line naming its own date and time, "Meldeaufforderung zum … um 9:00 Uhr", are no
+  appointment's — or such a place and date), a date alone on the page's first line when the header gives no other
+  (a date the page names as its own at its foot, "Beispielhausen, den 06.11.2026" over the signature, lowers it and
+  a date line's: either may be a received stamp), the reference line's value under a "Datum" column (never after a due word,
   never a payments table's or a "Stichtag" column's), "mit diesem Bescheid vom …", the decision the notice names
   right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or "für die Zeit vom …") and the
   reading's date — never an appointment's "Datum:" ("Ihr Termin:", a heading "Ihr Termin" or "Einladung …" above
-  it, "Uhrzeit:" under it). Any other date (another "…datum" such as "Einzugsdatum", "Stand:", a print or copy
-  date, a date alone, a continuation page's, and a date named like the letter's own but of no own kind: a place
+  it, "Uhrzeit:" under it; never an info block's rule for visits, "Termine nach Vereinbarung", nor a department's
+  name, "Terminvergabe", above the letter's own "Datum:"). Any other date (another "…datum" such as "Einzugsdatum",
+  "Stand:" in the header or on the date line — in the body, "Forderungsaufstellung, Stand: …", it is no date of the
+  letter's at all —, a print or copy date, a date alone, a continuation page's, and a date named like the letter's own but of no own kind: a place
   the page names nowhere else, "Abholung am Schalter, …", "Sprechtag, Dienstag, …") is weak: it lowers the start
   within 14 days, never sets it, and is ignored when later. So while the letter's own date is unread, a planted
   later line or an appointment's starts nothing without the reading's date beside it. A date after the letter arrived
   is no start, and a Widerspruchsbescheid dated only by the decision it reshapes gets none. A notice about another
   decision ("Gegen den Gebührenbescheid …", or "Hiergegen …" / "dagegen" on a letter that never names itself a
-  decision: a reminder, a cover letter) counts from that decision's date where the letter gives it, and from none
-  where it doesn't; "… nach Bekanntgabe des Bescheides" beside "Gegen diesen Bescheid ist der Widerspruch
-  gegeben." is this letter. When the strong dates are more
+  decision): the dates the letter gives a decision ("mit Gebührenbescheid vom …", "Schreiben vom …" — never the
+  hearing before this one, "Mit Schreiben vom … haben wir Sie angehört") are weak, so one more than 14 days
+  earlier leaves the to-do undated; on a letter that sends or reminds of that decision (a cover letter, a reminder:
+  "Zahlungserinnerung", "die noch offen ist") and gives it no date, the to-do is undated (its period runs from that
+  decision); otherwise it counts from the letter's own date. "… nach Bekanntgabe des Bescheides" beside "Gegen
+  diesen Bescheid ist der Widerspruch gegeben." is this letter. When the strong dates are more
   than **14 days** apart one of them is another's (planted, an earlier decision's), so the to-do has no
   date rather than a wrong one; so does one date alone more than 60 days before the letter arrived. A letter
   giving no date at all counts from its date once the person enters it.
@@ -415,15 +427,23 @@ this):
   days.
 - **The yellow envelope.** A letter that says it is served with a *Postzustellungsurkunde* — a short line of
   its header ("Mit Postzustellungsurkunde", "Zustellung gegen PZU") or "Dieser Bescheid wird Ihnen mit
-  Postzustellungsurkunde zugestellt", never another decision's service or a tip to send the objection by
-  *Einschreiben mit Rückschein*, and every notice counting from notification or service — is served on the day
+  Postzustellungsurkunde zugestellt", never another decision's service, a copy or a representative's ("Abschrift",
+  "Original mit PZU an Ihren Bevollmächtigten", "nachrichtlich"), a negation ("nicht mit
+  Postzustellungsurkunde"), a reference ("PZU-2026-0815") or a tip to send the objection by *Einschreiben mit
+  Rückschein*; every notice counting from notification or service, and none naming an earlier decision unless it
+  names this letter too or a decision on a remedy ("Gegen den Bescheid vom … in Gestalt dieses
+  Widerspruchsbescheides …"; a reminder's "Gegen den Bescheid vom 27.10. …" counts from that one) — is served on the day
   the postman wrote on the envelope: handed over, put in the letterbox (§ 180 ZPO) or, deposited at the post
   office, the day the notice of the deposit was left (§ 181 ZPO), never the day it was picked up; § 3 VwZG
   applies §§ 177–182 ZPO, and a decision served so is notified then (§ 41 Abs. 5 VwVfG). Every to-do counted
-  from its arrival cites `pzu`, so the app asks "When was it delivered?" for the date on the yellow envelope,
-  with nothing filled in. Once entered, that date starts the to-do (and the notice set beside a reading's date)
-  when it is after the letter's own date and within 14 days of it; a later one is no envelope date of this
-  letter's (a pickup weeks later, a planted service line on a plain letter) and the letter's date is kept.
+  from its arrival cites `pzu` — also when the letter's own notice is set beside the reading's date — so the
+  app asks "When was it delivered?" for the date on the yellow envelope ("not the day you picked it up or
+  opened it"), with nothing filled in. Once entered, that date starts the to-do (and the notice set beside a
+  reading's date) when it is after the letter's own date and within 14 days of it; a later one is no envelope date
+  of this letter's (a pickup weeks later, a planted service line on a plain letter): the letter's date is kept and
+  the receipt and the toast say so. No deemed delivery days are added to a reading of such a letter. A pickup or
+  opening day typed instead of the envelope's counts up to 14 days late — so does an arrival saved before this
+  rule on such a letter, once it is planned again (ADR 0015).
 - **Kept the safe side.** The start travels in the DateSpec (`anchor_date`). Recomputed, an earlier letter
   date the person enters, or (for a period from service or arrival) an earlier arrival, moves the to-do
   earlier; a later one never moves it later — but the envelope's date of a letter served with a
@@ -458,8 +478,11 @@ this):
 
 A reading can keep the sender and still drop a fixed date the letter sets for the person to pay or send
 something by. Code reads the letter's visible text for such dates (`ingest/gaps.py`, `deadline_items`; no model
-call) and files a to-do for each in slot `check:deadline` (`check:deadline#2` …), always `low` and "Please
-check":
+call) and files a to-do for each — at most three, the earliest — in slot `check:deadline#<date>-<nature>`
+(one per date and kind, so reading the letter again never passes a to-do's status to another date), always `low`
+and "Please check", titled "Check this date in the letter" and worded as a cross-check ("The letter names a payment
+date on … that Claude's reading didn't list — check whether it applies to you before acting"); its Idea never offers
+"Pay":
 
 - **Strict wording only.** A full date with its year after a payment's label ("Zahlbar bis", "Fällig am:",
   "Fälligkeit:", "Zahlungsziel:", "Due date:"), or with a second-person or imperative verb ("Bitte überweisen
@@ -469,17 +492,32 @@ check":
 - **Never** in a sentence that names a remedy (the objection has its own check above), a condition ("Falls
   Sie …"), something past or already done ("war fällig", "bereits erhalten"), the sender's own act or a direct
   debit ("Wir buchen … ab", "Lastschrift", money paid out to the person), an appointment ("um 10:00 Uhr"), a
-  discount or a preference ("Skonto", "möglichst"), or a validity ("gilt bis", "läuft bis"); never the letter's
-  own date or one before it (a reminder's old due day); never a period ("innerhalb von 14 Tagen").
+  discount or a preference ("Skonto", "möglichst"), a validity ("gilt bis", "läuft bis"), or an option the
+  person may take ("Bei Interesse …", "Um am Bonusprogramm teilzunehmen, …", "Zur Auftragserteilung …", "… jederzeit
+  widerrufen", a request right after a question offering one: "Sie möchten Ihren Vertrag nicht verlängern? Dann
+  senden Sie …") — never a request with a reason ("Um über Ihren Antrag entscheiden zu können, reichen Sie … ein");
+  never a period's end ("für den Zeitraum bis zum 31.12."); never the letter's own date or one before it (a
+  reminder's old due day); never a period ("innerhalb von 14 Tagen").
+- **Not owed by a label.** A payment's label or "fällig" sets none on a letter that collects by direct debit (as
+  `ordnung.payments` reads one: done, not offered, not failed, no transfer asked for), says its whole amount is
+  paid or is a credit note ("bereits beglichen", "Status: bezahlt", a heading "Gutschrift"), or pays money out
+  ("Erstattung", "wird auf Ihr Konto überwiesen") — the last two only when nothing is still owed ("Restbetrag",
+  "Nachzahlung"); a "Bitte überweisen Sie … bis" still files one. Nor does the full price ("ohne Abzug", "netto")
+  beside a reading's payment dated by its discount, nor a payment a reading's warning doubts (its account, payee or
+  whether it is owed).
 - **Only when the reading has none.** No dated to-do of the reading falls within 3 days of it, none quotes a
   sentence with that date (the reading read it: a date it misread there is the quote check's to flag), and no
   to-do of the reading has it as a second date already (a letter that gives one payment two dates: the
-  reading's to-do keeps the earlier and names the later, § 1). Reading the letter again never files one that a
-  to-do the person acted on covers (edited, paid, snoozed or dismissed, kept from an earlier reading; due within
-  3 days of it).
+  reading's to-do keeps the earlier and names the later, § 1), nor is it a later occurrence of a recurring to-do
+  of the reading (the very day only — a back payment a day off an advance's due day is its own; a recurring payment
+  read without a date covers its day of the month once the letter lists two or more rows on it). Reading the letter
+  again never files one that a to-do the person acted on covers (edited, paid, snoozed or dismissed, kept from an
+  earlier reading; due within 3 days of it), and one the person acted on moves onto the new reading's to-do for
+  that day (the very day first, then within 3 days).
 - **Never overdue.** A date already past on the day the letter arrived (or was read) gets none.
 - **Its date is the letter's own**, never moved to a working day (`shift_rule: none`) — never later than the
-  letter says; its quote is the letter's sentence; a warning says the reading left it out.
+  letter says; its quote is the letter's line when its words there set it ("Zahlungsziel: 15.10.2026"), else its
+  sentence; a warning says the reading left it out.
 - **Not** for an almost blank reading (its own to-do already sends the person to the letter) or one whose
   warnings call the letter a scam (a payment it rightly left out is never brought back).
 

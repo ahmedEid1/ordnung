@@ -1315,7 +1315,7 @@ def _compute_relative(
     # § 180 ZPO), never from the 4th-day fiction of ordinary authority letters: without the envelope
     # date the letter's own date is the earliest plausible start (legal research
     # owig_einspruch_bussgeldbescheid_2_wochen); with it, that date, whatever anchor the letter was read with.
-    formal = statute in _FORMAL_SERVICE or ctx.court
+    formal = statute in _FORMAL_SERVICE or ctx.court or ctx.formal_service
     # ... except a court's own period that the letter counts from its own date ("binnen zwei Wochen ab dem
     # Datum dieses Schreibens"): a court may set another start than delivery (§ 221 ZPO), so the envelope
     # date entered never moves it later. A statute's period (a Mahnbescheid's) always runs from delivery.

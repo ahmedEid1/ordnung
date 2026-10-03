@@ -150,7 +150,7 @@ describe("the advice card of a high-stakes letter", () => {
       id: "itm_dl",
       slot_key: "check:deadline",
       kind: "payment",
-      title: "Payment the letter asks for",
+      title: "Check this date in the letter",
       due_date: "2026-10-15",
       evidence: [{ doc_id: "doc_dl", quote: "Bitte überweisen Sie den Betrag bis zum 15.10.2026.", grounding: "verified", value_consistent: false, score: 100, page: 1, boxes: [] }],
     });

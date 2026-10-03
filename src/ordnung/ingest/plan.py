@@ -28,7 +28,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Literal
 
 from ordnung.clock import now_iso
@@ -514,7 +514,7 @@ def verify_extraction(
         found = check_item(extraction, pages, injected=injected, today=today) if check_reading else None
         # the fixed dates the letter sets for the person that the reading left out (pay by, send by): one to-do each
         dropped = deadline_items(extraction, pages, today=today) if check_reading else []
-        for key, item in zip(deadline_slots(len(dropped)), dropped, strict=True):
+        for key, item in zip(deadline_slots(dropped), dropped, strict=True):
             items.append(
                 _verify_item(doc_id, item, key, pages, others=extraction.items, index=len(items), trace=step)
             )
@@ -820,7 +820,15 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         receipt, verified.item, (*verified.rivals, *notice), ctx, postal_buffer_days=postal_buffer_days
     )
     if settled is not None:
+        served = "pzu" in receipt.rule_ids and "pzu" not in settled.receipt.rule_ids
         receipt, fixed = settled.receipt, settled.fixed
+        # still the letter served with the yellow envelope: say what became of a date entered too late
+        if served:
+            words = _envelope_words(None, ctx, ctx.document_date)
+            far = [words] if _too_far(ctx, ctx.document_date) else []
+            receipt = receipt.model_copy(
+                update={"rule_ids": [*receipt.rule_ids, "pzu"], "warnings": [*receipt.warnings, *far]}
+            )
     source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
     return ComputedDate(
         receipt=receipt,
@@ -933,7 +941,7 @@ def _check_receipt(
     stored = ctx.document_date
     envelope = envelope_start(spec, ctx)
     if ctx.formal_service and spec.type == "relative" and spec.delivery_rule == "none":
-        receipt = _envelope_note(receipt, envelope)
+        receipt = _envelope_note(receipt, envelope, ctx, written)
     if envelope is None and written is not None and stored is not None and written < stored:
         note = (
             f"The letter gives {fmt_date(written)} for itself, earlier than the date stored for it "
@@ -944,21 +952,57 @@ def _check_receipt(
     return receipt
 
 
-def _envelope_note(receipt: ComputationReceipt, envelope: date | None) -> ComputationReceipt:
+def _envelope_note(
+    receipt: ComputationReceipt, envelope: date | None, ctx: RuleContext, written: date | None
+) -> ComputationReceipt:
     """The code-made to-do's receipt on a letter served with a Postzustellungsurkunde
     (:func:`~ordnung.ingest.gaps.formally_served`): it cites ``pzu``, so the app asks for the date on the yellow
     envelope ("When was it delivered?"), and says what it counts from — that date once entered
     (:func:`~ordnung.ingest.gaps.envelope_start`), else the letter's own date, the earliest it can be."""
-    note = (
-        f"This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from "
-        f"{fmt_date(envelope)}, the date on the envelope you entered."
-        if envelope is not None
-        else "This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from the date "
-        "the postman wrote on the envelope. Until you enter it, we count from the letter's own date, the earliest "
-        "it can be."
-    )
+    note = _envelope_words(envelope, ctx, written)
     rule_ids = receipt.rule_ids if "pzu" in receipt.rule_ids else [*receipt.rule_ids, "pzu"]
     return receipt.model_copy(update={"rule_ids": rule_ids, "warnings": [*receipt.warnings, note]})
+
+
+def _too_far(ctx: RuleContext, own: date | None) -> bool:
+    """Whether the date the person entered is more than :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days after the
+    letter's own date ``own``: no envelope date of this letter's (:func:`~ordnung.ingest.gaps.envelope_start`)."""
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    return arrived is not None and own is not None and arrived > own + timedelta(days=LETTER_DATE_SPAN)
+
+
+def _envelope_words(envelope: date | None, ctx: RuleContext, written: date | None) -> str:
+    """What a to-do on a letter served with a Postzustellungsurkunde counts from: the envelope's date entered, the
+    letter's own date when the date entered is no envelope date of this letter (:func:`~ordnung.ingest.gaps.envelope_start`:
+    not after the letter's date, or more than :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days on), or until one
+    is entered."""
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    days = [day for day in (written, ctx.document_date) if day is not None]
+    own = min(days) if days else None
+    if envelope is not None:
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from "
+            f"{fmt_date(envelope)}, the date on the envelope you entered."
+        )
+    elif arrived is not None and own is not None and _too_far(ctx, own):
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde). The date you entered, "
+            f"{fmt_date(arrived)}, is more than {LETTER_DATE_SPAN} days after the letter's own date, so we still count "
+            f"from the letter's date ({fmt_date(own)}), the earliest it can be — if the envelope really shows "
+            f"{fmt_date(arrived)}, change this to-do's date."
+        )
+    elif arrived is not None:
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde). The date you entered, "
+            f"{fmt_date(arrived)}, is not after the letter's own date, so we count from the letter's date."
+        )
+    else:
+        note = (
+            "This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from the date "
+            "the postman wrote on the envelope. Until you enter it, we count from the letter's own date, the "
+            "earliest it can be."
+        )
+    return note
 
 
 def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:
@@ -1440,6 +1484,30 @@ def _carry_over(store: Store, doc_id: str, verification: Verification) -> set[st
                 acted.remove(match)
                 unmatched.remove(verified)
                 moved.add(verified.slot_key)
+    # code's to-do for a date a reading left out that the person acted on (paid, edited): the new reading's to-do of
+    # its kind for that date takes it over, so "paid" survives (it has no amount) — the very day first, then within
+    # DEADLINE_REACH days (never a "done" moved onto a neighbouring payment while one on its day is there)
+    for reach in (0, DEADLINE_REACH):
+        for verified in list(unmatched):
+            new = verified.item
+            day = parse_date(new.date.date) if new.date.type == "fixed" else None
+            match = next(
+                (
+                    item
+                    for item in acted
+                    if day is not None
+                    and _deadline_check(item.slot_key)
+                    and item.kind == new.kind
+                    and (other := parse_date(item.due_date)) is not None
+                    and abs((day - other).days) <= reach
+                ),
+                None,
+            )
+            if match is not None:
+                store.update_item(match.id, slot_key=verified.slot_key)
+                acted.remove(match)
+                unmatched.remove(verified)
+                moved.add(verified.slot_key)
     return moved
 
 
@@ -1530,7 +1598,7 @@ def write_items(
 
 
 def _deadline_check(slot: str | None) -> bool:
-    """The slot of code's to-do for a date the reading left out (:data:`~ordnung.ingest.gaps.DEADLINE_SLOT`, ``#2`` …)."""
+    """The slot of code's to-do for a date the reading left out (:data:`~ordnung.ingest.gaps.DEADLINE_SLOT`, ``#<date>-<nature>``)."""
     return (slot or "").split("#")[0] == DEADLINE_SLOT
 
 

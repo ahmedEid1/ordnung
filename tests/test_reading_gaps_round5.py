@@ -707,7 +707,7 @@ def test_the_dropped_date_is_a_low_please_check_to_do_with_its_quote_located() -
     reading = blank(**WITH_SENDER, kind="invoice")
     verification = verify_extraction("doc_x", reading, pages, check_reading=True, today=date(2026, 10, 3))
     [verified] = verification.items
-    assert verified.slot_key == DEADLINE_SLOT and is_check_slot(verified.slot_key)
+    assert verified.slot_key.split("#")[0] == DEADLINE_SLOT and is_check_slot(verified.slot_key)
     assert verified.evidence.grounding == "verified" and DEADLINE_LEFT_OUT in verified.reasons
     assert verified.needs_check
     result = compute_item(verified, RuleContext(today=date(2026, 10, 3)), postal_buffer_days=3)
@@ -742,9 +742,13 @@ def test_the_deadline_warning_goes_once_its_to_do_was_dealt_with() -> None:
             self.evidence = [type("E", (), {"value_consistent": False})()]
 
     warning = "Claude's reading of this letter left out a date the letter sets for you. Ordnung added it …"
-    assert square_gap_warnings([warning], [Stored(DEADLINE_SLOT, "open")]) == [warning]
-    assert square_gap_warnings([warning], [Stored(DEADLINE_SLOT, "done")]) == []
-    assert needs_check  # (imported for the stored check's rule)
+    slot = f"{DEADLINE_SLOT}#2026-10-15-payment"
+    pending, done = Stored(slot, "open"), Stored(slot, "done")
+    assert needs_check(pending) and not needs_check(
+        done
+    )  # the stored check's rule square_gap_warnings follows
+    assert square_gap_warnings([warning], [pending]) == [warning]
+    assert square_gap_warnings([warning], [done]) == []
 
 
 DROPPED_MARKER = "Rechnung Wasser 2026"
@@ -784,7 +788,7 @@ async def test_a_dropped_payment_date_is_filed_and_a_later_complete_reading_repl
         doc_id = str(body["documents"][0]["id"])
         detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
         [item] = detail["items"]
-        assert item["slot_key"] == DEADLINE_SLOT and item["due_date"] == "2026-10-09"
+        assert item["slot_key"].split("#")[0] == DEADLINE_SLOT and item["due_date"] == "2026-10-09"
         assert item["computation"]["confidence"] == "low"
         assert any(
             w.startswith("Claude's reading of this letter left out") for w in detail["document"]["warnings"]

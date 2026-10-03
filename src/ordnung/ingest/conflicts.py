@@ -332,8 +332,14 @@ _UNDER_REACH = 0.05
 #: colon: "Ihr Termin", "Einladung zum Gespräch"), its time below ("Uhrzeit: …").
 _BLOCK_ABOVE = re.compile(
     r"\b(?:termin\w*|appointment|einladung|vorsprache|vorladung|wann)\b[^:]*:\s*$"
-    r"|^\s*(?:(?:ihr|ihre|unser|unsere|your)\s+)?(?:termin\w*|einladung\w*|vorladung\w*|vorsprache\w*|appointment\w*)"
-    r"(?:\s+[^\s:]+){0,3}\s*$",
+    # never an info block's rule for visits above the letter's own "Datum:" ("Termine nach Vereinbarung",
+    # "Vorsprache nur mit Termin", "Terminvereinbarung unter 0123-4567", "Termin online buchen")
+    r"|^\s*(?:(?:ihr|ihre|unser|unsere|your)\s+)?"
+    # nor a department's name ("Terminvergabe", "Einladungsmanagement", "Terminservice", "Einladungsstelle")
+    r"(?:termin(?!\w*(?:vereinbar|buch|vergabe|service|management|stelle|team|büro))\w*"
+    r"|einladung(?!\w*(?:management|stelle|team|büro|service))\w*|vorladung\w*|vorsprache\w*|appointment\w*)"
+    r"(?:\s+(?!(?:nach|nur|ohne|unter|online|telefonisch|bitte|by)\b|\w*(?:vereinbar|buch)|erwünscht|möglich"
+    r"|required|only)[^\s:\d]+){0,3}\s*$",
     re.IGNORECASE,
 )
 _BLOCK_BELOW = re.compile(
