@@ -1446,7 +1446,8 @@ export interface paths {
         };
         /**
          * Desktop Reminders
-         * @description The desktop notification's tool, today's text in each mode, and the start-at-login entry.
+         * @description The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both
+         *     ``null``), and the start-at-login entry.
          */
         get: operations["desktop_reminders_api_reminders_desktop_get"];
         put?: never;
@@ -2080,11 +2081,6 @@ export interface components {
              * @default false
              */
             paused: boolean;
-            /**
-             * Events
-             * @description How many events the calendar gets now
-             */
-            events: number;
             /**
              * Synced
              * @description How many of Ordnung's events are in the calendar
@@ -8601,7 +8597,10 @@ export interface operations {
     };
     desktop_reminders_api_reminders_desktop_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Include today's texts (built from the agenda) */
+                preview?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8615,6 +8614,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesktopReminders"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

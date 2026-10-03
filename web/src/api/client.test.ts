@@ -111,6 +111,7 @@ describe("server events", () => {
     handleServerEvent(qc, { type: "llm.paused", data: { until: "2026-09-28T14:05:00Z", reason: "Usage limit reached." } });
     rerender();
     expect(result.current.paused?.reason).toBe("Usage limit reached.");
+    expect(spy).toHaveBeenCalledWith({ queryKey: qk.health }); // Claude's status may have changed
 
     // the API announces the end of the pause; the banner goes away without waiting for `until`
     handleServerEvent(qc, { type: "llm.resumed", data: {} });

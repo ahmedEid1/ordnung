@@ -51,21 +51,28 @@ async def calendar_api(
         yield api
 
 
-async def test_status_before_and_after_connecting(data_dir: Path) -> None:
+async def test_status_before_and_after_connecting(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     server, secrets = FakeCalDav(), MemorySecrets()
     async with calendar_api(data_dir, server, secrets) as api:
+        events = len((await api.client.get("/api/calendar/sync/preview")).json()["events"])
+        built: list[str] = []
+        build_events = caldav.build_events
+        monkeypatch.setattr(
+            caldav, "build_events", lambda store, mode: built.append(mode) or build_events(store, mode)
+        )
         before = (await api.client.get("/api/calendar/sync")).json()
         assert before["available"] and before["unavailable"] is None and before["install_command"] is None
         assert not before["connected"] and before["url"] is None and before["mode"] == "discreet"
-        assert before["events"] > 5 and before["synced"] == 0 and before["last_sync"] is None
+        assert events > 5 and before["synced"] == 0 and before["last_sync"] is None
+        assert built == []  # the status, read on every page, never builds the events
 
         connected = await api.client.put("/api/calendar/sync", json=CONNECT)
         assert connected.status_code == 200, connected.text
         body = connected.json()
         assert body["connected"] and body["url"] == URL and body["username"] == USERNAME
         assert body["calendar_name"] == "Ordnung" and body["password_saved"] and not body["paused"]
-        assert body["synced"] == body["events"] == len(server.resources)
-        assert body["last_sync"]["sent"] == body["events"] and body["last_sync"]["error"] is None
+        assert body["synced"] == events == len(server.resources)
+        assert body["last_sync"]["sent"] == events and body["last_sync"]["error"] is None
         assert PASSWORD not in connected.text
         assert (await api.client.get("/api/calendar/sync")).json() == body
 

@@ -28,7 +28,10 @@ export interface EventsState {
   connected: boolean;
   /** latest job progress per document id */
   jobs: Record<string, JobProgress>;
-  /** set while the AI worker is paused (rate limit); cleared once `until` has passed */
+  /**
+   * set while the AI worker is paused: a usage limit (cleared once `until` has passed), or Claude not
+   * installed or not signed in (`until` empty: cleared when `llm.resumed` says Claude is ready)
+   */
   paused: LlmPausedEvent | null;
 }
 
@@ -182,9 +185,11 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
       break;
     case "llm.paused":
       setState((s) => ({ ...s, paused: ev.data }));
+      void qc.invalidateQueries({ queryKey: qk.health }); // Claude's status (Settings, the upload dialog)
       break;
     case "llm.resumed":
       setState((s) => (s.paused ? { ...s, paused: null } : s));
+      void qc.invalidateQueries({ queryKey: qk.health });
       break;
     case "review.failed":
       break; // shown by whoever started the review (useServerEvent)
@@ -292,11 +297,11 @@ export function useEventsConnection(): void {
   const qc = useQueryClient();
   useEffect(() => connectEvents(qc), [qc]);
 
-  // clear the paused banner automatically once `until` has passed
+  // clear the paused banner automatically once `until` has passed (waiting for Claude has no end)
   const paused = useSyncExternalStore(subscribe, () => state.paused, () => null);
   useEffect(() => {
     if (pauseTimer) clearTimeout(pauseTimer);
-    if (!paused) return;
+    if (!paused?.until) return;
     const ms = new Date(paused.until).getTime() - Date.now();
     const clear = () => setState((s) => ({ ...s, paused: null }));
     if (!Number.isFinite(ms) || ms <= 0) {

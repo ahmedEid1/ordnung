@@ -399,6 +399,26 @@ describe("paused banner", () => {
   });
 });
 
+describe("waiting for Claude", () => {
+  it("has no end: it names Claude connection and stays until Claude is ready", async () => {
+    stubFetch({ "/jobs": [{ id: "j1", doc_id: "doc_a", status: "queued" }] as Job[] });
+    const { client } = renderWithProviders(
+      <PageMetaProvider>
+        <PausedBanner />
+      </PageMetaProvider>,
+    );
+    act(() => handleServerEvent(client, { type: "llm.paused", data: { until: "", reason: "Claude Code isn't installed on this computer yet." } }));
+    const banner = await screen.findByRole("status");
+    expect(await within(banner).findByText("· 1 letter waiting")).toBeInTheDocument();
+    expect(banner).toHaveTextContent(
+      /^Waiting for Claude · 1 letter waiting\. Claude Code isn't installed on this computer yet\. Your letters are safe in the queue and are read as soon as Claude is connected — Claude connection\.$/,
+    );
+    expect(within(banner).getByRole("link", { name: "Claude connection" })).toHaveAttribute("href", "/settings?section=claude");
+    act(() => handleServerEvent(client, { type: "llm.resumed", data: {} }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+});
+
 describe("'isn't running' card", () => {
   it("stays up while 'Try again' runs, keeps focus on it and says when it still fails", async () => {
     const onRetry = vi.fn();

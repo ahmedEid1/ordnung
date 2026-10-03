@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     import httpx
 
     from ordnung.app_context import AppContext
-    from ordnung.models import Document, DocumentDetail, Item
+    from ordnung.models import Document, DocumentDetail, Item, Job
 
 T = TypeVar("T")
 
@@ -59,6 +59,7 @@ POLL_S = 0.5
 HEALTH_TIMEOUT_S = 2.0
 BROWSER_WAIT_S = 15.0
 LOGIN_PAGE_NAME = ".ordnung-open.html"
+SCHEMA_HINT = "Update Ordnung, or restore a backup made with this version (`ordnung restore FILE --force`)."
 # C0/C1 controls except tab and newline, and bidirectional overrides: a letter's title (written by the
 # model from an attacker's letter) or a file name must not drive the terminal (e.g. OSC 52 → clipboard)
 _TERMINAL_CONTROL_RE = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]")
@@ -158,6 +159,7 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
     import httpx
 
     from ordnung.backup import BackupError
+    from ordnung.db.migrate import SchemaError
     from ordnung.demo import DemoError
     from ordnung.ingest.extract import ExtractionError
     from ordnung.ingest.intake import IntakeError
@@ -168,6 +170,8 @@ def _explain(exc: Exception) -> tuple[str, str | None]:
         return str(exc), "If Ordnung's web app is running for this folder, use it — or stop it first."
     if isinstance(exc, LLMError):
         return str(exc), "Run `ordnung doctor` to check Claude."
+    if isinstance(exc, SchemaError):
+        return str(exc), SCHEMA_HINT
     if isinstance(exc, DemoError | IntakeError | ExtractionError | ApiError | BackupError):
         return str(exc), None
     if isinstance(exc, httpx.HTTPError):
@@ -278,6 +282,14 @@ def _json_object(response: httpx.Response) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _json_list(response: httpx.Response) -> list[Any]:
+    try:
+        value = response.json()
+    except ValueError:
+        return []
+    return value if isinstance(value, list) else []
+
+
 def _api(info: ServerInfo, timeout: float | None = 30.0) -> httpx.Client:
     """A client for the local server; never through a proxy (the session token stays on this computer)."""
     import httpx
@@ -323,7 +335,9 @@ def next_date(items: Sequence[Item], today: date) -> str:
     return f"{_day(chosen.due_date)} · {chosen.title}"
 
 
-def _status_text(document: Document) -> str:
+def _status_text(document: Document, waits: bool = False) -> str:
+    if waits:
+        return "[yellow]Waiting for Claude[/]"
     if document.status == "failed":
         return f"[red]Failed[/] — {escape(document.error or '')}"
     if document.status == "held":
@@ -337,8 +351,13 @@ def _status_text(document: Document) -> str:
     return document.status
 
 
-def summary_table(rows: Sequence[tuple[Document, str | None, Sequence[Item]]], today: date) -> Table:
-    """One row per letter: title, sender, next date and whether it needs checking."""
+def summary_table(
+    rows: Sequence[tuple[Document, str | None, Sequence[Item]]],
+    today: date,
+    waiting: Mapping[str, str] | None = None,
+) -> Table:
+    """One row per letter: title, sender, next date and whether it needs checking (or waits for Claude:
+    ``waiting`` maps those letters to why)."""
     table = Table(title="Your letters", title_justify="left", show_lines=False)
     table.add_column("Letter", overflow="fold")
     table.add_column("From", overflow="fold")
@@ -349,7 +368,7 @@ def summary_table(rows: Sequence[tuple[Document, str | None, Sequence[Item]]], t
             escape(document.title or document.filename),
             escape(sender or "—"),
             escape(next_date(items, today)),
-            _status_text(document),
+            _status_text(document, document.id in (waiting or {})),
         )
     return table
 
@@ -584,8 +603,20 @@ async def _read_with_progress(ctx: AppContext, documents: Sequence[Document]) ->
                 await follower
         for doc_id, task in tasks.items():
             final = ctx.store.get_document(doc_id)
-            state = "done" if final is None or final.status != "failed" else "[red]failed[/]"
+            if _waits_for_claude(ctx.store.latest_job(doc_id)):
+                state = "[yellow]waiting for Claude[/]"
+            else:
+                state = "done" if final is None or final.status != "failed" else "[red]failed[/]"
             progress.update(task, completed=1.0, description=f"{escape(names[doc_id])} · {state}")
+
+
+def _waits_for_claude(job: Job | None) -> str | None:
+    """Why a letter's reading waits for Claude (a usage limit, Claude not installed or signed out), if
+    it does."""
+    from ordnung.ingest.worker import WAITING_FOR_CLAUDE
+
+    reason = job.waiting_reason if job is not None and job.status == "queued" else None
+    return reason if reason and reason.startswith(WAITING_FOR_CLAUDE) else None
 
 
 def _uploads(files: Sequence[Path], combine: bool) -> list[list[tuple[str, bytes]]]:
@@ -593,10 +624,12 @@ def _uploads(files: Sequence[Path], combine: bool) -> list[list[tuple[str, bytes
     return [entries] if combine else [[entry] for entry in entries]
 
 
-def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, private: bool) -> None:
+def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
     groups = _uploads(files, combine)
 
-    async def work(ctx: AppContext) -> tuple[list[tuple[Document, str | None, list[Item]]], date]:
+    async def work(
+        ctx: AppContext,
+    ) -> tuple[list[tuple[Document, str | None, list[Item]]], dict[str, str], date]:
         from ordnung.ingest.pipeline import add_file
         from ordnung.tick import local_today
 
@@ -616,10 +649,15 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
                 )
             )
         await _read_with_progress(ctx, added)
-        return [_row(ctx, document.id) for document in added], local_today(ctx.store)
+        waiting = {
+            document.id: reason
+            for document in added
+            if (reason := _waits_for_claude(ctx.store.latest_job(document.id)))
+        }
+        return [_row(ctx, document.id) for document in added], waiting, local_today(ctx.store)
 
-    rows, today = _in_process(paths, "ordnung add", work)
-    _print_summary(rows, today)
+    rows, waiting, today = _in_process(paths, "ordnung add", work)
+    return _print_summary(rows, today, waiting)
 
 
 def _row(ctx: AppContext, doc_id: str) -> tuple[Document, str | None, list[Item]]:
@@ -630,12 +668,21 @@ def _row(ctx: AppContext, doc_id: str) -> tuple[Document, str | None, list[Item]
     return document, party.name if party else None, ctx.store.list_items(doc_id=doc_id)
 
 
-def _print_summary(rows: Sequence[tuple[Document, str | None, Sequence[Item]]], today: date) -> None:
-    console.print(summary_table(rows, today))
+def _print_summary(
+    rows: Sequence[tuple[Document, str | None, Sequence[Item]]],
+    today: date,
+    waiting: Mapping[str, str] | None = None,
+) -> bool:
+    """The letters as a table (and why some wait for Claude); whether every one was read."""
+    waiting = waiting or {}
+    console.print(summary_table(rows, today, waiting))
     if any(document.status == "needs_review" for document, _, _ in rows):
         console.print(
             "[dim]“Please check”: Ordnung couldn't confirm something it read in the letter — open it to check.[/]"
         )
+    for reason in dict.fromkeys(waiting.values()):
+        console.print(f"[yellow]{escape(reason)}[/]")
+    return not waiting and all(document.status != "failed" for document, _, _ in rows)
 
 
 def _server_today(client: httpx.Client) -> date:
@@ -648,8 +695,8 @@ def _server_today(client: httpx.Client) -> date:
         return clock.today()
 
 
-def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool) -> None:
-    from ordnung.models import Document, DocumentDetail
+def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, private: bool) -> bool:
+    from ordnung.models import Document, DocumentDetail, Job
 
     console.print(f"[dim]Sending to the running Ordnung at {escape(info.base_url)}[/]")
     uploads = [("files", (path.name, path.read_bytes())) for path in files]
@@ -663,19 +710,31 @@ def _add_remote(info: ServerInfo, files: Sequence[Path], *, combine: bool, priva
         ids = [Document.model_validate(doc).id for doc in result.get("documents") or []]
         ids += [str(doc_id) for doc_id in result.get("duplicates") or []]
         details: dict[str, DocumentDetail] = {}
+        waiting: dict[str, str] = {}
         with console.status("Reading your letters… (Ctrl+C stops waiting; the app keeps reading them)"):
             while True:
+                unread: dict[str, DocumentDetail] = {}
                 for doc_id in ids:
+                    if doc_id in details:
+                        continue
                     detail = DocumentDetail.model_validate(
                         _checked(client.get(f"/api/documents/{doc_id}")).json()
                     )
                     if detail.document.status in FINAL_STATUSES:
                         details[doc_id] = detail
+                    else:
+                        unread[doc_id] = detail
+                if unread:  # a letter that waits for Claude is not waited for here: the app reads it later
+                    jobs = _json_list(_checked(client.get("/api/jobs", params={"active_only": "true"})))
+                    for job in (Job.model_validate(row) for row in jobs):
+                        reason = _waits_for_claude(job)
+                        if job.doc_id in unread and reason:
+                            details[job.doc_id], waiting[job.doc_id] = unread[job.doc_id], reason
                 if len(details) == len(ids):
                     break
                 time.sleep(POLL_S)
         today = _server_today(client)
-    _print_summary([_detail_row(details[doc_id]) for doc_id in ids], today)
+    return _print_summary([_detail_row(details[doc_id]) for doc_id in ids], today, waiting)
 
 
 def _detail_row(detail: DocumentDetail) -> tuple[Document, str | None, list[Item]]:
@@ -706,9 +765,11 @@ def add(
             )
         info = reachable_server(paths.data_dir)
         if info is not None:
-            _add_remote(info, files, combine=combine, private=private)
+            read = _add_remote(info, files, combine=combine, private=private)
         else:
-            _add_in_process(paths, files, combine=combine, private=private)
+            read = _add_in_process(paths, files, combine=combine, private=private)
+    if not read:
+        raise _fail("Not every letter was read (see above).", hint="Run `ordnung doctor` to check Claude.")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1165,16 +1226,22 @@ def doctor(
 
 
 def _chosen_model(folder: Path) -> str:
-    """The model every call runs on (Settings → Claude), so the probe tries that one and not an alias;
-    the default before any data exists (the doctor must not create the folder)."""
+    """The model every call runs on (Settings → Claude connection), so the probe tries that one and not
+    an alias; the default before any data exists (the doctor must not create the folder), or while the
+    database can't be read (the doctor's Database check says why)."""
+    import sqlite3
+
     from ordnung.db.store import Store
     from ordnung.llm.base import DEFAULT_MODEL
 
     paths = Paths(folder)
     if not paths.db.is_file():
         return DEFAULT_MODEL
-    with Store.open(paths, read_only=True) as store:
-        return store.get_settings().model
+    try:
+        with Store.open(paths, read_only=True) as store:
+            return store.get_settings().model
+    except (sqlite3.DatabaseError, RuntimeError):
+        return DEFAULT_MODEL
 
 
 def _evals_module() -> Any:

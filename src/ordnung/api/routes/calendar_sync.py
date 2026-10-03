@@ -2,8 +2,9 @@
 
 ``GET /api/calendar/sync`` says whether calendar sync can be used on this computer (the password
 store; never in the demo), whether a calendar is connected (address, user name, mode, whether the
-app password is saved here) and what the last sync did. ``GET /api/calendar/sync/preview?mode=``
-lists exactly what each event would contain. ``POST /api/calendar/sync/discover`` finds the
+app password is saved here) and what the last sync did — read on every page (background problems), so
+it never builds the events. ``GET /api/calendar/sync/preview?mode=`` lists exactly what each event
+would contain (how many the calendar gets). ``POST /api/calendar/sync/discover`` finds the
 calendars that take events from a calendar's, an account's or a server's address (nothing is
 stored). ``PUT /api/calendar/sync`` connects (or changes the
 mode of) a calendar: the address is checked with the server first, then the app password goes to
@@ -97,7 +98,6 @@ class CalendarSyncStatus(BaseModel):
         description="The app password was in this computer's keyring when Ordnung last needed it",
     )
     paused: bool = Field(default=False, description="Automatic syncing waits after a refused password")
-    events: int = Field(description="How many events the calendar gets now")
     synced: int = Field(default=0, description="How many of Ordnung's events are in the calendar")
     last_sync: CalendarSyncReport | None = None
 
@@ -187,7 +187,6 @@ def _status(ctx: AppContext, secrets: SecretStore, demo: bool) -> CalendarSyncSt
         mode=mode,
         password_saved=saved,
         paused=connection.paused if connection else False,
-        events=len(caldav.build_events(store, mode)),
         synced=len(connection.events) if connection else 0,
         last_sync=connection.last if connection else None,
     )

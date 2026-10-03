@@ -947,9 +947,13 @@ export function useMarkCalendarExported() {
   return useMutation({ mutationFn: () => api.calendarExported(), meta: { errorTitle: "Couldn't note the calendar download" }, onSuccess: () => invalidateLedger(qc) });
 }
 
-/** The morning desktop notification: its tool, today's text in each mode, and start at login. */
-export function useDesktopReminders() {
-  return useQuery({ queryKey: ["reminders", "desktop"] as const, queryFn: api.desktopReminders, staleTime: 30_000 });
+/**
+ * The morning desktop notification: its tool, today's text in each mode, and start at login.
+ * `preview: false` (the check for background problems on every page) skips the texts, which the
+ * server builds from the agenda.
+ */
+export function useDesktopReminders({ preview = true }: { preview?: boolean } = {}) {
+  return useQuery({ queryKey: ["reminders", "desktop", preview ? "preview" : "status"] as const, queryFn: () => api.desktopReminders(preview), staleTime: 30_000 });
 }
 
 /** "Send a test notification" (the answer says whether the system showed it, and why not). */

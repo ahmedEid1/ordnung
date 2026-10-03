@@ -281,7 +281,8 @@ export const api = {
   calendarExported: () => call("post", "/api/calendar/exported"),
 
   // -- reminders outside the browser & backup ----------------------------------------------------
-  desktopReminders: () => call("get", "/api/reminders/desktop"),
+  /** `preview: false` leaves today's texts out (they are built from the agenda). */
+  desktopReminders: (preview = true) => call("get", "/api/reminders/desktop", { query: { preview: preview ? undefined : false } }),
   /** Show today's notification now (a sample when nothing is due); the morning one still comes. */
   testDesktopNotification: (mode: DesktopMode) => call("post", "/api/reminders/desktop/test", { body: { mode } }),
   backupInfo: () => call("get", "/api/backup"),

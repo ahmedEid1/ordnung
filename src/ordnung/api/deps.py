@@ -4,8 +4,14 @@
 context, the store and the app's "today" through the ``*Dep`` aliases below. The state also owns the
 API's own background tasks (the on-demand Ideas review), the watched folder (started by the
 lifespan, restarted when its setting changes) and the cached Claude CLI status shown by
-``GET /api/health`` (probed at most every 10 minutes, never with a model call). "Run check"
+``GET /api/health`` (never with a model call; probed at most every 10 minutes while Claude is ready,
+every 15 seconds while it is not found or not signed in, so installing it counts at once). "Run check"
 (``GET /api/health?probe=1``) runs the doctor with one tiny live call, at most once a minute.
+
+Every fresh status reaches the running app: a ``claude`` found on PATH becomes the one the model
+backend runs (it looked for the CLI only when Ordnung started), and once Claude is ready the letters
+waiting for it are read (:meth:`~ordnung.ingest.worker.IngestWorker.claude_ready`). While letters
+wait, the worker asks for a fresh status itself (``IngestWorker.claude_check``).
 """
 
 from __future__ import annotations
@@ -24,7 +30,7 @@ from fastapi import Depends, Request
 
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
-from ordnung.doctor import DoctorReport, run_doctor
+from ordnung.doctor import CLAUDE_CODE_URL, DoctorReport, run_doctor
 from ordnung.ingest.watcher import FolderWatcher
 from ordnung.llm import claude_cli
 from ordnung.llm.replay import ReplayBackend
@@ -34,10 +40,13 @@ from ordnung.tick import local_today
 log = logging.getLogger(__name__)
 
 CLAUDE_STATUS_TTL_S = 10 * 60.0
+#: How long "not found" or "not signed in" is kept: the person may be installing Claude right now.
+CLAUDE_MISSING_TTL_S = 15.0
 PROBE_INTERVAL_S = 60.0
 _CLI_BACKENDS = frozenset({"claude", "claude_cli"})
 
 StatusProbe = Callable[[], Awaitable[ClaudeStatus]]
+StatusListener = Callable[[ClaudeStatus], None]
 DoctorRunner = Callable[..., Awaitable[DoctorReport]]
 """``run_doctor(data_dir, *, probe=...)`` — replaceable in tests."""
 
@@ -55,9 +64,17 @@ def _signed_in(status: dict[str, Any] | None) -> bool | None:
     return value if isinstance(value, bool) else None
 
 
+def claude_ready(status: ClaudeStatus) -> bool:
+    """Claude can read letters: installed, and not known to be signed out (or otherwise unusable)."""
+    return status.installed and status.ok is not False
+
+
 def _status_detail(installed: bool, signed_in: bool | None) -> str:
     if not installed:
-        return "The claude command-line tool was not found. Install Claude Code and sign in to let Ordnung read letters."
+        return (
+            f"The claude command-line tool was not found. Install Claude Code ({CLAUDE_CODE_URL}) and "
+            "sign in to let Ordnung read letters."
+        )
     if signed_in is False:
         return "Claude is installed but not signed in. Run “claude” once in a terminal and sign in."
     detail = "Signed in with your Claude account." if signed_in else "Claude is installed."
@@ -81,34 +98,51 @@ async def probe_claude_cli() -> ClaudeStatus:
 
 
 class ClaudeStatusCache:
-    """The Claude CLI status, probed at most once per ``ttl_s`` seconds (one probe at a time).
+    """The Claude CLI status, probed at most once per ``ttl_s`` seconds while Claude is ready and once
+    per ``missing_ttl_s`` while it is not (one probe at a time). ``listener`` hears every fresh status.
 
     Backends that never run the CLI (recorded demo answers, the test fake) are reported without
     probing, so tests and the demo never start a ``claude`` process.
     """
 
-    def __init__(self, probe: StatusProbe = probe_claude_cli, *, ttl_s: float = CLAUDE_STATUS_TTL_S) -> None:
+    def __init__(
+        self,
+        probe: StatusProbe = probe_claude_cli,
+        *,
+        ttl_s: float = CLAUDE_STATUS_TTL_S,
+        missing_ttl_s: float = CLAUDE_MISSING_TTL_S,
+    ) -> None:
         self.probe = probe
         self.ttl_s = ttl_s
+        self.missing_ttl_s = missing_ttl_s
+        self.listener: StatusListener | None = None
         self._value: tuple[float, ClaudeStatus] | None = None
         self._lock = asyncio.Lock()
 
     def remember(self, status: ClaudeStatus) -> None:
         """Store a status found by a fuller check (``/api/health?probe=1``) as the cached one."""
         self._value = (time.monotonic(), status)
+        if self.listener is not None:
+            self.listener(status)
 
     async def get(self, backend_name: str, *, uses_cli: bool) -> ClaudeStatus:
-        """The cached status (refreshed when older than the TTL)."""
+        """The cached status (refreshed when older than its TTL)."""
         if not uses_cli:
             return ClaudeStatus(
                 installed=False,
                 detail=f"This session uses the “{backend_name}” backend; Claude is not called.",
             )
         async with self._lock:
-            now = time.monotonic()
-            if self._value is None or now - self._value[0] > self.ttl_s:
-                self._value = (now, await self.probe())
-            return self._value[1]
+            cached = self._value
+            if cached is not None and not self._stale(*cached):
+                return cached[1]
+            status = await self.probe()
+            self.remember(status)
+            return status
+
+    def _stale(self, checked: float, status: ClaudeStatus) -> bool:
+        ttl = self.ttl_s if claude_ready(status) else self.missing_ttl_s
+        return time.monotonic() - checked > ttl
 
 
 class RateLimit:
@@ -133,6 +167,17 @@ def backend_uses_cli(ctx: AppContext) -> bool:
     fallback = getattr(backend, "fallback", None)
     names = {backend.name, getattr(fallback, "name", "")}
     return bool(names & _CLI_BACKENDS)
+
+
+def use_claude_found(ctx: AppContext, status: ClaudeStatus) -> None:
+    """Have the CLI backend (or the replay's fallback) run the ``claude`` a status check found: the
+    backend looks for it only when it is made, so one installed later would never be used."""
+    if not status.installed or not status.path:
+        return
+    backend = ctx.llm.backend
+    for candidate in (backend, getattr(backend, "fallback", None)):
+        if isinstance(candidate, claude_cli.ClaudeCLIBackend):
+            candidate.binary = status.path
 
 
 # --------------------------------------------------------------------------------------------------
@@ -202,6 +247,20 @@ class ApiState:
 
     def __post_init__(self) -> None:
         self.folder = FolderWatcher(self.ctx, can_read=self.reads_letters)
+        self.claude.listener = self._claude_seen
+        self.ctx.worker.claude_check = self._claude_ready_now
+
+    def _claude_seen(self, status: ClaudeStatus) -> None:
+        """A fresh Claude status: the backend runs the ``claude`` found, and once Claude is ready the
+        letters waiting for it are read."""
+        use_claude_found(self.ctx, status)
+        if claude_ready(status):
+            self.ctx.worker.claude_ready()
+
+    async def _claude_ready_now(self) -> bool:
+        """The worker's check while letters wait for Claude (probes again once the status is stale)."""
+        ctx = self.ctx
+        return claude_ready(await self.claude.get(ctx.backend_name, uses_cli=backend_uses_cli(ctx)))
 
     @property
     def reads_letters(self) -> bool:

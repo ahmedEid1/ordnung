@@ -145,7 +145,6 @@ export function mockCalendarSyncStatus(db: MockDb, staticDemo: boolean): Calenda
     mode,
     password_saved: Boolean(c),
     paused: false,
-    events: mockCalendarPreview(db, mode).length,
     synced: c?.synced.size ?? 0,
     last_sync: c?.last ?? null,
   };

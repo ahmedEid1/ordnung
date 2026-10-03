@@ -110,6 +110,26 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
         }
 
 
+async def test_the_status_without_the_preview_builds_no_agenda(
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``?preview=false`` — the check for background problems on every page — leaves the texts out,
+    and with them the agenda they are written from."""
+    async with api_for(data_dir) as api:
+        seed_ledger(api.ctx.store)
+        full = (await api.client.get("/api/reminders/desktop")).json()
+
+        def no_agenda(*_: object) -> None:
+            raise AssertionError("the agenda was built")
+
+        monkeypatch.setattr(reminders.desktop, "preview", no_agenda)
+        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+        assert body["preview"] == {"discreet": None, "full": None}
+        assert {key: value for key, value in body.items() if key != "preview"} == {
+            key: value for key, value in full.items() if key != "preview"
+        }
+
+
 def test_the_start_at_login_command_names_a_folder_that_isnt_the_default(tmp_path: Path) -> None:
     default = tmp_path / "default"
     assert reminders.autostart_command(default, default=default) == "ordnung autostart enable"

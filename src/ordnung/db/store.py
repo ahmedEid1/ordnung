@@ -702,6 +702,18 @@ class Store:
             if conn.in_transaction:
                 conn.execute("ROLLBACK")
 
+    def change_token(self) -> tuple[int, int, int] | None:
+        """A value that changes whenever this thread may read something else than before: another
+        connection committed (``PRAGMA data_version``), this one wrote (``total_changes``) or the schema
+        changed ("Delete everything"). Only values taken in the same thread compare; ``None`` inside a
+        transaction, whose reads may not be committed."""
+        conn = self._conn()
+        if conn.in_transaction:
+            return None
+        data = conn.execute("PRAGMA data_version").fetchone()[0]
+        schema = conn.execute("PRAGMA schema_version").fetchone()[0]
+        return int(data), conn.total_changes, int(schema)
+
     def _after_commit(self, callback: Callable[[], None]) -> None:
         """Inside :meth:`tx`: run ``callback`` once the outermost transaction commits (never on rollback)."""
         self._local.after_commit.append(callback)

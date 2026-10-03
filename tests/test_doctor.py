@@ -11,8 +11,13 @@ from pathlib import Path
 import pytest
 
 from ordnung import doctor
+from ordnung.api import deps
+from ordnung.config import Paths
+from ordnung.db.migrate import latest_version
+from ordnung.db.store import Store
 from ordnung.doctor import DoctorReport, parse_version, run_doctor, run_doctor_sync
-from ordnung.llm.claude_cli import ProbeResult
+from ordnung.llm.base import ClaudeNotInstalled, LLMRequest
+from ordnung.llm.claude_cli import ClaudeCLIBackend, ProbeResult
 
 
 def fake_claude(bin_dir: Path, *, version: str = "2.1.5 (Claude Code)", auth: object | None = None) -> Path:
@@ -40,6 +45,9 @@ def isolated_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     return bin_dir
+
+
+LLM_REQUEST = LLMRequest(purpose="doctor", prompt="Reply with exactly: OK", system="", model="haiku")
 
 
 def statuses(report: DoctorReport) -> dict[str, str]:
@@ -75,10 +83,20 @@ def test_claude_missing(isolated_path: Path, data_dir: Path) -> None:
     report = run_doctor_sync(data_dir)
     missing = report.check("claude_cli")
     assert missing is not None and missing.status == "fail"
-    assert missing.fix is not None and "npm install -g @anthropic-ai/claude-code" in missing.fix
+    assert missing.fix is not None and doctor.CLAUDE_CODE_URL in missing.fix
     assert report.check("claude_auth") is None
     assert not report.ok
     assert not report.claude.installed and report.claude.ok is False
+
+
+def test_one_install_hint_everywhere(isolated_path: Path) -> None:
+    """The doctor, the health check and a letter that couldn't be read name the same place to get
+    Claude Code."""
+    assert doctor.CLAUDE_CODE_URL in doctor.INSTALL_HINT
+    assert doctor.CLAUDE_CODE_URL in deps._status_detail(False, None)
+    with pytest.raises(ClaudeNotInstalled) as raised:
+        ClaudeCLIBackend().build_args(LLM_REQUEST)
+    assert doctor.CLAUDE_CODE_URL in str(raised.value)
 
 
 def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: Path) -> None:
@@ -148,7 +166,7 @@ async def test_the_probe_is_one_live_call_only_when_asked(
     assert failed is not None and failed.status == "fail"
     assert failed.detail == "No such model (on claude-opus-5-5)"
     assert failed.fix is not None and failed.fix.startswith(doctor.LOGIN_HINT)
-    assert "`claude-opus-5-5`" in failed.fix and "Settings → Claude" in failed.fix
+    assert "`claude-opus-5-5`" in failed.fix and "Settings → Claude connection" in failed.fix
     bare = (await run_doctor(data_dir, probe=True)).check("claude_probe")
     assert bare is not None and bare.fix == doctor.LOGIN_HINT and bare.detail == "No such model (on haiku)"
 
@@ -169,6 +187,42 @@ def test_a_read_only_data_folder_fails(tmp_path: Path) -> None:
     finally:
         locked.chmod(0o700)
     assert check.status == "fail" and check.fix is not None
+
+
+def test_the_database_check(tmp_path: Path) -> None:
+    """Opened read-only: none yet is fine, a healthy one names its schema version."""
+    data_dir = tmp_path / "data"
+    none_yet = doctor.database_check(data_dir)
+    assert none_yet.status == "ok" and "None yet" in none_yet.detail and not data_dir.exists()
+    with Store.open(Paths(data_dir)) as store:
+        store.set_meta("probe", "1")
+    healthy = doctor.database_check(data_dir)
+    assert healthy.status == "ok" and healthy.detail == f"Schema version {latest_version()}"
+    assert doctor.local_checks(data_dir)[-2] == healthy
+
+
+def test_a_damaged_database_points_to_a_backup(tmp_path: Path) -> None:
+    """``serve`` sends a damaged database to the doctor: it says so, and how to restore a backup."""
+    data_dir = tmp_path / "data"
+    with Store.open(Paths(data_dir)) as store:
+        for n in range(300):
+            store.set_meta(f"key-{n}", "x" * 200)
+    db = Paths(data_dir).db
+    db.write_bytes(db.read_bytes()[: db.stat().st_size // 3])
+    check = doctor.database_check(data_dir)
+    assert check.status == "fail" and str(db) in check.detail
+    assert check.fix is not None and "ordnung restore FILE --force" in check.fix
+
+
+def test_a_database_from_a_newer_ordnung(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    with Store.open(Paths(data_dir)):
+        pass
+    with sqlite3.connect(Paths(data_dir).db) as conn:
+        conn.execute(f"PRAGMA user_version = {latest_version() + 1}")
+    check = doctor.database_check(data_dir)
+    assert check.status == "fail" and "newer version of Ordnung" in check.detail
+    assert check.fix is not None and check.fix.startswith("Update Ordnung.") and "--force" in check.fix
 
 
 def test_low_disk_space(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
