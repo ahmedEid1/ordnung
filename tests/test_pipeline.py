@@ -25,7 +25,7 @@ from helpers_docs import INJECTION, hidden_text_pdf, photo, scanned_pdf
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import pipeline
-from ordnung.ingest.gaps import CHECK_SLOT, GAP_WARNING, gap_warning
+from ordnung.ingest.gaps import CHECK_SLOT, DEADLINE_SLOT, GAP_WARNING, gap_warning, is_check_slot
 from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
@@ -236,9 +236,16 @@ async def test_reprocess_keeps_user_modified_items_and_replaces_the_rest(
 async def test_reprocess_drops_stale_items_that_nobody_edited(ctx: AppContext, router: Router) -> None:
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
     await ctx.worker.run_until_idle()
+    paid = next(item for item in ctx.store.list_items(doc_id=document.id) if item.kind == "payment")
     router.payloads[TAX_LETTER.marker]["items"] = router.payloads[TAX_LETTER.marker]["items"][:1]
     await ingest_document(ctx, document.id, force=True)
-    assert [item.kind for item in ctx.store.list_items(doc_id=document.id)] == ["deadline"]
+    after = ctx.store.list_items(doc_id=document.id)
+    assert [item.kind for item in after if not is_check_slot(item.slot_key)] == ["deadline"]
+    assert paid.id not in {item.id for item in after}  # the stale to-do nobody edited is gone
+    # the payment date the letter sets in so many words, left out by this reading, comes back as Ordnung's own
+    # "Please check" to-do (ADR 0015, check:deadline) — never as the old to-do
+    [check] = [item for item in after if is_check_slot(item.slot_key)]
+    assert check.slot_key.split("#")[0] == DEADLINE_SLOT and check.kind == "payment" and needs_check(check)
 
 
 async def test_second_read_uses_the_cache(ctx: AppContext) -> None:

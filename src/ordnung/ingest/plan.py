@@ -28,7 +28,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Literal
 
 from ordnung.clock import now_iso
@@ -36,6 +36,8 @@ from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals, law_rivals, rival_due, settle, settle_law
 from ordnung.ingest.gaps import (
     CHECK_SLOT,
+    DEADLINE_REACH,
+    DEADLINE_SLOT,
     LETTER_DATE_SPAN,
     NOTICE_REACH,
     Check,
@@ -43,7 +45,13 @@ from ordnung.ingest.gaps import (
     check_item,
     check_reasons,
     dates_the_objection,
+    deadline_items,
+    deadline_slots,
+    deadline_warning,
+    envelope_start,
+    formally_served,
     gap_warning,
+    is_check_slot,
     notice_rival,
     remedy_notices,
     square_gap_warnings,
@@ -408,8 +416,8 @@ def _verify_item(
     with trace.span("verify", "Quote", key=f"item:{key}") as step:
         evidence, check = check_quote(doc_id, item.quote, pages)
         reasons = consistency_reasons(item, pages)
-        if key == CHECK_SLOT:  # Ordnung's own to-do: graded as such (ordnung.ingest.gaps.check_reasons)
-            reasons = check_reasons(reasons)
+        if is_check_slot(key):  # Ordnung's own to-do: graded as such (ordnung.ingest.gaps.check_reasons)
+            reasons = check_reasons(reasons, key)
         evidence = evidence.model_copy(update={"value_consistent": not reasons})
         day = day_evidence(doc_id, item, pages)
         step.set(**facts.quote("item", evidence, check, index=index, reasons=reasons, slot_key=key))
@@ -509,6 +517,12 @@ def verify_extraction(
         if check_reading:
             items[:] = with_notice(items, extraction, pages)
         found = check_item(extraction, pages, injected=injected, today=today) if check_reading else None
+        # the fixed dates the letter sets for the person that the reading left out (pay by, send by): one to-do each
+        dropped = deadline_items(extraction, pages, today=today) if check_reading else []
+        for key, item in zip(deadline_slots(dropped), dropped, strict=True):
+            items.append(
+                _verify_item(doc_id, item, key, pages, others=extraction.items, index=len(items), trace=step)
+            )
         filed = found or (cross_check if check_reading else None)
         if filed is not None:
             items.append(
@@ -525,6 +539,8 @@ def verify_extraction(
         if found is not None:
             step.set(**facts.reading_check(found.gap, found.kind))
         verification.warnings = _verification_warnings(verification)
+        if dropped:
+            verification.warnings.append(deadline_warning(len(dropped)))
         if found is not None:
             verification.warnings.append(gap_warning(found.gap, found.kind, found.remedy))
             if found.remedy == "klage" and (extraction.remedy is None or extraction.remedy.type != "klage"):
@@ -567,7 +583,8 @@ def with_notice(
     # every to-do that dates the objection, also one a letter rule counts back from a tenancy's end (the
     # rival only ever lowers its date)
     dating = [
-        verified.slot_key != CHECK_SLOT and dates_the_objection(verified.item, notices) for verified in items
+        not is_check_slot(verified.slot_key) and dates_the_objection(verified.item, notices)
+        for verified in items
     ]
     rival = notice_rival(extraction, pages, notices) if any(dating) else None
     if rival is None:
@@ -582,7 +599,7 @@ def _verification_warnings(verification: Verification) -> list[str]:
     warnings = []
     # the to-do an incomplete reading gets has a warning of its own (ordnung.ingest.gaps.gap_warning)
     unchecked = sum(
-        verified.needs_check for verified in verification.items if verified.slot_key != CHECK_SLOT
+        verified.needs_check for verified in verification.items if not is_check_slot(verified.slot_key)
     )
     if unchecked:
         dates = "1 date" if unchecked == 1 else f"{unchecked} dates"
@@ -694,6 +711,7 @@ def rule_context(
         labour_court=is_labour_court(name, kind),
         social_court=is_social_court(name, kind),
         rent=(filed_as or letter_kind(extraction)) == "rent_lease",
+        formal_service=formally_served(pages),
     )
 
 
@@ -809,7 +827,15 @@ def compute_item(verified: VerifiedItem, ctx: RuleContext, *, postal_buffer_days
         receipt, verified.item, (*verified.rivals, *notice), ctx, postal_buffer_days=postal_buffer_days
     )
     if settled is not None:
+        served = "pzu" in receipt.rule_ids and "pzu" not in settled.receipt.rule_ids
         receipt, fixed = settled.receipt, settled.fixed
+        # still the letter served with the yellow envelope: say what became of a date entered too late
+        if served:
+            words = _envelope_words(None, ctx, ctx.document_date)
+            far = [words] if _too_far(ctx, ctx.document_date) else []
+            receipt = receipt.model_copy(
+                update={"rule_ids": [*receipt.rule_ids, "pzu"], "warnings": [*receipt.warnings, *far]}
+            )
     source: DueDateSource = "none" if receipt.due_date is None else ("fixed" if fixed else "computed")
     return ComputedDate(
         receipt=receipt,
@@ -873,15 +899,20 @@ _FROM_SERVICE = re.compile(r"zustell\w*|zugestellt|\bzugang\b|zugegangen|\berhal
 def _served_on_arrival(notice: Rival, ctx: RuleContext) -> Rival:
     """A notice counted from service or arrival starts on the day the person confirmed the letter arrived
     (the yellow envelope's date), as the reading's own does, when that is after the letter's date: only the
-    person sets a confirmed arrival, so the notice never overrides it."""
+    person sets a confirmed arrival, so the notice never overrides it. On a letter served with a
+    Postzustellungsurkunde (``ctx.formal_service``: the app asked for the date on the envelope) a notice from
+    notification starts there too, within :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days of the letter's date
+    (:func:`~ordnung.ingest.gaps.envelope_start`); on any other letter a notice from notification keeps the
+    letter's date — an arrival entered may be a pickup or a day saved weeks later (later audit, round 4, R4L-1)."""
     start = parse_date(notice.spec.anchor_date)
     arrived = ctx.received_date if ctx.received_confirmed else None
+    envelope = envelope_start(notice.spec, ctx)
     if (
         notice.spec.delivery_rule != "none"
         or start is None
         or arrived is None
         or arrived <= start
-        or not (notice.served or _FROM_SERVICE.search(notice.statement))
+        or not (notice.served or _FROM_SERVICE.search(notice.statement) or envelope is not None)
     ):
         return notice
     return replace(notice, spec=notice.spec.model_copy(update={"anchor_date": arrived.isoformat()}))
@@ -915,7 +946,10 @@ def _check_receipt(
     receipt = min(dated, key=lambda found: found.due_date or "") if dated else receipts[0]
     written = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
     stored = ctx.document_date
-    if written is not None and stored is not None and written < stored:
+    envelope = envelope_start(spec, ctx)
+    if ctx.formal_service and spec.type == "relative" and spec.delivery_rule == "none":
+        receipt = _envelope_note(receipt, envelope, ctx, written)
+    if envelope is None and written is not None and stored is not None and written < stored:
         note = (
             f"The letter gives {fmt_date(written)} for itself, earlier than the date stored for it "
             f"({fmt_date(stored)}), so we count from {fmt_date(written)} to be safe — change this to-do's date "
@@ -923,6 +957,59 @@ def _check_receipt(
         )
         receipt = receipt.model_copy(update={"warnings": [*receipt.warnings, note]})
     return receipt
+
+
+def _envelope_note(
+    receipt: ComputationReceipt, envelope: date | None, ctx: RuleContext, written: date | None
+) -> ComputationReceipt:
+    """The code-made to-do's receipt on a letter served with a Postzustellungsurkunde
+    (:func:`~ordnung.ingest.gaps.formally_served`): it cites ``pzu``, so the app asks for the date on the yellow
+    envelope ("When was it delivered?"), and says what it counts from — that date once entered
+    (:func:`~ordnung.ingest.gaps.envelope_start`), else the letter's own date, the earliest it can be."""
+    note = _envelope_words(envelope, ctx, written)
+    rule_ids = receipt.rule_ids if "pzu" in receipt.rule_ids else [*receipt.rule_ids, "pzu"]
+    return receipt.model_copy(update={"rule_ids": rule_ids, "warnings": [*receipt.warnings, note]})
+
+
+def _too_far(ctx: RuleContext, own: date | None) -> bool:
+    """Whether the date the person entered is more than :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days after the
+    letter's own date ``own``: no envelope date of this letter's (:func:`~ordnung.ingest.gaps.envelope_start`)."""
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    return arrived is not None and own is not None and arrived > own + timedelta(days=LETTER_DATE_SPAN)
+
+
+def _envelope_words(envelope: date | None, ctx: RuleContext, written: date | None) -> str:
+    """What a to-do on a letter served with a Postzustellungsurkunde counts from: the envelope's date entered, the
+    letter's own date when the date entered is no envelope date of this letter (:func:`~ordnung.ingest.gaps.envelope_start`:
+    not after the letter's date, or more than :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days on), or until one
+    is entered."""
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    days = [day for day in (written, ctx.document_date) if day is not None]
+    own = min(days) if days else None
+    if envelope is not None:
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from "
+            f"{fmt_date(envelope)}, the date on the envelope you entered."
+        )
+    elif arrived is not None and own is not None and _too_far(ctx, own):
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde). The date you entered, "
+            f"{fmt_date(arrived)}, is more than {LETTER_DATE_SPAN} days after the letter's own date, so we still count "
+            f"from the letter's date ({fmt_date(own)}), the earliest it can be — if the envelope really shows "
+            f"{fmt_date(arrived)}, change this to-do's date."
+        )
+    elif arrived is not None:
+        note = (
+            f"This letter was served with a yellow envelope (Postzustellungsurkunde). The date you entered, "
+            f"{fmt_date(arrived)}, is not after the letter's own date, so we count from the letter's date."
+        )
+    else:
+        note = (
+            "This letter was served with a yellow envelope (Postzustellungsurkunde): the period runs from the date "
+            "the postman wrote on the envelope. Until you enter it, we count from the letter's own date, the "
+            "earliest it can be."
+        )
+    return note
 
 
 def checked_evidence(verified: VerifiedItem, computed: ComputedDate) -> Evidence:
@@ -1386,12 +1473,42 @@ def _carry_over(store: Store, doc_id: str, verification: Verification) -> set[st
         if item.slot_key not in new_keys
         and (item.status != "open" or item.user_modified or item.recurrence is not None)
     ]
-    unmatched = [verified for verified in verification.items if verified.slot_key not in taken]
+    # never into the slot of code's to-do for a date the reading left out: one the person acted on stays the reading's
+    # (that to-do is dropped instead, :func:`_covered_deadlines`)
+    unmatched = [
+        verified
+        for verified in verification.items
+        if verified.slot_key not in taken and not _deadline_check(verified.slot_key)
+    ]
     moved: set[str] = set()
     for same_amount in (True, False):
         for verified in list(unmatched):
             match = next(
                 (item for item in acted if _same_obligation(item, verified, same_amount=same_amount)), None
+            )
+            if match is not None:
+                store.update_item(match.id, slot_key=verified.slot_key)
+                acted.remove(match)
+                unmatched.remove(verified)
+                moved.add(verified.slot_key)
+    # code's to-do for a date a reading left out that the person acted on (paid, edited): the new reading's to-do of
+    # its kind for that date takes it over, so "paid" survives (it has no amount) — the very day first, then within
+    # DEADLINE_REACH days (never a "done" moved onto a neighbouring payment while one on its day is there)
+    for reach in (0, DEADLINE_REACH):
+        for verified in list(unmatched):
+            new = verified.item
+            day = parse_date(new.date.date) if new.date.type == "fixed" else None
+            match = next(
+                (
+                    item
+                    for item in acted
+                    if day is not None
+                    and _deadline_check(item.slot_key)
+                    and item.kind == new.kind
+                    and (other := parse_date(item.due_date)) is not None
+                    and abs((day - other).days) <= reach
+                ),
+                None,
             )
             if match is not None:
                 store.update_item(match.id, slot_key=verified.slot_key)
@@ -1431,10 +1548,13 @@ def write_items(
     (:func:`ordnung.trace.facts.planned`), and the number of stale to-dos removed.
     """
     moved = _carry_over(store, doc_id, verification)
+    covered = _covered_deadlines(store, doc_id, verification)
     stored = {item.slot_key: item for item in store.list_items(doc_id=doc_id)}
     note = rent_increase_note(ctx.letter_kind, extraction)
     items = []
     for index, (verified, result) in enumerate(zip(verification.items, computed, strict=True)):
+        if verified.slot_key in covered:
+            continue
         with trace.span("plan", "To-do", key=f"item:{verified.slot_key}") as step:
             fields = _item_fields(verified, result, extraction, links, today)
             existing = stored.get(verified.slot_key)
@@ -1476,10 +1596,42 @@ def write_items(
             step.set(**facts.planned(action, item, index=index, moved=verified.slot_key in moved))
         items.append(item)
     removed = store.delete_stale_extracted_items(
-        doc_id, [verified.slot_key for verified in verification.items]
+        doc_id, [verified.slot_key for verified in verification.items if verified.slot_key not in covered]
     )
     trace.set(removed=removed)
+    if covered:
+        trace.set(covered=sorted(covered))
     return items
+
+
+def _deadline_check(slot: str | None) -> bool:
+    """The slot of code's to-do for a date the reading left out (:data:`~ordnung.ingest.gaps.DEADLINE_SLOT`, ``#<date>-<nature>``)."""
+    return (slot or "").split("#")[0] == DEADLINE_SLOT
+
+
+def _covered_deadlines(store: Store, doc_id: str, verification: Verification) -> set[str]:
+    """The slots of code's to-dos for dates the reading left out (:func:`~ordnung.ingest.gaps.deadline_items`) that a
+    to-do of the letter's the person acted on already covers: one an earlier reading had that the person edited,
+    paid, snoozed or dismissed — kept although this reading leaves it out — due within
+    :data:`~ordnung.ingest.gaps.DEADLINE_REACH` days of it. Reading the letter again never files that obligation a
+    second time."""
+    if not any(_deadline_check(verified.slot_key) for verified in verification.items):
+        return set()
+    new_keys = {verified.slot_key for verified in verification.items}
+    kept = [
+        day
+        for item in store.list_items(doc_id=doc_id)
+        if item.origin == "extracted"
+        and item.slot_key not in new_keys
+        and (item.status != "open" or item.user_modified)
+        and (day := parse_date(item.due_date)) is not None
+    ]
+    covered: set[str] = set()
+    for verified in verification.items:
+        day = parse_date(verified.item.date.date) if _deadline_check(verified.slot_key) else None
+        if day is not None and any(abs((day - other).days) <= DEADLINE_REACH for other in kept):
+            covered.add(verified.slot_key)
+    return covered
 
 
 #: Slot of a deadline the law adds to a letter: one per rule (:func:`sync_rule_items`).

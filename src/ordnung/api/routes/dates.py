@@ -20,7 +20,7 @@ from typing import Any
 
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals
-from ordnung.ingest.gaps import CHECK_SLOT, check_reasons, remedy_notices, square_gap_warnings
+from ordnung.ingest.gaps import check_reasons, is_check_slot, remedy_notices, square_gap_warnings
 from ordnung.ingest.plan import (
     VerifiedItem,
     checked_evidence,
@@ -102,8 +102,8 @@ def _verified(
     rivals: tuple[Rival, ...] = ()
     if evidence is not None and item.grounding != "user":
         reasons = consistency_reasons(extracted, pages)
-        if item.slot_key == CHECK_SLOT:
-            reasons = check_reasons(reasons)
+        if is_check_slot(item.slot_key):
+            reasons = check_reasons(reasons, item.slot_key or "")
     if evidence is not None:
         # a confirmed to-do keeps the letter's other dates: the date the person confirmed was the earlier one
         rivals = find_rivals(extracted, [extracted, *others], pages)

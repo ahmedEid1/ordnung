@@ -13,6 +13,7 @@ import {
   decisionSuggestion,
   incomingMoney,
   isOptionalObjection,
+  isCourtServed,
   isServed,
   leadsWithDecision,
   isSettled,
@@ -289,6 +290,24 @@ describe("what needs the person's eyes", () => {
     expect(isServed(makeDoc({ kind: "authority_letter" }), [court])).toBe(true);
     expect(isServed(makeDoc({ kind: "enforcement_order" }), [])).toBe(true);
     expect(isServed(makeDoc({ kind: "authority_letter" }), [makeItem({ date_spec: spec })])).toBe(false);
+  });
+
+  it("asks an authority's letter served with a Postzustellungsurkunde for its envelope date", () => {
+    // the engine cites `pzu` on a to-do counted from arrival, and on the check it filed (anchored on the letter's date)
+    const receipt = { type: "relative" as const, date: null, time: null, anchor: "receipt" as const, anchor_date: null, amount: 1, unit: "months" as const, delivery_rule: "none" as const, shift_rule: "auto" as const, nature: "objection" as const, legal_basis: null, text: "" };
+    const fromArrival = makeItem({ date_spec: receipt, computation: makeReceipt({ rule_ids: ["bgb_187_1", "pzu"] }) });
+    const check = makeItem({
+      slot_key: "check:reading",
+      date_spec: { ...receipt, anchor: "explicit_date", anchor_date: "2026-11-06" },
+      computation: makeReceipt({ rule_ids: ["bgb_187_1", "pzu"] }),
+    });
+    expect(needsArrivalDate(fromArrival, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(check, { received_date: null })).toBe(true);
+    expect(needsArrivalDate(check, { received_date: "2026-11-10" })).toBe(false);
+    expect(isServed(makeDoc({ kind: "authority_letter" }), [check])).toBe(true);
+    // served, but no court's letter: the question doesn't say "the court's letter"
+    expect(isCourtServed(makeDoc({ kind: "authority_letter" }), [check])).toBe(false);
+    expect(isCourtServed(makeDoc({ kind: "court_payment_order" }), [])).toBe(true);
   });
 
   it("finds the active scam warning", () => {

@@ -1640,3 +1640,51 @@ def test_the_partial_holiday_check_stays_inside_the_calendar() -> None:
     assert first.due_date == "0001-01-01"
     last = DateSpec(type="fixed", date="9999-12-31", nature="objection", shift_rule="next_business_day")
     assert compute_due(last, ctx(region="SN")).due_date == "9999-12-31"
+
+
+# --------------------------------------------------------------------------------------------------
+# A letter served with a Postzustellungsurkunde (RuleContext.formal_service, ingest.gaps.formally_served)
+# --------------------------------------------------------------------------------------------------
+
+
+def test_a_period_from_arrival_on_a_letter_served_with_a_pzu_runs_from_the_envelope_date() -> None:
+    """Cited as ``pzu`` (the app asks for the date on the yellow envelope); from the letter's date until it is
+    entered, then from it."""
+    spec = DateSpec(type="relative", amount=1, unit="months", anchor="receipt", nature="objection")
+    served = ctx(today=date(2026, 11, 25), document_date=date(2026, 11, 6), formal_service=True)
+    receipt = compute_due(spec, served)
+    assert "pzu" in receipt.rule_ids and receipt.due_date == "2026-12-07"
+    entered = compute_due(spec, replace(served, received_date=date(2026, 11, 10), received_confirmed=True))
+    assert entered.due_date == "2026-12-10" and "pzu" in entered.rule_ids
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        DateSpec(
+            type="relative",
+            amount=1,
+            unit="months",
+            anchor="deemed_delivery",
+            delivery_rule="de_admin_post",
+            shift_rule="auto",
+            nature="objection",
+        ),
+        DateSpec(
+            type="relative",
+            amount=1,
+            unit="months",
+            anchor="document_date",
+            delivery_rule="de_admin_post",
+            shift_rule="auto",
+            nature="objection",
+        ),
+    ],
+    ids=["deemed", "document-date"],
+)
+def test_a_letter_served_with_a_pzu_gets_no_delivery_days(spec: DateSpec) -> None:
+    """Served formally, it is notified on the day it is served (§ 41 Abs. 5 VwVfG): a reading's deemed delivery
+    never moves its date past the letter's own (Fri 6 Nov 2026: one month is Sun 6 Dec → Mon 7 Dec)."""
+    served = ctx(today=date(2026, 11, 25), document_date=date(2026, 11, 6), formal_service=True)
+    assert compute_due(spec, served).due_date == "2026-12-07"
+    assert compute_due(spec, replace(served, formal_service=False)).due_date > "2026-12-07"

@@ -34,7 +34,7 @@ from ordnung.drafts.proof import (
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
-from ordnung.ingest.gaps import CHECK_SLOT
+from ordnung.ingest.gaps import CHECK_SLOT, is_check_slot
 from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
@@ -823,6 +823,10 @@ def item_action(ledger: Ledger, item: Item) -> SuggestionAction:
     """The one verb for an item: Pay · Draft objection · Draft cancellation · Check the letter."""
     doc = ledger.document(item.doc_id)
     nature = item.date_spec.nature if item.date_spec else "other"
+    if is_check_slot(item.slot_key) and item.slot_key != CHECK_SLOT and doc is not None:
+        # a date Ordnung took from the letter for a reading that left it out (check:deadline): a cross-check, never
+        # "Pay"
+        return _open("document", doc.id, "Check the letter")
     if item.kind == "payment":
         return _open("document", doc.id, "Pay") if doc else _open("item", item.id, "Pay")
     if nature == "objection" and doc and doc.remedy and doc.remedy.type in ("einspruch", "widerspruch"):
@@ -1483,6 +1487,12 @@ def please_check(ledger: Ledger) -> list[Suggestion]:
                 "Claude's reading of this letter came back incomplete, so Ordnung added a to-do from the "
                 "letter's own words. Open the letter and check it."
             )
+        elif any(is_check_slot(item.slot_key) for item in unsure):
+            # a fixed date the letter sets (pay by, send by) that the reading left out: found, not "not found"
+            body = (
+                "Claude's reading of this letter left out a date the letter sets for you, so Ordnung added a to-do "
+                "from the letter's own words. Open the letter and check it."
+            )
         elif unsure:
             listed = ", ".join(item.title for item in unsure[:3])
             body = f"We couldn't find some dates or amounts in the letter ({listed}). Open it and confirm or correct them."
@@ -1548,6 +1558,8 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             if i.doc_id == doc.id
             and i.kind == "payment"
             and i.due_date
+            # a date code took from the letter is to be checked: never a "Pay" nudge
+            and not is_check_slot(i.slot_key)
             and not ledger.is_superseded_by_reminder(i)
             and not ledger.is_covered_by_attachment(i)
         ]
@@ -1615,7 +1627,7 @@ _NOT_A_SIGN = re.compile(
     r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
     r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection"
     r"|^Claude's reading of this letter came back almost blank|^This letter explains how to (?:object|challenge it "
-    r"in court), but Claude's reading"
+    r"in court), but Claude's reading|^Claude's reading of this letter left out"
     # the completeness re-ask's answer was used (ordnung.ingest.extract.REASK_WARNING)
     r"|^Claude's first answer for this letter left out",
     re.I,

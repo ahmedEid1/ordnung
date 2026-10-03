@@ -124,6 +124,43 @@ describe("the advice card of a high-stakes letter", () => {
     expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
   });
 
+  it("asks an authority's letter served with a Postzustellungsurkunde for its envelope date, in its own words", () => {
+    // the engine cites `pzu` (§ 3 VwZG with §§ 180, 181 ZPO): the date on the yellow envelope, nothing filled in
+    const doc = makeDoc({ id: "doc_pzu", kind: "authority_letter", area: "residence", title: "Ablehnung", received_date: null, doc_date: "2026-11-06" });
+    const item = makeItem({
+      id: "itm_pzu",
+      title: "Object to the decision (Widerspruch)",
+      due_date: "2026-12-07",
+      date_spec: { type: "relative", anchor: "receipt", amount: 1, unit: "months", nature: "objection", text: "", anchor_date: null, date: null, time: null, legal_basis: null, delivery_rule: "none", shift_rule: "auto" },
+      computation: makeReceipt({ rule_ids: ["bgb_187_1", "pzu"] }),
+    });
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item] })} />, { client: client() });
+    expect(screen.getByText("When was it delivered?")).toBeInTheDocument();
+    expect(screen.getByText(/from the day the letter was delivered — the postman wrote that date on the yellow envelope/)).toBeInTheDocument();
+    expect(screen.queryByText(/the court's letter/)).toBeNull();
+    expect((screen.getByLabelText("Date on the yellow envelope") as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("button", { name: "Today" })).toBeNull();
+  });
+
+  it("says a date the reading left out was taken from the letter, while it needs checking", () => {
+    // `check:deadline`: a fixed date the letter sets that Claude's reading left out (ordnung.ingest.gaps.deadline_items)
+    const warning = "Claude's reading of this letter left out a date the letter sets for you. Ordnung added it as a to-do from the letter's own words — please check it against the letter.";
+    const doc = makeDoc({ id: "doc_dl", kind: "invoice", area: "money", title: "Rechnung", warnings: [warning], doc_date: "2026-10-01" });
+    const item = makeItem({
+      id: "itm_dl",
+      slot_key: "check:deadline",
+      kind: "payment",
+      title: "Check this date in the letter",
+      due_date: "2026-10-15",
+      evidence: [{ doc_id: "doc_dl", quote: "Bitte überweisen Sie den Betrag bis zum 15.10.2026.", grounding: "verified", value_consistent: false, score: 100, page: 1, boxes: [] }],
+    });
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [item] })} />, { client: client() });
+    expect(screen.getByText(/Ordnung took this date from the letter's own words/)).toBeInTheDocument();
+    expect(screen.getByText(warning)).toBeInTheDocument();
+    renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc, items: [{ ...item, status: "done" }] })} />, { client: client() });
+    expect(screen.getAllByText(warning)).toHaveLength(1); // the second render, its to-do done, no longer says it
+  });
+
   it("never files a landlord's notice without a to-do as 'nothing to do'", () => {
     // a notice without notice period, or one whose end we couldn't read, has no objection to-do
     const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Fristlose Kündigung" });
