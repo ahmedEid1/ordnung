@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -371,8 +372,19 @@ def test_regeneration_is_deterministic(regenerated: tuple[Path, Path], tmp_path:
 def test_committed_samples_match_regeneration(
     regenerated: tuple[Path, Path], manifest: dict[str, Any]
 ) -> None:
-    if manifest["generator"]["environment"] != _environment():
-        pytest.skip("library versions differ from the ones the samples were generated with")
+    """Skipped where the libraries differ from the manifest's, except with ``ORDNUNG_REQUIRE_SAMPLES=1``
+    (CI's job that installs ``-c constraints.txt`` on Ubuntu's Python 3.12): there it must run."""
+    expected, installed = manifest["generator"]["environment"], _environment()
+    if expected != installed:
+        changed = ", ".join(
+            f"{name} {expected.get(name)} ≠ {version}"
+            for name, version in installed.items()
+            if expected.get(name) != version
+        )
+        message = f"library versions differ from the ones the samples were generated with: {changed}"
+        if os.environ.get("ORDNUNG_REQUIRE_SAMPLES") == "1":
+            pytest.fail(message)
+        pytest.skip(message)
     out, _sources = regenerated
     fresh = sorted(p.name for p in out.iterdir())
     assert fresh == sorted(p.name for p in SAMPLES.iterdir() if not p.name.startswith("."))

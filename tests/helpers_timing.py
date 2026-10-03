@@ -5,6 +5,10 @@ code several times), so these checks compare the machine with itself: reading an
 long may take at most ``MAX_GROWTH`` times as long. Linear work grows about 4×, quadratic work 16×; the
 limit sits between them with room for a busy machine (a run beside three browsers measured 8.2× for linear
 work, whose readings grow 4.5× on an idle one).
+A reading is timed in CPU time of the thread that reads (``time.thread_time``), not on the wall clock:
+on a loaded machine the scheduler pauses the process for whole time slices, and a pause that falls into
+one reading and not the other measured the machine's load, not the reader (wall-clock ratios of linear
+work reached 10.8× at a load of 7 on 4 cores, CPU-time ratios 4.4×).
 The garbage collector is paused while a reading runs: a full collection scans every object the test
 session holds, so one that happens to fall into the larger reading (and not the smaller) measures the
 suite's heap, not the parser — it made this check fail or pass depending on which tests were collected.
@@ -29,18 +33,18 @@ def _read_html(markup: str) -> None:
 
 
 def read_seconds(markup: str, read: Callable[[str], object] = _read_html) -> float:
-    """The faster of two readings of ``markup`` (the slower one carries scheduling noise), with the
-    garbage collector paused: a full collection scans every object earlier tests left alive, so in a
-    long test run it made a large input look slower than its own work."""
+    """The faster of two readings of ``markup`` in CPU seconds of this thread (the slower one carries
+    noise), with the garbage collector paused: a full collection scans every object earlier tests left
+    alive, so in a long test run it made a large input look slower than its own work."""
     best = float("inf")
     gc.collect()
     paused = gc.isenabled()
     gc.disable()
     try:
         for _ in range(2):
-            started = time.perf_counter()
+            started = time.thread_time()
             read(markup)
-            best = min(best, time.perf_counter() - started)
+            best = min(best, time.thread_time() - started)
     finally:
         if paused:
             gc.enable()

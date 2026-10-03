@@ -442,8 +442,9 @@ def test_readme_backend_test_count_holds() -> None:
 
 
 _WEB = ROOT / "web"
-_needs_web = pytest.mark.skipif(
-    shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists(),
+_needs_web = pytest.mark.skipif(  # CI's end-to-end job has both toolchains: there it must run
+    os.environ.get("ORDNUNG_REQUIRE_MOCK_CHECK") != "1"
+    and (shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists()),
     reason="needs node and web/node_modules (npm ci in web/)",
 )
 
