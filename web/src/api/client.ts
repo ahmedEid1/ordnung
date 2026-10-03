@@ -3,10 +3,24 @@
  *
  * - Base path `/api`, JSON in and out, `credentials: "same-origin"` (session cookie).
  * - Every non-GET request carries `X-Ordnung-Client: web` (required by the API's CSRF defence).
- * - Errors become {@link ApiError} with the HTTP status and the message from FastAPI's `{detail}`.
+ * - Errors become {@link ApiError} with the HTTP status and the message from FastAPI's `{detail}` — or, when
+ *   the answer has no words for a person (a server error that says no more than its status, a body that isn't
+ *   Ordnung's JSON), a plain sentence, the server's own words kept as `technical` (UX audit U9: a toast said
+ *   "Internal Server Error").
  */
 
 export const API_BASE = "/api";
+
+/** The sentence for a server error that brings no words for a person (what it said is kept as `technical`). */
+export const SERVER_PROBLEM = "Ordnung ran into a problem it didn't expect. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
+/** The sentence for an answer the page can't read (not Ordnung's JSON: a proxy's page, a cut-off body). */
+export const UNREADABLE_ANSWER = "Ordnung's answer couldn't be read. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
+/** The `code` of an answer the page couldn't read ({@link UNREADABLE_ANSWER}). */
+export const UNREADABLE_CODE = "unreadable_answer";
+/** How much of a body that isn't JSON is kept for "Technical details". */
+const TECHNICAL_MAX = 300;
+/** A server error's status said in words — no sentence for a person. */
+const REASON_PHRASE = /^(internal server error|bad gateway|service unavailable|gateway timeout)$/i;
 
 /** Error thrown for any non-2xx API response (or network failure, status 0). */
 export class ApiError extends Error {
@@ -14,13 +28,19 @@ export class ApiError extends Error {
   readonly detail: unknown;
   /** Optional machine-readable code from the body (e.g. `static_demo`, `llm_paused`). */
   readonly code: string | null;
+  /**
+   * What the server said in its own words when the message is a plain sentence instead ("Internal Server Error",
+   * "database is locked", an unexpected error's name) — shown under "Technical details", never as the sentence.
+   */
+  readonly technical: string | null;
 
-  constructor(status: number, message: string, detail?: unknown, code?: string | null) {
+  constructor(status: number, message: string, detail?: unknown, code?: string | null, technical?: string | null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
     this.code = code ?? null;
+    this.technical = technical ?? null;
   }
 
   /** True for the zero-install hosted demo's "needs Claude" refusal. */
@@ -94,16 +114,27 @@ function buildInit(opts: RequestOptions): RequestInit {
   return { method, headers, body, credentials: "same-origin", signal: opts.signal };
 }
 
+/** A body's words on one line, cut to {@link TECHNICAL_MAX} characters (an HTML error page can be long). */
+function clip(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > TECHNICAL_MAX ? `${line.slice(0, TECHNICAL_MAX)}…` : line;
+}
+
 async function toApiError(res: Response): Promise<ApiError> {
   let detail: unknown = undefined;
   let code: string | null = null;
+  let technical: string | null = null;
+  let json = false;
   try {
     const text = await res.text();
     if (text) {
       try {
-        const json = JSON.parse(text) as { detail?: unknown; code?: unknown };
-        detail = json?.detail ?? json;
-        if (typeof json?.code === "string") code = json.code;
+        const body = JSON.parse(text) as { detail?: unknown; code?: unknown; error?: unknown };
+        json = true;
+        detail = body?.detail ?? body;
+        if (typeof body?.code === "string") code = body.code;
+        // an unexpected error's name (`app.py`), for "Technical details"
+        if (typeof body?.error === "string") technical = body.error;
       } catch {
         detail = text;
       }
@@ -112,7 +143,16 @@ async function toApiError(res: Response): Promise<ApiError> {
     /* body unreadable */
   }
   const fallback = res.statusText || `Request failed (${res.status})`;
-  return new ApiError(res.status, messageFromDetail(detail, fallback), detail, code);
+  const words = json ? messageFromDetail(detail, "") : "";
+  // Ordnung's own words for the person (a refusal, Claude signed out, the sentence for an unexpected error) — unless
+  // a server error says no more than its status ("Internal Server Error")
+  if (json && !(res.status >= 500 && (!words || words === res.statusText || REASON_PHRASE.test(words)))) {
+    return new ApiError(res.status, words || fallback, detail, code, technical);
+  }
+  // a server error without words for the person, or an answer that isn't Ordnung's JSON: a plain sentence, the raw words kept
+  const raw = clip(typeof detail === "string" ? detail : words);
+  if (res.status >= 500) return new ApiError(res.status, SERVER_PROBLEM, detail, code, technical ?? (raw || fallback));
+  return new ApiError(res.status, UNREADABLE_ANSWER, detail, UNREADABLE_CODE, raw || fallback);
 }
 
 /** Perform a request and return the raw Response (throws {@link ApiError} on non-2xx). */
@@ -134,7 +174,12 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   if (!text) return undefined as T;
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // not Ordnung's JSON (a proxy's page, a cut-off answer): said plainly, never as a parser's message
+    throw new ApiError(res.status, UNREADABLE_ANSWER, text, UNREADABLE_CODE, clip(text));
+  }
 }
 
 // ------------------------------------------------------------------------------------------------

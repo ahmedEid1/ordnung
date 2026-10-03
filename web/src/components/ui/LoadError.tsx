@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight, RotateCw } from "lucide-react";
-import { ApiError } from "@/api/client";
+import { ApiError, UNREADABLE_CODE } from "@/api/client";
 import { cn } from "@/lib/utils";
 import { Button } from "./Button";
 import { EmptyState } from "./EmptyState";
@@ -13,7 +13,7 @@ export interface LoadErrorProps {
   what?: string;
   /** The heading, when "Couldn't load …" doesn't fit ("Couldn't open this letter"). */
   title?: ReactNode;
-  /** One calm sentence under the heading (default: the letters are safe, is Ordnung still running?). */
+  /** One calm sentence under the heading (default: the letters are safe, and what went wrong — {@link loadErrorDescription}). */
   description?: ReactNode;
   /** The error, shown under "Technical details" (never as the sentence itself). */
   error?: unknown;
@@ -29,12 +29,28 @@ export interface LoadErrorProps {
   className?: string;
 }
 
-/** The technical side of an error, for people who want to report it: "HTTP 500 · Internal error". */
+/**
+ * The technical side of an error, for people who want to report it: "HTTP 500 · Internal Server Error" — the
+ * server's own words when the message is a plain sentence instead ({@link ApiError.technical}).
+ */
 export function technicalDetails(error: unknown): string | null {
-  if (error instanceof ApiError) return [error.status ? `HTTP ${error.status}` : null, error.message].filter(Boolean).join(" · ");
+  if (error instanceof ApiError) return [error.status ? `HTTP ${error.status}` : null, error.technical ?? error.message].filter(Boolean).join(" · ");
   if (error instanceof Error) return error.message || error.name;
   if (typeof error === "string") return error || null;
   return null;
+}
+
+/**
+ * The sentence under "Couldn't load …", worded by what happened (UX audit U9, as Today's own): Ordnung didn't
+ * answer at all (or nothing says why), it answered with a failure of its own, or it refused. `what` is the
+ * heading's ("your letters").
+ */
+export function loadErrorDescription(error: unknown, what = "this page"): string {
+  if (error == null || (error instanceof ApiError && error.status === 0)) return "Your letters are safe — Ordnung didn't answer. Is it still running?";
+  if (!(error instanceof ApiError) || error.status >= 500 || error.code === UNREADABLE_CODE) {
+    return `Your letters are safe — Ordnung ran into a problem while loading ${what}. Try again, and restart Ordnung if it keeps happening.`;
+  }
+  return `Your letters are safe — Ordnung couldn't load ${what}. Try again in a moment.`;
 }
 
 /**
@@ -47,7 +63,7 @@ export function technicalDetails(error: unknown): string | null {
 export function LoadError({
   what = "this page",
   title,
-  description = "Your letters are safe — Ordnung didn't answer. Is it still running?",
+  description,
   error,
   onRetry,
   retrying = false,
@@ -65,7 +81,7 @@ export function LoadError({
       illustration="error"
       headingLevel={headingLevel}
       title={title ?? `Couldn't load ${what}`}
-      description={description}
+      description={description ?? loadErrorDescription(error, what)}
       className={className}
       action={
         onRetry ? (
@@ -75,22 +91,26 @@ export function LoadError({
         ) : undefined
       }
     >
-      {details ? (
-        <details className="group mt-4 w-full max-w-sm text-left">
-          <summary
-            className={cn(
-              "mx-auto flex min-h-6 w-fit cursor-pointer list-none items-center gap-1 rounded-md px-1 text-sm font-medium text-muted hover:text-ink",
-              "[&::-webkit-details-marker]:hidden",
-            )}
-          >
-            <ChevronRight className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
-            Technical details
-          </summary>
-          <p className="mt-2 rounded-lg bg-surface-2 px-3 py-2 font-mono text-xs leading-5 text-muted [overflow-wrap:anywhere]">
-            {details}
-          </p>
-        </details>
-      ) : null}
+      {details ? <TechnicalDetails text={details} className="mt-4 max-w-sm" centered /> : null}
     </EmptyState>
+  );
+}
+
+/** "Technical details": an error's technical side behind a disclosure, closed until asked for (a load error, a toast). */
+export function TechnicalDetails({ text, centered = false, className }: { text: string; centered?: boolean; className?: string }) {
+  return (
+    <details className={cn("group w-full text-left", className)}>
+      <summary
+        className={cn(
+          "flex min-h-6 w-fit cursor-pointer list-none items-center gap-1 rounded-md px-1 text-sm font-medium text-muted hover:text-ink",
+          "[&::-webkit-details-marker]:hidden",
+          centered ? "mx-auto" : "-ml-1",
+        )}
+      >
+        <ChevronRight className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
+        Technical details
+      </summary>
+      <p className="mt-2 rounded-lg bg-surface-2 px-3 py-2 font-mono text-xs leading-5 text-muted [overflow-wrap:anywhere]">{text}</p>
+    </details>
   );
 }

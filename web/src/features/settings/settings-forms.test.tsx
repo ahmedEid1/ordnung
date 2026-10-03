@@ -255,7 +255,7 @@ describe("a load error", () => {
       }),
     ).toBeInTheDocument();
     expect(alert).toHaveTextContent(
-      "Your letters are safe — Ordnung didn't answer. Is it still running?",
+      "Your letters are safe — Ordnung ran into a problem while loading your settings.",
     );
     expect(within(alert).getByText("Technical details")).toBeInTheDocument();
     expect(alert).toHaveTextContent("HTTP 500 · database is locked");

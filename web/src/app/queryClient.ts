@@ -1,5 +1,7 @@
+import { createElement, Fragment, type ReactNode } from "react";
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
+import { TechnicalDetails, technicalDetails } from "@/components/ui/LoadError";
 import { dismissToast, toast } from "@/components/ui/Toast";
 
 declare module "@tanstack/react-query" {
@@ -13,13 +15,23 @@ declare module "@tanstack/react-query" {
   }
 }
 
-function describe(err: unknown): { title: string; description?: string } {
+/**
+ * The error's sentence, and the server's own words under "Technical details" when the sentence stands in for them
+ * (a server error without words for a person, an answer that isn't Ordnung's JSON — never "Internal Server Error"
+ * as the sentence: UX audit U9).
+ */
+function sentence(err: ApiError): ReactNode {
+  if (!err.technical) return err.message;
+  return createElement(Fragment, null, err.message, createElement(TechnicalDetails, { text: technicalDetails(err) ?? err.technical, className: "mt-1" }));
+}
+
+function describe(err: unknown): { title: string; description?: ReactNode } {
   if (err instanceof ApiError) {
     if (err.isStaticDemo) return { title: "Not available in the online demo", description: err.message };
     if (err.isDemoLimit) return { title: "Not available in the demo", description: err.message };
     if (err.status === 0) return { title: "Can't reach Ordnung", description: err.message };
     if (err.status === 429) return { title: "Claude needs a short break", description: err.message };
-    return { title: "That didn't work", description: err.message };
+    return { title: "That didn't work", description: sentence(err) };
   }
   return { title: "Something went wrong", description: err instanceof Error ? err.message : undefined };
 }

@@ -7,9 +7,9 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/api/client";
+import { ApiError, request, SERVER_PROBLEM } from "@/api/client";
 import { qk, useHealth } from "@/api/hooks";
 import hooksSource from "@/api/hooks.ts?raw";
 import { OFFLINE_GRACE_MS, __resetEventsForTests, connectEvents } from "@/api/sse";
@@ -129,6 +129,18 @@ describe("a failed change", () => {
     await act(async () => screen.getByRole("button", { name: "Try again" }).click());
     await waitFor(() => expect(fn).toHaveBeenCalledTimes(2));
     expect(fn).toHaveBeenLastCalledWith({ name: "Sam" }, expect.anything());
+  });
+
+  it("says a server error plainly, its own words under 'Technical details' — never 'Internal Server Error' as the sentence", async () => {
+    vi.stubGlobal("fetch", async () => new Response("Internal Server Error", { status: 500, headers: { "Content-Type": "text/plain" } }));
+    await run({ mutationFn: () => request("/items", { method: "POST", body: {} }), meta: { errorTitle: "Couldn't add the to-do" } });
+    const toast = screen.getByText("Couldn't add the to-do").closest("li")!;
+    expect(toast).toHaveTextContent(SERVER_PROBLEM);
+    const details = within(toast).getByText("Technical details").closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    expect(within(details).getByText("HTTP 500 · Internal Server Error")).toBeInTheDocument();
+    // Ordnung failed itself: trying again can help
+    expect(within(toast).getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("has no 'Try again' when the answer was a refusal", async () => {

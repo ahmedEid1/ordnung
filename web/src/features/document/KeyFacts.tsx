@@ -16,6 +16,7 @@ import type { Document, DocumentKind, GiroCode, Grounding } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY, TONES, copyFor } from "@/lib/copy";
 import { formatIban } from "@/lib/format";
+import { ModelText } from "@/components/ui/ModelText";
 import { EvidenceChip } from "./EvidenceChip";
 import { useEvidence } from "./EvidenceContext";
 import { GlossaryText } from "./Explained";
@@ -37,13 +38,16 @@ function CopyButton({ value, what }: { value: string; what: string }) {
   );
 }
 
-/** "Valid from (Gültig ab)": the English first, the letter's German after it; German alone marked as German. */
+/**
+ * "Valid from (Gültig ab)": Claude's words first (in the person's language, `ModelText`), the letter's German after
+ * them; German alone marked as German.
+ */
 export function FactLabelText({ label }: { label: string }) {
   const { en, de } = factLabel(label);
   if (en && de) {
     return (
       <>
-        {en}{" "}
+        <ModelText>{en}</ModelText>{" "}
         <span lang="de">
           (<GlossaryText text={bracketed(de)} explained />)
         </span>
@@ -57,7 +61,11 @@ export function FactLabelText({ label }: { label: string }) {
       </span>
     );
   }
-  return <GlossaryText text={en ?? label} />;
+  return (
+    <ModelText>
+      <GlossaryText text={en ?? label} />
+    </ModelText>
+  );
 }
 
 /** The label a person reads (for "Copy …" and "show … on the page"). */

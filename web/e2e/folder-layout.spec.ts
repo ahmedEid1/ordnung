@@ -145,10 +145,9 @@ for (const width of [320, 1280]) {
     expect(await inside(card.getByRole("heading", { level: 1 }), card), "the long file name wraps inside the card").toBe(true);
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
     if (width >= 1280) {
-      // the page image spans both rows: the first is only as tall as the card, so no empty band under it
-      // measured to the letter's footer (its rule), not the words in its chip: the chip's own padding and
-      // border (UI audit round 1) are not a band under the card
-      const next = page.getByRole("main").locator("footer").filter({ hasText: /Not read yet — not sent to Claude/ }).first();
+      // the page image spans both rows: the first is only as tall as the card, so no empty band under it —
+      // measured to what follows it: the letter's "To-dos & dates", where the person adds dates of their own
+      const next = page.getByRole("main").getByRole("region", { name: /^To-dos & dates/ });
       const [cardBox, nextBox] = [await card.boundingBox(), await next.boundingBox()];
       expect(cardBox && nextBox && nextBox.y - (cardBox.y + cardBox.height), "the gap under the waiting card").toBeLessThan(48);
     }

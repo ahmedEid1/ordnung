@@ -60,6 +60,8 @@ export default defineConfig({
     },
     { name: "girocode", testMatch: /girocode-layout\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // dates of the person's own, on Timeline and on a letter kept private (added to the shared demo, then taken away)
+    { name: "add-date", testMatch: /add-date\.spec\.ts$/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
     command: `"${ORDNUNG_BIN}" demo --serve --no-browser --port ${PORT} --data-dir "${DATA_DIR}" --reset`,

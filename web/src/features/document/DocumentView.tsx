@@ -6,7 +6,8 @@
  * Panel order: verdict → warnings / Please check → Explained simply → To-dos & dates → Key facts →
  * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
  * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
- * its waiting card in the verdict's place, and nothing read from it (nothing was).
+ * its waiting card in the verdict's place, and nothing read from it (nothing was) — only the dates the
+ * person adds, as a letter Claude couldn't read does.
  *
  * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
  * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
@@ -82,6 +83,8 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
+  // nothing comes for a letter that couldn't be read: no placeholders that never fill (feature audit G15)
+  const reading = neverRead && doc.status !== "failed";
   const held = doc.status === "held";
 
   // an answer to a waiting letter ("Keep private", "Read it with Claude", "Undo “Keep private”") replaces its card with
@@ -172,19 +175,23 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
             aria-labelledby="doc-view-tab-letter"
             className="min-w-0 space-y-7 xl:col-start-2 xl:row-start-2"
           >
-            {neverRead ? (
+            {reading ? (
               <div className="space-y-4" aria-hidden>
                 <SkeletonCard lines={3} />
                 <div className="card p-5">
                   <SkeletonText lines={4} />
                 </div>
               </div>
-            ) : held ? (
-              <EmailParts detail={detail} />
+            ) : held || neverRead ? (
+              // nothing read from it: only the dates the person adds
+              <>
+                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} letter={doc} />
+                <EmailParts detail={detail} />
+              </>
             ) : (
               <>
                 <ExplainedSimply doc={doc} />
-                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} setAside={detail.set_aside} documents={detail.related} />
+                <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} setAside={detail.set_aside} documents={detail.related} letter={doc} />
                 <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
                 <EmailParts detail={detail} />
                 <ThreadSection detail={detail} />
