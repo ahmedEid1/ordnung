@@ -22,6 +22,7 @@ run       ``reading`` (1, 2 …), ``trigger`` (``read`` | ``read_again``), ``pri
 ocr       :func:`text_layer` (pages, text pages, pages to transcribe, words, hidden text);
           the transcription group: ``pages`` (and ``parallel``)
 model     :func:`model_call` (call id, purpose, prompt, models, cache hit, outcome, repair of);
+          an answer that didn't fit the form: :func:`answer_problems` (how many, and where — field paths);
           a page transcript adds :func:`transcript` (legible, characters — not the text); the
           completeness re-ask adds :func:`completion` (the gap that triggered it, whether it was used)
 verify    :func:`quote` per quote (target, grounding, page, scores, digit groups, reasons);
@@ -39,6 +40,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal
+
+from pydantic import ValidationError
 
 from ordnung.models import ComputationReceipt, DateSpec, Evidence, Item, Page
 
@@ -60,6 +63,8 @@ SPEC_FIELDS = (
 )
 #: How many other parties a sender's match lists with their scores.
 MAX_CANDIDATES = 3
+#: How many fields of an answer that didn't fit the form its step names.
+MAX_PROBLEM_FIELDS = 5
 
 QuoteTarget = Literal["item", "key_fact", "contract", "change", "remedy"]
 PartyDecision = Literal["identifier", "name", "similar_name", "new", "none"]
@@ -113,6 +118,13 @@ def model_call(
         "outcome": outcome,
         "repair_of": repair_of,
     }
+
+
+def answer_problems(error: ValidationError) -> dict[str, Any]:
+    """An answer that didn't fit the form: how many problems, and the fields they are in (``kind``,
+    ``items.0.date.unit``; the first :data:`MAX_PROBLEM_FIELDS`) — never the values the model wrote."""
+    fields = [".".join(str(part) for part in problem["loc"]) or "(root)" for problem in error.errors()]
+    return {"problems": len(fields), "problem_fields": list(dict.fromkeys(fields))[:MAX_PROBLEM_FIELDS]}
 
 
 def quote(

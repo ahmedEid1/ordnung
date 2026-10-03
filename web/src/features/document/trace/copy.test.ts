@@ -71,6 +71,10 @@ describe("trace copy", () => {
     const details = spanDetails(span({ kind: "model", attributes: { prompt: "extract_repair", prompt_version: "8.7.1.r1", outcome: "failed" } }));
     expect(details).toContainEqual({ label: "Prompt", value: "extract (repair), version 8.7.1.r1" });
     expect(details).toContainEqual({ label: "Answer", value: "Not usable" });
+    expect(details.find((d) => d.label === "Didn't fit")).toBeUndefined();
+    // where the answer didn't fit (the letter's error only says it didn't): field paths, never the model's values
+    const misfit = spanDetails(span({ kind: "model", attributes: { outcome: "failed", problems: 2, problem_fields: ["kind", "items.0.date.unit"] } }));
+    expect(misfit).toContainEqual({ label: "Didn't fit", value: "kind, items.0.date.unit" });
   });
 
   it("says when Claude was asked for what its reading left out, and whether that answer was used (ingest/extract.py)", () => {

@@ -147,6 +147,8 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     can_wait_again: false,
     proof_of: [],
     scam_signs: [],
+    // as the API says: a letter that was read was given to Claude
+    given_to_model: Boolean(document.ai_processed_at),
     ...d,
   };
 }

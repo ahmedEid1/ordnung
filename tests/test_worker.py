@@ -457,7 +457,7 @@ async def test_documents_are_read_concurrently(ctx: AppContext) -> None:
 
 async def test_triggers_run_after_each_document(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[Store, date]] = []
-    monkeypatch.setattr(pipeline, "triggers_hook", lambda: lambda store, today: calls.append((store, today)))
+    monkeypatch.setattr(pipeline, "run_and_reconcile", lambda store, today: calls.append((store, today)))
     events = record_events(ctx.bus)
     await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
     await add_file(ctx, INVOICE_LETTER.pdf(), "invoice.pdf")
@@ -472,7 +472,7 @@ async def test_a_broken_trigger_never_fails_the_document(
     def broken(store: Store, today: date) -> None:
         raise RuntimeError("bug in a trigger")
 
-    monkeypatch.setattr(pipeline, "triggers_hook", lambda: broken)
+    monkeypatch.setattr(pipeline, "run_and_reconcile", broken)
     document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
     await ctx.worker.run_until_idle()
     stored = ctx.store.get_document(document.id)
@@ -491,7 +491,7 @@ async def test_stopping_waits_for_the_background_ideas(
         gate.wait(5)
         ran.append(today)
 
-    monkeypatch.setattr(pipeline, "triggers_hook", lambda: slow)
+    monkeypatch.setattr(pipeline, "run_and_reconcile", slow)
     ctx.worker.refresh_ideas()
     await asyncio.sleep(0.05)
     stopping = asyncio.create_task(ctx.worker.stop())
@@ -500,11 +500,3 @@ async def test_stopping_waits_for_the_background_ideas(
     gate.set()
     await stopping
     assert ran == [date(2026, 9, 25)]
-
-
-def test_missing_triggers_module_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
-    def missing(name: str) -> object:
-        raise ModuleNotFoundError(name=name)
-
-    monkeypatch.setattr(pipeline.importlib, "import_module", missing)
-    assert pipeline.triggers_hook() is None

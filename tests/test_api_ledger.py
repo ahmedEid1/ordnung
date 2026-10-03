@@ -467,6 +467,9 @@ async def test_settings_are_merged_and_the_inbox_is_guarded(data_dir: Path, tmp_
         body = response.json()
         assert body["models"]["extract"] == "opus" and body["models"]["brief"] == "haiku"
         assert body["concurrency"] == 3 and api.ctx.settings.concurrency == 3
+        # the never-built quick capture left nothing behind: no model of its own, no bank one, no "ocr"
+        assert "ocr" not in body and not {"capture", "bank"} & set(body["models"])
+        assert (await api.client.put("/api/settings", json={"ocr": False})).status_code == 422
 
         inbox = tmp_path / "scans"
         ok = await api.client.put("/api/settings", json={"inbox_dir": str(inbox)})

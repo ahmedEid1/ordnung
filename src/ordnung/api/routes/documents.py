@@ -312,6 +312,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         can_wait_again=was_kept_from_waiting(store, document),
         proof_of=_proof_of(store, doc_id),
         scam_signs=Ledger(store, today).scam_signs(document) if document.direction == "incoming" else [],
+        given_to_model=store.given_to_model(doc_id),
     )
 
 

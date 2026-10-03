@@ -25,7 +25,8 @@ from fixtures_llm import (
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.link import DUNNING_ITEM_NOTE
-from ordnung.ingest.pipeline import add_file, reprocess, triggers_hook
+from ordnung.ingest.pipeline import add_file, reprocess
+from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document
 from ordnung.secretary.triggers import Ledger
 
@@ -114,9 +115,27 @@ async def test_look_alike_collector_with_new_iban_is_flagged(ctx: AppContext) ->
     genuine_party = ctx.store.get_party(genuine.party_id or "")
     assert genuine_party is not None and genuine_party.ibans == [BEITRAG_IBAN]
     assert fake.payment is not None and fake.payment.iban == SCAM_IBAN and fake.payment.iban_valid
-    if triggers_hook() is not None:  # the triggers engine raises a scam Idea from the same finding
-        scams = [idea for idea in ctx.store.list_suggestions() if idea.kind == "scam"]
-        assert scams and any(ref.id == fake.id for ref in scams[0].refs)
+    # the triggers engine raises a scam Idea from the same finding
+    scams = [idea for idea in ctx.store.list_suggestions() if idea.kind == "scam"]
+    assert scams and any(ref.id == fake.id for ref in scams[0].refs)
+
+
+async def test_a_sender_first_seen_on_a_scam_letter_is_never_named_to_the_model(ctx: AppContext) -> None:
+    """SEC S4: the known senders a reading's prompt lists leave out a party first seen on a letter with scam
+    signs (or text addressed to an AI): that letter may have planted its name, line breaks and all."""
+    genuine = await read(ctx, BEITRAG_LETTER)
+    fake = await read(ctx, SCAM_LETTER)
+    assert any(warning.startswith("Possible scam") for warning in fake.warnings)
+    named, planted = ctx.store.get_party(genuine.party_id or ""), ctx.store.get_party(fake.party_id or "")
+    assert named is not None and planted is not None and named.id != planted.id
+    await read(ctx, INVOICE_LETTER)
+    backend = ctx.llm.backend
+    assert isinstance(backend, FakeBackend)
+    [request] = [
+        req for req in backend.calls if req.purpose == "extract" and INVOICE_LETTER.marker in req.prompt
+    ]
+    assert f"- {named.name} ({named.kind})\n" in request.prompt
+    assert f"- {planted.name} ({planted.kind})" not in request.prompt
 
 
 async def test_reprocessing_the_genuine_letter_raises_no_scam_warning(ctx: AppContext) -> None:
@@ -163,10 +182,10 @@ async def test_cancellation_confirmation_never_closes_the_contract(ctx: AppConte
     logged = [entry for entry in ctx.store.list_activity() if entry.kind == "contract.change"]
     assert logged[0].ref_id == contract.id
     assert logged[0].data["change"]["type"] == "cancellation_confirmation"
-    if triggers_hook() is not None:  # the triggers engine turns it into a "Confirm cancellation?" Idea
-        ideas = [idea for idea in ctx.store.list_suggestions() if idea.rule_id == "confirm_cancellation"]
-        assert ideas and ideas[0].status == "new"
-        assert any(ref.id == contract.id for ref in ideas[0].refs)
+    # the triggers engine turns it into a "Confirm cancellation?" Idea
+    ideas = [idea for idea in ctx.store.list_suggestions() if idea.rule_id == "confirm_cancellation"]
+    assert ideas and ideas[0].status == "new"
+    assert any(ref.id == contract.id for ref in ideas[0].refs)
 
 
 async def test_change_without_a_known_contract_is_flagged(ctx: AppContext) -> None:

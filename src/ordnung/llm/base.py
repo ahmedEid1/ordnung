@@ -15,9 +15,9 @@ from typing import Any, Literal, Protocol, runtime_checkable
 from pydantic import BaseModel, ConfigDict, Field
 
 LLMPurpose = Literal[
-    "transcribe", "extract", "review", "brief", "ask", "draft", "capture", "eval_baseline", "doctor", "test"
+    "transcribe", "extract", "review", "brief", "ask", "draft", "eval_baseline", "doctor", "test"
 ]
-INTERACTIVE_PURPOSES: frozenset[str] = frozenset({"ask", "draft", "capture", "brief", "doctor"})
+INTERACTIVE_PURPOSES: frozenset[str] = frozenset({"ask", "draft", "brief", "doctor"})
 
 
 class Attachment(BaseModel):
@@ -28,9 +28,10 @@ class Attachment(BaseModel):
 
 
 #: The model every call runs on unless the person chose another (``AppSettings.model``, Settings →
-#: Claude): a pinned id, because an alias such as ``sonnet`` moves with releases while the demo's and
-#: the benchmarks' recordings were made with one model. ``ORDNUNG_CLAUDE_MODEL`` overrides both for
-#: every call (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for` is the one place that decides).
+#: Claude connection): a pinned id, because an alias such as ``sonnet`` moves with releases while the
+#: demo's and the benchmarks' recordings were made with one model. ``ORDNUNG_CLAUDE_MODEL`` overrides
+#: both for every call (:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for` is the one place that
+#: decides).
 DEFAULT_MODEL = "claude-sonnet-5"
 
 

@@ -27,7 +27,7 @@ from evals.run import RecordedFailures  # noqa: E402
 
 from ordnung.llm.replay import ReplayBackend  # noqa: E402
 from ordnung.llm.runtime import LLMService  # noqa: E402
-from test_reading_reask import WithoutReask  # noqa: E402
+from test_reading_reask import WithoutReask, as_first_recorded  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MODEL = "claude-sonnet-5"
@@ -67,7 +67,10 @@ async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], 
     return fired, replaced, dropped, sum(read for _, read, _, _, _ in results)
 
 
-async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading(tmp_path: Path) -> None:
+async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    as_first_recorded(monkeypatch)  # the readings as first recorded: the empty one's re-ask is missed
     entries = load_manifest(DATASET / "manifest.json")
     fired, replaced, dropped, read = await _fires(entries, tmp_path)
     splits = {entry.split for entry in entries}

@@ -1665,11 +1665,6 @@ export interface components {
              */
             inbox_auto_read: boolean;
             /**
-             * Ocr
-             * @default true
-             */
-            ocr: boolean;
-            /**
              * Llm Brief
              * @default true
              */
@@ -2941,6 +2936,11 @@ export interface components {
             proof_of: components["schemas"]["ProofLink"][];
             /** Scam Signs */
             scam_signs: string[];
+            /**
+             * Given To Model
+             * @default false
+             */
+            given_to_model: boolean;
         };
         /**
          * DocumentPatch
@@ -3536,7 +3536,7 @@ export interface components {
              * @default extracted
              * @enum {string}
              */
-            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            origin: "extracted" | "manual" | "rule" | "draft";
             /** Location */
             location: string | null;
             /** Filed On */
@@ -4080,7 +4080,7 @@ export interface components {
              * @default extracted
              * @enum {string}
              */
-            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            origin: "extracted" | "manual" | "rule" | "draft";
             /** Location */
             location: string | null;
             /** Filed On */
@@ -4188,16 +4188,6 @@ export interface components {
              * @default haiku
              */
             brief: string;
-            /**
-             * Capture
-             * @default haiku
-             */
-            capture: string;
-            /**
-             * Bank
-             * @default haiku
-             */
-            bank: string;
         };
         /** MoneySummary */
         MoneySummary: {
@@ -4889,8 +4879,6 @@ export interface components {
              * @description read new files from the watched folder at once (else they wait for you)
              */
             inbox_auto_read?: boolean | null;
-            /** Ocr */
-            ocr?: boolean | null;
             /** Llm Brief */
             llm_brief?: boolean | null;
             /** Llm Review */
@@ -5911,7 +5899,8 @@ export interface components {
         };
         /**
          * LlmPausedEvent
-         * @description ``llm.paused``: Claude's usage limit was reached; reading continues at ``until``.
+         * @description ``llm.paused``: reading pauses: Claude's usage limit (continues at ``until``), or Claude not
+         *     installed or not signed in (``until`` empty: continues once Claude is ready).
          */
         LlmPausedEvent: {
             /** Until */

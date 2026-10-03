@@ -252,6 +252,9 @@ class ClaudeCLIBackend:
         max_retries: int = 2,
         model_setting: Callable[[], str | None] | None = None,
     ) -> None:
+        #: The ``claude`` asked for (``None``: ``ORDNUNG_CLAUDE_BIN``, else the one on PATH), looked for again
+        #: while it is not found, so one installed while Ordnung runs is used without a restart.
+        self._wanted = binary
         self.binary = find_claude(binary)
         self._background = asyncio.Semaphore(max(1, concurrency))
         self._interactive = asyncio.Semaphore(max(1, interactive_concurrency))
@@ -271,6 +274,8 @@ class ClaudeCLIBackend:
         return self._interactive if req.purpose in INTERACTIVE_PURPOSES else self._background
 
     def _require_binary(self) -> str:
+        if not self.binary:
+            self.binary = find_claude(self._wanted)
         if not self.binary:
             raise ClaudeNotInstalled(
                 "The “claude” command was not found. Install Claude Code (https://claude.com/claude-code), "
@@ -356,15 +361,23 @@ class ClaudeCLIBackend:
         line, _nbytes = build_user_message(req)
         started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix="ordnung-llm-") as cwd:
-            proc = await asyncio.create_subprocess_exec(
-                *args,
-                cwd=cwd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                limit=_STREAM_LIMIT,
-                start_new_session=True,  # own process group → we can kill MCP children too
-            )
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *args,
+                    cwd=cwd,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    limit=_STREAM_LIMIT,
+                    start_new_session=True,  # own process group → we can kill MCP children too
+                )
+            except OSError as exc:  # moved, uninstalled or not executable since it was found
+                self.binary = None  # looked for again on the next call
+                raise ClaudeNotInstalled(
+                    f"The “claude” command could not be started ({exc.strerror or exc}). Install Claude Code "
+                    "again (https://claude.com/claude-code) or check that “claude” runs in a terminal, then "
+                    "try again."
+                ) from exc
             assert proc.stdin is not None and proc.stdout is not None and proc.stderr is not None
             stderr_task = asyncio.create_task(_read_tail(proc.stderr, _STDERR_KEEP))
             result: dict[str, Any] | None = None

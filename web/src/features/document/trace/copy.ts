@@ -532,6 +532,8 @@ export function spanDetails(
                 ? null
                 : "Usable",
       );
+      // where an answer didn't fit the form: field paths, never what the model wrote
+      if (list(a, "problem_fields").length) add("Didn't fit", list(a, "problem_fields").map(String).join(", "));
       break;
     }
     case "verify":

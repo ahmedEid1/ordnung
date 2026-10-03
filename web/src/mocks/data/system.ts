@@ -46,12 +46,11 @@ export const PROFILE: Profile = {
 };
 
 export const SETTINGS: AppSettings = {
-  models: { transcribe: "sonnet", extract: "sonnet", review: "sonnet", ask: "sonnet", draft: "sonnet", brief: "haiku", capture: "haiku", bank: "haiku" },
+  models: { transcribe: "sonnet", extract: "sonnet", review: "sonnet", ask: "sonnet", draft: "sonnet", brief: "haiku" },
   model: "claude-sonnet-5",
   concurrency: 2,
   inbox_dir: FOLDER_PATH,
   inbox_auto_read: false,
-  ocr: true,
   llm_brief: true,
   llm_review: true,
   desktop_notifications: "off",

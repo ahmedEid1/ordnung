@@ -325,6 +325,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     can_wait_again: wasKeptFromWaiting(db, d),
     // the Idea's list, as the API gives it; the page falls back to the letter's warnings (none are given here)
     scam_signs: [],
+    // no failed calls are logged here: a letter was given to Claude once it was read
+    given_to_model: Boolean(d.ai_processed_at),
     proof_of: db.state.proofs
       .filter((p) => p.doc_id === id)
       .flatMap((p) => {

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -14,9 +13,6 @@ from typing import Any
 class Event:
     type: str  # "job.progress" | "document.processed" | "suggestions.updated" | "item.updated" | ...
     data: dict[str, Any] = field(default_factory=dict)
-
-    def to_sse(self) -> dict[str, str]:
-        return {"event": self.type, "data": json.dumps(self.data, default=str)}
 
 
 class EventBus:

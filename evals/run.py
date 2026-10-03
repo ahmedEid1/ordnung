@@ -2,13 +2,13 @@
 
 By default every model call is **replayed** from ``evals/recorded/<model>/`` (fixtures keyed by
 :func:`ordnung.llm.runtime.request_key`, like the app's demo fixtures); a missing recording is an
-error, so a replay run recomputes the published numbers exactly and costs no tokens — with one named
-exception: the completeness re-ask (ADR 0016) of the letters :data:`evals.conditions.REASK_UNRECORDED` lists,
-recorded before the re-ask existed, keeps the first reading (signal ``reading_reask_missing``), said in a
-warning and in the results' ``meta.reading_reask_missing``; such a prediction is never cached. ``--live``
-calls the user's ``claude`` CLI and records every answer there (recordings are only allowed for the
-benchmark's own SPECIMEN letters); calls already recorded are replayed, so an interrupted live run
-resumes where it stopped (``--refresh`` records everything anew).
+error, so a replay run recomputes the published numbers exactly and costs no tokens. The completeness
+re-ask (ADR 0016) of a letter :data:`evals.conditions.REASK_UNRECORDED` lists (none now: the one letter
+recorded before the re-ask existed has its re-ask recorded) would keep the first reading (signal
+``reading_reask_missing``), said in a warning and in the results' ``meta.reading_reask_missing``; such a
+prediction is never cached. ``--live`` calls the user's ``claude`` CLI and records every answer there
+(recordings are only allowed for the benchmark's own SPECIMEN letters); calls already recorded are
+replayed, so an interrupted live run resumes where it stopped (``--refresh`` records everything anew).
 
 Replay is exact: a model failure (no structured output) is recorded and replayed as that failure,
 and ``prompts.lock.json`` next to the recordings stores the digest of every app prompt they were

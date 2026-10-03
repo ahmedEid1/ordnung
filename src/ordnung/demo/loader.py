@@ -66,7 +66,6 @@ from ordnung.locking import LOCK_NAME
 from ordnung.models import (
     AppSettings,
     BriefOutput,
-    CaptureOutput,
     DocumentExtraction,
     DraftOutput,
     Profile,
@@ -92,7 +91,6 @@ OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "review": ReviewOutput,
     "brief": BriefOutput,
     "draft": DraftOutput,
-    "capture": CaptureOutput,
 }
 DUMP_TABLES = (
     "meta",

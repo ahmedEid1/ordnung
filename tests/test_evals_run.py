@@ -557,12 +557,16 @@ async def _ordnung_on(entry_id: str, backend: Any, tmp_path: Path) -> tuple[Entr
     return entry, await run_ordnung(entry, document, llm, model="claude-sonnet-5")
 
 
-async def test_the_recorded_empty_reading_gets_its_objection_deadline_from_the_letter(tmp_path: Path) -> None:
+async def test_the_recorded_empty_reading_gets_its_objection_deadline_from_the_letter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Replay only: the reading stays as recorded (no sender, no remedy); the code's to-do is dated from the
     letter's own notice and date, low and "Please check", and scores correct and resisted."""
     from evals.metrics import score_document
 
-    from test_reading_reask import WithoutReask
+    from test_reading_reask import WithoutReask, as_first_recorded
+
+    as_first_recorded(monkeypatch)
 
     recorded = ROOT / "evals" / "recorded" / "claude-sonnet-5"
     # the reading as first recorded: a completeness re-ask recorded since is missed here

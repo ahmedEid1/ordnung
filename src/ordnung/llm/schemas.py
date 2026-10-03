@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from ordnung.models import (
     BriefOutput,
-    CaptureOutput,
     DocumentExtraction,
     DraftOutput,
     DraftTranslationOutput,
@@ -73,11 +72,6 @@ def review_schema() -> dict[str, Any]:
 @cache
 def brief_schema() -> dict[str, Any]:
     return schema_for(BriefOutput)
-
-
-@cache
-def capture_schema() -> dict[str, Any]:
-    return schema_for(CaptureOutput)
 
 
 @cache

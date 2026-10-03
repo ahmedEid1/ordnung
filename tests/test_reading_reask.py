@@ -49,7 +49,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals import conditions  # noqa: E402
 from evals.conditions import (  # noqa: E402
+    REASK_UNRECORDED,
     CallLog,
     MeteredBackend,
     ordnung_prompt_hashes,
@@ -599,7 +601,9 @@ def test_the_benchmark_signals() -> None:
 class WithoutReask:
     """The recordings as they were before the re-ask existed: its answer — or its recorded failure — if one was
     recorded since, is missed. It wraps the whole replay (recorded failures included), so the tests that guard the
-    first readings pass whatever the re-ask's recording says (none, accepted, rejected or failed)."""
+    first readings pass whatever the re-ask's recording says (none, accepted, rejected or failed). The benchmark
+    allows that miss only on the letters :data:`~evals.conditions.REASK_UNRECORDED` lists — none since the empty
+    reading's re-ask was recorded —, so these tests allow it again with :func:`as_first_recorded`."""
 
     def __init__(self, inner: Any) -> None:
         self.inner = inner
@@ -614,9 +618,59 @@ class WithoutReask:
         raise NotImplementedError
 
 
-async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(tmp_path: Path) -> None:
-    """The recorded empty reading: the re-ask has no recording, so the first reading is kept and the check runs
-    as before — the same to-do, and the same single call accounted (a replay miss is no call)."""
+def as_first_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The benchmark as it was before the empty reading's re-ask was recorded (2026-10-03): that letter's miss of
+    its re-ask allowed (:data:`~evals.conditions.REASK_UNRECORDED`), for the replays with :class:`WithoutReask`."""
+    monkeypatch.setattr(conditions, "REASK_UNRECORDED", frozenset({EMPTY_READING}))
+
+
+def test_no_letter_may_miss_its_re_ask_any_more() -> None:
+    """The one letter recorded before the re-ask existed has its re-ask recorded: every re-ask miss is a replay
+    error now."""
+    assert frozenset() == REASK_UNRECORDED
+    assert (RECORDED / "extract" / "8d1dde25a0c13b0277de4c04.json").is_file()
+
+
+async def test_the_replay_takes_the_empty_reading_s_recorded_re_ask(tmp_path: Path) -> None:
+    """The recordings as they are: the empty reading's re-ask (recorded live on 2026-10-03) is replayed and
+    accepted — two calls, and the model's own objection deadline, Thu 10 Dec 2026 — so the check files nothing."""
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
+    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    log = CallLog()
+    backend = RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False)
+    prediction = await run_ordnung(
+        entry, document, LLMService(MeteredBackend(backend, log, timeout_s=60)), model="claude-sonnet-5"
+    )
+    assert prediction.error is None and prediction.failed is None
+    assert prediction.signals == ["injection_phrases", "reading_reask:accepted"]
+    [item] = prediction.items
+    assert (item.kind, item.due_date, item.origin, item.confidence) == (
+        "deadline",
+        "2026-12-10",
+        "model",
+        "high",
+    )
+    assert [(call.purpose, call.ok) for call in log.calls] == [("extract", True), ("extract", True)]
+
+
+async def test_a_re_ask_miss_on_the_empty_reading_is_a_replay_error_now(tmp_path: Path) -> None:
+    """With nothing allowed, the recordings as first made (no re-ask) fail on that letter instead of scoring its
+    first reading silently."""
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
+    document = prepare_document(entry, MANIFEST.parent, tmp_path)
+    backend = WithoutReask(RecordedFailures(ReplayBackend(RECORDED), RECORDED, record=False))
+    llm = LLMService(MeteredBackend(backend, CallLog(), timeout_s=60))
+    with pytest.raises(ReplayMiss):
+        await run_ordnung(entry, document, llm, model="claude-sonnet-5")
+
+
+async def test_a_replay_without_the_re_ask_s_recording_keeps_the_recorded_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The recorded empty reading, as first recorded: the re-ask has no recording, so the first reading is kept
+    and the check runs as before — the same to-do, and the same single call accounted (a replay miss is no
+    call)."""
+    as_first_recorded(monkeypatch)
     entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
     log = CallLog()

@@ -4464,11 +4464,6 @@
             "title": "Inbox Auto Read",
             "default": false
           },
-          "ocr": {
-            "type": "boolean",
-            "title": "Ocr",
-            "default": true
-          },
           "llm_brief": {
             "type": "boolean",
             "title": "Llm Brief",
@@ -4518,7 +4513,6 @@
           "concurrency",
           "inbox_dir",
           "inbox_auto_read",
-          "ocr",
           "llm_brief",
           "llm_review",
           "desktop_notifications",
@@ -8177,6 +8171,11 @@
             },
             "type": "array",
             "title": "Scam Signs"
+          },
+          "given_to_model": {
+            "type": "boolean",
+            "title": "Given To Model",
+            "default": false
           }
         },
         "type": "object",
@@ -8198,7 +8197,8 @@
           "email",
           "can_wait_again",
           "proof_of",
-          "scam_signs"
+          "scam_signs",
+          "given_to_model"
         ],
         "title": "DocumentDetail"
       },
@@ -9941,7 +9941,6 @@
               "extracted",
               "manual",
               "rule",
-              "capture",
               "draft"
             ],
             "title": "Origin",
@@ -11665,7 +11664,6 @@
               "extracted",
               "manual",
               "rule",
-              "capture",
               "draft"
             ],
             "title": "Origin",
@@ -11931,16 +11929,6 @@
             "type": "string",
             "title": "Brief",
             "default": "haiku"
-          },
-          "capture": {
-            "type": "string",
-            "title": "Capture",
-            "default": "haiku"
-          },
-          "bank": {
-            "type": "string",
-            "title": "Bank",
-            "default": "haiku"
           }
         },
         "type": "object",
@@ -11950,9 +11938,7 @@
           "review",
           "ask",
           "draft",
-          "brief",
-          "capture",
-          "bank"
+          "brief"
         ],
         "title": "ModelSettings",
         "description": "A request's own model per purpose. It keys the recordings (an alias, so they survive a change\nof :attr:`AppSettings.model`); the model the CLI runs is decided at call time\n(:meth:`ordnung.llm.claude_cli.ClaudeCLIBackend.model_for`), and the cache is keyed by that one."
@@ -13852,17 +13838,6 @@
             ],
             "title": "Inbox Auto Read",
             "description": "read new files from the watched folder at once (else they wait for you)"
-          },
-          "ocr": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ocr"
           },
           "llm_brief": {
             "anyOf": [
@@ -16598,7 +16573,7 @@
       },
       "LlmPausedEvent": {
         "additionalProperties": false,
-        "description": "``llm.paused``: Claude's usage limit was reached; reading continues at ``until``.",
+        "description": "``llm.paused``: reading pauses: Claude's usage limit (continues at ``until``), or Claude not\ninstalled or not signed in (``until`` empty: continues once Claude is ready).",
         "properties": {
           "until": {
             "title": "Until",

@@ -248,12 +248,6 @@ def party_scores(parties: Iterable[Party], name: str) -> list[tuple[float, Party
     return sorted((entry for entry in scored if entry[0] > 0), key=lambda entry: -entry[0])
 
 
-def find_party_fuzzy(parties: Iterable[Party], name: str) -> Party | None:
-    """The party whose name or alias is most similar to ``name`` (score ≥ :data:`FUZZY_MIN`)."""
-    scored = party_scores(parties, name)
-    return scored[0][1] if scored and scored[0][0] >= FUZZY_MIN else None
-
-
 @dataclass(frozen=True)
 class PartyMatch:
     """How a sender was matched (:func:`match_party`): the party (``None``: none yet), the rule that

@@ -85,6 +85,16 @@ UNTRUSTED_CLOSE = "</untrusted_document>"
 _TAG_LOOKALIKE = re.compile(r"<\s*(/?)\s*untrusted[_\s-]*document\s*>", re.IGNORECASE)
 _SLOT = "\x00ordnung-slot-{}\x00"
 _MAX_ERRORS = 12
+#: The longest sender name the list of known senders gives (``link.MAX_PARTY_NAME`` keeps new ones that
+#: short; one stored before is cut here), and the most the whole list may take (UTF-8 bytes): one letter
+#: must not plant a page of text in every later reading's prompt.
+MAX_LISTED_NAME = 120
+MAX_KNOWN_PARTIES_BYTES = 16_000
+#: A reading whose answer didn't fit the form twice (the repair too); the trace lists where it didn't.
+UNUSABLE_ANSWER_ERROR = (
+    "Claude's answer for this letter couldn't be understood, even after a second try. Press “Try again” "
+    "to read it again; its trace shows what didn't fit."
+)
 
 
 class ExtractionError(RuntimeError):
@@ -139,13 +149,20 @@ def known_parties_text(parties: Sequence[Party]) -> str:
 
     Only names and kinds: the model needs them to name a sender consistently, while matching by
     customer, file or passport numbers happens in code (:mod:`ordnung.ingest.link`), so numbers read
-    from other letters never leave the computer with this one.
+    from other letters never leave the computer with this one. Each name is one line of at most
+    :data:`MAX_LISTED_NAME` characters, and the list stops, at a whole line, before
+    :data:`MAX_KNOWN_PARTIES_BYTES`.
     """
     if not parties:
         return "(none yet)"
-    lines = [
-        f"- {party.name} ({party.kind})" for party in sorted(parties, key=lambda p: (p.name.casefold(), p.id))
-    ]
+    lines: list[str] = []
+    size = 0
+    for party in sorted(parties, key=lambda p: (p.name.casefold(), p.id)):
+        line = f"- {' '.join(party.name.split())[:MAX_LISTED_NAME].strip()} ({party.kind})"
+        size += len(line.encode("utf-8")) + 1
+        if size > MAX_KNOWN_PARTIES_BYTES:
+            break
+        lines.append(line)
     return wrap_untrusted("\n".join(lines))
 
 
@@ -868,7 +885,7 @@ async def _read(
             return parse_extraction(response.data, response.text), response.call_id
         except ValidationError as first:
             problems = validation_problems(first)
-            step.set(problems=len(first.errors()))
+            step.set(**facts.answer_problems(first))
     if before_again is not None:
         before_again()
     with trace.span("model", "Extract · repair", key="extract_repair", stage="extract") as step:
@@ -882,12 +899,8 @@ async def _read(
         try:
             return parse_extraction(repaired.data, repaired.text), repaired.call_id
         except ValidationError as second:
-            step.set(problems=len(second.errors()))
-            raise ExtractionError(
-                "Claude's answer for this document could not be understood, even after a second try "
-                f"({len(second.errors())} problem(s), e.g. {validation_problems(second).splitlines()[0][2:]}). "
-                "Try “Reprocess” later."
-            ) from second
+            step.set(**facts.answer_problems(second))
+            raise ExtractionError(UNUSABLE_ANSWER_ERROR) from second
 
 
 async def _complete(

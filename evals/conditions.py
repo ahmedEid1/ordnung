@@ -451,10 +451,11 @@ def _payment_signal(extraction: DocumentExtraction) -> str | None:
 #: The signal of a reading kept because the replay has no recording of its completeness re-ask.
 REASK_MISSING = "reading_reask_missing"
 #: The letters whose completeness re-ask a replay may miss (the first reading is then kept, signal
-#: :data:`REASK_MISSING`): the recorded runs made before the re-ask existed, where the re-ask fires on this one
-#: letter only. A re-ask any other letter makes is a replay error like every other missing recording — a change
-#: that makes the check fire elsewhere must record that call, never score the first reading silently.
-REASK_UNRECORDED = frozenset({"holdout2-adversarial-injection_visible-1"})
+#: :data:`REASK_MISSING`). None: the one letter the re-ask fires on in the runs recorded before it existed,
+#: ``holdout2-adversarial-injection_visible-1``, has had its re-ask recorded since (2026-10-03). A re-ask with
+#: no recording is a replay error like every other missing recording — a change that makes the check fire
+#: must record that call, never score the first reading silently.
+REASK_UNRECORDED: frozenset[str] = frozenset()
 
 
 def reask_signals(completion: Completion | None) -> list[str]:
