@@ -7,12 +7,16 @@ uv tool install from git) and started ``ordnung demo``.
 
 from __future__ import annotations
 
+import json
+import re
 import shutil
 import socket
 import subprocess
+import tomllib
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 from typer.testing import CliRunner
 
 from ordnung import cli, config, doctor
@@ -134,3 +138,32 @@ def test_help_shows_no_rest_markup() -> None:
         result = runner.invoke(app, args)
         assert result.exit_code == 0, result.output
         assert "``" not in result.output, f"ordnung {' '.join(args)}"
+
+
+# --------------------------------------------------------------------------------------------------
+# dependency floors and pinned versions
+# --------------------------------------------------------------------------------------------------
+
+
+def test_dependency_floors_install_a_working_app() -> None:
+    """Below each of these floors the app was broken (CI's lowest-direct job installs the floors):
+    typer crashed at start, fpdf2 broke the demo's replay, icalendar 6.0 made the .ics a 500 and
+    holidays dropped the Fronleichnam warning."""
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    floors = dict(
+        re.findall(r"^([\w.-]+)(?:\[[\w,]+\])?>=([\d.]+)", "\n".join(project["dependencies"]), re.M)
+    )
+    for name, needed in {"typer": "0.19", "fpdf2": "2.8.5", "icalendar": "6.1", "holidays": "0.66"}.items():
+        assert Version(floors[name]) >= Version(needed), name
+
+
+def test_ci_installs_the_samples_library_versions() -> None:
+    """The samples regenerate byte for byte only with their manifest's libraries: CI installs with
+    ``-c constraints.txt``, which pins them."""
+    manifest = json.loads((ROOT / "src/ordnung/demo/samples/manifest.json").read_text(encoding="utf-8"))
+    constraints = (ROOT / "constraints.txt").read_text(encoding="utf-8")
+    pins = dict(re.findall(r"^([\w.-]+)==([^\s;]+)", constraints, re.M))
+    for name in ("fpdf2", "fonttools", "pillow", "pypdfium2"):
+        assert pins[name] == manifest["generator"]["environment"][name], name
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert workflow.count('uv pip install -e ".[dev]" -c constraints.txt') >= 2

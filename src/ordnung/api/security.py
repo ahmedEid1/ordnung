@@ -9,13 +9,16 @@ Ordnung listens on 127.0.0.1 only, but any web page the person visits can try to
 * requires the header ``X-Ordnung-Client`` on every non-GET request — a simple form post from
   another site cannot set it;
 * checks the session token (Jupyter style): ``GET /?token=…`` stores it in an HttpOnly,
-  SameSite=Strict cookie ``ordnung_token`` and redirects to ``/``; every ``/api`` request needs that
-  cookie or ``Authorization: Bearer <token>``. ``ordnung serve`` opens the browser with a private
-  local page that forwards to that link (so the token is never on a command line); that page load is
-  cross-site, so a page load carrying the *valid* token is accepted from anywhere and answered with a
-  same-origin forward instead of a redirect (knowing the token is already full access). ``/api/health`` answers without it (with minimal
-  information) and the calendar feed also accepts ``?token=`` so desktop calendar apps can
-  subscribe. ``token=None`` turns the token check off (tests, ``--no-token``).
+  SameSite=Strict cookie ``ordnung_token_<port>`` and redirects to ``/``; every ``/api`` request needs
+  that cookie or ``Authorization: Bearer <token>``. The cookie is named per port because browsers send
+  a cookie to every port of a host: the demo and the real app would otherwise sign each other out (the
+  cookie still reaches other servers on localhost; only a token kept out of cookies would not).
+  ``ordnung serve`` opens the browser with a private local page that forwards to that link (so the
+  token is never on a command line); that page load is cross-site, so a page load carrying the *valid*
+  token is accepted from anywhere and answered with a same-origin forward instead of a redirect
+  (knowing the token is already full access). ``/api/health`` answers without it (with minimal information). The token is
+  never accepted in an API URL, where it would end up in other programs. ``token=None`` turns the
+  token check off (tests, ``--no-token``).
 
 It also adds ``X-Content-Type-Options: nosniff`` and ``Referrer-Policy: no-referrer`` to every
 response. HTML pages carry the strict Content Security Policy built by :func:`content_security_policy`.
@@ -40,13 +43,15 @@ TOKEN_QUERY = "token"
 CLIENT_HEADER = "x-ordnung-client"
 AUTH_STATE_KEY = "ordnung_authenticated"
 COOKIE_MAX_AGE_S = 30 * 24 * 3600
+#: Largest request body: 200 MB of letters at once plus the form around them. A larger one is refused
+#: by its ``Content-Length``, before the form parser writes it to the temp folder.
+MAX_REQUEST_BYTES = 210 * 1024 * 1024
 
 ALLOWED_HOSTS = frozenset({"localhost", "127.0.0.1", "[::1]"})
 ALLOWED_FETCH_SITES = frozenset({"same-origin", "none"})
 SAFE_METHODS = frozenset({"GET", "HEAD"})
 API_PREFIX = "/api"
 PUBLIC_API_PATHS = frozenset({"/api/health"})
-TOKEN_QUERY_API_PATHS = frozenset({"/api/calendar.ics"})
 
 _ALWAYS_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"x-content-type-options", b"nosniff"),
@@ -176,13 +181,17 @@ def bearer_token(request: Request) -> str | None:
     return value.strip() if scheme.lower() == "bearer" and value.strip() else None
 
 
+def token_cookie(request: Request) -> str:
+    """The session cookie's name for the port this server listens on (``ordnung_token_8765``)."""
+    server = request.scope.get("server")
+    return f"{TOKEN_COOKIE}_{server[1]}" if server and server[1] else TOKEN_COOKIE
+
+
 def is_authenticated(request: Request, token: str | None) -> bool:
-    """Cookie, bearer header or (calendar feed only) ``?token=`` carry the session token."""
+    """The session cookie or a bearer header carries the session token."""
     if token is None:
         return True
-    candidates = [request.cookies.get(TOKEN_COOKIE), bearer_token(request)]
-    if request.url.path in TOKEN_QUERY_API_PATHS:
-        candidates.append(request.query_params.get(TOKEN_QUERY))
+    candidates = [request.cookies.get(token_cookie(request)), bearer_token(request)]
     return any(token_matches(candidate, token) for candidate in candidates)
 
 
@@ -249,7 +258,7 @@ def login_response(request: Request, token: str) -> Response:
     target = _without_token(request)
     response = RedirectResponse(target, status_code=303) if same_site else _forward_page(target)
     response.set_cookie(
-        TOKEN_COOKIE, token, max_age=COOKIE_MAX_AGE_S, path="/", httponly=True, samesite="strict"
+        token_cookie(request), token, max_age=COOKIE_MAX_AGE_S, path="/", httponly=True, samesite="strict"
     )
     return response
 
@@ -331,6 +340,9 @@ class SecurityMiddleware:
         request.scope.setdefault("state", {})[AUTH_STATE_KEY] = authenticated
         if not authenticated and path not in PUBLIC_API_PATHS:
             return unauthenticated_response(request)
+        length = request.headers.get("content-length", "")
+        if length.isdigit() and int(length) > MAX_REQUEST_BYTES:
+            return JSONResponse({"detail": "Please add at most 200 MB at once."}, status_code=413)
         return None
 
 

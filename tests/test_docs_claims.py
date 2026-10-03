@@ -542,11 +542,11 @@ def test_readme_backend_test_count_holds() -> None:
 
 
 _WEB = ROOT / "web"
-#: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_WEB_COUNTS=1`` (CI's
+#: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_MOCK_CHECK=1`` (CI's
 #: end-to-end job, which has both toolchains): there a missing toolchain fails, so the README's Vitest and
 #: Playwright counts are always checked in CI.
 _needs_web = pytest.mark.skipif(
-    os.environ.get("ORDNUNG_REQUIRE_WEB_COUNTS") != "1"
+    os.environ.get("ORDNUNG_REQUIRE_MOCK_CHECK") != "1"
     and (shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists()),
     reason="needs node and web/node_modules (npm ci in web/)",
 )

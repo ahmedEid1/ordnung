@@ -150,7 +150,7 @@ export interface paths {
         /**
          * Delete Everything
          * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
-         *     (Ordnung's events leave a connected calendar first).
+         *     (Ordnung's events leave a connected calendar first), and the browser empties its cache.
          *
          *     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise).
          */

@@ -322,7 +322,9 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: (id: string) => api.deleteDocument(id, { purge: true }),
     meta: { errorTitle: "Couldn't delete the letter" },
-    onSuccess: () => invalidateLedger(qc),
+    // not awaited: the open letter's own refetch answers 404 and unmounts the page that asked, and then its
+    // "Letter deleted" and the way back to the Inbox would never run (e2e/real-app-letters.spec.ts)
+    onSuccess: () => void invalidateLedger(qc),
   });
 }
 

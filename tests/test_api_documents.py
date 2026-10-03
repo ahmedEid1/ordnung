@@ -148,9 +148,10 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
 
         page = await api.client.get(f"/api/documents/{doc_id}/pages/2.jpg")
         assert page.status_code == 200 and page.headers["content-type"] == "image/jpeg"
-        assert "max-age" in page.headers["cache-control"]
         thumb = await api.client.get(f"/api/documents/{doc_id}/thumbnail.jpg")
         assert thumb.status_code == 200 and thumb.content[:3] == b"\xff\xd8\xff"
+        # no copy may stay in the browser's cache once the letter is deleted
+        assert {response.headers["cache-control"] for response in (original, page, thumb)} == {"no-store"}
 
         assert (await api.client.get(f"/api/documents/{doc_id}/pages/9.jpg")).status_code == 404
         missing = await api.client.get("/api/documents/doc_nothinghere")
@@ -279,6 +280,7 @@ async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
         tax = await _read_letter(api, TAX_LETTER.pdf())
         trashed = await api.client.delete(f"/api/documents/{tax}")
         assert trashed.json() == {"id": tax, "purged": False, "removed_open_items": 2}
+        assert "clear-site-data" not in trashed.headers  # the trash can be undone
         assert (await api.client.get("/api/documents")).json() == []
         assert (await api.client.get("/api/items")).json() == []
         kept = (await api.client.get(f"/api/documents/{tax}")).json()["document"]
@@ -290,6 +292,7 @@ async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
         assert derived.is_dir()
         purged = await api.client.delete(f"/api/documents/{invoice}", params={"purge": "true"})
         assert purged.json() == {"id": invoice, "purged": True, "removed_open_items": 1}
+        assert purged.headers["clear-site-data"] == '"cache"'  # the browser drops what it cached
         assert (await api.client.get(f"/api/documents/{invoice}")).status_code == 404
         assert (await api.client.get(f"/api/documents/{invoice}/file")).status_code == 404
         assert not derived.exists()

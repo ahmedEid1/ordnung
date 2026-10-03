@@ -321,7 +321,7 @@
           "data"
         ],
         "summary": "Delete Everything",
-        "description": "Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty\n(Ordnung's events leave a connected calendar first).\n\n``body`` must be ``{\"confirm\": \"DELETE\"}`` (422 otherwise).",
+        "description": "Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty\n(Ordnung's events leave a connected calendar first), and the browser empties its cache.\n\n``body`` must be ``{\"confirm\": \"DELETE\"}`` (422 otherwise).",
         "operationId": "delete_everything_api_data_delete",
         "requestBody": {
           "content": {

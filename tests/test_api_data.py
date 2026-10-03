@@ -57,12 +57,14 @@ async def test_delete_everything_wipes_the_data_folder(data_dir: Path) -> None:
         for body in (None, {}, {"confirm": "delete"}, {"confirm": "DELETE", "also": 1}):
             refused = await client.request("DELETE", "/api/data", json=body)
             assert refused.status_code == 422, body
+            assert "clear-site-data" not in refused.headers
         assert (await client.get("/api/documents")).json()
 
         events = record_events(api.ctx.bus)
         response = await client.request("DELETE", "/api/data", json=CONFIRM)
 
         assert response.status_code == 200, response.text
+        assert response.headers["clear-site-data"] == '"cache"'  # the browser drops what it cached
         result = response.json()
         assert result["kept"] == ["notes-of-mine.txt"]
         assert {"files", "derived", "drafts", "inbox", "ordnung.db"} <= set(result["removed"])
