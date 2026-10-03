@@ -544,3 +544,55 @@ export function looksGerman(text: string | null | undefined): boolean {
   const en = (t.match(ENGLISH_WORDS) ?? []).length;
   return de >= 2 && de > en;
 }
+
+/**
+ * Names a reading may give a letter's language by instead of a code (the letter keeps what Claude wrote: "de" or
+ * "German"), in English and in the language itself.
+ */
+const LANGUAGE_NAMES: Record<string, string> = {
+  german: "de",
+  deutsch: "de",
+  english: "en",
+  englisch: "en",
+  french: "fr",
+  français: "fr",
+  spanish: "es",
+  español: "es",
+  italian: "it",
+  italiano: "it",
+  dutch: "nl",
+  nederlands: "nl",
+  polish: "pl",
+  polski: "pl",
+  turkish: "tr",
+  türkçe: "tr",
+  arabic: "ar",
+  العربية: "ar",
+  ukrainian: "uk",
+  українська: "uk",
+  russian: "ru",
+  русский: "ru",
+};
+
+/**
+ * A language as its two-letter code: "de", "DE", "de-DE", "German" and "Deutsch" are all "de". `null` for none,
+ * or for words that name no language Ordnung knows.
+ */
+export function languageCode(language: string | null | undefined): string | null {
+  const t = (language ?? "").trim().toLowerCase();
+  if (!t) return null;
+  const code = /^([a-z]{2})(?:[-_][a-z0-9]+)*$/.exec(t);
+  return code ? code[1]! : (LANGUAGE_NAMES[t] ?? null);
+}
+
+/** A language's English name ("de", "German" → "German"), for a sentence about a letter; `null` when unknown. */
+export function languageName(language: string | null | undefined): string | null {
+  const code = languageCode(language);
+  if (!code) return null;
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(code);
+    return name && name !== code ? name : null;
+  } catch {
+    return null; // a code the browser doesn't know
+  }
+}

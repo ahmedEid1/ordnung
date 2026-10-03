@@ -3,7 +3,7 @@ import { useState } from "react";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
-import { ApiError } from "@/api/client";
+import { ApiError, SERVER_PROBLEM, UNREADABLE_ANSWER, UNREADABLE_CODE } from "@/api/client";
 import { PIPELINE_STEPS } from "@/lib/copy";
 import { Card, CardHeader } from "./Card";
 import { DateLeaf } from "./DateLeaf";
@@ -11,7 +11,7 @@ import { ADVICE_LINKS, Disclaimer } from "./Disclaimer";
 import { EmptyState } from "./EmptyState";
 import { Glossary } from "./Glossary";
 import { KindBadge, KindIcon, resolveKind } from "./KindBadge";
-import { LoadError, technicalDetails } from "./LoadError";
+import { LoadError, loadErrorDescription, technicalDetails } from "./LoadError";
 import { PartyChip } from "./PartyChip";
 import { Receipt, ReceiptPopover, ReceiptTrigger } from "./Receipt";
 import { Stepper, chooseStepLabels, labelsFit } from "./Stepper";
@@ -70,13 +70,27 @@ describe("LoadError", () => {
     renderWithProviders(<LoadError what="your letters" error={new ApiError(500, "Internal error")} onRetry={retry} />);
     const alert = screen.getByRole("alert");
     expect(within(alert).getByRole("heading", { level: 2, name: "Couldn't load your letters" })).toBeInTheDocument();
-    expect(alert).toHaveTextContent("Your letters are safe — Ordnung didn't answer. Is it still running?");
+    // a server error is no "didn't answer": Ordnung did answer (UX audit U9)
+    expect(alert).toHaveTextContent("Your letters are safe — Ordnung ran into a problem while loading your letters. Try again, and restart Ordnung if it keeps happening.");
     // the raw server message is not the sentence: it waits behind "Technical details"
     const details = within(alert).getByText("Technical details").closest("details")!;
     expect(details).not.toHaveAttribute("open");
     expect(within(details).getByText("HTTP 500 · Internal error")).toBeInTheDocument();
     await user.click(within(alert).getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it("words its sentence by what happened: no answer, a failure of Ordnung's own, an answer it can't read, a refusal", () => {
+    expect(loadErrorDescription(new ApiError(0, "unreachable"), "your timeline")).toBe("Your letters are safe — Ordnung didn't answer. Is it still running?");
+    expect(loadErrorDescription(undefined)).toBe("Your letters are safe — Ordnung didn't answer. Is it still running?");
+    for (const err of [new ApiError(502, SERVER_PROBLEM), new ApiError(200, UNREADABLE_ANSWER, "<html>", UNREADABLE_CODE), new TypeError("x is undefined")]) {
+      expect(loadErrorDescription(err, "your timeline")).toBe(
+        "Your letters are safe — Ordnung ran into a problem while loading your timeline. Try again, and restart Ordnung if it keeps happening.",
+      );
+    }
+    expect(loadErrorDescription(new ApiError(409, "Busy"), "your timeline")).toBe("Your letters are safe — Ordnung couldn't load your timeline. Try again in a moment.");
+    // the server's own words for the technical details
+    expect(technicalDetails(new ApiError(500, SERVER_PROBLEM, "Internal Server Error", null, "Internal Server Error"))).toBe("HTTP 500 · Internal Server Error");
   });
 
   it("stays mounted while retrying, with a busy button", async () => {

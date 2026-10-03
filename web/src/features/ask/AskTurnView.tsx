@@ -5,6 +5,7 @@ import { Check, Copy, Info, RotateCcw, RotateCw, Square, TriangleAlert } from "l
 import { LogoMark } from "@/components/shell/Logo";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
+import { useProfileLanguage } from "@/components/ui/ModelText";
 import { useClipboard } from "@/features/today/clipboard";
 import { looksGerman } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
@@ -64,6 +65,15 @@ export const CHECK_NOTE_LABEL_DE = "Von Ordnung geprüft:";
 export function checkNoteLabel(note: string, label?: string | null): string {
   if (label) return label;
   return looksGerman(note) ? CHECK_NOTE_LABEL_DE : CHECK_NOTE_LABEL;
+}
+
+/**
+ * The language an answer is in: German when its check note's label says so; else the person's language, which
+ * Claude answers in — English when that is German, as the answer wasn't.
+ */
+export function answerLanguage(noteLabel: string | null | undefined, profileLanguage: string | null | undefined): string {
+  if (noteLabel === CHECK_NOTE_LABEL_DE) return "de";
+  return !profileLanguage || profileLanguage === "de" ? "en" : profileLanguage;
 }
 
 /**
@@ -127,6 +137,8 @@ export function CheckNote({ text, label }: { text: string | null; label?: string
 
 export interface AnswerViewProps {
   answer: AnswerState;
+  /** The person's language (`Profile.language`), which Claude answers in: the answer is marked with it. */
+  language?: string | null;
   resolve: (ref: CitationRef) => RefInfo;
   titleOf?: TitleLookup;
   onRetry?: () => void;
@@ -188,7 +200,7 @@ export function DemoChangedNote({ className }: { className?: string }) {
  * One answer: tool trace, the checked text with citation chips, the check's line, sources and actions.
  * While the answer streams only the trace and a "writing" line show: its words appear once checked.
  */
-export function AnswerView({ answer, resolve, titleOf, onRetry, today, demoChanged = false }: AnswerViewProps) {
+export function AnswerView({ answer, language, resolve, titleOf, onRetry, today, demoChanged = false }: AnswerViewProps) {
   const { copy, copied } = useClipboard();
   const live = answer.status === "streaming";
   const demoMiss = answer.status === "error" && answer.errorCode === "demo_miss";
@@ -221,7 +233,7 @@ export function AnswerView({ answer, resolve, titleOf, onRetry, today, demoChang
           <Markdown
             text={body}
             citations={valid}
-            language={answer.noteLabel === CHECK_NOTE_LABEL_DE ? "de" : "en"}
+            language={answerLanguage(answer.noteLabel, language)}
             today={today}
             renderCitation={(ref, key) => <CitationMarker key={key} info={resolve(ref)} n={numbers.get(ref.id) ?? 0} />}
           />
@@ -308,6 +320,7 @@ export function AskTurnView({
 }) {
   const reduce = useReducedMotion();
   const today = useTodayISO();
+  const language = useProfileLanguage();
   return (
     <motion.article
       aria-label={turn.question ? `Question: ${turn.question}` : "Answer"}
@@ -318,7 +331,15 @@ export function AskTurnView({
       data-turn={turn.key}
     >
       {turn.question ? <QuestionBubble text={turn.question} /> : null}
-      <AnswerView answer={turn.answer} resolve={resolve} titleOf={titleOf} onRetry={onRetry} today={today} demoChanged={demoChanged} />
+      <AnswerView
+        answer={turn.answer}
+        language={language}
+        resolve={resolve}
+        titleOf={titleOf}
+        onRetry={onRetry}
+        today={today}
+        demoChanged={demoChanged}
+      />
     </motion.article>
   );
 }

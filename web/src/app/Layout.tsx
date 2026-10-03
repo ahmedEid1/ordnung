@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { useHealth, useProfile } from "@/api/hooks";
@@ -64,6 +64,64 @@ function DocumentTitleSync() {
   return null;
 }
 
+/** How long a new page may take to draw its heading (its data loading) before nothing more is done. */
+const HEADING_WAIT_MS = 10_000;
+
+/**
+ * A new page is said (UX audit U10: opening a letter with Enter, or the app opening one by itself, left focus on
+ * the page and said nothing). On each change of path, once the new page has drawn its h1:
+ * - focus went with the page that held it (an Inbox row): it moves to the h1, which is read out;
+ * - the new page moved it itself (the weekly review's step, a letter's card): it stays there;
+ * - it is still on a control outside the page (a sidebar link, the tour): it stays there, and the page's title is
+ *   said in a polite live region.
+ */
+function PageAnnouncer() {
+  const { pathname } = useLocation();
+  const [said, setSaid] = useState("");
+  // the first page is the browser's to announce
+  const shown = useRef(pathname);
+  useEffect(() => {
+    if (shown.current === pathname) return;
+    shown.current = pathname;
+    const main = document.getElementById("main");
+    if (!main) return;
+    let done = false;
+    let frame = 0;
+    const finish = () => {
+      done = true;
+      observer.disconnect();
+    };
+    const arrive = () => {
+      const h1 = done ? null : main.querySelector<HTMLElement>("h1");
+      if (!h1) return;
+      finish();
+      const active = document.activeElement;
+      if (!active || active === document.body || active === main || !active.isConnected) {
+        if (!h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+        h1.focus({ preventScroll: true });
+      } else if (!main.contains(active)) {
+        // emptied first: the same title again (back and forth) is said again
+        setSaid("");
+        frame = window.requestAnimationFrame(() => setSaid(h1.textContent?.trim() || document.title));
+      }
+    };
+    const observer = new MutationObserver(arrive);
+    observer.observe(main, { childList: true, subtree: true });
+    arrive();
+    const timer = window.setTimeout(finish, HEADING_WAIT_MS);
+    return () => {
+      finish();
+      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+  return (
+    <p role="status" className="sr-only">
+      {said}
+    </p>
+  );
+}
+
 /** Opt-in browser notifications for dates due today/tomorrow (Settings → Reminders). */
 function BrowserNotifications() {
   useBrowserNotifications();
@@ -106,6 +164,7 @@ export function AppLayout() {
       <AddLettersProvider>
         <DocumentTitleSync />
         <BrowserNotifications />
+        <PageAnnouncer />
         <SkipLink />
         <NavigationProgress />
         <div className="flex min-h-dvh bg-canvas">

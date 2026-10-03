@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
-import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
+import type { Area, ComputationReceipt, DateSpec, Document, DocumentDetail, DocumentKind, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { isTransfer } from "@/lib/payments";
 import { usePartyDrawer } from "@/lib/party-drawer";
@@ -131,6 +131,20 @@ function SenderLandNote({ party }: { party: Party }) {
   );
 }
 
+/**
+ * The language a letter is written in (its `language`, as the reading named it), from what is already loaded — the
+ * letter's page, or a list of letters (Today, the Inbox); nothing is fetched. `null` when neither has it.
+ */
+export function useLetterLanguage(docId: string | null | undefined): string | null {
+  const qc = useQueryClient();
+  if (!docId) return null;
+  const detail = qc.getQueryData<DocumentDetail>(qk.documents.detail(docId));
+  if (detail) return detail.document.language;
+  const lists = qc.getQueriesData<Document[]>({ queryKey: [...qk.documents.all, "list"] });
+  const listed = lists.flatMap(([, docs]) => (Array.isArray(docs) ? docs : [])).find((d) => d.id === docId);
+  return listed?.language ?? null;
+}
+
 export interface ReceiptViewProps {
   receipt: ComputationReceipt;
   /** What the letter says (shown as the quote the date came from). */
@@ -153,13 +167,15 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
   const steps = useReceiptSteps(receipt.steps);
   const { docKind, party } = useLetter(item?.doc_id);
   const landless = senderLandUnknown(receipt, party);
+  // the letter's words are in the letter's language (the law's short wording is Ordnung's)
+  const language = useLetterLanguage(item?.doc_id);
   return (
     <Receipt
       dates={receiptDates(receipt, item, spec, transfer)}
       summary={receipt.summary}
       confidence={receipt.confidence}
       warnings={receipt.warnings}
-      quote={spec?.text ? (origin === "rule" ? { text: spec.text, source: "law", citation: spec.legal_basis } : { text: spec.text }) : null}
+      quote={spec?.text ? (origin === "rule" ? { text: spec.text, source: "law", citation: spec.legal_basis } : { text: spec.text, language }) : null}
       steps={steps}
       holidayCalendar={receipt.holiday_calendar}
       defaultShowRules={defaultShowRules}

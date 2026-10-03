@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
-import { ApiError, apiPath, assetUrl, messageFromDetail, request, setAssetResolver } from "./client";
+import { ApiError, apiPath, assetUrl, messageFromDetail, request, SERVER_PROBLEM, setAssetResolver, UNREADABLE_ANSWER, UNREADABLE_CODE } from "./client";
 import { api } from "./endpoints";
 import { __resetEventsForTests, handleServerEvent, useEvents } from "./sse";
 import { qk } from "./hooks";
@@ -65,6 +65,41 @@ describe("client", () => {
     const demo = (await api.runReview().catch((e: unknown) => e)) as ApiError;
     expect(demo.isStaticDemo).toBe(true);
     expect(demo.message).toBe("Install Ordnung to try this");
+  });
+
+  it("says a server error with no words for a person plainly, its own words kept for the technical details (UX audit U9)", async () => {
+    const failed = async (status: number, body: unknown, headers?: Record<string, string>) => {
+      mockFetch(status, body, headers);
+      return (await request("/items").catch((e: unknown) => e)) as ApiError;
+    };
+    // the plain-text 500 an unhandled error used to be, and a JSON one that says no more than its status
+    for (const err of [await failed(500, "Internal Server Error", { "Content-Type": "text/plain" }), await failed(500, { detail: "Internal Server Error" })]) {
+      expect(err.message).toBe(SERVER_PROBLEM);
+      expect(err.technical).toBe("Internal Server Error");
+    }
+    // a proxy's HTML page, on one line and cut short
+    const page = await failed(502, `<html>\n<body>${"x".repeat(400)}</body></html>`, { "Content-Type": "text/html" });
+    expect(page.message).toBe(SERVER_PROBLEM);
+    expect(page.technical).toMatch(/^<html> <body>x+…$/);
+    expect(page.technical!.length).toBeLessThan(310);
+    // Ordnung's sentence for an unexpected error, with the error's name for a report
+    const unexpected = await failed(500, { detail: "Ordnung ran into a problem it didn't expect.", code: "internal_error", error: "KeyError" });
+    expect(unexpected.message).toBe("Ordnung ran into a problem it didn't expect.");
+    expect(unexpected.technical).toBe("KeyError");
+    // a server error Ordnung words for the person keeps its words (Claude signed out, the demo's limits)
+    const claude = await failed(503, { detail: "Claude Code is not signed in.", code: "claude_auth" });
+    expect([claude.message, claude.technical]).toEqual(["Claude Code is not signed in.", null]);
+    expect((await failed(503, { detail: "The demo uses recorded answers." })).message).toBe("The demo uses recorded answers.");
+  });
+
+  it("says an answer that isn't Ordnung's JSON plainly, never as a parser's message", async () => {
+    mockFetch(200, "<!doctype html><title>Captive portal</title>", { "Content-Type": "text/html" });
+    const ok = (await request("/health").catch((e: unknown) => e)) as ApiError;
+    expect(ok).toBeInstanceOf(ApiError);
+    expect([ok.message, ok.code, ok.technical]).toEqual([UNREADABLE_ANSWER, UNREADABLE_CODE, "<!doctype html><title>Captive portal</title>"]);
+    mockFetch(404, "Not Found", { "Content-Type": "text/plain" });
+    const missing = (await request("/nothing").catch((e: unknown) => e)) as ApiError;
+    expect([missing.status, missing.message, missing.technical]).toEqual([404, UNREADABLE_ANSWER, "Not Found"]);
   });
 
   it("returns undefined for 204 and reports network failures as status 0", async () => {

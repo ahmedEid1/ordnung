@@ -7,7 +7,8 @@ Security Policy, the localhost security middleware and a lifespan that runs the 
   the watched folder (when one is set, :mod:`ordnung.ingest.watcher`), and on shutdown stops them (and
   the API's own background tasks). The context itself stays open; whoever built it closes it.
 * **errors** — model failures become ``503`` with a message the person can act on (and a ``code``),
-  invalid input ``422``, unknown records ``404``.
+  invalid input ``422``, unknown records ``404``, and anything unexpected a JSON ``500`` with a plain
+  sentence (``code`` ``internal_error``) and the error's name, never its message.
 * **web app** — files of ``config.web_dist_dir()`` are served as they are; a missing file (under
   ``assets/`` or with an extension) is a ``404``; any other non-API path gets ``index.html``
   (client-side routing) with the CSP, whose ``script-src`` allows exactly the inline theme script of
@@ -81,6 +82,10 @@ LLM_ERROR_CODES: tuple[tuple[type[LLMError], str], ...] = (
     (ReplayMiss, "replay_miss"),
 )
 LLM_FALLBACK_MESSAGE = "Claude couldn't answer right now. Please try again in a moment."
+UNEXPECTED_MESSAGE = (
+    "Ordnung ran into a problem it didn't expect. Your letters are safe — try again, "
+    "and restart Ordnung if it keeps happening."
+)
 VIEW_MODELS: tuple[type[BaseModel], ...] = (
     models.RefLink,
     models.TimelineEntry,
@@ -179,11 +184,19 @@ async def _unprocessable(_request: Request, exc: Exception) -> Response:
     return JSONResponse({"detail": str(exc)}, status_code=422)
 
 
+async def _unexpected(_request: Request, exc: Exception) -> Response:
+    """Any other error: a sentence the person can act on (``code`` ``internal_error``), and the error's name for a
+    report — never its message, which may quote a letter. The traceback still goes to the server's log."""
+    body = {"detail": UNEXPECTED_MESSAGE, "code": "internal_error", "error": type(exc).__name__}
+    return JSONResponse(body, status_code=500)
+
+
 def _add_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(LLMError, _llm_error)
     app.add_exception_handler(NotFoundError, _not_found)
     for kind in (IntakeError, DraftError, ValidationError):
         app.add_exception_handler(kind, _unprocessable)
+    app.add_exception_handler(Exception, _unexpected)
 
 
 # --------------------------------------------------------------------------------------------------

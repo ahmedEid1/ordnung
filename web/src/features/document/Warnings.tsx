@@ -22,7 +22,9 @@ import { Callout } from "@/components/ui/Callout";
 import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
+import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
+import { useLetterLanguage } from "./WhyThisDate";
 import { arrivalSavedNote, isCourtServed, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
@@ -561,6 +563,14 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   const own = item.slot_key === READING_CHECK_SLOT;
   // "Read this letter yourself": reading it is the whole task — when the letter asks for nothing, it's done
   const placeholder = own && item.kind === "task";
+  // the letter's words, in the letter's language
+  const quoteLang = useLetterLanguage(ev?.doc_id);
+  // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
+  // page (UX audit U4), and after a failed save the keyboard is still where it was
+  const unlessBusy = (run: () => void) => () => {
+    if (!pending) run();
+  };
+  const busy = pending || undefined;
 
   return (
     <CheckCard>
@@ -575,7 +585,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       </p>
       <p className="mt-1 text-[13px] leading-5 text-ink/75">{checkReason(item, scam, notFound)}</p>
       {ev?.quote ? (
-        <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
+        <blockquote lang={quoteLanguage({ text: ev.quote, language: quoteLang }) ?? "de"} className="mt-2 text-[13.5px] leading-relaxed text-ink">
           <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="min-h-6 text-left hover:underline">
             <span className="marker box-decoration-clone px-0.5">“{ev.quote}”</span>
           </button>
@@ -583,10 +593,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : null}
       {scam ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
             Not a real to-do
           </Button>
-          <Button size="sm" variant="ghost" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
             It's a real to-do
           </Button>
         </div>
@@ -612,19 +622,19 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {placeholder ? (
-            <Button size="sm" variant="secondary" icon={Check} onClick={() => markDone(item, { title: "Marked as read" })} disabled={pending}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => markDone(item, { title: "Marked as read" }))} aria-disabled={busy}>
               I've read it — nothing to do
             </Button>
           ) : own && !item.due_date ? null : (
             // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
-            <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
               Correct
             </Button>
           )}
           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
             {item.due_date ? "Change date" : "Set a date"}
           </Button>
-          <Button size="sm" variant="ghost" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
             Not a real to-do
           </Button>
         </div>

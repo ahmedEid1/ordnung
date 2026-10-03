@@ -2,6 +2,7 @@
  * "To-dos & dates" from this letter: kind, date + countdown, amount, grounding, "Why this date?". A to-do the
  * server set aside (`DocumentDetail.set_aside`: an invoice its payment reminder replaced, a date already past
  * when the letter was added) is said for what it is, quietly after the others — no countdown, not counted.
+ * "Add a date" adds one of the person's own (`AddDateDialog`).
  */
 import { Link } from "react-router";
 import { ArrowRight, CalendarPlus, Check, Ellipsis, History, ListTodo, Pencil, Repeat, RotateCcw, Scale, ShieldAlert, X } from "lucide-react";
@@ -14,8 +15,10 @@ import { Input } from "@/components/ui/Field";
 import { Button, IconButton } from "@/components/ui/Button";
 import { KindBadge } from "@/components/ui/KindBadge";
 import { Menu } from "@/components/ui/Menu";
+import { ModelText } from "@/components/ui/ModelText";
 import { Money } from "@/components/ui/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { AddDateButton, type DateLetter } from "@/features/items/AddDateDialog";
 import { EvidenceChip } from "./EvidenceChip";
 import { useEvidence } from "./EvidenceContext";
 import { GlossaryText } from "./Explained";
@@ -70,6 +73,13 @@ function useSteadyOrder(items: Item[], docId: string, aside: ReadonlyMap<string,
   return [...sorted].sort((a, b) => (place.get(a.id) ?? Infinity) - (place.get(b.id) ?? Infinity));
 }
 
+/** What an empty list says: a letter nobody read has no dates of its own; a read one asked for nothing. */
+function emptyNote(letter: Pick<Document, "ai_private" | "status">): string {
+  if (letter.ai_private) return "Claude didn't read this letter, so Ordnung found no dates in it. Add the ones that matter to you.";
+  if (letter.status !== "processed" && letter.status !== "needs_review") return "Ordnung hasn't read any dates from this letter. Add the ones that matter to you.";
+  return "Nothing to do or remember from this letter. Add a date of your own if you need one.";
+}
+
 export function ItemsList({
   items,
   docId,
@@ -77,6 +87,7 @@ export function ItemsList({
   scam,
   setAside = NONE,
   documents = NONE,
+  letter,
 }: {
   items: Item[];
   docId: string;
@@ -86,24 +97,40 @@ export function ItemsList({
   setAside?: readonly ItemAside[];
   /** The letter's related letters, for a set-aside note's "the payment reminder of Thu 10 Sep". */
   documents?: NoteDocs;
+  /**
+   * The letter itself: "Add a date" adds a date of the person's own to it, and the section is there without any
+   * to-do too — a letter kept private, or one Claude couldn't read, has none of its own.
+   */
+  letter?: DateLetter & Pick<Document, "ai_private" | "status">;
 }) {
   const aside = new Map(setAside.map((a) => [a.item_id, a]));
   const list = useSteadyOrder(items, docId, aside);
-  if (!list.length) return null;
+  if (!list.length && !letter) return null;
   // what is left to act on: never a to-do set aside (UI audit round 2: "· 1" over an invoice its reminder replaced)
   const open = list.filter((i) => isOpenItem(i) && !aside.has(i.id)).length;
   return (
     // a scam letter's demands are no to-dos of yours: no count
-    <PanelSection id="todos" title="To-dos & dates" icon={ListTodo} count={scam ? undefined : open} countLabel={`${open} open`}>
-      <ul className="card divide-y divide-line overflow-hidden">
-        {list.map((it) =>
-          scam && isOpenItem(it) ? (
-            <ScamRow key={it.id} item={it} docId={docId} pages={pages} />
-          ) : (
-            <ItemRow key={it.id} item={it} docId={docId} pages={pages} aside={isOpenItem(it) ? aside.get(it.id) : undefined} documents={documents} />
-          ),
-        )}
-      </ul>
+    <PanelSection
+      id="todos"
+      title="To-dos & dates"
+      icon={ListTodo}
+      count={scam || !list.length ? undefined : open}
+      countLabel={`${open} open`}
+      action={letter ? <AddDateButton letter={letter} variant="link" size="sm" /> : undefined}
+    >
+      {list.length ? (
+        <ul className="card divide-y divide-line overflow-hidden">
+          {list.map((it) =>
+            scam && isOpenItem(it) ? (
+              <ScamRow key={it.id} item={it} docId={docId} pages={pages} />
+            ) : (
+              <ItemRow key={it.id} item={it} docId={docId} pages={pages} aside={isOpenItem(it) ? aside.get(it.id) : undefined} documents={documents} />
+            ),
+          )}
+        </ul>
+      ) : letter ? (
+        <p className="card px-4 py-3.5 text-[13.5px] leading-5 text-muted sm:px-5">{emptyNote(letter)}</p>
+      ) : null}
     </PanelSection>
   );
 }
@@ -145,14 +172,19 @@ function quotesNothing(item: Item): boolean {
   return item.slot_key === READING_CHECK_SLOT && !item.evidence.some((e) => e.quote.trim());
 }
 
-/** The title with German admin terms explained and money and dates the app's way; a German title is marked German. */
+/**
+ * The title with German admin terms explained and money and dates the app's way; a German title (the letter's words)
+ * is marked German, any other is Claude's, in the person's language.
+ */
 function ItemTitle({ title }: { title: string }) {
   return isGermanText(title) ? (
     <span lang="de">
       <GlossaryText text={title} inline />
     </span>
   ) : (
-    <GlossaryText text={title} inline markGerman />
+    <ModelText>
+      <GlossaryText text={title} inline markGerman />
+    </ModelText>
   );
 }
 
@@ -243,11 +275,17 @@ function ItemRow({
       onMouseEnter={() => anchorId && hover(anchorId)}
       onMouseLeave={() => anchorId && hover(null)}
     >
-      {/* a 24 px target around the 20 px circle; the name says what a press does (no aria-pressed on top of it) */}
+      {/* a 24 px target around the 20 px circle; the name says what a press does (no aria-pressed on top of it).
+          While a change is saved it is `aria-disabled`, not `disabled`: a disabled button loses focus to the page
+          (UX audit U4), and its new name ("Reopen …") is said where the keyboard still is */}
       <button
         type="button"
-        onClick={() => (open ? markDone(item) : reopen(item))}
-        disabled={pending}
+        onClick={() => {
+          if (pending) return;
+          if (open) markDone(item);
+          else reopen(item);
+        }}
+        aria-disabled={pending || undefined}
         aria-label={open ? `Mark “${item.title}” as done` : `Reopen “${item.title}”`}
         className="group/check -my-0.5 grid size-6 shrink-0 place-items-center rounded-full"
       >

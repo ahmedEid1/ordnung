@@ -28,6 +28,7 @@ import type {
   Health,
   Item,
   ItemAside,
+  ItemCreate,
   Job,
   LetterAdvice,
   ListedItem,
@@ -1526,12 +1527,10 @@ const routes: [string, string, Handler][] = [
     "POST",
     "/items",
     ({ db, body }) => {
-      const b = (body ?? {}) as Partial<Item>;
-      if (!b.title || !b.kind) throw new HttpError(422, "A to-do needs a title and a kind.");
-      const it = makeItem({ ...b, id: newId("itm"), kind: b.kind, title: b.title, origin: "manual", grounding: "user", due_date_source: b.due_date ? "manual" : "none", created_at: nowTs(), updated_at: nowTs() });
-      db.state.items.push(it);
-      emit("item.updated", { item_id: it.id });
-      return new Reply(201, it);
+      const added = db.addItem(newId("itm"), (body ?? {}) as ItemCreate);
+      if ("status" in added) throw new HttpError(added.status, added.message);
+      emit("item.updated", { item_id: added.item.id });
+      return new Reply(201, added.item);
     },
   ],
   [

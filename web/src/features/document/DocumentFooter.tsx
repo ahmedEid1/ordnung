@@ -83,7 +83,8 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
           : "The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on this computer."}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        {!doc.ai_private && !busy ? (
+        {/* a letter that couldn't be read has its "Try again" at the top: no second button for the same thing */}
+        {!doc.ai_private && !busy && doc.status !== "failed" ? (
           <Button
             size="sm"
             icon={RotateCw}

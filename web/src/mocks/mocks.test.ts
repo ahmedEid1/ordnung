@@ -440,6 +440,31 @@ describe("mock dataset", () => {
     expect(await note()).toBe("Kept private — not read, so look through it yourself.");
   });
 
+  it("adds a date of the person's own as the API files it, in the online demo too — a letter kept private included", async () => {
+    const s = createMockServer({ staticDemo: true, latency: 0 });
+    const post = (body: unknown) => s.handle("POST", "/items", new URLSearchParams(), body);
+    const created = await post({ kind: "payment", title: " Pay the caretaker ", due_date: "2026-10-20", amount: 45, doc_id: "doc_folder_scan", area: "home" });
+    expect(created.status).toBe(201);
+    const item = (await created.json()) as Item;
+    expect(item).toMatchObject({
+      title: "Pay the caretaker",
+      currency: "EUR",
+      direction: "out",
+      origin: "manual",
+      grounding: "user",
+      due_date_source: "manual",
+      slot_key: null,
+      filed_on: s.db.today,
+      doc_id: "doc_folder_scan",
+    });
+    // on the letter's page, the timeline and Today like any other date
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_scan")).items.map((i) => i.id)).toContain(item.id);
+    expect((await get<TimelineEntry[]>(s, "/timeline")).some((e) => e.ref.type === "item" && e.ref.id === item.id)).toBe(true);
+    // refused as the API refuses it
+    expect((await post({ kind: "reminder", title: "x", doc_id: "doc_nope" })).status).toBe(404);
+    expect((await post({ kind: "reminder", title: "  " })).status).toBe(422);
+  });
+
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {
     const s = createMockServer({ staticDemo: true, latency: 0 });
     const res = await s.handle("POST", "/suggestions/review", new URLSearchParams(), {});
