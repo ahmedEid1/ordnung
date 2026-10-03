@@ -498,10 +498,12 @@ date on … that Claude's reading didn't list — check whether it applies to yo
   senden Sie …") — never a request with a reason ("Um über Ihren Antrag entscheiden zu können, reichen Sie … ein");
   never a period's end ("für den Zeitraum bis zum 31.12."); never the letter's own date or one before it (a
   reminder's old due day); never a period ("innerhalb von 14 Tagen").
-- **Not owed by a label.** A payment's label or "fällig" sets none on a letter that collects by direct debit (as
-  `ordnung.payments` reads one: done, not offered, not failed, no transfer asked for), says its whole amount is
-  paid or is a credit note ("bereits beglichen", "Status: bezahlt", a heading "Gutschrift"), or pays money out
-  ("Erstattung", "wird auf Ihr Konto überwiesen") — the last two only when nothing is still owed ("Restbetrag",
+- **Not owed by a label.** A payment's label, "fällig" or "… ist bis zum … zu zahlen" sets none on a letter that
+  collects by direct debit (as `ordnung.payments` reads one: done, not offered, not failed, no transfer asked for),
+  says its whole amount is paid or is a credit note ("bereits beglichen", "Status: bezahlt", "Bezahlt am … per
+  PayPal", "Wir haben Ihre Zahlung erhalten", a heading "Gutschrift"), or pays money out ("Erstattung", "wird auf
+  Ihr Konto überwiesen", "wird Ihrem Konto gutgeschrieben", "Wir überweisen den Betrag …") — never when the sentence
+  denies it ("bisher nicht erhalten"), and the last two only when nothing is still owed ("Restbetrag",
   "Nachzahlung"); a "Bitte überweisen Sie … bis" still files one. Nor does the full price ("ohne Abzug", "netto")
   beside a reading's payment dated by its discount, nor a payment a reading's warning doubts (its account, payee or
   whether it is owed).

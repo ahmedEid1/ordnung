@@ -314,6 +314,15 @@ _REMINDS = re.compile(
     r"|\boffene[nrs]?\s+(?:forderung|betrag|posten|rechnung)|zahlungseingang",
     re.IGNORECASE,
 )
+#: The letter decides itself, now ("Ihren Antrag … lehnen wir ab", "Ihr Antrag wird abgelehnt", "für diese Mahnung
+#: setzen wir eine Mahngebühr … fest"): its "Hiergegen …" is its own notice, never a reminder's restated one — whatever
+#: open amount it mentions ("die noch offene Gebühr").
+_DECIDES_NOW = re.compile(
+    r"\b(?:lehnen|weisen)\s+wir\b[^.;]{0,160}?\b(?:ab|zurück)\b"
+    r"|\bwird\s+(?:hiermit\s+)?(?:abgelehnt|zurückgewiesen|festgesetzt|widerrufen|zurückgenommen|aufgehoben)\b"
+    r"|\bsetzen\s+wir\b[^.;]{0,160}?\bfest\b|\bbewilligen\s+wir\b",
+    re.IGNORECASE,
+)
 #: The letter names itself a decision: "mit diesem Bescheid", "dieser Festsetzung", or a heading line "Gebührenbescheid",
 #: "Bescheid über …".
 _NAMES_ITSELF = re.compile(
@@ -1706,7 +1715,9 @@ def _start(
     visible = "\n".join(_visible(page) for page in pages)
     if (
         any(notice.restates for notice in notices)
-        and (_SENDS_DECISION.search(visible) or _REMINDS.search(visible))
+        and (
+            _SENDS_DECISION.search(visible) or (_REMINDS.search(visible) and not _DECIDES_NOW.search(visible))
+        )
         and not _NAMES_ITSELF.search(visible)
     ):
         return _Start(None, True)
@@ -1761,9 +1772,19 @@ def _dates(
     issued: list[date] = []
     other: list[date] = []
     weak: list[date] = []
+    stamp: date | None = None
     for index, page in enumerate(pages):
         for dated in _header_dates(page, first=index == 0):
             (own if dated.own else other if dated.strong else weak).append(dated.day)
+            if index == 0 and dated.own and dated.kind == "first":
+                stamp = dated.day
+    if stamp is not None:
+        # a date alone on the first line may be a received stamp: a date a later page names as the letter's own (the
+        # closing "Beispielhausen, den 06.11.2026" on its last page) lowers it, as one on the first page does
+        for page in pages[1:]:
+            weak += sorted(
+                _named_own(fold_punctuation(join_hyphenated(_visible(page))).splitlines()) - {stamp}
+            )
     for notice in notices if notices is not None else remedy_notices(pages):
         issued += notice.issued
         weak += notice.mentioned
@@ -2197,15 +2218,23 @@ _FULL_PRICE = re.compile(r"\bohne\s+(?:abzug|skonto)\b|\bnetto\b|\bwithout\s+dis
 _SETTLED = re.compile(
     r"\b(?:rechnungsbetrag|gesamtbetrag|betrag|rechnung|rechnungssumme|summe)\s+(?:\w+\s+){0,4}?"
     r"(?:beglichen|bezahlt|gezahlt|erhalten|ausgeglichen|eingegangen)\b"
-    r"|\bstatus\s*:?\s*(?:bezahlt|beglichen|paid)\b|\b(?:paid\s+in\s+full|already\s+(?:been\s+)?paid)\b"
+    r"|status\s*:?\s*(?:bezahlt|beglichen|paid)\b|\b(?:paid\s+in\s+full|already\s+(?:been\s+)?paid)\b"
+    # "Bezahlt am 01.10.2026 per PayPal", "Bezahlt mit PayPal", "Zahlungsart: PayPal (bezahlt)"
+    r"|^\s*bezahlt\s+(?:am|mit|per|via|über)\b|\(\s*bezahlt\s*\)"
+    # "Zahlung erhalten am …", "Wir haben Ihre Zahlung erhalten", "Zahlung dankend erhalten"
+    r"|\bzahlung\s+(?:\w+\s+){0,2}?(?:erhalten|eingegangen)\b|\bihre\s+zahlung\s+(?:\w+\s+){0,2}?erhalten\b"
     r"|^\s*(?:rechnungskorrektur\s*/\s*)?gutschrift\b[^\n.]{0,40}$",
     re.IGNORECASE | re.MULTILINE,
 )
 #: The letter pays money out to the person ("Erstattung", "Auszahlung", "Der Betrag wird auf Ihr Konto überwiesen",
 #: "überweisen wir Ihnen"): a "Fällig am:" or "Zahlungstermin:" box on it is the day it pays, never the person's.
 _PAID_OUT = re.compile(
-    r"erstattung|auszahlung|\bwird\s+(?:ihnen\s+)?(?:auf\s+ihr\s+konto\s+)?(?:überwiesen|ausgezahlt|erstattet)\b"
-    r"|\b(?:überweisen|erstatten|zahlen)\s+wir\s+ihnen\b|\bguthaben\b",
+    r"erstattung|auszahlung"
+    # "Das Wohngeld wird monatlich im Voraus auf Ihr Konto überwiesen", "… wird Ihrem Konto gutgeschrieben"
+    r"|\bwird\s+(?:ihnen\s+)?(?:[\w-]+\s+){0,5}?(?:auf\s+ihr(?:em)?\s+konto\s+|ihrem\s+konto\s+)?"
+    r"(?:überwiesen|ausgezahlt|erstattet|gutgeschrieben)\b"
+    # "Wir überweisen den Betrag auf Ihr Konto", "Wir zahlen den Betrag auf Ihr Konto", "Die Zahlung erfolgt auf Ihr Konto"
+    r"|\b(?:überweisen|erstatten|zahlen)\s+wir\b|\bwir\s+(?:überweisen|erstatten|zahlen)\b|\bzahlung\s+erfolgt\s+(?:\w+\s+){0,3}?auf\s+ihr\b|\bguthaben\b",
     re.IGNORECASE,
 )
 #: A part still owed or asked for beside it ("Restbetrag", "Nachzahlung", "noch offen", "Bitte überweisen Sie …"):
@@ -2258,9 +2287,27 @@ def _not_owed_by_label(pages: Sequence[PageInput]) -> bool:
     if any(_STILL_OWED.search(sentence) for sentence in said):
         return False
     return any(
-        (_SETTLED.search(sentence) or _PAID_OUT.search(sentence)) and not _CONDITION_WORDS.search(sentence)
+        (_affirmed(_SETTLED, sentence) or _affirmed(_PAID_OUT, sentence))
+        and not _CONDITION_WORDS.search(sentence)
         for sentence in said
     )
+
+
+#: A negation in or right before such a statement ("bisher nicht erhalten", "keine Zahlung eingegangen", "noch nicht
+#: beglichen", "Eine Erstattung ist nicht möglich"): the amount is not paid, nor paid out.
+_NOT_SO = re.compile(r"\b(?:nicht|kein\w*|niemals|ausstehend\w*)\b", re.IGNORECASE)
+
+
+def _affirmed(pattern: re.Pattern[str], sentence: str) -> bool:
+    """Whether ``pattern`` matches ``sentence`` without a negation in the match, in the 15 characters before it or in
+    the rest of its clause (:data:`_NOT_SO`)."""
+    for found in pattern.finditer(sentence):
+        after = re.split(r"[;,]", sentence[found.end() :], maxsplit=1)[0]
+        if not _NOT_SO.search(sentence[max(0, found.start() - 15) : found.end()]) and not _NOT_SO.search(
+            after
+        ):
+            return True
+    return False
 
 
 def _deadline_kind(before: str, after: str) -> Literal["payment", "declaration"] | None:

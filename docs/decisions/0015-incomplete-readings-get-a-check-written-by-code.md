@@ -146,17 +146,19 @@ each finding reproduced or refuted by an independent verifier — and given one 
   umlauts spelled out ("Frankfurt a. M." for "Frankfurt am Main", "Halle (Saale)", "Berlin-Mitte", "Muenchen") —
   never with another word after it ("Frankfurt Hauptwache"). "Stand: …" is a weak date of the letter's only in its
   header or on its date line; in the body ("Forderungsaufstellung, Stand: …") it is none.
-- **Stamps.** A date alone on the first line, or alone on the date line, is lowered to a date the page names as its
-  own at its foot ("Beispielhausen, den 06.11.2026" over the signature) and leaves no start when that one is more
-  than 14 days earlier: a received stamp ("20.11.2026" over "EINGANG") never starts the check late when the letter
-  is dated at its foot.
+- **Stamps.** A date alone on the first line, or alone on the date line, is lowered to a date the letter names as
+  its own at its foot ("Beispielhausen, den 06.11.2026" over the signature, on the first page or a later one) and
+  leaves no start when that one is more than 14 days earlier: a received stamp ("20.11.2026" over "EINGANG") never
+  starts the check late when the letter is dated at its foot.
 - **What hides the date line.** Opening hours that say so or run Mo–Fr, a line naming its own date and time
   ("Meldeaufforderung zum … um 9:00 Uhr"), an info block's rule for visits ("Termine nach Vereinbarung", "Vorsprache
   nur mit Termin") and a department's name ("Terminvergabe") no longer make the letter's own date an appointment's.
 - **Notices.** A reported remedy is dropped only on a decision on a remedy, and never in a condition ("…, wenn nicht
   innerhalb von zwei Wochen … Einspruch eingelegt worden ist"). With "Hiergegen", the hearing before the decision
   ("Mit Schreiben vom … haben wir Sie angehört") is no other decision; a reminder ("Zahlungserinnerung", "die noch
-  offen ist") whose "Hiergegen" restates a decision it doesn't date is undated — 21 days late before, on main too.
+  offen ist") whose "Hiergegen" restates a decision it doesn't date is undated — 21 days late before, on main too;
+  a letter that decides itself now ("Ihren Antrag … lehnen wir ab", "setzen wir eine Mahngebühr … fest") is no such
+  reminder, whatever open amount it mentions.
 - **The envelope.** A notice naming an earlier decision turns the envelope off unless it names this letter too or a
   decision on a remedy (a Widerspruchsbescheid stays served, § 74 VwGO); copies, representatives' service,
   negations and reference numbers ("PZU-2026-…") mark no letter served. A conflicted reading's settled receipt keeps
@@ -167,8 +169,9 @@ each finding reproduced or refuted by an independent verifier — and given one 
   moves onto the new reading's payment of its day; another date never takes over its status), worded as a
   cross-check ("Check this date in the letter"), never a "Pay" Idea, at most three. They are never filed for an
   option the person may take, a period's end, an instalment of a recurring to-do of the reading (its very day), a
-  direct debit's, paid or credited box or a payout's (label dates only), the full price beside a reading's
-  discount, or a payment a reading's warning doubts.
+  direct debit's, a box on a letter that says it is paid or credited or that pays money out (label dates only, and
+  not when the sentence denies it: "bisher nicht erhalten"), the full price beside a reading's discount, or a
+  payment a reading's warning doubts.
 
 A fuzz of 297,660 headers (eleven layouts of the letter's own date, fifteen kinds of another date near it) gives
 no start of the check later than the letter's date and leaves fewer undated than before (56,334 of the 270,600
@@ -203,8 +206,18 @@ own dates more than 14 days apart; it can only lower a reading's date. Every to-
   run of weekdays ("Telefon: 0123 4567-0 (8-16 Uhr)") still hides the date line (undated, never late).
 - A "Hiergegen" or "dagegen" notice on a decision that doesn't name itself one and mentions an older decision's
   date is undated (never early or late) — also a change of a benefit naming the decision it changes ("mit Bescheid
-  vom 01.06.2026 wurde Ihnen Wohngeld bewilligt"); a reminder whose "Hiergegen" covers its own reminder fee is
-  undated too. "Gegen diesen Bescheid" in a reminder still dates the check from the reminder.
+  vom 01.06.2026 wurde Ihnen Wohngeld bewilligt"); a reminder whose "Hiergegen" covers a reminder fee it only
+  mentions is undated too (one that sets the fee, "setzen wir … fest", is dated from the reminder). "Gegen diesen
+  Bescheid" in a reminder still dates the check from the reminder. On a reminder that restates another decision's
+  notice, a completeness re-ask's dated answer to a blank first reading is kept back for its letter date (the
+  first reading and the check stand).
+- A date line plus an earlier place and date elsewhere on the first page (an annex's copy after the notice) leaves
+  an empty reading's check undated (never late).
+- The dropped-date check reads common wordings, not every one: on a letter that collects by direct debit a "… ist
+  bis zum … zu zahlen" is taken for the debit's day too; a request after a question ("Sie wollen weiterhin
+  Leistungen erhalten? Dann reichen Sie … ein") files nothing; a reading warning that merely names an account or an
+  amount owed holds back its dropped payments; and paid, credited or paid-out letters in rarer words still get one
+  ("Check this date in the letter", low, "Please check").
 - When two dates the first page names as its own lie more than 14 days apart, the guard counts the
   letter's notice from the later one; it can only lower a reading's date, so a later start only weakens it.
 - A dropped date in looser words ("Die Zahlung wird bis … erwartet", a date without its year, a period) gets no

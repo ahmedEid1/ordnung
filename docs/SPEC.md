@@ -530,7 +530,7 @@ above it — shortened, with its river or district, umlauts spelled out ("Frankf
 on an address line the text layer ran it into, "Ihr Zeichen:" beside it), a date alone on that date line (never
 with an appointment's time under it; opening hours that say so or run Mo–Fr, and a line with its own date and
 time, are none), a date alone on the page's first line when the header gives no other (a date the page names as
-its own at its foot lowers it and the date line's: either may be a received stamp), the reference line (the values under a "Datum" column, unless a due word stands before
+its own at its foot, on that page or a later one, lowers it and the date line's: either may be a received stamp), the reference line (the values under a "Datum" column, unless a due word stands before
 them, never a payments table's or a "Stichtag" column's), "mit diesem Bescheid vom …", the decision its notice
 names right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit
 vom …") and the reading's date; never an appointment's "Datum:" ("Ihr Termin:", "Ihr Termin", "Einladung …" /
@@ -547,7 +547,7 @@ decision named without a date ("Gegen den Gebührenbescheid …", or "Hiergegen 
 never names itself a decision) lowers it to that decision's date where the letter gives it elsewhere (never the
 hearing before this one, "Mit Schreiben vom … haben wir Sie angehört"), so one more than 14 days earlier leaves no
 start, and on a reminder or cover letter that never gives it ("Zahlungserinnerung", "die noch offen ist") leaves no
-start; otherwise it counts from the letter's own date. "… nach Bekanntgabe des Bescheides" beside "Gegen diesen
+start (a letter that decides itself now, "lehnen wir ab", "setzen wir … fest", is no reminder); otherwise it counts from the letter's own date. "… nach Bekanntgabe des Bescheides" beside "Gegen diesen
 Bescheid …" is this letter. On a decision on a remedy a sentence reporting one already lodged is no notice, never a
 condition ("…, wenn nicht … Einspruch eingelegt worden ist"); on any other letter it stays one. After a Widerspruchsbescheid a court action names the to-do on a tie. On a
 letter served with a Postzustellungsurkunde (a short line of its header: "Mit Postzustellungsurkunde",
