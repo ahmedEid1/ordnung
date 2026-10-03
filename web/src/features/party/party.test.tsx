@@ -7,7 +7,9 @@ import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { usePartyDrawer } from "@/lib/party-drawer";
 import { item } from "@/mocks/data/helpers";
+import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { maskValue } from "@/features/numbers/mask";
+import { BUNDESLAENDER } from "@/features/onboarding/options";
 import { PartyDrawer } from "./PartyDrawer";
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
 
@@ -63,7 +65,8 @@ describe("People & organisations drawer", () => {
     const { router } = renderWithProviders(<PartyDrawer />, { route: "/?party=pty_wohnbau" });
     const drawer = await screen.findByRole("dialog", { name: "Wohnbau Musterstadt eG" });
     expect(await within(drawer).findByText("Landlord")).toBeInTheDocument();
-    expect(within(drawer).getByRole("button", { name: "Deadlines: North Rhine-Westphalia holidays" })).toBeInTheDocument();
+    // reading letters never tells Ordnung a sender's state: only the person does (the State section)
+    expect(within(drawer).getByRole("button", { name: "Deadlines: nationwide holidays" })).toBeInTheDocument();
     // your numbers (as My numbers has them) & IBANs with copy buttons
     await user.click(await within(drawer).findByRole("button", { name: "Copy Customer number" }));
     expect(writeText).toHaveBeenCalledWith("12-0412-07");
@@ -249,6 +252,39 @@ describe("People & organisations drawer", () => {
     renderWithProviders(<PartyDrawer />, { route: "/?party=pty_scholarship" });
     const abroad = await screen.findByRole("dialog", { name: /Scholarship/ });
     expect(within(abroad).queryByRole("button", { name: /Deadlines:/ })).toBeNull();
+    expect(within(abroad).queryByRole("combobox", { name: "Which state is this sender in?" })).toBeNull();
+  });
+
+  it("asks which state a sender is in — the 16 Länder and Don't know — and saves the answer on change", async () => {
+    const { srv } = useMockApi();
+    const user = userEvent.setup();
+    const region = () => srv.db.state.parties.find((p) => p.id === "pty_wohnbau")!.region;
+    renderWithProviders(
+      <>
+        <PartyDrawer />
+        <Toaster />
+      </>,
+      { route: "/?party=pty_wohnbau" },
+    );
+    const drawer = await screen.findByRole("dialog", { name: "Wohnbau Musterstadt eG" });
+    const picker = within(drawer).getByRole("combobox", { name: "Which state is this sender in?" });
+    expect(picker).toHaveValue("");
+    expect(picker).toHaveAccessibleDescription(/Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule/);
+    expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual(["Don't know", ...BUNDESLAENDER.map((b) => b.name)]);
+    expect(BUNDESLAENDER).toHaveLength(16);
+
+    await user.selectOptions(picker, "SN");
+    await waitFor(() => expect(region()).toBe("SN"));
+    expect(picker).toHaveValue("SN");
+    expect(await within(drawer).findByRole("button", { name: "Deadlines: Saxony holidays" })).toBeInTheDocument();
+    expect(await screen.findByText("Saved: Wohnbau Musterstadt eG is in Saxony")).toBeInTheDocument();
+    expect(screen.getByText("Their dates now skip the public holidays of Saxony.")).toBeInTheDocument();
+
+    await user.selectOptions(picker, "");
+    await waitFor(() => expect(region()).toBeNull());
+    expect(picker).toHaveValue("");
+    expect(await within(drawer).findByRole("button", { name: "Deadlines: nationwide holidays" })).toBeInTheDocument();
+    __clearToasts();
   });
 
   it("lists the calls after the to-dos and contracts, with a jump link of their own", async () => {

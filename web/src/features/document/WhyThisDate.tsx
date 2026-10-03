@@ -2,15 +2,26 @@
  * "Why this date?" for a letter's to-do — the rules engine's receipt in the shared {@link Receipt}:
  * the key dates, the plain sentence, how sure we are (and why), what the letter says, then "Show
  * the rules" with every step, its citation and the holiday calendar. Always ends with the
- * point-of-use disclaimer (SPEC §21), with independent advice for high-stakes areas.
+ * point-of-use disclaimer (SPEC §21), with independent advice for high-stakes areas. A date counted
+ * without the sender's Land says so, with the way to choose it.
  */
 import { useQueryClient } from "@tanstack/react-query";
-import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, Item, ItemOrigin, PartyKind } from "@/api/types";
+import { MapPin } from "lucide-react";
+import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { isTransfer } from "@/lib/payments";
+import { usePartyDrawer } from "@/lib/party-drawer";
 import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
+import { looksAbroad } from "@/features/party/model";
 import { dueDateLabel, sendByLabel } from "./dateLabels";
+
+/**
+ * How the rules engine says a date waits for the sender's Land: a regional holiday may move it
+ * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts), or a Land authority's own delivery rule may
+ * (`rules.delivery`: "… we couldn't confirm this sender's, so we counted 3 days").
+ */
+const LAND_UNKNOWN = { start: "Holiday region unknown", threeDays: "couldn't confirm this sender's" } as const;
 
 /** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
 const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
@@ -80,11 +91,44 @@ export function receiptDates(
   return dates;
 }
 
-/** The kinds of the to-do's letter and sender, from the letter already loaded for the page (nothing is fetched). */
-function useLetterKinds(docId: string | null | undefined): { docKind: DocumentKind | null; partyKind: PartyKind | null } {
+/** The to-do's letter's kind and sender, from the letter already loaded for the page (nothing is fetched). */
+function useLetter(docId: string | null | undefined): { docKind: DocumentKind | null; party: Party | null } {
   const qc = useQueryClient();
   const detail = docId ? qc.getQueryData<DocumentDetail>(qk.documents.detail(docId)) : undefined;
-  return { docKind: detail?.document.kind ?? null, partyKind: detail?.party?.kind ?? null };
+  return { docKind: detail?.document.kind ?? null, party: detail?.party ?? null };
+}
+
+/**
+ * The sender whose Land the date waits for: the person hasn't said which state this sender in Germany is in,
+ * and the engine says that matters here — it counted nationwide holidays where a Land's holiday may make the
+ * date later, or a Land authority's 3-day delivery rule (`LAND_UNKNOWN`), at lower confidence. `null` when the
+ * Land is known, the sender looks abroad or the date doesn't depend on it (an appointment, a date read from a
+ * photo whose only doubt is the photo).
+ */
+export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">, party: Party | null): Party | null {
+  if (!party || party.region || looksAbroad(party)) return null;
+  const waits = receipt.warnings.some((w) => w.startsWith(LAND_UNKNOWN.start) || w.includes(LAND_UNKNOWN.threeDays));
+  return waits ? party : null;
+}
+
+/** "Ordnung doesn't know which state … is in" and the way to choose it (the sender's drawer, with its State picker). */
+function SenderLandNote({ party }: { party: Party }) {
+  const drawer = usePartyDrawer();
+  return (
+    <p className="flex items-start gap-1.5 text-sm leading-relaxed text-muted">
+      <MapPin className="mt-1 size-3.5 shrink-0" aria-hidden />
+      <span>
+        Ordnung doesn't know which state {party.name} is in, so this date may be a few days early.{" "}
+        <button
+          type="button"
+          onClick={() => drawer.open(party.id)}
+          className="inline-flex min-h-6 items-center rounded-md font-medium text-accent underline decoration-accent/30 underline-offset-[3px] hover:decoration-accent"
+        >
+          Choose their state
+        </button>
+      </span>
+    </p>
+  );
 }
 
 export interface ReceiptViewProps {
@@ -107,7 +151,8 @@ export interface ReceiptViewProps {
 
 export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
-  const { docKind, partyKind } = useLetterKinds(item?.doc_id);
+  const { docKind, party } = useLetter(item?.doc_id);
+  const landless = senderLandUnknown(receipt, party);
   return (
     <Receipt
       dates={receiptDates(receipt, item, spec, transfer)}
@@ -118,8 +163,10 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
       steps={steps}
       holidayCalendar={receipt.holiday_calendar}
       defaultShowRules={defaultShowRules}
-      advice={adviceFor(area, docKind, partyKind)}
-    />
+      advice={adviceFor(area, docKind, party?.kind)}
+    >
+      {landless ? <SenderLandNote party={landless} /> : null}
+    </Receipt>
   );
 }
 

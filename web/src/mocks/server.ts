@@ -59,6 +59,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
 import { ordinal } from "@/features/contracts/model";
+import { BUNDESLAENDER } from "@/features/onboarding/options";
 
 /** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
 const COURT_OBJECTION_RECIPIENT =
@@ -1614,6 +1615,22 @@ const routes: [string, string, Handler][] = [
   ],
   ["GET", "/parties", ({ db }) => [...db.state.parties].sort((a, b) => a.name.localeCompare(b.name))],
   ["GET", "/parties/:id", ({ db, params }) => partyDetail(db, params.id!)],
+  // like the API: the Land a sender is in (null: "Don't know"); the API also recomputes its letters' dates
+  [
+    "PATCH",
+    "/parties/:id",
+    ({ db, params, body }) => {
+      const party = db.state.parties.find((p) => p.id === params.id) ?? notFound("Unknown person or organisation.");
+      const region = (body as { region?: unknown } | null)?.region;
+      const code = typeof region === "string" ? BUNDESLAENDER.find((b) => b.code === region.trim().toUpperCase())?.code : undefined;
+      if (region !== null && !code) throw new HttpError(422, `“${String(region)}” is not a German Bundesland (use a code like NW or BY).`);
+      if ((code ?? null) !== party.region) {
+        Object.assign(party, { region: code ?? null, updated_at: nowTs() });
+        emit("item.updated", {});
+      }
+      return party;
+    },
+  ],
   ["GET", "/cases/:id", ({ db, params }) => caseDetail(db, params.id!)],
 
   // views

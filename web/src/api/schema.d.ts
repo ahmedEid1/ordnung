@@ -667,7 +667,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Party
+         * @description Set the Land a sender is in (``null``: "Don't know"); a new one recomputes the dates of its letters.
+         */
+        patch: operations["update_party_api_parties__party_id__patch"];
         trace?: never;
     };
     "/api/cases/{case_id}": {
@@ -4414,6 +4418,17 @@ export interface components {
             /** Set Aside */
             set_aside: components["schemas"]["ItemAside"][];
         };
+        /**
+         * PartyPatch
+         * @description What the person tells Ordnung about a sender.
+         */
+        PartyPatch: {
+            /**
+             * Region
+             * @description the Land (Bundesland) the sender is in, as a code like NW or BY; null: not known
+             */
+            region: string | null;
+        };
         /** PaymentDetails */
         PaymentDetails: {
             /** Iban */
@@ -7217,6 +7232,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartyDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_party_api_parties__party_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                party_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartyPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Party"];
                 };
             };
             /** @description Validation Error */

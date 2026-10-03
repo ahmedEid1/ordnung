@@ -2080,6 +2080,57 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "parties"
+        ],
+        "summary": "Update Party",
+        "description": "Set the Land a sender is in (``null``: \"Don't know\"); a new one recomputes the dates of its letters.",
+        "operationId": "update_party_api_parties__party_id__patch",
+        "parameters": [
+          {
+            "name": "party_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Party Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartyPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/cases/{case_id}": {
@@ -12503,6 +12554,29 @@
           "set_aside"
         ],
         "title": "PartyDetail"
+      },
+      "PartyPatch": {
+        "properties": {
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region",
+            "description": "the Land (Bundesland) the sender is in, as a code like NW or BY; null: not known"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "region"
+        ],
+        "title": "PartyPatch",
+        "description": "What the person tells Ordnung about a sender."
       },
       "PaymentDetails": {
         "properties": {

@@ -93,7 +93,7 @@ export function RulesSection() {
             </span>
             <div className="min-w-0">
               <p className="text-base font-semibold text-ink">2 · The rules compute</p>
-              <p className="mt-0.5 text-sm leading-5 text-muted">Delivery days, month ends, weekends and your state's holidays — the earlier date when unsure.</p>
+              <p className="mt-0.5 text-sm leading-5 text-muted">Delivery days, month ends, weekends and public holidays (nationwide ones until you set a sender's state) — the earlier date when unsure.</p>
             </div>
           </div>
         </div>

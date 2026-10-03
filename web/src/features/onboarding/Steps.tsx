@@ -128,7 +128,7 @@ export function StepRegion({
       <fieldset ref={groupRef} aria-describedby={`${id}-hint`}>
         <legend className="text-[14px] font-semibold text-ink">Your state (Bundesland)</legend>
         <p id={`${id}-hint`} className="mt-0.5 text-[13px] text-muted">
-          Affects public holidays and deadlines.
+          Decides the public holidays for payments you make. A letter's deadlines use its sender's state.
         </p>
         {/* one column on the smallest phones: two would break the names over three or four lines */}
         <div className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">

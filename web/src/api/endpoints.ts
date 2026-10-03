@@ -34,6 +34,7 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PartyPatch,
   PathsWith,
   ProfilePatch,
   ProofKind,
@@ -181,6 +182,8 @@ export const api = {
     call("patch", "/api/contracts/{contract_id}", { params: { contract_id: id }, body: patch }),
   parties: () => call("get", "/api/parties"),
   party: (id: string) => call("get", "/api/parties/{party_id}", { params: { party_id: id } }),
+  /** The Land a sender is in, which only the person can tell: its letters' dates are recomputed. */
+  updateParty: (id: string, patch: PartyPatch) => call("patch", "/api/parties/{party_id}", { params: { party_id: id }, body: patch }),
   case: (id: string) => call("get", "/api/cases/{case_id}", { params: { case_id: id } }),
 
   // -- views -------------------------------------------------------------------------------------

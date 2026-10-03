@@ -583,8 +583,12 @@ describe("Region & language", () => {
       within(state).queryByRole("option", { name: /North Rhine/ }),
     ).not.toBeInTheDocument();
     expect(state).toHaveAccessibleDescription(
-      /Using the holidays of Nordrhein-Westfalen \(North Rhine-Westphalia\)\./,
+      /Payments you make count the holidays of Nordrhein-Westfalen \(North Rhine-Westphalia\)\./,
     );
+    // a letter's deadlines follow its sender's state, which only the person sets (nationwide until then)
+    expect(
+      screen.getByText(/Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state/),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Language for explanations").tagName).toBe(
       "SELECT",
     );
