@@ -8,6 +8,7 @@ terminal escape sequences, Windows process handling and dependency floors.
 from __future__ import annotations
 
 import asyncio
+import functools
 import io
 import json
 import os
@@ -210,8 +211,7 @@ def _with_encrypted_stream(pdf: FPDF, raw: bytes, filters: bytes) -> bytes:
 
 @pytest.mark.parametrize("method", ENCRYPTIONS)
 def test_encrypted_pdf_decompression_bomb_is_rejected(method: EncryptionMethod) -> None:
-    nested = zlib.compress(_zeros_deflated(300), 9)  # under 1 KB that expand to 300 MB
-    bomb = _with_encrypted_stream(_protected_pdf(method), nested, b"[/FlateDecode /FlateDecode]")
+    bomb = _with_encrypted_stream(_protected_pdf(method), _nested_bomb(), b"[/FlateDecode /FlateDecode]")
     started = time.monotonic()
     with pytest.raises(IntakeError, match="expands to far more data"):
         normalise_upload(bomb, "kontoauszug.pdf")
@@ -260,9 +260,91 @@ def test_encrypted_pdf_whose_decryption_cant_be_reproduced_is_rejected(
 
 
 def test_bomb_behind_a_crypt_filter_is_rejected() -> None:
-    bomb = zlib.compress(zlib.compress(bytes(300 * 1024 * 1024), 9), 9)
     with pytest.raises(IntakeError, match="expands to far more data"):
-        normalise_upload(_pdf_with_stream(bomb, b"[/Crypt /FlateDecode /FlateDecode]"), "bomb.pdf")
+        normalise_upload(_pdf_with_stream(_nested_bomb(), b"[/Crypt /FlateDecode /FlateDecode]"), "bomb.pdf")
+
+
+@functools.cache
+def _nested_bomb() -> bytes:
+    """Under 1 KB that expand to 300 MB through two FlateDecode filters."""
+    return zlib.compress(_zeros_deflated(300), 9)
+
+
+def _one_page(dictionary: bytes, data: bytes, before: bytes = b"") -> bytes:
+    """A one-page PDF whose page content is object 4 (``dictionary``, then ``data``); ``before`` holds
+    more objects in front of it."""
+    return (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R >>\nendobj\n"
+        + before
+        + b"4 0 obj\n"
+        + dictionary
+        + b"\nstream\n"
+        + data
+        + b"\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Size 7 >>\n%%EOF\n"
+    )
+
+
+TWO_FLATES = b"[/FlateDecode /FlateDecode]"
+
+
+@pytest.mark.parametrize(
+    ("dictionary", "before"),
+    [
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" /X (9 0 obj) >>", b"", id="a fake object header in a string"
+        ),
+        pytest.param(
+            b"<< /F#69lter " + TWO_FLATES + b" >>", b"", id="the /Filter key written with an escape"
+        ),
+        pytest.param(
+            b"<< /Filter [/Fl#61teDecode /FlateDecode] >>", b"", id="a filter name written with an escape"
+        ),
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" /Pad [" + b"0 " * 40_000 + b"] >>", b"", id="an 80 KB dictionary"
+        ),
+        pytest.param(
+            b"<< /Filter 6 0 R >>", b"6 0 obj\n" + TWO_FLATES + b"\nendobj\n", id="an indirect /Filter"
+        ),
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" >>",
+            b"5 0 obj\n<< >>\nstream\nabc\nendobj\n",
+            id="a stream before it that has no endstream",
+        ),
+    ],
+)
+def test_bombs_a_byte_scan_would_miss_are_rejected(dictionary: bytes, before: bytes) -> None:
+    """PDFium reads these page contents as the bomb they are (each peaked at 600 MB while rendering a
+    300 MB version); the check reads the dictionaries as PDF syntax, as PDFium does."""
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(_one_page(dictionary, _nested_bomb(), before), "bomb.pdf")
+
+
+def test_numbers_longer_than_any_real_pdfs_are_refused_not_a_crash() -> None:
+    huge = b"9" * 5000  # Python won't read more than 4300 digits as one int
+    with pytest.raises(IntakeError, match="image that is too large"):
+        normalise_upload(
+            _one_page(b"<< /Subtype /Image /Width " + huge + b" /Height 1 >>", b"x"), "brief.pdf"
+        )
+    with pytest.raises(IntakeError):  # not an object PDFium can use: the file can't be opened
+        normalise_upload(b"%PDF-1.4\n" + huge + b" 0 obj\n<< >>\nstream\nx\nendstream\nendobj\n", "brief.pdf")
+
+
+def test_a_filter_that_cant_be_looked_up_is_rejected() -> None:
+    with pytest.raises(IntakeError, match="built in a way that can't be checked"):
+        normalise_upload(_one_page(b"<< /Filter 6 0 R >>", _nested_bomb()), "brief.pdf")
+
+
+def test_unusual_but_valid_syntax_is_accepted() -> None:
+    """Comments and nested, escaped parentheses in dictionaries, an indirect /Length and /Filter, a hex
+    string, an escaped name and CR line ends: an ordinary letter's content is measured and passes."""
+    content = zlib.compress(b"BT /F1 12 Tf 10 50 Td (Hallo \\(Welt\\) (ok)) Tj ET")
+    dictionary = (
+        b"<< /Length 5 0 R % the length is object 5\r/Filter 6 0 R /X (a \\) b (c) d) /H <4869> /N#61me 1 >>"
+    )
+    objects = b"5 0 obj\n%d\nendobj\n6 0 obj\n/FlateDecode\nendobj\n" % len(content)
+    normalise_upload(_one_page(dictionary, content, objects), "brief.pdf")
 
 
 def test_an_encrypt_entry_that_refers_to_itself_does_not_hang_the_upload() -> None:
