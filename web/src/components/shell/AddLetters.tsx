@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { ChevronLeft, ChevronRight, FileImage, FileStack, FileText, Files, Inbox, Lock, Mail, Upload, X, type LucideIcon } from "lucide-react";
-import { useUploadDocuments } from "@/api/hooks";
+import { useHealth, useUploadDocuments } from "@/api/hooks";
+import type { Health } from "@/api/types";
 import { seedJob } from "@/api/sse";
+import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
 import { isStaticDemo } from "@/mocks/mode";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
@@ -39,6 +41,18 @@ export function fileKind(f: File): { label: string; icon: LucideIcon } {
 
 /** How many files (or photo pages) a dialog lists before "Show all". */
 const SHOWN = 8;
+
+/** Why Claude can't read letters now: not installed, or not signed in. */
+export type ClaudeNotReady = Extract<ClaudeState, "missing" | "signed_out">;
+
+/** Why Claude can't read letters now, or `null` when it can — or when this session doesn't use Claude
+ * (the demo's recordings, a test backend). Letters added meanwhile are stored and wait in the queue:
+ * they are read as soon as Claude is connected. */
+export function claudeNotReady(health: Pick<Health, "backend" | "claude"> | undefined): ClaudeNotReady | null {
+  if (health?.backend !== "claude") return null;
+  const state = claudeState(health.claude);
+  return state === "missing" || state === "signed_out" ? state : null;
+}
 
 interface AddLettersApi {
   /** Open the native file picker (in the online demo: why adding needs the app). */
@@ -93,6 +107,7 @@ function nameList(names: string[]): string {
 export function AddLettersProvider({ children }: { children: ReactNode }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const upload = useUploadDocuments();
+  const notReady = claudeNotReady(useHealth().data);
   const [pending, setPending] = useState<Pending | null>(null);
   const [keepPrivate, setKeepPrivate] = useState(false);
   const [demoNotice, setDemoNotice] = useState(false);
@@ -191,6 +206,7 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       />
       <AddDialog
         files={pending && !pending.photos ? pending.files : null}
+        notReady={notReady}
         keepPrivate={keepPrivate}
         onKeepPrivate={setKeepPrivate}
         onRemove={removeFile}
@@ -202,6 +218,7 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       />
       <CombineDialog
         files={pending?.photos ? pending.files : null}
+        notReady={notReady}
         keepPrivate={keepPrivate}
         onKeepPrivate={setKeepPrivate}
         onRemove={removeFile}
@@ -456,17 +473,29 @@ function KeepPrivateSwitch({ checked, onCheckedChange, several }: { checked: boo
   );
 }
 
-/** What happens to the files, in the words of the switch's current choice. */
-function addDescription(keepPrivate: boolean, several: boolean): string {
+/** "Claude isn't installed yet" / "… signed in yet": why the letters wait to be read. */
+const NOT_READY: Record<ClaudeNotReady, string> = {
+  missing: "Claude isn't installed yet",
+  signed_out: "Claude isn't signed in yet",
+};
+
+/** What happens to the files, in the words of the switch's current choice (and whether Claude is ready). */
+export function addDescription(keepPrivate: boolean, several: boolean, notReady: ClaudeNotReady | null = null): string {
   const [it, its] = several ? ["them", "their"] : ["it", "its"];
-  return keepPrivate
-    ? `Stored on this computer only and searchable by ${its} text. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`
-    : `Claude reads ${it} through your Claude account to find dates, amounts and what to do. Your files stay on this computer.`;
+  if (keepPrivate)
+    return `Stored on this computer only and searchable by ${its} text. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`;
+  if (notReady)
+    return `${NOT_READY[notReady]}, so Ordnung stores ${it} now and reads ${it} as soon as Claude is connected (Settings → Claude connection). Your files stay on this computer.`;
+  return `Claude reads ${it} through your Claude account to find dates, amounts and what to do. Your files stay on this computer.`;
 }
 
-/** "Add this letter?" — every upload offers "Keep private — no AI" before anything is sent to Claude. */
+/**
+ * "Add this letter?" — every upload offers "Keep private — no AI" before anything is sent to Claude.
+ * While Claude isn't ready the default is "Store now, read later": the letter waits in the queue.
+ */
 function AddDialog({
   files,
+  notReady,
   keepPrivate,
   onKeepPrivate,
   onRemove,
@@ -474,6 +503,7 @@ function AddDialog({
   onAdd,
 }: {
   files: PendingFile[] | null;
+  notReady: ClaudeNotReady | null;
   keepPrivate: boolean;
   onKeepPrivate: (v: boolean) => void;
   onRemove: (id: string) => void;
@@ -488,13 +518,13 @@ function AddDialog({
       open={Boolean(files)}
       onClose={onClose}
       title={several ? `Add ${count} letters?` : "Add this letter?"}
-      description={addDescription(keepPrivate, several)}
+      description={addDescription(keepPrivate, several, notReady)}
       initialFocus={addRef}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
           <Button ref={addRef} variant="primary" icon={keepPrivate ? Lock : Upload} onClick={onAdd}>
-            {keepPrivate ? "Store privately" : several ? "Add letters" : "Add letter"}
+            {keepPrivate ? "Store privately" : notReady ? "Store now, read later" : several ? "Add letters" : "Add letter"}
           </Button>
         </>
       }
@@ -508,6 +538,7 @@ function AddDialog({
 /** "Are these pages of one letter?" — shown when several photos are added at once. */
 function CombineDialog({
   files,
+  notReady,
   keepPrivate,
   onKeepPrivate,
   onRemove,
@@ -516,6 +547,7 @@ function CombineDialog({
   onChoose,
 }: {
   files: PendingFile[] | null;
+  notReady: ClaudeNotReady | null;
   keepPrivate: boolean;
   onKeepPrivate: (v: boolean) => void;
   onRemove: (id: string) => void;
@@ -533,7 +565,9 @@ function CombineDialog({
       description={
         keepPrivate
           ? `You added ${count} photos. Combined, they are kept as one letter with its pages in this order — on this computer only.`
-          : `You added ${count} photos. Pages of the same letter are read together, so dates and amounts are found across pages.`
+          : notReady
+            ? `You added ${count} photos. ${NOT_READY[notReady]}: Ordnung stores them now, and pages of the same letter are read together as soon as Claude is connected.`
+            : `You added ${count} photos. Pages of the same letter are read together, so dates and amounts are found across pages.`
       }
       initialFocus={combineRef}
       footer={

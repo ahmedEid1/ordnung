@@ -4002,8 +4002,22 @@
           "reminders"
         ],
         "summary": "Desktop Reminders",
-        "description": "The desktop notification's tool, today's text in each mode, and the start-at-login entry.",
+        "description": "The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both\n``null``), and the start-at-login entry.",
         "operationId": "desktop_reminders_api_reminders_desktop_get",
+        "parameters": [
+          {
+            "name": "preview",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include today's texts (built from the agenda)",
+              "default": true,
+              "title": "Preview"
+            },
+            "description": "Include today's texts (built from the agenda)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -4011,6 +4025,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/DesktopReminders"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5299,11 +5323,6 @@
             "description": "Automatic syncing waits after a refused password",
             "default": false
           },
-          "events": {
-            "type": "integer",
-            "title": "Events",
-            "description": "How many events the calendar gets now"
-          },
           "synced": {
             "type": "integer",
             "title": "Synced",
@@ -5333,7 +5352,6 @@
           "mode",
           "password_saved",
           "paused",
-          "events",
           "synced",
           "last_sync"
         ],

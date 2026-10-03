@@ -41,11 +41,11 @@ export function backgroundProblems(state: {
   return found;
 }
 
-/** The background problems now (shares the Settings cards' queries). */
+/** The background problems now (shares the Settings cards' queries; the notification's without its texts). */
 export function useBackgroundProblems(): BackgroundProblem[] {
   const folder = useFolder();
   const calendar = useCalendarSync();
-  const desktop = useDesktopReminders();
+  const desktop = useDesktopReminders({ preview: false });
   const settings = useSettings();
   return backgroundProblems({ folder: folder.data, calendar: calendar.data, desktop: desktop.data, settings: settings.data });
 }

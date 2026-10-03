@@ -45,6 +45,11 @@ _LEDGER_SQL = f"CREATE TABLE IF NOT EXISTS {LEDGER} (version INTEGER PRIMARY KEY
 _LEGACY_VERSION = 1
 
 
+class SchemaError(RuntimeError):
+    """This version of Ordnung can't use the database, which is left as it was: a newer version wrote
+    it, or a development build did whose migrations can't be told apart."""
+
+
 @dataclass(frozen=True)
 class Migration:
     """One migration script (``version`` is the number in its filename)."""
@@ -93,7 +98,7 @@ def _has_ledger(conn: sqlite3.Connection) -> bool:
 def _legacy_versions(version: int) -> set[int]:
     """What a database without a ledger ran (see the module docstring); refuses what can't be told."""
     if version > _LEGACY_VERSION:
-        raise RuntimeError(
+        raise SchemaError(
             f"This database is at schema version {version} but has no record of which migrations ran "
             "(a development build wrote it), so Ordnung can't tell whether a lower-numbered one was "
             "skipped. Rebuild it (for the demo: ordnung demo --reset), or restore a backup."
@@ -193,7 +198,7 @@ def _refuse_renamed(conn: sqlite3.Connection, migrations: list[Migration]) -> No
     for version, name in ran:
         expected = names.get(int(version))
         if name and expected is not None and name != expected:
-            raise RuntimeError(
+            raise SchemaError(
                 f"This database ran migration {int(version):04d} as “{name}”, but this version of Ordnung "
                 f"numbers “{expected}” {int(version):04d}: a development build wrote it before its "
                 "migrations were renumbered. Rebuild it (for the demo: ordnung demo --reset), or restore "
@@ -206,7 +211,7 @@ def migrate(conn: sqlite3.Connection, *, directory: Path = MIGRATIONS_DIR) -> in
     resulting schema version (the highest that ran).
 
     Idempotent: calling it on an up-to-date database changes nothing. ``conn`` must not be inside a
-    transaction. Raises ``RuntimeError`` if the database was written by a newer schema (a higher
+    transaction. Raises :class:`SchemaError` if the database was written by a newer schema (a higher
     version, or a migration this code doesn't have), can't say which migrations it ran, or ran another
     migration under one of this code's numbers.
     """
@@ -216,16 +221,17 @@ def migrate(conn: sqlite3.Connection, *, directory: Path = MIGRATIONS_DIR) -> in
     latest = migrations[-1].version if migrations else 0
     version = current_version(conn)
     if version > latest:
-        raise RuntimeError(
-            f"database schema version {version} is newer than this version of Ordnung supports ({latest})"
+        raise SchemaError(
+            f"A newer version of Ordnung wrote this database (schema version {version}; this one reads up to "
+            f"{latest})."
         )
     _ensure_ledger(conn, migrations)
     unknown = applied_versions(conn) - {m.version for m in migrations}
     if unknown:
         listed = ", ".join(f"{number:04d}" for number in sorted(unknown))
-        raise RuntimeError(
-            f"this database ran migration {listed}, which this version of Ordnung doesn't have — "
-            "it was written by a newer version"
+        raise SchemaError(
+            f"This database ran migration {listed}, which this version of Ordnung doesn't have — "
+            "it was written by a newer version."
         )
     _refuse_renamed(conn, migrations)
     for migration in pending(conn, directory=directory):

@@ -78,7 +78,9 @@ export function ProcessingCard({ doc }: { doc: Document }) {
 
   const done = job?.status === "done";
   const step = done ? PIPELINE_STEPS.length : stageToStep(job?.stage);
-  const label = done ? "Filed — loading what was found…" : `${copyFor(JOB_STAGE_COPY, job?.stage ?? "intake").label}…`;
+  // waiting in the queue (for Claude): why, instead of "Opening the file…"
+  const waiting = job?.status === "queued" ? job.waiting_reason : null;
+  const label = done ? "Filed — loading what was found…" : waiting || `${copyFor(JOB_STAGE_COPY, job?.stage ?? "intake").label}…`;
   return (
     <div className="card overflow-hidden">
       <div className="relative px-5 pb-5 pt-5 sm:px-6">
@@ -93,7 +95,8 @@ export function ProcessingCard({ doc }: { doc: Document }) {
             <FileNameText name={doc.filename} />
           </h1>
         )}
-        <p className="mt-1 text-[13.5px] text-muted" aria-hidden>
+        {/* the stepper announces the stages; a reason to wait is read out */}
+        <p className="mt-1 text-[13.5px] text-muted" aria-hidden={waiting ? undefined : true}>
           {label}
         </p>
         <div className="mt-5">

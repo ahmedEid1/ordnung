@@ -143,13 +143,21 @@ def client_for(app: FastAPI, **headers: str) -> httpx.AsyncClient:
 async def api_for(
     data_dir: Path, *, token: str | None = None, demo: bool = False, router: Router | None = None
 ) -> AsyncIterator[Api]:
-    """An :class:`Api` without the lifespan (tests drive the worker themselves)."""
+    """An :class:`Api` without the lifespan (tests drive the worker themselves). Its client lets the
+    background Ideas refresh a request started finish before the response is handed over, so a test
+    reads the Ideas as they settle (the app itself answers without waiting for them)."""
     ctx = build_context(data_dir, backend_obj=FakeBackend(router or ApiRouter()))
     app = create_app(ctx, token=token, demo=demo)
+
+    async def settled(_response: httpx.Response) -> None:
+        await ctx.worker.ideas_settled()
+
     try:
         async with client_for(app) as client:
+            client.event_hooks = {"response": [settled]}
             yield Api(ctx=ctx, app=app, client=client)
     finally:
+        await ctx.worker.ideas_settled()
         ctx.close()
 
 

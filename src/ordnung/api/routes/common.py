@@ -1,5 +1,6 @@
 """Helpers shared by the route modules: lookups that 404, ISO date fields, contract dates computed on
-read, and announcing ledger changes (bus event + deterministic triggers)."""
+read, and announcing ledger changes (bus event + deterministic triggers, run in the background by the
+worker: the request doesn't wait for the Ideas, which announce themselves with ``suggestions.updated``)."""
 
 from __future__ import annotations
 
@@ -12,7 +13,6 @@ from pydantic import AfterValidator
 
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
-from ordnung.ingest.pipeline import run_triggers
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import CancellationSent, Contract, Item, ItemAside, Party, Profile
 from ordnung.secretary.triggers import (
@@ -135,7 +135,8 @@ def item_aside(ledger: Ledger, item: Item) -> ItemAside | None:
 
 
 def set_aside(store: Store, items: list[Item], today: date) -> list[ItemAside]:
-    """The to-dos among ``items`` that are not one to act on, with why (:func:`item_aside`)."""
+    """The to-dos among ``items`` that are not one to act on, with why (:func:`item_aside`); the Ledger
+    shares the rows every Ledger of this state of the database reads, so a page's calls load them once."""
     if not any(item.status not in ("done", "dismissed") for item in items):
         return []
     ledger = Ledger(store, today)
@@ -149,10 +150,11 @@ def replay_only(ctx: AppContext) -> bool:
 
 
 async def ledger_changed(ctx: AppContext, *, item_id: str | None = None, triggers: bool = True) -> None:
-    """Tell the UI that to-dos changed and refresh the Ideas the deterministic triggers produce."""
+    """Tell the UI that to-dos changed and refresh the Ideas the deterministic triggers produce (in the
+    background: :meth:`~ordnung.ingest.worker.IngestWorker.refresh_ideas`)."""
     if item_id is None:
         ctx.bus.publish("item.updated")
     else:
         ctx.bus.publish("item.updated", item_id=item_id)
     if triggers:
-        await run_triggers(ctx)
+        ctx.worker.refresh_ideas()
