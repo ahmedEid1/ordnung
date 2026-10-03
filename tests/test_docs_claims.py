@@ -390,6 +390,106 @@ def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
         assert "earlier recordings got wrong were gaps in the ledger" in readme.replace("\n", " ")
 
 
+def _flat(text: str) -> str:
+    """``text`` with every run of whitespace (line breaks, list indents) as one space."""
+    return " ".join(text.split())
+
+
+def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> None:
+    """M3: README row ⁹, its footnote, the bullet and Limitations, deadline-rules.md and docs/evals.md cite the
+    replay without the sender's Land (scripts/eval_without_land.py, as the app runs until the person sets a
+    sender's Land): its accuracy per split, no late date, extra misses 1–3 days early — and the numbers with the
+    Land it sets them against are the published replays' (rows ⁴, ⁶ and ⁸)."""
+    readme = _readme()
+    results = _results("2026-10-03-claude-sonnet-5-without-land.json")
+    assert results["schema"] == "ordnung-eval-without-land/1"
+    assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
+    splits = results["splits"]
+    assert set(splits) == {"test", "holdout", "holdout2", "dev"}
+    for name, numbers in splits.items():
+        assert numbers["without_land"]["dangerous_late_rate"]["k"] == 0, name
+        assert all(change["direction"] == "early" for change in numbers["changed"]), name
+    without = {
+        name: splits[name]["without_land"]["due_date_accuracy"] for name in ("test", "holdout", "holdout2")
+    }
+    test, holdout, holdout2 = (_pct(metric["value"]) for metric in without.values())
+    days = sorted({-change["days_off"] for name in without for change in splits[name]["changed"]})
+    early = f"{days[0]}–{days[-1]} days early"
+    # the rows with the Land are the published replays of the same recordings
+    published = {
+        "test": _results("2026-09-30-claude-sonnet-5-test.json"),
+        "holdout": _results("2026-09-30-claude-sonnet-5-holdout-rescored.json"),
+        "holdout2": _results("2026-10-01-claude-sonnet-5-holdout2-rescored.json"),
+    }
+    for name, run in published.items():
+        assert (
+            splits[name]["with_land"]["due_date_accuracy"] == run["metrics"]["ordnung"]["due_date_accuracy"]
+        )
+    with_land = {_pct(splits[name]["with_land"]["due_date_accuracy"]["value"]) for name in published}
+    assert len(with_land) == 1
+    # README: row ⁹, its footnote, the bullet and Limitations
+    assert (
+        f"| **Ordnung** as the app runs it, without the sender's Land⁹ | {_with_interval(without['test'])} "
+        "| **0 %** | no |"
+    ) in readme
+    flat = _flat(readme)
+    footnote = flat.split("⁹ The rows above", 1)[1].split(" What the numbers say", 1)[0]
+    assert (
+        f"({splits['test']['letterhead_land']} of the test split's {splits['test']['entries']} letters"
+        in footnote
+    )
+    assert (
+        f"Ordnung scores {test} % on the test split, {holdout} % on the holdout split and {holdout2} % on the "
+        f"holdout2 split, against {with_land.pop()} % on each with the Land"
+    ) in footnote
+    assert f"Every extra miss is {early}; none is late." in footnote
+    counts = {name: int(metric["k"]) for name, metric in without.items()}
+    assert f"**Without the sender's Land: {test} %, and still no late date.**" in flat
+    assert (
+        f"{counts['test']} of {int(without['test']['n'])} on the test split, {counts['holdout']} on the holdout "
+        f"split and {counts['holdout2']} on the holdout2 split; every extra miss is {early} (row ⁹)"
+    ) in flat
+    limitation = flat.split("## Limitations", 1)[1]
+    assert f"a date can come out {early}, never late" in limitation
+    assert (
+        f"Ordnung scores {test} % (test), {holdout} % (holdout) and {holdout2} % (holdout2), with no late dates"
+        in limitation
+    )
+    # deadline-rules.md section 5 and the benchmark page, which renders the file itself
+    rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
+    assert (
+        f"Ordnung scores {test} % on the test split, {holdout} % on the holdout split and {holdout2} % on the "
+        "holdout2 split instead of"
+    ) in rules
+    evals_page = (ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+    section = evals_page.split("## Without the sender's Land", 1)[1].split("\n## ", 1)[0]
+    for name, numbers in splits.items():
+        assert (
+            f"| `{name}` | " in section
+            and f" ({int(numbers['without_land']['due_date_accuracy']['k'])}/" in section
+        )
+
+
+def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
+    """README "The model reads, code computes" shows "part of its recorded answer" for the demo's tax assessment:
+    every key and value of it is in that recording (``src/ordnung/demo/fixtures/extract/85ae2aa7….json``)."""
+    section = _readme().split("## The model reads, code computes", 1)[1]
+    excerpt = json.loads(section.split("```json\n", 1)[1].split("```", 1)[0])
+    (fixture,) = (ROOT / "src" / "ordnung" / "demo" / "fixtures" / "extract").glob("85ae2aa7*.json")
+    reading = json.loads(json.loads(fixture.read_text(encoding="utf-8"))["response"]["text"])
+    (item,) = [item for item in reading["items"] if item["quote"] == excerpt["quote"]]
+
+    def part_of(part: dict[str, Any], whole: dict[str, Any]) -> bool:
+        return all(
+            key in whole and (part_of(value, whole[key]) if isinstance(value, dict) else whole[key] == value)
+            for key, value in part.items()
+        )
+
+    assert part_of(excerpt, item)
+    # the letter whose receipt the README shows next (posted Tue 15 Sep 2026)
+    assert reading["document_date"] == "2026-09-15"
+
+
 async def test_readme_names_exactly_the_rules_tools() -> None:
     """README: the rules engine as MCP tools — the four it names are the rules-only server's."""
     paragraph = _readme().split("**The deadline engine in Claude Desktop or Claude Code.**", 1)[1]
@@ -442,8 +542,12 @@ def test_readme_backend_test_count_holds() -> None:
 
 
 _WEB = ROOT / "web"
+#: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_WEB_COUNTS=1`` (CI's
+#: end-to-end job, which has both toolchains): there a missing toolchain fails, so the README's Vitest and
+#: Playwright counts are always checked in CI.
 _needs_web = pytest.mark.skipif(
-    shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists(),
+    os.environ.get("ORDNUNG_REQUIRE_WEB_COUNTS") != "1"
+    and (shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists()),
     reason="needs node and web/node_modules (npm ci in web/)",
 )
 

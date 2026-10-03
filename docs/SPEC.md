@@ -58,9 +58,11 @@ SPECIMEN.
 9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
 10. CI green: backend, frontend, e2e (Playwright over demo mode incl. axe checks), `demo --check`.
 
-**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview), static hosted demo
-export, model/cost trade-off eval, Ask agent eval, "please check" received-date question, ⌘K search,
-per-document pipeline trace view.
+**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview) — *not built*; static
+hosted demo export (a `VITE_STATIC_DEMO=1` build of the browser-only demo) — built; model/cost trade-off
+eval — *not built* (`ordnung eval --models` can run several models, but no comparison is published); Ask
+agent eval (`docs/evals-ask.md`) — built; "please check" received-date question — built; ⌘K search —
+built; per-document pipeline trace view — built.
 
 **Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR, LLM party
 tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
@@ -91,7 +93,7 @@ only call Ordnung's **read-only** MCP tools; the UI never renders model output a
 src/ordnung/            (the main modules; the package itself is the complete list)
   cli.py  config.py  clock.py  ids.py  models.py  events.py  app_context.py  views.py  tick.py
   payments.py  numbers.py  girocode.py  recurrence.py  doctor.py  locking.py  server.py
-  db/ (schema.sql, migrations/NNNN_*.sql, store.py)
+  db/ (migrations/NNNN_*.sql, migrate.py, store.py)
   llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
   rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
           routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
@@ -138,8 +140,9 @@ Key additions in v2 (to implement in models.py):
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
-  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
-- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude); the
+  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>` … (a `capture`
+  source was meant for the quick capture bar, which was not built: nothing writes it).
+- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude connection); the
   per-purpose `AppSettings.models` aliases only key the recordings; the cache is keyed by the model
   a call runs on, so a new choice is a new call (§ 7).
 - `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
@@ -155,12 +158,13 @@ SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
 user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
-0002 = proof of sending and call notes; 0003 = reading traces). What ships is numbered 0001, 0002, …
+0002 = proof of sending and call notes; 0003 = reading traces; 0004 = a contract's notice day and early
+notice; 0005 = a contract that names the statutory notice periods). What ships is numbered 0001, 0002, …
 without a gap; on a development branch a number may be handed out ahead, so the runner only requires
 that numbers start at 0001 and never repeat. It keeps a ledger of what ran (`schema_migrations`:
 version, name) and applies every migration not in it, in number order — also a lower number that
 arrives after a database ran a higher one; `user_version` holds the highest (a newer database is
-refused). A database from before the ledger at version 1 ran 0001 (it gets 0002 and 0003); one past 1
+refused). A database from before the ledger at version 1 ran 0001 (it gets 0002 to 0005); one past 1
 without a ledger, or one whose ledger records a different migration under one of the numbers (a
 development build from before a renumbering), is refused with the reason (see `db/migrate.py`).
 The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
@@ -369,7 +373,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   `ORDNUNG_CLAUDE_MODEL` (an override for every call while it is set; the recorders don't use it:
   the demo records with the default model, the benchmarks with the run's `--model` on a backend
   without the setting) >
-  `AppSettings.model` (Settings → Claude; `claude-sonnet-5` by default — a pinned id, an alias moves
+  `AppSettings.model` (Settings → Claude connection; `claude-sonnet-5` by default — a pinned id, an alias moves
   with releases; an id or alias as Claude Code takes it: no spaces, not starting with a dash, so a
   Bedrock or Vertex id and `sonnet[1m]` pass; read when the call is made, so a save counts from the
   next call) > the request's own model (`settings.models.<purpose>`, an alias that keys the
@@ -377,9 +381,10 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   by the model the call runs on: a letter read again after a new choice is read anew. The usage
   log and the trace name the model that answered (`modelUsage`), else the one the call named. The
   demo's settings are the defaults, so it records with the default model. `health` names the pin
-  (`model_pinned`) so Settings → Claude can say the saved model waits while the variable is set.
-- **Lanes**: interactive (ask, draft, capture, brief; semaphore 1) and background (transcribe,
-  extract, review; semaphore `settings.concurrency`, default 2).
+  (`model_pinned`) so Settings → Claude connection can say the saved model waits while the variable is set.
+- **Lanes**: interactive (ask, draft, brief, doctor; semaphore 1) and background (transcribe,
+  extract, review; semaphore `settings.concurrency`, default 2). The interactive lane also names a
+  `capture` purpose, for the quick capture bar that was not built: no call uses it.
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
   region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
@@ -1147,8 +1152,7 @@ read (a backfilled archive's 2025 deposit), and the send-by dates of contracts w
 or confirmed. The Timeline marks money coming in "Money in" (never overdue) and a to-do set aside by why
 ("Replaced by the reminder"); the Settings preview calls a past event "Date passed";
 `meta.last_calendar_export_at` drives the "3 new dates since your last calendar update" card.
-Browser notifications (Notification API) while the app is open. Local feed URL documented as
-"desktop calendar on this computer" only.
+Browser notifications (Notification API) while the app is open.
 
 **Reminders while Ordnung is closed** (`notify/desktop.py`, `autostart.py`; the policies are in
 their docstrings):
@@ -1218,10 +1222,13 @@ their docstrings):
 ## 13. HTTP API — `api/`
 
 Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
-`/?token=…` → HttpOnly SameSite=Strict cookie; CLI reads `<data>/server.json` {port, token, pid});
-non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin, none} and
-foreign `Origin`; strict CSP on the SPA; GETs are side-effect free; originals served with `nosniff`
-and `attachment` unless PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
+`/?token=…` → HttpOnly SameSite=Strict cookie, its name per port; CLI reads `<data>/server.json` {port,
+token, pid}); non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin,
+none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with two bounded exceptions:
+`health?probe=1` ("Run check") makes one tiny live model call, at most once a minute, and downloading a
+drafted letter's PDF (or a sent letter's Nachweis) records its SHA-256 among the last 200, so the watched
+folder never takes it for a letter received; originals served with `nosniff` and `attachment` unless
+PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
@@ -1235,7 +1242,9 @@ readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading de
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
 the person compared with the paper letter; 409 when they changed or the code is refused for another
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
-(PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
+(PATCH), `parties`, `parties/{id}` (GET; PATCH `{region}`: the Land the person says a sender is in, `null`
+"Don't know" — recomputes the to-dos of that sender's letters), `cases/{id}`, `timeline?from&to`,
+`lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
 `brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
 `week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
@@ -1498,7 +1507,10 @@ Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind),
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
-metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
+metrics from recorded outputs with thresholds. Every condition is given the dataset's holiday Land (the one
+the letterhead prints, else the person's); the app has no sender's Land until the person sets it, so
+`scripts/eval_without_land.py` also replays Ordnung without it (`evals/results/<date>-<model>-without-land.json`,
+shown in `docs/evals.md` as "Without the sender's Land"). The extraction prompts are the Ordnung condition's, so a
 change to them is recorded again on the benchmark: versions 9 to 11 (labels, actions and consequences
 in the person's language, dates and amounts written as that language writes them, an explanation that
 names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
@@ -1634,8 +1646,10 @@ user-confirmed arrival date; until then fall back to the document date with `low
 `business_days` (Mon–Fri excl. holidays), `werktage` (Mon–Sat excl. holidays).
 
 **Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
-region of the place of performance is known: `Party.region` (user-set or from the party's postcode
-when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
+region of the place of performance is known: `Party.region`, which only the person sets (*Which state is
+this sender in?* in the sender's drawer, `PATCH parties/{id}`; reading a letter never sets it, and nothing
+derives it from a postcode) — while it is unknown, the engine uses nationwide holidays (earlier date). A
+date counted *back* over a regional
 holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
 where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
 Holidays of only part of a Land (Mariä Himmelfahrt in Bavarian communities with more Catholic than

@@ -50,8 +50,8 @@ privacy settings before processing sensitive documents.
 Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
 the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
 blank, or without the deadline to object the letter's instructions state) it is asked once more for what it
-left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)). A letter you put in
-the trash or delete while it is being read is not sent again.
+left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)). A letter you
+delete while it is being read is not sent again.
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
@@ -67,8 +67,8 @@ showing it. A case's reference — an invoice number, a Kassenzeichen, an Aktenz
 its letter and the Pay panel print it in full anyway.
 
 The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
-while a letter in your ledger shows it: delete that letter and the number leaves the page (a letter in
-the trash keeps its numbers until you delete it for good). One copy outlives the letter: when a letter
+while a letter in your ledger shows it: delete that letter and the number leaves the page. One copy
+outlives the letter: when a letter
 is read, Ordnung notes the sender's customer, contract and membership numbers — and some document
 numbers, such as a passport number on an authority's letter — on that organisation's record, so later
 letters are matched to it. That copy stays after the letter is deleted, *Ask* can read it (the
@@ -139,17 +139,22 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   tracing tool: no letter text, titles or names, and every id replaced by a code made for that file
   (Ordnung's own ids are hashes of a file, a sender's name or a sentence, so they could confirm a
   guess). It still shows the dates Ordnung computed and the letter's dates they came from, the rules
-  that computed them (their public names, such as `zpo_692`), your Bundesland's holiday calendar, how many pages, quotes and to-dos there were, match scores, and the
+  that computed them (their public names, such as `zpo_692`), the holiday calendar each date used (a Bundesland's, or nationwide), how many pages, quotes and to-dos there were, match scores, and the
   prompts' versions and models — look it over before you share it.
 - **A letter deleted while it is being read** — if a call to Claude about it is still under way,
   its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
   deleted afterwards.
-- **Model** — choose the Claude model every call runs on (Settings → Claude; Sonnet 5 unless you
+- **Model** — choose the Claude model every call runs on (Settings → Claude connection; Sonnet 5 unless you
   change it). The demo and the benchmarks keep the model they were recorded with.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
   there. (The one thing that keeps itself current is calendar sync, and only after you
   connect a calendar: it updates Ordnung's own events there — see below.)
+- **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
+  your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
+  though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
+  this computer that serve pages on localhost, on any port. On a shared computer, only open local web
+  pages you trust while Ordnung is open.
 
 ## GiroCode (payment QR codes)
 
@@ -298,6 +303,9 @@ took from them is), the lock and the running server's session file.
   `ps`), and **no tools** are enabled while reading documents — the model can only answer.
 - `--setting-sources ""` and `--strict-mcp-config` keep your own Claude Code hooks, settings and MCP
   servers out of Ordnung's calls; `--no-session-persistence` keeps them out of your Claude history.
+- Ordnung runs your own Claude Code CLI, so Claude Code's own telemetry and error reporting apply to its
+  calls as they do when you use Claude Code yourself. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` in
+  the environment you start Ordnung from to turn them off.
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
   removed before it reaches the model (a scan's invisible OCR layer is not read at all: the page is read
