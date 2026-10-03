@@ -10,6 +10,7 @@ import stat
 from collections.abc import Iterator
 from pathlib import Path
 
+import httpx
 import pytest
 
 from ordnung import __version__, clock
@@ -130,7 +131,7 @@ async def test_token_login_sets_cookie_and_redirects(data_dir: Path, web_dist: P
         assert (await client.get("/api/dashboard")).status_code == 401
         page = await client.get("/")
         assert page.status_code == 401 and "access link" in page.text
-        assert "ordnung_token" not in client.cookies
+        assert not client.cookies
 
         wrong = await client.get("/?token=nope")
         assert wrong.status_code == 401 and "expired" in wrong.text
@@ -139,7 +140,7 @@ async def test_token_login_sets_cookie_and_redirects(data_dir: Path, web_dist: P
         assert login.status_code == 303
         assert login.headers["location"] == "/?tab=inbox"
         cookie = login.headers["set-cookie"]
-        assert f"ordnung_token={TOKEN}" in cookie
+        assert cookie.startswith(f"ordnung_token_8765={TOKEN};")  # one cookie per port
         assert "HttpOnly" in cookie and "SameSite=strict" in cookie.replace("Strict", "strict")
 
         assert (await client.get("/api/dashboard")).status_code == 200
@@ -147,17 +148,36 @@ async def test_token_login_sets_cookie_and_redirects(data_dir: Path, web_dist: P
         assert home.status_code == 200 and '<div id="root">' in home.text
 
 
-async def test_bearer_header_and_calendar_query_token(data_dir: Path) -> None:
+async def test_servers_on_two_ports_keep_their_own_sign_in(data_dir: Path, tmp_path: Path) -> None:
+    """Browsers send a cookie to every port of a host: the demo and the real app (two servers on
+    two ports) must not read, or overwrite, each other's session cookie."""
+    async with api_for(data_dir, token=TOKEN) as real, api_for(tmp_path / "demo", token="demo-token") as demo:
+        demo.client.base_url = httpx.URL("http://127.0.0.1:8766")
+        assert (await real.client.get(f"/?token={TOKEN}")).status_code == 303
+        assert (await demo.client.get("/?token=demo-token")).status_code == 303
+        assert dict(real.client.cookies) == {"ordnung_token_8765": TOKEN}
+        assert dict(demo.client.cookies) == {"ordnung_token_8766": "demo-token"}
+
+        browser = {"Cookie": f"ordnung_token_8765={TOKEN}; ordnung_token_8766=demo-token"}  # sent to both
+        swapped = {"Cookie": f"ordnung_token_8766={TOKEN}"}  # the real token under the demo's name
+        async with client_for(real.app) as plain, client_for(demo.app) as plain_demo:
+            plain_demo.base_url = httpx.URL("http://127.0.0.1:8766")
+            assert (await plain.get("/api/profile", headers=browser)).status_code == 200
+            assert (await plain_demo.get("/api/profile", headers=browser)).status_code == 200
+            assert (await plain.get("/api/profile", headers=swapped)).status_code == 401
+
+
+async def test_the_token_is_accepted_in_no_api_url(data_dir: Path) -> None:
     async with api_for(data_dir, token=TOKEN) as api:
         bearer = await api.client.get("/api/profile", headers={"Authorization": f"Bearer {TOKEN}"})
         assert bearer.status_code == 200
         wrong = await api.client.get("/api/profile", headers={"Authorization": "Bearer nope"})
         assert wrong.status_code == 401
-        feed = await api.client.get(f"/api/calendar.ics?token={TOKEN}")
-        assert feed.status_code == 200
-        assert feed.headers["content-type"].startswith("text/calendar")
-        assert (await api.client.get("/api/calendar.ics?token=nope")).status_code == 401
+        # it would sit in a calendar app's settings, and the token changes at every start anyway
+        assert (await api.client.get(f"/api/calendar.ics?token={TOKEN}")).status_code == 401
         assert (await api.client.get(f"/api/profile?token={TOKEN}")).status_code == 401
+        feed = await api.client.get("/api/calendar.ics", headers={"Authorization": f"Bearer {TOKEN}"})
+        assert feed.status_code == 200 and feed.headers["content-type"].startswith("text/calendar")
 
 
 async def test_health_without_token_is_minimal(data_dir: Path) -> None:

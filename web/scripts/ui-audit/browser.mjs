@@ -38,8 +38,9 @@ export async function newAuditContext(browser, { viewport, theme, base, token, s
     serviceWorkers: "block",
   });
   if (token) {
-    const { hostname } = new URL(base);
-    await context.addCookies([{ name: "ordnung_token", value: token, domain: hostname, path: "/", httpOnly: true, sameSite: "Strict" }]);
+    const { hostname, port } = new URL(base);
+    // the server names its session cookie after its port
+    await context.addCookies([{ name: `ordnung_token_${port || 80}`, value: token, domain: hostname, path: "/", httpOnly: true, sameSite: "Strict" }]);
   }
   await context.addInitScript(
     ({ theme, storage }) => {

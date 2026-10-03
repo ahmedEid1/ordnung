@@ -170,7 +170,7 @@ async function nav(page, label, text) {
 
 async function newContext(browser, extra = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "en-GB", timezoneId: "Europe/Berlin", ...extra });
-  await context.addCookies([{ name: "ordnung_token", value: TOKEN, url: BASE, httpOnly: true, sameSite: "Strict" }]);
+  await context.addCookies([{ name: `ordnung_token_${opts.port}`, value: TOKEN, url: BASE, httpOnly: true, sameSite: "Strict" }]);
   await context.request.patch(`${BASE}/api/demo/tour`, { data: { active: false, completed: true }, headers: CLIENT });
   return context;
 }

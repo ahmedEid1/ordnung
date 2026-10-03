@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fpdf import FPDF
+from fpdf.enums import EncryptionMethod
 from PIL import Image
 from rich.console import Console
 
@@ -31,7 +33,7 @@ from ordnung import clock
 from ordnung.cli import LOGIN_PAGE_NAME, launch_browser, login_page, summary_table
 from ordnung.config import REPO_DIR, Paths
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
-from ordnung.ingest import intake, text
+from ordnung.ingest import expansion, intake, text
 from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.ingest.intake import IntakeError, normalise_upload, render_pages, safe_filename, store_original
 from ordnung.ingest.text import html_to_text, layout_text
@@ -119,7 +121,7 @@ async def test_the_forwarding_page_signs_the_browser_in(data_dir: Path) -> None:
 
         login = await api.client.get("/?token=s3cret-token", headers=cross_site)
         assert login.status_code == 200
-        assert "ordnung_token=s3cret-token" in login.headers["set-cookie"]
+        assert login.headers["set-cookie"].startswith("ordnung_token_8765=s3cret-token;")
         assert "url=/'" in login.text and "s3cret-token" not in login.text
 
     from starlette.requests import Request
@@ -175,6 +177,107 @@ def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
         normalise_upload(huge_image, "huge.pdf")
 
     normalise_upload(letter_pdf(), "letter.pdf")  # an ordinary letter passes
+
+
+ENCRYPTIONS = [EncryptionMethod.RC4, EncryptionMethod.AES_128, EncryptionMethod.AES_256]
+
+
+def _zeros_deflated(megabytes: int, wbits: int = zlib.MAX_WBITS) -> bytes:
+    """Deflated zero bytes (zlib format; raw deflate with ``wbits=-15``), compressed piece by piece."""
+    compressor = zlib.compressobj(9, zlib.DEFLATED, wbits)
+    chunk = bytes(1024 * 1024)
+    return b"".join(compressor.compress(chunk) for _ in range(megabytes)) + compressor.flush()
+
+
+def _protected_pdf(method: EncryptionMethod, user_password: str = "") -> FPDF:
+    """A bank statement protected with an owner password, as banks send them: it opens without a
+    password unless ``user_password`` is set."""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("helvetica", size=12)
+    pdf.cell(text="Kontoauszug September 2026")
+    pdf.set_encryption(owner_password="bank-owner", user_password=user_password, encryption_method=method)
+    return pdf
+
+
+def _with_encrypted_stream(pdf: FPDF, raw: bytes, filters: bytes) -> bytes:
+    """The PDF plus one more stream object, encrypted with the PDF's own key (as fpdf2 encrypts it)."""
+    body = bytes(pdf.output())
+    sealed = pdf._security_handler.encrypt_stream(raw, 99)
+    stream = b"\n99 0 obj\n<< /Length %d /Filter %s >>\nstream\n" % (len(sealed), filters)
+    return body + stream + sealed + b"\nendstream\nendobj\n"
+
+
+@pytest.mark.parametrize("method", ENCRYPTIONS)
+def test_encrypted_pdf_decompression_bomb_is_rejected(method: EncryptionMethod) -> None:
+    nested = zlib.compress(_zeros_deflated(300), 9)  # under 1 KB that expand to 300 MB
+    bomb = _with_encrypted_stream(_protected_pdf(method), nested, b"[/FlateDecode /FlateDecode]")
+    started = time.monotonic()
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+    assert time.monotonic() - started < 10
+
+
+def test_encrypted_bomb_behind_a_planted_endstream_is_measured_to_its_end() -> None:
+    pdf = _protected_pdf(EncryptionMethod.RC4)
+    bytes(pdf.output())  # sets the document's key
+    keystream = pdf._security_handler.encrypt_stream(bytes(16), 99)
+    # a first stored block whose 9 bytes encrypt to "endstream", then 300 MB of zeros
+    planted = bytes(a ^ b for a, b in zip(b"endstream", keystream[7:16], strict=True))
+    adler = zlib.adler32(planted)
+    for _ in range(300):
+        adler = zlib.adler32(bytes(1024 * 1024), adler)
+    stored = b"\x00" + (9).to_bytes(2, "little") + (0xFFFF ^ 9).to_bytes(2, "little") + planted
+    bomb_data = b"\x78\xda" + stored + _zeros_deflated(300, -zlib.MAX_WBITS) + adler.to_bytes(4, "big")
+    bomb = _with_encrypted_stream(pdf, bomb_data, b"/FlateDecode")
+    data_start = bomb.index(b"stream\n", bomb.index(b"99 0 obj")) + len(b"stream\n")
+    assert bomb.index(b"endstream", data_start) == data_start + 7
+
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+
+
+@pytest.mark.parametrize("method", ENCRYPTIONS)
+def test_pdf_protected_only_by_an_owner_password_is_read(method: EncryptionMethod, tmp_path: Path) -> None:
+    data, mime, _ = normalise_upload(bytes(_protected_pdf(method).output()), "kontoauszug.pdf")
+    stored = store_original(tmp_path / "files", data, "kontoauszug.pdf")
+    pages = render_pages(stored.path, mime, tmp_path / "derived", "doc_test")
+    [page] = text.extract_pdf_pages(stored.path, pages)
+    assert "Kontoauszug September 2026" in page.text
+
+
+def test_pdf_that_needs_a_password_is_rejected_as_protected() -> None:
+    with pytest.raises(IntakeError, match="password-protected"):
+        normalise_upload(bytes(_protected_pdf(EncryptionMethod.AES_256, "geheim").output()), "brief.pdf")
+
+
+def test_encrypted_pdf_whose_decryption_cant_be_reproduced_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(expansion, "_security_handler", lambda data: None)  # pdfminer can't decrypt it
+    with pytest.raises(IntakeError, match="protected in a way that can't be checked"):
+        normalise_upload(bytes(_protected_pdf(EncryptionMethod.AES_128).output()), "kontoauszug.pdf")
+
+
+def test_bomb_behind_a_crypt_filter_is_rejected() -> None:
+    bomb = zlib.compress(zlib.compress(bytes(300 * 1024 * 1024), 9), 9)
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(_pdf_with_stream(bomb, b"[/Crypt /FlateDecode /FlateDecode]"), "bomb.pdf")
+
+
+def test_an_encrypt_entry_that_refers_to_itself_does_not_hang_the_upload() -> None:
+    body = (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>\nendobj\n"
+        b"5 0 obj\n5 0 R\nendobj\n"
+    )
+    entries = b"".join(b"%010d 00000 n \n" % body.index(b"%d 0 obj" % number) for number in (1, 2, 3))
+    xref = b"xref\n0 4\n0000000000 65535 f \n" + entries + b"5 1\n%010d 00000 n \n" % body.index(b"5 0 obj")
+    trailer = b"trailer\n<< /Root 1 0 R /Size 6 /Encrypt 5 0 R >>\nstartxref\n%d\n%%%%EOF\n" % len(body)
+    started = time.monotonic()
+    normalise_upload(body + xref + trailer, "brief.pdf")  # PDFium doesn't see it as encrypted either
+    assert time.monotonic() - started < 10
 
 
 def test_a_job_that_keeps_crashing_the_process_is_not_requeued_forever(store: Store) -> None:
@@ -522,6 +625,33 @@ async def test_uploads_are_capped_per_request(data_dir: Path, monkeypatch: pytes
         assert response.status_code == 413 and "at most 2 files" in response.text
         too_big = [("files", ("big.txt", b"Sehr geehrte Damen und Herren, " * 400))]
         assert (await api.client.post("/api/documents", files=too_big)).status_code == 413
+
+
+async def test_a_huge_upload_is_refused_before_its_body_is_read() -> None:
+    from ordnung.api.security import MAX_REQUEST_BYTES, SecurityMiddleware
+
+    async def app(scope: Any, receive: Any, send: Any) -> None:
+        raise AssertionError("the app (and its form parser) must not see the request")
+
+    async def receive() -> dict[str, Any]:
+        raise AssertionError("the body must not be read")
+
+    sent: list[dict[str, Any]] = []
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    length = str(MAX_REQUEST_BYTES + 1).encode()
+    headers = [(b"host", b"127.0.0.1:8765"), (b"x-ordnung-client", b"web"), (b"content-length", length)]
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/documents",
+        "query_string": b"",
+        "headers": headers,
+    }
+    await SecurityMiddleware(app, token=None)(scope, receive, send)
+    assert sent[0]["status"] == 413 and b"at most 200 MB" in sent[1]["body"]
 
 
 def test_downloaded_originals_carry_the_extension_of_their_real_type() -> None:

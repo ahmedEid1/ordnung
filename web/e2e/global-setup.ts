@@ -28,13 +28,14 @@ export default async function globalSetup(): Promise<void> {
   }
   if (!health.demo) throw new Error(`The server on ${BASE_URL} is not running the demo.`);
 
-  const { hostname } = new URL(BASE_URL);
+  const { hostname, port } = new URL(BASE_URL);
   mkdirSync(dirname(STORAGE_STATE), { recursive: true });
   writeFileSync(
     STORAGE_STATE,
     JSON.stringify(
       {
-        cookies: [{ name: "ordnung_token", value: token, domain: hostname, path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Strict" }],
+        // the server names its session cookie after its port
+        cookies: [{ name: `ordnung_token_${port}`, value: token, domain: hostname, path: "/", expires: -1, httpOnly: true, secure: false, sameSite: "Strict" }],
         origins: [],
       },
       null,

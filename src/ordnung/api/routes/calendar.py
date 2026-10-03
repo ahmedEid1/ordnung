@@ -1,6 +1,5 @@
 """Calendar export: every open dated to-do and contract decision as one ``.ics`` (with reminders),
-and "I added them to my calendar" (clears the "calendar outdated" Idea). Desktop calendar apps may
-subscribe to ``/api/calendar.ics?token=…``."""
+and "I added them to my calendar" (clears the "calendar outdated" Idea)."""
 
 from __future__ import annotations
 
