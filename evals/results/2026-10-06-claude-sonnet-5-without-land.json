@@ -5,7 +5,7 @@
   "model": "claude-sonnet-5",
   "condition": "ordnung",
   "backend": "replay",
-  "commit": "f65a83d",
+  "commit": "f2c3c1c",
   "fingerprint": "822d5316b68df063",
   "script": "scripts/eval_without_land.py",
   "note": "The Ordnung condition's recorded outputs replayed with the checked-out code, once as the benchmark runs it (the Land the letterhead names is the sender's holiday region) and once with the sender's Land unknown, as in the app until the person sets it for that sender: nationwide holidays and, for a Land authority, the 3-day delivery rule. The person's own Land is kept. No model was called."
@@ -435,6 +435,131 @@
      "expected": "2027-09-21",
      "with_land": "2027-09-21",
      "without_land": "2027-09-20",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ]
+  },
+  "holdout3": {
+   "entries": 63,
+   "letterhead_land": 16,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 1.0,
+     "ci": [
+      0.9179901967742088,
+      1.0
+     ],
+     "k": 56.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.9107142857142857,
+     "ci": [
+      0.8269230769230769,
+      0.9814814814814815
+     ],
+     "k": 51.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.08928571428571429,
+     "ci": [
+      0.018518518518518517,
+      0.17307692307692307
+     ],
+     "k": 5.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "holdout3-adversarial-conflicting_dates-2",
+     "family": "adversarial",
+     "letterhead_land": "NW",
+     "expected": "2027-09-01",
+     "with_land": "2027-09-01",
+     "without_land": "2027-08-31",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-fine_bussgeld-I1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "SL",
+     "expected": "2027-11-02",
+     "with_land": "2027-11-02",
+     "without_land": "2027-11-01",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-municipal_decision-I1",
+     "family": "municipal_decision",
+     "letterhead_land": "MV",
+     "expected": "2026-01-13",
+     "with_land": "2026-01-13",
+     "without_land": "2026-01-12",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-municipal_decision-J1",
+     "family": "municipal_decision",
+     "letterhead_land": "BY",
+     "expected": "2027-12-01",
+     "with_land": "2027-12-01",
+     "without_land": "2027-11-30",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-tax_assessment-I1",
+     "family": "tax_assessment",
+     "letterhead_land": "MV",
+     "expected": "2027-03-09",
+     "with_land": "2027-03-09",
+     "without_land": "2027-03-08",
      "outcome": "wrong",
      "direction": "early",
      "days_off": -1

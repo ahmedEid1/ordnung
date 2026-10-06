@@ -38,6 +38,11 @@ from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from evals import conditions  # noqa: E402
+
 NOW = "2026-09-25T10:00:00Z"
 
 
@@ -322,6 +327,51 @@ def test_readme_second_held_out_row_matches_its_one_recording() -> None:
     assert ordnung["adversarial"]["conflicting_dates_handled"]["k"] == 2
 
 
+def test_readme_third_held_out_row_matches_its_one_recording() -> None:
+    """Row ¹⁰: the holdout3 split, written after the code freeze, recorded once with every condition on the
+    frozen code; the bullet's counts per condition, and no re-ask or reading check needed."""
+    readme = _readme()
+    runs = sorted((ROOT / "evals" / "results").glob("*-holdout3.json"))
+    assert len(runs) == 1, "holdout3 is recorded once"
+    run = _results(runs[0].name)
+    meta, metrics = run["meta"], run["metrics"]
+    assert meta["split"] == "holdout3" and meta["backend"] == "live" and not meta["partial"]
+    assert set(meta["conditions"]) == {"ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"}
+    ordnung = metrics["ordnung"]
+    assert ordnung["dangerous_late_rate"]["k"] == 0
+    assert (
+        "| **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | "
+        f"{_with_interval(ordnung['due_date_accuracy'])} | **0 %** | yes |"
+    ) in readme
+    flat = _flat(readme)
+    assert (
+        f"¹⁰ {meta['entries']} more new letters ({meta['photos']} photos, {meta['adversarial']} adversarial; "
+        f"{meta['scored_items']} dated obligations)"
+    ) in flat
+    exact = {name: int(m["due_date_accuracy"]["k"]) for name, m in metrics.items()}
+    late = {name: int(m["dangerous_late_rate"]["k"]) for name, m in metrics.items()}
+    early = {name: int(m["early_rate"]["k"]) for name, m in metrics.items()}
+    assert exact["ordnung"] == exact["llm_rules_tool"] == meta["scored_items"]
+    assert (
+        f"(row ¹⁰), Ordnung got all {meta['scored_items']} dated deadlines right, and so did the agent with the "
+        "calculator."
+    ) in flat
+    assert (
+        f"rules-text prompt scored {exact['llm_rules_text']} of 56 with {_words(late['llm_rules_text'])} late "
+        f"date ({_words(early['llm_rules_text'])} early), the model alone {exact['llm_only']} of 56 with "
+        f"{_words(late['llm_only'])} late."
+    ) in flat
+    # the frozen code: the recording's fingerprint is the one every later replay of the Ordnung path has
+    assert meta["fingerprints"]["ordnung"] == conditions.fingerprint("ordnung", meta["model"])
+    signals = {
+        signal
+        for entry in run["entries"]
+        for signal in entry["conditions"]["ordnung"]["prediction"].get("signals") or []
+    }
+    assert not any(signal.startswith("reading_reask") for signal in signals)
+    assert ordnung["reading_check"]["filed"] == 0 and ordnung["deadline_check"]["filed"] == 0
+
+
 def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
     """Row ⁸: the same holdout2 recordings plus the one call recorded after them — the injection letter's
     completeness re-ask (ADR 0016), accepted — replayed with the current code (not held-out); only that letter
@@ -425,14 +475,15 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
     assert results["schema"] == "ordnung-eval-without-land/1"
     assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
     splits = results["splits"]
-    assert set(splits) == {"test", "holdout", "holdout2", "dev"}
+    assert set(splits) == {"test", "holdout", "holdout2", "holdout3", "dev"}
     for name, numbers in splits.items():
         assert numbers["without_land"]["dangerous_late_rate"]["k"] == 0, name
         assert all(change["direction"] == "early" for change in numbers["changed"]), name
     without = {
-        name: splits[name]["without_land"]["due_date_accuracy"] for name in ("test", "holdout", "holdout2")
+        name: splits[name]["without_land"]["due_date_accuracy"]
+        for name in ("test", "holdout", "holdout2", "holdout3")
     }
-    test, holdout, holdout2 = (_pct(metric["value"]) for metric in without.values())
+    test, holdout, holdout2, holdout3 = (_pct(metric["value"]) for metric in without.values())
     days = sorted({-change["days_off"] for name in without for change in splits[name]["changed"]})
     early = f"{days[0]}–{days[-1]} days early"
     # the rows with the Land are the published replays of the same recordings
@@ -441,6 +492,12 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         "holdout": _results("2026-09-30-claude-sonnet-5-holdout-rescored.json"),
         "holdout2": _results("2026-10-06-claude-sonnet-5-holdout2-rescored.json"),
     }
+    # holdout3's with the Land is its one live recording itself (row ¹⁰), not a replay
+    third = _results("2026-10-06-claude-sonnet-5-holdout3.json")
+    assert (
+        splits["holdout3"]["with_land"]["due_date_accuracy"]
+        == third["metrics"]["ordnung"]["due_date_accuracy"]
+    )
     for name, run in published.items():
         assert (
             splits[name]["with_land"]["due_date_accuracy"] == run["metrics"]["ordnung"]["due_date_accuracy"]
@@ -460,14 +517,17 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
     )
     assert (
         f"Ordnung scores {test} % on the test split, {holdout} % on the holdout split and {holdout2} % on the "
-        f"holdout2 split, against {with_land.pop()} % on each with the Land"
+        f"holdout2 split, against {with_land.pop()} % on each with the Land (rows ⁴, ⁶ and ⁸), and {holdout3} % on "
+        f"the holdout3 split, against {_pct(splits['holdout3']['with_land']['due_date_accuracy']['value'])} % "
+        "with it (row ¹⁰)"
     ) in footnote
     assert f"Every extra miss is {early}; none is late." in footnote
     counts = {name: int(metric["k"]) for name, metric in without.items()}
     assert f"**Without the sender's Land: {test} %, and still no late date.**" in flat
     assert (
         f"{counts['test']} of {int(without['test']['n'])} on the test split, {counts['holdout']} on the holdout "
-        f"split and {counts['holdout2']} on the holdout2 split; every extra miss is {early} (row ⁹)"
+        f"split, {counts['holdout2']} on the holdout2 split and {counts['holdout3']} on the holdout3 split; every "
+        f"extra miss is {early} (row ⁹)"
     ) in flat
     limitation = flat.split("## Limitations", 1)[1]
     # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider (F-S11): a Baden-Württemberg

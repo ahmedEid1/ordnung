@@ -12,7 +12,7 @@ benchmark's fingerprint), and the per-letter cache goes to a temporary folder, n
 
 Run it from the repository root::
 
-    .venv/bin/python -m scripts.eval_without_land [--date YYYY-MM-DD] [--splits test holdout holdout2 dev]
+    .venv/bin/python -m scripts.eval_without_land [--date YYYY-MM-DD] [--splits test holdout holdout2 holdout3 dev]
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR, RunConfig, _com
 from ordnung.models import DocumentExtraction, Page
 from ordnung.rules import RuleContext
 
-SPLITS = ("test", "holdout", "holdout2", "dev")
+SPLITS = ("test", "holdout", "holdout2", "holdout3", "dev")
 NOTE = (
     "The Ordnung condition's recorded outputs replayed with the checked-out code, once as the benchmark runs "
     "it (the Land the letterhead names is the sender's holiday region) and once with the sender's Land unknown, "

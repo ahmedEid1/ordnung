@@ -8,6 +8,7 @@
 > Ordnung was run again on 2026-09-30 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
 > Every condition was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
 > Every condition was also recorded once on the fresh holdout2 split (2026-10-01), written after the release's last change to how letters are read (“Held-out run: the holdout2 split”).
+> Every condition was also recorded once on the fresh holdout3 split (2026-10-06), written after the code freeze and audited blind (“Held-out run: the holdout3 split”).
 > Ordnung was replayed on 2026-10-06 without the sender's Land, as the app runs until the person sets it (“Without the sender's Land”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
@@ -137,6 +138,35 @@ Ordnung got 2 dated item(s) of the holdout2 split wrong; from the failure galler
 - `holdout2-adversarial-injection_visible-1` — *Widerspruchsfrist*: expected Thu 10 Dec 2026, got none (missed, no date)
 - `holdout2-tax_assessment-H1` — *Einspruchsfrist Einkommensteuerbescheid 2024*: expected Wed 30 Jul 2025, got Mon 28 Jul 2025 (wrong, early, computing error)
 
+## Held-out run: the holdout3 split
+
+The holdout3 split is a third fresh sample of the same template families (variants I and J, with
+new senders, recipients, wording, layout, dates, amounts and regions, among them Länder the earlier
+splits used little) and of the same adversarial attack classes. **The holdout3 letters were written
+after the code freeze, audited blind, are recorded once, and nothing was tuned on them.** No prompt and
+no code change was informed by these letters.
+
+> Run on 2026-10-06 from live model calls, model `claude-sonnet-5`, commit `55bedab`:
+> 63 letters (11 phone photos, 12 adversarial),
+> 56 required items with a known date.
+
+| Condition | Due-date accuracy [95 % CI] | Exact | Dangerous late | Early | Missed | Published run, test split |
+|---|---|---|---|---|---|---|
+| **Ordnung** | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | 89.3 % [78.9–96.7] |
+| **LLM only** | 83.9 % [74.1–93.0] | 47/56 | 8.9 % | 7.1 % | 0.0 % | 82.1 % [70.9–91.7] |
+| **LLM + rules text** | 94.6 % [88.3–100.0] | 53/56 | 0.0 % | 5.4 % | 0.0 % | 92.9 % [83.9–100.0] |
+| **LLM + rules tool** | 100.0 % [91.8–100.0] | 56/56 | 0.0 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
+
+Paired differences on the holdout3 letters:
+
+- Ordnung − LLM only: accuracy +16.1 pp [+7.0, +25.9], dangerous-late rate -8.9 pp [-16.7, -1.9].
+- Ordnung − LLM + rules text: accuracy +5.4 pp [+0.0, +11.6], dangerous-late rate +0.0 pp [+0.0, +0.0].
+- Ordnung − LLM + rules tool: accuracy +0.0 pp [+0.0, +0.0], dangerous-late rate +0.0 pp [+0.0, +0.0].
+- LLM + rules tool − LLM only: accuracy +16.1 pp [+7.0, +25.9], dangerous-late rate -8.9 pp [-16.7, -1.9].
+- LLM + rules tool − LLM + rules text: accuracy +5.4 pp [+0.0, +11.6], dangerous-late rate +0.0 pp [+0.0, +0.0].
+
+Ordnung got every dated item of the holdout3 split right.
+
 ## Without the sender's Land
 
 Every condition on this page is given the holiday Land the dataset names: for Ordnung, the Land printed on
@@ -144,7 +174,7 @@ the letterhead is the sender's. The app has no such Land: it knows a sender's La
 it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
 this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
 delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
-commit `f65a83d` (2026-10-06; `python -m scripts.eval_without_land`, results in
+commit `f2c3c1c` (2026-10-06; `python -m scripts.eval_without_land`, results in
 `evals/results/2026-10-06-claude-sonnet-5-without-land.json`); no model was called. **The “without” column is the app's own result for a sender whose Land the
 person has not set.**
 
@@ -153,9 +183,10 @@ person has not set.**
 | `test` | 98.2 % [94.5–100.0] (55/56) | 85.7 % [74.6–94.7] (48/56) | 0.0 % | 19 of 63 |
 | `holdout` | 98.2 % [94.5–100.0] (55/56) | 89.3 % [80.8–96.5] (50/56) | 0.0 % | 18 of 63 |
 | `holdout2` | 98.2 % [94.5–100.0] (55/56) | 83.9 % [72.9–93.1] (47/56) | 0.0 % | 16 of 63 |
+| `holdout3` | 100.0 % [91.8–100.0] (56/56) | 91.1 % [82.7–98.1] (51/56) | 0.0 % | 16 of 63 |
 | `dev` | 96.0 % [87.5–100.0] (24/25) | 80.0 % [64.3–95.2] (20/25) | 0.0 % | 8 of 28 |
 
-Without the Land, 24 dates change; 24 of them come out 1–3 days early, and
+Without the Land, 29 dates change; 29 of them come out 1–3 days early, and
 no date is late. The letters (with the Land their letterhead names):
 
 - `test-fine_bussgeld-C1` (NI): Fri 31 Oct 2025 instead of Mon 3 Nov 2025
@@ -178,6 +209,11 @@ no date is late. The letters (with the Land their letterhead names):
 - `holdout2-municipal_decision-G2-photo` (SH): Tue 5 Aug 2025 instead of Wed 6 Aug 2025
 - `holdout2-social_decision-H1` (BE): Thu 8 May 2025 instead of Fri 9 May 2025
 - `holdout2-tax_assessment-G1` (TH): Mon 20 Sep 2027 instead of Tue 21 Sep 2027
+- `holdout3-adversarial-conflicting_dates-2` (NW): Tue 31 Aug 2027 instead of Wed 1 Sep 2027
+- `holdout3-fine_bussgeld-I1` (SL): Mon 1 Nov 2027 instead of Tue 2 Nov 2027
+- `holdout3-municipal_decision-I1` (MV): Mon 12 Jan 2026 instead of Tue 13 Jan 2026
+- `holdout3-municipal_decision-J1` (BY): Tue 30 Nov 2027 instead of Wed 1 Dec 2027
+- `holdout3-tax_assessment-I1` (MV): Mon 8 Mar 2027 instead of Tue 9 Mar 2027
 - `dev-municipal_decision-A1` (NW): Wed 18 Jun 2025 instead of Fri 20 Jun 2025
 - `dev-municipal_decision-B1` (BY): Mon 5 Jan 2026 instead of Wed 7 Jan 2026
 - `dev-social_decision-B1` (SN): Wed 19 Nov 2025 instead of Thu 20 Nov 2025
@@ -493,6 +529,7 @@ python -m evals.run --split test --model claude-sonnet-5          # recompute fr
 python -m evals.run --live --split test --model claude-sonnet-5   # call the model and record new outputs
 python -m evals.run --split holdout --model claude-sonnet-5 --results-dir /tmp/holdout   # replayed on the checked-out code (not the held-out number)
 python -m evals.run --split holdout2 --model claude-sonnet-5 --results-dir /tmp/holdout2 # replayed on the checked-out code (not the held-out number)
+python -m evals.run --split holdout3 --model claude-sonnet-5 --results-dir /tmp/holdout3 # replayed on the checked-out code (not the held-out number)
 python -m scripts.eval_without_land   # Ordnung on every split with and without the sender's Land (replayed, no tokens)
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
@@ -506,5 +543,5 @@ rules engine of the checked-out commit; this run's numbers come from commit `17f
 The page is rendered from the results files alone:
 `python -m evals.report evals/results/<run>.json [--rescored evals/results/<run>-rescored.json]
 [--prompt-run evals/results/<later run>.json --prompt-note <why>.md] [--holdout-run
-evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself. The run on the holdout2 split joins the page with `--holdout2-run evals/results/<holdout2 run>.json [--holdout2-rescored …] [--holdout2-note …]` and never rewrites it either. The replay without the sender's Land joins it with `--without-land evals/results/<date>-<model>-without-land.json`.
+evals/results/<holdout run>.json --holdout-note <note>.md]`. A run on the holdout split never rewrites this page itself. The run on the holdout2 split joins the page with `--holdout2-run evals/results/<holdout2 run>.json [--holdout2-rescored …] [--holdout2-note …]` and never rewrites it either. The run on the holdout3 split joins the page with `--holdout3-run evals/results/<holdout3 run>.json [--holdout3-rescored …] [--holdout3-note …]` and never rewrites it either. The replay without the sender's Land joins it with `--without-land evals/results/<date>-<model>-without-land.json`.
 LLM + rules tool was added after the run: it is recorded on its own (`python -m evals.run --live --split test --model claude-sonnet-5 --conditions llm_rules_tool`, which never rewrites this page) and joins the run with `python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json --add-condition llm_rules_tool=evals/results/<new run>.json --note <finding>.md` (the run's own conditions stay as published).

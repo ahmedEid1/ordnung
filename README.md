@@ -209,6 +209,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | 96.4 % [90.9–100] | **0 %** | yes |
 | **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
+| **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | 100 % [91.8–100] | **0 %** | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -256,7 +257,7 @@ when a reading still comes back nearly blank, or leaves out the objection deadli
 instructions on how to object state, Ordnung files that deadline itself, at low confidence and marked "Please
 check"; here it has nothing to add. Both were written because of that missed date, so this row is not
 held-out; the row above stays the held-out number. The row counts the extra call's cost and time, and
-neither fires on any other letter of the four splits or the demo. In the app, until you set the sender's
+neither fires on any other letter of the five splits or the demo. In the app, until you set the sender's
 Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
 ⁹ The rows above give Ordnung's engine the Land printed on the letterhead as the sender's (19 of the test
 split's 63 letters name one). The app knows a sender's Land only once you set it for that sender (*Which
@@ -264,7 +265,14 @@ state is this sender in?* in its drawer); until then it uses nationwide holidays
 at lower confidence. Replayed that way on the same recorded readings
 ([`scripts/eval_without_land.py`](scripts/eval_without_land.py), no model called), Ordnung scores 85.7 % on
 the test split, 89.3 % on the holdout split and 83.9 % on the holdout2 split, against 98.2 % on each with the
-Land (rows ⁴, ⁶ and ⁸). Every extra miss is 1–3 days early; none is late.
+Land (rows ⁴, ⁶ and ⁸), and 91.1 % on the holdout3 split, against 100 % with it (row ¹⁰). Every extra miss is
+1–3 days early; none is late.
+¹⁰ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the code freeze by an
+agent that read neither the reading code, the rules engine, the prompts nor any result. Two more agents each
+derived every deadline from the letters and the law before seeing the labels, and both matched all of them;
+one letter was redrawn before the recording so that it tells the old and the new delivery rule apart (its
+date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them and
+no code changed since.
 
 What the numbers say:
 
@@ -309,8 +317,12 @@ What the numbers say:
 - **Without the sender's Land: 85.7 %, and still no late date.** The benchmark tells Ordnung the Land on
   the letterhead; the app knows it only once you set it for that sender, and until then counts a Land
   authority's letter with nationwide holidays and the 3-day rule. Replayed that way, the same readings give
-  48 of 56 on the test split, 50 on the holdout split and 47 on the holdout2 split; every extra miss is
-  1–3 days early (row ⁹).
+  48 of 56 on the test split, 50 on the holdout split, 47 on the holdout2 split and 51 on the holdout3
+  split; every extra miss is 1–3 days early (row ⁹).
+- **Held out a third time, after the code freeze: 100 %, no late date.** On a third split of 63 new
+  letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
+  rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
+  late. Neither the completeness re-ask nor the reading check was needed on these letters.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
