@@ -311,6 +311,7 @@ async def test_the_code_written_note_is_never_all_clear_while_letters_wait(data_
         assert waiting == 1
 
 
+@pytest.mark.usefixtures("collection_paused")
 async def test_an_email_nested_too_deeply_is_refused_with_a_reason(data_dir: Path) -> None:
     deep = b"From: a@example.org\r\nSubject: tief\r\nMIME-Version: 1.0\r\n" + b"".join(
         b'Content-Type: multipart/mixed; boundary="b%d"\r\n\r\n--b%d\r\n' % (n, n) for n in range(1000)

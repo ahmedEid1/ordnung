@@ -302,6 +302,7 @@ def test_a_photo_pasted_into_the_text_is_read_and_a_banner_is_not() -> None:
     ]
 
 
+@pytest.mark.usefixtures("collection_paused")
 def test_an_email_nested_too_deeply_is_refused_with_a_reason() -> None:
     """The standard library's parser recurses once per level: such an e-mail is refused, never a crash."""
     deep = nested_email(1000)
