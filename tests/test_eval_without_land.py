@@ -91,7 +91,7 @@ def _results(name: str) -> dict[str, Any]:
 def test_the_benchmark_page_shows_both_numbers_per_split() -> None:
     """docs/evals.md gets a section of its own from the results file (``evals.report --without-land``)."""
     published = _results("2026-09-30-claude-sonnet-5-test.json")
-    without_land = _results("2026-10-03-claude-sonnet-5-without-land.json")
+    without_land = _results("2026-10-06-claude-sonnet-5-without-land.json")
     assert "## Without the sender's Land" not in report.render_markdown([published])
     page = report.render_markdown([published], without_land=without_land)
     section = page.split("## Without the sender's Land", 1)[1].split("\n## ", 1)[0]

@@ -328,7 +328,7 @@ def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
     changes, to its labelled date with the model's own to-do (the reading check files nothing), and the row above
     stays held-out."""
     readme = _readme()
-    rescored = _results("2026-10-03-claude-sonnet-5-holdout2-rescored.json")
+    rescored = _results("2026-10-06-claude-sonnet-5-holdout2-rescored.json")
     held = _results("2026-10-01-claude-sonnet-5-holdout2.json")
     meta = rescored["meta"]
     assert meta["split"] == "holdout2" and meta["backend"] == "replay" and meta["conditions"] == ["ordnung"]
@@ -421,7 +421,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
     sender's Land): its accuracy per split, no late date, extra misses 1–3 days early — and the numbers with the
     Land it sets them against are the published replays' (rows ⁴, ⁶ and ⁸)."""
     readme = _readme()
-    results = _results("2026-10-03-claude-sonnet-5-without-land.json")
+    results = _results("2026-10-06-claude-sonnet-5-without-land.json")
     assert results["schema"] == "ordnung-eval-without-land/1"
     assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
     splits = results["splits"]
@@ -439,7 +439,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
     published = {
         "test": _results("2026-09-30-claude-sonnet-5-test.json"),
         "holdout": _results("2026-09-30-claude-sonnet-5-holdout-rescored.json"),
-        "holdout2": _results("2026-10-03-claude-sonnet-5-holdout2-rescored.json"),
+        "holdout2": _results("2026-10-06-claude-sonnet-5-holdout2-rescored.json"),
     }
     for name, run in published.items():
         assert (

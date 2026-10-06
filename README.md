@@ -478,6 +478,9 @@ More in [docs/architecture.md](docs/architecture.md).
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
   above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
   megapixels, are refused; take the photo at normal resolution.
+- Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
+  the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
+  Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read

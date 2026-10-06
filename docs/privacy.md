@@ -236,6 +236,7 @@ fetched from the internet.
   log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
   anything else. The server's sign-in link carries the session token, so the service throws away
   what `serve` prints: the token never lands in the system journal or a log file.
+  It also records `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` when that is set (see Hardening below).
   `ordnung autostart disable` removes the file.
 
 ## Calendar sync (optional)
@@ -338,7 +339,7 @@ took from them is), the lock and the running server's session file.
   apply; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
 - Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far (an
   edit-protected PDF's measured decrypted), photos with too many pixels and texts over 60 pages are
-  refused, so a hostile file can't exhaust your computer's memory. A PDF whose protection or structure
+  refused, so a hostile file can't exhaust your computer's memory or keep the check busy for minutes. A PDF whose protection or structure
   can't be checked this way is refused, with the hint to print it to a new PDF. A refused file leaves
   nothing behind, and a PDF whose objects refer to themselves can't hang the reading of its text: its
   pages are read from their images instead.

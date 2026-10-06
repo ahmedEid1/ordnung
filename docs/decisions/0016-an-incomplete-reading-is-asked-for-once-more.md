@@ -158,11 +158,11 @@ commit `f773638`, by a replay-first live run that recorded that one call and rep
   dates Thu 10 Dec 2026 at high confidence from the sentence it found on the letter, so the check files nothing
   for that letter (the call: about $0.07 API-equivalent and 20 s). Replayed with it, holdout2 still gives 55 of
   56 with no late date, now from the model's own to-do.
-- The split was then re-scored with a fresh `--run-id` and `--results-dir`
-  (`evals/results/2026-10-03-claude-sonnet-5-holdout2-rescored.json`, on commit `2cc4558`, and again on
-  `60a849e` with the same numbers when a fix to the text layer changed the fingerprint); its note says the
-  row is the held-out recordings plus this one call, made after them and because of that letter, with the
-  call's cost and latency counted. The 2026-10-01 re-scored file stays as it was, and the held-out row is
+- The split was then re-scored with a fresh `--run-id` and `--results-dir`: on commit `2cc4558` on 3
+  October, and again with the same numbers on 6 October once a fix to the text layer changed the
+  fingerprint (`evals/results/2026-10-06-claude-sonnet-5-holdout2-rescored.json`, commit `f65a83d`); its
+  note says the row is the held-out recordings plus this one call, made after them and because of that
+  letter, with the call's cost and latency counted. The 2026-10-01 re-scored file stays as it was, and the held-out row is
   unchanged.
 
 ## Consequences and limits

@@ -640,7 +640,14 @@ its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`) �
 for Claude claimed meanwhile (put back for 30 s at a time; private and held letters are still read).
 Reading resumes once a Claude status check sees Claude ready: `GET /api/health` (a missing or
 signed-out status is kept 15 s, a ready one 10 min) or the worker's own check every 30 s. A `claude`
-found on PATH is used from then on, so installing Claude needs no restart.
+found on PATH is used from then on, so installing Claude needs no restart. A reading that finds Claude
+not installed or not signed in drops the cached status, so the next check asks again; when a check said
+"ready" and the next reading fails the same way (a key Claude refuses), the worker's own check waits
+twice as long each time, up to 30 min. `llm.resumed` follows once a letter gets past Claude, not a
+check alone. A page that connects during a pause (a reload, a new tab) gets the current `llm.paused`
+first — while a letter only Claude can read still waits — and reads each letter's `waiting_reason`
+from `GET /api/jobs?active_only=true`; a letter waiting for Claude then shows "This letter waits for
+Claude" with the dates list and *Add a date* instead of the stepper.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
 non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
@@ -780,7 +787,7 @@ whose adding was stopped before its attachments adds them.
   to arrive by, or a *Waiting for* entry past its day — else "All clear until <next day to act>" — or
   "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
   decisions and snoozed to-dos count). Never "All clear" while letters aren't read (waiting from the
-  folder, or couldn't be read): then "Nothing due from the letters that were read" and how many; *New
+  folder, waiting in the queue — for Claude, say — or being read, or couldn't be read): then "Nothing due from the letters that were read" and how many; *New
   since your last review* lists such letters every week, whenever they came. Only the moments of the
   last session and of a dismissed prompt
   are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
@@ -1356,8 +1363,8 @@ Pages:
    urgency scale — overdue, today or tomorrow is urgent, the week needs attention, and a direct debit,
    money coming in, a fee paid on site or an appointment never turns urgent); (6) recent letters
    (collapsed; newest first by the day each was received, else dated, else added);
-   "All clear until Friday" empty state — never while letters couldn't be read or wait from the
-   folder: then "Nothing due from the letters that were read" and the card "N letters couldn't be read
+   "All clear until Friday" empty state — never while letters couldn't be read, wait from the
+   folder or wait in the queue (for Claude, say): then "Nothing due from the letters that were read" and the card "N letters couldn't be read
    — Try again"; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5

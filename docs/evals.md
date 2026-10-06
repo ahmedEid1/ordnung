@@ -8,7 +8,7 @@
 > Ordnung was run again on 2026-09-30 with the extraction prompt the app uses now (“The prompt the app uses now”); the numbers above stay those of the published run.
 > Every condition was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
 > Every condition was also recorded once on the fresh holdout2 split (2026-10-01), written after the release's last change to how letters are read (“Held-out run: the holdout2 split”).
-> Ordnung was replayed on 2026-10-03 without the sender's Land, as the app runs until the person sets it (“Without the sender's Land”).
+> Ordnung was replayed on 2026-10-06 without the sender's Land, as the app runs until the person sets it (“Without the sender's Land”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -122,7 +122,7 @@ in the re-scored row only.
 | **LLM + rules tool** | 98.2 % [94.2–100.0] | 55/56 | 1.8 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
 | **Ordnung, re-scored** (not held-out) | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
 
-**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the held-out run's recorded outputs plus 1 model answer recorded after it — the completeness re-ask (ADR 0016) of `holdout2-adversarial-injection_visible-1` (accepted) — with the code of commit `60a849e` (2026-10-03). That code has a check written after the held-out run and informed by it, so the holdout2 split is no longer held-out for it: the held-out row above stays the held-out number. It replays the 1 October held-out recordings plus one model call made after them, the completeness re-ask (ADR 0016) for `holdout2-adversarial-injection_visible-1`: recorded live on 2026-10-03 at commit `f773638` because that letter's reading had come back empty, and accepted. Claude's second answer gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026 from the sentence it found on the letter, at high confidence. The re-ask's prompt was written after, and because of, that letter, so this row is not held-out; the call's cost and latency are included in its numbers. The code also has the reading check (`src/ordnung/ingest/gaps.py`, ADR 0015), which files nothing for this letter once the re-ask's answer is used, and the later work on that check's limits. The held-out row above is unchanged (54 of 56).
+**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the held-out run's recorded outputs plus 1 model answer recorded after it — the completeness re-ask (ADR 0016) of `holdout2-adversarial-injection_visible-1` (accepted) — with the code of commit `f65a83d` (2026-10-06). That code has a check written after the held-out run and informed by it, so the holdout2 split is no longer held-out for it: the held-out row above stays the held-out number. It replays the 1 October held-out recordings plus one model call made after them, the completeness re-ask (ADR 0016) for `holdout2-adversarial-injection_visible-1`: recorded live on 2026-10-03 at commit `f773638` because that letter's reading had come back empty, and accepted. Claude's second answer gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026 from the sentence it found on the letter, at high confidence. The re-ask's prompt was written after, and because of, that letter, so this row is not held-out; the call's cost and latency are included in its numbers. The code also has the reading check (`src/ordnung/ingest/gaps.py`, ADR 0015), which files nothing for this letter once the re-ask's answer is used, and the later work on that check's limits. The held-out row above is unchanged (54 of 56).
 
 Paired differences on the holdout2 letters:
 
@@ -144,8 +144,8 @@ the letterhead is the sender's. The app has no such Land: it knows a sender's La
 it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
 this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
 delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
-commit `60a849e` (2026-10-03; `python -m scripts.eval_without_land`, results in
-`evals/results/2026-10-03-claude-sonnet-5-without-land.json`); no model was called. **The “without” column is the app's own result for a sender whose Land the
+commit `f65a83d` (2026-10-06; `python -m scripts.eval_without_land`, results in
+`evals/results/2026-10-06-claude-sonnet-5-without-land.json`); no model was called. **The “without” column is the app's own result for a sender whose Land the
 person has not set.**
 
 | Split | With the letterhead's Land | Without the sender's Land | Dangerous late | Letters whose letterhead names a Land |

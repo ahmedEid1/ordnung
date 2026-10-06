@@ -105,8 +105,8 @@ sequenceDiagram
 Every stage updates the durable `jobs` queue and publishes `job.progress` events, which drive the
 live stepper in the UI. Rate limits pause the whole worker until the reset time instead of failing
 documents, and Claude not installed or not signed in pauses it until a status check sees Claude ready
-(the letters wait as *Waiting for Claude*; a call that never started carried no letter); a restart
-resumes queued work.
+(the letters wait as *Waiting for Claude*, and a page opened meanwhile is told of the pause when it
+connects; a call that never started carried no letter); a restart resumes queued work.
 
 ## The watched folder
 
@@ -461,6 +461,9 @@ build from before a renumbering) is refused with the reason, never migrated on a
 - **One process.** FastAPI (uvicorn) runs the API, the ingest worker, the daily tick and the folder
   watcher on one asyncio loop; CPU-heavy work (PDF text, rendering, listing and reading the watched
   folder) runs in threads (`asyncio.to_thread`); `watchfiles` waits for changes in its own thread.
+  `ordnung serve` runs uvicorn on the plain asyncio loop, not uvloop: uvloop runs Python in the child
+  it forks to start `claude`, where closing the other threads' SQLite connections could freeze the
+  server.
 - **SQLite:** one connection per thread, WAL, `BEGIN IMMEDIATE` write transactions (re-entrant via
   savepoints). Linking + planning for a document happen in one transaction under a ledger lock, so
   two letters from the same new sender can't create duplicate parties.
