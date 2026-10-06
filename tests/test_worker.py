@@ -27,7 +27,8 @@ from ordnung.ingest.worker import DEFAULT_PAUSE, PAUSE_META_KEY, IngestWorker, p
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout
 from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.models import ClaudeStatus
-from test_api_support import client_for
+from test_api_ask import call_until
+from test_api_support import client_for, sse_messages
 
 NOW = datetime(2026, 9, 25, 12, 0, tzinfo=UTC)
 
@@ -185,8 +186,12 @@ async def test_signed_out_claude_keeps_the_letters_waiting(ctx: AppContext, rout
 
     del router.errors["extract"]
     ctx.worker.claude_ready()
-    assert ("llm.resumed", {}) in events and ctx.worker.waiting_for_claude is None
+    assert ctx.worker.waiting_for_claude is None
+    # the letters no longer say they wait; the app hears that reading goes on once one got past Claude
+    assert all(job.waiting_reason is None for job in ctx.store.list_jobs())
+    assert ("llm.resumed", {}) not in events and ctx.worker.current_pause() is not None
     assert await ctx.worker.run_until_idle() == 2
+    assert [kind for kind, _ in events].count("llm.resumed") == 1 and ctx.worker.current_pause() is None
     for doc_id in (first.id, second.id):
         document = ctx.store.get_document(doc_id)
         assert document is not None and document.status == "processed"
@@ -223,11 +228,115 @@ async def test_private_letters_are_read_while_claude_isnt_ready(ctx: AppContext,
     assert still is not None and still.status == "queued"
 
 
-async def test_the_worker_looks_for_claude_while_letters_wait(
-    ctx: AppContext, router: Router, monkeypatch: pytest.MonkeyPatch
+async def test_a_ready_status_that_isnt_backs_off_and_keeps_one_pause(
+    ctx: AppContext, router: Router
 ) -> None:
+    """``auth status`` says signed in, yet Claude refuses every reading (an expired key): each failure drops the
+    cached status, the app keeps hearing one "Waiting for Claude" (no paused/resumed every 30 s), and each
+    check that said "ready" in vain doubles the time to the worker's next one (final check, F-S1)."""
+    attempts = refusing(router, ClaudeAuthError("Claude Code is not signed in."))
+    dropped: list[None] = []
+    ctx.worker.claude_failed = lambda: dropped.append(None)
+    events = record_events(ctx.bus)
+    await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    await ctx.worker.run_until_idle()
+    assert len(dropped) == 1 and ctx.worker.claude_recheck_s == worker.CLAUDE_RECHECK_S
+
+    for expected in (60.0, 120.0, 240.0):
+        ctx.worker.claude_ready()  # a check said "ready"
+        assert await ctx.worker.run_until_idle() == 1
+        assert ctx.worker.claude_recheck_s == expected
+    assert len(attempts) == 4 and len(dropped) == 4
+    for _ in range(4):
+        ctx.worker.claude_ready()
+        await ctx.worker.run_until_idle()
+    assert ctx.worker.claude_recheck_s == worker.CLAUDE_RECHECK_MAX_S
+    assert [kind for kind, _ in events if kind.startswith("llm.")] == ["llm.paused"]
+    assert ctx.worker.current_pause() == {"until": "", "reason": worker.NOT_SIGNED_IN_REASON}
+
+    # another failure is news: the usual interval again, and the app hears the new reason
+    router.errors["extract"] = lambda: ClaudeNotInstalled("The “claude” command was not found.")
+    ctx.worker.claude_ready()
+    await ctx.worker.run_until_idle()
+    assert ctx.worker.claude_recheck_s == worker.CLAUDE_RECHECK_S
+    reasons = [data["reason"] for kind, data in events if kind == "llm.paused"]
+    assert reasons[-1] == worker.NOT_INSTALLED_REASON
+
+    del router.errors["extract"]
+    ctx.worker.claude_ready()
+    assert await ctx.worker.run_until_idle() == 1
+    assert [kind for kind, _ in events if kind.startswith("llm.")][-1] == "llm.resumed"
+    assert ctx.worker.current_pause() is None
+
+
+async def test_a_reading_that_finds_claude_not_ready_drops_the_cached_status(
+    ctx: AppContext, router: Router
+) -> None:
+    """Settings, the upload dialog and the worker's next check ask Claude again instead of saying "ready" from
+    a cache kept ten minutes (final check, F-S1)."""
+    probes: list[None] = []
+
+    async def probe() -> ClaudeStatus:
+        probes.append(None)
+        return ClaudeStatus(installed=True, path="/usr/bin/claude", ok=True)
+
+    state = create_app(ctx, token=None).state.ordnung
+    state.claude.probe = probe
+    for _ in range(2):
+        await state.claude.get("claude", uses_cli=True)
+    assert len(probes) == 1  # "ready" is kept
+
+    refusing(router, ClaudeAuthError("Claude Code is not signed in."))
+    await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    await ctx.worker.run_until_idle()
+    await state.claude.get("claude", uses_cli=True)
+    assert len(probes) == 2
+
+
+async def test_a_page_opened_while_letters_wait_hears_it_first(ctx: AppContext, router: Router) -> None:
+    """The pause is announced once, when it starts: a page opened (or reloaded) later is told on connecting —
+    the wait for Claude, or a usage limit that hasn't ended (final check, F-M2)."""
+    refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
+    await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    await ctx.worker.run_until_idle()
+    app = create_app(ctx, token=None)
+    body = await call_until(app, "GET", "/api/events", None, lambda sent: b"reason" in sent)
+    (message,) = sse_messages(body.decode())
+    assert message["event"] == "llm.paused"
+    assert json.loads(message["data"]) == {"until": "", "reason": worker.NOT_INSTALLED_REASON}
+
+    usage = ClaudeRateLimited("Usage limit reached.", reset_at="2 hours")
+    router.errors["extract"] = lambda: usage
+    ctx.worker.claude_ready()
+    await ctx.worker.run_until_idle()
+    assert ctx.worker.paused_until is not None
+    assert ctx.worker.current_pause() == {"until": ctx.worker.paused_until.isoformat(), "reason": str(usage)}
+
+
+async def test_a_letter_that_waited_before_a_restart_ends_the_wait_once_read(
+    ctx: AppContext, router: Router
+) -> None:
+    """After a restart the server knows of no wait, but a page may show one from the letter's job: once that
+    letter is read, the app hears that reading goes on."""
+    refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
+    document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    await ctx.worker.run_until_idle()
+    del router.errors["extract"]
+    job = ctx.store.list_jobs()[0]
+    ctx.store.update_job(job.id, not_before=datetime.now(UTC) - timedelta(seconds=1))
+
+    restarted = IngestWorker(ctx)
+    assert restarted.current_pause() is None
+    events = record_events(ctx.bus)
+    assert await restarted.run_until_idle() == 1
+    assert ("llm.resumed", {}) in events
+    read = ctx.store.get_document(document.id)
+    assert read is not None and read.status == "processed"
+
+
+async def test_the_worker_looks_for_claude_while_letters_wait(ctx: AppContext, router: Router) -> None:
     """Nobody has to open the app: the running worker asks its Claude check again by itself."""
-    monkeypatch.setattr(worker, "CLAUDE_RECHECK_S", 0.0)
+    ctx.worker.claude_recheck_s = 0.0
     router.errors["extract"] = lambda: ClaudeAuthError("Claude Code is not signed in.")
     answers = [False, True]
     asked: list[bool] = []

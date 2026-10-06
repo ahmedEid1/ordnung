@@ -11,7 +11,9 @@ every 15 seconds while it is not found or not signed in, so installing it counts
 Every fresh status reaches the running app: a ``claude`` found on PATH becomes the one the model
 backend runs (it looked for the CLI only when Ordnung started), and once Claude is ready the letters
 waiting for it are read (:meth:`~ordnung.ingest.worker.IngestWorker.claude_ready`). While letters
-wait, the worker asks for a fresh status itself (``IngestWorker.claude_check``).
+wait, the worker asks for a fresh status itself (``IngestWorker.claude_check``). A reading that finds
+Claude not installed or not signed in drops the cached status (``IngestWorker.claude_failed``), so
+Settings, the upload dialog and the next check never go on saying "ready" from the cache.
 """
 
 from __future__ import annotations
@@ -118,6 +120,10 @@ class ClaudeStatusCache:
         self.listener: StatusListener | None = None
         self._value: tuple[float, ClaudeStatus] | None = None
         self._lock = asyncio.Lock()
+
+    def forget(self) -> None:
+        """Drop the cached status (a reading just found Claude not ready): the next :meth:`get` probes again."""
+        self._value = None
 
     def remember(self, status: ClaudeStatus) -> None:
         """Store a status found by a fuller check (``/api/health?probe=1``) as the cached one."""
@@ -249,6 +255,7 @@ class ApiState:
         self.folder = FolderWatcher(self.ctx, can_read=self.reads_letters)
         self.claude.listener = self._claude_seen
         self.ctx.worker.claude_check = self._claude_ready_now
+        self.ctx.worker.claude_failed = self.claude.forget
 
     def _claude_seen(self, status: ClaudeStatus) -> None:
         """A fresh Claude status: the backend runs the ``claude`` found, and once Claude is ready the
