@@ -12,6 +12,7 @@ import functools
 import io
 import json
 import os
+import random
 import stat
 import sys
 import time
@@ -201,12 +202,28 @@ def _protected_pdf(method: EncryptionMethod, user_password: str = "") -> FPDF:
     return pdf
 
 
-def _with_encrypted_stream(pdf: FPDF, raw: bytes, filters: bytes) -> bytes:
-    """The PDF plus one more stream object, encrypted with the PDF's own key (as fpdf2 encrypts it)."""
+def _with_encrypted_stream(
+    pdf: FPDF, raw: bytes, filters: bytes, number: int = 99, key_number: int | None = None
+) -> bytes:
+    """The PDF plus one more stream object, ``number``, encrypted with the PDF's own key (as fpdf2 encrypts
+    it) for object ``key_number`` (default: ``number``)."""
     body = bytes(pdf.output())
-    sealed = pdf._security_handler.encrypt_stream(raw, 99)
-    stream = b"\n99 0 obj\n<< /Length %d /Filter %s >>\nstream\n" % (len(sealed), filters)
+    sealed = pdf._security_handler.encrypt_stream(raw, number if key_number is None else key_number)
+    stream = b"\n%d 0 obj\n<< /Length %d /Filter %s >>\nstream\n" % (number, len(sealed), filters)
     return body + stream + sealed + b"\nendstream\nendobj\n"
+
+
+def _rc4_decrypted(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """The length of every piece of data the bomb check decrypts with RC4 from now on."""
+    lengths: list[int] = []
+    real = expansion.rc4
+
+    def spy(key: bytes, data: bytes) -> bytes:
+        lengths.append(len(data))
+        return real(key, data)
+
+    monkeypatch.setattr(expansion, "rc4", spy)
+    return lengths
 
 
 @pytest.mark.parametrize("method", ENCRYPTIONS)
@@ -235,6 +252,53 @@ def test_encrypted_bomb_behind_a_planted_endstream_is_measured_to_its_end() -> N
 
     with pytest.raises(IntakeError, match="expands to far more data"):
         normalise_upload(bomb, "kontoauszug.pdf")
+
+
+def test_an_encrypted_bomb_keyed_to_the_end_of_its_object_number_is_rejected() -> None:
+    """PDFium decrypts an object with the number a cross-reference table asks for, and finds "12 0 obj"
+    inside "9912 0 obj": a stream is decrypted with every number its object may have."""
+    pdf = _protected_pdf(EncryptionMethod.RC4)
+    bomb = _with_encrypted_stream(pdf, _nested_bomb(), TWO_FLATES, number=9912, key_number=12)
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+
+
+def test_an_encrypted_stream_an_image_codec_reads_is_not_decrypted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An image codec's data is bounded by the pixel check, so the bomb check has nothing to measure in it
+    (an RC4 PDF with an 8 MB one, its object numbered 1234567890, took 40 s: decrypted for every number its
+    object might have)."""
+    decrypted = _rc4_decrypted(monkeypatch)
+    noise = random.Random(7).randbytes(2_000_000)
+    image = _with_encrypted_stream(
+        _protected_pdf(EncryptionMethod.RC4), noise, b"/DCTDecode", number=1234567890
+    )
+    expansion.check_pdf_expansion(image)
+    assert sum(decrypted) < 50_000  # the letter's own page and font
+
+
+def test_filter_chains_that_differ_only_after_their_measured_part_are_measured_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``/Filter`` given 200 times, each a Flate stage then a filter that doesn't expand: the stream is
+    decrypted once for its object (it was decrypted for every chain and every number: 241 s for 1 MB),
+    and a wrong number's key only for the piece in which its filters fail."""
+    decrypted = _rc4_decrypted(monkeypatch)
+    data = zlib.compress(random.Random(7).randbytes(500_000), 1)
+    chains = b" /Filter ".join(b"[/FlateDecode /JBIG%d]" % index for index in range(200))
+    expansion.check_pdf_expansion(_with_encrypted_stream(_protected_pdf(EncryptionMethod.RC4), data, chains))
+    assert len(data) < sum(decrypted) < len(data) + 50_000
+
+
+def test_decrypting_counts_against_the_measuring_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Measuring may read and decrypt four times the file plus some slack. With the slack set so that
+    reading the stream once fits but reading and decrypting it doesn't, the PDF is refused."""
+    data = zlib.compress(random.Random(7).randbytes(500_000), 1)
+    pdf = _with_encrypted_stream(_protected_pdf(EncryptionMethod.RC4), data, b"/FlateDecode")
+    monkeypatch.setattr(expansion, "_READ_SLACK", 3 * len(data) // 2 - 4 * len(pdf))
+    with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
+        expansion.check_pdf_expansion(pdf)
+    monkeypatch.setattr(expansion, "_READ_SLACK", 5 * len(data) // 2 - 4 * len(pdf))
+    expansion.check_pdf_expansion(pdf)
 
 
 @pytest.mark.parametrize("method", ENCRYPTIONS)
@@ -334,6 +398,31 @@ def test_numbers_longer_than_any_real_pdfs_are_refused_not_a_crash() -> None:
 def test_a_filter_that_cant_be_looked_up_is_rejected() -> None:
     with pytest.raises(IntakeError, match="built in a way that can't be checked"):
         normalise_upload(_one_page(b"<< /Filter 6 0 R >>", _nested_bomb()), "brief.pdf")
+
+
+LOOSE_STREAM = b"stream\n" + zlib.compress(bytes(64)) + b"\nendstream\n"
+
+
+def test_thousands_of_stream_keywords_without_an_object_are_refused_quickly() -> None:
+    """Each ``stream`` keyword with no ``N G obj`` in front had the 64 KB in front of it scanned for one:
+    20,000 of them in 0.6 MB took 33 s, and the PDF was accepted."""
+    started = time.monotonic()
+    with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + LOOSE_STREAM * 20_000)
+    assert time.monotonic() - started < 5
+    # a damaged file's few loose streams are still measured
+    bomb = b"<< /Filter " + TWO_FLATES + b" >>\nstream\n" + _nested_bomb()
+    with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + LOOSE_STREAM * 100 + bomb)
+
+
+def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() -> None:
+    """Each keyword's dictionary runs back to the ``N G obj`` in front of it: 8,000 keywords behind each of
+    50 objects (2.8 MB) had 11 GB scanned, for 40 s, and the PDF was accepted."""
+    started = time.monotonic()
+    with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + (b"1 0 obj\n<< >>\n" + b"stream\n" * 8000) * 50)
+    assert time.monotonic() - started < 5
 
 
 def test_unusual_but_valid_syntax_is_accepted() -> None:

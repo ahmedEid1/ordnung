@@ -13,8 +13,10 @@
   matched to (the same character within a fraction of its size) count as visible. The text layer is
   read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering
   with another reference: an object that refers to itself (``5 0 obj 5 0 R endobj``, in the document
-  information, a page's resources …) would otherwise be resolved forever. Such a PDF's pages are read
-  from their images, like a photo.
+  information, a page's contents or resources …) would otherwise be resolved forever. Such a PDF's pages
+  are read from their images, like a photo. A PDF protected with RC4 is decrypted with :func:`rc4`,
+  which returns what pdfminer's own cipher does in linear time (pdfminer's slows down with the square of
+  a stream's length: over a minute for a page of 1.5 MB).
 * **Plain-text and e-mail documents** — decoded, laid out on A4 page images with a bundled font, and
   returned with exact word boxes so quotes from them can be highlighted like PDF text. Layout is
   lazy (it stops once a page limit is passed) and wrapping measures at most one row at a time, so
@@ -32,10 +34,12 @@ import email
 import email.parser
 import email.policy
 import functools
+import hashlib
 import itertools
 import logging
 import math
 import re
+import struct
 import sys
 import threading
 import unicodedata
@@ -46,12 +50,12 @@ from email.message import EmailMessage, MIMEPart
 from html.parser import HTMLParser
 from io import BufferedReader
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, cast
 
 import pdfplumber
 import pypdfium2 as pdfium
 import pypdfium2.raw as raw
-from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfdocument import PDFDocument, PDFStandardSecurityHandler, PDFStandardSecurityHandlerV4
 from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
@@ -224,10 +228,57 @@ class _PageFrame:
 MAX_REFERENCE_LOOKUPS = 1000
 
 
+def rc4(key: bytes, data: bytes) -> bytes:
+    """``data`` encrypted or decrypted with RC4 under ``key``: byte for byte what pdfminer's ``Arcfour``
+    returns, in linear time (``Arcfour`` appends each byte to a new ``bytes``: 74 s for 1 MB)."""
+    state = list(range(256))
+    j = 0
+    for i in range(256):
+        j = (j + state[i] + key[i % len(key)]) & 255
+        state[i], state[j] = state[j], state[i]
+    keystream = bytearray(len(data))
+    i = j = 0
+    for at in range(len(data)):
+        i = (i + 1) & 255
+        x = state[i]
+        j = (j + x) & 255
+        y = state[j]
+        state[i] = y
+        state[j] = x
+        keystream[at] = state[(x + y) & 255]
+    sealed = int.from_bytes(data, "little") ^ int.from_bytes(keystream, "little")
+    return sealed.to_bytes(len(data), "little")
+
+
+class _LinearRC4:
+    """pdfminer's RC4 decryption of an object's strings and streams (PDF 7.6.2), with :func:`rc4`."""
+
+    key: bytes | None
+
+    def decrypt_rc4(self, objid: int, genno: int, data: bytes) -> bytes:
+        key = (self.key or b"") + struct.pack("<L", objid)[:3] + struct.pack("<L", genno)[:2]
+        return rc4(hashlib.md5(key, usedforsecurity=False).digest()[: min(len(key), 16)], data)
+
+
+class _SecurityHandler(_LinearRC4, PDFStandardSecurityHandler):
+    """pdfminer's handler for RC4 (``/V`` 1 and 2)."""
+
+
+class _SecurityHandlerV4(_LinearRC4, PDFStandardSecurityHandlerV4):
+    """pdfminer's handler for crypt filters (``/V`` 4: RC4 or AES-128)."""
+
+
 class _Document(PDFDocument):
     """pdfminer's document, giving up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering with another
-    reference: resolving a reference to itself (``5 0 obj 5 0 R endobj``) would loop forever."""
+    reference: resolving a reference to itself (``5 0 obj 5 0 R endobj``) would loop forever. RC4 is
+    decrypted with :func:`rc4`."""
 
+    security_handler_registry: ClassVar[dict[int, type[PDFStandardSecurityHandler]]] = {
+        **PDFDocument.security_handler_registry,
+        1: _SecurityHandler,
+        2: _SecurityHandler,
+        4: _SecurityHandlerV4,
+    }
     references = 0
 
     def getobj(self, objid: int) -> object:
@@ -279,13 +330,14 @@ def extract_pdf_pages(pdf_path: Path, rendered: Sequence[RenderedPage]) -> list[
     except Exception:  # damaged text layer: every page falls back to transcription
         log.warning("could not read the text layer of %s", pdf_path, exc_info=True)
         return unread
+    try:
+        pages = pdf.pages
+    except Exception:  # a page tree pdfminer can't follow: every page falls back to transcription
+        log.warning("could not read the pages of %s", pdf_path, exc_info=True)
+        pdf.stream.close()  # closing the PDF would read its pages again, and fail again
+        return unread
     invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
     with pdf:
-        try:
-            pages = pdf.pages
-        except Exception:  # a page tree pdfminer can't follow: every page falls back to transcription
-            log.warning("could not read the pages of %s", pdf_path, exc_info=True)
-            return unread
         return [_extract_page_safely(pages[r.page - 1], r.page, invisible.get(r.page)) for r in rendered]
 
 
