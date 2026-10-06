@@ -41,8 +41,10 @@ GALLERY_PER_FAMILY = 2
 HOLDOUT_SPLIT = "holdout"
 #: The split written after the release's last change to how letters are read, recorded once, nothing tuned on it (evals/generate.py).
 HOLDOUT2_SPLIT = "holdout2"
-#: The held-out splits: a run on either is accepted wherever a held-out run is expected.
-HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT)
+#: The split written after the code freeze, audited blind, recorded once, nothing tuned on it (evals/generate.py).
+HOLDOUT3_SPLIT = "holdout3"
+#: The held-out splits: a run on any of them is accepted wherever a held-out run is expected.
+HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT, HOLDOUT3_SPLIT)
 #: The results of ``scripts/eval_without_land.py``: Ordnung replayed with and without the sender's Land.
 WITHOUT_LAND_SCHEMA = "ordnung-eval-without-land/1"
 
@@ -549,6 +551,8 @@ def render_markdown(
     holdout2_run: Mapping[str, Any] | None = None,
     holdout2_rescored: Mapping[str, Any] | None = None,
     without_land: Mapping[str, Any] | None = None,
+    holdout3_run: Mapping[str, Any] | None = None,
+    holdout3_rescored: Mapping[str, Any] | None = None,
 ) -> str:
     """``docs/evals.md`` for one or more runs (one per model; the first is the headline).
 
@@ -562,8 +566,10 @@ def render_markdown(
     code: one more row in its table, labelled re-scored and not held-out, never in its place (see
     :func:`check_holdout_rescored`). ``holdout2_run`` and ``holdout2_rescored`` are the same for the
     holdout2 split (written after the release's last change to how letters are read), shown in a section of their own
-    after the holdout one. Either slot accepts a run on either held-out split; each section is rendered
-    for its run's split. ``without_land`` is ``scripts/eval_without_land.py``'s results: Ordnung replayed on
+    after the holdout one. ``holdout3_run`` and ``holdout3_rescored`` are the same for the holdout3 split
+    (written after the code freeze, audited blind), shown in a section of their own after the holdout2 one.
+    Any of these slots accepts a run on any held-out split; each section is rendered for its run's split.
+    ``without_land`` is ``scripts/eval_without_land.py``'s results: Ordnung replayed on
     each split with and without the sender's Land (see :func:`check_without_land`), shown in a section of its
     own — the app's numbers until the person sets a sender's Land.
     """
@@ -573,7 +579,12 @@ def render_markdown(
     meta = main["meta"]
     if without_land is not None:
         check_without_land(without_land)
-    for held_out, held_out_rescored in ((holdout_run, holdout_rescored), (holdout2_run, holdout2_rescored)):
+    held_out_pairs = (
+        (holdout_run, holdout_rescored),
+        (holdout2_run, holdout2_rescored),
+        (holdout3_run, holdout3_rescored),
+    )
+    for held_out, held_out_rescored in held_out_pairs:
         if held_out is not None:
             check_holdout_run(held_out)
         if held_out_rescored is not None:
@@ -582,17 +593,13 @@ def render_markdown(
                     "a re-scored holdout run is shown beside the held-out run: give the held-out run too"
                 )
             check_holdout_rescored(held_out, held_out_rescored)
-    if (
-        holdout_run is not None
-        and holdout2_run is not None
-        and holdout_run["meta"].get("split") == holdout2_run["meta"].get("split")
-    ):
-        raise ValueError("the two held-out runs are runs on two different held-out splits")
+    check_distinct_held_out_splits(holdout_run, holdout2_run, holdout3_run)
     sections = [
-        _intro(main, prompt_runs, holdout_run, holdout2_run, without_land),
+        _intro(main, prompt_runs, holdout_run, holdout2_run, without_land, holdout3_run=holdout3_run),
         _headline(main, chart, rescored),
         _holdout_section(main, holdout_run, holdout_rescored) if holdout_run else "",
         _holdout_section(main, holdout2_run, holdout2_rescored) if holdout2_run else "",
+        _holdout_section(main, holdout3_run, holdout3_rescored) if holdout3_run else "",
         _without_land_section(without_land) if without_land else "",
         _rescored_section(main, rescored) if rescored else "",
         _prompt_section(main, rescored, prompt_runs, prompt_note) if prompt_runs else "",
@@ -614,9 +621,18 @@ def render_markdown(
             holdout2_model=holdout2_run["meta"].get("model") if holdout2_run else None,
             holdout2_split=holdout2_run["meta"].get("split") if holdout2_run else HOLDOUT2_SPLIT,
             without_land=without_land is not None,
+            holdout3_model=holdout3_run["meta"].get("model") if holdout3_run else None,
+            holdout3_split=holdout3_run["meta"].get("split") if holdout3_run else HOLDOUT3_SPLIT,
         ),
     ]
     return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
+
+
+def check_distinct_held_out_splits(*held_out_runs: Mapping[str, Any] | None) -> None:
+    """The held-out runs given for one page are runs on different held-out splits; raises ``ValueError`` if not."""
+    splits = [run["meta"].get("split") for run in held_out_runs if run is not None]
+    if len(splits) != len(set(splits)):
+        raise ValueError("the two held-out runs are runs on two different held-out splits")
 
 
 def _held_out_line(holdout_run: Mapping[str, Any]) -> str:
@@ -625,6 +641,11 @@ def _held_out_line(holdout_run: Mapping[str, Any]) -> str:
     every = set(CONDITIONS) <= set(recorded)
     who = "Every condition" if every else " and ".join(_label(c) for c in recorded)
     verb = "was" if every or len(recorded) == 1 else "were"
+    if holdout_run["meta"].get("split") == HOLDOUT3_SPLIT:
+        return (
+            f"\n> {who} {verb} also recorded once on the fresh holdout3 split ({holdout_run['meta'].get('date')}), "
+            "written after the code freeze and audited blind (“Held-out run: the holdout3 split”)."
+        )
     if holdout_run["meta"].get("split") == HOLDOUT2_SPLIT:
         return (
             f"\n> {who} {verb} also recorded once on the fresh holdout2 split ({holdout_run['meta'].get('date')}), "
@@ -642,6 +663,8 @@ def _intro(
     holdout_run: Mapping[str, Any] | None = None,
     holdout2_run: Mapping[str, Any] | None = None,
     without_land: Mapping[str, Any] | None = None,
+    *,
+    holdout3_run: Mapping[str, Any] | None = None,
 ) -> str:
     meta = results["meta"]
     backend = {"replay": "recorded outputs (replay)", "live": "live model calls"}.get(
@@ -672,7 +695,7 @@ def _intro(
             f"\n> Ordnung was run again on {', '.join(dates)} with the extraction prompt the app uses now "
             "(“The prompt the app uses now”); the numbers above stay those of the published run."
         )
-    for held_out in (holdout_run, holdout2_run):
+    for held_out in (holdout_run, holdout2_run, holdout3_run):
         if held_out is not None:
             added += _held_out_line(held_out)
     if without_land is not None:
@@ -878,13 +901,13 @@ the tool results recorded when they ran.
 
 
 def check_holdout_run(results: Mapping[str, Any]) -> None:
-    """A held-out run is one complete run on a held-out split (holdout or holdout2), of Ordnung alone or
+    """A held-out run is one complete run on a held-out split (holdout, holdout2 or holdout3), of Ordnung alone or
     with the baselines; raises ``ValueError`` if not."""
     meta = results["meta"]
     split = meta.get("split")
     if split not in HELD_OUT_SPLITS:
         raise ValueError(
-            f"a held-out run is a run on the {' or '.join(HELD_OUT_SPLITS)} split, not on {split!r}"
+            f"a held-out run is a run on the {', '.join(HELD_OUT_SPLITS[:-1])} or {HELD_OUT_SPLITS[-1]} split, not on {split!r}"
         )
     if meta.get("partial"):
         raise ValueError(f"a held-out run covers the whole {split} split; this run was filtered")
@@ -989,6 +1012,12 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
 
 def _held_out_intro(name: str) -> str:
     """What a held-out split is and when its letters were written (the method sentence of its section)."""
+    if name == HOLDOUT3_SPLIT:
+        return """The holdout3 split is a third fresh sample of the same template families (variants I and J, with
+new senders, recipients, wording, layout, dates, amounts and regions, among them Länder the earlier
+splits used little) and of the same adversarial attack classes. **The holdout3 letters were written
+after the code freeze, audited blind, are recorded once, and nothing was tuned on them.** No prompt and
+no code change was informed by these letters."""
     if name == HOLDOUT2_SPLIT:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
@@ -1012,7 +1041,7 @@ page, “the held-out run” is the first recording on the test split."""
 def _holdout_section(
     published: Mapping[str, Any], holdout: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
 ) -> str:
-    """The run on a held-out split (holdout or holdout2): its own table, with the published run's accuracy
+    """The run on a held-out split (holdout, holdout2 or holdout3): its own table, with the published run's accuracy
     beside each row — and, after it, Ordnung re-scored on later code (``rescored``), labelled as not held-out."""
     meta = holdout["meta"]
     name = str(meta.get("split"))
@@ -1763,10 +1792,12 @@ def _reproduce_section(
     holdout2_model: str | None = None,
     holdout2_split: str = HOLDOUT2_SPLIT,
     without_land: bool = False,
+    holdout3_model: str | None = None,
+    holdout3_split: str = HOLDOUT3_SPLIT,
 ) -> str:
-    """How to rerun the page; ``holdout_model`` / ``holdout2_model`` are the held-out runs' own models (on
-    ``holdout_split`` / ``holdout2_split``), which may differ from ``meta``'s; ``without_land``: the page shows
-    the replay without the sender's Land."""
+    """How to rerun the page; ``holdout_model`` / ``holdout2_model`` / ``holdout3_model`` are the held-out runs' own
+    models (on ``holdout_split`` / ``holdout2_split`` / ``holdout3_split``), which may differ from ``meta``'s;
+    ``without_land``: the page shows the replay without the sender's Land."""
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
     held = (
@@ -1786,6 +1817,15 @@ def _reproduce_section(
         )
     else:
         later_held = ""
+    if holdout3_model:
+        held += (
+            f"\npython -m evals.run --split {holdout3_split} --model {holdout3_model} --results-dir /tmp/{holdout3_split} "
+            "# replayed on the checked-out code (not the held-out number)"
+        )
+        later_held += (
+            " The run on the holdout3 split joins the page with `--holdout3-run evals/results/<holdout3 run>.json "
+            "[--holdout3-rescored …] [--holdout3-note …]` and never rewrites it either."
+        )
     if without_land:
         held += (
             "\npython -m scripts.eval_without_land   "
@@ -2166,6 +2206,8 @@ def write_docs(
     holdout2_run: Mapping[str, Any] | None = None,
     holdout2_rescored: Mapping[str, Any] | None = None,
     without_land: Mapping[str, Any] | None = None,
+    holdout3_run: Mapping[str, Any] | None = None,
+    holdout3_rescored: Mapping[str, Any] | None = None,
 ) -> tuple[Path, Path | None]:
     """Regenerate ``docs/evals.md`` (and the chart of the first run); returns both paths."""
     for run in runs:
@@ -2174,15 +2216,10 @@ def write_docs(
                 f"a {run['meta'].get('split')} run is shown beside the published run (holdout_run, holdout2_run), never "
                 "as the page's headline"
             )
-    for held_out in (holdout_run, holdout2_run):
+    for held_out in (holdout_run, holdout2_run, holdout3_run):
         if held_out is not None:
             check_holdout_run(held_out)
-    if (
-        holdout_run is not None
-        and holdout2_run is not None
-        and holdout_run["meta"].get("split") == holdout2_run["meta"].get("split")
-    ):
-        raise ValueError("the two held-out runs are runs on two different held-out splits")
+    check_distinct_held_out_splits(holdout_run, holdout2_run, holdout3_run)
     chart: Path | None = None
     reference = None
     if runs:
@@ -2201,6 +2238,8 @@ def write_docs(
             holdout2_run=holdout2_run,
             holdout2_rescored=holdout2_rescored,
             without_land=without_land,
+            holdout3_run=holdout3_run,
+            holdout3_rescored=holdout3_rescored,
         ),
         encoding="utf-8",
     )
@@ -2291,6 +2330,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         "row of its table, labelled re-scored and not held-out",
     )
     parser.add_argument(
+        "--holdout3-run",
+        type=Path,
+        metavar="RUN.json",
+        help="the run on the holdout3 split (written after the code freeze, audited blind, recorded once; Ordnung "
+        "alone or every condition), shown in its own section after the holdout2 one",
+    )
+    parser.add_argument(
+        "--holdout3-note",
+        type=Path,
+        metavar="FILE",
+        help="with --holdout3-run: a written note on that recording, stored in its results file and shown with it",
+    )
+    parser.add_argument(
+        "--holdout3-rescored",
+        type=Path,
+        metavar="RUN.json",
+        help="with --holdout3-run: a replay of the holdout3 recordings with the current code, shown as one more "
+        "row of its table, labelled re-scored and not held-out",
+    )
+    parser.add_argument(
         "--without-land",
         type=Path,
         metavar="RUN.json",
@@ -2349,6 +2408,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.holdout2_rescored and not args.holdout2_run:
         parser.error("--holdout2-rescored goes with --holdout2-run")
     holdout2_rescored = load_results(args.holdout2_rescored) if args.holdout2_rescored else None
+    if args.holdout3_note and not args.holdout3_run:
+        parser.error("--holdout3-note goes with --holdout3-run")
+    if args.holdout3_note:  # kept in the results file, like --holdout-note
+        results = load_results(args.holdout3_run)
+        note = " ".join(args.holdout3_note.read_text(encoding="utf-8").split())
+        write_json(args.holdout3_run, {**results, "meta": {**results["meta"], "holdout_note": note}})
+    holdout3_run = load_results(args.holdout3_run) if args.holdout3_run else None
+    if args.holdout3_rescored and not args.holdout3_run:
+        parser.error("--holdout3-rescored goes with --holdout3-run")
+    holdout3_rescored = load_results(args.holdout3_rescored) if args.holdout3_rescored else None
     without_land = load_results(args.without_land) if args.without_land else None
     try:
         docs, chart = write_docs(
@@ -2363,6 +2432,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             holdout2_run=holdout2_run,
             holdout2_rescored=holdout2_rescored,
             without_land=without_land,
+            holdout3_run=holdout3_run,
+            holdout3_rescored=holdout3_rescored,
         )
     except ValueError as exc:
         parser.error(str(exc))

@@ -34,6 +34,11 @@ after the release's last change to how letters are read; it follows the same rul
 its run never rewrites ``docs/evals.md`` (not even with ``--docs``). It joins the published page with
 ``python -m evals.report <published run>.json --holdout2-run <holdout2 run>.json``.
 
+The ``holdout3`` split (``--split holdout3``, results ``<YYYY-MM-DD>-<model>-holdout3.json``) was written
+after the code freeze and is audited blind before its one recording; the same rule holds: recorded once, nothing tuned on it, its run
+never rewrites ``docs/evals.md`` (not even with ``--docs``), and a replay of it needs ``--results-dir``. It
+joins the published page with ``python -m evals.report <published run>.json --holdout3-run <holdout3 run>.json``.
+
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
 
@@ -623,8 +628,8 @@ async def run_benchmark(
             and not any(run.errors for run in outcome.runs)
         )
     if config.split in report.HELD_OUT_SPLITS:
-        # A held-out run sits beside the published one (evals.report --holdout-run / --holdout2-run); it never
-        # replaces the page.
+        # A held-out run sits beside the published one (evals.report --holdout-run / --holdout2-run /
+        # --holdout3-run); it never replaces the page.
         write_docs = False
     if write_docs and finished:
         outcome.docs_path, outcome.chart_path = report.write_docs(
@@ -776,8 +781,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--split",
         choices=SPLITS,
         default=DEFAULT_SPLIT,
-        help="dataset split (default: test; holdout and holdout2 are each recorded once, nothing is tuned on "
-        "them, and neither rewrites docs/evals.md)",
+        help="dataset split (default: test; holdout, holdout2 and holdout3 are each recorded once, nothing is "
+        "tuned on them, and none of them rewrites docs/evals.md)",
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"model alias or id (default: {DEFAULT_MODEL})"
