@@ -108,7 +108,9 @@ async def test_the_demo_cannot_be_deleted(data_dir: Path) -> None:
         await api.upload(("letter.pdf", TAX_LETTER.pdf()))
         refused = await api.client.request("DELETE", "/api/data", json=CONFIRM)
         assert refused.status_code == 409
-        assert refused.json()["detail"] == DEMO_MESSAGE and "ordnung demo --reset" in DEMO_MESSAGE
+        assert refused.json()["detail"] == DEMO_MESSAGE
+        # the reset doesn't touch a demo that runs, so the message says to stop it first
+        assert "stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”." in DEMO_MESSAGE
         assert len((await api.client.get("/api/documents")).json()) == 1
 
 

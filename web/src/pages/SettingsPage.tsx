@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useBlocker, useSearchParams } from "react-router";
+import { useBlocker, useLocation, useSearchParams } from "react-router";
 import { Save } from "lucide-react";
 import { useHealth, useProfile, useSettings } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
@@ -113,6 +113,17 @@ export default function SettingsPage() {
   }, [section]);
 
   const loaded = Boolean(profile.data && settings.data && health.data);
+  // a link to one card (`?section=data#set-data-reset`, Ask's "Start the demo over"): once the section is drawn, the
+  // card scrolls into view and its title takes focus, so the keyboard and screen readers start there too
+  const { hash } = useLocation();
+  const target = loaded ? hash.slice(1) : "";
+  useEffect(() => {
+    const title = target ? document.getElementById(target) : null;
+    if (!title || !paneRef.current?.contains(title)) return;
+    if (!title.hasAttribute("tabindex")) title.setAttribute("tabindex", "-1");
+    title.focus({ preventScroll: true });
+    (title.closest("section") ?? title).scrollIntoView?.({ block: "start" });
+  }, [target, section]);
   // a failed load stays on screen, worded the same, while "Try again" runs (the retry of a failed load starts
   // over as "pending"); a background refresh that fails keeps the loaded forms (the app's toast says so)
   const loadError = useStickyError(profile.error ?? settings.error ?? health.error, loaded);

@@ -11,8 +11,8 @@ The work is done by the demo package; this module only needs these functions, lo
 * ``recorded_questions(ctx) -> list[str]`` — the Ask chips: the recorded questions, while their answers
   fit the letters and to-dos as they are.
 
-Optional, used in demo mode when present: ``demo_safe_stream(events, demo=True, question=…)`` (a friendly
-event instead of a missing recording in Ask), ``paced_replay(events)`` (a recorded answer streamed at a
+Optional, used in demo mode when present: ``demo_safe_stream(events, demo=True, question=…, ctx=…)`` (a
+friendly event instead of a missing recording in Ask), ``paced_replay(events)`` (a recorded answer streamed at a
 reading pace) and ``friendly_llm_error(exc, demo=True) -> str``.
 
 Without the demo package the endpoints answer 503; outside demo mode they do not exist (404).

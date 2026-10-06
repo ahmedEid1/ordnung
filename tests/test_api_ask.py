@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from ordnung import clock
 from ordnung.api.app import create_app
 from ordnung.app_context import build_context
-from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS
+from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS, DEMO_NOT_RECORDED
 from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend
@@ -237,21 +237,22 @@ async def test_events_stream_bus_events_until_the_client_leaves(data_dir: Path) 
         ctx.close()
 
 
-async def test_demo_turns_a_missing_recording_into_a_friendly_event(data_dir: Path, tmp_path: Path) -> None:
-    pytest.importorskip("ordnung.demo.tour")
+@pytest.mark.parametrize(
+    ("offered", "message"), [(["When is my rent due?"], DEMO_MISS), ([], DEMO_NOT_RECORDED)]
+)
+async def test_demo_turns_a_missing_recording_into_a_friendly_event(
+    data_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, offered: list[str], message: str
+) -> None:
+    """The note points to the suggested questions only while the demo offers them (none once the person
+    changed the demo: they would miss too)."""
+    tour = pytest.importorskip("ordnung.demo.tour")
+    monkeypatch.setattr(tour, "recorded_questions", lambda ctx: offered)
     async with api_for(data_dir, demo=True) as api:
         api.ctx.llm.backend = ReplayBackend(tmp_path / "no-fixtures")
         response = await api.client.post("/api/ask", json={"question": "Something never recorded?"})
         events = [json.loads(message["data"]) for message in sse_messages(response.text)]
         # the code tells the web app to show a note (asking again can't help), not a failure to retry
-        assert events == [
-            {
-                "type": "error",
-                "text": DEMO_MISS,
-                "error": DEMO_MISS,
-                "error_code": "demo_miss",
-            }
-        ]
+        assert events == [{"type": "error", "text": message, "error": message, "error_code": "demo_miss"}]
 
 
 async def test_demo_says_how_to_start_over_when_a_suggested_question_misses(

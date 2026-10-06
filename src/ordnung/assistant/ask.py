@@ -102,18 +102,21 @@ UNEXPECTED_STOP = (
     "Something went wrong while answering, so there is no answer. Please ask again; if it keeps happening, "
     "run “ordnung doctor”."
 )
-#: The one message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``).
-DEMO_MISS = (
-    "The demo replays answers recorded for its sample letters, and there is none for this question. "
-    "Try one of the suggested questions."
+#: The message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``) once
+#: no suggested question is offered either (the person changed the demo: :data:`DEMO_CHANGED`).
+DEMO_NOT_RECORDED = (
+    "The demo replays answers recorded for its sample letters, and there is none for this question."
 )
+#: The message for a question the demo has no recorded answer for, while the suggested questions are offered.
+DEMO_MISS = f"{DEMO_NOT_RECORDED} Try one of the suggested questions."
 #: The message for a suggested question the demo recorded, asked after the person changed the letters or to-dos
 #: (sent with ``error_code`` ``demo_changed``): its answers were recorded on Sam's letters as the demo started,
-#: so every suggested question misses until the demo starts over.
+#: so every suggested question misses until the demo starts over — which ``ordnung demo --reset`` does only
+#: once the running demo is stopped.
 DEMO_CHANGED = (
     "The demo's answers were recorded for Sam's letters as the demo started, and you have changed his "
     "to-dos or letters since, so they no longer fit. To ask the suggested questions again, start the demo "
-    "over: Settings → Data, or run “ordnung demo --reset”."
+    "over. Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
 )
 EMPTY_QUESTION = "Please type a question."
 
@@ -350,10 +353,11 @@ def _failure(ctx: AskContext, event: StreamEvent | None) -> StreamEvent:
     return StreamEvent(type="error", error=message)
 
 
-def demo_miss_event() -> AskEvent:
+def demo_miss_event(*, offered: bool = True) -> AskEvent:
     """The event shown instead of an answer the demo has no recording for (nothing was stored, so it
-    names no thread)."""
-    return AskEvent(type="error", error=DEMO_MISS, text=DEMO_MISS, error_code="demo_miss")
+    names no thread); it points to the suggested questions only while they are ``offered``."""
+    message = DEMO_MISS if offered else DEMO_NOT_RECORDED
+    return AskEvent(type="error", error=message, text=message, error_code="demo_miss")
 
 
 def demo_changed_event() -> AskEvent:
@@ -401,9 +405,13 @@ class _Turn:
 
     def _letters_in(self, text: str) -> Iterator[str]:
         """The letters a ledger tool result sends text of: every record its letter-text part is keyed by —
-        a letter itself (a search hit's title and snippet), or the letter a to-do or contract was read
-        from (its title, terms or quote). A party's name stands in many letters and names none of them."""
-        for ref_id in parse_tool_result(text).letters:
+        a letter itself (a search hit's title and snippet), the letter a to-do was read from (its title or
+        quote), or every letter a contract's terms were read from (its source and evidence) and the
+        cancellation letter ``list_contracts`` names beside it (the end date that letter claims). A party's
+        name stands in many letters and names none of them."""
+        result = parse_tool_result(text)
+        cancellations = _cancellation_letters(result.record)
+        for ref_id in result.letters:
             prefix = ref_id.split("_", 1)[0]
             if prefix == "doc":
                 yield ref_id
@@ -413,8 +421,11 @@ class _Turn:
                     yield item.doc_id
             elif prefix == "ctr":
                 contract = self.store.get_contract(ref_id)
-                if contract is not None and contract.source_doc_id:
-                    yield contract.source_doc_id
+                if contract is not None:
+                    letters = [contract.source_doc_id, *(ev.doc_id for ev in contract.evidence)]
+                    yield from filter(None, letters)
+                if ref_id in cancellations:
+                    yield cancellations[ref_id]
 
     def tool_result(self, event: StreamEvent) -> StreamEvent:
         """Keep the result for validation, note the letters it sent text of and summarise it for the trace.
@@ -445,6 +456,19 @@ class _Turn:
         if tool_use_id:
             return self._by_id.pop(tool_use_id, None)
         return self._waiting.popleft() if self._waiting else None
+
+
+def _cancellation_letters(record: Any) -> dict[str, str]:
+    """Contract id → the cancellation letter a ``list_contracts`` row names as pending the person's
+    confirmation (its ``cancellation_letter``)."""
+    rows = record.get("contracts") if isinstance(record, dict) else None
+    found: dict[str, str] = {}
+    for row in rows if isinstance(rows, list) else []:
+        letter = row.get("cancellation_letter") if isinstance(row, dict) else None
+        doc_id = letter.get("doc_id") if isinstance(letter, dict) else None
+        if isinstance(doc_id, str) and isinstance(row.get("id"), str):
+            found[row["id"]] = doc_id
+    return found
 
 
 # --------------------------------------------------------------------------------------------------

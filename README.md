@@ -59,7 +59,8 @@ ordnung demo                                             # opens http://127.0.0.
 ```
 
 Ask's recorded answers fit the demo as it starts. After you mark things paid or done, Ask says so and
-offers *Start the demo over* (or run `ordnung demo --reset`) so you can ask again.
+offers *Start the demo over*, so you can ask again: stop the demo (Ctrl+C where it runs), then run
+`ordnung demo --reset`.
 
 To read your own letters, see [Install and run](#install-and-run).
 
@@ -206,7 +207,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 | **Ordnung**, held-out split with the two-dates check⁶ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | 96.4 % [90.9–100] | **0 %** | yes |
-| **Ordnung**, second held-out split with the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
+| **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
@@ -384,8 +385,8 @@ ordnung autostart enable        # start at login; then switch on the morning not
 ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
 
-`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude to be installed or signed
-in (it is stored and read once Claude is ready).
+`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed or signed
+in, or for its usage limit to pass (it is stored and read once Claude is ready).
 
 **The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
@@ -470,11 +471,13 @@ More in [docs/architecture.md](docs/architecture.md).
 - Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which
   state is this sender in?* in its drawer, also offered under a date's *Why this date?*). Until then, for
   letters from a Land authority it uses nationwide public holidays and the 3-day delivery rule at lower
-  confidence, so a date can come out 1–3 days early, never late. The benchmark's Ordnung rows are given the
-  Land printed on the letterhead. Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout) and 83.9 %
-  (holdout2), with no late dates (row ⁹).
-- No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. Photos above
-  about 179 megapixels (some phones' 200 MP mode) are refused; take the photo at normal resolution.
+  confidence, so a date can come out a few days early (1–3 on the benchmark's letters, up to 5 around
+  Christmas), never late. The benchmark's Ordnung rows are given the Land printed on the letterhead.
+  Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout) and 83.9 % (holdout2), with no late dates
+  (row ⁹).
+- No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
+  above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
+  megapixels, are refused; take the photo at normal resolution.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read

@@ -75,7 +75,8 @@ FUZZY_GUARD = 70.0
 MIN_IDENTIFIER_CHARS = 5
 #: Longest sender name kept for a party. Party names go into every later reading's list of known
 #: senders, so one letter must not plant a page of text (or an extra line) there; at most
-#: ``MAX_KNOWN_PARTIES`` (200) such lines are sent, about 27 KB.
+#: ``MAX_KNOWN_PARTIES`` (200) such lines are sent, and no more than 16 KB in all
+#: (``extract.MAX_KNOWN_PARTIES_BYTES``).
 MAX_PARTY_NAME = 120
 
 CASE_PREFERENCE: tuple[ReferenceKind, ...] = (

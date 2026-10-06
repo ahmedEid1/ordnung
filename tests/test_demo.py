@@ -26,7 +26,7 @@ from fixtures_llm import (
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
-from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS
+from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS, DEMO_NOT_RECORDED
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, load_manifest, tour
@@ -536,9 +536,14 @@ async def test_stages_are_paced_in_demo_mode(monkeypatch: pytest.MonkeyPatch) ->
     assert slept == [0.6, 0.6]
 
 
-async def test_recorded_questions_replay_after_opening_tray_letters(life: SampleLife, tmp_path: Path) -> None:
+async def test_recorded_questions_replay_after_opening_tray_letters(
+    life: SampleLife, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from ordnung.assistant.ask import ask_stream
 
+    asks = tmp_path / "asks.json"
+    asks.write_text(json.dumps(QUESTIONS), encoding="utf-8")
+    monkeypatch.setattr(tour, "ASKS_FILE", asks)
     ctx = open_demo(life, tmp_path / "demo")
     try:
         await tour.open_tray_item(
@@ -550,10 +555,11 @@ async def test_recorded_questions_replay_after_opening_tray_letters(life: Sample
             "Your gym membership is on file"
         )
         missed = [
-            event async for event in tour.demo_safe_stream(ask_stream(ctx, "Anything free?"), demo=True)
+            event
+            async for event in tour.demo_safe_stream(ask_stream(ctx, "Anything free?"), demo=True, ctx=ctx)
         ]
         assert [event.type for event in missed] == ["error"]
-        assert missed[0].error == DEMO_MISS
+        assert missed[0].error == DEMO_MISS  # the suggested questions are offered: it points to them
         assert getattr(missed[0], "error_code", None) == "demo_miss"
     finally:
         ctx.close()
@@ -564,8 +570,9 @@ async def test_a_recorded_question_after_a_change_says_how_to_start_over(
 ) -> None:
     """FEAT G2: after one "Mark done" every suggested question missed, and the note told the person to try a
     suggested question — what had just failed. Now the Ask page offers none of them (``/api/demo/questions``),
-    and asking one anyway says the answers fit the demo as it started and how to start over; a question
-    nobody recorded still gets the note that points to the suggested ones."""
+    and asking one anyway says the answers fit the demo as it started and how to start over (stop it first:
+    ``ordnung demo --reset`` doesn't reset a demo that runs); a question nobody recorded gets the note
+    without pointing to the suggested questions, which aren't offered."""
     from ordnung.assistant.ask import ask_stream
 
     asks = tmp_path / "asks.json"
@@ -576,7 +583,9 @@ async def test_a_recorded_question_after_a_change_says_how_to_start_over(
     async def ask(question: str) -> list[StreamEvent]:
         return [
             event
-            async for event in tour.demo_safe_stream(ask_stream(ctx, question), demo=True, question=question)
+            async for event in tour.demo_safe_stream(
+                ask_stream(ctx, question), demo=True, question=question, ctx=ctx
+            )
         ]
 
     try:
@@ -591,9 +600,10 @@ async def test_a_recorded_question_after_a_change_says_how_to_start_over(
             "demo_changed",
         )
         assert "suggested question" in DEMO_CHANGED and "try one of" not in DEMO_CHANGED.lower()
-        assert "“ordnung demo --reset”" in DEMO_CHANGED and "Settings → Data" in DEMO_CHANGED
+        assert "Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”." in DEMO_CHANGED
         (missed,) = await ask("Anything free?")
-        assert getattr(missed, "error_code", None) == "demo_miss"
+        assert (missed.error, getattr(missed, "error_code", None)) == (DEMO_NOT_RECORDED, "demo_miss")
+        assert "suggested question" not in DEMO_NOT_RECORDED
         ctx.store.update_item(item.id, status="open")  # put back as it was: the recording fits again
         assert tour.recorded_questions(ctx) == QUESTIONS
         assert (await ask(QUESTIONS[1]))[-1].type == "done"

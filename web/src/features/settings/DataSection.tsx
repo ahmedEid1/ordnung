@@ -288,14 +288,15 @@ export function DataSection({ health }: { health: Health }) {
         <TourCard />
 
         {staticDemo || health.demo ? (
-          // nothing of the visitor's to delete: a calm way to start over, not a danger zone
+          // nothing of the visitor's to delete: a calm way to start over, not a danger zone (the reset doesn't
+          // touch a demo that runs, so it says to stop the demo first)
           <SettingsCard
             title="Start over"
             id="set-data-reset"
             description={
               staticDemo
                 ? "This online demo keeps nothing you do in it. Reload the page to start over with Sam's letters."
-                : "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run this in a terminal:"
+                : "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, stop the demo (Ctrl+C where it runs), then run this in a terminal:"
             }
             footer={
               staticDemo ? (

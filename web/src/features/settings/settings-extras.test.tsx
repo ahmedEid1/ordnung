@@ -186,6 +186,24 @@ describe("Data → delete everything", () => {
     }
   });
 
+  it("a link to the “Start over” card (Ask's “Start the demo over”) scrolls to it and focuses its title", async () => {
+    useMockApi();
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      renderWithProviders(<SettingsPage />, { route: "/settings?section=data#set-data-reset" });
+      const reset = await screen.findByRole("region", { name: "Start over" });
+      // the reset doesn't touch a demo that runs: the card says to stop it first
+      expect(reset).toHaveTextContent("To start over with Sam's original letters, stop the demo (Ctrl+C where it runs), then run this in a terminal:");
+      await waitFor(() => expect(within(reset).getByRole("heading", { name: "Start over" })).toHaveFocus());
+      expect(scrolled).toEqual([reset]);
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
   it("the online demo starts over by reloading", async () => {
     vi.stubEnv("VITE_STATIC_DEMO", "1");
     useMockApi({ staticDemo: true });
