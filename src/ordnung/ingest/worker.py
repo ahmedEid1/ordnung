@@ -172,7 +172,7 @@ class IngestWorker:
     def current_pause(self) -> dict[str, str] | None:
         """What a page that connects now hears first (``llm.paused``'s data): the wait for Claude the app was
         told of, else a usage limit that hasn't ended; ``None`` while reading goes on."""
-        if self._told_waiting is not None:
+        if self._told_waiting is not None and self._letter_waits_for_claude():
             return {"until": "", "reason": self._told_waiting}
         if self.paused_until is not None and self.is_paused():
             return {"until": self.paused_until.isoformat(), "reason": self._pause_reason}
@@ -428,6 +428,14 @@ class IngestWorker:
             self.ctx.bus.publish("llm.paused", until="", reason=why)
         self.waiting_for_claude = why
         self._park(job, why, said=None)  # the app last heard the reading's stages
+
+    def _letter_waits_for_claude(self) -> bool:
+        """Whether a letter only Claude can read is still in the queue: one deleted or kept private meanwhile
+        no longer keeps the wait announced to pages that connect."""
+        return any(
+            job.kind in self.JOB_KINDS and job.status in ("queued", "running") and self._needs_claude(job.doc_id)
+            for job in self.ctx.store.list_jobs(active_only=True)
+        )
 
     def _needs_claude(self, doc_id: str | None) -> bool:
         """A letter only Claude can read (a private one is read on this computer)."""

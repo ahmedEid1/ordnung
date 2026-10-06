@@ -34,7 +34,8 @@ function ClaudeWaitCard({ reason, again }: { reason: string; again: boolean }) {
   const { paused } = useEvents();
   // a usage limit ends by itself (the banner says when); anything else is fixed under Claude connection
   const connect = !paused?.until;
-  const why = reason.slice(WAITING_FOR_CLAUDE.length).replace(/^:\s*/, "");
+  const rest = reason.slice(WAITING_FOR_CLAUDE.length).replace(/^:\s*/, "");
+  const why = rest.charAt(0).toUpperCase() + rest.slice(1); // a usage limit's reason starts in lower case
   return (
     <div className="card flex gap-3 border-warn/30 px-5 py-4">
       <CirclePause className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />

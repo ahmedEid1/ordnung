@@ -58,7 +58,7 @@ describe("the waiting card", () => {
       handleServerEvent(client, { type: "llm.paused", data: { until: "2099-01-05T14:30:00Z", reason: "Usage limit reached." } });
     });
     renderWithProviders(<ProcessingCard doc={neverRead} />, { client });
-    expect(screen.getByText("the usage limit was reached. Ordnung continues at about 15:30. Your file is safe.")).toBeInTheDocument();
+    expect(screen.getByText("The usage limit was reached. Ordnung continues at about 15:30. Your file is safe.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Claude connection" })).toBeNull();
   });
 

@@ -76,6 +76,12 @@ export const WAITING_FOR_CLAUDE = "Waiting for Claude";
  * Why a letter waits for Claude — not installed or not signed in, or its usage limit — from its job's
  * progress: "Waiting for Claude: …"; null while it doesn't.
  */
+/**
+ * A wait for Claude Code itself — not installed or not signed in — that only a Claude check ends (a usage limit
+ * ends by itself, and the server says so while it runs): the reason that may show the banner on connecting.
+ */
+const CLAUDE_NOT_READY = `${WAITING_FOR_CLAUDE}: Claude Code isn't `;
+
 export function claudeWaitReason(job: Pick<JobProgressEvent, "status" | "waiting_reason"> | undefined): string | null {
   const reason = job?.status === "queued" ? job.waiting_reason : null;
   return reason?.startsWith(WAITING_FOR_CLAUDE) ? reason : null;
@@ -155,7 +161,7 @@ export async function seedFromQueue(openedAt: number): Promise<void> {
     if ((state.jobs[job.doc_id]?.updatedAt ?? -Infinity) >= openedAt) continue;
     const seed: JobProgressEvent = { job_id: job.id, doc_id: job.doc_id, stage: "intake", progress: 0, status: "queued", waiting_reason: job.waiting_reason };
     applyJobProgress(seed);
-    forClaude ||= claudeWaitReason(seed) !== null;
+    forClaude ||= job.waiting_reason.startsWith(CLAUDE_NOT_READY);
   }
   if (forClaude) setState((s) => (s.paused ? s : { ...s, paused: { until: "", reason: "" } }));
 }

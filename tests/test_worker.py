@@ -313,6 +313,23 @@ async def test_a_page_opened_while_letters_wait_hears_it_first(ctx: AppContext, 
     assert ctx.worker.current_pause() == {"until": ctx.worker.paused_until.isoformat(), "reason": str(usage)}
 
 
+@pytest.mark.parametrize("left", ["deleted", "kept private"])
+async def test_the_wait_is_not_told_once_no_letter_waits_for_claude(
+    ctx: AppContext, router: Router, left: str
+) -> None:
+    """The last letter waiting for Claude deleted, or kept private (read on this computer): a page that
+    connects hears no wait for Claude, while Claude is still missing (final fix pass, N1)."""
+    refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
+    document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    await ctx.worker.run_until_idle()
+    assert ctx.worker.current_pause() == {"until": "", "reason": worker.NOT_INSTALLED_REASON}
+    if left == "deleted":
+        ctx.store.delete_document(document.id)
+    else:
+        ctx.store.update_document(document.id, ai_private=True)
+    assert ctx.worker.current_pause() is None
+
+
 async def test_a_letter_that_waited_before_a_restart_ends_the_wait_once_read(
     ctx: AppContext, router: Router
 ) -> None:

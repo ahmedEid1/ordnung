@@ -90,5 +90,8 @@ test("a letter added while Claude is missing waits, and every page loaded later 
     const res = await page.request.delete(`/api/documents/${id}?purge=true`, { headers: { "X-Ordnung-Client": "web" } });
     expect(res.ok(), `DELETE /api/documents/${id} → ${res.status()}`).toBe(true);
     installClaude();
+    // the health check finds Claude now, so the specs after this one don't wait out the worker's own check
+    const health = await page.request.get("/api/health", { headers: { "X-Ordnung-Client": "web" } });
+    expect(health.ok(), `GET /api/health → ${health.status()}`).toBe(true);
   });
 });
