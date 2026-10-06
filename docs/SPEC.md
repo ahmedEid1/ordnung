@@ -58,7 +58,8 @@ SPECIMEN.
 9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
 10. CI green: backend, frontend, e2e (Playwright over demo mode incl. axe checks), `demo --check`.
 
-**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview) — *not built*; static
+**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview) — *not built* (its
+model purpose, schema, lane and settings were removed); static
 hosted demo export (a `VITE_STATIC_DEMO=1` build of the browser-only demo) — built; model/cost trade-off
 eval — *not built* (`ordnung eval --models` can run several models, but no comparison is published); Ask
 agent eval (`docs/evals-ask.md`) — built; "please check" received-date question — built; ⌘K search —
@@ -140,8 +141,7 @@ Key additions in v2 (to implement in models.py):
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
-  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>` … (a `capture`
-  source was meant for the quick capture bar, which was not built: nothing writes it).
+  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>` …
 - `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude connection); the
   per-purpose `AppSettings.models` aliases only key the recordings; the cache is keyed by the model
   a call runs on, so a new choice is a new call (§ 7).
@@ -383,8 +383,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   demo's settings are the defaults, so it records with the default model. `health` names the pin
   (`model_pinned`) so Settings → Claude connection can say the saved model waits while the variable is set.
 - **Lanes**: interactive (ask, draft, brief, doctor; semaphore 1) and background (transcribe,
-  extract, review; semaphore `settings.concurrency`, default 2). The interactive lane also names a
-  `capture` purpose, for the quick capture bar that was not built: no call uses it.
+  extract, review; semaphore `settings.concurrency`, default 2).
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
   region + simulated today). Used for `llm_cache` and fixture paths `<fixtures>/<purpose>/<sha256(key)[:24]>.json`.
@@ -400,7 +399,10 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
   `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe on the
   model every call runs on (the CLI reads the setting; "Run check" passes it), whose row names it
-  and whose fix on a failure points at that model after the sign-in.
+  and whose fix on a failure points at that model after the sign-in; and checks the database
+  read-only (`PRAGMA quick_check`, schema version); its fix names `ordnung restore FILE --force`. A
+  `claude` that can't be started (moved, not executable) is reported as not installed, never a crash,
+  and one not found is looked for again at the next call.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -410,6 +412,9 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    once); render pages (`derived/<doc>/page-N.jpg`, 1600 px) + thumbnail; EXIF transpose.
 2. **text** — per page: pdfplumber text + words (coordinates normalised to the page box, CropBox
    and rotation handled) → `text_source="text"` if ≥ 40 meaningful chars, else needs transcription.
+   The text layer is read on a pdfminer document that gives up after 1000 lookups answering with
+   another reference, so a PDF whose objects refer to themselves (`5 0 obj 5 0 R endobj`) can't hang
+   the reading: its pages are transcribed instead.
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
@@ -628,6 +633,14 @@ that ran to the end, plus its newest paused or stopped attempt while it is withi
 lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
+Claude not installed or not signed in pauses it too, without an end (`llm.paused` with an empty `until`,
+banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason` "Waiting for
+Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure and ends
+its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`) — and so does each letter
+for Claude claimed meanwhile (put back for 30 s at a time; private and held letters are still read).
+Reading resumes once a Claude status check sees Claude ready: `GET /api/health` (a missing or
+signed-out status is kept 15 s, a ready one 10 min) or the worker's own check every 30 s. A `claude`
+found on PATH is used from then on, so installing Claude needs no restart.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
 non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
@@ -714,7 +727,10 @@ whose adding was stopped before its attachments adds them.
   While today's notification waits for its first try the loop wakes up for it (its time, or a
   minute after start-up) instead of sleeping the whole 15 minutes.
 - **Triggers** (`run_triggers(store, today) -> dict[rule_id, list[Suggestion]]`, then
-  `reconcile_suggestions` expires absent ones): `deadline_soon`, `overdue`, `contract_cancel_window`
+  `reconcile_suggestions` expires absent ones; after an edit through the API they run in the background
+  — `IngestWorker.refresh_ideas`: one run at a time, an edit made meanwhile gets one more — so the
+  request answers at once and the Ideas follow with `suggestions.updated`; after a reading they run once
+  per letter): `deadline_soon`, `overdue`, `contract_cancel_window`
   (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
   permit 90 d — apply before expiry, § 81 Abs. 4 AufenthG), `passport_before_permit`,
   `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
@@ -763,7 +779,10 @@ whose adding was stopped before its attachments adds them.
   due date. It ends "N overdue" while anything is overdue — a to-do, a letter to send past the day it had
   to arrive by, or a *Waiting for* entry past its day — else "All clear until <next day to act>" — or
   "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
-  decisions and snoozed to-dos count). Only the moments of the last session and of a dismissed prompt
+  decisions and snoozed to-dos count). Never "All clear" while letters aren't read (waiting from the
+  folder, or couldn't be read): then "Nothing due from the letters that were read" and how many; *New
+  since your last review* lists such letters every week, whenever they came. Only the moments of the
+  last session and of a dismissed prompt
   are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
   suggests it once — 7 days after the last session or "Not now", on a Sunday 4 days after — and only when
   a step has something to show; the session says the day it will next (`next_prompt`). Nothing is paid,
@@ -1081,7 +1100,8 @@ their own page under their letter (`/letters/{id}/proofs/{doc}`), deleted with t
 person keeps the files (`DELETE drafts/{id}?keep_proof_files=true`: they become their own private
 documents). A file already in Ordnung (the same bytes) is linked as it is and said to be so: made
 private now if no model call ever carried it (`llm_calls`, a cached answer or a transcribed page —
-also a reading that failed, or paused on a rate limit, after the model had it), else named as given
+also a reading that failed, or paused on a rate limit, after the model had it; never a call whose CLI
+didn't start, Claude not installed), else named as given
 to Claude (`notice`) — "kept private" is never claimed for it, also not when it was marked private
 later; one still waiting from the watched folder (`held`) gets the answer *Keep private* then, so
 *Read these* never offers a proof to Claude; the same file uploaded to the Inbox again says which
@@ -1263,14 +1283,16 @@ replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tr
 calendar's events and app password go first (`calendar_events_removed`; 409 and nothing deleted
 when that can't be done), then empties the database in place and removes Ordnung's files, keeping
 the lock and `server.json`; 409 in the demo),
-`calendar/sync` (GET: available here, the connected calendar, the last sync; PUT `{url, username,
+`calendar/sync` (GET: available here, the connected calendar, the last sync — never the events; the
+preview's length is how many the calendar gets; PUT `{url, username,
 password|null, mode}`: connect or change the mode — checked with the server, the password to the
 keyring, then sent), `calendar/sync/preview?mode=` (every event as it would be sent),
 `calendar/sync/discover` (POST `{url, username, password}`: the calendars that take events),
 `calendar/sync/run` (POST: send what changed now), `calendar/sync/disconnect` (POST
 `{remove_events}`; refusals carry `code`: `address`, `auth`, `not_calendar`, `network`,
 `not_connected`, …; the demo answers 409),
-`reminders/desktop` (GET: the notification tool, today's text in each mode, the last day shown, the
+`reminders/desktop` (GET: the notification tool, today's text in each mode, left out with
+`?preview=false`, the last day shown, the
 last failure, whether it is the demo, the start-at-login entry and the command for this folder), `reminders/desktop/test` (POST `{mode}`: show it now), `backup` (GET: what a
 backup would hold; POST `{passphrase}`: the encrypted backup file, streamed while it is made — the
 passphrase is never stored, logged or echoed),
@@ -1323,14 +1345,18 @@ check" · computation receipt → "Why this date?" (plain sentence first; "Show 
 steps + citations) · German terms shown as "Einspruch (objection)" with a glossary tooltip.
 
 Pages:
-1. **Today** — (1) secretary's note; (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
+1. **Today** — (1) secretary's note — Claude's only while the agenda it was written from is unchanged;
+   after a to-do is marked paid or a letter is read, the note written by code until "Write a new note";
+   (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
    days"), reason, one verb button (Pay · Draft letter · Mark done · Check); (3) coming up (30 days);
    (4) ≤ 3 Ideas with action-named buttons ("Draft cancellation", "Remind me in a week", "Not
    relevant"); (5) life at a glance (only areas with data; an area's status follows the app's one
    urgency scale — overdue, today or tomorrow is urgent, the week needs attention, and a direct debit,
    money coming in, a fee paid on site or an appointment never turns urgent); (6) recent letters
    (collapsed; newest first by the day each was received, else dated, else added);
-   "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
+   "All clear until Friday" empty state — never while letters couldn't be read or wait from the
+   folder: then "Nothing due from the letters that were read" and the card "N letters couldn't be read
+   — Try again"; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
@@ -1340,7 +1366,10 @@ Pages:
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
-   … · text of 2 pages" badge; 390 px layout stacks the image below the card. An e-mail lists its
+   … · text of 2 pages" badge, and under it where the letter went — "Not sent to Claude" while no
+   model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
+   not installed, carried nothing), else that its text or image was sent to Anthropic; 390 px layout
+   stacks the image below the card. An e-mail lists its
    attachments and what became of each (linked when added); an attachment says which e-mail it came
    with; a held letter says it waits, with *Read it with Claude* and *Keep private*. A second tab, **How
    it was read** (`?view=trace`), shows the reading as a waterfall: summary (time, calls to
@@ -1359,7 +1388,11 @@ Pages:
    any amount too; every bar and marker carries its area and the to-do or contract it stands for, and a
    contract with no end says so (`open_end`); below, month-grouped list (past/future), filters. Letters
    about the flat (lease, landlord, running costs, broadcasting fee) are shown under Home even when
-   they were read under "residence", which is the residence-permit area.
+   they were read under "residence", which is the residence-permit area. Timeline and every letter's
+   "To-dos & dates" have "Add a date": what it is, the day, the kind (reminder, deadline, payment,
+   appointment, to-do, expiry date), an optional amount and, on Timeline, an optional letter. It is the
+   person's own to-do (`POST /api/items`, origin `manual`), also on a letter kept private or one Claude
+   couldn't read.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
    check", usually no notice period in the letter) offers "Check the letter" and "Add notice

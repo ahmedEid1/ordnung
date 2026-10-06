@@ -95,8 +95,11 @@ reading came back blank — check the letter for a deadline Claude may have miss
 **Errors.** In the app every model error on the re-ask (timeout, transient failure, bad output, sign-in, CLI
 missing, usage limit) keeps the first reading (`unanswered`, or `unusable` for an answer that doesn't validate
 or has no structured output); a replay miss still raises, so `ordnung demo --check` stays strict. The re-ask is
-never repaired. In the benchmark only a replay miss of an allowed letter keeps the first reading
-(`reading_reask_missing`); every other error is the run's, as live.
+never repaired. A reading whose first call finds Claude not installed or not signed in never gets this far:
+the pipeline puts the letter back to wait for Claude, without a failure, and it is read once Claude is ready
+(SPEC § 8). In the benchmark only a replay miss of an allowed letter keeps the first reading
+(`reading_reask_missing`), and none is allowed since the one recording was made; every other error is the
+run's, as live.
 
 **Trash and delete.** Before the repair and before the re-ask, the pipeline checks the letter is still there
 and not in the trash; otherwise no further call goes out (its own message: it was sent once, not again).
@@ -112,12 +115,13 @@ repair. Comparing two readings says whether the re-ask's answer was used.
 ## The benchmark
 `run_ordnung` calls the same code (`extract.read_document`, which the app's pipeline calls too), judged
 against the same floor. A replay without the re-ask's recording keeps the first reading — exactly the run as
-recorded before this change — only for the letters `evals.conditions.REASK_UNRECORDED` lists
-(`holdout2-adversarial-injection_visible-1`); a re-ask any other letter makes without a recording is a replay
-error. Such a prediction is said in a warning (under `--quiet` too) and in the results'
-`meta.reading_reask_missing`, is never cached, and a replay miss counts no call. With a recording, the signal
-is `reading_reask:accepted` or `reading_reask:rejected`; a re-scored row built on it says so
-(`report.reask_outcomes`). The held-out note names the re-ask as the third change after the holdout2 letters.
+recorded before this change — only for the letters `evals.conditions.REASK_UNRECORDED` lists. It listed
+`holdout2-adversarial-injection_visible-1` until that letter's re-ask was recorded (2026-10-03) and is empty
+since: a re-ask without a recording is a replay error on every letter. Such a prediction is said in a warning
+(under `--quiet` too) and in the results' `meta.reading_reask_missing`, is never cached, and a replay miss
+counts no call. With a recording, the signal is `reading_reask:accepted` or `reading_reask:rejected`; a
+re-scored row built on it says so (`report.reask_outcomes`). The held-out note names the re-ask as the third
+change after the holdout2 letters, and says its answer is now recorded.
 
 ## Measured basis (replay only)
 - On the 217 current benchmark readings the re-ask fires on `holdout2-adversarial-injection_visible-1` only
@@ -138,20 +142,27 @@ is `reading_reask:accepted` or `reading_reask:rejected`; a re-scored row built o
 - 208 of the 217 recorded readings have every quote found on their pages.
 
 ## Recording
-The re-ask needs one live recording, for `holdout2-adversarial-injection_visible-1`, made with the owner's
-approval; until then every replay keeps the check's to-do for that letter. A replay-first live run records
-that one call and replays every other one:
+The re-ask needed one live recording, for `holdout2-adversarial-injection_visible-1`, made with the owner's
+approval; until then every replay kept the check's to-do for that letter. It was recorded on 2026-10-03, at
+commit `f773638`, by a replay-first live run that recorded that one call and replayed every other one:
 
 `python -m evals.run --live --split holdout2 --conditions ordnung --ids holdout2-adversarial-injection_visible-1 --results-dir <scratch> --no-docs --no-resume`
 
-- Never `--refresh`: it re-records every call, overwriting the held-out extraction recording, and skips the
-  prompt-lock check.
-- Unset `ORDNUNG_CLAUDE_MODEL`: it overrides the model, and its answer would be filed under `claude-sonnet-5`.
+- Not with `--refresh`, which re-records every call, overwriting the held-out extraction recording, and skips
+  the prompt-lock check; and with `ORDNUNG_CLAUDE_MODEL` unset, which would have overridden the model while the
+  answer was filed under `claude-sonnet-5`.
 - "One call" can be two CLI runs (a missing structured output is retried once) or up to three (timeouts and
-  transient errors); only the last one's usage is kept. A failed answer is stored as `.failure.json` and
-  replays as `rejected`; to retry, delete that file and run again with `--no-resume` (or another `--run-id`).
-- Then re-score the split with a fresh `--run-id` and `--results-dir`, and rewrite the re-scored file's note:
-  the row is the held-out recordings plus this one call, made after them and because of that letter.
+  transient errors); only the last one's usage is kept. A failed answer would have been stored as
+  `.failure.json` and replayed as `rejected`.
+- The answer was accepted: it gives the letter's sender, its date and the objection deadline, which Ordnung
+  dates Thu 10 Dec 2026 at high confidence from the sentence it found on the letter, so the check files nothing
+  for that letter (the call: about $0.07 API-equivalent and 20 s). Replayed with it, holdout2 still gives 55 of
+  56 with no late date, now from the model's own to-do.
+- The split was then re-scored with a fresh `--run-id` and `--results-dir`
+  (`evals/results/2026-10-03-claude-sonnet-5-holdout2-rescored.json`, on commit `2cc4558`); its note says the
+  row is the held-out recordings plus this one call, made after them and because of that letter, with the
+  call's cost and latency counted. The 2026-10-01 re-scored file stays as it was, and the held-out row is
+  unchanged.
 
 ## Consequences and limits
 - In use the re-ask fires on every upload whose reading is almost blank, judged on the reading alone: a

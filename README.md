@@ -245,14 +245,18 @@ condition, nothing tuned on them. Three changes came after them: their label aud
 Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025 (no letter of any split is posted
 in that window, so it changes no date here); the reading check of row ⁸, written because of this
 split's one missed date; and, because of the same letter, a prompt that asks Claude once more when a
-reading comes back incomplete (ADR 0016), which changes no row until its answer for that letter is recorded.
-⁸ The same recorded outputs, replayed after a code-only check written because of that missed date: when
-Claude's reading comes back nearly blank, or leaves out the objection deadline that the letter's own
-instructions on how to object state, Ordnung files that deadline itself, counted from the earliest date
-the letter gives for itself, at low confidence and marked "Please check" (with no date when the letter's
-dates or periods disagree). The split informed it, so this row is not held-out; the row above stays the
-held-out number. It fires on no other letter of the four splits or the demo. In the app, which doesn't
-know the sender's Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
+reading comes back incomplete (ADR 0016), whose answer for that letter was recorded with one more live call
+on 3 October and is used in row ⁸ only.
+⁸ The same recorded outputs plus that one call, made after them, replayed with the code since. For the
+letter whose reading came back empty, Ordnung asks Claude once more (ADR 0016), and the recorded answer is
+used: it gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026
+at high confidence from the sentence it found on the letter. Behind it stands a code-only check (ADR 0015):
+when a reading still comes back nearly blank, or leaves out the objection deadline that the letter's own
+instructions on how to object state, Ordnung files that deadline itself, at low confidence and marked "Please
+check"; here it has nothing to add. Both were written because of that missed date, so this row is not
+held-out; the row above stays the held-out number. The row counts the extra call's cost and time, and
+neither fires on any other letter of the four splits or the demo. In the app, until you set the sender's
+Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
 ⁹ The rows above give Ordnung's engine the Land printed on the letterhead as the sender's (19 of the test
 split's 63 letters name one). The app knows a sender's Land only once you set it for that sender (*Which
 state is this sender in?* in its drawer); until then it uses nationwide holidays and the 3-day delivery rule,
@@ -297,8 +301,9 @@ What the numbers say:
   the model alone 43 of 56 with six. One miss is the deliberate count from a tax notice's own date (early).
   The other is new: on a letter with a visible instruction to AI assistants, the reading came back with no
   sender, no date and no to-do. Ordnung warned that the letter addresses an AI, but did not report its
-  objection deadline. Ordnung now catches such a reading itself and files the deadline from the letter's
-  own instructions on how to object, marked "Please check": replayed, the same readings give 55 of 56 and
+  objection deadline. Ordnung now catches such a reading itself: it asks Claude once more, and files the
+  deadline from the letter's own instructions on how to object, marked "Please check", if the answer still
+  leaves it out. Here the second answer, recorded once, was complete: the same readings give 55 of 56 and
   no late date (row ⁸, not held-out any more).
 - **Without the sender's Land: 85.7 %, and still no late date.** The benchmark tells Ordnung the Land on
   the letterhead; the app knows it only once you set it for that sender, and until then counts a Land
@@ -347,6 +352,8 @@ month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 Your files and your database stay on this computer. When Claude reads a letter, that letter's text
 or image is sent to Anthropic through your own Claude account (Claude Code, the Claude program you
 installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.
+A letter's page says where it went: *Not sent to Claude* until a call to Claude has carried it (one that
+never started, because Claude isn't installed, carried nothing).
 
 The web server listens on `127.0.0.1` by default (another `--host` prints a warning and still needs
 the token) and requires a per-session token, a known `Host` header and same-origin requests. Settings
@@ -358,15 +365,17 @@ sync, off until you connect a calendar, is the only feature that sends anything 
 
 ## Install and run
 
-You need Python 3.11–3.14 and, to read your own letters, the
-[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) signed in with your Claude
-subscription (or an API key). Ordnung calls it in headless mode; there is nothing else to configure.
-CI tests Ordnung on Linux. The macOS and Windows code paths (autostart, notifications) exist but are not
-tested in CI.
+You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters,
+[Claude Code](https://claude.com/claude-code) signed in with your Claude subscription (or an API key).
+Ordnung calls it in headless mode; there is nothing else to configure. Without Claude you can still store
+letters privately, search them and add your own dates (Timeline → Add a date, or on a letter's page). A
+letter added while Claude isn't installed or signed in waits (*Waiting for Claude*) instead of failing, and
+is read once Claude is ready, without a restart. CI tests Ordnung on Linux. The macOS and Windows code
+paths (autostart, notifications) exist but are not tested in CI.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
-ordnung doctor                  # checks Claude, the search index, fonts and your data folder
+ordnung doctor                  # checks Claude, the search index, fonts, your data folder and its database
 ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
@@ -374,6 +383,9 @@ ordnung ask "When can I cancel my phone contract?"
 ordnung autostart enable        # start at login; then switch on the morning notification in Settings → Reminders
 ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
+
+`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude to be installed or signed
+in (it is stored and read once Claude is ready).
 
 **The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
@@ -389,14 +401,14 @@ Then ask Claude about a letter; it reads, Ordnung's engine computes. `--with-led
 client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-from-claude-desktop-or-claude-code)),
 and `--remove-ledger` takes that entry out again.
 
-**From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 22.12 or newer:
+**From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
+(Vite 8 needs one of them):
 
 ```bash
-make install     # Python venv + web dependencies
+make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
 make check       # lint, types, tests
 make serve       # backend; `make web-dev` for the Vite dev server
-(cd web && npx playwright install chromium)   # once: the browser `make e2e` drives
-make e2e         # Playwright over the demo
+make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
 make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 ```
 
@@ -445,7 +457,7 @@ More in [docs/architecture.md](docs/architecture.md).
 | Tests | 5,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,400+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
-| CI gates | ruff, mypy, ESLint, `tsc`, both test suites, rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite, and a check that the committed web build matches its sources |
+| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
 | Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
 
 ## Limitations

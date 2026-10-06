@@ -54,7 +54,11 @@ left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more
 delete while it is being read is not sent again.
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
-pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
+pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
+every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
+or contract was read from — not only the letters it opened. A call whose `claude` never started (Claude
+not installed) sent nothing and lists no letter; a letter no call has carried says *Not sent to Claude*
+on its page.
 
 ## My numbers
 
@@ -105,7 +109,10 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   activity log, quotes from it in contracts you keep, the record of how it was read, and the cached
   model responses of every call that carried it (a secretary's note or review built from several
   letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
-  letter's content, are cleared too), and deleted database rows are overwritten rather than left behind.
+  letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
+  database rows are overwritten rather than left behind. Originals and page images are never kept in the
+  browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
+  its cache.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
   connected for calendar sync, first removes Ordnung's events from it and the app password from your
@@ -327,9 +334,12 @@ took from them is), the lock and the running server's session file.
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,
   responsive and dark-mode copies, stylesheet colours) the text stays visible and the other defences
   apply; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
-- Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far,
-  photos with too many pixels and texts over 60 pages are refused, so a hostile file can't exhaust
-  your computer's memory.
+- Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far (an
+  edit-protected PDF's measured decrypted), photos with too many pixels and texts over 60 pages are
+  refused, so a hostile file can't exhaust your computer's memory. A PDF whose protection or structure
+  can't be checked this way is refused, with the hint to print it to a new PDF. A refused file leaves
+  nothing behind, and a PDF whose objects refer to themselves can't hang the reading of its text: its
+  pages are read from their images instead.
 - The local web server listens on `127.0.0.1` by default (another `--host` prints a warning and still
   needs the token) and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict

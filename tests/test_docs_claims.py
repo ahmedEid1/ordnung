@@ -321,10 +321,12 @@ def test_readme_second_held_out_row_matches_its_one_recording() -> None:
 
 
 def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
-    """Row ⁸: the same holdout2 recordings replayed with the reading check (not held-out); only the empty
-    reading of the injection letter changes, to its labelled date, and the row above stays held-out."""
+    """Row ⁸: the same holdout2 recordings plus the one call recorded after them — the injection letter's
+    completeness re-ask (ADR 0016), accepted — replayed with the current code (not held-out); only that letter
+    changes, to its labelled date with the model's own to-do (the reading check files nothing), and the row above
+    stays held-out."""
     readme = _readme()
-    rescored = _results("2026-10-01-claude-sonnet-5-holdout2-rescored.json")
+    rescored = _results("2026-10-03-claude-sonnet-5-holdout2-rescored.json")
     held = _results("2026-10-01-claude-sonnet-5-holdout2.json")
     meta = rescored["meta"]
     assert meta["split"] == "holdout2" and meta["backend"] == "replay" and meta["conditions"] == ["ordnung"]
@@ -335,7 +337,23 @@ def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
         f"{_with_interval(after['due_date_accuracy'])} | **0 %** | no |"
     ) in readme
     assert f"give {int(after['due_date_accuracy']['k'])} of 56 and\n  no late date (row ⁸" in readme
-    assert after["reading_check"] == {"filed": 1, "unmatched": 0, "letters": 1}
+    assert after["reading_check"] == {"filed": 0, "unmatched": 0, "letters": 0}
+    reasked = {
+        entry["id"]: signal
+        for entry in rescored["entries"]
+        for signal in entry["conditions"]["ordnung"]["prediction"]["signals"]
+        if signal.startswith("reading_reask")
+    }
+    assert reasked == {"holdout2-adversarial-injection_visible-1": "reading_reask:accepted"}
+    assert "reading_reask_missing" not in meta
+    [entry] = [e for e in rescored["entries"] if e["id"] == "holdout2-adversarial-injection_visible-1"]
+    prediction = entry["conditions"]["ordnung"]["prediction"]
+    assert len(prediction["calls"]) == 2
+    assert [(item["due_date"], item["origin"]) for item in prediction["items"]] == [("2026-12-10", "model")]
+    # the footnote says so: the recorded re-ask's own to-do, not the check's low one
+    footnote = _flat(readme).split("⁸ The same recorded outputs plus that one call", 1)[1].split("⁹ ", 1)[0]
+    assert "the recorded answer is used" in footnote and "Thu 10 Dec 2026 at high confidence" in footnote
+    assert "Wed 9 Dec instead of Thu 10 Dec 2026" in footnote
 
     def outcomes(run: dict[str, Any]) -> dict[str, str]:
         return {
@@ -419,7 +437,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
     published = {
         "test": _results("2026-09-30-claude-sonnet-5-test.json"),
         "holdout": _results("2026-09-30-claude-sonnet-5-holdout-rescored.json"),
-        "holdout2": _results("2026-10-01-claude-sonnet-5-holdout2-rescored.json"),
+        "holdout2": _results("2026-10-03-claude-sonnet-5-holdout2-rescored.json"),
     }
     for name, run in published.items():
         assert (
