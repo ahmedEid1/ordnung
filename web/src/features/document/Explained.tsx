@@ -62,7 +62,7 @@ export function writtenFrom(language: string | null | undefined): string | null 
 }
 
 export function ExplainedSimply({ doc }: { doc: Document }) {
-  const modelLang = useModelLang();
+  const modelLang = useModelLang(doc.explanation);
   if (!doc.explanation && !doc.tax_note) return null;
   const paragraphs = (doc.explanation ?? "").split(/\n{2,}/).filter(Boolean);
   const from = writtenFrom(doc.language);
@@ -84,7 +84,7 @@ export function ExplainedSimply({ doc }: { doc: Document }) {
                 the browser can — instead of widening the page (UI audit round 1: it stuck out of the box at 320 px) */}
             <span className="min-w-0 [overflow-wrap:anywhere] hyphens-auto">
               <span className="font-semibold">For your tax return: </span>
-              <ModelText>
+              <ModelText text={doc.tax_note}>
                 <GlossaryText text={doc.tax_note} inline markGerman />
               </ModelText>
             </span>

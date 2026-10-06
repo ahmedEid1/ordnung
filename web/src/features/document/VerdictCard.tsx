@@ -251,7 +251,8 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
   const doc = detail.document;
   const today = useToday();
   // the title and the summary are Claude's, in the person's language (a file name is no one's)
-  const modelLang = useModelLang();
+  const titleLang = useModelLang(doc.title);
+  const summaryLang = useModelLang(doc.summary);
   const scam = scamSuggestion(detail);
   const decisionIdea = decisionSuggestion(detail);
   // a price increase's special right / a notice window leads — not the new monthly fee
@@ -317,7 +318,7 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
         <h1
           id="verdict-title"
           tabIndex={-1}
-          {...(doc.title && doc.title !== doc.filename ? modelLang : {})}
+          {...(doc.title && doc.title !== doc.filename ? titleLang : {})}
           className={cn(
             // German compounds break at their joints (soft hyphens, marked German), never mid-syllable, and a
             // reference number never at its hyphens; the detail-page title size (26 → 30 px, as the "How it was
@@ -353,7 +354,7 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
         </div>
         {/* money and dates the app's way, units and reference numbers kept whole ("MV-" / "2025-0412", "184.30" / "€") */}
         {doc.summary ? (
-          <p className="mt-3 text-[15px] leading-relaxed text-ink/80 wrap-break-word" {...modelLang}>
+          <p className="mt-3 text-[15px] leading-relaxed text-ink/80 wrap-break-word" {...summaryLang}>
             {englishInline(doc.summary)}
           </p>
         ) : null}

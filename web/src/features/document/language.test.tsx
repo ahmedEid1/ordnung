@@ -1,6 +1,7 @@
 /**
  * Whose words are in which language (UX audit U5, U6, A1, A2): a letter's quotes in the letter's own language,
- * Claude's words in the person's (right to left for Arabic), and the letter's language named as it is.
+ * Claude's words in the person's (right to left for Arabic) — not words read before the person changed it — and the
+ * letter's language named as it is.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
@@ -87,10 +88,19 @@ describe("a quote from a letter (U5)", () => {
 
 describe("Claude's words in the person's language (U6)", () => {
   it("are marked with it, right to left for Arabic", () => {
-    expect(langProps("ar")).toEqual({ lang: "ar", dir: "rtl" });
-    expect(langProps("tr")).toEqual({ lang: "tr" });
-    expect(langProps("en")).toEqual({});
-    expect(langProps(null)).toEqual({});
+    expect(langProps("ar", "ادفع الغرامة")).toEqual({ lang: "ar", dir: "auto" });
+    expect(langProps("uk", "Сплатіть штраф")).toEqual({ lang: "uk" });
+    expect(langProps("tr", "Cezayı öde")).toEqual({ lang: "tr" });
+    expect(langProps("en", "Pay the fine")).toEqual({});
+    expect(langProps(null, "Pay the fine")).toEqual({});
+  });
+
+  it("aren't marked when written before the language was changed: none of its script's letters (final check)", () => {
+    expect(langProps("ar", "Pay the fine by 2 October 2026.")).toEqual({});
+    expect(langProps("uk", "Pay the fine")).toEqual({});
+    expect(langProps("ar", null)).toEqual({});
+    // a Latin-script language can't be told apart from English by its letters: marked as the profile says
+    expect(langProps("tr", "Pay the fine")).toEqual({ lang: "tr" });
   });
 
   it("on a letter's page: its title, summary, explanation, key-fact labels and to-do titles", () => {
@@ -102,15 +112,31 @@ describe("Claude's words in the person's language (U6)", () => {
     });
     const detail = makeDetail({ document: doc, items: [makeItem({ title: "ادفع الغرامة", due_date: "2026-10-05" })] });
     renderWithProviders(<DocumentView detail={detail} />, { client: clientWith("ar", detail) });
-    const rtl = (el: HTMLElement | null) => expect(el?.closest("[dir]")).toHaveAttribute("dir", "rtl");
+    const rtl = (el: HTMLElement | null) => expect(el?.closest("[dir]")).toHaveAttribute("dir", "auto");
     const h1 = screen.getByRole("heading", { level: 1 });
     expect(h1).toHaveAttribute("lang", "ar");
-    expect(h1).toHaveAttribute("dir", "rtl");
+    expect(h1).toHaveAttribute("dir", "auto");
     rtl(screen.getByText("عليك دفع 20 يورو."));
     expect(screen.getByText("عليك دفع 20 يورو.").closest("[lang]")).toHaveAttribute("lang", "ar");
     rtl(screen.getByText("ادفع خلال أسبوع."));
     rtl(within(screen.getByRole("region", { name: "Key facts" })).getByText("المبلغ"));
     rtl(within(screen.getByRole("region", { name: /To-dos & dates/ })).getByText("ادفع الغرامة"));
+  });
+
+  it("read in English before the profile became Arabic: not marked Arabic, nor right to left (final check)", () => {
+    const doc = makeDoc({
+      title: "Parking fine",
+      summary: "Pay €20 by 2 October 2026.",
+      explanation: "Pay within a week.",
+      key_facts: [{ label: "Amount", value: "20,00 EUR", evidence: null }],
+    });
+    const detail = makeDetail({ document: doc, items: [makeItem({ title: "Pay the fine", due_date: "2026-10-05" })] });
+    const { container } = renderWithProviders(<DocumentView detail={detail} />, { client: clientWith("ar", detail) });
+    expect(screen.getByRole("heading", { level: 1 })).not.toHaveAttribute("lang");
+    for (const text of ["Pay €20 by 2 October 2026.", "Pay within a week."]) expect(screen.getByText(text).closest("[lang], [dir]")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Key facts" })).getByText("Amount").closest("[lang], [dir]")).toBeNull();
+    expect(within(screen.getByRole("region", { name: /To-dos & dates/ })).getByText("Pay the fine").closest("[lang], [dir]")).toBeNull();
+    expect(container.querySelector("[lang=ar], [dir=rtl]")).toBeNull();
   });
 
   it("aren't marked for an English profile, and a file name is no one's words", () => {
@@ -130,6 +156,10 @@ describe("Claude's words in the person's language (U6)", () => {
     expect(answerLanguage(null, null)).toBe("en");
     const { container } = render(<Markdown text="ادفع قبل الموعد." citations={null} renderCitation={() => null} language="ar" />);
     expect(container.firstElementChild).toHaveAttribute("lang", "ar");
-    expect(container.firstElementChild).toHaveAttribute("dir", "rtl");
+    expect(container.firstElementChild).toHaveAttribute("dir", "auto");
+    // an answer given in English before the profile became Arabic (a turn kept in the conversation)
+    const { container: before } = render(<Markdown text="Pay before the deadline." citations={null} renderCitation={() => null} language="ar" />);
+    expect(before.firstElementChild).not.toHaveAttribute("lang");
+    expect(before.firstElementChild).not.toHaveAttribute("dir");
   });
 });

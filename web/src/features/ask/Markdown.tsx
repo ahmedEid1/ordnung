@@ -311,7 +311,7 @@ export function Markdown({ text, citations, renderCitation, language = "en", tod
   return (
     // a long compound ("Wohnungsgeberbestätigung") or reference wraps anywhere rather than widen the page,
     // inside any flex or grid parent too (UI audit round 1: 344 px wide at 320)
-    <div {...langProps(language)} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
+    <div {...langProps(language, text)} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
       {blocks.map((b, i) => renderBlock(b, i, r))}
     </div>
   );

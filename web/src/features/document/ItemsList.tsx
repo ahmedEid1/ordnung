@@ -182,7 +182,7 @@ function ItemTitle({ title }: { title: string }) {
       <GlossaryText text={title} inline />
     </span>
   ) : (
-    <ModelText>
+    <ModelText text={title}>
       <GlossaryText text={title} inline markGerman />
     </ModelText>
   );
