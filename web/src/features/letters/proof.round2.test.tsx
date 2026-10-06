@@ -122,6 +122,8 @@ describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
     renderAt(PROOF_PAGE);
     const busy = document.querySelector("[aria-busy='true']")!;
     expect(busy).toHaveTextContent("Opening the proof…");
+    // its heading is a stand-in: focus waits for the proof's own (Layout's PageAnnouncer)
+    expect(within(busy as HTMLElement).getByRole("heading", { level: 1, name: "Proof" })).toHaveAttribute("data-loading");
     expect(classOf(busy)).toMatch(/(^| )max-w-3xl( |$)/);
     expect(classOf(busy)).not.toMatch(/(^| )mx-auto( |$)/);
   });

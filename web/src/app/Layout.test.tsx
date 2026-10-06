@@ -1,6 +1,7 @@
 /**
- * A new page is said (UX audit U10): focus that went with the old page moves to the new page's heading; focus
- * still on a control outside the page stays there, and the new page's title is said in a polite live region.
+ * A new page is said (UX audit U10): focus that went with the old page moves to the new page's heading (never to the
+ * stand-in heading it shows while it loads); focus still on a control outside the page stays there, and the new page's
+ * title is said in a polite live region.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
@@ -37,14 +38,25 @@ function Inbox() {
   );
 }
 
-/** A letter's page: its heading comes with its data, a moment later. */
+/** A letter's page: its heading comes with its data, a moment later — until then a stand-in heading, as the app's. */
 function Letter() {
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 30);
+    const t = setTimeout(() => setLoaded(true), 150);
     return () => clearTimeout(t);
   }, []);
-  return loaded ? <h1>Parking fine</h1> : <p>Loading the letter…</p>;
+  return loaded ? (
+    <article>
+      <h1>Parking fine</h1>
+    </article>
+  ) : (
+    <div aria-busy="true">
+      <h1 className="sr-only" data-loading>
+        Letter
+      </h1>
+      <p>Loading the letter…</p>
+    </div>
+  );
 }
 
 function renderApp() {
@@ -73,7 +85,7 @@ function renderApp() {
 }
 
 describe("a new page", () => {
-  it("takes focus to its heading once drawn, when focus went with the old page (Enter on an Inbox row)", async () => {
+  it("takes focus to its heading once drawn, not to the stand-in it shows while it loads, when focus went with the old page (Enter on an Inbox row)", async () => {
     renderApp();
     const user = userEvent.setup();
     const row = await screen.findByRole("button", { name: "Parking fine" });
@@ -81,6 +93,8 @@ describe("a new page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Inbox" })).not.toHaveFocus();
     row.focus();
     await user.keyboard("{Enter}");
+    // the stand-in, removed when the letter comes, would leave focus on <body> (final check of the fix wave)
+    expect(await screen.findByRole("heading", { level: 1, name: "Letter" })).not.toHaveFocus();
     const h1 = await screen.findByRole("heading", { level: 1, name: "Parking fine" });
     await waitFor(() => expect(h1).toHaveFocus());
     expect(h1).toHaveAttribute("tabindex", "-1");

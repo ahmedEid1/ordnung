@@ -16,7 +16,7 @@ const PARENT = { to: "/letters", label: "Letters" };
 function LetterSkeleton() {
   return (
     <div aria-busy="true">
-      <h1 className="sr-only">Letter</h1>
+      <h1 className="sr-only" data-loading>Letter</h1>
       <LoadingLabel>Opening your letter…</LoadingLabel>
       <Skeleton className="h-4 w-48" />
       <Skeleton className="mt-3 h-9 w-2/3 max-w-lg" />

@@ -69,8 +69,8 @@ export default function DocumentPage() {
     <Page title={title} parent={parent} className={q.isError ? undefined : "pt-4 md:pt-6"}>
       {q.isPending ? (
         <>
-          {/* the page has its heading while it loads, too */}
-          <h1 className="sr-only">Letter</h1>
+          {/* the page has its heading while it loads, too: a stand-in, so focus waits for the letter's own (`PageAnnouncer`) */}
+          <h1 className="sr-only" data-loading>Letter</h1>
           <LoadingLabel>Opening the letter…</LoadingLabel>
           <DocumentSkeleton />
         </>
