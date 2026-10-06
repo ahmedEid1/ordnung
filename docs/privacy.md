@@ -56,7 +56,8 @@ delete while it is being read is not sent again.
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
 every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
-or contract was read from — not only the letters it opened. A call whose `claude` never started (Claude
+was read from, every letter a listed contract's terms were read from and a cancellation letter whose end
+date it gives — not only the letters it opened. A call whose `claude` never started (Claude
 not installed) sent nothing and lists no letter; a letter no call has carried says *Not sent to Claude*
 on its page.
 
@@ -312,7 +313,8 @@ took from them is), the lock and the running server's session file.
   servers out of Ordnung's calls; `--no-session-persistence` keeps them out of your Claude history.
 - Ordnung runs your own Claude Code CLI, so Claude Code's own telemetry and error reporting apply to its
   calls as they do when you use Claude Code yourself. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` in
-  the environment you start Ordnung from to turn them off.
+  the environment you start Ordnung from to turn them off. With start at login, set it before
+  `ordnung autostart enable`, or run that again after setting it.
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
   removed before it reaches the model (a scan's invisible OCR layer is not read at all: the page is read

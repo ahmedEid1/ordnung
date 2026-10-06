@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tomllib
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -333,7 +335,7 @@ def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
     after = rescored["metrics"]["ordnung"]
     assert after["dangerous_late_rate"]["k"] == 0
     assert (
-        "| **Ordnung**, second held-out split with the reading check⁸ | "
+        "| **Ordnung**, second held-out split with the re-ask and the reading check⁸ | "
         f"{_with_interval(after['due_date_accuracy'])} | **0 %** | no |"
     ) in readme
     assert f"give {int(after['due_date_accuracy']['k'])} of 56 and\n  no late date (row ⁸" in readme
@@ -468,7 +470,30 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         f"split and {counts['holdout2']} on the holdout2 split; every extra miss is {early} (row ⁹)"
     ) in flat
     limitation = flat.split("## Limitations", 1)[1]
-    assert f"a date can come out {early}, never late" in limitation
+    # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider (F-S11): a Baden-Württemberg
+    # authority's one-month objection period, letter dated Fri 21 Nov 2025, ends 5 days early without the Land
+    objection = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+    )
+    posted = date(2025, 11, 21)
+
+    def objection_ends(land: str | None) -> date:
+        context = RuleContext(today=posted, region=land, document_date=posted, delivery_scope="vwvfg")
+        due = compute_due(objection, context).due_date
+        assert due is not None
+        return date.fromisoformat(due)
+
+    christmas = (objection_ends("BW") - objection_ends(None)).days
+    assert christmas > days[-1]
+    assert (
+        f"a date can come out a few days early ({days[0]}–{days[-1]} on the benchmark's letters, up to {christmas} "
+        "around Christmas), never late"
+    ) in limitation
     assert (
         f"Ordnung scores {test} % (test), {holdout} % (holdout) and {holdout2} % (holdout2), with no late dates"
         in limitation

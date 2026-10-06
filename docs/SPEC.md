@@ -393,9 +393,9 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   call it retried (and the completeness re-ask to the call it completes, ADR 0016 — no repair count
   includes it) and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
-  friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, one
-  message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
-  answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
+  friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, its
+  message in `assistant/ask.py`, which points to the suggested questions only while the demo offers
+  them), other model calls one plain message ("The demo replays recorded answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
   `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe on the
   model every call runs on (the CLI reads the setting; "Run check" passes it), whose row names it
@@ -1244,8 +1244,10 @@ their docstrings):
 Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
 `/?token=…` → HttpOnly SameSite=Strict cookie, its name per port; CLI reads `<data>/server.json` {port,
 token, pid}); non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin,
-none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with two bounded exceptions:
-`health?probe=1` ("Run check") makes one tiny live model call, at most once a minute, and downloading a
+none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with three bounded exceptions:
+`health?probe=1` ("Run check") makes one tiny live model call, at most once a minute; `health` itself,
+when its Claude status is stale, checks Claude again (no model call), uses a `claude` found on PATH from
+then on and, once Claude is ready, lets the letters waiting for it be read (§8); and downloading a
 drafted letter's PDF (or a sent letter's Nachweis) records its SHA-256 among the last 200, so the watched
 folder never takes it for a letter received; originals served with `nosniff` and `attachment` unless
 PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
