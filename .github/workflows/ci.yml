@@ -47,7 +47,7 @@ jobs:
           # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
           ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
         run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
-      - name: Slow tests (every recorded reading replayed; once, without coverage)
+      - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
         if: matrix.python == '3.12'
         run: .venv/bin/pytest -m slow
       - name: Rules engine keeps 100 % line and branch coverage
@@ -173,7 +173,7 @@ jobs:
     name: End-to-end (demo and real app)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v5
@@ -203,7 +203,7 @@ jobs:
       - name: Playwright (the demo; then the real app reading with a fake Claude)
         # playwright.config.ts starts `ordnung demo --reset` and `ordnung serve` with tests/fake_claude.py from
         # .venv and logs in to both with their tokens; its projects run in order: tour, pages, sweep, layout,
-        # girocode, high-stakes (the demo), then real-app (e2e/real-app-*.spec.ts and e2e/add-date.spec.ts)
+        # girocode, high-stakes, add-date (the demo), then real-app (e2e/real-app-*.spec.ts)
         run: cd web && npm run e2e
       - uses: actions/upload-artifact@v5
         if: failure()

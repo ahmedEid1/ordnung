@@ -307,6 +307,7 @@ async def test_changes_while_the_ideas_refresh_get_one_more_run(
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow  # a wall-clock budget: coverage alone makes the pages about twice as slow
 async def test_pages_answer_in_time(api: Api) -> None:
     """Each request of the ledger pages, and all of them together, after a change (the cold case)."""
     api.ctx.store.set_meta("perf-test", "a third change")
