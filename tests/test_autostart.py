@@ -16,6 +16,7 @@ from ordnung import autostart
 from ordnung.autostart import (
     LAUNCH_LABEL,
     STARTUP_NAME,
+    TELEMETRY_OPT_OUT,
     UNIT_NAME,
     AutostartError,
     cmd_quote,
@@ -254,6 +255,35 @@ def test_windows_without_appdata_uses_the_home_folder(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# Claude Code's telemetry opt-out
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_telemetry_opt_out_set_at_enable_goes_into_the_entry(tmp_path: Path) -> None:
+    """docs/privacy.md: set it in the environment Ordnung starts from. At login that is the entry's
+    environment, which the terminal's variables never reach unless they are written into it."""
+    env = {"PATH": PATH_ENV, "APPDATA": str(tmp_path), TELEMETRY_OPT_OUT: "1"}
+    unit = plan(Path("/data"), platform="linux", env=env, home=tmp_path, python=PY)
+    assert f'Environment="{TELEMETRY_OPT_OUT}=1"' in unit.content.splitlines()
+    assert entry_argv("linux", unit.content) == list(unit.argv)
+    agent = plistlib.loads(
+        plan(Path("/data"), platform="darwin", env=env, home=tmp_path, python=PY).content.encode()
+    )
+    assert agent["EnvironmentVariables"] == {"PATH": PATH_ENV, TELEMETRY_OPT_OUT: "1"}
+    cmd = plan(Path("C:\\d"), platform="win32", env=env, home=tmp_path, python="py.exe")
+    lines = cmd.content.split("\r\n")
+    assert lines[4] == f'set "{TELEMETRY_OPT_OUT}=1"' and lines[5].startswith('start "Ordnung" /min')
+    assert entry_argv("windows", cmd.content) == list(cmd.argv)
+
+    unset = {"PATH": PATH_ENV, "APPDATA": str(tmp_path), TELEMETRY_OPT_OUT: ""}
+    for platform in ("linux", "darwin", "win32"):
+        entry = plan(Path("/data"), platform=platform, env=unset, home=tmp_path, python=PY)
+        assert TELEMETRY_OPT_OUT not in entry.content
+    with pytest.raises(AutostartError, match="line break"):
+        plan(Path("/data"), platform="linux", env={TELEMETRY_OPT_OUT: "1\n[Service]"}, home=tmp_path)
+
+
+# --------------------------------------------------------------------------------------------------
 # rewrite, remove, status
 # --------------------------------------------------------------------------------------------------
 
@@ -394,6 +424,15 @@ def test_enable_says_when_the_morning_notification_is_still_off(fake_home: Path,
         store.close()
     on = invoke("autostart", "enable", "--data-dir", str(folder))
     assert on.exit_code == 0 and "notification is off" not in on.output
+
+
+def test_enable_carries_the_telemetry_opt_out_of_this_terminal(
+    fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(TELEMETRY_OPT_OUT, "1")
+    dry = invoke("autostart", "enable", "--data-dir", str(tmp_path / "data"), "--dry-run")
+    assert dry.exit_code == 0, dry.output
+    assert f'Environment="{TELEMETRY_OPT_OUT}=1"' in dry.output.splitlines()
 
 
 def test_the_demo_does_not_start_at_login(
