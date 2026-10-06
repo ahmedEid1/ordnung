@@ -105,7 +105,8 @@ a check for incomplete readings (`ingest/gaps.py`), with a guard on readings' ob
 calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
 re-scored row only, never in the held-out row; and, because of that same reading, a prompt that asks
 Claude once more when a reading comes back incomplete (ADR 0016) — the one prompt informed by these
-letters — which changes no row until its answer for that letter is recorded.
+letters — whose answer for that letter is now recorded (one more live call, on 2026-10-03) and used
+in the re-scored row only.
 
 > Run on 2026-10-01 from live model calls, model `claude-sonnet-5`, commit `0add891`:
 > 63 letters (11 phone photos, 12 adversarial),
@@ -121,7 +122,7 @@ letters — which changes no row until its answer for that letter is recorded.
 | **LLM + rules tool** | 98.2 % [94.2–100.0] | 55/56 | 1.8 % | 0.0 % | 0.0 % | 100.0 % [91.8–100.0] |
 | **Ordnung, re-scored** (not held-out) | 98.2 % [94.5–100.0] | 55/56 | 0.0 % | 1.8 % | 0.0 % | 89.3 % [78.9–96.7] |
 
-**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the code of commit `d8fc8ba` (2026-10-01). That code has a check written after the held-out run and informed by it, so the holdout2 split is no longer held-out for it: the held-out row above stays the held-out number. The check (`src/ordnung/ingest/gaps.py`, ADR 0015) runs after the quotes are verified: when a reading comes back nearly blank, or leaves out the objection deadline that the letter's own instructions on how to object state, Ordnung files that deadline itself from those instructions, counted from the earliest date the letter gives for itself, always at low confidence and marked "Please check" (with no date when the letter's dates or periods disagree). It was written after, and because of, Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`. No model was called for it. On that letter the replay files Thu 10 Dec 2026, because the benchmark passes the authority's Land; the app, which does not know the Land, files Wed 9 Dec (a day early). A second guard sets the letter's own notice beside a reading's objection date when that date ends more than a week after it; it fires on no recorded reading of any split. Both were measured on the recordings of all four splits and the demo (the check fires on this one letter only) and reviewed in four adversarial rounds, so neither is held-out on any split.
+**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the held-out run's recorded outputs plus 1 model answer recorded after it — the completeness re-ask (ADR 0016) of `holdout2-adversarial-injection_visible-1` (accepted) — with the code of commit `2cc4558` (2026-10-03). That code has a check written after the held-out run and informed by it, so the holdout2 split is no longer held-out for it: the held-out row above stays the held-out number. It replays the 1 October held-out recordings plus one model call made after them, the completeness re-ask (ADR 0016) for `holdout2-adversarial-injection_visible-1`: recorded live on 2026-10-03 at commit `f773638` because that letter's reading had come back empty, and accepted. Claude's second answer gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026 from the sentence it found on the letter, at high confidence. The re-ask's prompt was written after, and because of, that letter, so this row is not held-out; the call's cost and latency are included in its numbers. The code also has the reading check (`src/ordnung/ingest/gaps.py`, ADR 0015), which files nothing for this letter once the re-ask's answer is used, and the later work on that check's limits. The held-out row above is unchanged (54 of 56).
 
 Paired differences on the holdout2 letters:
 
@@ -143,7 +144,7 @@ the letterhead is the sender's. The app has no such Land: it knows a sender's La
 it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
 this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
 delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
-commit `1e8b383` (2026-10-03; `python -m scripts.eval_without_land`, results in
+commit `2cc4558` (2026-10-03; `python -m scripts.eval_without_land`, results in
 `evals/results/2026-10-03-claude-sonnet-5-without-land.json`); no model was called. **The “without” column is the app's own result for a sender whose Land the
 person has not set.**
 
