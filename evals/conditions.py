@@ -348,8 +348,9 @@ def ordnung_rule_context(
     all — follows the sender's kind, name and remedy notice; the letter's kind and the end a termination
     announces (graded against the letter's ``pages``) route the dates of high-stakes letters
     (``rules.routing``); and a court's letter is marked as one, and a labour court's, from the sender's
-    name. Only what the app learns from the person is left out: the benchmark has no confirmed arrival
-    day and no sender record with its Land.
+    name. Of what the app learns from the person, the benchmark has no confirmed arrival day; the Land the
+    letterhead names stands in for the sender's Land, which the app knows only once the person sets it
+    (``scripts.eval_without_land`` replays the benchmark without it).
     """
     sender = extraction.sender
     remedy = extraction.remedy

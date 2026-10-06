@@ -16,24 +16,30 @@ Streams are found the way PDFium reads them. After every ``N G obj`` — also on
 bytes, where a cross-reference table may point — the dictionary is lexed as PDF syntax (strings,
 comments, ``#xx`` escapes in names, nesting, any length up to :data:`_MAX_DICTIONARY`), and a ``stream``
 keyword after it starts the data; an indirect ``/Filter`` is looked up. For damaged files the
-``stream`` keyword with the dictionary in front of it counts too. The expanding filters Flate, LZW
-(with either ``/EarlyChange``) and RunLength — also chained, or behind ASCII85/ASCIIHex — are measured;
-each filter ends at its own end-of-data marker, so no ``/Length`` or ``endstream`` has to be trusted.
-Image codecs (DCT, JPX, JBIG2, CCITT) are bounded by the pixel check. A PDF whose structure can't be
-read within those bounds is rejected.
+``stream`` keyword with the dictionary in front of it counts too (up to :data:`_MAX_LOOSE_STREAMS`
+of them without any ``N G obj`` in front). The expanding filters Flate, LZW (with either
+``/EarlyChange``) and RunLength — also chained, or behind ASCII85/ASCIIHex — are measured; each filter
+ends at its own end-of-data marker, so no ``/Length`` or ``endstream`` has to be trusted. A filter chain
+counts up to its first other filter, so chains that differ only after it are measured once. Image codecs
+(DCT, JPX, JBIG2, CCITT) are bounded by the pixel check. A PDF whose structure can't be read within
+those bounds is rejected.
 
 Encrypted PDFs that open without a password (banks and insurers often send edit-protected ones) are
 decrypted by PDFium before it decodes them, so their streams are measured both as stored and as
-pdfminer's security handler decrypts them with the empty password. Decryption runs up to the next
-``endstream`` and then in growing windows while the filters want more. pdfminer goes first because
-PDFium, when it loads a PDF, already unpacks the object stream that holds the catalog. A PDF that
-PDFium would decrypt in a way pdfminer can't reproduce is rejected.
+pdfminer's security handler decrypts them with the empty password (RC4 with
+:func:`ordnung.ingest.text.rc4`, in linear time). A stream is decrypted with each number its object may
+have, once for all its filter chains: first a piece (a wrong key's data fails the filters within it),
+then up to the next ``endstream``, then in growing windows while the filters want more. The bytes
+decrypted count against the same budget as the bytes read. pdfminer goes first because PDFium, when it
+loads a PDF, already unpacks the object stream that holds the catalog. A PDF that PDFium would decrypt
+in a way pdfminer can't reproduce is rejected.
 """
 
 from __future__ import annotations
 
 import base64
 import binascii
+import bisect
 import functools
 import hashlib
 import io
@@ -45,11 +51,10 @@ from typing import NamedTuple, Protocol
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
-from pdfminer.arcfour import Arcfour
 from pdfminer.pdfdocument import PDFDocument, PDFStandardSecurityHandler, PDFStandardSecurityHandlerV4
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 
-from ordnung.ingest.text import PDFIUM_LOCK
+from ordnung.ingest.text import PDFIUM_LOCK, rc4
 
 MAX_STREAM_BYTES = 256 * 1024 * 1024
 MAX_CONTENT_BYTES = 256 * 1024 * 1024
@@ -57,7 +62,6 @@ MAX_IMAGE_PIXELS = 150_000_000
 
 # the patterns that scan the whole file start with a literal (the regex engine then skips ahead fast)
 _STREAM_RE = re.compile(rb"stream(?<![A-Za-z]stream)(?:\r\n|\n|\r)")
-_OBJECT_RE = re.compile(rb"(\d+)\s+(\d+)\s+obj\b")
 # ``N G obj`` as a whole word, searched in the reversed bytes
 _REVERSED_OBJECT_RE = re.compile(
     rb"jbo(?<![^\x00\t\n\x0c\r ()<>\[\]{}/%]jbo)[\x00\t\n\x0c\r ]+(\d+)[\x00\t\n\x0c\r ]+(\d+)(?![0-9])"
@@ -79,13 +83,14 @@ _DICT_WINDOW = 64 * 1024
 _MAX_DICTIONARY = 8 * 1024 * 1024  # a stream's dictionary is a few hundred bytes in a real PDF
 _MAX_DEPTH = 64
 _MAX_OBJECTS = 200_000  # objects outside object streams (a letter of 60 pages has a few thousand)
+_MAX_LOOSE_STREAMS = 4096  # ``stream`` keywords with no ``N G obj`` in the window in front of them
 _LEX_SLACK = 1024 * 1024  # bytes lexing may read beyond twice the file size
 _MAX_NUMBER_DIGITS = 10
 _READ_CHUNK = 16 * 1024
-_READ_SLACK = 64 * 1024 * 1024  # bytes measuring may read beyond four times the file size
+_READ_SLACK = 64 * 1024 * 1024  # bytes measuring may read and decrypt beyond four times the file size
 _OUT_CHUNK = 1024 * 1024
 _WINDOW_SLACK = 64  # bytes decrypted past ``endstream``: room for an end of line and an AES block
-_RC4_PIECE = 4096  # one call of pdfminer's RC4 slows down with the square of its length
+_PROBE = 1024  # bytes of a stream decrypted first: a wrong key's data fails its filters within them
 _MAX_LOOKUPS = 1000  # pdfminer object lookups while it reads the trailer (a handful in real PDFs)
 
 _FLATE = frozenset({b"FlateDecode", b"Fl"})
@@ -93,6 +98,7 @@ _LZW = frozenset({b"LZWDecode", b"LZW"})
 _RUN_LENGTH = frozenset({b"RunLengthDecode", b"RL"})
 _ASCII85 = frozenset({b"ASCII85Decode", b"A85"})
 _ASCII_HEX = frozenset({b"ASCIIHexDecode", b"AHx"})
+_EXPANDING = _FLATE | _LZW | _RUN_LENGTH
 _CRYPT = b"Crypt"  # decryption by the security handler (Identity: the data as stored); both are measured
 
 _TOO_LARGE = (
@@ -354,6 +360,9 @@ class _Lexer:
 _Definitions = dict[tuple[int, int], list[int]]
 """Where each object's value starts, by ``(number, generation)``."""
 
+_Object = tuple[bytes, int, int]
+"""An ``N G obj`` in the file: the object number as written, the generation and where ``obj`` ends."""
+
 
 @dataclass
 class _Stream:
@@ -377,8 +386,8 @@ def _number(digits: bytes) -> int:
     return int(digits) if len(digits) <= _MAX_NUMBER_DIGITS else 10**18
 
 
-def _objects(data: bytes) -> Iterator[tuple[bytes, int, int]]:
-    """``(object number as written, generation, end of "obj")`` of every ``N G obj`` in the file."""
+def _objects(data: bytes) -> Iterator[_Object]:
+    """Every ``N G obj`` in the file, the last one first."""
     reversed_data = data[::-1]
     for found in _REVERSED_OBJECT_RE.finditer(reversed_data):
         yield found[2][::-1], _number(found[1][::-1]), len(data) - found.start()
@@ -427,11 +436,9 @@ def _integer(values: list[object], resolve: Callable[[object], list[object]]) ->
     return max((item for item in found if isinstance(item, int)), default=0)
 
 
-def _lexed_streams(data: bytes) -> Iterator[_Stream]:
-    """The streams after every ``N G obj`` whose dictionary is followed by the ``stream`` keyword."""
-    objects = list(_objects(data))
-    if len(objects) > _MAX_OBJECTS:
-        raise _Unreadable
+def _lexed_streams(data: bytes, objects: list[_Object]) -> Iterator[_Stream]:
+    """The streams after every ``N G obj`` (``objects``) whose dictionary is followed by the ``stream``
+    keyword."""
     exact: _Definitions = {}  # an image's size is looked up as written: a near miss would inflate it
     endings: _Definitions = {}  # a filter also where a cross-reference table may point instead
     for written, generation, end in objects:
@@ -465,19 +472,35 @@ def _lexed_streams(data: bytes) -> Iterator[_Stream]:
         )
 
 
-def _keyword_streams(data: bytes) -> Iterator[_Stream]:
+def _keyword_streams(data: bytes, objects: list[_Object]) -> Iterator[_Stream]:
     """The streams after every ``stream`` keyword, with the dictionary in the bytes in front of it
-    (damaged files whose objects can't be lexed)."""
+    (damaged files whose objects can't be lexed): from the last ``N G obj`` (``objects``) in the
+    :data:`_DICT_WINDOW` bytes in front, else all of them. Past :data:`_MAX_LOOSE_STREAMS` keywords with
+    no ``N G obj`` there, or once the dictionaries behind an ``N G obj`` add up to far more than the file
+    holds (many keywords behind one), the file is :class:`_Unreadable`."""
+    headers = sorted(objects, key=lambda found: found[2])
+    ends = [end for _, _, end in headers]
+    loose = 0
+    budget = 2 * len(data) + _LEX_SLACK
     for match in _STREAM_RE.finditer(data):
-        window = data[max(0, match.start() - _DICT_WINDOW) : match.start()]
-        found = list(_OBJECT_RE.finditer(window))
-        header = window[found[-1].end() :] if found else window
+        before = bisect.bisect_right(ends, match.start()) - 1
+        if before >= 0 and ends[before] >= match.start() - _DICT_WINDOW:
+            written, generation, end = headers[before]
+            header = data[end : match.start()]
+            refs = {(number, generation) for number in _numbers(written)}
+            budget -= len(header)
+        else:
+            loose += 1
+            header = data[max(0, match.start() - _DICT_WINDOW) : match.start()]
+            refs = set()
+        if loose > _MAX_LOOSE_STREAMS or budget < 0:
+            raise _Unreadable
         header = _ESCAPE_RE.sub(lambda escape: bytes([int(escape[1], 16)]), header)
         filter_list = _FILTER_RE.search(header)
         names = _NAME_RE.findall(filter_list.group(1)) if filter_list else []
         yield _Stream(
             start=match.end(),
-            refs={(number, _number(found[-1][2])) for number in _numbers(found[-1][1])} if found else set(),
+            refs=refs,
             chains={tuple(name for name in names if name != _CRYPT)},
             image=bool(_IMAGE_RE.search(header)),
             pixels=_pixels(header),
@@ -489,10 +512,13 @@ def _streams(data: bytes) -> list[_Stream]:
     say about it (every filter chain and object it may have, the larger image size)."""
     streams: dict[int, _Stream] = {}
     try:
-        lexed = list(_lexed_streams(data))
+        objects = list(_objects(data))
+        if len(objects) > _MAX_OBJECTS:
+            raise _Unreadable
+        found = [*_lexed_streams(data, objects), *_keyword_streams(data, objects)]
     except _Unreadable:
         raise ExpansionError(_UNREADABLE) from None
-    for stream in [*lexed, *_keyword_streams(data)]:
+    for stream in found:
         known = streams.setdefault(stream.start, stream)
         if known is not stream:
             known.merge(stream)
@@ -593,47 +619,80 @@ def _measured(
     return total, min(position, len(source)) - start, not stages[0].finished and not bounded
 
 
-def _decrypted_size(
-    decrypt: _Decrypt,
-    ref: tuple[int, int],
-    data: bytes,
-    start: int,
-    filters: list[bytes],
-    limit: int,
-    early_change: int,
+def _measured_part(chain: tuple[bytes, ...]) -> tuple[bytes, ...]:
+    """The part of a filter chain :func:`_measured` reads: a leading ASCII85 or ASCIIHex filter and the
+    expanding filters after it, up to the first other one; empty when it has no expanding filter."""
+    first = 1 if chain and (chain[0] in _ASCII85 or chain[0] in _ASCII_HEX) else 0
+    end = first
+    while end < len(chain) and chain[end] in _EXPANDING:
+        end += 1
+    return chain[:end] if end > first else ()
+
+
+class _Decrypted:
+    """The data of a stream as ``decrypt`` decrypts it for object ``ref``, from its start: first
+    :data:`_PROBE` bytes, then up to the next ``endstream``, then in windows that double. Each window is
+    decrypted once, whichever filter chain wants it."""
+
+    def __init__(self, decrypt: _Decrypt, ref: tuple[int, int], data: bytes, start: int) -> None:
+        self._decrypt = decrypt
+        self._key = ref[0] & 0xFFFFFF, ref[1] & 0xFFFF  # the bytes the object's key is made from
+        self._data = data
+        self._start = start
+        end = data.find(b"endstream", start)
+        self._to_endstream = (end if end != -1 else len(data)) - start + _WINDOW_SLACK
+        self._window = 0
+        self._plain = b""
+        self._at_end = False
+
+    def _grow(self) -> int:
+        """Decrypt the next window and return its length; 0 when the last one reached the end of the file."""
+        if self._at_end:
+            return 0
+        if self._window:
+            self._window = max(self._to_endstream, 2 * self._window)
+        else:
+            self._window = min(_PROBE, self._to_endstream)
+        stop = min(len(self._data), self._start + self._window)
+        self._plain = self._decrypt(*self._key, self._data[self._start : stop])
+        self._at_end = stop == len(self._data)
+        return stop - self._start
+
+    def size(self, filters: list[bytes], limit: int, early_change: int) -> tuple[int, int]:
+        """:func:`expanded_size` of the decrypted stream — measured in the largest window decrypted yet,
+        then in the next ones while its filters want more data — and the bytes read and decrypted."""
+        spent = 0 if self._window else self._grow()
+        while True:
+            expanded, read, more = _measured(self._plain, 0, filters, limit, early_change)
+            spent += read
+            grown = self._grow() if more else 0
+            if not grown:
+                return expanded, spent
+            spent += grown
+
+
+def _stream_size(
+    data: bytes, stream: _Stream, decrypt: _Decrypt | None, limit: int, budget: int
 ) -> tuple[int, int]:
-    """:func:`expanded_size` of the stream of object ``ref`` as ``decrypt`` decrypts it: up to the next
-    ``endstream`` first, then in windows that double while its filters want more data."""
-    end = data.find(b"endstream", start)
-    window = (end - start if end != -1 else len(data)) + _WINDOW_SLACK
-    objid, genno = ref[0] & 0xFFFFFF, ref[1] & 0xFFFF  # the bytes the object's key is made from
-    while True:
-        stop = min(len(data), start + window)
-        plain = decrypt(objid, genno, data[start:stop])
-        expanded, read, more = _measured(plain, 0, filters, limit, early_change)
-        if not more or stop == len(data):
-            return expanded, read
-        window *= 2
-
-
-def _stream_size(data: bytes, stream: _Stream, decrypt: _Decrypt | None, limit: int) -> tuple[int, int]:
-    """The most ``stream`` may expand to — through each of its filter chains, LZW with either
-    ``/EarlyChange``, as stored and decrypted as each object it may belong to — and the bytes read."""
-    size = read = 0
-    refs = sorted(stream.refs) if decrypt is not None else []
-    for chain in stream.chains:
-        for early_change in (1, 0) if _LZW.intersection(chain) else (1,):
-            for ref in [None, *refs]:  # as stored, then decrypted as each object
-                if ref is None or decrypt is None:
+    """The most ``stream`` may expand to — through the measured part of each of its filter chains, LZW
+    with either ``/EarlyChange``, as stored and decrypted as each object it may belong to — and the bytes
+    read and decrypted for it, stopping once they pass ``budget``."""
+    chains = sorted({part for chain in stream.chains if (part := _measured_part(chain))})
+    sources: list[_Decrypted | None] = [None]  # as stored, then decrypted as each object
+    if decrypt is not None and chains:
+        sources += [_Decrypted(decrypt, ref, data, stream.start) for ref in sorted(stream.refs)]
+    size = spent = 0
+    for source in sources:
+        for chain in chains:
+            for early_change in (1, 0) if _LZW.intersection(chain) else (1,):
+                if source is None:
                     measured, used = expanded_size(data, stream.start, list(chain), limit, early_change)
                 else:
-                    measured, used = _decrypted_size(
-                        decrypt, ref, data, stream.start, list(chain), limit, early_change
-                    )
-                size, read = max(size, measured), read + used
-                if size > limit:
-                    return size, read
-    return size, read
+                    measured, used = source.size(list(chain), limit, early_change)
+                size, spent = max(size, measured), spent + used
+                if size > limit or spent > budget:
+                    return size, spent
+    return size, spent
 
 
 # --------------------------------------------------------------------------------------------------
@@ -667,8 +726,8 @@ def _security_handler(data: bytes) -> PDFStandardSecurityHandler | None:
 
 def _stream_decrypter(handler: PDFStandardSecurityHandler) -> _Decrypt:
     """How ``handler`` decrypts streams: pdfminer's own decryption for AES and Identity. RC4 uses the
-    same key and pdfminer's cipher fed in pieces, since one call slows down with the square of its
-    length (a 1 MB stream would take half a minute)."""
+    same key and :func:`~ordnung.ingest.text.rc4`, since pdfminer's cipher slows down with the square of
+    the length (a 1 MB stream took over a minute)."""
     if isinstance(handler, PDFStandardSecurityHandlerV4):
         method = handler.cfm[handler.stmf]
     else:
@@ -679,8 +738,7 @@ def _stream_decrypter(handler: PDFStandardSecurityHandler) -> _Decrypt:
 
     def decrypt(objid: int, genno: int, data: bytes) -> bytes:
         salted = file_key + objid.to_bytes(3, "little") + genno.to_bytes(2, "little")  # PDF 7.6.2
-        cipher = Arcfour(hashlib.md5(salted, usedforsecurity=False).digest()[: min(len(salted), 16)])
-        return b"".join(cipher.process(data[at : at + _RC4_PIECE]) for at in range(0, len(data), _RC4_PIECE))
+        return rc4(hashlib.md5(salted, usedforsecurity=False).digest()[: min(len(salted), 16)], data)
 
     return decrypt
 
@@ -717,15 +775,16 @@ def check_pdf_expansion(data: bytes) -> None:
 
 
 def _check_streams(data: bytes, decrypt: _Decrypt | None) -> None:
-    """Measure every stream as stored and, with ``decrypt``, also decrypted; the larger size counts."""
+    """Measure every stream as stored and, with ``decrypt``, also decrypted; the larger size counts. The
+    bytes read and decrypted share one budget."""
     content = 0
     budget = 4 * len(data) + _READ_SLACK
     for stream in _streams(data):
         if stream.image and stream.pixels > MAX_IMAGE_PIXELS:
             raise ExpansionError("This PDF contains an image that is too large to process safely.")
         remaining = MAX_STREAM_BYTES if stream.image else min(MAX_STREAM_BYTES, MAX_CONTENT_BYTES - content)
-        size, read = _stream_size(data, stream, decrypt, remaining)
-        budget -= read
+        size, spent = _stream_size(data, stream, decrypt, remaining, budget)
+        budget -= spent
         if size > remaining or budget < 0:
             raise ExpansionError(_TOO_LARGE)
         if not stream.image:

@@ -5,8 +5,8 @@
   "model": "claude-sonnet-5",
   "condition": "ordnung",
   "backend": "replay",
-  "commit": "2cc4558",
-  "fingerprint": "888492efa096761f",
+  "commit": "60a849e",
+  "fingerprint": "822d5316b68df063",
   "script": "scripts/eval_without_land.py",
   "note": "The Ordnung condition's recorded outputs replayed with the checked-out code, once as the benchmark runs it (the Land the letterhead names is the sender's holiday region) and once with the sender's Land unknown, as in the app until the person sets it for that sender: nationwide holidays and, for a Land authority, the 3-day delivery rule. The person's own Land is kept. No model was called."
  },
