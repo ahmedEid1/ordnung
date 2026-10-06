@@ -8,9 +8,10 @@ import { ideasFromNewMail, useOpenedTrayDocs } from "@/features/tour/newMail";
 
 /**
  * Everything the Today page shows, derived once from `/api/dashboard`, the people & organisations
- * list, the "Please check" letters and the letters that couldn't be read. Those and the letters from the
- * watched folder are `unread`: nothing of them is in the dashboard, so while any are there nothing is
- * "all clear" (UX U2).
+ * list, the "Please check" letters and the letters that couldn't be read. Those, the letters from the
+ * watched folder and the letters in the queue (waiting for Claude, say, or being read) are `unread`:
+ * nothing of them is in the dashboard, so while any are there nothing is "all clear" (UX U2, final check
+ * F-M1: letters waiting for a missing or signed-out Claude stay queued — they don't fail).
  */
 export function useTodayData() {
   const today = useTodayISO();
@@ -46,13 +47,15 @@ export function useTodayData() {
   const partyById = useMemo(() => new Map<string, Party>((parties.data ?? []).map((p) => [p.id, p])), [parties.data]);
 
   const failedDocs = failed.data ?? [];
+  const queuedDocs = useMemo(() => (allDocs.data ?? []).filter((d) => d.status === "queued" || d.status === "processing"), [allDocs.data]);
   return {
     dashboard,
     dash,
     derived,
     reviewDocs: reviewDocs ?? [],
     failedDocs,
-    unread: (dash?.waiting ?? 0) + failedDocs.length,
+    queuedDocs,
+    unread: (dash?.waiting ?? 0) + failedDocs.length + queuedDocs.length,
     partyById,
     isPending: dashboard.isPending,
     isError: dashboard.isError && !dash,

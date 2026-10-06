@@ -552,12 +552,13 @@ function verbPhrase(a: TodayAction): string {
  * Code-generated fallback for the secretary's note (when the AI note is unavailable): one or two
  * plain sentences built only from the ledger, so every date and amount is right by construction.
  */
-export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0, failed = 0): string {
-  // letters from the watched folder nobody read, and letters that couldn't be read: their dates are unknown,
-  // so nothing is "all clear"
+export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0, failed = 0, queued = 0): string {
+  // letters from the watched folder nobody read, letters that couldn't be read and letters in the queue (waiting
+  // for Claude, say): their dates are unknown, so nothing is "all clear"
   const held = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
   const broken = failed ? ` ${failed === 1 ? "One letter" : `${failed} letters`} couldn't be read.` : "";
-  const unread = `${held}${broken}`;
+  const inQueue = queued ? ` ${queued === 1 ? "One letter waits" : `${queued} letters wait`} to be read.` : "";
+  const unread = `${held}${broken}${inQueue}`;
   if (!top.length) {
     const next = upcoming[0];
     if (unread) return `Nothing due from the letters that were read.${unread}`;

@@ -450,6 +450,11 @@ describe("words", () => {
       "Nothing due from the letters that were read. One letter from your folder isn't read yet. One letter couldn't be read.",
     );
   });
+
+  it("never says 'nothing needs you' while letters wait in the queue — for Claude, say (final check F-M1)", () => {
+    expect(agendaSentence([], [], TODAY, 0, 0, 2)).toBe("Nothing due from the letters that were read. 2 letters wait to be read.");
+    expect(agendaSentence([], [], TODAY, 0, 1, 1)).toBe("Nothing due from the letters that were read. One letter couldn't be read. One letter waits to be read.");
+  });
 });
 
 describe("Ideas that came with new mail", () => {

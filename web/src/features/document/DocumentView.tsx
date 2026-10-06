@@ -7,7 +7,7 @@
  * the e-mail it came with / an e-mail's attachments → Thread, contract, drafts, Ideas → provenance +
  * Reprocess / Download / Delete. A letter that waits for the person (from the watched folder) shows
  * its waiting card in the verdict's place, and nothing read from it (nothing was) — only the dates the
- * person adds, as a letter Claude couldn't read does.
+ * person adds, as a letter Claude couldn't read does, and one that waits in the queue for Claude.
  *
  * Two tabs above the panel (`?view=trace` for the second, so it can be linked): the letter, and "How
  * this was read" — every step of its reading (`./trace`). The pages stay beside it on wide screens.
@@ -34,7 +34,7 @@ import { ItemsList } from "./ItemsList";
 import { KeyFacts } from "./KeyFacts";
 import { ContractsSection, DraftsSection, IdeasSection, ThreadSection } from "./Related";
 import { DocumentFooter } from "./DocumentFooter";
-import { ProcessingCard } from "./ProcessingCard";
+import { ProcessingCard, useClaudeWait } from "./ProcessingCard";
 import { HeldCard } from "./HeldCard";
 import { EmailParts } from "./EmailParts";
 import { TracePanel } from "./trace/TracePanel";
@@ -83,8 +83,10 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const scam = Boolean(scamSuggestion(detail));
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
-  // nothing comes for a letter that couldn't be read: no placeholders that never fill (feature audit G15)
-  const reading = neverRead && doc.status !== "failed";
+  // nothing comes for a letter that couldn't be read, or that waits for Claude until it is connected: no
+  // placeholders that never fill (feature audit G15, final check F-M2)
+  const claudeWait = useClaudeWait(doc);
+  const reading = neverRead && doc.status !== "failed" && !claudeWait;
   const held = doc.status === "held";
 
   // an answer to a waiting letter ("Keep private", "Read it with Claude", "Undo “Keep private”") replaces its card with

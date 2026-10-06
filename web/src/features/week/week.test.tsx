@@ -613,6 +613,25 @@ describe("the static demo's session follows the visitor", () => {
     await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: /^New/ })).toHaveFocus());
   });
 
+  it("never ends “All clear” while a letter waits in the queue — for Claude, say (final check F-M1)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // nothing overdue
+    noLettersWaiting(srv);
+    const scan = srv.db.state.documents[0]!;
+    scan.status = "queued"; // Claude isn't installed: the letter waits instead of failing
+    const queuedRow = row({ key: `document:${scan.id}`, title: scan.title ?? scan.filename, kind: "other", status: "queued", note: "Being read." });
+    const queuedEntry = { ...queuedRow, ref: { type: "document" as const, id: scan.id }, doc_id: scan.id };
+    const week = mockWeek(srv.db);
+    const withQueued = { ...week, steps: week.steps.map((s) => (s.id === "new" ? { ...s, entries: [queuedEntry, ...s.entries] } : s)) };
+    vi.spyOn(api, "week").mockResolvedValue(withQueued);
+    vi.spyOn(api, "weekDone").mockResolvedValue({ ...withQueued, last_session: MOCK_WEEK.today });
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    expect(await screen.findByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.getByText(/^1 letter isn't read yet: Ordnung can't tell what it asks until it is\./)).toBeInTheDocument();
+  });
+
   it("finishes “All clear until” the next transfer after paying the first", async () => {
     const { srv } = useMockApi();
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // the phone promise was kept

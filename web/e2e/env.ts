@@ -48,9 +48,14 @@ export const REAL_PORT = PORT + 1;
 export const REAL_BASE_URL = `http://127.0.0.1:${REAL_PORT}`;
 export const REAL_DATA_DIR = `${DATA_DIR}-real`;
 export const REAL_STORAGE_STATE = join(dirname(STORAGE_STATE), "real-app.json");
-/** The `claude` the real app runs: it answers every call with the transcript in {@link FAKE_CLAUDE_SCENARIO}. */
+/** The fake `claude`: it answers every call with the transcript in {@link FAKE_CLAUDE_SCENARIO}. */
 export const FAKE_CLAUDE = join(REPO_DIR, "tests", "fake_claude.py");
 export const FAKE_CLAUDE_SCENARIO = `${REAL_DATA_DIR}-claude.json`;
+/**
+ * The `claude` the real app runs (`ORDNUNG_CLAUDE_BIN`): a link to {@link FAKE_CLAUDE} the global setup makes, so a
+ * test can take it away — Claude not installed — and put it back (e2e/real-app-waiting.spec.ts).
+ */
+export const REAL_CLAUDE = `${REAL_DATA_DIR}-claude`;
 /**
  * The letter the real-app tests upload, and whose recorded demo reading the fake Claude returns: the bank's
  * fee increase that needs consent by 30 November 2026.

@@ -179,11 +179,16 @@ export const isCountedToday = (entry: WeekEntry, step: WeekStep, today: string):
 export const isUnreadRow = (entry: WeekEntry): boolean =>
   entry.ref.type === "document" && ["held", "queued", "processing", "failed"].includes(entry.status ?? "");
 
-/** How many letters wait from the watched folder or couldn't be read — what Today counts as not read. */
+/**
+ * How many letters wait from the watched folder, wait in the queue (for Claude, say) or are being read, or
+ * couldn't be read — what Today counts as not read (final check F-M1: a letter waiting for Claude is queued).
+ */
 function useUnreadCount(): number {
   const held = useDocuments({ status: "held" });
   const failed = useDocuments({ status: "failed" });
-  return (held.data?.length ?? 0) + (failed.data?.length ?? 0);
+  const all = useDocuments();
+  const queued = (all.data ?? []).filter((d) => d.status === "queued" || d.status === "processing").length;
+  return (held.data?.length ?? 0) + (failed.data?.length ?? 0) + queued;
 }
 
 /** The steps holding rows that match, with how many each holds (in the session's order). */
