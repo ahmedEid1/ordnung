@@ -246,7 +246,8 @@ export default function AskPage() {
           {/* the lock sits in the line, beside the words it is about (not floating left of a centred block) */}
           <p className={`mx-auto max-w-lg text-balance text-center text-[12.5px] leading-5 text-muted ${replayDemo ? "mt-2" : "mt-6"}`}>
             <Lock className="mr-1.5 inline size-3.5 align-[-0.15em]" aria-hidden />
-            Claude searches your records with read-only tools. Only the letters it opens are sent to Anthropic, through your own Claude account.
+            Claude searches your records with read-only tools. What its tools return (titles and snippets of matching letters, your to-dos and dates, and the
+            letters it opens) is sent to Anthropic through your own Claude account.
           </p>
         </section>
       ) : (

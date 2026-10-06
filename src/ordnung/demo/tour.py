@@ -323,18 +323,24 @@ def is_suggested(question: str) -> bool:
 
 
 async def demo_safe_stream(
-    events: AsyncIterator[StreamEvent], *, demo: bool, question: str | None = None
+    events: AsyncIterator[StreamEvent],
+    *,
+    demo: bool,
+    question: str | None = None,
+    ctx: AppContext | None = None,
 ) -> AsyncIterator[StreamEvent]:
     """Pass ``events`` through; in demo mode a replay miss ends the stream with one coded event, which the
     web app shows as a note — asking again can't help — instead of a failure: ``demo_changed``
     (:data:`~ordnung.assistant.ask.DEMO_CHANGED`) for a suggested ``question`` — the demo recorded it in
     every state of the New-mail tray, so it misses only after the person changed the letters or to-dos —
-    else ``demo_miss`` (:data:`~ordnung.assistant.ask.DEMO_MISS`)."""
+    else ``demo_miss`` (:data:`~ordnung.assistant.ask.DEMO_MISS`), which points to the suggested questions
+    only while ``ctx``'s demo still offers them (:func:`recorded_questions`)."""
     async for event in events:
         if demo and is_replay_miss(event):
-            yield (
-                demo_changed_event() if question is not None and is_suggested(question) else demo_miss_event()
-            )
+            if question is not None and is_suggested(question):
+                yield demo_changed_event()
+            else:
+                yield demo_miss_event(offered=ctx is None or bool(recorded_questions(ctx)))
             return
         yield event
 

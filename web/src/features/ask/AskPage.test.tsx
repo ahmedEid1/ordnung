@@ -30,7 +30,13 @@ describe("Ask page", () => {
       "Which deadlines are coming up in October?",
       "When does my residence permit expire, and what should I do before then?",
     ]);
-    expect(screen.getByText(/Only the letters it opens are sent to Anthropic/)).toBeInTheDocument();
+    // search sends titles and snippets of letters it never opens: the note says so (not "only the letters it opens")
+    expect(
+      screen.getByText(
+        "Claude searches your records with read-only tools. What its tools return (titles and snippets of matching letters, your to-dos and dates, and the letters it opens) is sent to Anthropic through your own Claude account.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Only the letters it opens/)).toBeNull();
     expect(screen.getByText(/Not legal advice/)).toBeInTheDocument();
   });
 
@@ -123,8 +129,11 @@ describe("Ask page", () => {
     const turn = await screen.findByRole("article", { name: `Question: ${phone}` });
     expect(await within(turn).findByText("The recorded answers no longer fit")).toBeInTheDocument();
     expect(turn).toHaveTextContent(/recorded for Sam's letters as the demo started, and you have changed his to-dos or letters since/);
+    // the reset doesn't touch a demo that runs: stop it first
+    expect(turn).toHaveTextContent("Stop the demo (Ctrl+C where it runs), then run ordnung demo --reset.");
+    expect(within(turn).getByText("ordnung demo --reset").tagName).toBe("CODE");
     expect(turn).not.toHaveTextContent(/try one of the suggested questions/);
-    expect(within(turn).getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data");
+    expect(within(turn).getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data#set-data-reset");
     expect(within(turn).queryByRole("button", { name: "Try again" })).toBeNull();
     expect(screen.getByRole("status")).toHaveTextContent("The recorded answers no longer fit.");
     // no more chips that would miss too
@@ -152,7 +161,7 @@ describe("Ask page", () => {
     client.setQueryData(qk.health, { ...TEST_HEALTH, backend: "replay" });
     renderWithProviders(<AskPage />, { route: "/ask", client });
     expect(await screen.findByText("The recorded answers no longer fit")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data");
+    expect(screen.getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data#set-data-reset");
     expect(screen.queryByRole("list", { name: "Suggested questions" })).toBeNull();
     expect(screen.queryByText(/replay answers recorded/)).toBeNull();
   });

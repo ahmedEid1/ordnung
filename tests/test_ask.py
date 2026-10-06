@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from helpers_secretary import TODAY, seed_ledger
+from helpers_secretary import TODAY, add_doc, seed_ledger
 from ordnung import clock
 from ordnung.app_context import build_context
 from ordnung.assistant.ask import (
@@ -33,6 +33,7 @@ from ordnung.assistant.ask import (
     ledger_fingerprint,
     stored_answer,
 )
+from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.mcp_server import TOOL_NAMES, LedgerTools, render_result
 from ordnung.assistant.support import NOTE_PREFIX
 from ordnung.config import Paths
@@ -41,7 +42,7 @@ from ordnung.llm.base import LLMBackend, LLMRequest, LLMResponse, StreamEvent, U
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend, fixture_path
 from ordnung.llm.runtime import LLMService
-from ordnung.models import AppSettings, ChatMessage, PaymentDetails
+from ordnung.models import AppSettings, ChatMessage, Evidence, PaymentDetails
 
 Script = Callable[[LLMRequest], list[StreamEvent]]
 FAKE_DOC = "doc_zzzzzzzzzzzz"
@@ -967,6 +968,25 @@ async def test_every_letter_a_tool_result_sends_text_of_is_listed_as_sent(
     } <= sent
     assert ids["doc_private"] not in sent  # the private payment's letter is never sent
     assert len(call.doc_ids) == len(sent)
+
+
+async def test_a_contract_result_lists_the_letters_its_terms_and_its_pending_cancellation_come_from(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """F-S9, the rest of SEC S6: list_contracts credited a contract's letter text to the letter it was read
+    from only. Its terms may also come from other letters (its evidence), and its row sends the end date a
+    pending cancellation letter claims, so "What was sent" lists those letters too."""
+    terms = add_doc(store, "phone-terms", kind="contract", title="FunkNetz tariff terms")
+    store.update_contract(ids["phone"], evidence=[Evidence(doc_id=terms, quote="Kündigungsfrist 1 Monat")])
+    record = parse_tool_result(render_result(tools.list_contracts())).record
+    gym = next(row for row in record["contracts"] if row["id"] == ids["gym_contract"])
+    assert gym["cancellation_letter"]["doc_id"] == ids["doc_gym_confirm"]
+    script = turn(tools, "Here are your contracts.", ("list_contracts", {}))
+
+    await collect(make_ctx(paths, store, ScriptedBackend(script)), "Which contracts do I have?")
+    (call,) = store.usage_stats().recent
+    assert {ids["doc_phone"], terms, ids["doc_gym_confirm"]} <= set(call.doc_ids)
+    assert len(call.doc_ids) == len(set(call.doc_ids))
 
 
 async def test_backend_error_is_passed_on_and_nothing_is_stored(

@@ -13,7 +13,7 @@ data-folder lock and ``server.json`` stay, so the running server keeps working a
 still finds it. Entries Ordnung did not create (for
 example when the data folder was pointed at a folder with other files) are never touched; they are
 listed in the answer, which also tells the browser to empty its cache (``Clear-Site-Data``). The
-zero-token demo refuses (409): ``ordnung demo --reset`` starts it over.
+zero-token demo refuses (409): ``ordnung demo --reset``, once the demo is stopped, starts it over.
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ router = APIRouter(tags=["data"])
 log = logging.getLogger(__name__)
 
 DEMO_MESSAGE = (
-    "This is the demo, so there is nothing of yours to delete. "
-    "To start over with Sam's original letters, run “ordnung demo --reset”."
+    "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, "
+    "stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
 )
 KEPT_FILES = frozenset({LOCK_NAME, SERVER_FILE})
 _DB_SUFFIXES = ("", "-wal", "-shm", "-journal")
