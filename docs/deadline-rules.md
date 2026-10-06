@@ -265,7 +265,8 @@ the text as of 10 Jun 2025, so earlier postings keep 3 days); BE, BB, NI, RP, SN
 federal law.
 For Hessen (still showing the 3rd day), Bremen, Saarland and Thüringen — and whenever the Land is
 unknown — Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Baden-Württemberg keeps 3 days for procedures begun before 7 Feb 2025
-(§ 102b LVwVfG); Ordnung cannot see when a procedure began and notes this here.
+(§ 102b LVwVfG), and Bavaria and Mecklenburg-Vorpommern for procedures begun before 1 Jan 2025 (Art. 98
+BayVwVfG, § 120a VwVfG M-V); Ordnung cannot see when a procedure began and notes this here.
 In the app a sender's Land is unknown until you set it for that sender (*Which state is this sender in?*
 in its drawer): reading a letter never sets it. Until then a Land authority's letter gets the 3rd day and
 nationwide holidays, at lower confidence — early, never late. The benchmark gives Ordnung the Land the
@@ -1225,7 +1226,7 @@ Changes to the law that are on their way and would change a rule or its copy. Th
 | Work-day limits for students (§ 16b Abs. 3 AufenthG: 140 days, weekly counting) | Needs complete work records and lecture periods; replaced by a static info card with links (SPEC § 21). |
 | Residence permit extension deadlines beyond "apply before the expiry date" (§ 81 Abs. 4 AufenthG) | The expiry date is used as written; how early to apply is office practice, shown as reminders. |
 | Several formal deliveries (e.g. to you and your lawyer, § 51 Abs. 4 OWiG, § 37 Abs. 2 StPO) | Ordnung uses the delivery you know about — the earlier, safe date. |
-| Baden-Württemberg procedures begun before 7 Feb 2025 (§ 102b LVwVfG) | Not visible in a letter; the 3rd-day risk is documented here. |
+| Baden-Württemberg procedures begun before 7 Feb 2025 (§ 102b LVwVfG); Bavarian and Mecklenburg-Vorpommern procedures begun before 1 Jan 2025 (Art. 98 BayVwVfG, § 120a VwVfG M-V) | Not visible in a letter; the 3rd-day risk is documented here. |
 | Municipal fee notices under a Land KAG (which may follow the AO shift) | Treated as general authority letters — no shift, the earlier date. |
 | Late-payment surcharges (§ 240 AO, 3-day grace period), default interest (§ 288 BGB) | Money consequences, not deadlines; the grace period is never used for planning. |
 | Energy move-out cancellation (§ 41b Abs. 5 EnWG), early telecom extensions (BGH III ZR 61/24), missing cancellation buttons (§ 312k Abs. 6) | Need facts a letter rarely contains; flagged for review instead. |

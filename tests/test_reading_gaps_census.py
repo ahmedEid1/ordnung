@@ -37,6 +37,8 @@ RECORDED = ROOT / "evals" / "recorded" / MODEL
 pytestmark = pytest.mark.slow
 #: The one letter whose recorded reading came back incomplete (only its required fields).
 EXPECTED = {"holdout2-adversarial-injection_visible-1"}
+#: Splits not recorded yet: their letters stay unseen until their one recording, so the app is never run on them here.
+UNRECORDED = {"holdout3"}
 
 
 async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], set[str], int]:
@@ -71,7 +73,7 @@ async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     as_first_recorded(monkeypatch)  # the readings as first recorded: the empty one's re-ask is missed
-    entries = load_manifest(DATASET / "manifest.json")
+    entries = [entry for entry in load_manifest(DATASET / "manifest.json") if entry.split not in UNRECORDED]
     fired, replaced, dropped, read = await _fires(entries, tmp_path)
     splits = {entry.split for entry in entries}
     assert splits >= {"dev", "test", "holdout", "holdout2"}

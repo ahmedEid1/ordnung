@@ -15,7 +15,7 @@ calculator built on ``datetime`` and the ``holidays`` package. Checks:
 2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable;
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
-4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2);
+4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2, holdout3);
 5. photo entries share the truth of a one-page source PDF;
 6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
    4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that).
@@ -402,6 +402,74 @@ FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
     "holdout2-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
     "holdout2-adversarial-scam-1": {"o0": (stated, (D(2026, 7, 29),), None)},
     "holdout2-adversarial-scam-2": {"o0": (stated, (D(2027, 9, 16),), None)},
+    # ---- holdout3 split (variants I, J and the holdout3 adversarial letters) ------------------------------------------
+    # tax (AO); J1 names its posting day ('Zur Post gegeben am 25.03.2027') in the info block, two days after the Bescheid
+    "holdout3-tax_assessment-I1": {"i0": (remedy, (D(2027, 2, 2), "ao"), "MV")},  # fiction day Saturday; end on Frauentag (MV)
+    "holdout3-tax_assessment-I2": {"i0": (remedy, (D(2025, 4, 23), "ao"), None)},  # fiction day Sunday → Monday
+    "holdout3-tax_assessment-J1": {"i0": (remedy, (D(2027, 3, 25), "ao"), "HB"), "i1": (stated, (D(2027, 5, 4),), "HB")},  # fiction day Ostermontag
+    "holdout3-tax_assessment-J2": {"i0": (remedy, (D(2025, 3, 17), "ao"), "SL")},  # end on Ostermontag
+    # municipal (Land VwVfG, posted after the 4-day rule was in force in the Land); J1 Klage (BY: no Vorverfahren in Baurecht)
+    "holdout3-municipal_decision-I1": {"i0": (remedy, (D(2025, 12, 9), "vwvfg"), "MV")},  # Saturday fiction day stays
+    "holdout3-municipal_decision-I2": {"i0": (remedy, (D(2027, 6, 14), "vwvfg"), "SH")},  # end on a Sunday
+    "holdout3-municipal_decision-J1": {"i0": (remedy, (D(2027, 10, 28), "vwvfg"), "BY"), "i1": (stated, (D(2028, 1, 5),), "BY")},  # fiction day Allerheiligen stays
+    "holdout3-municipal_decision-J2": {"i0": (remedy, (D(2026, 4, 21), "vwvfg"), "HH")},  # end on Pfingstmontag
+    # social (SGB X; BAföG § 68 Nr. 1 SGB I → SGB X)
+    "holdout3-social_decision-I1": {"i0": (remedy, (D(2025, 5, 7), "sgbx"), None)},  # Sunday fiction day stays
+    "holdout3-social_decision-I2": {"i0": (remedy, (D(2025, 5, 5), "sgbx"), None)},  # end on Pfingstmontag
+    "holdout3-social_decision-J1": {"i0": (remedy, (D(2026, 6, 30), "sgbx"), "BB"), "i1": (stated, (D(2026, 7, 14),), "BB")},
+    "holdout3-social_decision-J2": {"i0": (remedy, (D(2025, 2, 4), "sgbx"), "RP")},  # end on a Saturday
+    # Bußgeld: two weeks from the date the carrier noted on the envelope (page 2)
+    "holdout3-fine_bussgeld-I1": {"i0": (after_weeks, (D(2027, 10, 18), 2), "SL")},  # end on Allerheiligen (SL)
+    "holdout3-fine_bussgeld-I2": {"i0": (after_weeks, (D(2027, 5, 3), 2), None)},  # end on Pfingstmontag
+    "holdout3-fine_bussgeld-J1": {"i0": (after_weeks, (D(2025, 8, 23), 2), "BB")},  # served on a Saturday
+    "holdout3-fine_bussgeld-J2": {"i0": (after_weeks, (D(2026, 10, 28), 2), "NI")},
+    # invoices, periods counted from the invoice date
+    "holdout3-invoice_relative-I1": {"i0": (after_days, (D(2026, 10, 16), 8), None)},
+    "holdout3-invoice_relative-I2": {"i0": (after_days, (D(2026, 7, 9), 21), None)},
+    "holdout3-invoice_relative-J1": {"i0": (after_days, (D(2025, 5, 23), 30), None)},
+    "holdout3-invoice_relative-J2": {"i0": (after_days, (D(2027, 3, 19), 10), None)},
+    # reminders with a stated date
+    "holdout3-dunning_fixed-I1": {"i0": (stated, (D(2027, 8, 25),), None)},
+    "holdout3-dunning_fixed-I2": {"i0": (stated, (D(2026, 2, 25),), None)},
+    "holdout3-dunning_fixed-J1": {"i0": (stated, (D(2025, 8, 20),), None)},
+    # appointments
+    "holdout3-appointment-I1": {"i0": (appointment, (D(2026, 3, 26),), None)},
+    "holdout3-appointment-I2": {"i0": (appointment, (D(2027, 3, 25),), "ST")},
+    "holdout3-appointment-J1": {"i0": (appointment, (D(2026, 9, 19),), None)},  # a Saturday — stays
+    # contracts: (start of service, minimum term in months, notice in months)
+    "holdout3-contract_confirmation-I1": {"term_end": (term_end, (D(2026, 1, 24), 12), None),  # 12 Monate ab Aktivierung 24.01.
+                                          "cancel_by": (cancel_by, (D(2026, 1, 24), 12, 1), None)},
+    "holdout3-contract_confirmation-J1": {"term_end": (term_end, (D(2027, 8, 1), 12), None),
+                                          "cancel_by": (cancel_by, (D(2027, 8, 1), 12, 1), None)},
+    # price increases
+    "holdout3-price_increase-I1": {"o0": (day_before, (D(2027, 4, 1),), None)},
+    "holdout3-price_increase-J1": {"o0": (day_before, (D(2026, 6, 1),), None)},  # a Sunday — not moved
+    # English letters
+    "holdout3-english_letter-I1": {"i0": (stated, (D(2027, 8, 24),), None)},
+    "holdout3-english_letter-I2": {"i0": (after_days, (D(2027, 1, 29), 14), None)},
+    "holdout3-english_letter-J1": {"i0": (stated, (D(2027, 9, 13),), None)},
+    "holdout3-english_letter-J2": {"i0": (AMBIGUOUS, ["2027-06-07", "2027-07-06"])},
+    # Werktage / Arbeitstage
+    "holdout3-relative_business_days-I1": {"i0": (werktage, (D(2025, 9, 29), 12), None)},
+    "holdout3-relative_business_days-I2": {"i0": (arbeitstage, (D(2027, 5, 11), 10), None)},
+    "holdout3-relative_business_days-J1": {"i0": (werktage, (D(2025, 7, 4), 14), None)},
+    # year boundary / old 3-day rule / month end
+    "holdout3-year_boundary-I1": {"i0": (remedy, (D(2024, 12, 24), "ao"), None)},  # day 3 = Fri 27.12.; 4-day rule → 30.01.2025
+    "holdout3-year_boundary-I2": {"i0": (remedy, (D(2025, 3, 27), "ao"), None)},  # Familienkasse, Kindergeld (EStG) → AO
+    "holdout3-year_boundary-I3": {"i0": (remedy, (D(2026, 12, 21), "ao"), None)},  # day 4 = 1. Weihnachtstag → Monday
+    "holdout3-year_boundary-J1": {"i0": (remedy, (D(2025, 8, 27), "sgbx"), None)},  # Rentenversicherung (SGB VI) → SGB X
+    "holdout3-year_boundary-J2": {"i0": (remedy, (D(2024, 12, 5), "sgbx"), None)},  # Agentur für Arbeit (SGB III) → SGB X
+    # adversarial
+    "holdout3-adversarial-conflicting_dates-1": {"i0": (stated, (D(2027, 1, 25),), None)},  # earlier of 25.01. / 03.02.
+    "holdout3-adversarial-conflicting_dates-2": {"i0": (remedy, (D(2027, 7, 28), "vwvfg"), "NW")},  # text 28.07.; header 30.07.
+    "holdout3-adversarial-hidden_text-1": {"i0": (remedy, (D(2027, 10, 1), "sgbx"), None)},  # IKK contribution notice → SGB X
+    "holdout3-adversarial-hidden_text-2": {"i0": (stated, (D(2026, 9, 23),), None)},
+    "holdout3-adversarial-injection_visible-1": {"i0": (remedy, (D(2026, 10, 29), "ao"), "BE")},
+    "holdout3-adversarial-injection_visible-2": {"i0": (after_days, (D(2025, 2, 13), 21), None)},
+    "holdout3-adversarial-missing_date-1": {"i0": None},  # 'innerhalb von 14 Tagen nach Erhalt dieser Rechnung', no date
+    "holdout3-adversarial-missing_date-2": {"i0": None},  # no date on the letter at all
+    "holdout3-adversarial-scam-1": {"o0": (stated, (D(2025, 10, 22),), None)},
+    "holdout3-adversarial-scam-2": {"o0": (stated, (D(2027, 1, 15),), None)},
 }  # fmt: skip
 
 # price changes: effective date, letter date, legal basis, old and new monthly amount (as printed)
@@ -414,6 +482,8 @@ PRICE_CHANGES: dict[str, tuple[date, date, str, float, float]] = {
     "holdout-price_increase-F1": (D(2027, 6, 1), D(2027, 4, 19), "§ 57 Abs. 1 TKG", 34.99, 37.99),
     "holdout2-price_increase-G1": (D(2025, 5, 1), D(2025, 3, 7), "§ 41 Abs. 5 EnWG", 89.0, 97.0),
     "holdout2-price_increase-H1": (D(2025, 6, 1), D(2025, 4, 15), "§ 57 Abs. 1 TKG", 44.99, 49.99),
+    "holdout3-price_increase-I1": (D(2027, 4, 1), D(2027, 2, 18), "§ 41 Abs. 5 EnWG", 74.0, 81.0),
+    "holdout3-price_increase-J1": (D(2026, 6, 1), D(2026, 4, 13), "§ 57 Abs. 1 TKG", 24.99, 27.99),
 }
 
 # the second candidate of a conflicting-dates item (checked like a label)
@@ -424,6 +494,8 @@ CONFLICT_ALTERNATIVES: dict[str, Rule] = {
     "holdout-adversarial-conflicting_dates-2": (remedy, (D(2027, 4, 9), "ao"), None),
     "holdout2-adversarial-conflicting_dates-1": (stated, (D(2026, 6, 19),), None),
     "holdout2-adversarial-conflicting_dates-2": (remedy, (D(2025, 7, 11), "vwvfg"), "BW"),
+    "holdout3-adversarial-conflicting_dates-1": (stated, (D(2027, 2, 3),), None),
+    "holdout3-adversarial-conflicting_dates-2": (remedy, (D(2027, 7, 30), "vwvfg"), "NW"),
 }
 
 
@@ -659,7 +731,7 @@ _CUE = re.compile(
 
 def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, str]) -> list[str]:
     """Sentences (numbers normalised) with a deadline cue that occur in letters of more than one split
-    (dev, test, holdout, holdout2), each prefixed with the splits it occurs in."""
+    (dev, test, holdout, holdout2, holdout3), each prefixed with the splits it occurs in."""
     where: dict[str, set[str]] = defaultdict(set)
     for e in entries:
         if e["photo"]:
@@ -671,14 +743,18 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
     return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
 
 
-#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025 (BY, NW and
-#: MV are; see VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
+#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025. It is
+#: certain for BY, NW and MV from 1 Jan 2025, except in BY and MV procedures begun earlier (Art. 98 BayVwVfG, § 120a
+#: VwVfG M-V keep the 3rd day for those; § 97 VwVfG NRW applies the new rule to each step from that day; see
+#: VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
 LAND_FOUR_DAY_START: dict[str, date] = {
     "HH": D(
         2025, 5, 14
     ),  # 12. Gesetz zur Änderung des HmbVwVfG, HmbGVBl. 2025 S. 338: in force the day after promulgation
     "BW": D(2025, 2, 7),  # LVwVfG; § 102b keeps the 3rd day for procedures begun before this day
-    "SH": D(2025, 6, 10),  # counted from the day the promulgated text is confirmed
+    # SH: the law of 13.12.2024 (GVOBl. Schl.-H. 2024 Nr. 15 S. 934) and the consolidated § 110 Abs. 2 LVwG give
+    # 01.01.2025 with no transitional rule; 10.06.2025 is kept as a conservative bound for drawing letters.
+    "SH": D(2025, 6, 10),
 }
 
 
