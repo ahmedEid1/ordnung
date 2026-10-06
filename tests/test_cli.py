@@ -4,6 +4,7 @@ friendly errors and the exclusive data-folder lock."""
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -759,7 +760,7 @@ def test_a_database_from_a_newer_ordnung_is_explained(data_dir: Path) -> None:
 
     with Store.open(Paths(data_dir)):
         pass
-    with sqlite3.connect(Paths(data_dir).db) as conn:
+    with contextlib.closing(sqlite3.connect(Paths(data_dir).db)) as conn, conn:
         conn.execute(f"PRAGMA user_version = {latest_version() + 1}")
     result = invoke("brief", "--no-llm", "--data-dir", str(data_dir))
     assert result.exit_code == 1

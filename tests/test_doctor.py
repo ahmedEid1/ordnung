@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sqlite3
@@ -218,7 +219,7 @@ def test_a_database_from_a_newer_ordnung(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     with Store.open(Paths(data_dir)):
         pass
-    with sqlite3.connect(Paths(data_dir).db) as conn:
+    with contextlib.closing(sqlite3.connect(Paths(data_dir).db)) as conn, conn:
         conn.execute(f"PRAGMA user_version = {latest_version() + 1}")
     check = doctor.database_check(data_dir)
     assert check.status == "fail" and "newer version of Ordnung" in check.detail
