@@ -540,7 +540,7 @@ class Item(_Model):
     slot_key: str | None = None
     user_modified: bool = False
     due_date_source: Literal["computed", "fixed", "manual", "none"] = "none"
-    origin: Literal["extracted", "manual", "rule", "capture", "draft"] = "extracted"
+    origin: Literal["extracted", "manual", "rule", "draft"] = "extracted"
     location: str | None = None
     filed_on: str | None = None  # the (possibly simulated) day the item entered the ledger
     created_at: str
@@ -880,8 +880,6 @@ class ModelSettings(_Model):
     ask: str = "sonnet"
     draft: str = "sonnet"
     brief: str = "haiku"
-    capture: str = "haiku"
-    bank: str = "haiku"
 
 
 DesktopNotifyMode = Literal["off", "discreet", "full"]
@@ -889,15 +887,14 @@ DesktopNotifyMode = Literal["off", "discreet", "full"]
 
 class AppSettings(_Model):
     models: ModelSettings = Field(default_factory=ModelSettings)
-    #: The model every call runs on (Settings → Claude): an id or alias as Claude Code takes it, Sonnet 5
-    #: by default; ``ORDNUNG_CLAUDE_MODEL`` overrides it for every call.
+    #: The model every call runs on (Settings → Claude connection): an id or alias as Claude Code takes
+    #: it, Sonnet 5 by default; ``ORDNUNG_CLAUDE_MODEL`` overrides it for every call.
     model: str = DEFAULT_MODEL
     concurrency: int = 2
     inbox_dir: str | None = None
     #: Files from the watched folder are read by Claude at once; off (the default), they wait for the
     #: person's "Read these" (:mod:`ordnung.ingest.watcher`).
     inbox_auto_read: bool = False
-    ocr: bool = True
     llm_brief: bool = True
     llm_review: bool = True
     #: The morning desktop notification (:mod:`ordnung.notify.desktop`): off, a count only, or the details.
@@ -1105,22 +1102,6 @@ class ReviewOutput(_Model):
 
 class BriefOutput(_Model):
     text: str
-
-
-class CapturedItem(_Model):
-    kind: ItemKind
-    title: str
-    date: DateSpec
-    recurrence: Recurrence | None = None
-    area: Area = "other"
-    priority: Priority = "normal"
-    location: str | None = None
-    amount: float | None = None
-    notes: str | None = None
-
-
-class CaptureOutput(_Model):
-    items: list[CapturedItem] = Field(default_factory=list)
 
 
 class DraftOutput(_Model):
@@ -1429,6 +1410,9 @@ class DocumentDetail(_Model):
     #: The letter's scam warning signs, as its Idea lists them (empty: none;
     #: :func:`ordnung.secretary.triggers.scam_signs`).
     scam_signs: list[str] = Field(default_factory=list)
+    #: Whether Claude ever had the letter: it was read, or a model call carried it
+    #: (:meth:`ordnung.db.store.Store.given_to_model`); ``False``: "Not sent to Claude".
+    given_to_model: bool = False
 
 
 class TrackingInfo(_Model):
@@ -1723,7 +1707,8 @@ class Health(_Model):
     today: str
     backend: str
     claude: ClaudeStatus = Field(default_factory=ClaudeStatus)
-    #: Settings → Claude shows it next to the Model field: the saved model counts once it is unset.
+    #: Settings → Claude connection shows it next to the Model field: the saved model counts once it is
+    #: unset.
     model_pinned: str | None = Field(
         default=None,
         description="The model ``ORDNUNG_CLAUDE_MODEL`` pins for every call while it is set (the saved model waits)",
@@ -2185,7 +2170,8 @@ class DayChangedEvent(_Event):
 
 
 class LlmPausedEvent(_Event):
-    """``llm.paused``: Claude's usage limit was reached; reading continues at ``until``."""
+    """``llm.paused``: reading pauses: Claude's usage limit (continues at ``until``), or Claude not
+    installed or not signed in (``until`` empty: continues once Claude is ready)."""
 
     until: str
     reason: str

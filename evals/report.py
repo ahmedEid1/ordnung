@@ -999,7 +999,8 @@ a check for incomplete readings (`ingest/gaps.py`), with a guard on readings' ob
 calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
 re-scored row only, never in the held-out row; and, because of that same reading, a prompt that asks
 Claude once more when a reading comes back incomplete (ADR 0016) — the one prompt informed by these
-letters — which changes no row until its answer for that letter is recorded."""
+letters — whose answer for that letter is now recorded (one more live call, on 2026-10-03) and used
+in the re-scored row only."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.

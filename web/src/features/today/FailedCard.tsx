@@ -1,6 +1,7 @@
 /**
- * "2 letters couldn't be read — Try again": letters whose reading failed (Claude missing or signed out, an
- * answer Ordnung couldn't use). They are in no other part of Today: until they are read, Ordnung doesn't
+ * "2 letters couldn't be read — Try again": letters whose reading failed (a timeout, an answer Ordnung
+ * couldn't use; a letter waiting for Claude to be installed or signed in waits, it doesn't fail). They are
+ * in no other part of Today: until they are read, Ordnung doesn't
  * know what they ask or by when — so Today says so instead of "All clear" (UX U2: Today said "All clear"
  * three times while the Inbox said "Please check 2"). "Try again" reads each of them again; a letter's own
  * page says why its reading failed.

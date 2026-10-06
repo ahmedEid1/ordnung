@@ -1714,6 +1714,12 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
     return ideas
 
 
+def is_scam_warning(warning: str) -> bool:
+    """A warning that says a letter may be a scam (its reading's, or the payment check's) — not one that
+    only says an IBAN fails its checksum."""
+    return any(word in warning.casefold() for word in _SCAM_WORDS) and not is_checksum_note(warning)
+
+
 def is_checksum_note(warning: str) -> bool:
     """A warning that only says an IBAN fails its checksum (added by the pipeline or the model)."""
     text = warning.casefold()
@@ -1773,9 +1779,7 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     reasons.extend(
         w
         for w in doc.warnings
-        if any(word in w.casefold() for word in _SCAM_WORDS)
-        and not is_checksum_note(w)
-        and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
+        if is_scam_warning(w) and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
     )
     finding = None
     if _scam is not None and party is not None and doc.payment is not None:

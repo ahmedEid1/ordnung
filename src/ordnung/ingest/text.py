@@ -10,7 +10,11 @@
   text is somebody's reading of the picture, not the letter's own text: the page counts as having no
   text layer and is read from its image like a photo (so its values are compared with the paper, ADR
   0012), and the OCR text is neither the page text nor reported as hidden. Characters PDFium can't be
-  matched to (the same character within a fraction of its size) count as visible.
+  matched to (the same character within a fraction of its size) count as visible. The text layer is
+  read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering
+  with another reference: an object that refers to itself (``5 0 obj 5 0 R endobj``, in the document
+  information, a page's resources …) would otherwise be resolved forever. Such a PDF's pages are read
+  from their images, like a photo.
 * **Plain-text and e-mail documents** — decoded, laid out on A4 page images with a bundled font, and
   returned with exact word boxes so quotes from them can be highlighted like PDF text. Layout is
   lazy (it stops once a page limit is passed) and wrapping measures at most one row at a time, so
@@ -40,12 +44,17 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from email.message import EmailMessage, MIMEPart
 from html.parser import HTMLParser
+from io import BufferedReader
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, cast
 
 import pdfplumber
 import pypdfium2 as pdfium
 import pypdfium2.raw as raw
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.pdfparser import PDFParser, PDFSyntaxError
+from pdfminer.pdftypes import PDFObjRef
 from PIL import ImageColor, ImageFont
 
 from ordnung.config import PACKAGE_DIR
@@ -210,20 +219,74 @@ class _PageFrame:
         )
 
 
+#: Object lookups answering with another reference that a PDF's text layer may take (module docstring).
+#: Real PDFs hardly ever store a reference as an object of its own; resolving one to itself never ends.
+MAX_REFERENCE_LOOKUPS = 1000
+
+
+class _Document(PDFDocument):
+    """pdfminer's document, giving up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering with another
+    reference: resolving a reference to itself (``5 0 obj 5 0 R endobj``) would loop forever."""
+
+    references = 0
+
+    def getobj(self, objid: int) -> object:
+        found = super().getobj(objid)
+        if isinstance(found, PDFObjRef):
+            self.references += 1
+            if self.references > MAX_REFERENCE_LOOKUPS:
+                raise PDFSyntaxError("Too many references to references")
+        return found
+
+
+class _PDF(pdfplumber.PDF):
+    """pdfplumber's PDF over :class:`_Document` (pdfplumber's own constructor makes an unbounded one),
+    without the document information, which nothing reads."""
+
+    def __init__(self, stream: BufferedReader, path: Path) -> None:
+        self.stream = stream
+        self.stream_is_external = False
+        self.path = path
+        self.pages_to_parse = None
+        self.laparams = None
+        self.password = ""
+        self.unicode_norm = None
+        self.raise_unicode_errors = True
+        self.doc = _Document(PDFParser(stream))
+        self.rsrcmgr = PDFResourceManager()
+        self.metadata = {}
+
+
+def open_pdf(path: Path) -> pdfplumber.PDF:
+    """The PDF at ``path`` for reading its text layer, on a lookup-bounded document (module docstring)."""
+    stream = path.open("rb")
+    try:
+        return _PDF(stream, path)
+    except BaseException:
+        stream.close()
+        raise
+
+
 def extract_pdf_pages(pdf_path: Path, rendered: Sequence[RenderedPage]) -> list[PageText]:
     """Text, words and hidden text for every rendered page of a PDF.
 
     Word boxes are relative to the corresponding page image. A page whose text layer cannot be
     parsed comes back empty (``has_text_layer=False``) so the pipeline transcribes it instead.
     """
+    unread = [PageText(page=r.page, text="") for r in rendered]
     try:
-        pdf = pdfplumber.open(pdf_path)
+        pdf = open_pdf(pdf_path)
     except Exception:  # damaged text layer: every page falls back to transcription
         log.warning("could not read the text layer of %s", pdf_path, exc_info=True)
-        return [PageText(page=r.page, text="") for r in rendered]
+        return unread
     invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
     with pdf:
-        return [_extract_page_safely(pdf.pages[r.page - 1], r.page, invisible.get(r.page)) for r in rendered]
+        try:
+            pages = pdf.pages
+        except Exception:  # a page tree pdfminer can't follow: every page falls back to transcription
+            log.warning("could not read the pages of %s", pdf_path, exc_info=True)
+            return unread
+        return [_extract_page_safely(pages[r.page - 1], r.page, invisible.get(r.page)) for r in rendered]
 
 
 class _DrawnChar(NamedTuple):

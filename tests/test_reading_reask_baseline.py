@@ -59,8 +59,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from evals import conditions  # noqa: E402
 from evals.conditions import (  # noqa: E402
-    REASK_UNRECORDED,
     CallLog,
     MeteredBackend,
     prepare_document,
@@ -69,6 +69,8 @@ from evals.conditions import (  # noqa: E402
 from evals.records import load_manifest  # noqa: E402
 
 MANIFEST = ROOT / "evals" / "dataset" / "manifest.json"
+#: The benchmark letter whose recorded reading came back empty: the re-ask was written after it.
+EMPTY_READING = "holdout2-adversarial-injection_visible-1"
 
 
 @pytest.fixture(autouse=True)
@@ -608,10 +610,11 @@ def test_a_second_reading_s_own_check_less_dated_than_the_floor_never_covers_it(
 
 
 # --------------------------------------------------------------------------------------------------
-# The benchmark's allowed letter keeps the first reading for a replay miss only (tests RA-5: O6, O10)
+# An allowed letter keeps the first reading for a replay miss only (tests RA-5: O6, O10); none is allowed now
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize("allowed", [True, False], ids=["allowed", "as-now"])
 @pytest.mark.parametrize(
     ("error", "signal"),
     [
@@ -621,11 +624,18 @@ def test_a_second_reading_s_own_check_less_dated_than_the_floor_never_covers_it(
     ],
     ids=["replay-miss", "bad-output", "timeout"],
 )
-async def test_on_the_allowed_letter_only_a_replay_miss_is_missing(
-    tmp_path: Path, error: Exception, signal: str | None
+async def test_on_an_allowed_letter_only_a_replay_miss_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error: Exception, signal: str | None, allowed: bool
 ) -> None:
-    [allowed] = sorted(REASK_UNRECORDED)
-    entry = {e.id: e for e in load_manifest(MANIFEST)}[allowed]
+    """On a letter :data:`REASK_UNRECORDED` lists (the empty reading's, before its re-ask was recorded) a
+    replay miss keeps the first reading; with nothing listed, as now, it is a replay error. A recorded failure
+    or a timeout is the same either way."""
+    if allowed:
+        monkeypatch.setattr(conditions, "REASK_UNRECORDED", frozenset({EMPTY_READING}))
+    assert (EMPTY_READING in conditions.REASK_UNRECORDED) is allowed
+    if not allowed and isinstance(error, ReplayMiss):
+        signal = None  # raised, like every other missing recording
+    entry = {e.id: e for e in load_manifest(MANIFEST)}[EMPTY_READING]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
 
     def respond(request: LLMRequest) -> Any:
@@ -635,7 +645,7 @@ async def test_on_the_allowed_letter_only_a_replay_miss_is_missing(
 
     llm = LLMService(MeteredBackend(FakeBackend(respond), CallLog(), timeout_s=60))
     if signal is None:
-        with pytest.raises(ClaudeTimeout):
+        with pytest.raises(type(error)):
             await run_ordnung(entry, document, llm, model="claude-sonnet-5")
         return
     prediction = await run_ordnung(entry, document, llm, model="claude-sonnet-5")

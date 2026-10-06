@@ -625,8 +625,6 @@ export const LLM_PURPOSE_LABELS: Record<string, string> = {
   ask: "Answering questions",
   draft: "Drafting letters",
   brief: "Daily note",
-  capture: "Quick capture",
-  bank: "Bank statements",
 };
 
 // ------------------------------------------------------------------------------------------------

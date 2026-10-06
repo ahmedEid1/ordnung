@@ -213,6 +213,23 @@ async def test_rejected_upload_raises_a_readable_error(ctx: AppContext) -> None:
         await add_file(ctx, b"", "nothing.pdf")
 
 
+async def test_an_upload_refused_while_its_pages_render_leaves_no_files(ctx: AppContext) -> None:
+    """ROB G2: the original was stored before its pages were rendered; refused there (a page that can't be
+    read), neither it nor its page folder stays on disk (where backups would copy them)."""
+    broken = (
+        b"%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
+        b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+        b"3 0 obj << /Type /Font >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
+    )
+    with pytest.raises(IntakeError, match="could not be read"):
+        await add_file(ctx, broken, "odd.pdf")
+    assert ctx.store.counts()["documents"] == 0
+    assert [path for path in ctx.paths.files.rglob("*") if path.is_file()] == []
+    assert list(ctx.paths.derived.iterdir()) == []
+    kept = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")  # others are untouched
+    assert ctx.store.get_document_file(kept.id) is not None and (ctx.paths.derived / kept.id).is_dir()
+
+
 async def test_reprocess_keeps_user_modified_items_and_replaces_the_rest(
     ctx: AppContext, router: Router
 ) -> None:

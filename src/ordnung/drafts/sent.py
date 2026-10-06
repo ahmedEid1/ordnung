@@ -201,18 +201,14 @@ class AddedProof:
         return self.proof.doc_id
 
 
-def _given_to_model(store: Store, document: Document) -> bool:
-    """Whether a model had the file: it was read, or any model call carried it
-    (:meth:`~ordnung.db.store.Store.given_to_model` — a reading that failed after the model transcribed
-    it, or was queued again after a rate limit, did), whatever its "Keep private" says now."""
-    return document.ai_processed_at is not None or store.given_to_model(document.id)
-
-
 def _keep_private(store: Store, document: Document) -> tuple[Document, str | None, str]:
     """Make a file already in Ordnung private if no model had it yet and none is reading it now (it
     waits to be read, or failed before a model had it); returns it, the notice for the person and the
-    words for the activity log (see the module docstring)."""
-    given = _given_to_model(store, document)
+    words for the activity log (see the module docstring). A model had the file if it was read or any
+    model call carried it (:meth:`~ordnung.db.store.Store.given_to_model` — a reading that failed after the
+    model transcribed it, or was queued again after a rate limit, did), whatever its "Keep private" says
+    now."""
+    given = store.given_to_model(document.id)
     if document.ai_private and not given:
         return document, None, PRIVATE
     if not given and document.status in ("queued", "failed"):

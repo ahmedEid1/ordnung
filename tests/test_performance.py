@@ -270,7 +270,7 @@ async def test_marking_a_to_do_done_doesnt_wait_for_the_ideas(
         gate.wait(10)
         ran.append(today)
 
-    monkeypatch.setattr(pipeline, "triggers_hook", lambda: slow_triggers)
+    monkeypatch.setattr(pipeline, "run_and_reconcile", slow_triggers)
     events = record_events(api.ctx.bus)
     item = api.ctx.store.list_items(status="open")[0]
     async with client_for(api.app) as raw:  # without the test client's wait for the Ideas
@@ -293,7 +293,7 @@ async def test_changes_while_the_ideas_refresh_get_one_more_run(
         gate.wait(10)
         runs.append(today)
 
-    monkeypatch.setattr(pipeline, "triggers_hook", lambda: slow_triggers)
+    monkeypatch.setattr(pipeline, "run_and_reconcile", slow_triggers)
     for _ in range(3):  # the first starts a run; the others ask for one more after it
         api.ctx.worker.refresh_ideas()
         await asyncio.sleep(0.05)

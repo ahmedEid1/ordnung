@@ -39,6 +39,7 @@ from test_reading_reask import (
     MANIFEST,
     RECORDED,
     WithoutReask,
+    as_first_recorded,
     ingest,
     pipeline_backend,
 )
@@ -199,9 +200,10 @@ def test_a_prediction_made_without_the_re_ask_s_recording_is_never_served_from_t
 
 
 async def test_a_replay_without_the_re_ask_s_recording_says_so_and_keeps_it_in_the_results(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Benchmark review H3: the warning, ``meta.reading_reask_missing``, and nothing cached for the letter."""
+    as_first_recorded(monkeypatch)
     said: list[str] = []
     config = eval_run.RunConfig(
         split="holdout2",
@@ -225,8 +227,11 @@ async def test_a_replay_without_the_re_ask_s_recording_says_so_and_keeps_it_in_t
     assert not list((tmp_path / "results" / "cache").rglob("*.json"))
 
 
-def test_the_warning_is_said_under_quiet_too(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_the_warning_is_said_under_quiet_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     """``--quiet`` silences the per-letter progress, never the letter scored without its re-ask."""
+    as_first_recorded(monkeypatch)
     args = [
         "--split",
         "holdout2",

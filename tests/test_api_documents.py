@@ -17,9 +17,9 @@ from helpers_secretary import add_doc, add_item
 from ordnung import clock
 from ordnung.api.routes.documents import document_detail
 from ordnung.db.store import Store
-from ordnung.llm.base import ClaudeAuthError, ClaudeRateLimited
+from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
 from ordnung.models import DocumentDetail
-from test_api_support import FINE_LETTER, TODAY, Api, api_for, lifespan
+from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for, lifespan
 
 TEXT_LETTER = (
     "Liebe Sam,\n\nhier ist die Einladung zum Sommerfest am 12.10.2026.\n\nViele Grüße\nAlex\n".encode()
@@ -81,6 +81,22 @@ async def test_the_running_worker_reads_uploads_by_itself(data_dir: Path) -> Non
                 break
             await asyncio.sleep(0.05)
         assert status == "processed"
+
+
+async def test_a_letter_says_whether_it_was_given_to_claude(data_dir: Path) -> None:
+    """FEAT G4: with Claude not installed the letter waits and was never sent (``given_to_model`` false: the
+    page says "Not sent to Claude"); once read it was."""
+    router = ApiRouter()
+    router.errors["extract"] = lambda: ClaudeNotInstalled("The “claude” command was not found.")
+    async with api_for(data_dir, router=router) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["status"] == "queued" and detail["given_to_model"] is False
+        del router.errors["extract"]
+        api.ctx.worker.claude_ready()
+        assert await api.read_all() == 1
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["document"]["status"] == "processed" and detail["given_to_model"] is True
 
 
 async def test_duplicates_rejections_and_partial_uploads(data_dir: Path) -> None:

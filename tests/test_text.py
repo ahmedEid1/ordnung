@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import re
+import threading
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -240,6 +242,58 @@ def test_unreadable_pdf_falls_back_to_empty_pages(tmp_path: Path) -> None:
     broken.write_bytes(b"%PDF-1.4 not a pdf")
     pages = extract_pdf_pages(broken, [RenderedPage(1, 10, 10, tmp_path / "p.jpg")])
     assert pages == [PageText(page=1, text="")]
+
+
+def _with_info(pdf: bytes, *objects: bytes) -> bytes:
+    """``pdf`` with an incremental update: new objects (``objects[0]`` the first new number, written with
+    ``{n}`` for the numbers) and a trailer whose document information is the first of them."""
+    size = int(re.findall(rb"/Size (\d+)", pdf)[-1])
+    startxref = int(re.findall(rb"startxref\s+(\d+)", pdf)[-1])
+    root = re.findall(rb"/Root (\d+ \d+ R)", pdf)[-1]
+    body, offsets = b"", []
+    for index, template in enumerate(objects):
+        offsets.append(len(pdf) + len(body) + 1)
+        numbers = {f"n{i}": size + i for i in range(len(objects))}
+        body += b"\n%d 0 obj\n%s\nendobj\n" % (size + index, template.decode().format(**numbers).encode())
+    xref = b"xref\n%d %d\n" % (size, len(objects)) + b"".join(b"%010d 00000 n \n" % at for at in offsets)
+    trailer = b"trailer\n<< /Size %d /Root %s /Info %d 0 R /Prev %d >>\nstartxref\n%d\n%%%%EOF\n" % (
+        size + len(objects),
+        root,
+        size,
+        startxref,
+        len(pdf) + len(body),
+    )
+    return pdf + body + xref + trailer
+
+
+def _extract_within(tmp_path: Path, data: bytes, seconds: float = 30) -> list[PageText]:
+    """:func:`extract_pdf_pages` of ``data``, failing the test if it hasn't returned after ``seconds``."""
+    found: list[list[PageText]] = []
+    reading = threading.Thread(target=lambda: found.append(_extract(tmp_path, data)[1]), daemon=True)
+    reading.start()
+    reading.join(seconds)
+    assert not reading.is_alive(), "reading the text layer hung"
+    return found[0]
+
+
+def test_a_reference_to_itself_never_hangs_the_text_layer(tmp_path: Path) -> None:
+    """A PDF whose document information is an object that refers to itself (``5 0 obj 5 0 R endobj``) passes
+    intake, and used to hang pdfplumber for good while the reading worker read its text layer: the text layer
+    now gives up and the page is read from its image, like a photo."""
+    letter = make_pdf([[Line(72, 100, "Hallo Welt, dies ist ein Brief mit genug Text darin.")]])
+    assert _extract_within(tmp_path, _with_info(letter, b"{n0} 0 R")) == [PageText(page=1, text="")]
+    # two objects referring to each other loop the same way
+    assert _extract_within(tmp_path, _with_info(letter, b"{n1} 0 R", b"{n0} 0 R")) == [
+        PageText(page=1, text="")
+    ]
+
+
+def test_a_reference_to_a_reference_is_still_read(tmp_path: Path) -> None:
+    """The bound only stops loops: document information stored behind a reference to a reference (legal, if
+    odd) leaves the text layer read as usual."""
+    letter = make_pdf([[Line(72, 100, "Hallo Welt, dies ist ein Brief mit genug Text darin.")]])
+    [page] = _extract_within(tmp_path, _with_info(letter, b"{n1} 0 R", b"<< /Title (Brief) >>"))
+    assert page.text == "Hallo Welt, dies ist ein Brief mit genug Text darin."
 
 
 @pytest.mark.parametrize(

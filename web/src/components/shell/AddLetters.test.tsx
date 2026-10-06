@@ -100,7 +100,7 @@ describe("Claude isn't ready: store now, read later", () => {
     expect(dialog).toHaveAccessibleDescription(/^Claude isn't installed yet, so Ordnung stores it now and reads it as soon as Claude is connected/);
     expect(within(dialog).getByRole("switch", { name: /Keep private/ })).not.toBeChecked();
     const store = within(dialog).getByRole("button", { name: "Store now, read later" });
-    expect(store).toHaveFocus();
+    await waitFor(() => expect(store).toHaveFocus()); // the dialog focuses it on the next frame
     await user.click(store);
     expect(sentForm().get("private")).toBe("false");
   });

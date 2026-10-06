@@ -67,8 +67,8 @@ flowchart LR
 | Other clients → Ordnung | `ordnung mcp --rules-only` serves only the rules tools: no data folder is opened, results are computed from the arguments alone. The full server gives a client the same read-only ledger Ask has; `ordnung mcp install` prints before it writes and never clobbers a client's config |
 | Watched folder → Ordnung | Only files directly in the folder with a type Ordnung reads; symbolic links never followed (`O_NOFOLLOW`), sub-folders not entered, partial and temporary files ignored; at most 50 MB + 1 byte read, then the upload checks below. The folder is never written to. A new file is **held** — private and read on this computer only, never sent to a model — until the person answers in the Inbox (`ingest/held.py`), unless they turned on reading new files at once |
 | E-mail → attachments | Each attached PDF or photo (decided by its bytes) passes the upload checks below as a document of its own, at most 10 per e-mail, with the e-mail's privacy choice; pictures inside the e-mail are skipped, other types listed, a forwarded e-mail never opened (`ingest/attachments.py`) |
-| Upload → machine | Checked before anything decodes it: PDF stream expansion, image pixels and text pages are capped; the data folder is private to the account (`0700`, files `0600`) |
-| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (two bounded exceptions: `health?probe=1`, "Run check", makes one tiny live model call, at most once a minute; and downloading a drafted letter's PDF — or a sent letter's Nachweis — records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time) |
+| Upload → machine | Checked before anything decodes it: PDF stream expansion (an encrypted PDF's measured decrypted), image pixels and text pages are capped; a refused upload leaves no file behind; the text layer is read on a pdfminer document that gives up after 1000 lookups answering with another reference, so a PDF whose objects refer to themselves can't hang a reading (its pages are transcribed instead); the data folder is private to the account (`0700`, files `0600`) |
+| Browser → server | Loopback by default (another `--host` warns and still needs the token), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (two bounded exceptions: `health?probe=1`, "Run check", makes one tiny live model call, at most once a minute; and downloading a drafted letter's PDF — or a sent letter's Nachweis — records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time). Any unexpected server error is a JSON `500`: `{detail: a plain sentence, code: "internal_error", error: the exception's class name}`. The error's message is never sent, because it may quote a letter |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
 | Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` (or `http://` to this computer's loopback address), TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring (a backend that doesn't keep passwords safely — `null`, `keyrings.alt`, priority below 1 — is refused), never in `ordnung.db`, a log or an answer, and the keyring is read only to connect, send a change, check once a day that Ordnung's events are still there, or disconnect (never to show Settings); the keyring account is bound to the data folder's connection, so a restored copy of the data never reads or deletes the original's password and starts with syncing paused; "Delete everything" removes Ordnung's events and the password first; a server's XML is size-capped and read without a DTD |
 | Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read (at most 256 MiB of memory, p ≤ 2); the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
@@ -104,7 +104,9 @@ sequenceDiagram
 
 Every stage updates the durable `jobs` queue and publishes `job.progress` events, which drive the
 live stepper in the UI. Rate limits pause the whole worker until the reset time instead of failing
-documents; a restart resumes queued work.
+documents, and Claude not installed or not signed in pauses it until a status check sees Claude ready
+(the letters wait as *Waiting for Claude*; a call that never started carried no letter); a restart
+resumes queued work.
 
 ## The watched folder
 
@@ -248,7 +250,12 @@ apart from two `meta` moments:
   `paid_at_appointment` (a fee paid on site is no transfer), `unconfirmed_reason` (a date not confirmed
   against its letter, until "The date looks right"), `Ledger.is_set_aside` (a letter with scam signs, an
   invoice a payment reminder took over, an e-mail's payment its attached bill repeats — never counted,
-  listed, exported to the calendar or synced) and the identity documents' renewal windows.
+  listed, exported to the calendar or synced) and the identity documents' renewal windows. Every
+  `Ledger` built while the database stays the same shares one load of its rows (`_RowsCache`, checked
+  per connection with `PRAGMA data_version`, the connection's own writes and the schema version): the
+  letters (also by sender, which the scam checks read instead of one query per letter), to-dos,
+  contracts and parties, and, once worked out, each letter's scam signs and reading. So a page's
+  requests load the letters once.
 - **The static demo** gets both from the same code: `scripts/gen_mock_numbers.py` files the mock world
   (`web/scripts/mock-world.mjs`) in a throw-away ledger and writes `web/src/mocks/data/numbers.ts`; the
   mock handlers (`web/src/mocks/numbers.ts`) only follow the visitor's changes (the session ends on the
@@ -436,8 +443,10 @@ counts as an answer), `drafts/sent.py` stores proofs and makes the Nachweis (`dr
 `render_nachweis`), `secretary/waiting.py` works out *Waiting for* on read and `secretary/calls.py`
 keeps call notes. Proof files are documents with `source="proof"` and *Keep private* on: the Store
 leaves them out of letter lists and counts in SQL, and the ledger never sees them. Whether a file
-already in Ordnung was given to a model is `Store.given_to_model` (a logged call, a cached answer or a
-transcribed page), never the document's status; removing a proof deletes its file for good
+already in Ordnung was given to a model is `Store.given_to_model` (it was read, a logged call that
+started — one whose CLI never started carried nothing —, a cached answer or a transcribed page), never
+the document's status — the letter page's *Not sent to Claude* reads it too; removing a proof deletes
+its file for good
 ([ADR 0014](decisions/0014-proof-files-are-deleted-for-good.md)).
 
 **Migrations** (`db/migrate.py`): numbered SQL files — 0001 the v1 schema, 0002 proof of sending and

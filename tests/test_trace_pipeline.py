@@ -19,14 +19,15 @@ from fixtures_llm import (
     TAX_PAYMENT_QUOTE,
     TODAY,
     Router,
+    record_events,
 )
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.gaps import CHECK_SLOT
-from ordnung.ingest.pipeline import add_file, reprocess
+from ordnung.ingest.pipeline import add_file, ingest_document, reprocess
 from ordnung.ingest.verify import READING_INCOMPLETE
-from ordnung.llm.base import ClaudeRateLimited, LLMRequest
+from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import DocumentTrace, TraceSpan
 from ordnung.trace.compare import compare_traces
@@ -217,6 +218,7 @@ async def test_a_repair_names_the_call_it_retried(data_dir: Path, router: Router
     assert repair.call.repair_of == first.call.id and repair.attributes["repair_of"] == first.call.id
     assert repair.call.prompt_name == "extract_repair" and repair.call.prompt_version.endswith(".r1")
     assert first.attributes["problems"] >= 1
+    assert {"items", "kind"} <= set(first.attributes["problem_fields"])  # where, never what the model wrote
     assert trace.run is not None and trace.run.repairs == 1 and trace.run.result == "processed"
 
 
@@ -254,6 +256,33 @@ async def test_a_paused_reading_says_so(ctx: AppContext, router: Router) -> None
     )
     assert trace.run.ended == "paused" and steps(trace)["run"].error == "paused"
     assert steps(trace)["run/model:extract"].attributes["outcome"] == "failed"
+
+
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [
+        (ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed"),
+        (ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in"),
+    ],
+    ids=["not-installed", "signed-out"],
+)
+async def test_a_reading_waiting_for_claude_is_paused_never_failed(
+    ctx: AppContext, router: Router, error: Exception, code: str
+) -> None:
+    """Claude not installed or not signed in pauses the reading like a usage limit: the pipeline puts the
+    letter back (``queued``, no error), announces no failure, and the trace ends ``paused`` with why — so the
+    letter is never shown as failed while it waits."""
+    router.errors["extract"] = lambda: error
+    events = record_events(ctx.bus)
+    document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+    with pytest.raises(type(error)):
+        await ingest_document(ctx, document.id)
+    stored = ctx.store.get_document(document.id)
+    assert stored is not None and (stored.status, stored.error) == ("queued", None)
+    assert not [data for kind, data in events if kind == "job.progress" and data.get("status") == "failed"]
+    trace = document_trace(ctx.store, document.id)
+    assert trace.run is not None and trace.run.ended == "paused" and steps(trace)["run"].error == code
+    assert trace.run.error == INTERRUPTIONS[code] and "read once Claude is ready" in trace.run.error
 
 
 async def test_a_private_letter_has_no_model_step(ctx: AppContext) -> None:

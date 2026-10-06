@@ -13,7 +13,7 @@
   :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``). A new process simply tries again.
 * Other failures (unreadable answers, a timeout …) fail the job and the document with a readable
   message — the pipeline records them.
-* After each processed document the triggers engine runs (if it is installed), and after an edit
+* After each processed document the triggers engine runs, and after an edit
   of the ledger it runs in the background (:meth:`IngestWorker.refresh_ideas`: one run at a time, a
   change made meanwhile gets one more run; :meth:`IngestWorker.stop` waits for it, so its thread is
   done with the database before anything closes or wipes it).
@@ -342,19 +342,15 @@ class IngestWorker:
         )
 
     def _wait_for_claude(self, job: Job, exc: ClaudeNotInstalled | ClaudeAuthError) -> None:
-        """The pipeline failed the letter because Claude isn't ready: it goes back to the queue, waiting
-        (a held letter keeps the status its answer gave it), and so do the letters for Claude after it."""
-        store = self.ctx.store
+        """The pipeline paused the letter because Claude isn't ready (it put it back to ``queued``; a held
+        letter keeps the status its answer gave it): its job goes back to the queue, waiting, and so do the
+        letters for Claude after it."""
         why = NOT_INSTALLED_REASON if isinstance(exc, ClaudeNotInstalled) else NOT_SIGNED_IN_REASON
-        document = store.get_document(job.doc_id) if job.doc_id else None
-        if document is not None and document.status == "failed":
-            with contextlib.suppress(Exception):  # deleted meanwhile
-                store.update_document(document.id, status="queued", error=None)
         if self.waiting_for_claude is None:
             self._checked_claude_at = time.monotonic()
             self.ctx.bus.publish("llm.paused", until="", reason=why)
         self.waiting_for_claude = why
-        self._park(job, why, said=None)  # the pipeline announced a failure
+        self._park(job, why, said=None)  # the app last heard the reading's stages
 
     def _needs_claude(self, doc_id: str | None) -> bool:
         """A letter only Claude can read (a private one is read on this computer)."""
