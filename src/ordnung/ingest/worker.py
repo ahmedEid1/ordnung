@@ -433,7 +433,9 @@ class IngestWorker:
         """Whether a letter only Claude can read is still in the queue: one deleted or kept private meanwhile
         no longer keeps the wait announced to pages that connect."""
         return any(
-            job.kind in self.JOB_KINDS and job.status in ("queued", "running") and self._needs_claude(job.doc_id)
+            job.kind in self.JOB_KINDS
+            and job.status in ("queued", "running")
+            and self._needs_claude(job.doc_id)
             for job in self.ctx.store.list_jobs(active_only=True)
         )
 
