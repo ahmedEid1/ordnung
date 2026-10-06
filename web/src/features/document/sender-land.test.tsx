@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Party } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { makeDetail, makeDoc, makeItem, makeReceipt } from "./fixtures";
-import { ReceiptView, senderLandUnknown } from "./WhyThisDate";
+import { ReceiptView, senderLandUnknown, WhyThisDate } from "./WhyThisDate";
 
 const party = (p: Partial<Party> = {}): Party => ({
   id: "pty_city",
@@ -66,6 +66,24 @@ describe("a date that waits for the sender's state", () => {
     expect(screen.getByText(/Ordnung doesn't know which state Stadt Musterstadt is in, so this date may be a few days early\./)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Choose their state" }));
     expect(router.state.location.search).toBe("?party=pty_city");
+  });
+
+  it("closes “Why this date?” before the drawer opens: on a phone its sheet kept the keyboard from the State picker", async () => {
+    const user = userEvent.setup();
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.documents.detail("doc_1"), makeDetail({ document: makeDoc({ party_id: "pty_city" }), party: party() }));
+    const item = makeItem({ due_date: "2026-11-17", computation: threeDays });
+    // jsdom has no media queries: the phone's bottom sheet, modal
+    const { router } = renderWithProviders(<WhyThisDate receipt={threeDays} item={item} context="Pay the fee" />, { client });
+    const trigger = screen.getByRole("button", { name: "Why this date? (Pay the fee)" });
+    await user.click(trigger);
+    const sheet = await screen.findByRole("dialog", { name: "Why this date? Pay the fee" });
+    expect(sheet).toHaveAttribute("aria-modal", "true");
+    await user.click(within(sheet).getByRole("button", { name: "Choose their state" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Why this date? Pay the fee" })).toBeNull());
+    expect(router.state.location.search).toBe("?party=pty_city");
+    // where the drawer gives the keyboard back when it closes
+    expect(trigger).toHaveFocus();
   });
 
   it("is not mentioned once the sender's state is set", () => {

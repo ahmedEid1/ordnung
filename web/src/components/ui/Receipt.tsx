@@ -294,8 +294,8 @@ export function ReceiptTrigger({ children = "Why this date?", context, className
 }
 
 export interface ReceiptPopoverProps {
-  /** The receipt (usually a {@link Receipt}). */
-  content: ReactNode;
+  /** The receipt (usually a {@link Receipt}), or a render function receiving `close` (see {@link PopoverProps}). */
+  content: PopoverProps["content"];
   /** Trigger text and popover title (default "Why this date?"). */
   title?: string;
   /** What it is about ("Pay TechMarkt"): in the popover's name and, for screen readers, the trigger's. */
