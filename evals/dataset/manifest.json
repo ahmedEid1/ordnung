@@ -119,7 +119,7 @@
       "year_boundary": 6
     }
   },
-  "total_bytes": 20201287,
+  "total_bytes": 20201284,
   "entries": [
     {
       "id": "dev-appointment-A1",
@@ -12330,7 +12330,7 @@
         "Kanzlei Brandner Forderungsservice"
       ],
       "hidden_phrases": [],
-      "notes": "Invented court, payment to a law office's account instead of the court, invalid IBAN check digits, a 7-day term, threats of enforcement without hearing.",
+      "notes": "Sender styled as a court but not an Amtsgericht (§ 689 ZPO), fixed 7-day term instead of two weeks from service, no notice of the right to object or that the claim was not checked, invalid IBAN check digits, threat of enforcement without hearing.",
       "truth": {
         "kind": "dunning",
         "kind_also_accepted": [
@@ -12371,7 +12371,7 @@
               "shift": null
             },
             "amount": 1249.8,
-            "derivation": "A forged court payment order: a real Mahnbescheid is never paid to a lawyer's private account within a week; invalid IBAN; scam — optional item, scam warning expected.",
+            "derivation": "A forged court payment order: a real Mahnbescheid asks for payment or an objection within two weeks of service (§ 692 Abs. 1 Nr. 3 ZPO), not by a fixed date a week after its date, and carries the notices of § 692 Abs. 1 Nr. 2 and 4 ZPO, which this one lacks; the IBAN fails its check digits; scam — optional item, scam warning expected.",
             "region_sensitive": false
           }
         ],
@@ -12401,7 +12401,7 @@
       "recipient_region": null,
       "key_phrases": [],
       "hidden_phrases": [],
-      "notes": "Invented court, payment to a law office's account instead of the court, invalid IBAN check digits, a 7-day term, threats of enforcement without hearing.",
+      "notes": "Sender styled as a court but not an Amtsgericht (§ 689 ZPO), fixed 7-day term instead of two weeks from service, no notice of the right to object or that the claim was not checked, invalid IBAN check digits, threat of enforcement without hearing.",
       "truth": {
         "kind": "dunning",
         "kind_also_accepted": [
@@ -12442,7 +12442,7 @@
               "shift": null
             },
             "amount": 1249.8,
-            "derivation": "A forged court payment order: a real Mahnbescheid is never paid to a lawyer's private account within a week; invalid IBAN; scam — optional item, scam warning expected.",
+            "derivation": "A forged court payment order: a real Mahnbescheid asks for payment or an objection within two weeks of service (§ 692 Abs. 1 Nr. 3 ZPO), not by a fixed date a week after its date, and carries the notices of § 692 Abs. 1 Nr. 2 and 4 ZPO, which this one lacks; the IBAN fails its check digits; scam — optional item, scam warning expected.",
             "region_sensitive": false
           }
         ],
@@ -15832,29 +15832,29 @@
       "family": "year_boundary",
       "variant": "I",
       "file": "holdout3/year_boundary-I1.pdf",
-      "sha256": "46fc91e157c758fda99308893965a610b8421fc6ebdd7cf1755cbef8e989bb6d",
-      "bytes": 26195,
+      "sha256": "a9d0be4c32201a6fb4bca9e44e82c4cea4e2531d6e50496d23ffe8eed9434407",
+      "bytes": 26192,
       "media_type": "application/pdf",
       "photo": false,
       "source_id": null,
       "pages": 1,
       "language": "de",
-      "today": "2024-12-25",
+      "today": "2024-12-26",
       "authority_region": null,
       "recipient_region": null,
       "key_phrases": [
-        "23.12.2024",
+        "24.12.2024",
         "kann binnen eines Monats nach Bekanntgabe Einspruch",
         "am dritten Tag nach der Aufgabe zur Post; das gilt nicht"
       ],
       "hidden_phrases": [],
-      "notes": "Posted before 2025-01-01: 3-day fiction (Art. 97 § 1 Abs. 15 EGAO); day 3 is a holiday and moves.",
+      "notes": "Posted before 2025-01-01: 3-day fiction (Art. 97 § 1 Abs. 15 EGAO); day 3 is Fri 27.12.2024, the 4-day rule would give 30.01.2025.",
       "truth": {
         "kind": "tax_assessment",
         "kind_also_accepted": [],
         "language": "de",
         "sender_name": "Finanzamt Beispieltal-Süd",
-        "document_date": "2024-12-23",
+        "document_date": "2024-12-24",
         "references": [
           {
             "label": "Steuernummer",
@@ -15878,14 +15878,14 @@
               "amount": 1,
               "unit": "months",
               "delivery_scope": "ao",
-              "posted_on": "2024-12-23",
+              "posted_on": "2024-12-24",
               "anchor_date": null,
               "date": null,
               "time": null,
               "shift": true
             },
             "amount": null,
-            "derivation": "Einspruch against a tax administrative act: one month after Bekanntgabe (§ 355 Abs. 1 AO). (1) Posted Mon 2024-12-23; § 122 Abs. 2 Nr. 1 AO (old 3-day rule, posted before 2025-01-01): day 3 after posting = Thu 2024-12-26. (2) Thu 2024-12-26 is a public holiday (2. Weihnachtstag) → next day (§ 108 Abs. 3 AO applied to § 122 Abs. 2 AO, BFH IX R 68/98). (3) Fri 2024-12-27 is the next working day (Land unknown: weekends + nationwide holidays only). (4) § 187 Abs. 1 BGB: Fri 2024-12-27 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Mon 2025-01-27. (5) Mon 2025-01-27 is a working day (Land unknown: weekends + nationwide holidays only), no shift. Expected: Mon 2025-01-27.",
+            "derivation": "Einspruch against a tax administrative act: one month after Bekanntgabe (§ 355 Abs. 1 AO). (1) Posted Tue 2024-12-24; § 122 Abs. 2 Nr. 1 AO (old 3-day rule, posted before 2025-01-01): day 3 after posting = Fri 2024-12-27. (2) Fri 2024-12-27 is a working day, so Bekanntgabe is Fri 2024-12-27. (3) § 187 Abs. 1 BGB: Fri 2024-12-27 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Mon 2025-01-27. (4) Mon 2025-01-27 is a working day (Land unknown: weekends + nationwide holidays only), no shift. Expected: Mon 2025-01-27.",
             "region_sensitive": false
           }
         ],

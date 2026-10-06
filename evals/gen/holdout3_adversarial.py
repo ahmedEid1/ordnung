@@ -233,8 +233,9 @@ def adversarial() -> list[Case]:
               "objection allowed.",
     ))  # fmt: skip
 
-    # (c2) scam: a fake 'Mahnbescheid' from an invented court that asks for payment to a law office's account with invalid IBAN
-    # check digits and a 7-day term.
+    # (c2) scam: a fake 'Mahnbescheid' from a sender styled as a court but not an Amtsgericht (§ 689 ZPO): a fixed 7-day term
+    # instead of two weeks from service, none of the notices of § 692 Abs. 1 Nr. 2 and 4 ZPO, and payment to a law office's
+    # account with invalid IBAN check digits.
     letter_date, due = date(2027, 1, 8), date(2027, 1, 15)
     bad_iban = invalid_iban("DE", "70050000" + "0044712091")
     fake = Org(name="Mahngericht Beispielstadt – Zentrale Mahnabteilung", kind="authority", street="Postfach 10 44 71",
@@ -242,8 +243,10 @@ def adversarial() -> list[Case]:
                email="mahnabteilung@mahngericht-beispielstadt.example", style="authority", accent=(90, 20, 20))  # fmt: skip
     pay = undated_item(kind="payment", nature="payment", title="(Scam) Zahlung auf den angeblichen Mahnbescheid", amount=1249.80,
                        spec=spec("fixed", anchor="explicit_date", date_=due), expected_due=due.isoformat(),
-                       derivation="A forged court payment order: a real Mahnbescheid is never paid to a lawyer's private account "
-                                  "within a week; invalid IBAN; scam — optional item, scam warning expected.")  # fmt: skip
+                       derivation="A forged court payment order: a real Mahnbescheid asks for payment or an objection within two "
+                                  "weeks of service (§ 692 Abs. 1 Nr. 3 ZPO), not by a fixed date a week after its date, and "
+                                  "carries the notices of § 692 Abs. 1 Nr. 2 and 4 ZPO, which this one lacks; the IBAN fails its "
+                                  "check digits; scam — optional item, scam warning expected.")  # fmt: skip
     letter = Letter(
         org=fake, recipient=O.R_GEN, info=[("Geschäftszeichen", "27-0108447-1-9"), ("Erlassen am", de(letter_date))],
         subject="Mahnbescheid", salutation=None,
@@ -266,8 +269,9 @@ def adversarial() -> list[Case]:
         truth(kind="dunning", sender=fake.name, document_date=letter_date, references=[("Geschäftszeichen", "27-0108447-1-9")],
               amounts=[1249.80], items=[], optional_items=[pay], warnings=["scam"]),
         today_after(letter_date, "holdout3-adversarial-scam-2", 1, 2), None, [de(letter_date), de(due), "Kanzlei Brandner Forderungsservice"],
-        photo=True, notes="Invented court, payment to a law office's account instead of the court, invalid IBAN check digits, a "
-                          "7-day term, threats of enforcement without hearing.",
+        photo=True, notes="Sender styled as a court but not an Amtsgericht (§ 689 ZPO), fixed 7-day term instead of two weeks "
+                          "from service, no notice of the right to object or that the claim was not checked, invalid IBAN "
+                          "check digits, threat of enforcement without hearing.",
     ))  # fmt: skip
 
     # (d1) conflicting dates in a dance school's reminder: 'bis zum 25.01.2027' in the text, 'zahlbar bis 03.02.2027' in the box.

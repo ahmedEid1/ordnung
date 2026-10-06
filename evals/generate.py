@@ -252,7 +252,7 @@ KIND_ALSO_ACCEPTED: dict[str, list[str]] = {
     "holdout3-adversarial-scam-2": [
         "other",
         "authority_letter",
-    ],  # forged 'Mahnbescheid' of an invented court (dunning)
+    ],  # forged 'Mahnbescheid' from a court-styled sender that is no Amtsgericht (dunning)
     "holdout3-adversarial-missing_date-2": ["social_insurance"],  # Pflegekasse refusal (health_insurance)
 }
 

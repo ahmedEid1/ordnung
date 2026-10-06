@@ -504,14 +504,14 @@ def test_replay_miss_is_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert results["metrics"]["llm_only"]["taxonomy"]["missed"] == 1
 
 
-#: Letters that state a posting day later than their date: the label counts from the stated posting
-#: day (§ 122 Abs. 2 AO), Ordnung deliberately keeps the letter's date (earliest plausible date,
-#: docs/deadline-rules.md § 5) — VERIFICATION.md predicts exactly these early deviations.
+#: Letters whose stated posting day, later than their date, changes the label: the label counts from
+#: the stated posting day (§ 122 Abs. 2 AO), Ordnung deliberately keeps the letter's date (earliest
+#: plausible date, docs/deadline-rules.md § 5) — VERIFICATION.md predicts exactly these early deviations.
 POSTING_DAY_POLICY = {
     "dev-tax_assessment-B1",
     "test-tax_assessment-D1",
     "holdout-tax_assessment-F1",
-    "holdout2-tax_assessment-H1",  # never run here (see below): listed so the set names every such letter
+    "holdout2-tax_assessment-H1",  # never run here (see below): listed so the set names every letter with such a deviation
 }
 # holdout3-tax_assessment-J1 states a posting day two days after its date too, but counted from its date the AO
 # shift reaches the same Tuesday (Saturday, Easter Sunday, Ostermontag): no deviation, so it is not listed. It is

@@ -454,7 +454,7 @@ FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
     "holdout3-relative_business_days-I2": {"i0": (arbeitstage, (D(2027, 5, 11), 10), None)},
     "holdout3-relative_business_days-J1": {"i0": (werktage, (D(2025, 7, 4), 14), None)},
     # year boundary / old 3-day rule / month end
-    "holdout3-year_boundary-I1": {"i0": (remedy, (D(2024, 12, 23), "ao"), None)},  # day 3 = 2. Weihnachtstag → Friday
+    "holdout3-year_boundary-I1": {"i0": (remedy, (D(2024, 12, 24), "ao"), None)},  # day 3 = Fri 27.12.; 4-day rule → 30.01.2025
     "holdout3-year_boundary-I2": {"i0": (remedy, (D(2025, 3, 27), "ao"), None)},  # Familienkasse, Kindergeld (EStG) → AO
     "holdout3-year_boundary-I3": {"i0": (remedy, (D(2026, 12, 21), "ao"), None)},  # day 4 = 1. Weihnachtstag → Monday
     "holdout3-year_boundary-J1": {"i0": (remedy, (D(2025, 8, 27), "sgbx"), None)},  # Rentenversicherung (SGB VI) → SGB X
@@ -743,14 +743,18 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
     return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
 
 
-#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025 (BY, NW and
-#: MV are; see VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
+#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025. It is
+#: certain for BY, NW and MV from 1 Jan 2025, except in BY and MV procedures begun earlier (Art. 98 BayVwVfG, § 120a
+#: VwVfG M-V keep the 3rd day for those; § 97 VwVfG NRW applies the new rule to each step from that day; see
+#: VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
 LAND_FOUR_DAY_START: dict[str, date] = {
     "HH": D(
         2025, 5, 14
     ),  # 12. Gesetz zur Änderung des HmbVwVfG, HmbGVBl. 2025 S. 338: in force the day after promulgation
     "BW": D(2025, 2, 7),  # LVwVfG; § 102b keeps the 3rd day for procedures begun before this day
-    "SH": D(2025, 6, 10),  # counted from the day the promulgated text is confirmed
+    # SH: the law of 13.12.2024 (GVOBl. Schl.-H. 2024 Nr. 15 S. 934) and the consolidated § 110 Abs. 2 LVwG give
+    # 01.01.2025 with no transitional rule; 10.06.2025 is kept as a conservative bound for drawing letters.
+    "SH": D(2025, 6, 10),
 }
 
 

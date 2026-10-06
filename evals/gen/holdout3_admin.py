@@ -714,16 +714,17 @@ def year_boundary() -> list[Case]:
             notes=notes,
         )  # fmt: skip
 
-    # I1 — posted Mon 23.12.2024 → day 3 = Thu 26.12.2024 (2. Weihnachtstag) → Fri 27.12.2024 → Mon 27.01.2025.
-    # (The 4-day rule would reach the same Friday.)
+    # I1 — posted Tue 24.12.2024 → day 3 = Fri 27.12.2024 (a working day) → Mon 27.01.2025.
+    # (The 4-day rule would give Sat 28.12. → Mon 30.12. → Thu 30.01.2025.)
     cases.append(variant_i(
-        "holdout3-year_boundary-I1", O.R_FA_X2, O.R_GEN2, date(2024, 12, 23), "Bescheid für 2023 über Einkommensteuer",
+        "holdout3-year_boundary-I1", O.R_FA_X2, O.R_GEN2, date(2024, 12, 24), "Bescheid für 2023 über Einkommensteuer",
         [P("die Einkommensteuer für 2023 setzen wir auf **3.476,00 €** fest. Auf die Steuer werden die einbehaltene Lohnsteuer "
            "von 4.105,00 € und die Kapitalertragsteuer von 38,00 € angerechnet. Wir erstatten Ihnen **667,00 €**."),
          P("Die Kosten Ihres Umzugs nach Musterlingen haben wir als Werbungskosten anerkannt, weil Sie ihn wegen der neuen "
            "Arbeitsstelle unternommen haben.", size=9.2)],
         [("Steuernummer", "99/062/71418")], "tax_assessment", [667.0], "2025-01-27", "dritten", "Sehr geehrte Frau Beispielwinkel,",
-        notes="Posted before 2025-01-01: 3-day fiction (Art. 97 § 1 Abs. 15 EGAO); day 3 is a holiday and moves.",
+        notes="Posted before 2025-01-01: 3-day fiction (Art. 97 § 1 Abs. 15 EGAO); day 3 is Fri 27.12.2024, the 4-day rule "
+              "would give 30.01.2025.",
     ))  # fmt: skip
     # I2 — Familienkasse, Kindergeld (EStG, so the AO applies). Posted Thu 27.03.2025 → day 4 = Mon 31.03.2025 → 31.04. does
     # not exist → Wed 30.04.2025 (§ 188 Abs. 3 BGB).

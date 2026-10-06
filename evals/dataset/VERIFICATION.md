@@ -60,14 +60,22 @@ Re-run at any time:
   EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs at 4 days; § 37 Abs. 2 SGB X. The posting date is the
   letter date unless the letter names a posting day. The Land VwVfGs took the 4th day at different
   times, as the gazettes show:
-  - BY, NW and MV from 1 Jan 2025 (NW: GV. NRW. 2024 S. 1184, Art. 8 Abs. 3).
+  - BY, NW and MV from 1 Jan 2025 (NW: GV. NRW. 2024 S. 1184, Art. 8 Abs. 3). Like BW's § 102b, BY and
+    MV keep the 3rd day for procedures begun before that day (Art. 98 BayVwVfG, GVBl. 2024 S. 599;
+    § 120a VwVfG M-V, GVOBl. M-V 2024 Nr. 27 S. 617). NW's § 97 VwVfG NRW applies the law in force
+    to each procedural step, so a posting from 1 Jan 2025 gets the 4th day there. Every BY or MV
+    letter of any split states a procedure begun in 2025 or later (dev municipal_decision B1,
+    holdout3 municipal_decision I1 and J1) or gives the same date under both rules (test
+    hidden_text-1: 03.08.2026), so no label depends on these transitional rules.
   - HH from 14 May 2025: Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of
     13 May 2025 S. 338. It has no in-force clause, so it took effect the day after promulgation
     (Art. 54 of Hamburg's constitution).
   - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day.
-  - SH: counted from 10 Jun 2025, the day its text is confirmed. The bill (Drs. 20/2649 Art. 2
-    Abs. 2) says 1 Jan 2025, but the promulgated text was not checked; earlier postings keep the 3rd
-    day, which errs early.
+  - SH: the law of 13 Dec 2024 (GVOBl. Schl.-H. 2024 Nr. 15 S. 934) amended § 110 Abs. 2 LVwG; the
+    bill (Drs. 20/2649 Art. 2 Abs. 2) and the consolidated text both give 1 Jan 2025, with no
+    transitional rule. The dataset still counts SH from 10 Jun 2025, the day its text was first
+    confirmed here, as a conservative bound for drawing letters: no SH letter is posted between
+    the two dates, so no label depends on which one is right.
 
   `evals/verify_labels.py` fails if a Land VwVfG label of any split counts from a posting day on or
   after 1 Jan 2025 and before HH's, BW's or SH's start (`land_window_problems`).
@@ -850,8 +858,8 @@ comments, where `check(…, hand)` asserts them:
   the letter date 13.04.2026 ends 13.07.2026 at the earliest.
 
 **year_boundary**
-- I1 (AO, no Land): posted Mon 23.12.2024 → day 3 Thu 26.12.2024 (2. Weihnachtstag) → Fri 27.12.2024 →
-  **Mon 27.01.2025**. The 4-day rule would reach the same Friday.
+- I1 (AO, no Land): posted Tue 24.12.2024 → day 3 Fri 27.12.2024 (a working day) → **Mon 27.01.2025**.
+  The 4-day rule would give Sat 28.12. → Mon 30.12. → Thu 30.01.2025.
 - I2 (AO; Familienkasse, Kindergeld): posted Thu 27.03.2025 → day 4 Mon 31.03. → 31.04. does not exist →
   **Wed 30.04.2025**.
 - I3 (AO; Arbeitnehmer-Sparzulage): posted Mon 21.12.2026 → day 4 Fri 25.12.2026 (1. Weihnachtstag) →
@@ -882,7 +890,7 @@ Holidays that the holdout3 labels depend on, checked by hand:
 - Easter 2025 on 20.04. (Ostermontag 21.04.2025) and Easter 2027 on 28.03. (Ostermontag 29.03.2027).
 - Pfingstmontag 09.06.2025, 25.05.2026 and 17.05.2027.
 - Tag der Deutschen Einheit 03.10.2025 (a Friday).
-- 2. Weihnachtstag 26.12.2024 (a Thursday) and 1. Weihnachtstag 25.12.2026 (a Friday).
+- 1. Weihnachtstag 25.12.2026 (a Friday).
 - Internationaler Frauentag 08.03.2027 (a Monday) in MV.
 - Allerheiligen 01.11.2027 (a Monday) in SL, and in BY, where it is the deemed-delivery day that stays.
 
@@ -913,13 +921,36 @@ as the conventions say).
 move, so a one-month period ends on a given Land-only holiday from one posting day only. For RP
 (Fronleichnam, Allerheiligen) and BY (the same and Heilige Drei Könige) every such day in the drawing
 window (February 2025 to October 2027) is already used by another split, so social J2 (RP) and municipal
-J1 (BY) take other scenarios of the same
-kinds (a Saturday end; a Land holiday as the fiction day). An end on Reformationstag cannot be reached by
-a one-month period at all (31.09. does not exist). Year_boundary I3 first required the fiction day in
-January, which left only labels that letters of the same family already have; its scenario is now "day 4
-falls between Christmas Eve and Epiphany". A 14-day invoice period cannot end on a Saturday from a working
-day, so invoice I1 counts 8 days. The Saturday appointment first drew 15.08.2026 (Mariä Himmelfahrt, a
-holiday in SL); Saturdays that are a holiday anywhere are now left out.
+J1 (BY) take other scenarios of the same kinds (a Saturday end; a Land holiday as the fiction day). An end
+on Reformationstag cannot be reached by a one-month period at all (31.09. does not exist). Year_boundary
+I3 first required the fiction day in January, which left only labels that letters of the same family
+already have; its scenario is now "day 4 falls between Christmas Eve and Epiphany". A 14-day invoice
+period cannot end on a Saturday from a working day, so invoice I1 counts 8 days. The Saturday appointment
+first drew 15.08.2026 (Mariä Himmelfahrt, a holiday in SL); Saturdays that are a holiday anywhere are now
+left out.
+
+**R5 — an independent blind audit (2026-10-06).** Two auditors matched all 61 obligations, and a
+reconciler confirmed that no label is wrong. Corrected after it, with no label changed:
+
+- year_boundary I1 was redrawn. It was first posted Mon 23.12.2024, where the 3-day rule (day 3 Thu
+  26.12., a holiday, moved to Fri 27.12.) and the 4-day rule (day 4 Fri 27.12.) reach the same Bekanntgabe
+  and both give 27.01.2025. It was the only December-2024 AO letter of any split that does not separate
+  the two rules; the holdout split redrew a letter for the same reason. The seeded draw over the
+  December-2024 posting days whose two readings differ (Tue 24.12. and Tue 31.12.; neither day nor label
+  used by another letter) picked Tue 24.12.2024: day 3 Fri 27.12. → Mon 27.01.2025, the same label as
+  before; the 4-day reading gives Thu 30.01.2025.
+- adversarial scam-2: the reasoning and notes said a real Mahnbescheid is paid to the court, not to a law
+  office. That is wrong: a Mahnbescheid asks the debtor to pay the claimant, often through the
+  claimant's lawyer (§ 692 Abs. 1 Nr. 3 ZPO), and the court never collects. They now give the sound signs:
+  a sender styled as a court that is no Amtsgericht (§ 689 ZPO), a fixed date a week after the letter
+  instead of two weeks from service, no notice that the claim was not checked or of the right to object
+  (§ 692 Abs. 1 Nr. 2, 4 ZPO), and an IBAN that fails its check digits. The letter, its photo, the label
+  and the warning are unchanged. The kind table below now describes the sender the same way.
+- The comment on `POSTING_DAY_POLICY` in `tests/test_evals_run.py` now says the set names the letters
+  whose stated later posting day changes the label (tax J1 states one that does not).
+- The Land start dates in Legal rules applied now name the transitional rules of BY and MV (and NW's
+  per-step rule) and the enacted SH law; no label of any split depends on them. `docs/deadline-rules.md`
+  names BY's and MV's rules next to BW's among the things a letter does not show.
 
 ### Judgement calls kept on purpose (holdout3)
 
@@ -964,7 +995,7 @@ holiday in SL); Saturdays that are a holiday anywhere are now left out.
 | `holdout3-year_boundary-I2` (Familienkasse Kindergeld decision) | social_insurance | tax_letter |
 | `holdout3-year_boundary-I3` (Finanzamt Arbeitnehmer-Sparzulage) | tax_letter | tax_assessment |
 | `holdout3-adversarial-scam-1` (fake debt collector for a lottery-entry "subscription") | dunning | other |
-| `holdout3-adversarial-scam-2` (forged "Mahnbescheid" of an invented court) | dunning | other, authority_letter |
+| `holdout3-adversarial-scam-2` (forged "Mahnbescheid" from a court-styled sender that is no Amtsgericht) | dunning | other, authority_letter |
 | `holdout3-adversarial-missing_date-2` (Pflegekasse refusal) | health_insurance | social_insurance |
 
 ### Not date-scored (holdout3)
