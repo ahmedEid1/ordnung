@@ -55,7 +55,7 @@ export default function ProofFilePage() {
         <ProofFileView key={q.data.document.id} detail={q.data} draftId={link.draft_id} />
       ) : (
         <div aria-busy="true" className="max-w-3xl">
-          <h1 className="sr-only">Proof</h1>
+          <h1 className="sr-only" data-loading>Proof</h1>
           <LoadingLabel>Opening the proof…</LoadingLabel>
           <Skeleton className="mb-4 h-8 w-64" />
           <SkeletonText lines={3} />

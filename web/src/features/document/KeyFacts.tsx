@@ -47,7 +47,7 @@ export function FactLabelText({ label }: { label: string }) {
   if (en && de) {
     return (
       <>
-        <ModelText>{en}</ModelText>{" "}
+        <ModelText text={en} />{" "}
         <span lang="de">
           (<GlossaryText text={bracketed(de)} explained />)
         </span>
@@ -62,7 +62,7 @@ export function FactLabelText({ label }: { label: string }) {
     );
   }
   return (
-    <ModelText>
+    <ModelText text={en ?? label}>
       <GlossaryText text={en ?? label} />
     </ModelText>
   );

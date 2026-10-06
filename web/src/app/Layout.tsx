@@ -74,6 +74,9 @@ const HEADING_WAIT_MS = 10_000;
  * - the new page moved it itself (the weekly review's step, a letter's card): it stays there;
  * - it is still on a control outside the page (a sidebar link, the tour): it stays there, and the page's title is
  *   said in a polite live region.
+ *
+ * A page's stand-in heading while its data loads (`data-loading`) is not its h1: focus moved there would fall to
+ * <body> when the page's own replaces it (final check of the fix wave: Enter on an Inbox row).
  */
 function PageAnnouncer() {
   const { pathname } = useLocation();
@@ -92,7 +95,7 @@ function PageAnnouncer() {
       observer.disconnect();
     };
     const arrive = () => {
-      const h1 = done ? null : main.querySelector<HTMLElement>("h1");
+      const h1 = done ? null : main.querySelector<HTMLElement>("h1:not([data-loading])");
       if (!h1) return;
       finish();
       const active = document.activeElement;

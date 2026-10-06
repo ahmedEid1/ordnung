@@ -24,6 +24,7 @@ import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
 import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
+import { focusAfterLeaving } from "@/features/today/focus";
 import { useLetterLanguage } from "./WhyThisDate";
 import { arrivalSavedNote, isCourtServed, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
@@ -140,6 +141,18 @@ function otherWarnings(doc: Document, items: Item[]): string[] {
   return squareIbanClaims(shown, doc.payment?.iban ? doc.payment.iban_valid : null);
 }
 
+const WARNINGS_ID = "letter-warnings";
+const checkHeadingId = (itemId: string) => `check-${itemId}`;
+
+/**
+ * A "Please check" card is about to leave (confirmed, dated, done or dismissed): once it has, focus goes to the card
+ * now in its place, or to the to-dos' heading — where the to-do is listed — when no card is left, never to <body>
+ * (UX audit U4).
+ */
+function focusAfterChecked(itemId: string) {
+  focusAfterLeaving(() => Array.from(document.querySelectorAll<HTMLElement>(`#${WARNINGS_ID} h2`)), checkHeadingId(itemId), "todos-title");
+}
+
 export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const scam = scamSuggestion(detail);
@@ -172,7 +185,7 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
 
   if (!blocks.length) return null;
   return (
-    <section aria-label="Warnings and things to check" className="space-y-3">
+    <section id={WARNINGS_ID} aria-label="Warnings and things to check" className="space-y-3">
       {blocks}
     </section>
   );
@@ -566,14 +579,16 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   // the letter's words, in the letter's language
   const quoteLang = useLetterLanguage(ev?.doc_id);
   // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
-  // page (UX audit U4), and after a failed save the keyboard is still where it was
+  // page (UX audit U4), and after a failed save the keyboard is still where it was; once saved, the card leaves
   const unlessBusy = (run: () => void) => () => {
-    if (!pending) run();
+    if (pending) return;
+    focusAfterChecked(item.id);
+    run();
   };
   const busy = pending || undefined;
 
   return (
-    <CheckCard>
+    <CheckCard headingId={checkHeadingId(item.id)}>
       <p className="mt-1 text-[15px] font-medium leading-snug text-ink wrap-break-word">
         {own ? <WithGermanTerms text={item.title} /> : item.title}
         {item.due_date && !scam ? (
@@ -605,7 +620,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
           className="mt-3 flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (date) changeDate(item, date, () => setEditing(false));
+            if (!date) return;
+            // a date of the person's own needs no check: the card leaves
+            focusAfterChecked(item.id);
+            changeDate(item, date, () => setEditing(false));
           }}
         >
           <label className="sr-only" htmlFor={`date-${item.id}`}>
@@ -647,13 +665,13 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
  * The one "Please check" card — a to-do to confirm and the reading's other warnings look alike: the same
  * box, icon and heading (UI audit round 1: an eyebrow h2 on one, a callout's bold title on the other).
  */
-function CheckCard({ children }: { children: ReactNode }) {
+function CheckCard({ headingId, children }: { headingId?: string; children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <TriangleAlert className="mt-px size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="eyebrow leading-5 text-warn-ink">Please check</h2>
+          <h2 id={headingId} className="eyebrow leading-5 text-warn-ink">Please check</h2>
           {children}
         </div>
       </div>

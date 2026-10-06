@@ -111,8 +111,12 @@ export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">,
   return waits ? party : null;
 }
 
-/** "Ordnung doesn't know which state … is in" and the way to choose it (the sender's drawer, with its State picker). */
-function SenderLandNote({ party }: { party: Party }) {
+/**
+ * "Ordnung doesn't know which state … is in" and the way to choose it (the sender's drawer, with its State picker).
+ * The receipt closes first (`close`): on a phone it is a modal sheet, which would keep the keyboard from the drawer
+ * opened over it (final check of the fix wave: Tab went round the sheet's three buttons, never to the State picker).
+ */
+function SenderLandNote({ party, close }: { party: Party; close?: () => void }) {
   const drawer = usePartyDrawer();
   return (
     <p className="flex items-start gap-1.5 text-sm leading-relaxed text-muted">
@@ -121,7 +125,10 @@ function SenderLandNote({ party }: { party: Party }) {
         Ordnung doesn't know which state {party.name} is in, so this date may be a few days early.{" "}
         <button
           type="button"
-          onClick={() => drawer.open(party.id)}
+          onClick={() => {
+            close?.();
+            drawer.open(party.id);
+          }}
           className="inline-flex min-h-6 items-center rounded-md font-medium text-accent underline decoration-accent/30 underline-offset-[3px] hover:decoration-accent"
         >
           Choose their state
@@ -161,9 +168,11 @@ export interface ReceiptViewProps {
   item?: ReceiptItem | null;
   /** The to-do is money you transfer (`isTransfer`), when no `item` says so: its send-by date is "Transfer by". */
   transfer?: boolean;
+  /** Closes the popover the receipt is shown in, before the sender's drawer opens. */
+  close?: () => void;
 }
 
-export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer }: ReceiptViewProps) {
+export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer, close }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
   const { docKind, party } = useLetter(item?.doc_id);
   const landless = senderLandUnknown(receipt, party);
@@ -181,7 +190,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
       defaultShowRules={defaultShowRules}
       advice={adviceFor(area, docKind, party?.kind)}
     >
-      {landless ? <SenderLandNote party={landless} /> : null}
+      {landless ? <SenderLandNote party={landless} close={close} /> : null}
     </Receipt>
   );
 }
@@ -219,7 +228,7 @@ export function WhyThisDate({
 }) {
   return (
     <ReceiptPopover
-      content={<ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} transfer={transfer} />}
+      content={(close) => <ReceiptView receipt={receipt} spec={spec} area={area} origin={origin} item={item} transfer={transfer} close={close} />}
       context={context}
       title={title}
       className={className}

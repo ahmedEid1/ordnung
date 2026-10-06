@@ -2,13 +2,14 @@
  * The People & organisations drawer against the real demo, at a 320 px phone and a 1280 px laptop:
  * nothing sticks out of the drawer, no countdown pill covers the date or the amount, the footer
  * fits, targets are at least 24 px, the numbers are a valid definition list (axe), replaced and
- * past to-dos are set apart, and closing it goes back in the history.
+ * past to-dos are set apart, closing it goes back in the history, and opened from "Why this date?" on a phone
+ * the keyboard reaches its State picker.
  */
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import type { MyNumber } from "@/api/types";
 import { numberTitle } from "@/features/numbers/title";
-import { apiGet, expect, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
+import { apiGet, expect, expectAccessible, letterId, letterItem, open, setTour, settle, shownAs, test } from "./helpers";
 
 interface PartyRow {
   id: string;
@@ -231,4 +232,59 @@ test("closing a drawer opened from a chip goes back, so Back then leaves the pag
   await expect(page).toHaveURL(/\/$/);
   await page.goBack();
   await expect(page).toHaveURL(/\/inbox$/);
+});
+
+/** The rules engine's warning for a Land authority's letter whose Land isn't known (`rules.delivery`). */
+const THREE_DAYS =
+  "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, so we counted 3 days (the earlier date).";
+
+// Final check of the fix wave: at 390 px "Why this date?" is a modal sheet, and its "Choose their state" opened the
+// sender's drawer over it while the sheet kept the keyboard — Tab went round its three buttons, never to the
+// drawer's State picker. No demo date waits for a sender's Land (the demo's person lives in a known one), so the
+// letter's page is served with one that does: the immigration office's fee, counted without the office's Land.
+test("at 390 px, “Choose their state” in “Why this date?” takes the keyboard to the drawer's State picker", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, "/");
+  const id = await letterId(page, "17_auslaenderbehoerde_termin.pdf");
+  const fee = await letterItem(page, id, "payment");
+  type Detail = { items: { id: string; computation: { warnings: string[] } | null }[]; party: { name: string; region: string | null } | null };
+  const { party } = await apiGet<Detail>(page, `/api/documents/${id}`);
+  expect(party, "the immigration office's letter has its sender").toBeTruthy();
+  await page.route(
+    (url) => url.pathname === `/api/documents/${id}`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const response = await route.fetch();
+      const detail = (await response.json()) as Detail;
+      const items = detail.items.map((item) =>
+        item.id === fee.id && item.computation ? { ...item, computation: { ...item.computation, warnings: [...item.computation.warnings, THREE_DAYS] } } : item,
+      );
+      await route.fulfill({ response, json: { ...detail, items, party: { ...detail.party!, region: null } } });
+    },
+  );
+  await open(page, `/documents/${id}`);
+  await page
+    .getByRole("region", { name: /To-dos & dates/ })
+    .getByRole("button", { name: `Why this date? (${fee.title})` })
+    .click();
+  const sheet = page.getByRole("dialog", { name: `Why this date? ${fee.title}` });
+  await expect(sheet).toHaveAttribute("aria-modal", "true");
+  await sheet.getByRole("button", { name: "Choose their state" }).focus();
+  await page.keyboard.press("Enter");
+  const drawer = page.getByRole("dialog", { name: party!.name });
+  await expect(drawer).toBeVisible();
+  await expect(sheet).toBeHidden();
+  await settle(page);
+  const picker = drawer.getByLabel("Which state is this sender in?");
+  let presses = 0;
+  while (presses < 40 && !(await picker.evaluate((el) => el === document.activeElement))) {
+    await page.keyboard.press("Tab");
+    presses++;
+  }
+  await expect(picker, `Tab reaches the State picker (${presses} presses)`).toBeFocused();
+  await expectAccessible(page, testInfo, "drawer-from-why-this-date-390");
+  // closed, the drawer gives the keyboard back to "Why this date?"
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(page.getByRole("region", { name: /To-dos & dates/ }).getByRole("button", { name: `Why this date? (${fee.title})` })).toBeFocused();
 });
