@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"c4c082c28486f21104abe980d0bd19e2ffd66e7c64bf283ce79ce3a0a0f2dc3d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-I1"
+    ],
+    "prompt_head": "Today is Monday, 2026-03-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Radiologie am Beispielhof – MVZ\",\"document_date\":\"2026-03-04\",\"references\":[{\"label\":\"Patienten-ID\",\"value\":\"RB-0094417\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"MRT scan of the lumbar spine\",\"quote\":\"Wir haben für Sie folgenden Termin reserviert: Donnerstag, 26.03.2026, 14:20 Uhr, Anmeldung im Erdgeschoss.\",\"computation\":\"The letter states the appointment date and time directly: Thursday, 26.03.2026, 14:20. Appointments keep the date/time as written and are not moved for weekends or holidays.\",\"due_date\":\"2026-03-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Cancel appointment at least 24 hours in advance if unable to attend\",\"quote\":\"Können Sie den Termin nicht wahrnehmen, sagen Sie bitte mindestens 24 Stunden vorher ab.\",\"computation\":\"Appointment is Thursday 26.03.2026 at 14:20. Cancellation must reach the practice at least 24 hours before that time, i.e. by Wednesday 25.03.2026 14:20 at the latest. This is a private contractual notice period, which does not shift for weekends or holidays (only statutory periods for objections, payments etc. do).\",\"due_date\":\"2026-03-25\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Radiologie am Beispielhof – MVZ",
+      "document_date": "2026-03-04",
+      "references": [
+        {
+          "label": "Patienten-ID",
+          "value": "RB-0094417"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "MRT scan of the lumbar spine",
+          "quote": "Wir haben für Sie folgenden Termin reserviert: Donnerstag, 26.03.2026, 14:20 Uhr, Anmeldung im Erdgeschoss.",
+          "computation": "The letter states the appointment date and time directly: Thursday, 26.03.2026, 14:20. Appointments keep the date/time as written and are not moved for weekends or holidays.",
+          "due_date": "2026-03-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Cancel appointment at least 24 hours in advance if unable to attend",
+          "quote": "Können Sie den Termin nicht wahrnehmen, sagen Sie bitte mindestens 24 Stunden vorher ab.",
+          "computation": "Appointment is Thursday 26.03.2026 at 14:20. Cancellation must reach the practice at least 24 hours before that time, i.e. by Wednesday 25.03.2026 14:20 at the latest. This is a private contractual notice period, which does not shift for weekends or holidays (only statutory periods for objections, payments etc. do).",
+          "due_date": "2026-03-25",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 2871,
+      "cache_read_tokens": 22854,
+      "cache_creation_tokens": 4636,
+      "cost_usd": 0.051836799999999995,
+      "duration_ms": 29802,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

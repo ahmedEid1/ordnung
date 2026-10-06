@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"26d9ec0201e221c9ea86f5302bfc79ffc2f39c55ef605c8af3a673c42a333940\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-03-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-I2"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-03-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-02-25\",\"items\":[{\"kind\":\"appointment\",\"title\":\"Appear as witness at court hearing\",\"quote\":\"Donnerstag, 25.03.2027, 10:30 Uhr\",\"computation\":\"The letter states a fixed calendar date and time for the court hearing at which the recipient must appear as a witness: 25.03.2027, 10:30 Uhr at Amtsgericht Musterdal, Sitzungssaal 2. No period calculation is needed; the date is given explicitly in the summons.\",\"due_date\":\"2027-03-25\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"4 C 211/26\"}],\"remedy_type\":\"none\",\"sender_name\":\"Amtsgericht Musterdal\",\"warnings\":[\"No Rechtsbehelfsbelehrung is present, which is normal for a witness summons (Ladung) rather than a decision; non-appearance without sufficient excuse can lead to costs and a fine (Ordnungsgeld) under § 380 ZPO, so the recipient should treat the appointment as mandatory unless she has a valid excuse.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-02-25",
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appear as witness at court hearing",
+          "quote": "Donnerstag, 25.03.2027, 10:30 Uhr",
+          "computation": "The letter states a fixed calendar date and time for the court hearing at which the recipient must appear as a witness: 25.03.2027, 10:30 Uhr at Amtsgericht Musterdal, Sitzungssaal 2. No period calculation is needed; the date is given explicitly in the summons.",
+          "due_date": "2027-03-25",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "4 C 211/26"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Amtsgericht Musterdal",
+      "warnings": [
+        "No Rechtsbehelfsbelehrung is present, which is normal for a witness summons (Ladung) rather than a decision; non-appearance without sufficient excuse can lead to costs and a fine (Ordnungsgeld) under § 380 ZPO, so the recipient should treat the appointment as mandatory unless she has a valid excuse."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1744,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2602,
+      "cost_usd": 0.028476400000000002,
+      "duration_ms": 20140,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

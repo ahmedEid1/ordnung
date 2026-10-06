@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f109b9e5fa3c990e237962ea38250c53ee4f111348391772db978637b7146d60\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-J1"
+    ],
+    "prompt_head": "Today is Monday, 2026-09-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-09-09\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Notify provider if installation date is not feasible\",\"quote\":\"Ist der Termin für Sie nicht möglich, melden Sie sich bitte bis Mittwoch der Montagewoche.\",\"computation\":\"The letter is dated 2026-09-09 and announces the installation ('Montage') for Saturday, 2026-09-19. 'Montagewoche' (installation week) is the calendar week containing that Saturday, i.e. Monday 2026-09-14 through Sunday 2026-09-20. The Wednesday of that week is 2026-09-16. This is a regular weekday (not a Saturday, Sunday or NW public holiday), so no shift is needed under §§ 187, 193 BGB.\",\"due_date\":\"2026-09-16\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"appointment\",\"title\":\"Kitchen installation (Montagetermin)\",\"quote\":\"Unser Montageteam kommt am Samstag, 19.09.2026, um 07:30 Uhr und braucht voraussichtlich den ganzen Tag.\",\"computation\":\"The letter states the installation date and time explicitly: Saturday, 19.09.2026, 07:30, expected to take the whole day.\",\"due_date\":\"2026-09-19\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Empty the kitchen and ensure water/electricity connections are accessible\",\"quote\":\"Bitte räumen Sie die Küche vorher vollständig aus und sorgen Sie dafür, dass die Wasser- und Stromanschlüsse zugänglich sind.\",\"computation\":\"'Vorher' (beforehand) refers to before the installation team's arrival at 07:30 on the appointment day, 2026-09-19, so this preparation must be completed by the start of that appointment at the latest.\",\"due_date\":\"2026-09-19\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"KD 31 118\"},{\"label\":\"Auftrag\",\"value\":\"KW-26-0612\"}],\"remedy_type\":\"none\",\"sender_name\":\"Küchenwerkstatt Beispielholz GmbH\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-09-09",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Notify provider if installation date is not feasible",
+          "quote": "Ist der Termin für Sie nicht möglich, melden Sie sich bitte bis Mittwoch der Montagewoche.",
+          "computation": "The letter is dated 2026-09-09 and announces the installation ('Montage') for Saturday, 2026-09-19. 'Montagewoche' (installation week) is the calendar week containing that Saturday, i.e. Monday 2026-09-14 through Sunday 2026-09-20. The Wednesday of that week is 2026-09-16. This is a regular weekday (not a Saturday, Sunday or NW public holiday), so no shift is needed under §§ 187, 193 BGB.",
+          "due_date": "2026-09-16",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "appointment",
+          "title": "Kitchen installation (Montagetermin)",
+          "quote": "Unser Montageteam kommt am Samstag, 19.09.2026, um 07:30 Uhr und braucht voraussichtlich den ganzen Tag.",
+          "computation": "The letter states the installation date and time explicitly: Saturday, 19.09.2026, 07:30, expected to take the whole day.",
+          "due_date": "2026-09-19",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Empty the kitchen and ensure water/electricity connections are accessible",
+          "quote": "Bitte räumen Sie die Küche vorher vollständig aus und sorgen Sie dafür, dass die Wasser- und Stromanschlüsse zugänglich sind.",
+          "computation": "'Vorher' (beforehand) refers to before the installation team's arrival at 07:30 on the appointment day, 2026-09-19, so this preparation must be completed by the start of that appointment at the latest.",
+          "due_date": "2026-09-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "KD 31 118"
+        },
+        {
+          "label": "Auftrag",
+          "value": "KW-26-0612"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Küchenwerkstatt Beispielholz GmbH",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2142,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2421,
+      "cost_usd": 0.0317324,
+      "duration_ms": 21755,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

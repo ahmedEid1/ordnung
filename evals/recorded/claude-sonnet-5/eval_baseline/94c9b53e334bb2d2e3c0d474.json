@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"26d9ec0201e221c9ea86f5302bfc79ffc2f39c55ef605c8af3a673c42a333940\",\"mode\":\"text\",\"region\":\"ST\",\"today\":\"2027-03-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-I2"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-03-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Sachsen-Anhalt (ST), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"Amtsgericht Musterdal, Abteilung für Zivilsachen\",\"document_date\":\"2027-02-25\",\"items\":[{\"kind\":\"appointment\",\"title\":\"Appear as witness at court hearing\",\"quote\":\"Donnerstag, 25.03.2027, 10:30 Uhr\",\"computation\":\"The letter states a fixed calendar date and time for the court hearing the witness must attend: Donnerstag, 25.03.2027, 10:30 Uhr, at Amtsgericht Musterdal, Sitzungssaal 2 (1. OG). No period calculation is needed; the date is printed directly.\",\"due_date\":\"2027-03-25\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"references\":[{\"label\":\"Geschäftsnummer\",\"value\":\"4 C 211/26\"}],\"amounts\":[],\"warnings\":[\"This is a formal witness summons under § 380 ZPO: failure to appear without sufficient excuse can result in the costs of the failed hearing being charged to the witness and a fine (Ordnungsgeld) being imposed — bring a photo ID and this letter to the hearing.\",\"The witness may claim compensation for travel costs and loss of earnings under the JVEG (Justiz-Vergütungs- und -Entschädigungsgesetz); no amount is stated in the letter itself, so none is listed under amounts.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "Amtsgericht Musterdal, Abteilung für Zivilsachen",
+      "document_date": "2027-02-25",
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Appear as witness at court hearing",
+          "quote": "Donnerstag, 25.03.2027, 10:30 Uhr",
+          "computation": "The letter states a fixed calendar date and time for the court hearing the witness must attend: Donnerstag, 25.03.2027, 10:30 Uhr, at Amtsgericht Musterdal, Sitzungssaal 2 (1. OG). No period calculation is needed; the date is printed directly.",
+          "due_date": "2027-03-25",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "references": [
+        {
+          "label": "Geschäftsnummer",
+          "value": "4 C 211/26"
+        }
+      ],
+      "amounts": [],
+      "warnings": [
+        "This is a formal witness summons under § 380 ZPO: failure to appear without sufficient excuse can result in the costs of the failed hearing being charged to the witness and a fine (Ordnungsgeld) being imposed — bring a photo ID and this letter to the hearing.",
+        "The witness may claim compensation for travel costs and loss of earnings under the JVEG (Justiz-Vergütungs- und -Entschädigungsgesetz); no amount is stated in the letter itself, so none is listed under amounts."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1047,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2836,
+      "cost_usd": 0.023106,
+      "duration_ms": 12212,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

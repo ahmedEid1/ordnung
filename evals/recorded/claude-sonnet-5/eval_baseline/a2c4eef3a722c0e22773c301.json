@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b7ada835ce6b26d1f41ab49e1a52c419914ea6bb284faa9906be2295c03471bf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-08-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterheim an der Ruhr – Amt für Bauaufsicht und Denkmalschutz\",\"document_date\":\"2027-07-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63/2-WA-0544/27\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File lawsuit (Klage) against refusal of advertising-sign permit\",\"quote\":\"Klage gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe vor dem Verwaltungsgericht Musterkirchen (Domplatz 4, 45879 Musterkirchen) erhoben werden; ein Vorverfahren ist nicht vorgesehen (§ 110 JustG NRW).\",\"computation\":\"The letter is internally inconsistent about its own date: the letterhead states 'Datum 30.07.2027' (a Friday), while the body refers to 'diesem Bescheid vom 28.07.2027' (a Wednesday) as if that were the decision's date. Per the instruction to use the earliest plausible date when a letter contradicts itself, I take 28.07.2027 as the (earlier) possible date of issuance/mailing. As a municipal authority decision sent by ordinary post, notification (Bekanntgabe) is governed by § 41 Abs. 2 VwVfG NRW: the decision is deemed notified on the third day after it was handed to the post ('Aufgabe zur Post'), i.e. 28.07.2027 + 3 days = 31.07.2027 (a Saturday; this fictional notification date is not shifted for weekends, since it merely fixes when notice is deemed to occur, not a deadline). The one-month Klage period then runs under § 57 VwGO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (31.07.2027) is not counted, so the period begins 01.08.2027, and a one-month period ends on the day of the following month bearing the same number as the triggering (Bekanntgabe) day, i.e. 31.08.2027. 31.08.2027 is a Tuesday and not a public holiday in NRW, so no further shift applies under § 193 BGB. (Using instead the later, letterhead date of 30.07.2027 as the mailing date would give Bekanntgabe on 02.08.2027 and a deadline of 02.09.2027; the earlier, 28.07.2027-based date of 31.08.2027 is used as the more protective, earliest plausible reading.)\",\"due_date\":\"2027-08-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter contradicts itself about its own date: the letterhead says 'Datum 30.07.2027' but the body text refers to 'diesem Bescheid vom 28.07.2027' as the decision's date; the one-month Klage deadline was computed from the earlier (28.07.2027) date to be safe, giving 31.08.2027, but if the authority actually mailed the decision on 30.07.2027 the true deadline could be as late as 02.09.2027 — the recipient should check the envelope postmark or ask the authority to confirm the exact mailing date and, to be safe, treat 31.08.2027 as the operative deadline and not rely on the later date.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterheim an der Ruhr – Amt für Bauaufsicht und Denkmalschutz",
+      "document_date": "2027-07-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63/2-WA-0544/27"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File lawsuit (Klage) against refusal of advertising-sign permit",
+          "quote": "Klage gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe vor dem Verwaltungsgericht Musterkirchen (Domplatz 4, 45879 Musterkirchen) erhoben werden; ein Vorverfahren ist nicht vorgesehen (§ 110 JustG NRW).",
+          "computation": "The letter is internally inconsistent about its own date: the letterhead states 'Datum 30.07.2027' (a Friday), while the body refers to 'diesem Bescheid vom 28.07.2027' (a Wednesday) as if that were the decision's date. Per the instruction to use the earliest plausible date when a letter contradicts itself, I take 28.07.2027 as the (earlier) possible date of issuance/mailing. As a municipal authority decision sent by ordinary post, notification (Bekanntgabe) is governed by § 41 Abs. 2 VwVfG NRW: the decision is deemed notified on the third day after it was handed to the post ('Aufgabe zur Post'), i.e. 28.07.2027 + 3 days = 31.07.2027 (a Saturday; this fictional notification date is not shifted for weekends, since it merely fixes when notice is deemed to occur, not a deadline). The one-month Klage period then runs under § 57 VwGO i.V.m. §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (31.07.2027) is not counted, so the period begins 01.08.2027, and a one-month period ends on the day of the following month bearing the same number as the triggering (Bekanntgabe) day, i.e. 31.08.2027. 31.08.2027 is a Tuesday and not a public holiday in NRW, so no further shift applies under § 193 BGB. (Using instead the later, letterhead date of 30.07.2027 as the mailing date would give Bekanntgabe on 02.08.2027 and a deadline of 02.09.2027; the earlier, 28.07.2027-based date of 31.08.2027 is used as the more protective, earliest plausible reading.)",
+          "due_date": "2027-08-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter contradicts itself about its own date: the letterhead says 'Datum 30.07.2027' but the body text refers to 'diesem Bescheid vom 28.07.2027' as the decision's date; the one-month Klage deadline was computed from the earlier (28.07.2027) date to be safe, giving 31.08.2027, but if the authority actually mailed the decision on 30.07.2027 the true deadline could be as late as 02.09.2027 — the recipient should check the envelope postmark or ask the authority to confirm the exact mailing date and, to be safe, treat 31.08.2027 as the operative deadline and not rely on the later date."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7882,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2612,
+      "cost_usd": 0.0898964,
+      "duration_ms": 83891,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

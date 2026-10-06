@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"9e460c7da9dba49f9047f98fd749849a71d12c7a85590bae75c3d73f3dee28a9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-09-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Pflegekasse der BKK Musterwerk\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"T274019385\"},{\"label\":\"Vorgang\",\"value\":\"WU-0419\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of Wohnumfeld subsidy\",\"quote\":\"Möchten Sie die Ablehnung nicht hinnehmen, erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk; das geht schriftlich oder zur Niederschrift.\",\"computation\":\"The period is one month 'nach Bekanntgabe' (after notification). Bekanntgabe for a letter from a public-law social-insurance body (Pflegekasse, a Körperschaft des öffentlichen Rechts acting under SGB XI/SGB X) is normally fixed by the deemed-delivery rule of § 37 Abs. 2 SGB X (the letter counts as delivered a fixed number of days after it was posted/dispatched), and the one-month Widerspruch period of § 84 SGG then runs from that day under §§ 187 Abs. 1, 188 Abs. 2 BGB, shifting to the next business day if the last day falls on a weekend or holiday in NW. However, the letter carries no visible issue/posting date (no document date and no date field anywhere on the page), so the start of the deemed-delivery period, and therefore the final day of the one-month Widerspruch period, cannot be fixed. The exact due date is left null rather than guessed; it would be roughly one month plus the statutory delivery margin (3-4 days) after whatever date the Pflegekasse actually dispatched the letter — the person should check the envelope postmark or ask the Pflegekasse for the exact dispatch date.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter shows no document date anywhere on the page, so the start of the one-month Widerspruch deadline (which runs from Bekanntgabe/deemed delivery) cannot be computed; the person should check the envelope postmark or contact the Pflegekasse to confirm the dispatch date and then recompute the deadline from that date.\",\"No specific amount of the requested subsidy or any payment sum is stated in the letter; this is a pure rejection of the application, not a demand for money.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Pflegekasse der BKK Musterwerk",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "T274019385"
+        },
+        {
+          "label": "Vorgang",
+          "value": "WU-0419"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of Wohnumfeld subsidy",
+          "quote": "Möchten Sie die Ablehnung nicht hinnehmen, erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk; das geht schriftlich oder zur Niederschrift.",
+          "computation": "The period is one month 'nach Bekanntgabe' (after notification). Bekanntgabe for a letter from a public-law social-insurance body (Pflegekasse, a Körperschaft des öffentlichen Rechts acting under SGB XI/SGB X) is normally fixed by the deemed-delivery rule of § 37 Abs. 2 SGB X (the letter counts as delivered a fixed number of days after it was posted/dispatched), and the one-month Widerspruch period of § 84 SGG then runs from that day under §§ 187 Abs. 1, 188 Abs. 2 BGB, shifting to the next business day if the last day falls on a weekend or holiday in NW. However, the letter carries no visible issue/posting date (no document date and no date field anywhere on the page), so the start of the deemed-delivery period, and therefore the final day of the one-month Widerspruch period, cannot be fixed. The exact due date is left null rather than guessed; it would be roughly one month plus the statutory delivery margin (3-4 days) after whatever date the Pflegekasse actually dispatched the letter — the person should check the envelope postmark or ask the Pflegekasse for the exact dispatch date.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter shows no document date anywhere on the page, so the start of the one-month Widerspruch deadline (which runs from Bekanntgabe/deemed delivery) cannot be computed; the person should check the envelope postmark or contact the Pflegekasse to confirm the dispatch date and then recompute the deadline from that date.",
+        "No specific amount of the requested subsidy or any payment sum is stated in the letter; this is a pure rejection of the application, not a demand for money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3145,
+      "cache_read_tokens": 15636,
+      "cache_creation_tokens": 4980,
+      "cost_usd": 0.054505200000000004,
+      "duration_ms": 35582,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

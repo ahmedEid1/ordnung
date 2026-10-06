@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b7ada835ce6b26d1f41ab49e1a52c419914ea6bb284faa9906be2295c03471bf\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-conflicting_dates-2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-08-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterheim an der Ruhr, Amt für Bauaufsicht und Denkmalschutz\",\"document_date\":\"2027-07-30\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"63/2-WA-0544/27\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File lawsuit (Klage) against refusal of advertising-sign building permit\",\"quote\":\"Klage gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe vor dem Verwaltungsgericht Musterkirchen (Domplatz 4, 45879 Musterkirchen) erhoben werden; ein Vorverfahren ist nicht vorgesehen (§ 110 JustG NRW).\",\"computation\":\"The letter is internally inconsistent: the header 'Datum' field reads 30.07.2027, but the body states 'mit diesem Bescheid vom 28.07.2027'. Per the rule to use the earliest plausible date when a letter contradicts itself, the posting day is taken as 28.07.2027 (Wednesday). This is a municipal building authority (Bauaufsicht), not a Finanzamt, so the statutory 4-day delivery fiction applies without the weekend/holiday shift that only applies to tax offices: delivery is deemed on 28.07.2027 + 4 calendar days = 01.08.2027 (Sunday), and this day is not moved even though it is a Sunday. The one-month Klage period (§ 74 VwGO) begins the day after delivery (§ 187 Abs. 1 BGB) and ends on the day of the following month bearing the same date number as the delivery day (§ 188 Abs. 2 BGB): 01.08.2027 + 1 month = 01.09.2027 (Wednesday). This date is not a Saturday, Sunday or NRW public holiday, so no further shift under § 57 VwGO i.V.m. § 222 Abs. 2 ZPO is needed. Final deadline for filing the Klage: 01.09.2027. (Using the later header date of 30.07.2027 instead would move the delivery to 03.08.2027 and the deadline to 03.09.2027 — the earlier date is used here to be safe.)\",\"due_date\":\"2027-09-01\",\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter contradicts itself on its own date: the header 'Datum' field says 30.07.2027, while the body refers to 'diesem Bescheid vom 28.07.2027'. The Klage deadline above was computed conservatively from the earlier date (28.07.2027); the actual postmark/posting date should be checked on the original envelope, since using 30.07.2027 instead would move the deadline two days later to 2027-09-03.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterheim an der Ruhr, Amt für Bauaufsicht und Denkmalschutz",
+      "document_date": "2027-07-30",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "63/2-WA-0544/27"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File lawsuit (Klage) against refusal of advertising-sign building permit",
+          "quote": "Klage gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe vor dem Verwaltungsgericht Musterkirchen (Domplatz 4, 45879 Musterkirchen) erhoben werden; ein Vorverfahren ist nicht vorgesehen (§ 110 JustG NRW).",
+          "computation": "The letter is internally inconsistent: the header 'Datum' field reads 30.07.2027, but the body states 'mit diesem Bescheid vom 28.07.2027'. Per the rule to use the earliest plausible date when a letter contradicts itself, the posting day is taken as 28.07.2027 (Wednesday). This is a municipal building authority (Bauaufsicht), not a Finanzamt, so the statutory 4-day delivery fiction applies without the weekend/holiday shift that only applies to tax offices: delivery is deemed on 28.07.2027 + 4 calendar days = 01.08.2027 (Sunday), and this day is not moved even though it is a Sunday. The one-month Klage period (§ 74 VwGO) begins the day after delivery (§ 187 Abs. 1 BGB) and ends on the day of the following month bearing the same date number as the delivery day (§ 188 Abs. 2 BGB): 01.08.2027 + 1 month = 01.09.2027 (Wednesday). This date is not a Saturday, Sunday or NRW public holiday, so no further shift under § 57 VwGO i.V.m. § 222 Abs. 2 ZPO is needed. Final deadline for filing the Klage: 01.09.2027. (Using the later header date of 30.07.2027 instead would move the delivery to 03.08.2027 and the deadline to 03.09.2027 — the earlier date is used here to be safe.)",
+          "due_date": "2027-09-01",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter contradicts itself on its own date: the header 'Datum' field says 30.07.2027, while the body refers to 'diesem Bescheid vom 28.07.2027'. The Klage deadline above was computed conservatively from the earlier date (28.07.2027); the actual postmark/posting date should be checked on the original envelope, since using 30.07.2027 instead would move the deadline two days later to 2027-09-03."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5028,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2610,
+      "cost_usd": 0.06183,
+      "duration_ms": 52223,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"80e9a213f2fb722653cea0b605300c3527f4dc1b71b1f2a0d3274a8354424e05\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-06-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-contract_confirmation-J1"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-06-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Musterhanse Versicherung AG\",\"document_date\":\"2027-06-24\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"PHV-27-5530918\"}],\"amounts\":[68.52],\"items\":[{\"kind\":\"milestone\",\"title\":\"Insurance coverage starts\",\"quote\":\"Versicherungsbeginn   01.08.2027, 0:00 Uhr\",\"computation\":\"The policy states the coverage start date directly as a calendar date: 01.08.2027, 0:00 Uhr. No period calculation is needed; the date is taken as printed.\",\"due_date\":\"2027-08-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Annual premium debited by direct debit\",\"quote\":\"Den Jahresbeitrag buchen wir zum Versicherungsbeginn von Ihrem Konto ab.\",\"computation\":\"The letter states the annual premium (68,52 Euro) is debited automatically 'zum Versicherungsbeginn', i.e. on the policy start date, which is given as 01.08.2027. No further counting is required; this is the date the debit occurs.\",\"due_date\":\"2027-08-01\",\"confidence\":\"high\",\"amount\":68.52}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2028-07-31\",\"cancel_by\":\"2028-06-30\"},\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Musterhanse Versicherung AG",
+      "document_date": "2027-06-24",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "PHV-27-5530918"
+        }
+      ],
+      "amounts": [
+        68.52
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Insurance coverage starts",
+          "quote": "Versicherungsbeginn   01.08.2027, 0:00 Uhr",
+          "computation": "The policy states the coverage start date directly as a calendar date: 01.08.2027, 0:00 Uhr. No period calculation is needed; the date is taken as printed.",
+          "due_date": "2027-08-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Annual premium debited by direct debit",
+          "quote": "Den Jahresbeitrag buchen wir zum Versicherungsbeginn von Ihrem Konto ab.",
+          "computation": "The letter states the annual premium (68,52 Euro) is debited automatically 'zum Versicherungsbeginn', i.e. on the policy start date, which is given as 01.08.2027. No further counting is required; this is the date the debit occurs.",
+          "due_date": "2027-08-01",
+          "confidence": "high",
+          "amount": 68.52
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2028-07-31",
+        "cancel_by": "2028-06-30"
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3855,
+      "cache_read_tokens": 16738,
+      "cache_creation_tokens": 5715,
+      "cost_usd": 0.0647696,
+      "duration_ms": 41129,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"57e5f08629ba9af9d6a471187bb09ca65d405aaef9def25ae463b68ff912ea94\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-contract_confirmation-I1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispielnetz Mobil GmbH\",\"document_date\":\"2026-01-23\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BN 7 204 118 3\"},{\"label\":\"Rufnummer\",\"value\":\"0151 555 77 104\"}],\"amounts\":[17.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"SIM card activation\",\"quote\":\"wir schalten sie am 24.01.2026 frei\",\"computation\":\"The letter states the activation date directly as a fixed calendar date: 24.01.2026. This date is already in the past relative to today (2026-10-06); it is recorded for reference only, no action is required of the recipient.\",\"due_date\":\"2026-01-24\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-01-24\",\"cancel_by\":\"2026-12-24\"},\"warnings\":[\"The IBAN printed for this provider (DE53 3705 0198 0005 5523 23) is well-formed, but that only confirms the IBAN's own check digits — it does not prove the account belongs to Beispielnetz Mobil GmbH; compare it against the provider's other correspondence before any manual transfer.\",\"The minimum-term end date (24.01.2027) and the one-month cancellation deadline (24.12.2026) are calculated from the stated activation date and notice period using calendar-month arithmetic; the provider's own records of the exact activation timestamp control if there is any discrepancy.\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispielnetz Mobil GmbH",
+      "document_date": "2026-01-23",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BN 7 204 118 3"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0151 555 77 104"
+        }
+      ],
+      "amounts": [
+        17.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "SIM card activation",
+          "quote": "wir schalten sie am 24.01.2026 frei",
+          "computation": "The letter states the activation date directly as a fixed calendar date: 24.01.2026. This date is already in the past relative to today (2026-10-06); it is recorded for reference only, no action is required of the recipient.",
+          "due_date": "2026-01-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-01-24",
+        "cancel_by": "2026-12-24"
+      },
+      "warnings": [
+        "The IBAN printed for this provider (DE53 3705 0198 0005 5523 23) is well-formed, but that only confirms the IBAN's own check digits — it does not prove the account belongs to Beispielnetz Mobil GmbH; compare it against the provider's other correspondence before any manual transfer.",
+        "The minimum-term end date (24.01.2027) and the one-month cancellation deadline (24.12.2026) are calculated from the stated activation date and notice period using calendar-month arithmetic; the provider's own records of the exact activation timestamp control if there is any discrepancy."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4730,
+      "cache_read_tokens": 15676,
+      "cache_creation_tokens": 7839,
+      "cost_usd": 0.08179919999999999,
+      "duration_ms": 57171,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE53 3705 0198 0005 5523 23"
+        },
+        "result": "{\"iban\":\"DE53 3705 0198 0005 5523 23\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005552323\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2026,
+          "region": "NW"
+        },
+        "result": "{\"year\":2026,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2026-01-01\",\"weekday\":\"Thursday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2026-04-03\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2026-04-06\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2026-05-01\",\"weekday\":\"Friday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2026-05-14\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2026-05-25\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2026-06-04\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2026-10-03\",\"weekday\":\"Saturday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2026-11-01\",\"weekday\":\"Sunday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2026-12-25\",\"weekday\":\"Friday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2026-12-26\",\"weekday\":\"Saturday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}
