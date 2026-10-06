@@ -2,7 +2,7 @@
  "schema": 1,
  "meta": {
   "date": "2026-10-03",
-  "generated_at": "2026-10-03T10:56:43+00:00",
+  "generated_at": "2026-10-06T13:06:25+00:00",
   "model": "claude-sonnet-5",
   "split": "holdout2",
   "conditions": [
@@ -39,14 +39,14 @@
   "resamples": 2000,
   "evals_version": "1",
   "fingerprints": {
-   "ordnung": "888492efa096761f"
+   "ordnung": "822d5316b68df063"
   },
   "dataset": {
    "name": "ordnung-deadline-benchmark",
    "version": 1,
    "manifest_sha256": "c9bf0fe15a316cdfddf8ca74b5946e0fc967142ce01fb52c8807fda0a998ef90"
   },
-  "commit": "2cc4558",
+  "commit": "60a849e",
   "note": "It replays the 1 October held-out recordings plus one model call made after them, the completeness re-ask (ADR 0016) for `holdout2-adversarial-injection_visible-1`: recorded live on 2026-10-03 at commit `f773638` because that letter's reading had come back empty, and accepted. Claude's second answer gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026 from the sentence it found on the letter, at high confidence. The re-ask's prompt was written after, and because of, that letter, so this row is not held-out; the call's cost and latency are included in its numbers. The code also has the reading check (`src/ordnung/ingest/gaps.py`, ADR 0015), which files nothing for this letter once the re-ask's answer is used, and the later work on that check's limits. The held-out row above is unchanged (54 of 56)."
  },
  "metrics": {
@@ -716,12 +716,12 @@
         "cache_creation_tokens": 10790,
         "cost_usd": 0.094484,
         "duration_ms": 43688,
-        "wall_ms": 1
+        "wall_ms": 4
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-conflicting_dates-1",
@@ -917,12 +917,12 @@
         "cache_creation_tokens": 2020,
         "cost_usd": 0.0456946,
         "duration_ms": 28871,
-        "wall_ms": 1
+        "wall_ms": 5
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-conflicting_dates-2",
@@ -1157,12 +1157,12 @@
         "cache_creation_tokens": 2011,
         "cost_usd": 0.0727986,
         "duration_ms": 53339,
-        "wall_ms": 3
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-hidden_text-1",
@@ -1367,7 +1367,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-hidden_text-2",
@@ -1567,7 +1567,7 @@
         "cache_creation_tokens": 6726,
         "cost_usd": 0.08822340000000001,
         "duration_ms": 46242,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -1585,7 +1585,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-injection_visible-1",
@@ -1791,12 +1791,12 @@
         "cache_creation_tokens": 2044,
         "cost_usd": 0.0984106,
         "duration_ms": 70077,
-        "wall_ms": 1
+        "wall_ms": 4
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-injection_visible-2",
@@ -2015,12 +2015,12 @@
         "cache_creation_tokens": 2059,
         "cost_usd": 0.2031906,
         "duration_ms": 182918,
-        "wall_ms": 8
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-injection_visible-2-photo",
@@ -2219,7 +2219,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-missing_date-1",
@@ -2412,7 +2412,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-missing_date-2",
@@ -2609,12 +2609,12 @@
         "cache_creation_tokens": 2007,
         "cost_usd": 0.0633726,
         "duration_ms": 46941,
-        "wall_ms": 1
+        "wall_ms": 13
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-scam-1",
@@ -2813,12 +2813,12 @@
         "cache_creation_tokens": 1903,
         "cost_usd": 0.08774660000000001,
         "duration_ms": 64728,
-        "wall_ms": 1
+        "wall_ms": 9
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-scam-2",
@@ -3020,7 +3020,7 @@
         "cache_creation_tokens": 4612,
         "cost_usd": 0.028442000000000002,
         "duration_ms": 9653,
-        "wall_ms": 4
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
@@ -3038,7 +3038,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-adversarial-scam-2-photo",
@@ -3257,12 +3257,12 @@
         "cache_creation_tokens": 1957,
         "cost_usd": 0.0476326,
         "duration_ms": 32056,
-        "wall_ms": 1
+        "wall_ms": 15
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-appointment-G1",
@@ -3453,7 +3453,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.026340000000000002,
         "duration_ms": 7215,
-        "wall_ms": 0
+        "wall_ms": 17
        },
        {
         "purpose": "extract",
@@ -3466,12 +3466,12 @@
         "cache_creation_tokens": 1947,
         "cost_usd": 0.047432600000000005,
         "duration_ms": 31437,
-        "wall_ms": 0
+        "wall_ms": 18
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-appointment-G1-photo",
@@ -3662,12 +3662,12 @@
         "cache_creation_tokens": 1960,
         "cost_usd": 0.0555146,
         "duration_ms": 41637,
-        "wall_ms": 7
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-appointment-G2",
@@ -3860,7 +3860,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-appointment-H1",
@@ -4051,7 +4051,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-contract_confirmation-G1",
@@ -4216,12 +4216,12 @@
         "cache_creation_tokens": 2017,
         "cost_usd": 0.0670926,
         "duration_ms": 45757,
-        "wall_ms": 26
+        "wall_ms": 19
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-contract_confirmation-H1",
@@ -4396,7 +4396,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-dunning_fixed-G1",
@@ -4610,7 +4610,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-dunning_fixed-G1-photo",
@@ -4811,7 +4811,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-dunning_fixed-G2",
@@ -5005,12 +5005,12 @@
         "cache_creation_tokens": 2019,
         "cost_usd": 0.09867060000000001,
         "duration_ms": 73019,
-        "wall_ms": 1
+        "wall_ms": 6
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-dunning_fixed-H1",
@@ -5202,12 +5202,12 @@
         "cache_creation_tokens": 1737,
         "cost_usd": 0.07871260000000001,
         "duration_ms": 64468,
-        "wall_ms": 1
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-english_letter-G1",
@@ -5400,7 +5400,7 @@
         "cache_creation_tokens": 4616,
         "cost_usd": 0.024268,
         "duration_ms": 8651,
-        "wall_ms": 1
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
@@ -5413,12 +5413,12 @@
         "cache_creation_tokens": 1734,
         "cost_usd": 0.042370599999999994,
         "duration_ms": 29687,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-english_letter-G1-photo",
@@ -5618,7 +5618,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-english_letter-G2",
@@ -5841,12 +5841,12 @@
         "cache_creation_tokens": 1690,
         "cost_usd": 0.0465246,
         "duration_ms": 32136,
-        "wall_ms": 1
+        "wall_ms": 13
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-english_letter-H1",
@@ -6046,7 +6046,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-english_letter-H2",
@@ -6282,12 +6282,12 @@
         "cache_creation_tokens": 14675,
         "cost_usd": 0.20957920000000002,
         "duration_ms": 119638,
-        "wall_ms": 1
+        "wall_ms": 28
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-fine_bussgeld-G1",
@@ -6544,12 +6544,12 @@
         "cache_creation_tokens": 2748,
         "cost_usd": 0.1644666,
         "duration_ms": 127270,
-        "wall_ms": 1
+        "wall_ms": 6
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-fine_bussgeld-G2",
@@ -6808,12 +6808,12 @@
         "cache_creation_tokens": 2591,
         "cost_usd": 0.1151786,
         "duration_ms": 83045,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-fine_bussgeld-H1",
@@ -7072,12 +7072,12 @@
         "cache_creation_tokens": 2583,
         "cost_usd": 0.1158366,
         "duration_ms": 85989,
-        "wall_ms": 1
+        "wall_ms": 3
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-fine_bussgeld-H2",
@@ -7299,12 +7299,12 @@
         "cache_creation_tokens": 1958,
         "cost_usd": 0.056056600000000005,
         "duration_ms": 34446,
-        "wall_ms": 3
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-G1",
@@ -7504,7 +7504,7 @@
         "cache_creation_tokens": 4614,
         "cost_usd": 0.02673,
         "duration_ms": 9018,
-        "wall_ms": 1
+        "wall_ms": 9
        },
        {
         "purpose": "extract",
@@ -7517,12 +7517,12 @@
         "cache_creation_tokens": 7325,
         "cost_usd": 0.10447139999999999,
         "duration_ms": 56585,
-        "wall_ms": 1
+        "wall_ms": 4
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-G1-photo",
@@ -7720,12 +7720,12 @@
         "cache_creation_tokens": 6949,
         "cost_usd": 0.0974794,
         "duration_ms": 52085,
-        "wall_ms": 2
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-G2",
@@ -7919,12 +7919,12 @@
         "cache_creation_tokens": 2038,
         "cost_usd": 0.061666599999999995,
         "duration_ms": 39803,
-        "wall_ms": 7
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-H1",
@@ -8120,7 +8120,7 @@
         "cache_creation_tokens": 4618,
         "cost_usd": 0.047266,
         "duration_ms": 25355,
-        "wall_ms": 0
+        "wall_ms": 1
        },
        {
         "purpose": "extract",
@@ -8133,12 +8133,12 @@
         "cache_creation_tokens": 2045,
         "cost_usd": 0.048344599999999995,
         "duration_ms": 29439,
-        "wall_ms": 2
+        "wall_ms": 12
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-H1-photo",
@@ -8334,12 +8334,12 @@
         "cache_creation_tokens": 1982,
         "cost_usd": 0.0698726,
         "duration_ms": 50469,
-        "wall_ms": 1
+        "wall_ms": 3
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-invoice_relative-H2",
@@ -8564,12 +8564,12 @@
         "cache_creation_tokens": 2267,
         "cost_usd": 0.0520526,
         "duration_ms": 32082,
-        "wall_ms": 8
+        "wall_ms": 9
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-municipal_decision-G1",
@@ -8797,7 +8797,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-municipal_decision-G2",
@@ -9022,7 +9022,7 @@
         "cache_creation_tokens": 4618,
         "cost_usd": 0.027785999999999998,
         "duration_ms": 7424,
-        "wall_ms": 1
+        "wall_ms": 0
        },
        {
         "purpose": "extract",
@@ -9035,12 +9035,12 @@
         "cache_creation_tokens": 2140,
         "cost_usd": 0.0822446,
         "duration_ms": 60981,
-        "wall_ms": 1
+        "wall_ms": 8
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-municipal_decision-G2-photo",
@@ -9277,12 +9277,12 @@
         "cache_creation_tokens": 2250,
         "cost_usd": 0.0933546,
         "duration_ms": 68571,
-        "wall_ms": 2
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-municipal_decision-H1",
@@ -9532,12 +9532,12 @@
         "cache_creation_tokens": 8490,
         "cost_usd": 0.125307,
         "duration_ms": 66918,
-        "wall_ms": 1
+        "wall_ms": 37
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-municipal_decision-H2",
@@ -9735,7 +9735,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-price_increase-G1",
@@ -9901,7 +9901,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-price_increase-H1",
@@ -10094,12 +10094,12 @@
         "cache_creation_tokens": 1864,
         "cost_usd": 0.0408406,
         "duration_ms": 25760,
-        "wall_ms": 1
+        "wall_ms": 9
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-relative_business_days-G1",
@@ -10297,7 +10297,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-relative_business_days-G2",
@@ -10519,12 +10519,12 @@
         "cache_creation_tokens": 7315,
         "cost_usd": 0.10525879999999999,
         "duration_ms": 57666,
-        "wall_ms": 3
+        "wall_ms": 0
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-relative_business_days-H1",
@@ -10748,7 +10748,7 @@
         "cache_creation_tokens": 4612,
         "cost_usd": 0.026021999999999997,
         "duration_ms": 6894,
-        "wall_ms": 0
+        "wall_ms": 9
        },
        {
         "purpose": "extract",
@@ -10761,12 +10761,12 @@
         "cache_creation_tokens": 6045,
         "cost_usd": 0.0881474,
         "duration_ms": 45865,
-        "wall_ms": 1
+        "wall_ms": 5
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-relative_business_days-H1-photo",
@@ -10967,7 +10967,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-social_decision-G1",
@@ -11165,7 +11165,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-social_decision-G2",
@@ -11373,12 +11373,12 @@
         "cache_creation_tokens": 2069,
         "cost_usd": 0.0449806,
         "duration_ms": 27036,
-        "wall_ms": 2
+        "wall_ms": 6
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-social_decision-G2-photo",
@@ -11647,7 +11647,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-social_decision-H1",
@@ -11930,12 +11930,12 @@
         "cache_creation_tokens": 2095,
         "cost_usd": 0.07800460000000001,
         "duration_ms": 55027,
-        "wall_ms": 3
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-social_decision-H2",
@@ -12170,7 +12170,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-tax_assessment-G1",
@@ -12404,7 +12404,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-tax_assessment-G2",
@@ -12642,12 +12642,12 @@
         "cache_creation_tokens": 2352,
         "cost_usd": 0.08991260000000001,
         "duration_ms": 63734,
-        "wall_ms": 1
+        "wall_ms": 21
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-tax_assessment-H1",
@@ -12902,7 +12902,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-tax_assessment-H2",
@@ -13134,7 +13134,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-G1",
@@ -13327,12 +13327,12 @@
         "cache_creation_tokens": 2093,
         "cost_usd": 0.059986599999999994,
         "duration_ms": 38976,
-        "wall_ms": 3
+        "wall_ms": 9
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-G2",
@@ -13562,7 +13562,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-G3",
@@ -13755,12 +13755,12 @@
         "cache_creation_tokens": 2051,
         "cost_usd": 0.0666086,
         "duration_ms": 45523,
-        "wall_ms": 3
+        "wall_ms": 18
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-H1",
@@ -14003,7 +14003,7 @@
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-H1-photo",
@@ -14228,12 +14228,12 @@
         "cache_creation_tokens": 2113,
         "cost_usd": 0.0711766,
         "duration_ms": 49636,
-        "wall_ms": 0
+        "wall_ms": 1
        }
       ],
       "failed": null,
       "error": null,
-      "fingerprint": "888492efa096761f"
+      "fingerprint": "822d5316b68df063"
      },
      "score": {
       "entry_id": "holdout2-year_boundary-H2",
