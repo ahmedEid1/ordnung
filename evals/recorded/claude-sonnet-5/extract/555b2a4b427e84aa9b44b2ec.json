@@ -1,0 +1,119 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"abea350095f51e10314e6e413671542e88b3371f037ab4e9b307881113a82427\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2027-08-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-I1"
+    ],
+    "prompt_head": "Today is 2027-08-02. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in"
+  },
+  "response": {
+    "text": "{\"area\":\"study\",\"case_title\":\"Admission to MSc Renewable Energy Systems – certified documents due\",\"kind\":\"university\",\"language\":\"en\",\"document_date\":\"2027-07-27\",\"recipient_name\":\"Chidi Okonkwo\",\"sender\":{\"name\":\"Beispielfeld University of Applied Sciences – International Office, Admissions\",\"kind\":\"university\",\"address\":\"Campusallee 1, 37085 Beispielfeld\",\"email\":\"admissions@hs-beispielfeld.example\",\"phone\":\"+49 551 555 2040\",\"website\":null,\"identifiers\":[]},\"references\":[{\"label\":\"Applicant no.\",\"value\":\"MA-27-04418\"}],\"key_facts\":[{\"label\":\"Programme\",\"value\":\"MSc Renewable Energy Systems\",\"quote\":\"Congratulations: you have been admitted to the Master's programme Renewable Energy\\nSystems, starting in the winter semester 2027/28.\"},{\"label\":\"Start semester\",\"value\":\"winter semester 2027/28\",\"quote\":\"Congratulations: you have been admitted to the Master's programme Renewable Energy\\nSystems, starting in the winter semester 2027/28.\"},{\"label\":\"Document deadline\",\"value\":\"24 August 2027\",\"quote\":\"Please send us officially certified copies of your bachelor's degree certificate and your\\ntranscript of records, together with certified German or English translations, so that they\\nreach us by 24 August 2027.\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Send certified degree documents to the university\",\"action\":\"Send officially certified copies of your bachelor's degree certificate and transcript of records, together with certified German or English translations, so they reach the university by 24 August 2027.\",\"consequence\":\"If the documents arrive later, your admitted place will be offered to another applicant.\",\"amount\":null,\"currency\":null,\"direction\":null,\"location\":null,\"priority\":\"high\",\"date\":{\"type\":\"fixed\",\"date\":\"2027-08-24\",\"text\":\"so that they reach us by 24 August 2027\",\"nature\":\"declaration\",\"anchor\":null,\"anchor_date\":null,\"amount\":null,\"unit\":null,\"delivery_rule\":\"none\",\"shift_rule\":\"auto\",\"legal_basis\":null,\"time\":null},\"quote\":\"Please send us officially certified copies of your bachelor's degree certificate and your\\ntranscript of records, together with certified German or English translations, so that they\\nreach us by 24 August 2027.\",\"recurrence\":null}],\"contract\":null,\"change\":null,\"payment\":null,\"remedy\":{\"type\":\"none\",\"addressee\":null,\"period_text\":null,\"form_text\":null,\"quote\":null},\"warnings\":[\"Scans or uncertified copies are explicitly not accepted; only officially certified originals/translations will count toward the deadline.\"],\"tax_relevant\":false,\"tax_note\":null,\"urgency\":\"high\",\"high_stakes_kind\":null,\"transcript\":null,\"title\":\"University admission letter – MSc Renewable Energy Systems\",\"summary\":\"Beispielfeld University of Applied Sciences confirms Chidi Okonkwo's admission to the MSc Renewable Energy Systems programme starting winter semester 2027/28, but requires certified copies of the bachelor's degree certificate and transcript of records (with certified translations) to arrive by 24 August 2027 to finalise enrolment.\",\"explanation\":\"This letter confirms your admission, but your place is only reserved, not final. You must send officially certified (not just scanned) copies of your bachelor's degree certificate and transcript of records, plus certified translations if they are not already in German or English, so they arrive by the deadline shown. If they arrive later, the university may give your place to someone else. Make sure to get the certifications done with enough lead time, since certification and postage can take a while. If you're unsure how to get documents certified, your home university or a notary/embassy can usually help.\"}",
+    "data": {
+      "area": "study",
+      "case_title": "Admission to MSc Renewable Energy Systems – certified documents due",
+      "kind": "university",
+      "language": "en",
+      "document_date": "2027-07-27",
+      "recipient_name": "Chidi Okonkwo",
+      "sender": {
+        "name": "Beispielfeld University of Applied Sciences – International Office, Admissions",
+        "kind": "university",
+        "address": "Campusallee 1, 37085 Beispielfeld",
+        "email": "admissions@hs-beispielfeld.example",
+        "phone": "+49 551 555 2040",
+        "website": null,
+        "identifiers": []
+      },
+      "references": [
+        {
+          "label": "Applicant no.",
+          "value": "MA-27-04418"
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Programme",
+          "value": "MSc Renewable Energy Systems",
+          "quote": "Congratulations: you have been admitted to the Master's programme Renewable Energy\nSystems, starting in the winter semester 2027/28."
+        },
+        {
+          "label": "Start semester",
+          "value": "winter semester 2027/28",
+          "quote": "Congratulations: you have been admitted to the Master's programme Renewable Energy\nSystems, starting in the winter semester 2027/28."
+        },
+        {
+          "label": "Document deadline",
+          "value": "24 August 2027",
+          "quote": "Please send us officially certified copies of your bachelor's degree certificate and your\ntranscript of records, together with certified German or English translations, so that they\nreach us by 24 August 2027."
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Send certified degree documents to the university",
+          "action": "Send officially certified copies of your bachelor's degree certificate and transcript of records, together with certified German or English translations, so they reach the university by 24 August 2027.",
+          "consequence": "If the documents arrive later, your admitted place will be offered to another applicant.",
+          "amount": null,
+          "currency": null,
+          "direction": null,
+          "location": null,
+          "priority": "high",
+          "date": {
+            "type": "fixed",
+            "date": "2027-08-24",
+            "text": "so that they reach us by 24 August 2027",
+            "nature": "declaration",
+            "anchor": null,
+            "anchor_date": null,
+            "amount": null,
+            "unit": null,
+            "delivery_rule": "none",
+            "shift_rule": "auto",
+            "legal_basis": null,
+            "time": null
+          },
+          "quote": "Please send us officially certified copies of your bachelor's degree certificate and your\ntranscript of records, together with certified German or English translations, so that they\nreach us by 24 August 2027.",
+          "recurrence": null
+        }
+      ],
+      "contract": null,
+      "change": null,
+      "payment": null,
+      "remedy": {
+        "type": "none",
+        "addressee": null,
+        "period_text": null,
+        "form_text": null,
+        "quote": null
+      },
+      "warnings": [
+        "Scans or uncertified copies are explicitly not accepted; only officially certified originals/translations will count toward the deadline."
+      ],
+      "tax_relevant": false,
+      "tax_note": null,
+      "urgency": "high",
+      "high_stakes_kind": null,
+      "transcript": null,
+      "title": "University admission letter – MSc Renewable Energy Systems",
+      "summary": "Beispielfeld University of Applied Sciences confirms Chidi Okonkwo's admission to the MSc Renewable Energy Systems programme starting winter semester 2027/28, but requires certified copies of the bachelor's degree certificate and transcript of records (with certified translations) to arrive by 24 August 2027 to finalise enrolment.",
+      "explanation": "This letter confirms your admission, but your place is only reserved, not final. You must send officially certified (not just scanned) copies of your bachelor's degree certificate and transcript of records, plus certified translations if they are not already in German or English, so they arrive by the deadline shown. If they arrive later, the university may give your place to someone else. Make sure to get the certifications done with enough lead time, since certification and postage can take a while. If you're unsure how to get documents certified, your home university or a notary/embassy can usually help."
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3012,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2175,
+      "cost_usd": 0.0406146,
+      "duration_ms": 32018,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"91c0c4a23cc12246f74d8aaaaf8f1fd8f90beb104f71198a342c1aad08c1854a\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-07-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-J1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-07-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Musterhavel-Fläming\",\"document_date\":\"2026-06-30\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"05817//0093412\"},{\"label\":\"Kundennummer\",\"value\":\"731D225509\"}],\"amounts\":[1233.96],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit signed rental contract and deposit proof for new flat\",\"quote\":\"Damit wir die neue Miete berücksichtigen können, reichen Sie bitte bis zum 14.07.2026 den unterschriebenen Mietvertrag und den Nachweis über die Kaution ein.\",\"computation\":\"The letter states an explicit calendar date, 'bis zum 14.07.2026', which is used as written per the letter's own deadline for submitting the signed rental contract and deposit proof so the new rent can be considered from the move-in date of 01.08.2026.\",\"due_date\":\"2026-07-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) deadline against the benefit decision\",\"quote\":\"Der Widerspruch muss innerhalb eines Monats nach Bekanntgabe beim Jobcenter Musterhavel-Fläming, Fläminger Weg 4, 14943 Beispielsruh (Havel), eingehen.\",\"computation\":\"Posting day = document date 30.06.2026 (Tuesday), since no separate 'zur Post gegeben am' date is given. Delivery fiction for letters posted on/after 1 Jan 2025: deemed delivered on the 4th day after posting -> 04.07.2026 (Saturday). The Jobcenter is a social-law body under § 37 Abs. 2 SGB X, so (unlike tax offices) the delivery day itself does NOT move even though it falls on a Saturday. The one-month Widerspruch period (§ 84 SGG) begins the day after delivery (§ 187 Abs. 1 BGB) and ends one month later on the day bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 04.08.2026 (Tuesday). This day is a normal working day (not a weekend or BB public holiday), so no further shift under § 26 Abs. 3 SGB X / § 193 BGB is needed.\",\"due_date\":\"2026-08-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Musterhavel-Fläming",
+      "document_date": "2026-06-30",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "05817//0093412"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "731D225509"
+        }
+      ],
+      "amounts": [
+        1233.96
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit signed rental contract and deposit proof for new flat",
+          "quote": "Damit wir die neue Miete berücksichtigen können, reichen Sie bitte bis zum 14.07.2026 den unterschriebenen Mietvertrag und den Nachweis über die Kaution ein.",
+          "computation": "The letter states an explicit calendar date, 'bis zum 14.07.2026', which is used as written per the letter's own deadline for submitting the signed rental contract and deposit proof so the new rent can be considered from the move-in date of 01.08.2026.",
+          "due_date": "2026-07-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) deadline against the benefit decision",
+          "quote": "Der Widerspruch muss innerhalb eines Monats nach Bekanntgabe beim Jobcenter Musterhavel-Fläming, Fläminger Weg 4, 14943 Beispielsruh (Havel), eingehen.",
+          "computation": "Posting day = document date 30.06.2026 (Tuesday), since no separate 'zur Post gegeben am' date is given. Delivery fiction for letters posted on/after 1 Jan 2025: deemed delivered on the 4th day after posting -> 04.07.2026 (Saturday). The Jobcenter is a social-law body under § 37 Abs. 2 SGB X, so (unlike tax offices) the delivery day itself does NOT move even though it falls on a Saturday. The one-month Widerspruch period (§ 84 SGG) begins the day after delivery (§ 187 Abs. 1 BGB) and ends one month later on the day bearing the same number as the delivery day (§ 188 Abs. 2 BGB): 04.08.2026 (Tuesday). This day is a normal working day (not a weekend or BB public holiday), so no further shift under § 26 Abs. 3 SGB X / § 193 BGB is needed.",
+          "due_date": "2026-08-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3466,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3163,
+      "cost_usd": 0.04842199999999999,
+      "duration_ms": 38748,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

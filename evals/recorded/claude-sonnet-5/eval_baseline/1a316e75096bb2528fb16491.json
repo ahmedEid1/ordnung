@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7be25d2a9ada2ab2521e9d0aa5adf359874d69bcdf15d7d05663977f77245c98\",\"mode\":\"text\",\"region\":\"RP\",\"today\":\"2025-02-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-J2"
+    ],
+    "prompt_head": "Today is Friday, 2025-02-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Rheinland-Pfalz (RP), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_docum"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Kreisverwaltung Beispiel-Eifel – Jugendamt, Elterngeldstelle\",\"document_date\":\"2025-02-04\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"EG 51-0412/24\"}],\"amounts\":[1764.8,1147.12],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Elterngeld decision\",\"quote\":\"Er ist binnen eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Kreisverwaltung Beispiel-Eifel, Elterngeldstelle, Moselufer 31, 56812 Musterburg an der Mosel, einzulegen.\",\"computation\":\"Letter dated (and presumed posted) 04.02.2025 (Tuesday). The letter states delivery is deemed on the 4th day after dispatch (\\\"als bekannt gegeben gelten sie dann am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X)\\\"). 04.02.2025 + 4 days = 08.02.2025, which is a Saturday; under the standard rule for this fiction (analogous to the weekend/holiday clause in § 37 Abs. 2 SGB X / § 193 BGB), if that day falls on a Saturday, Sunday or public holiday, deemed delivery moves to the next business day: Monday 10.02.2025. That is the Bekanntgabe date triggering the one-month Widerspruch period (§ 26 SGB X with §§ 187 Abs. 1, 188 Abs. 2 BGB): the day of Bekanntgabe itself is not counted, the period starts the next day (11.02.2025) and ends one month later on the day bearing the same number as the triggering day, i.e. 10.03.2025 (a Monday, no public holiday in Rheinland-Pfalz), so the deadline is 10.03.2025.\",\"due_date\":\"2025-03-10\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The due date for the Widerspruch depends on the actual date the letter was handed to the postal service, which is assumed here to be the same as the document date (04.02.2025); if postage occurred later, the one-month deadline shifts accordingly.\",\"The letter states a 4-day deemed-delivery rule under § 37 Abs. 2 SGB X; the statute as commonly known provides for 3 days, so this unusual figure should be double-checked against the current wording of § 37 Abs. 2 SGB X in force.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Kreisverwaltung Beispiel-Eifel – Jugendamt, Elterngeldstelle",
+      "document_date": "2025-02-04",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "EG 51-0412/24"
+        }
+      ],
+      "amounts": [
+        1764.8,
+        1147.12
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Elterngeld decision",
+          "quote": "Er ist binnen eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift bei der Kreisverwaltung Beispiel-Eifel, Elterngeldstelle, Moselufer 31, 56812 Musterburg an der Mosel, einzulegen.",
+          "computation": "Letter dated (and presumed posted) 04.02.2025 (Tuesday). The letter states delivery is deemed on the 4th day after dispatch (\"als bekannt gegeben gelten sie dann am vierten Tag nach dem Versand (§ 37 Abs. 2 SGB X)\"). 04.02.2025 + 4 days = 08.02.2025, which is a Saturday; under the standard rule for this fiction (analogous to the weekend/holiday clause in § 37 Abs. 2 SGB X / § 193 BGB), if that day falls on a Saturday, Sunday or public holiday, deemed delivery moves to the next business day: Monday 10.02.2025. That is the Bekanntgabe date triggering the one-month Widerspruch period (§ 26 SGB X with §§ 187 Abs. 1, 188 Abs. 2 BGB): the day of Bekanntgabe itself is not counted, the period starts the next day (11.02.2025) and ends one month later on the day bearing the same number as the triggering day, i.e. 10.03.2025 (a Monday, no public holiday in Rheinland-Pfalz), so the deadline is 10.03.2025.",
+          "due_date": "2025-03-10",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The due date for the Widerspruch depends on the actual date the letter was handed to the postal service, which is assumed here to be the same as the document date (04.02.2025); if postage occurred later, the one-month deadline shifts accordingly.",
+        "The letter states a 4-day deemed-delivery rule under § 37 Abs. 2 SGB X; the statute as commonly known provides for 3 days, so this unusual figure should be double-checked against the current wording of § 37 Abs. 2 SGB X in force."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4245,
+      "cache_read_tokens": 9184,
+      "cache_creation_tokens": 6028,
+      "cost_usd": 0.0684068,
+      "duration_ms": 48429,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

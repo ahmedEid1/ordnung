@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f6e947174f587f88f1b5da38659cebf709bef84057d36a122532d64de6c743b1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-I2"
+    ],
+    "prompt_head": "Today is Monday, 2027-05-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Beispielsauerland – Bußgeldstelle\",\"document_date\":\"2027-04-27\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 27/4410/18-03\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"MS-LB 4410\"}],\"amounts\":[100,25,3.5,128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.\",\"computation\":\"This is a formal delivery (förmliche Zustellung) per the Zustellungsurkunde copy on page 2, which shows the postal carrier recorded the delivery date as 03.05.2027 (Monday). Per the formal-delivery rule, this printed date is the delivery day itself, with no days added. The Einspruch period is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187, 188 BGB-style rules: the delivery day (Mon 3 May 2027) is not counted; two weeks later on the same weekday gives Mon 17 May 2027. However, 17 May 2027 is Whit Monday (Pfingstmontag), a nationwide public holiday (Easter Sunday 2027 = 28 March 2027, +50 days = 17 May 2027). Since the last day of the period is a holiday, the deadline moves to the next working day: Tue 18 May 2027.\",\"due_date\":\"2027-05-18\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine once the notice becomes final\",\"quote\":\"danach ist er innerhalb von zwei Wochen auf das Konto DE42 4600 0000 0003 0700 00 unter Angabe des Aktenzeichens zu überweisen.\",\"computation\":\"The letter instructs not to pay before the notice becomes final (Rechtskraft) and then to pay within two weeks. Assuming no Einspruch is filed, Rechtskraft begins the day after the Einspruch deadline expires, i.e. Wed 19 May 2027 (the day after 18 May 2027, computed above). Counting two weeks from that day under §§ 187, 188 BGB (start day not counted, period ends on the same weekday two weeks later): 19 May 2027 + 14 days = Wed 2 June 2027. 2 June 2027 is not a Saturday, Sunday or public holiday in NRW, so no further shift is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged, this payment obligation does not apply.\",\"due_date\":\"2027-06-02\",\"confidence\":\"medium\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment deadline (2 June 2027) assumes no Einspruch is filed; it only applies once the notice becomes legally final (Rechtskraft), which depends on whether an appeal is lodged by the 18 May 2027 deadline — the person should re-check this date against their own decision.\",\"The Einspruch deadline shifted from the 'naive' two-weeks-later date of 17 May 2027 to 18 May 2027 because 17 May 2027 is Whit Monday (Pfingstmontag), a nationwide public holiday — double-check this holiday calculation if in doubt.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Beispielsauerland – Bußgeldstelle",
+      "document_date": "2027-04-27",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 27/4410/18-03"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "MS-LB 4410"
+        }
+      ],
+      "amounts": [
+        100,
+        25,
+        3.5,
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.",
+          "computation": "This is a formal delivery (förmliche Zustellung) per the Zustellungsurkunde copy on page 2, which shows the postal carrier recorded the delivery date as 03.05.2027 (Monday). Per the formal-delivery rule, this printed date is the delivery day itself, with no days added. The Einspruch period is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187, 188 BGB-style rules: the delivery day (Mon 3 May 2027) is not counted; two weeks later on the same weekday gives Mon 17 May 2027. However, 17 May 2027 is Whit Monday (Pfingstmontag), a nationwide public holiday (Easter Sunday 2027 = 28 March 2027, +50 days = 17 May 2027). Since the last day of the period is a holiday, the deadline moves to the next working day: Tue 18 May 2027.",
+          "due_date": "2027-05-18",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine once the notice becomes final",
+          "quote": "danach ist er innerhalb von zwei Wochen auf das Konto DE42 4600 0000 0003 0700 00 unter Angabe des Aktenzeichens zu überweisen.",
+          "computation": "The letter instructs not to pay before the notice becomes final (Rechtskraft) and then to pay within two weeks. Assuming no Einspruch is filed, Rechtskraft begins the day after the Einspruch deadline expires, i.e. Wed 19 May 2027 (the day after 18 May 2027, computed above). Counting two weeks from that day under §§ 187, 188 BGB (start day not counted, period ends on the same weekday two weeks later): 19 May 2027 + 14 days = Wed 2 June 2027. 2 June 2027 is not a Saturday, Sunday or public holiday in NRW, so no further shift is needed. This date is contingent on no Einspruch being filed; if an Einspruch is lodged, this payment obligation does not apply.",
+          "due_date": "2027-06-02",
+          "confidence": "medium",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment deadline (2 June 2027) assumes no Einspruch is filed; it only applies once the notice becomes legally final (Rechtskraft), which depends on whether an appeal is lodged by the 18 May 2027 deadline — the person should re-check this date against their own decision.",
+        "The Einspruch deadline shifted from the 'naive' two-weeks-later date of 17 May 2027 to 18 May 2027 because 17 May 2027 is Whit Monday (Pfingstmontag), a nationwide public holiday — double-check this holiday calculation if in doubt."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7211,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3292,
+      "cost_usd": 0.086388,
+      "duration_ms": 72627,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

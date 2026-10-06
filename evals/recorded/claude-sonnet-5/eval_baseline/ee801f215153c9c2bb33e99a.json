@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"93259e3eca3dd6171fdda2ffe5dcc245e932468f04125dd31d4ed4dd25ff6da6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-10-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-I1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-10-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Elektro Beispielfunke GmbH\",\"document_date\":\"2026-10-16\",\"references\":[{\"label\":\"Rechnung\",\"value\":\"EB-26-1042\"},{\"label\":\"Auftrag\",\"value\":\"A-26-0877\"},{\"label\":\"USt-IdNr.\",\"value\":\"DE 318 552 074\"}],\"amounts\":[1792.14],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for wallbox installation\",\"quote\":\"Zahlbar innerhalb von 8 Tagen ab Rechnungsdatum ohne Abzug auf unser Konto bei der Musterbank AG.\",\"computation\":\"The invoice is dated 16.10.2026 (Friday), and payment is due 'within 8 days from the invoice date'. For a period triggered by an event/date (not the day itself), § 187 Abs. 1 BGB excludes the day of the event, so counting starts on 17.10.2026. Counting 8 days: 17, 18, 19, 20, 21, 22, 23, 24 October 2026 → the 8-day period ends on 24.10.2026 (Saturday). Under § 193 BGB, if the last day of a period for a declaration or performance falls on a Saturday, Sunday or public holiday, the period extends to the next working day. 24.10.2026 is a Saturday and 25.10.2026 is a Sunday, so the due date moves to Monday, 26.10.2026 (no NW public holiday intervenes).\",\"due_date\":\"2026-10-26\",\"confidence\":\"high\",\"amount\":1792.14}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Elektro Beispielfunke GmbH",
+      "document_date": "2026-10-16",
+      "references": [
+        {
+          "label": "Rechnung",
+          "value": "EB-26-1042"
+        },
+        {
+          "label": "Auftrag",
+          "value": "A-26-0877"
+        },
+        {
+          "label": "USt-IdNr.",
+          "value": "DE 318 552 074"
+        }
+      ],
+      "amounts": [
+        1792.14
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for wallbox installation",
+          "quote": "Zahlbar innerhalb von 8 Tagen ab Rechnungsdatum ohne Abzug auf unser Konto bei der Musterbank AG.",
+          "computation": "The invoice is dated 16.10.2026 (Friday), and payment is due 'within 8 days from the invoice date'. For a period triggered by an event/date (not the day itself), § 187 Abs. 1 BGB excludes the day of the event, so counting starts on 17.10.2026. Counting 8 days: 17, 18, 19, 20, 21, 22, 23, 24 October 2026 → the 8-day period ends on 24.10.2026 (Saturday). Under § 193 BGB, if the last day of a period for a declaration or performance falls on a Saturday, Sunday or public holiday, the period extends to the next working day. 24.10.2026 is a Saturday and 25.10.2026 is a Sunday, so the due date moves to Monday, 26.10.2026 (no NW public holiday intervenes).",
+          "due_date": "2026-10-26",
+          "confidence": "high",
+          "amount": 1792.14
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1789,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2557,
+      "cost_usd": 0.0287464,
+      "duration_ms": 19653,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1aae17b188795f078ee91a3d69d11fe0b8f910e59b65d0cdd0964a50dadef884\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-I2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-07-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Kleintierpraxis Dr. med. vet. Lena Musterpfote\",\"document_date\":\"2026-07-09\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"KT-2026-3381\"},{\"label\":\"Patienten-Nr.\",\"value\":\"P-0417\"}],\"amounts\":[244.53],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay veterinary invoice for Pepper's treatment\",\"quote\":\"Wir bitten um Ausgleich des Gesamtbetrags innerhalb von 21 Tagen nach dem Datum der Rechnung.\",\"computation\":\"This is a private payment deadline set by the invoice itself, counted from the invoice date under §§ 187 Abs. 1, 188 Abs. 1 BGB. Invoice date (the triggering event) is 09.07.2026 (Thursday); as the day of the event it is not counted, so counting starts 10.07.2026. 21 days later lands on 30.07.2026 (09.07 + 21 days = 30.07.2026). Checking the weekday: 09.07.2026 is a Thursday, and 21 days later (exactly 3 weeks) is also a Thursday — not a Saturday, Sunday or public holiday, so the § 193 BGB end-of-period shift does not apply. Due date: 30.07.2026.\",\"due_date\":\"2026-07-30\",\"confidence\":\"high\",\"amount\":244.53}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Kleintierpraxis Dr. med. vet. Lena Musterpfote",
+      "document_date": "2026-07-09",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "KT-2026-3381"
+        },
+        {
+          "label": "Patienten-Nr.",
+          "value": "P-0417"
+        }
+      ],
+      "amounts": [
+        244.53
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay veterinary invoice for Pepper's treatment",
+          "quote": "Wir bitten um Ausgleich des Gesamtbetrags innerhalb von 21 Tagen nach dem Datum der Rechnung.",
+          "computation": "This is a private payment deadline set by the invoice itself, counted from the invoice date under §§ 187 Abs. 1, 188 Abs. 1 BGB. Invoice date (the triggering event) is 09.07.2026 (Thursday); as the day of the event it is not counted, so counting starts 10.07.2026. 21 days later lands on 30.07.2026 (09.07 + 21 days = 30.07.2026). Checking the weekday: 09.07.2026 is a Thursday, and 21 days later (exactly 3 weeks) is also a Thursday — not a Saturday, Sunday or public holiday, so the § 193 BGB end-of-period shift does not apply. Due date: 30.07.2026.",
+          "due_date": "2026-07-30",
+          "confidence": "high",
+          "amount": 244.53
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2512,
+      "cache_read_tokens": 13591,
+      "cache_creation_tokens": 4430,
+      "cost_usd": 0.0455662,
+      "duration_ms": 25730,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

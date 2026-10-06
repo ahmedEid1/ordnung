@@ -1,0 +1,86 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"a9d0be4c32201a6fb4bca9e44e82c4cea4e2531d6e50496d23ffe8eed9434407\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-I1"
+    ],
+    "prompt_head": "Today is Thursday, 2024-12-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispieltal-Süd\",\"document_date\":\"2024-12-24\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"99/062/71418\"}],\"amounts\":[3476,4105,38,667],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2023 income tax assessment\",\"quote\":\"Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispieltal-Süd erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.\",\"computation\":\"The letter is dated Tue 24.12.2024. Under § 122 Abs. 2 Nr. 1 AO (as stated in the letter: 'am dritten Tag nach der Aufgabe zur Post'), a tax letter posted on that date counts as delivered on the 3rd day after posting, i.e. Fri 27.12.2024. The one-month Einspruch period of § 355 AO starts the next day (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO): 28.12.2024. Under § 188 Abs. 2 BGB / § 108 Abs. 1 AO, a one-month period ends on the day of the following month bearing the same number as the starting (delivery) day, i.e. 27.01.2025 (Monday). That day is a business day in Baden-Württemberg (the Finanzamt's seat), so no shift under § 108 Abs. 3 AO is needed. The Einspruch must reach the Finanzamt by this date.\",\"due_date\":\"2025-01-27\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The sender's postal addresses (73730 Beispieltal / 73728 Musterlingen) are in Baden-Württemberg, not in the Nordrhein-Westfalen context otherwise assumed for this user; holidays for the deadline calculation were therefore taken from Baden-Württemberg (the Finanzamt's seat), as the general instruction allows when the letter shows the office sits elsewhere.\",\"This looks like a specimen/example letter (place names 'Beispieltal', 'Musterlingen', 'Musterbank' and a fictitious Steuernummer) — verify it is genuine before relying on it for a real deadline.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispieltal-Süd",
+      "document_date": "2024-12-24",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "99/062/71418"
+        }
+      ],
+      "amounts": [
+        3476,
+        4105,
+        38,
+        667
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2023 income tax assessment",
+          "quote": "Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispieltal-Süd erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.",
+          "computation": "The letter is dated Tue 24.12.2024. Under § 122 Abs. 2 Nr. 1 AO (as stated in the letter: 'am dritten Tag nach der Aufgabe zur Post'), a tax letter posted on that date counts as delivered on the 3rd day after posting, i.e. Fri 27.12.2024. The one-month Einspruch period of § 355 AO starts the next day (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO): 28.12.2024. Under § 188 Abs. 2 BGB / § 108 Abs. 1 AO, a one-month period ends on the day of the following month bearing the same number as the starting (delivery) day, i.e. 27.01.2025 (Monday). That day is a business day in Baden-Württemberg (the Finanzamt's seat), so no shift under § 108 Abs. 3 AO is needed. The Einspruch must reach the Finanzamt by this date.",
+          "due_date": "2025-01-27",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The sender's postal addresses (73730 Beispieltal / 73728 Musterlingen) are in Baden-Württemberg, not in the Nordrhein-Westfalen context otherwise assumed for this user; holidays for the deadline calculation were therefore taken from Baden-Württemberg (the Finanzamt's seat), as the general instruction allows when the letter shows the office sits elsewhere.",
+        "This looks like a specimen/example letter (place names 'Beispieltal', 'Musterlingen', 'Musterbank' and a fictitious Steuernummer) — verify it is genuine before relying on it for a real deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2591,
+      "cache_read_tokens": 15691,
+      "cache_creation_tokens": 5272,
+      "cost_usd": 0.0501442,
+      "duration_ms": 30502,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 355 AO, § 122 Abs. 2 Nr. 1 AO",
+            "text": "Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispieltal-Süd erheben"
+          },
+          "document_date": "2024-12-24",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Beispieltal-Süd",
+          "region": "BW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2025-01-27\",\"weekday\":\"Monday\",\"send_by\":\"2025-01-21\",\"summary\":\"Letter dated Tue 24 Dec 2024 counts as delivered on Fri 27 Dec; one month later is Mon 27 Jan 2025.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Tue 24 Dec 2024 (the letter's date; the real posting day can only be later)\",\"date\":\"2024-12-24\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 3rd day after posting: Fri 27 Dec 2024\",\"date\":\"2024-12-27\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Counting starts the day after Fri 27 Dec 2024\",\"date\":\"2024-12-27\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Mon 27 Jan 2025\",\"date\":\"2025-01-27\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 27 Jan 2025 is a working day, so it stays\",\"date\":\"2025-01-27\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Tue 21 Jan 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-01-21\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2024-12-26\",\"letter_date\":\"2024-12-24\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Baden-Württemberg\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

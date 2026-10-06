@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"3c05470afb3c1cc68ffaf53a3f8a54e4b91b0d3da8d86d447814a852e4a7418b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-03-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-J2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-03-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Umzugslogistik GmbH\",\"document_date\":\"2027-03-19\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"UL-27-0331\"},{\"label\":\"Kunden-Nr.\",\"value\":\"K 20 914\"}],\"amounts\":[1330.78],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay moving invoice\",\"quote\":\"Bitte gleichen Sie die Rechnung innerhalb von 10 Tagen nach dem Rechnungsdatum aus, ohne Abzüge.\",\"computation\":\"Invoice date (Rechnungsdatum) is 19.03.2027. The period is 'innerhalb von 10 Tagen nach dem Rechnungsdatum', a civil-law period counted under § 187(1) BGB: since the period runs 'nach' an event (the invoice date), that day is not counted and counting starts the next day, 20.03.2027 (day 1). Counting 10 calendar days: 20,21,22,23,24,25,26,27,28,29 March 2027 → day 10 = 29.03.2027. Checking the weekday: 01.01.2027 is a Friday (derived from 01.01.2025 Wednesday + 365 days to 2026 Thursday + 365 days to 2027 Friday, 2026 not a leap year). Day-of-year for 29.03.2027 = 31+28+29 = 88; (88-1) mod 7 = 3, with index 0 = Friday, so index 3 = Monday. 29.03.2027 is a Monday, not a Saturday, Sunday or public holiday in NRW, so no § 193 BGB adjustment is needed. Due date: 29.03.2027.\",\"due_date\":\"2027-03-29\",\"confidence\":\"high\",\"amount\":1330.78}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Umzugslogistik GmbH",
+      "document_date": "2027-03-19",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "UL-27-0331"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "K 20 914"
+        }
+      ],
+      "amounts": [
+        1330.78
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay moving invoice",
+          "quote": "Bitte gleichen Sie die Rechnung innerhalb von 10 Tagen nach dem Rechnungsdatum aus, ohne Abzüge.",
+          "computation": "Invoice date (Rechnungsdatum) is 19.03.2027. The period is 'innerhalb von 10 Tagen nach dem Rechnungsdatum', a civil-law period counted under § 187(1) BGB: since the period runs 'nach' an event (the invoice date), that day is not counted and counting starts the next day, 20.03.2027 (day 1). Counting 10 calendar days: 20,21,22,23,24,25,26,27,28,29 March 2027 → day 10 = 29.03.2027. Checking the weekday: 01.01.2027 is a Friday (derived from 01.01.2025 Wednesday + 365 days to 2026 Thursday + 365 days to 2027 Friday, 2026 not a leap year). Day-of-year for 29.03.2027 = 31+28+29 = 88; (88-1) mod 7 = 3, with index 0 = Friday, so index 3 = Monday. 29.03.2027 is a Monday, not a Saturday, Sunday or public holiday in NRW, so no § 193 BGB adjustment is needed. Due date: 29.03.2027.",
+          "due_date": "2027-03-29",
+          "confidence": "high",
+          "amount": 1330.78
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2877,
+      "cache_read_tokens": 8803,
+      "cache_creation_tokens": 4636,
+      "cost_usd": 0.049082600000000004,
+      "duration_ms": 30782,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

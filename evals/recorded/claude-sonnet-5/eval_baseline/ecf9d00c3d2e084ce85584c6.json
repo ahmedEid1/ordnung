@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"af2a8dd7ac7d19c7071da25b0e82b5482ed8e3e2a3b84e833eb5fed84cfac0c1\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2025-03-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-J2"
+    ],
+    "prompt_head": "Today is Friday, 2025-03-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt St. Musterwendel\",\"document_date\":\"2025-03-17\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"040/164/22817\"},{\"label\":\"Identifikationsnummer\",\"value\":\"83 260 517 149\"}],\"amounts\":[2468,665],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch (objection) against the tax assessment\",\"quote\":\"Ihr Einspruch muss innerhalb eines Monats eingelegt werden; die Monatsfrist rechnet vom Ende des Tages an, an dem Ihnen der Bescheid bekannt gegeben worden ist.\",\"computation\":\"Bescheiddatum (date of issue/posting) is 17.03.2025, a Monday. The letter states the notice is deemed delivered (bekannt gegeben) on the 4th day after it was given to the post (\\\"gilt am vierten Tag nach dem Tag seiner Aufgabe zur Post als bekannt gegeben\\\"), reflecting the post-2025 version of § 122 Abs. 2 AO. Counting from 17.03.2025: day 1 = 18.03., day 2 = 19.03., day 3 = 20.03., day 4 = 21.03.2025 (a Friday, not a holiday) → deemed delivery date = 21.03.2025. The one-month Einspruchsfrist runs per §108 AO / §187 Abs.1, §188 Abs.2 BGB: the day of delivery is not counted, the period starts at the end of 21.03.2025 and ends one month later on the day with the same number, i.e. 21.04.2025. 21.04.2025 is Ostermontag (Easter Monday), a public holiday in all German Länder including Saarland. Under §108 Abs.3 AO (analogous to §193 BGB), if the last day of the period is a Saturday, Sunday or public holiday, the period ends on the next working day: 22.04.2025 (Tuesday, not a holiday).\",\"due_date\":\"2025-04-22\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Erstattung) to be paid out by the Finanzamt\",\"quote\":\"Den Betrag von 665,00 € zahlen wir Ihnen auf das bekannte Konto aus.\",\"computation\":\"The letter states the Finanzamt will pay out the refund of 665,00 € to the taxpayer's known account, but gives no specific payment date or deadline. No calculable due date can be derived from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":665}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt St. Musterwendel",
+      "document_date": "2025-03-17",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "040/164/22817"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "83 260 517 149"
+        }
+      ],
+      "amounts": [
+        2468,
+        665
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch (objection) against the tax assessment",
+          "quote": "Ihr Einspruch muss innerhalb eines Monats eingelegt werden; die Monatsfrist rechnet vom Ende des Tages an, an dem Ihnen der Bescheid bekannt gegeben worden ist.",
+          "computation": "Bescheiddatum (date of issue/posting) is 17.03.2025, a Monday. The letter states the notice is deemed delivered (bekannt gegeben) on the 4th day after it was given to the post (\"gilt am vierten Tag nach dem Tag seiner Aufgabe zur Post als bekannt gegeben\"), reflecting the post-2025 version of § 122 Abs. 2 AO. Counting from 17.03.2025: day 1 = 18.03., day 2 = 19.03., day 3 = 20.03., day 4 = 21.03.2025 (a Friday, not a holiday) → deemed delivery date = 21.03.2025. The one-month Einspruchsfrist runs per §108 AO / §187 Abs.1, §188 Abs.2 BGB: the day of delivery is not counted, the period starts at the end of 21.03.2025 and ends one month later on the day with the same number, i.e. 21.04.2025. 21.04.2025 is Ostermontag (Easter Monday), a public holiday in all German Länder including Saarland. Under §108 Abs.3 AO (analogous to §193 BGB), if the last day of the period is a Saturday, Sunday or public holiday, the period ends on the next working day: 22.04.2025 (Tuesday, not a holiday).",
+          "due_date": "2025-04-22",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Erstattung) to be paid out by the Finanzamt",
+          "quote": "Den Betrag von 665,00 € zahlen wir Ihnen auf das bekannte Konto aus.",
+          "computation": "The letter states the Finanzamt will pay out the refund of 665,00 € to the taxpayer's known account, but gives no specific payment date or deadline. No calculable due date can be derived from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 665
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3061,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3179,
+      "cost_usd": 0.0439544,
+      "duration_ms": 33194,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

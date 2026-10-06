@@ -1,0 +1,89 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"4dea940c777d47fc134400076aa964667f0a1dea47c56d6f3bc32e3cc4acfca9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-I1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-09-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Assekuranz AG\",\"document_date\":\"2025-09-29\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-25-0919-4471\"},{\"label\":\"Versicherungsschein\",\"value\":\"KH 552 104 87\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit cost estimate and damage photos\",\"quote\":\"Schicken Sie uns den Kostenvoranschlag und Fotos der Schäden bitte innerhalb von 12 Werktagen nach dem Datum dieses Schreibens (Werktage sind Montag bis Samstag; Sonntage und gesetzliche Feiertage zählen nicht mit).\",\"computation\":\"The letter is dated 29.09.2025 (Monday) and the period runs from the date of the letter itself, not from delivery. Under § 187 Abs. 1 BGB the day of the triggering event (29.09.2025) is not counted; counting starts 30.09.2025. The letter defines Werktage as Monday to Saturday, excluding Sundays and public holidays. Counting 12 such working days forward from 30.09.2025 (Sep 30, Oct 1,2,3,4,6,7,8,9,10,11,13,14 — skipping Sunday Oct 5 and Oct 12, and no NW public holiday falls in this window) lands on Tuesday 14.10.2025.\",\"due_date\":\"2025-10-14\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Assekuranz AG",
+      "document_date": "2025-09-29",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-25-0919-4471"
+        },
+        {
+          "label": "Versicherungsschein",
+          "value": "KH 552 104 87"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit cost estimate and damage photos",
+          "quote": "Schicken Sie uns den Kostenvoranschlag und Fotos der Schäden bitte innerhalb von 12 Werktagen nach dem Datum dieses Schreibens (Werktage sind Montag bis Samstag; Sonntage und gesetzliche Feiertage zählen nicht mit).",
+          "computation": "The letter is dated 29.09.2025 (Monday) and the period runs from the date of the letter itself, not from delivery. Under § 187 Abs. 1 BGB the day of the triggering event (29.09.2025) is not counted; counting starts 30.09.2025. The letter defines Werktage as Monday to Saturday, excluding Sundays and public holidays. Counting 12 such working days forward from 30.09.2025 (Sep 30, Oct 1,2,3,4,6,7,8,9,10,11,13,14 — skipping Sunday Oct 5 and Oct 12, and no NW public holiday falls in this window) lands on Tuesday 14.10.2025.",
+          "due_date": "2025-10-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2000,
+      "cache_read_tokens": 15638,
+      "cache_creation_tokens": 4814,
+      "cost_usd": 0.0423916,
+      "duration_ms": 23171,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 12,
+            "unit": "werktage",
+            "anchor": "explicit_date",
+            "anchor_date": "2025-09-29",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 193 BGB (vertragliche Frist)",
+            "text": "Schicken Sie uns den Kostenvoranschlag und Fotos der Schäden bitte innerhalb von 12 Werktagen nach dem Datum dieses Schreibens (Werktage sind Montag bis Samstag; Sonntage und gesetzliche Feiertage zählen nicht mit)."
+          },
+          "document_date": "2025-09-29",
+          "sender_kind": "insurer",
+          "sender_name": "Beispiel Assekuranz AG",
+          "region": "NW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2025-10-14\",\"weekday\":\"Tuesday\",\"summary\":\"12 working days (Mon–Sat) after Mon 29 Sep 2025 is Tue 14 Oct 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 29 Sep 2025\",\"date\":\"2025-09-29\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"12 working days (Mon–Sat) later: Tue 14 Oct 2025\",\"date\":\"2025-10-14\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2025-09-30\",\"letter_date\":\"2025-09-29\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE68 3705 0198 0005 5570 00"
+        },
+        "result": "{\"iban\":\"DE68 3705 0198 0005 5570 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005557000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Germany, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 9 October 2025: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

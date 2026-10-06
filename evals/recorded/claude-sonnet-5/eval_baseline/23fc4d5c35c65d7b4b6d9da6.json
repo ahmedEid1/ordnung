@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1a87450d9cf5fce9b0b6f5a0264597ca71c3b5293e6713e234fcb7978e538078\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-J2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Bezirksamt Musterelbe – Fachamt Bauprüfung – Wohnraumschutz\",\"document_date\":\"2026-04-21\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS/A 2026-0214\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of holiday-let permit\",\"quote\":\"Ihr Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides an das Bezirksamt Musterelbe, Elbhangweg 8, 22765 Hamburg, zu richten, schriftlich oder zur Niederschrift.\",\"computation\":\"The letter does not state a separate 'zur Post gegeben am' date, so the posting day is the document date, Tue 21.04.2026. Letter states it is deemed delivered on the 4th day after posting (§41 Abs.2 HmbVwVfG): 21.04 + 4 days = Sat 25.04.2026. The Bezirksamt is a general (non-tax) authority, so under the delivery rules the deemed-delivery day does NOT move for weekends/holidays; delivery stands on Sat 25.04.2026. The one-month Widerspruch period (§187 Abs.1 BGB: delivery day not counted, period starts 26.04.2026; §188 Abs.2 BGB: ends on the day in the following month bearing the same number as the event day) ends on 25.05.2026. 25.05.2026 is Whit Monday (Pfingstmontag), a nationwide public holiday, so under §31 Abs.3 VwVfG the period end moves to the next working day, Tue 26.05.2026.\",\"due_date\":\"2026-05-26\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Bezirksamt Musterelbe – Fachamt Bauprüfung – Wohnraumschutz",
+      "document_date": "2026-04-21",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS/A 2026-0214"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of holiday-let permit",
+          "quote": "Ihr Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides an das Bezirksamt Musterelbe, Elbhangweg 8, 22765 Hamburg, zu richten, schriftlich oder zur Niederschrift.",
+          "computation": "The letter does not state a separate 'zur Post gegeben am' date, so the posting day is the document date, Tue 21.04.2026. Letter states it is deemed delivered on the 4th day after posting (§41 Abs.2 HmbVwVfG): 21.04 + 4 days = Sat 25.04.2026. The Bezirksamt is a general (non-tax) authority, so under the delivery rules the deemed-delivery day does NOT move for weekends/holidays; delivery stands on Sat 25.04.2026. The one-month Widerspruch period (§187 Abs.1 BGB: delivery day not counted, period starts 26.04.2026; §188 Abs.2 BGB: ends on the day in the following month bearing the same number as the event day) ends on 25.05.2026. 25.05.2026 is Whit Monday (Pfingstmontag), a nationwide public holiday, so under §31 Abs.3 VwVfG the period end moves to the next working day, Tue 26.05.2026.",
+          "due_date": "2026-05-26",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3656,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3155,
+      "cost_usd": 0.05029,
+      "duration_ms": 41011,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

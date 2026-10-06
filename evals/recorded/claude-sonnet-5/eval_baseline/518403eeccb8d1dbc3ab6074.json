@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"93259e3eca3dd6171fdda2ffe5dcc245e932468f04125dd31d4ed4dd25ff6da6\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-10-21\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-I1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-10-21 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Elektro Beispielfunke GmbH\",\"document_date\":\"2026-10-16\",\"references\":[{\"label\":\"Rechnung\",\"value\":\"EB-26-1042\"},{\"label\":\"Auftrag\",\"value\":\"A-26-0877\"}],\"amounts\":[1792.14],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for wallbox installation\",\"quote\":\"Zahlbar innerhalb von 8 Tagen ab Rechnungsdatum ohne Abzug auf unser Konto bei der\\nMusterbank AG.\",\"computation\":\"Invoice date (Rechnungsdatum) is 16.10.2026 (Friday); this is the triggering event, so under § 187 Abs. 1 BGB the day itself is not counted. Counting 8 days from 17.10.2026: 17,18,19,20,21,22,23,24 October 2026 — the 8-day period ends on Saturday, 24.10.2026. Because the last day of the period falls on a Saturday, § 193 BGB moves the due date to the next working day; Sunday 25.10.2026 is also excluded, so the deadline moves to Monday, 26.10.2026 (no public holiday in NW intervenes). This is a private payment deadline, so the payer's own Land (NW) holiday calendar applies, but no holiday falls in this window.\",\"due_date\":\"2026-10-26\",\"confidence\":\"high\",\"amount\":1792.14},{\"kind\":\"task\",\"title\":\"Retain invoice for statutory two-year period (private building-service invoice)\",\"quote\":\"Bitte bewahren Sie diese Rechnung zwei Jahre auf (§ 14b Abs. 1 Satz 5 UStG).\",\"computation\":\"§ 14b Abs. 1 Satz 5 UStG obliges private recipients of invoices for work on immovable property (here: installation of a wallbox/charging station in the garage) to keep the invoice for two years. The statutory retention period for this provision runs from the end of the calendar year in which the invoice was issued, not from the invoice date itself; the invoice was issued in 2026, so the two-year period runs from 31.12.2026 and ends on 31.12.2028. The letter itself does not state the exact starting point, so this computation relies on the statutory rule rather than wording in the letter.\",\"due_date\":\"2028-12-31\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Elektro Beispielfunke GmbH",
+      "document_date": "2026-10-16",
+      "references": [
+        {
+          "label": "Rechnung",
+          "value": "EB-26-1042"
+        },
+        {
+          "label": "Auftrag",
+          "value": "A-26-0877"
+        }
+      ],
+      "amounts": [
+        1792.14
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for wallbox installation",
+          "quote": "Zahlbar innerhalb von 8 Tagen ab Rechnungsdatum ohne Abzug auf unser Konto bei der\nMusterbank AG.",
+          "computation": "Invoice date (Rechnungsdatum) is 16.10.2026 (Friday); this is the triggering event, so under § 187 Abs. 1 BGB the day itself is not counted. Counting 8 days from 17.10.2026: 17,18,19,20,21,22,23,24 October 2026 — the 8-day period ends on Saturday, 24.10.2026. Because the last day of the period falls on a Saturday, § 193 BGB moves the due date to the next working day; Sunday 25.10.2026 is also excluded, so the deadline moves to Monday, 26.10.2026 (no public holiday in NW intervenes). This is a private payment deadline, so the payer's own Land (NW) holiday calendar applies, but no holiday falls in this window.",
+          "due_date": "2026-10-26",
+          "confidence": "high",
+          "amount": 1792.14
+        },
+        {
+          "kind": "task",
+          "title": "Retain invoice for statutory two-year period (private building-service invoice)",
+          "quote": "Bitte bewahren Sie diese Rechnung zwei Jahre auf (§ 14b Abs. 1 Satz 5 UStG).",
+          "computation": "§ 14b Abs. 1 Satz 5 UStG obliges private recipients of invoices for work on immovable property (here: installation of a wallbox/charging station in the garage) to keep the invoice for two years. The statutory retention period for this provision runs from the end of the calendar year in which the invoice was issued, not from the invoice date itself; the invoice was issued in 2026, so the two-year period runs from 31.12.2026 and ends on 31.12.2028. The letter itself does not state the exact starting point, so this computation relies on the statutory rule rather than wording in the letter.",
+          "due_date": "2028-12-31",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3534,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2553,
+      "cost_usd": 0.046661999999999995,
+      "duration_ms": 41350,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

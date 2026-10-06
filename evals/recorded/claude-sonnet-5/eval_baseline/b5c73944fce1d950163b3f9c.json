@@ -1,0 +1,95 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"80ffcc701241d18980433c862ce0a53105d84409dff6da3b9ccf73779f58a526\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-price_increase-I1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-02-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Musterwatt Energie GmbH\",\"document_date\":\"2027-02-18\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"MW-6630 1187\"},{\"label\":\"Zählernummer\",\"value\":\"1ESY1160 4471 02\"}],\"amounts\":[31.48,33.91,12.5,13.9,74,81],\"items\":[{\"kind\":\"deadline\",\"title\":\"Special right of termination due to price increase (§ 41 Abs. 5 EnWG)\",\"quote\":\"Wenn Sie mit den neuen Preisen nicht einverstanden sind, können Sie den Vertrag ohne Einhaltung einer Kündigungsfrist zum 01.04.2027 kündigen (§ 41 Abs. 5 EnWG). Die Kündigung muss uns vorher in Textform erreichen; eine Gebühr fällt dafür nicht an.\",\"computation\":\"The letter grants a special termination right under § 41 Abs. 5 EnWG because of the price change. The termination takes effect '01.04.2027' and the letter states the cancellation notice ('Kündigung') must reach the provider 'vorher' (before that date) in Textform. The day before 2027-04-01 is 2027-03-31 (a Wednesday, not a holiday in NW), so that is the last day the cancellation may arrive at the provider to take effect at 01.04.2027. No statutory period-counting (§§ 187-193 BGB) applies here since the letter fixes a calendar date ('zum 01.04.2027') rather than a running period; the deadline is simply the calendar day before that date.\",\"due_date\":\"2027-03-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter sets a price increase effective 01.04.2027 and offers a special, fee-free right of termination without notice period under § 41 Abs. 5 EnWG; the cancellation notice must reach the provider in Textform before that date (by 2027-03-31) to avoid the new prices.\",\"The IBAN printed for the sender (DE70 3705 0198 0005 5592 92, Musterbank AG) is a valid German IBAN, but this only checks its format/checksum, not that it truly belongs to Musterwatt Energie GmbH; no payment instruction in this letter depends on it, but double-check before ever paying to it.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Musterwatt Energie GmbH",
+      "document_date": "2027-02-18",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "MW-6630 1187"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1ESY1160 4471 02"
+        }
+      ],
+      "amounts": [
+        31.48,
+        33.91,
+        12.5,
+        13.9,
+        74,
+        81
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Special right of termination due to price increase (§ 41 Abs. 5 EnWG)",
+          "quote": "Wenn Sie mit den neuen Preisen nicht einverstanden sind, können Sie den Vertrag ohne Einhaltung einer Kündigungsfrist zum 01.04.2027 kündigen (§ 41 Abs. 5 EnWG). Die Kündigung muss uns vorher in Textform erreichen; eine Gebühr fällt dafür nicht an.",
+          "computation": "The letter grants a special termination right under § 41 Abs. 5 EnWG because of the price change. The termination takes effect '01.04.2027' and the letter states the cancellation notice ('Kündigung') must reach the provider 'vorher' (before that date) in Textform. The day before 2027-04-01 is 2027-03-31 (a Wednesday, not a holiday in NW), so that is the last day the cancellation may arrive at the provider to take effect at 01.04.2027. No statutory period-counting (§§ 187-193 BGB) applies here since the letter fixes a calendar date ('zum 01.04.2027') rather than a running period; the deadline is simply the calendar day before that date.",
+          "due_date": "2027-03-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter sets a price increase effective 01.04.2027 and offers a special, fee-free right of termination without notice period under § 41 Abs. 5 EnWG; the cancellation notice must reach the provider in Textform before that date (by 2027-03-31) to avoid the new prices.",
+        "The IBAN printed for the sender (DE70 3705 0198 0005 5592 92, Musterbank AG) is a valid German IBAN, but this only checks its format/checksum, not that it truly belongs to Musterwatt Energie GmbH; no payment instruction in this letter depends on it, but double-check before ever paying to it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 3363,
+      "cache_read_tokens": 27326,
+      "cache_creation_tokens": 6258,
+      "cost_usd": 0.06413920000000001,
+      "duration_ms": 39061,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-03-31",
+            "nature": "notice",
+            "shift_rule": "none",
+            "legal_basis": "§ 41 Abs. 5 EnWG",
+            "text": "Die Kündigung muss uns vorher in Textform erreichen"
+          },
+          "document_date": "2027-02-18",
+          "sender_kind": "company",
+          "sender_name": "Musterwatt Energie GmbH",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-03-31\",\"weekday\":\"Wednesday\",\"send_by\":\"2027-03-23\",\"safe_date\":\"2027-03-31\",\"summary\":\"The notice must arrive by Wed 31 Mar 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Wed 31 Mar 2027\",\"date\":\"2027-03-31\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"},{\"label\":\"Send by Tue 23 Mar 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-03-23\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-02-23\",\"letter_date\":\"2027-02-18\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE70 3705 0198 0005 5592 92"
+        },
+        "result": "{\"iban\":\"DE70 3705 0198 0005 5592 92\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005559292\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

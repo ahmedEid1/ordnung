@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"1a87450d9cf5fce9b0b6f5a0264597ca71c3b5293e6713e234fcb7978e538078\",\"mode\":\"text\",\"region\":\"HH\",\"today\":\"2026-04-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-J2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-04-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Hamburg (HH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2026-04-21\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of Zweckentfremdung permit\",\"quote\":\"Ihr Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides an das Bezirksamt Musterelbe, Elbhangweg 8, 22765 Hamburg, zu richten, schriftlich oder zur Niederschrift.\",\"computation\":\"Bescheid dated Tue 21.04.2026, sent as simple letter. Per § 41 Abs. 2 HmbVwVfG it is deemed delivered (bekannt gegeben) on the 4th day after posting: 21.04 (day0, posting) -> 22.04 (1) -> 23.04 (2) -> 24.04 (3) -> 25.04.2026 (4th day) = Saturday. Since the 4th day falls on a Saturday, deemed delivery shifts to the next business day, Monday 27.04.2026 (no intervening Hamburg holiday). The one-month Widerspruch period then runs under §§ 187 Abs.1, 188 Abs.2 BGB: it starts the day after the deemed-delivery event (27.04.2026) and ends on the day of the following month bearing the same number as the delivery day, i.e. 27.05.2026. 27 May 2026 is a Wednesday (no weekend/holiday extension needed), so the deadline stands at that date.\",\"due_date\":\"2026-05-27\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"WS/A 2026-0214\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Bezirksamt Musterelbe – Fachamt Bauprüfung – Wohnraumschutz\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2026-04-21",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of Zweckentfremdung permit",
+          "quote": "Ihr Widerspruch ist innerhalb eines Monats nach Bekanntgabe dieses Bescheides an das Bezirksamt Musterelbe, Elbhangweg 8, 22765 Hamburg, zu richten, schriftlich oder zur Niederschrift.",
+          "computation": "Bescheid dated Tue 21.04.2026, sent as simple letter. Per § 41 Abs. 2 HmbVwVfG it is deemed delivered (bekannt gegeben) on the 4th day after posting: 21.04 (day0, posting) -> 22.04 (1) -> 23.04 (2) -> 24.04 (3) -> 25.04.2026 (4th day) = Saturday. Since the 4th day falls on a Saturday, deemed delivery shifts to the next business day, Monday 27.04.2026 (no intervening Hamburg holiday). The one-month Widerspruch period then runs under §§ 187 Abs.1, 188 Abs.2 BGB: it starts the day after the deemed-delivery event (27.04.2026) and ends on the day of the following month bearing the same number as the delivery day, i.e. 27.05.2026. 27 May 2026 is a Wednesday (no weekend/holiday extension needed), so the deadline stands at that date.",
+          "due_date": "2026-05-27",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "WS/A 2026-0214"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Bezirksamt Musterelbe – Fachamt Bauprüfung – Wohnraumschutz",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3483,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3155,
+      "cost_usd": 0.04807839999999999,
+      "duration_ms": 39399,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

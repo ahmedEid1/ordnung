@@ -1,0 +1,55 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"abea350095f51e10314e6e413671542e88b3371f037ab4e9b307881113a82427\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-I1"
+    ],
+    "prompt_head": "Today is Monday, 2027-08-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-07-27\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit certified degree certificate and transcript with translations\",\"quote\":\"Please send us officially certified copies of your bachelor's degree certificate and your transcript of records, together with certified German or English translations, so that they reach us by 24 August 2027.\",\"computation\":\"The letter states an explicit calendar date by which the certified documents and translations must physically arrive at the International Office: 24 August 2027. No period calculation is needed since the date is given directly. 24 August 2027 falls on a Tuesday, a normal business day in NRW, so no weekend/holiday adjustment applies. This is a receipt deadline (documents must 'reach' the university), not merely a dispatch deadline.\",\"due_date\":\"2027-08-24\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"university\",\"references\":[{\"label\":\"Applicant no.\",\"value\":\"MA-27-04418\"}],\"remedy_type\":\"none\",\"sender_name\":\"Beispielfeld University of Applied Sciences\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-07-27",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit certified degree certificate and transcript with translations",
+          "quote": "Please send us officially certified copies of your bachelor's degree certificate and your transcript of records, together with certified German or English translations, so that they reach us by 24 August 2027.",
+          "computation": "The letter states an explicit calendar date by which the certified documents and translations must physically arrive at the International Office: 24 August 2027. No period calculation is needed since the date is given directly. 24 August 2027 falls on a Tuesday, a normal business day in NRW, so no weekend/holiday adjustment applies. This is a receipt deadline (documents must 'reach' the university), not merely a dispatch deadline.",
+          "due_date": "2027-08-24",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "university",
+      "references": [
+        {
+          "label": "Applicant no.",
+          "value": "MA-27-04418"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Beispielfeld University of Applied Sciences",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 931,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2270,
+      "cost_usd": 0.019018399999999998,
+      "duration_ms": 11408,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

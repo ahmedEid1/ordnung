@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b3915053d5a36088f27d41d87657c1d60c540daae3b340b0384583bd8cbbda9a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-09-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Rentenversicherung Musterküste\",\"document_date\":\"2025-08-27\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"65 140383 M 044\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the account-clearing decision\",\"quote\":\"Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Rentenversicherung Musterküste, Kontenweg 18, 23560 Beispielbeck.\",\"computation\":\"The letter is dated (posting day) 27.08.2025, a Wednesday, and no separate 'Tag der Aufgabe zur Post' is stated, so the document date is the posting day. Posted on/after 1 Jan 2025 → delivery is deemed on the 4th calendar day after posting: 27.08.+4 = 31.08.2025 (a Sunday). The Rentenversicherung is a pension-insurance (Sozialversicherungs-)body, not a tax office, so under § 37 Abs. 2 SGB X the deemed-delivery day is NOT moved even though it falls on a Sunday; delivery stands at 31.08.2025. The one-month Widerspruch period (§ 84 SGG) is counted under §§ 187, 188 BGB: the day of delivery itself is not counted, and the period ends in the following month on the day bearing the same number as the delivery day (31). September has only 30 days, so per the 'no such day' rule the period ends on the last day of September: 30.09.2025 (a Tuesday, not a weekend or NW public holiday, so no further shift is needed).\",\"due_date\":\"2025-09-30\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit missing evidence for the period 01.07.2006–31.12.2006\",\"quote\":\"Reichen Sie Unterlagen nach, prüfen wir das gern erneut.\",\"computation\":\"The letter invites the recipient to submit proof for the unrecognised period 01.07.2006–31.12.2006 but states no specific deadline or time limit for doing so; therefore no exact due date can be computed from the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter's Widerspruch deadline (30.09.2025) falls well before today's date (2026-10-06); if the recipient still wishes to object, they would need to check whether a late objection can still be accepted (e.g. Wiedereinsetzung in den vorigen Stand) rather than relying on this computed deadline.\",\"No separate 'Tag der Aufgabe zur Post' is given, so the printed Bescheid date (27.08.2025) was used as the posting date for the delivery-fiction calculation; if the actual posting date differed, the deadline would shift accordingly.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Rentenversicherung Musterküste",
+      "document_date": "2025-08-27",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "65 140383 M 044"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the account-clearing decision",
+          "quote": "Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Rentenversicherung Musterküste, Kontenweg 18, 23560 Beispielbeck.",
+          "computation": "The letter is dated (posting day) 27.08.2025, a Wednesday, and no separate 'Tag der Aufgabe zur Post' is stated, so the document date is the posting day. Posted on/after 1 Jan 2025 → delivery is deemed on the 4th calendar day after posting: 27.08.+4 = 31.08.2025 (a Sunday). The Rentenversicherung is a pension-insurance (Sozialversicherungs-)body, not a tax office, so under § 37 Abs. 2 SGB X the deemed-delivery day is NOT moved even though it falls on a Sunday; delivery stands at 31.08.2025. The one-month Widerspruch period (§ 84 SGG) is counted under §§ 187, 188 BGB: the day of delivery itself is not counted, and the period ends in the following month on the day bearing the same number as the delivery day (31). September has only 30 days, so per the 'no such day' rule the period ends on the last day of September: 30.09.2025 (a Tuesday, not a weekend or NW public holiday, so no further shift is needed).",
+          "due_date": "2025-09-30",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit missing evidence for the period 01.07.2006–31.12.2006",
+          "quote": "Reichen Sie Unterlagen nach, prüfen wir das gern erneut.",
+          "computation": "The letter invites the recipient to submit proof for the unrecognised period 01.07.2006–31.12.2006 but states no specific deadline or time limit for doing so; therefore no exact due date can be computed from the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter's Widerspruch deadline (30.09.2025) falls well before today's date (2026-10-06); if the recipient still wishes to object, they would need to check whether a late objection can still be accepted (e.g. Wiedereinsetzung in den vorigen Stand) rather than relying on this computed deadline.",
+        "No separate 'Tag der Aufgabe zur Post' is given, so the printed Bescheid date (27.08.2025) was used as the posting date for the delivery-fiction calculation; if the actual posting date differed, the deadline would shift accordingly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 6332,
+      "cache_read_tokens": 13710,
+      "cache_creation_tokens": 7635,
+      "cost_usd": 0.09661,
+      "duration_ms": 73879,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

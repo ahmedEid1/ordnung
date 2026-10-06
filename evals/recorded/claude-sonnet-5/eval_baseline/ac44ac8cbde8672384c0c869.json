@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"80ffcc701241d18980433c862ce0a53105d84409dff6da3b9ccf73779f58a526\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-23\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-price_increase-I1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-02-23 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Musterwatt Energie GmbH\",\"document_date\":\"2027-02-18\",\"references\":[{\"label\":\"Vertragskonto\",\"value\":\"MW-6630 1187\"},{\"label\":\"Zählernummer\",\"value\":\"1ESY1160 4471 02\"}],\"amounts\":[31.48,33.91,12.5,13.9,74,81],\"items\":[{\"kind\":\"milestone\",\"title\":\"New electricity prices take effect\",\"quote\":\"ab dem 01.04.2027 ändern sich die Preise Ihres Stromtarifs.\",\"computation\":\"The letter states the new prices (Arbeitspreis, Grundpreis, Abschlag) apply from 01.04.2027. This is a fixed calendar date given directly in the letter, no further counting needed.\",\"due_date\":\"2027-04-01\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Special termination right due to price increase (§ 41 Abs. 5 EnWG)\",\"quote\":\"Wenn Sie mit den neuen Preisen nicht einverstanden sind, können Sie den Vertrag ohne Einhaltung einer Kündigungsfrist zum 01.04.2027 kündigen (§ 41 Abs. 5 EnWG). Die Kündigung muss uns vorher in Textform erreichen; eine Gebühr fällt dafür nicht an.\",\"computation\":\"The price increase becomes effective on 01.04.2027. The special statutory termination right (§ 41 Abs. 5 EnWG) lets the customer end the contract exactly on that effective date without observing any notice period, but the letter requires the cancellation in Textform to reach the provider 'vorher' (before) that date. The last calendar day before 01.04.2027 is 31.03.2027. 31.03.2027 is a Wednesday, not a weekend day or a public holiday in Nordrhein-Westfalen, so no shift under § 193 BGB is needed; the deadline for receipt by the provider is 31.03.2027.\",\"due_date\":\"2027-03-31\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Musterwatt Energie GmbH",
+      "document_date": "2027-02-18",
+      "references": [
+        {
+          "label": "Vertragskonto",
+          "value": "MW-6630 1187"
+        },
+        {
+          "label": "Zählernummer",
+          "value": "1ESY1160 4471 02"
+        }
+      ],
+      "amounts": [
+        31.48,
+        33.91,
+        12.5,
+        13.9,
+        74,
+        81
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "New electricity prices take effect",
+          "quote": "ab dem 01.04.2027 ändern sich die Preise Ihres Stromtarifs.",
+          "computation": "The letter states the new prices (Arbeitspreis, Grundpreis, Abschlag) apply from 01.04.2027. This is a fixed calendar date given directly in the letter, no further counting needed.",
+          "due_date": "2027-04-01",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Special termination right due to price increase (§ 41 Abs. 5 EnWG)",
+          "quote": "Wenn Sie mit den neuen Preisen nicht einverstanden sind, können Sie den Vertrag ohne Einhaltung einer Kündigungsfrist zum 01.04.2027 kündigen (§ 41 Abs. 5 EnWG). Die Kündigung muss uns vorher in Textform erreichen; eine Gebühr fällt dafür nicht an.",
+          "computation": "The price increase becomes effective on 01.04.2027. The special statutory termination right (§ 41 Abs. 5 EnWG) lets the customer end the contract exactly on that effective date without observing any notice period, but the letter requires the cancellation in Textform to reach the provider 'vorher' (before) that date. The last calendar day before 01.04.2027 is 31.03.2027. 31.03.2027 is a Wednesday, not a weekend day or a public holiday in Nordrhein-Westfalen, so no shift under § 193 BGB is needed; the deadline for receipt by the provider is 31.03.2027.",
+          "due_date": "2027-03-31",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2826,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2574,
+      "cost_usd": 0.0391844,
+      "duration_ms": 31175,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

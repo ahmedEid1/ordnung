@@ -1,0 +1,99 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"cceb68c6f81a94af32aeca17191a5ebce1d814e8b10907db17e3e80c5183d123\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-07-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-J1"
+    ],
+    "prompt_head": "Today is Sunday, 2025-07-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Wohnungsgenossenschaft Beispielheim eG\",\"document_date\":\"2025-07-04\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed Nutzungsvertrag\",\"quote\":\"Bitte senden Sie uns ein unterschriebenes Exemplar innerhalb von 14 Werktagen ab dem Datum dieses Briefes zurück; mitgezählt werden Montag bis Samstag, nicht aber Sonntage und Feiertage.\",\"computation\":\"Letter dated Friday 04.07.2025. Period is 14 Werktage (Mon–Sat, excluding Sundays and holidays) starting from the letter's date. Under §187 Abs.1 BGB the day of the event (04.07.2025) itself is not counted, so counting starts 05.07.2025 (Saturday, which counts as a Werktag). Counting 14 Werktage forward, skipping the three intervening Sundays (06.07, 13.07, 20.07) and no NW public holidays fall in this window, lands on Monday 21.07.2025. That day is itself a Werktag, so no further shift is needed.\",\"due_date\":\"2025-07-21\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":null,\"cancel_by\":null},\"references\":[{\"label\":\"Mitglied\",\"value\":\"M-8840\"},{\"label\":\"Wohnungsnummer\",\"value\":\"LH6-2L\"}],\"amounts\":[],\"warnings\":[\"This is a company letter (housing cooperative), not a government authority, so the statutory 'deemed delivery' rules for authority post do not apply; the 14-Werktage period runs from the printed letter date as the letter itself states.\",\"The letter warns that if the signed contract does not arrive in time, the flat will be re-allocated to the next member on the waiting list — worth confirming postal transit time so the signed copy actually arrives (not just is sent) by the deadline, since the clause requires it to 'eingehen' (arrive).\"]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Wohnungsgenossenschaft Beispielheim eG",
+      "document_date": "2025-07-04",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed Nutzungsvertrag",
+          "quote": "Bitte senden Sie uns ein unterschriebenes Exemplar innerhalb von 14 Werktagen ab dem Datum dieses Briefes zurück; mitgezählt werden Montag bis Samstag, nicht aber Sonntage und Feiertage.",
+          "computation": "Letter dated Friday 04.07.2025. Period is 14 Werktage (Mon–Sat, excluding Sundays and holidays) starting from the letter's date. Under §187 Abs.1 BGB the day of the event (04.07.2025) itself is not counted, so counting starts 05.07.2025 (Saturday, which counts as a Werktag). Counting 14 Werktage forward, skipping the three intervening Sundays (06.07, 13.07, 20.07) and no NW public holidays fall in this window, lands on Monday 21.07.2025. That day is itself a Werktag, so no further shift is needed.",
+          "due_date": "2025-07-21",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": null,
+        "cancel_by": null
+      },
+      "references": [
+        {
+          "label": "Mitglied",
+          "value": "M-8840"
+        },
+        {
+          "label": "Wohnungsnummer",
+          "value": "LH6-2L"
+        }
+      ],
+      "amounts": [],
+      "warnings": [
+        "This is a company letter (housing cooperative), not a government authority, so the statutory 'deemed delivery' rules for authority post do not apply; the 14-Werktage period runs from the printed letter date as the letter itself states.",
+        "The letter warns that if the signed contract does not arrive in time, the flat will be re-allocated to the next member on the waiting list — worth confirming postal transit time so the signed copy actually arrives (not just is sent) by the deadline, since the clause requires it to 'eingehen' (arrive)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2587,
+      "cache_read_tokens": 15618,
+      "cache_creation_tokens": 5623,
+      "cost_usd": 0.0514936,
+      "duration_ms": 31538,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2025-07-04",
+          "sender_kind": "company",
+          "sender_name": "Wohnungsgenossenschaft Beispielheim eG",
+          "recipient_region": "NW",
+          "region": "NW",
+          "today": "2025-07-06",
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "werktage",
+            "anchor": "document_date",
+            "anchor_date": "2025-07-04",
+            "nature": "other",
+            "shift_rule": "auto",
+            "legal_basis": "§§187,188,193 BGB (vertraglich vereinbart)",
+            "text": "Bitte senden Sie uns ein unterschriebenes Exemplar innerhalb von 14 Werktagen ab dem Datum dieses Briefes zurück; mitgezählt werden Montag bis Samstag, nicht aber Sonntage und Feiertage."
+          }
+        },
+        "result": "{\"due_date\":\"2025-07-21\",\"weekday\":\"Monday\",\"summary\":\"14 working days (Mon–Sat) after the letter's date (Fri 4 Jul 2025) is Mon 21 Jul 2025.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 4 Jul 2025\",\"date\":\"2025-07-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"14 working days (Mon–Sat) later: Mon 21 Jul 2025\",\"date\":\"2025-07-21\",\"rule_id\":\"unit_werktage\",\"citation\":\"BGH VIII ZR 206/04\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"unit_werktage\",\"title\":\"Counting working days (Werktage)\",\"citation\":\"BGH VIII ZR 206/04\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BGH&Datum=27.04.2005&Aktenzeichen=VIII+ZR+206/04\"}],\"assumed\":{\"today\":\"2025-07-06\",\"letter_date\":\"2025-07-04\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__add_working_days",
+        "input": {
+          "start": "2025-07-04",
+          "days": 14,
+          "day_type": "werktage",
+          "region": "NW"
+        },
+        "result": "{\"start\":\"2025-07-04\",\"days\":14,\"day_type\":\"werktage\",\"date\":\"2025-07-21\",\"weekday\":\"Monday\",\"skipped\":[{\"date\":\"2025-07-06\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2025-07-13\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"},{\"date\":\"2025-07-20\",\"weekday\":\"Sunday\",\"reason\":\"Sunday\"}],\"counting\":\"Werktage: Monday to Saturday, public holidays excluded; the start day itself is not counted.\",\"calendar\":\"Nordrhein-Westfalen\",\"disclaimer\":\"Information, not legal advice: working days counted on Ordnung's holiday calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer. A legal period may count differently — compute_deadline applies the deadline rules.\"}"
+      }
+    ]
+  }
+}

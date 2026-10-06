@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d0d281a4232d00ddb7198fe3d61b46f6e0895373aba287fac5aa89bfa3b9b2c3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J2"
+    ],
+    "prompt_head": "Today is Friday, 2027-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-05-05\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed enrolment agreement to accept the school place\",\"quote\":\"To accept the place, please sign both copies and return one of them to the admissions office by 06/07/2027.\",\"computation\":\"The letter states a fixed calendar deadline '06/07/2027'. The sender is a German institution (German address, +49 phone number, German IBAN/BIC) writing to a family in Germany, so the date is in the European day/month/year convention, giving 6 July 2027. This is a private administrative deadline set by the school, not a statutory period, so no §187/188/193 BGB period counting applies and no extension for weekends/holidays is indicated by the letter; the date is taken as printed.\",\"due_date\":\"2027-07-06\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"other\",\"references\":[{\"label\":\"Reference\",\"value\":\"ISB-ADM-2027-118\"}],\"remedy_type\":\"none\",\"sender_name\":\"International School Beispielfeld gGmbH\",\"warnings\":[\"The deadline date '06/07/2027' is ambiguous between day/month and month/day formats; it was read as 6 July 2027 (European convention) based on the sender's German address and contact details, but this should be double-checked with the school.\",\"The letter mentions a waiting list consequence ('After that date we will offer the place to the next family on our waiting list') which creates time pressure to accept quickly — a normal but worth-noting feature of enrolment offers.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-05-05",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed enrolment agreement to accept the school place",
+          "quote": "To accept the place, please sign both copies and return one of them to the admissions office by 06/07/2027.",
+          "computation": "The letter states a fixed calendar deadline '06/07/2027'. The sender is a German institution (German address, +49 phone number, German IBAN/BIC) writing to a family in Germany, so the date is in the European day/month/year convention, giving 6 July 2027. This is a private administrative deadline set by the school, not a statutory period, so no §187/188/193 BGB period counting applies and no extension for weekends/holidays is indicated by the letter; the date is taken as printed.",
+          "due_date": "2027-07-06",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "other",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "ISB-ADM-2027-118"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "International School Beispielfeld gGmbH",
+      "warnings": [
+        "The deadline date '06/07/2027' is ambiguous between day/month and month/day formats; it was read as 6 July 2027 (European convention) based on the sender's German address and contact details, but this should be double-checked with the school.",
+        "The letter mentions a waiting list consequence ('After that date we will offer the place to the next family on our waiting list') which creates time pressure to accept quickly — a normal but worth-noting feature of enrolment offers."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2302,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2257,
+      "cost_usd": 0.0326764,
+      "duration_ms": 26477,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

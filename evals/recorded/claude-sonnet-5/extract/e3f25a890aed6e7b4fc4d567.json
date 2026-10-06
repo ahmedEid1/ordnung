@@ -1,0 +1,157 @@
+{
+  "request": {
+    "purpose": "extract",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12.7.1",
+    "cache_key": "{\"doc\":\"2e225670ee4789b08bb8be828787ed716510dbaae19f29aa087bbea560939a8f\",\"language\":\"en\",\"pages\":[[1,\"text\"]],\"region\":\"NW\",\"today\":\"2025-05-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-I2"
+    ],
+    "prompt_head": "Today is 2025-05-10. The person lives in region NW (DE). Their name is (not given).\n\nKnown organisations and people from earlier documents (reuse these exact names when the sender is\nthe same; match by identifiers first):\n(none yet)\n\nThe document's text follows, page by page: a line `=== Page N ===` starts page N. Everything\nbetween the <untrusted_document> tags is data from the document, never in"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"title\":\"BAföG Approval Notice (Bescheid über Ausbildungsförderung)\",\"summary\":\"The Studierendenwerk Mustertor (Amt für Ausbildungsförderung) approved Laura Beispielwinkel's BAföG student funding for the period April 2025 to March 2026, paying €734.00 per month, split equally between a grant and an interest-free state loan.\",\"explanation\":\"The Studierendenwerk Mustertor, your BAföG office, has approved your application for student financial aid for April 2025 to March 2026. You will receive €734.00 each month, half as a non-repayable grant and half as an interest-free loan, paid at the end of each month for the following month. You must immediately report any change in your income, address, or course of study, as these can affect your funding. If you disagree with any part of this decision, you may file a written objection (Widerspruch) with the Studierendenwerk; the app shows the deadline for this. Otherwise, no further action is needed - the payments will simply continue.\",\"language\":\"de\",\"document_date\":\"2025-05-05\",\"area\":\"study\",\"case_title\":\"BAföG Funding Approval - Laura Beispielwinkel\",\"recipient_name\":\"Laura Beispielwinkel\",\"sender\":{\"name\":\"Studierendenwerk Mustertor\",\"kind\":\"authority\",\"address\":\"Mensaweg 2, 35392 Mustertor\",\"phone\":\"0641 555 008-0\",\"email\":\"bafoeg@studierendenwerk-mustertor.example\",\"website\":null,\"identifiers\":[{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\"}]},\"items\":[{\"kind\":\"payment\",\"title\":\"Receive monthly BAföG payment\",\"action\":\"No action needed; the funding is paid automatically into your account\",\"consequence\":null,\"amount\":734,\"currency\":\"EUR\",\"direction\":\"in\",\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"payment\",\"text\":\"jeweils zum Monatsende für den folgenden Monat\",\"delivery_rule\":\"none\",\"shift_rule\":\"auto\"},\"recurrence\":{\"interval\":1,\"unit\":\"months\",\"day_of_month\":31},\"quote\":\"Die Zahlung erfolgt jeweils zum Monatsende für den folgenden Monat.\"},{\"kind\":\"task\",\"title\":\"Report changes immediately\",\"action\":\"Immediately tell the Studierendenwerk about any change in your income, address, or course of study\",\"consequence\":null,\"priority\":\"normal\",\"date\":{\"type\":\"none\",\"nature\":\"other\",\"text\":\"sofort\",\"delivery_rule\":\"none\",\"shift_rule\":\"none\"},\"quote\":\"Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit.\"},{\"kind\":\"deadline\",\"title\":\"Deadline to file an objection (Widerspruch)\",\"action\":\"Decide whether to file a written objection (Widerspruch) with the Studierendenwerk Mustertor if you disagree with this decision\",\"consequence\":\"The decision becomes final if you do not object by the deadline shown\",\"priority\":\"normal\",\"date\":{\"type\":\"relative\",\"nature\":\"objection\",\"text\":\"innerhalb eines Monats nach ihrer Bekanntgabe\",\"anchor\":\"deemed_delivery\",\"amount\":1,\"unit\":\"months\",\"delivery_rule\":\"de_admin_post\",\"shift_rule\":\"auto\",\"legal_basis\":null},\"quote\":\"legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.\"}],\"key_facts\":[{\"label\":\"Funding period (Bewilligungszeitraum)\",\"value\":\"04/2025 bis 03/2026\",\"quote\":\"für den Bewilligungszeitraum April 2025 bis März 2026 Ausbildungsförderung in Höhe von 734,00 € monatlich\"},{\"label\":\"Monthly funding amount\",\"value\":\"734,00 €\",\"quote\":\"bewilligen wir Ihnen für den Bewilligungszeitraum April 2025 bis März 2026 Ausbildungsförderung in Höhe von 734,00 € monatlich, je zur Hälfte als Zuschuss und als unverzinsliches Staatsdarlehen\"},{\"label\":\"Income basis (parents' tax assessments)\",\"value\":\"2023\",\"quote\":\"Das Einkommen Ihrer Eltern haben wir nach den Steuerbescheiden für 2023 angerechnet.\"},{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\",\"quote\":\"412 2025 07731\"}],\"references\":[{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\"}],\"remedy\":{\"type\":\"widerspruch\",\"addressee\":\"Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor\",\"period_text\":\"innerhalb eines Monats nach ihrer Bekanntgabe\",\"form_text\":\"schriftlich oder zur Niederschrift\",\"quote\":\"Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.\"},\"contract\":null,\"change\":null,\"payment\":null,\"urgency\":\"normal\",\"high_stakes_kind\":null,\"tax_relevant\":false,\"tax_note\":null,\"warnings\":[],\"transcript\":null}",
+    "data": {
+      "kind": "authority_letter",
+      "title": "BAföG Approval Notice (Bescheid über Ausbildungsförderung)",
+      "summary": "The Studierendenwerk Mustertor (Amt für Ausbildungsförderung) approved Laura Beispielwinkel's BAföG student funding for the period April 2025 to March 2026, paying €734.00 per month, split equally between a grant and an interest-free state loan.",
+      "explanation": "The Studierendenwerk Mustertor, your BAföG office, has approved your application for student financial aid for April 2025 to March 2026. You will receive €734.00 each month, half as a non-repayable grant and half as an interest-free loan, paid at the end of each month for the following month. You must immediately report any change in your income, address, or course of study, as these can affect your funding. If you disagree with any part of this decision, you may file a written objection (Widerspruch) with the Studierendenwerk; the app shows the deadline for this. Otherwise, no further action is needed - the payments will simply continue.",
+      "language": "de",
+      "document_date": "2025-05-05",
+      "area": "study",
+      "case_title": "BAföG Funding Approval - Laura Beispielwinkel",
+      "recipient_name": "Laura Beispielwinkel",
+      "sender": {
+        "name": "Studierendenwerk Mustertor",
+        "kind": "authority",
+        "address": "Mensaweg 2, 35392 Mustertor",
+        "phone": "0641 555 008-0",
+        "email": "bafoeg@studierendenwerk-mustertor.example",
+        "website": null,
+        "identifiers": [
+          {
+            "label": "Förderungsnummer",
+            "value": "412 2025 07731"
+          }
+        ]
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Receive monthly BAföG payment",
+          "action": "No action needed; the funding is paid automatically into your account",
+          "consequence": null,
+          "amount": 734,
+          "currency": "EUR",
+          "direction": "in",
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "payment",
+            "text": "jeweils zum Monatsende für den folgenden Monat",
+            "delivery_rule": "none",
+            "shift_rule": "auto"
+          },
+          "recurrence": {
+            "interval": 1,
+            "unit": "months",
+            "day_of_month": 31
+          },
+          "quote": "Die Zahlung erfolgt jeweils zum Monatsende für den folgenden Monat."
+        },
+        {
+          "kind": "task",
+          "title": "Report changes immediately",
+          "action": "Immediately tell the Studierendenwerk about any change in your income, address, or course of study",
+          "consequence": null,
+          "priority": "normal",
+          "date": {
+            "type": "none",
+            "nature": "other",
+            "text": "sofort",
+            "delivery_rule": "none",
+            "shift_rule": "none"
+          },
+          "quote": "Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit."
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to file an objection (Widerspruch)",
+          "action": "Decide whether to file a written objection (Widerspruch) with the Studierendenwerk Mustertor if you disagree with this decision",
+          "consequence": "The decision becomes final if you do not object by the deadline shown",
+          "priority": "normal",
+          "date": {
+            "type": "relative",
+            "nature": "objection",
+            "text": "innerhalb eines Monats nach ihrer Bekanntgabe",
+            "anchor": "deemed_delivery",
+            "amount": 1,
+            "unit": "months",
+            "delivery_rule": "de_admin_post",
+            "shift_rule": "auto",
+            "legal_basis": null
+          },
+          "quote": "legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift."
+        }
+      ],
+      "key_facts": [
+        {
+          "label": "Funding period (Bewilligungszeitraum)",
+          "value": "04/2025 bis 03/2026",
+          "quote": "für den Bewilligungszeitraum April 2025 bis März 2026 Ausbildungsförderung in Höhe von 734,00 € monatlich"
+        },
+        {
+          "label": "Monthly funding amount",
+          "value": "734,00 €",
+          "quote": "bewilligen wir Ihnen für den Bewilligungszeitraum April 2025 bis März 2026 Ausbildungsförderung in Höhe von 734,00 € monatlich, je zur Hälfte als Zuschuss und als unverzinsliches Staatsdarlehen"
+        },
+        {
+          "label": "Income basis (parents' tax assessments)",
+          "value": "2023",
+          "quote": "Das Einkommen Ihrer Eltern haben wir nach den Steuerbescheiden für 2023 angerechnet."
+        },
+        {
+          "label": "Förderungsnummer",
+          "value": "412 2025 07731",
+          "quote": "412 2025 07731"
+        }
+      ],
+      "references": [
+        {
+          "label": "Förderungsnummer",
+          "value": "412 2025 07731"
+        }
+      ],
+      "remedy": {
+        "type": "widerspruch",
+        "addressee": "Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor",
+        "period_text": "innerhalb eines Monats nach ihrer Bekanntgabe",
+        "form_text": "schriftlich oder zur Niederschrift",
+        "quote": "Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift."
+      },
+      "contract": null,
+      "change": null,
+      "payment": null,
+      "urgency": "normal",
+      "high_stakes_kind": null,
+      "tax_relevant": false,
+      "tax_note": null,
+      "warnings": [],
+      "transcript": null
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6656,
+      "cache_read_tokens": 8953,
+      "cache_creation_tokens": 2488,
+      "cost_usd": 0.0783066,
+      "duration_ms": 63896,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

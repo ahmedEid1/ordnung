@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"d0d281a4232d00ddb7198fe3d61b46f6e0895373aba287fac5aa89bfa3b9b2c3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J2"
+    ],
+    "prompt_head": "Today is Friday, 2027-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-05-05\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed enrolment agreement\",\"quote\":\"To accept the place, please sign both copies and return one of them to the admissions\\noffice by 06/07/2027.\",\"computation\":\"The letter states a fixed calendar deadline '06/07/2027' rather than a period to count from delivery, so no Bekanntgabefiktion or §187/188 BGB counting applies. However, the date format is ambiguous: the school's own letterhead date is printed the same way ('Date 05/05/2027'), which could be DD/MM/YYYY (5 May) or MM/DD/YYYY (5 May, same either way since day=month). For the deadline '06/07/2027', a DD/MM reading gives 6 July 2027, while a MM/DD reading gives 7 June 2027. Since the start date cannot be disambiguated and the rule is to use the earliest plausible reading when a numeric date can be read two ways, I take 7 June 2027 as the due date. This is a private deadline set by a company (school), so it is not shifted for weekends/holidays unless the letter says so; 7 June 2027 is a Monday in any case, so no adjustment would be needed even under the other reading region.\",\"due_date\":\"2027-06-07\",\"confidence\":\"low\",\"amount\":null}],\"kind\":\"contract\",\"references\":[{\"label\":\"Reference\",\"value\":\"ISB-ADM-2027-118\"}],\"remedy_type\":\"none\",\"sender_name\":\"International School Beispielfeld gGmbH\",\"warnings\":[\"The deadline date '06/07/2027' is printed in an ambiguous numeric format (could be DD/MM/YYYY = 6 July 2027, or MM/DD/YYYY = 7 June 2027); I used the earlier reading (7 June 2027) with low confidence — please check the enclosed enrolment agreement or contact the school to confirm the exact deadline.\",\"The letter's own date (05/05/2027) is also in this ambiguous slash format, though day and month coincide (5) so it is not itself ambiguous.\",\"No fee amounts are stated in the letter text itself; the fee schedule mentioned is an enclosure not reproduced here, so amounts could not be extracted.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-05-05",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed enrolment agreement",
+          "quote": "To accept the place, please sign both copies and return one of them to the admissions\noffice by 06/07/2027.",
+          "computation": "The letter states a fixed calendar deadline '06/07/2027' rather than a period to count from delivery, so no Bekanntgabefiktion or §187/188 BGB counting applies. However, the date format is ambiguous: the school's own letterhead date is printed the same way ('Date 05/05/2027'), which could be DD/MM/YYYY (5 May) or MM/DD/YYYY (5 May, same either way since day=month). For the deadline '06/07/2027', a DD/MM reading gives 6 July 2027, while a MM/DD reading gives 7 June 2027. Since the start date cannot be disambiguated and the rule is to use the earliest plausible reading when a numeric date can be read two ways, I take 7 June 2027 as the due date. This is a private deadline set by a company (school), so it is not shifted for weekends/holidays unless the letter says so; 7 June 2027 is a Monday in any case, so no adjustment would be needed even under the other reading region.",
+          "due_date": "2027-06-07",
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "contract",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "ISB-ADM-2027-118"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "International School Beispielfeld gGmbH",
+      "warnings": [
+        "The deadline date '06/07/2027' is printed in an ambiguous numeric format (could be DD/MM/YYYY = 6 July 2027, or MM/DD/YYYY = 7 June 2027); I used the earlier reading (7 June 2027) with low confidence — please check the enclosed enrolment agreement or contact the school to confirm the exact deadline.",
+        "The letter's own date (05/05/2027) is also in this ambiguous slash format, though day and month coincide (5) so it is not itself ambiguous.",
+        "No fee amounts are stated in the letter text itself; the fee schedule mentioned is an enclosure not reproduced here, so amounts could not be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2373,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2255,
+      "cost_usd": 0.03386,
+      "duration_ms": 27343,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

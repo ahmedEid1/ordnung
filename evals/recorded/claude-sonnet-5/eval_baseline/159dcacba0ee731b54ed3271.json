@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"721c1ec0d049a5a58baa976861f408b966224831b471302b4086bdbfc43831f9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-I2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-05-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Logistik Süd GmbH\",\"document_date\":\"2027-05-11\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"40 718\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Respond to employer's offer on salary conversion (Entgeltumwandlung)\",\"quote\":\"Teilen Sie uns Ihre Entscheidung bitte binnen 10 Arbeitstagen ab dem Briefdatum mit.\",\"computation\":\"Letter date (Briefdatum) is 11.05.2027 (Tuesday). This is a private deadline between employer and employee, counted in 'Arbeitstagen' (business days, Mon-Fri, public holidays excluded, per the letter's own definition). Under §187 Abs. 1 BGB the day of the triggering event (11.05.2027) is not counted, so counting starts on 12.05.2027 (Wed). Counting only Mon-Fri and skipping public holidays: 12.05 (Wed)=1, 13.05 (Thu)=2, 14.05 (Fri)=3, 15-16.05 weekend skipped, 17.05 (Mon) is Whit Monday (Pfingstmontag, nationwide holiday, Easter 2027=28.03 +50 days) so skipped, 18.05 (Tue)=4, 19.05 (Wed)=5, 20.05 (Thu)=6, 21.05 (Fri)=7, 22-23.05 weekend skipped, 24.05 (Mon)=8, 25.05 (Tue)=9, 26.05 (Wed)=10. The 10th working day is 26.05.2027. Since the period is counted directly in working days (not a calendar period whose end merely falls on a non-working day), no further §193 BGB adjustment is needed because the 10th counted day is already a Wednesday.\",\"due_date\":\"2027-05-26\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start date of salary conversion (Direktversicherung) if employee opts in\",\"quote\":\"ab dem 01.07.2027 können Sie einen Teil Ihres Bruttogehalts in eine Direktversicherung einzahlen.\",\"computation\":\"Date given explicitly in the letter as the start of the benefit, contingent on the employee's prior opt-in decision (see deadline above); no counting required, used as stated.\",\"due_date\":\"2027-07-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Logistik Süd GmbH",
+      "document_date": "2027-05-11",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "40 718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Respond to employer's offer on salary conversion (Entgeltumwandlung)",
+          "quote": "Teilen Sie uns Ihre Entscheidung bitte binnen 10 Arbeitstagen ab dem Briefdatum mit.",
+          "computation": "Letter date (Briefdatum) is 11.05.2027 (Tuesday). This is a private deadline between employer and employee, counted in 'Arbeitstagen' (business days, Mon-Fri, public holidays excluded, per the letter's own definition). Under §187 Abs. 1 BGB the day of the triggering event (11.05.2027) is not counted, so counting starts on 12.05.2027 (Wed). Counting only Mon-Fri and skipping public holidays: 12.05 (Wed)=1, 13.05 (Thu)=2, 14.05 (Fri)=3, 15-16.05 weekend skipped, 17.05 (Mon) is Whit Monday (Pfingstmontag, nationwide holiday, Easter 2027=28.03 +50 days) so skipped, 18.05 (Tue)=4, 19.05 (Wed)=5, 20.05 (Thu)=6, 21.05 (Fri)=7, 22-23.05 weekend skipped, 24.05 (Mon)=8, 25.05 (Tue)=9, 26.05 (Wed)=10. The 10th working day is 26.05.2027. Since the period is counted directly in working days (not a calendar period whose end merely falls on a non-working day), no further §193 BGB adjustment is needed because the 10th counted day is already a Wednesday.",
+          "due_date": "2027-05-26",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start date of salary conversion (Direktversicherung) if employee opts in",
+          "quote": "ab dem 01.07.2027 können Sie einen Teil Ihres Bruttogehalts in eine Direktversicherung einzahlen.",
+          "computation": "Date given explicitly in the letter as the start of the benefit, contingent on the employee's prior opt-in decision (see deadline above); no counting required, used as stated.",
+          "due_date": "2027-07-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7898,
+      "cache_read_tokens": 13501,
+      "cache_creation_tokens": 9386,
+      "cost_usd": 0.1192322,
+      "duration_ms": 83255,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

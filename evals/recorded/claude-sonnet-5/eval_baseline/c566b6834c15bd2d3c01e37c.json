@@ -1,0 +1,85 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"d0d281a4232d00ddb7198fe3d61b46f6e0895373aba287fac5aa89bfa3b9b2c3\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J2"
+    ],
+    "prompt_head": "Today is Friday, 2027-05-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"other\",\"sender_name\":\"International School Beispielfeld gGmbH\",\"document_date\":\"2027-05-05\",\"references\":[{\"label\":\"Reference\",\"value\":\"ISB-ADM-2027-118\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Sign and return enrolment agreement\",\"quote\":\"To accept the place, please sign both copies and return one of them to the admissions office by 06/07/2027.\",\"computation\":\"The letter prints a fixed calendar date for the deadline: 06/07/2027. The school's address and the letter's style follow German conventions, so this is read as DD/MM/YYYY, i.e. 6 July 2027 (not 6 June 2027). This is a private school's own deadline, not a letter from a German authority, so no statutory deemed-delivery or §§187-193 BGB counting rules apply - the printed date is simply the last day. 6 July 2027 falls on a Tuesday (confirmed by tool), a regular business day, so no weekend/holiday shift is needed.\",\"due_date\":\"2027-07-06\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter uses the numeric date format DD/MM/YYYY (consistent with the German sender's address); if the recipient is used to reading dates MM/DD/YYYY, double-check that the deadline is 6 July 2027 and not mis-read as 6 June 2027.\",\"No fee amount is stated in the letter text itself - the 'fee schedule' is only referred to as an enclosure, so the cost of the place could not be extracted from this letter alone.\",\"The letter names a UK/international-sounding institution but gives a German IBAN (DE93 3705 0198 0005 5517 00); it checks out structurally (valid IBAN, correct checksum) but no payment is actually requested in this letter, so there is nothing to pay yet - confirm any bank details independently before transferring fees later.\"]}",
+    "data": {
+      "kind": "other",
+      "sender_name": "International School Beispielfeld gGmbH",
+      "document_date": "2027-05-05",
+      "references": [
+        {
+          "label": "Reference",
+          "value": "ISB-ADM-2027-118"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Sign and return enrolment agreement",
+          "quote": "To accept the place, please sign both copies and return one of them to the admissions office by 06/07/2027.",
+          "computation": "The letter prints a fixed calendar date for the deadline: 06/07/2027. The school's address and the letter's style follow German conventions, so this is read as DD/MM/YYYY, i.e. 6 July 2027 (not 6 June 2027). This is a private school's own deadline, not a letter from a German authority, so no statutory deemed-delivery or §§187-193 BGB counting rules apply - the printed date is simply the last day. 6 July 2027 falls on a Tuesday (confirmed by tool), a regular business day, so no weekend/holiday shift is needed.",
+          "due_date": "2027-07-06",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter uses the numeric date format DD/MM/YYYY (consistent with the German sender's address); if the recipient is used to reading dates MM/DD/YYYY, double-check that the deadline is 6 July 2027 and not mis-read as 6 June 2027.",
+        "No fee amount is stated in the letter text itself - the 'fee schedule' is only referred to as an enclosure, so the cost of the place could not be extracted from this letter alone.",
+        "The letter names a UK/international-sounding institution but gives a German IBAN (DE93 3705 0198 0005 5517 00); it checks out structurally (valid IBAN, correct checksum) but no payment is actually requested in this letter, so there is nothing to pay yet - confirm any bank details independently before transferring fees later."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1992,
+      "cache_read_tokens": 15373,
+      "cache_creation_tokens": 4182,
+      "cost_usd": 0.039730600000000005,
+      "duration_ms": 25484,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "fixed",
+            "date": "2027-07-06",
+            "nature": "other",
+            "shift_rule": "none",
+            "legal_basis": "Letter deadline",
+            "text": "please sign both copies and return one of them to the admissions office by 06/07/2027"
+          },
+          "document_date": "2027-05-05",
+          "sender_kind": "other",
+          "sender_name": "International School Beispielfeld gGmbH",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-07-06\",\"weekday\":\"Tuesday\",\"summary\":\"The date given is Tue 6 Jul 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"The date given is Tue 6 Jul 2027\",\"date\":\"2027-07-06\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"}],\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"}],\"assumed\":{\"today\":\"2027-05-07\",\"letter_date\":\"2027-05-05\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE93370501980005551700"
+        },
+        "result": "{\"iban\":\"DE93 3705 0198 0005 5517 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005551700\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

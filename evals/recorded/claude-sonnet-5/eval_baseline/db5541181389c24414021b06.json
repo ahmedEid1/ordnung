@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"61aef5ed922499b917981e8ca0fc69afa4e6700d77b350202670324cc9eb3e19\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-09-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"bank_letter\",\"sender_name\":\"Example Harbor Federal Credit Union\",\"document_date\":\"2027-08-31\",\"references\":[{\"label\":\"Member no.\",\"value\":\"4471-0092-18\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Return signed Form W-8BEN\",\"quote\":\"Please sign the enclosed form and return it to Member Services no later than\\nSeptember 13, 2027.\",\"computation\":\"The letter states an explicit calendar date by which the signed Form W-8BEN must be received by Member Services: September 13, 2027. This is a fixed deadline set by a foreign (US) private institution, not a German authority, so German delivery-fiction rules (e.g. §§ 187, 188, 193 BGB or administrative-law delivery presumptions) do not apply; the date is taken as given. September 13, 2027 falls on a Monday, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2027-09-13\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a US (non-German) financial institution requesting a signed tax form by mail; before signing and returning any personal/tax form, verify independently (e.g. via the phone number or website on your existing account statements, not just the one printed in this letter) that this request is genuine and not a phishing attempt, since IRS-form requests are a known scam vector.\"]}",
+    "data": {
+      "kind": "bank_letter",
+      "sender_name": "Example Harbor Federal Credit Union",
+      "document_date": "2027-08-31",
+      "references": [
+        {
+          "label": "Member no.",
+          "value": "4471-0092-18"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed Form W-8BEN",
+          "quote": "Please sign the enclosed form and return it to Member Services no later than\nSeptember 13, 2027.",
+          "computation": "The letter states an explicit calendar date by which the signed Form W-8BEN must be received by Member Services: September 13, 2027. This is a fixed deadline set by a foreign (US) private institution, not a German authority, so German delivery-fiction rules (e.g. §§ 187, 188, 193 BGB or administrative-law delivery presumptions) do not apply; the date is taken as given. September 13, 2027 falls on a Monday, so no weekend/holiday adjustment is needed.",
+          "due_date": "2027-09-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a US (non-German) financial institution requesting a signed tax form by mail; before signing and returning any personal/tax form, verify independently (e.g. via the phone number or website on your existing account statements, not just the one printed in this letter) that this request is genuine and not a phishing attempt, since IRS-form requests are a known scam vector."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1158,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2215,
+      "cost_usd": 0.0210684,
+      "duration_ms": 14965,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

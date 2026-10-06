@@ -1,0 +1,75 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b50fd1514c76440169d2a0ccc42dbe5723db58f3233b9dd8e769d35e9b45d0cd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-J2"
+    ],
+    "prompt_head": "Today is Saturday, 2024-12-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[1118.7],\"contract\":null,\"kind\":\"social_insurance\",\"sender_name\":\"Agentur für Arbeit Beispielkirchen (Bundesagentur für Arbeit)\",\"document_date\":\"2024-12-05\",\"remedy_type\":\"widerspruch\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"617C442095\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against ALG I decision\",\"quote\":\"Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Agentur für Arbeit Beispielkirchen, Agenturplatz 3, 45879 Beispielkirchen.\",\"computation\":\"Bescheid dated 05.12.2024; no separate 'Aufgabe zur Post' date is stated, so the posting day is the letter date, 05.12.2024. Letter was posted before 31.12.2024, so the statutory 3-day delivery fiction applies (also stated verbatim in the letter): delivery = 05.12.2024 + 3 calendar days = 08.12.2024 (a Sunday). The Bundesagentur für Arbeit's decision on Arbeitslosengeld is governed by social law (SGB X), not tax law (AO); for such authorities the deemed-delivery day does NOT move even if it falls on a weekend (unlike the tax-office rule). So Bekanntgabe = 08.12.2024. The one-month Widerspruch period (§ 84 SGG) starts the next day (§ 187 Abs. 1 BGB, day of event not counted) and ends on the day with the same number one month later: 08.01.2025. 08.01.2025 is a Wednesday and not a public holiday in NW, so the deadline stands.\",\"due_date\":\"2025-01-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Unemployment benefit (ALG I) entitlement begins\",\"quote\":\"auf Ihren Antrag vom 18.11.2024 bewilligen wir Ihnen Arbeitslosengeld ab dem 01.01.2025 für 360 Kalendertage.\",\"computation\":\"Start date is stated explicitly in the letter as 01.01.2025; it is a calendar date, used as written.\",\"due_date\":\"2025-01-01\",\"confidence\":\"high\",\"amount\":1118.7},{\"kind\":\"reminder\",\"title\":\"Report any change in circumstances immediately (e.g. new job, illness)\",\"quote\":\"Bitte melden Sie uns jede Änderung sofort, zum Beispiel eine Arbeitsaufnahme oder eine Erkrankung.\",\"computation\":\"This is an ongoing reporting duty ('sofort' = immediately) without any specific calendar date or period attached, so no fixed due date can be computed; it applies continuously for as long as benefits are received.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        1118.7
+      ],
+      "contract": null,
+      "kind": "social_insurance",
+      "sender_name": "Agentur für Arbeit Beispielkirchen (Bundesagentur für Arbeit)",
+      "document_date": "2024-12-05",
+      "remedy_type": "widerspruch",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "617C442095"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against ALG I decision",
+          "quote": "Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Agentur für Arbeit Beispielkirchen, Agenturplatz 3, 45879 Beispielkirchen.",
+          "computation": "Bescheid dated 05.12.2024; no separate 'Aufgabe zur Post' date is stated, so the posting day is the letter date, 05.12.2024. Letter was posted before 31.12.2024, so the statutory 3-day delivery fiction applies (also stated verbatim in the letter): delivery = 05.12.2024 + 3 calendar days = 08.12.2024 (a Sunday). The Bundesagentur für Arbeit's decision on Arbeitslosengeld is governed by social law (SGB X), not tax law (AO); for such authorities the deemed-delivery day does NOT move even if it falls on a weekend (unlike the tax-office rule). So Bekanntgabe = 08.12.2024. The one-month Widerspruch period (§ 84 SGG) starts the next day (§ 187 Abs. 1 BGB, day of event not counted) and ends on the day with the same number one month later: 08.01.2025. 08.01.2025 is a Wednesday and not a public holiday in NW, so the deadline stands.",
+          "due_date": "2025-01-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Unemployment benefit (ALG I) entitlement begins",
+          "quote": "auf Ihren Antrag vom 18.11.2024 bewilligen wir Ihnen Arbeitslosengeld ab dem 01.01.2025 für 360 Kalendertage.",
+          "computation": "Start date is stated explicitly in the letter as 01.01.2025; it is a calendar date, used as written.",
+          "due_date": "2025-01-01",
+          "confidence": "high",
+          "amount": 1118.7
+        },
+        {
+          "kind": "reminder",
+          "title": "Report any change in circumstances immediately (e.g. new job, illness)",
+          "quote": "Bitte melden Sie uns jede Änderung sofort, zum Beispiel eine Arbeitsaufnahme oder eine Erkrankung.",
+          "computation": "This is an ongoing reporting duty ('sofort' = immediately) without any specific calendar date or period attached, so no fixed due date can be computed; it applies continuously for as long as benefits are received.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3901,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2612,
+      "cost_usd": 0.050568,
+      "duration_ms": 41518,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

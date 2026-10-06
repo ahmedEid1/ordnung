@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"dd0299d33acd26f26eb8a52d83878be198e4012cfe9e1a6a6b351db408e1bdc4\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2027-11-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-11-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterfelden\",\"document_date\":\"2027-10-28\",\"references\":[{\"label\":\"Az.\",\"value\":\"41-602-BV/1873/27\"}],\"amounts\":[1500],\"items\":[{\"kind\":\"task\",\"title\":\"Remove the horse shelter (Pferdeunterstand)\",\"quote\":\"Herr Korbinian Beispielmaier wird verpflichtet, den auf dem Grundstück Fl.-Nr. 1187/2 der Gemarkung Mustervils errichteten Pferdeunterstand (Holzbau, 8,00 m × 4,50 m, mit Bodenplatte) bis spätestens 05.01.2028 vollständig zu beseitigen.\",\"computation\":\"The Bescheid states an explicit calendar deadline ('bis spätestens 05.01.2028') for complete removal of the unauthorized structure. No further counting of a period is required; the date is given directly in the text. 05.01.2028 is a Wednesday, so no weekend/holiday adjustment is needed.\",\"due_date\":\"2028-01-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Zwangsgeld (coercive fine) of €1,500 if removal is not completed in time\",\"quote\":\"Kommen Sie der Verpflichtung in Nr. 1 nicht fristgerecht nach, wird ein Zwangsgeld in Höhe von 1.500,00 € fällig.\",\"computation\":\"This payment is conditional: it is only triggered if the removal obligation (item 1, due 05.01.2028) is not fulfilled by its deadline. The letter does not state a separate due date for the Zwangsgeld itself beyond the trigger condition, so no fixed calendar date can be computed; it would become payable from the day after the removal deadline is missed (i.e., from 2028-01-06 onward) if the shelter is still standing.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":1500},{\"kind\":\"deadline\",\"title\":\"File Klage (lawsuit) with the Verwaltungsgericht against the Bescheid\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage erhoben werden bei dem Bayerischen Verwaltungsgericht Musterhut, Hausanschrift: Gerichtsplatz 3, 84028 Musterhut.\",\"computation\":\"Bescheid is dated Thursday, 28.10.2027, sent by regular mail. Under Art. 41 Abs. 2 BayVwVfG, a written administrative act sent by post is deemed notified (bekanntgegeben) on the third day after posting; if that day falls on a Saturday, Sunday or public holiday, the next Werktag counts as the Bekanntgabe day. Assuming posting on 28.10.2027, the third day after is Sunday, 31.10.2027. The following day, Monday 01.11.2027, is Allerheiligen, a statutory public holiday in Bayern, so it is also not a Werktag. The next Werktag is Tuesday, 02.11.2027 — the deemed date of Bekanntgabe. Under §57 Abs. 2 VwGO i.V.m. §222 ZPO i.V.m. §§187 Abs.1, 188 Abs.2 BGB, a one-month period triggered by an event excludes the day of the event itself and ends with the expiry of the day in the following month bearing the same number as the triggering day. One month after 02.11.2027 is 02.12.2027 (a Thursday), which is not a Saturday, Sunday or Bavarian public holiday, so the deadline stands unchanged.\",\"due_date\":\"2027-12-02\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The Klage deadline (2027-12-02) relies on the assumption that the Bescheid was actually posted on its issue date (28.10.2027) and the statutory 3-day postal-delivery fiction under Art. 41 Abs. 2 BayVwVfG; if the actual mailing or receipt date differed, double-check the real delivery date to confirm the deadline.\",\"The letter explicitly warns that filing a legal remedy by simple e-mail has no legal effect ('Die Einlegung eines Rechtsbehelfs per einfacher E-Mail ist nicht zugelassen und entfaltet keine rechtlichen Wirkungen.') — any objection must be filed with the court in proper written/electronic form, not by ordinary email.\",\"The €1,500 Zwangsgeld is only a contingent liability that arises if the removal deadline (05.01.2028) is missed; it is not a current invoice to be paid now.\",\"A separate decision on the procedural costs (Kosten des Verfahrens) is still pending per Nr. 3 of the Bescheid and is not yet quantified in this letter.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterfelden",
+      "document_date": "2027-10-28",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "41-602-BV/1873/27"
+        }
+      ],
+      "amounts": [
+        1500
+      ],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Remove the horse shelter (Pferdeunterstand)",
+          "quote": "Herr Korbinian Beispielmaier wird verpflichtet, den auf dem Grundstück Fl.-Nr. 1187/2 der Gemarkung Mustervils errichteten Pferdeunterstand (Holzbau, 8,00 m × 4,50 m, mit Bodenplatte) bis spätestens 05.01.2028 vollständig zu beseitigen.",
+          "computation": "The Bescheid states an explicit calendar deadline ('bis spätestens 05.01.2028') for complete removal of the unauthorized structure. No further counting of a period is required; the date is given directly in the text. 05.01.2028 is a Wednesday, so no weekend/holiday adjustment is needed.",
+          "due_date": "2028-01-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Zwangsgeld (coercive fine) of €1,500 if removal is not completed in time",
+          "quote": "Kommen Sie der Verpflichtung in Nr. 1 nicht fristgerecht nach, wird ein Zwangsgeld in Höhe von 1.500,00 € fällig.",
+          "computation": "This payment is conditional: it is only triggered if the removal obligation (item 1, due 05.01.2028) is not fulfilled by its deadline. The letter does not state a separate due date for the Zwangsgeld itself beyond the trigger condition, so no fixed calendar date can be computed; it would become payable from the day after the removal deadline is missed (i.e., from 2028-01-06 onward) if the shelter is still standing.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 1500
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (lawsuit) with the Verwaltungsgericht against the Bescheid",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage erhoben werden bei dem Bayerischen Verwaltungsgericht Musterhut, Hausanschrift: Gerichtsplatz 3, 84028 Musterhut.",
+          "computation": "Bescheid is dated Thursday, 28.10.2027, sent by regular mail. Under Art. 41 Abs. 2 BayVwVfG, a written administrative act sent by post is deemed notified (bekanntgegeben) on the third day after posting; if that day falls on a Saturday, Sunday or public holiday, the next Werktag counts as the Bekanntgabe day. Assuming posting on 28.10.2027, the third day after is Sunday, 31.10.2027. The following day, Monday 01.11.2027, is Allerheiligen, a statutory public holiday in Bayern, so it is also not a Werktag. The next Werktag is Tuesday, 02.11.2027 — the deemed date of Bekanntgabe. Under §57 Abs. 2 VwGO i.V.m. §222 ZPO i.V.m. §§187 Abs.1, 188 Abs.2 BGB, a one-month period triggered by an event excludes the day of the event itself and ends with the expiry of the day in the following month bearing the same number as the triggering day. One month after 02.11.2027 is 02.12.2027 (a Thursday), which is not a Saturday, Sunday or Bavarian public holiday, so the deadline stands unchanged.",
+          "due_date": "2027-12-02",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The Klage deadline (2027-12-02) relies on the assumption that the Bescheid was actually posted on its issue date (28.10.2027) and the statutory 3-day postal-delivery fiction under Art. 41 Abs. 2 BayVwVfG; if the actual mailing or receipt date differed, double-check the real delivery date to confirm the deadline.",
+        "The letter explicitly warns that filing a legal remedy by simple e-mail has no legal effect ('Die Einlegung eines Rechtsbehelfs per einfacher E-Mail ist nicht zugelassen und entfaltet keine rechtlichen Wirkungen.') — any objection must be filed with the court in proper written/electronic form, not by ordinary email.",
+        "The €1,500 Zwangsgeld is only a contingent liability that arises if the removal deadline (05.01.2028) is missed; it is not a current invoice to be paid now.",
+        "A separate decision on the procedural costs (Kosten des Verfahrens) is still pending per Nr. 3 of the Bescheid and is not yet quantified in this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 7779,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3413,
+      "cost_usd": 0.0920704,
+      "duration_ms": 84885,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

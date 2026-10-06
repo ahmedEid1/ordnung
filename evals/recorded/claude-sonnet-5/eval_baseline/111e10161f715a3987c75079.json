@@ -1,0 +1,72 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"87753f9d76fb4c7e9f9aebc2f8f883bdd6de4d5f0e19258e82c8edfa6b74c610\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-I3"
+    ],
+    "prompt_head": "Today is Saturday, 2026-12-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwiesen\",\"document_date\":\"2026-12-21\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/318/07452\"},{\"label\":\"Vertragsnummer\",\"value\":\"BSK 4471209-06\"}],\"amounts\":[43],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Arbeitnehmer-Sparzulage assessment\",\"quote\":\"Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterwiesen erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.\",\"computation\":\"Letter dated Monday 21.12.2026, posted that day (no separate 'zur Post gegeben am' date given). Posted on/after 1 Jan 2025, so delivery is deemed on the 4th day after posting: day1=22.12, day2=23.12, day3=24.12, day4=25.12.2026 (Friday, Christmas Day, a nationwide public holiday). Because the sender is a Finanzamt, § 108 Abs. 3 AO applies: if the 4th day is a Saturday, Sunday or public holiday, delivery moves to the next working day. 25.12 (holiday) -> 26.12.2026 is Saturday and also Boxing Day (holiday) -> 27.12.2026 is Sunday -> 28.12.2026 (Monday) is the first working day, so deemed delivery = 28.12.2026. The one-month Einspruch period (§ 355 Abs. 1 AO) runs from delivery (delivery day not counted per § 108 Abs. 1 AO/§187 BGB for the start, but the month-counting rule uses the day bearing the same number as the delivery day) and ends on the day with the same number in the following month: 28.01.2027. That day is a Thursday and not a public holiday in NW, so no further shift under § 108 Abs. 3 AO applies.\",\"due_date\":\"2027-01-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Credit of the Arbeitnehmer-Sparzulage to the Bausparvertrag\",\"quote\":\"Die Zulage zahlen wir nicht an Sie aus, sondern an die Bausparkasse; sie wird Ihrem Vertrag gutgeschrieben, sobald die Sperrfrist abgelaufen ist.\",\"computation\":\"The letter only states the credit happens once the statutory blocking period (Sperrfrist) for the Bausparvertrag has expired, without giving the start date or length of that Sperrfrist (which depends on the underlying Bausparvertrag/Wohnungsbau-Prämiengesetz terms not stated in this letter). No exact date can be computed from the information given.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":43}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter does not state the date on which the Sperrfrist for the Bausparvertrag ends, so the exact date the 43,00 € Sparzulage will be credited to the Bausparvertrag cannot be determined from this letter alone; check the Bausparvertrag terms if this matters.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwiesen",
+      "document_date": "2026-12-21",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/318/07452"
+        },
+        {
+          "label": "Vertragsnummer",
+          "value": "BSK 4471209-06"
+        }
+      ],
+      "amounts": [
+        43
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Arbeitnehmer-Sparzulage assessment",
+          "quote": "Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterwiesen erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.",
+          "computation": "Letter dated Monday 21.12.2026, posted that day (no separate 'zur Post gegeben am' date given). Posted on/after 1 Jan 2025, so delivery is deemed on the 4th day after posting: day1=22.12, day2=23.12, day3=24.12, day4=25.12.2026 (Friday, Christmas Day, a nationwide public holiday). Because the sender is a Finanzamt, § 108 Abs. 3 AO applies: if the 4th day is a Saturday, Sunday or public holiday, delivery moves to the next working day. 25.12 (holiday) -> 26.12.2026 is Saturday and also Boxing Day (holiday) -> 27.12.2026 is Sunday -> 28.12.2026 (Monday) is the first working day, so deemed delivery = 28.12.2026. The one-month Einspruch period (§ 355 Abs. 1 AO) runs from delivery (delivery day not counted per § 108 Abs. 1 AO/§187 BGB for the start, but the month-counting rule uses the day bearing the same number as the delivery day) and ends on the day with the same number in the following month: 28.01.2027. That day is a Thursday and not a public holiday in NW, so no further shift under § 108 Abs. 3 AO applies.",
+          "due_date": "2027-01-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Credit of the Arbeitnehmer-Sparzulage to the Bausparvertrag",
+          "quote": "Die Zulage zahlen wir nicht an Sie aus, sondern an die Bausparkasse; sie wird Ihrem Vertrag gutgeschrieben, sobald die Sperrfrist abgelaufen ist.",
+          "computation": "The letter only states the credit happens once the statutory blocking period (Sperrfrist) for the Bausparvertrag has expired, without giving the start date or length of that Sperrfrist (which depends on the underlying Bausparvertrag/Wohnungsbau-Prämiengesetz terms not stated in this letter). No exact date can be computed from the information given.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 43
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the date on which the Sperrfrist for the Bausparvertrag ends, so the exact date the 43,00 € Sparzulage will be credited to the Bausparvertrag cannot be determined from this letter alone; check the Bausparvertrag terms if this matters."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4586,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2588,
+      "cost_usd": 0.057322,
+      "duration_ms": 49927,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

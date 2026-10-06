@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"b035e512bff2ac7b5c916ac7e6b963ebf2fa51028d0298c518ba7949ca616333\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-I1"
+    ],
+    "prompt_head": "Today is Friday, 2027-02-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[6318,0,772],\"contract\":null,\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Neu Beispielhagen\",\"document_date\":\"2027-02-02\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"079/241/30586\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"Einspruch against income tax assessment 2025\",\"quote\":\"Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt.\",\"computation\":\"Letter is dated (and, absent a separate 'zur Post gegeben' date, treated as posted) Tue 02.02.2027. As a Finanzamt notice, delivery is deemed on the 4th day after posting (§122 Abs. 2 Nr.1 AO): 02.02.2027 + 4 days = Sat 06.02.2027. Since the 4th day is a Saturday, for tax offices the deemed-delivery day itself moves to the next working day (§108 Abs. 3 AO, BFH IX R 68/98): Mon 08.02.2027. The one-month Einspruch period (§355 Abs.1 AO) runs from the end of that day (§187 Abs.1, §188 Abs.2 BGB) and ends one month later on the day with the same number: 08.03.2027. 08.03.2027 is a Monday (not a weekend/holiday), so no further shift under §108 Abs.3 AO/§193 BGB is needed.\",\"due_date\":\"2027-03-08\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        6318,
+        0,
+        772
+      ],
+      "contract": null,
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Neu Beispielhagen",
+      "document_date": "2027-02-02",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "079/241/30586"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Einspruch against income tax assessment 2025",
+          "quote": "Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt.",
+          "computation": "Letter is dated (and, absent a separate 'zur Post gegeben' date, treated as posted) Tue 02.02.2027. As a Finanzamt notice, delivery is deemed on the 4th day after posting (§122 Abs. 2 Nr.1 AO): 02.02.2027 + 4 days = Sat 06.02.2027. Since the 4th day is a Saturday, for tax offices the deemed-delivery day itself moves to the next working day (§108 Abs. 3 AO, BFH IX R 68/98): Mon 08.02.2027. The one-month Einspruch period (§355 Abs.1 AO) runs from the end of that day (§187 Abs.1, §188 Abs.2 BGB) and ends one month later on the day with the same number: 08.03.2027. 08.03.2027 is a Monday (not a weekend/holiday), so no further shift under §108 Abs.3 AO/§193 BGB is needed.",
+          "due_date": "2027-03-08",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2605,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3047,
+      "cost_usd": 0.039348,
+      "duration_ms": 30177,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

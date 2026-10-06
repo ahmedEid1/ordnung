@@ -1,0 +1,79 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"dd0299d33acd26f26eb8a52d83878be198e4012cfe9e1a6a6b351db408e1bdc4\",\"mode\":\"text\",\"region\":\"BY\",\"today\":\"2027-11-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-11-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bayern (BY), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landratsamt Musterfelden – Bauamt (Untere Bauaufsichtsbehörde)\",\"document_date\":\"2027-10-28\",\"references\":[{\"label\":\"Az.\",\"value\":\"41-602-BV/1873/27\"}],\"amounts\":[1500],\"items\":[{\"kind\":\"deadline\",\"title\":\"Remove the horse shelter (Pferdeunterstand)\",\"quote\":\"Herr Korbinian Beispielmaier wird verpflichtet, den auf dem Grundstück Fl.-Nr. 1187/2 der Gemarkung Mustervils errichteten Pferdeunterstand (Holzbau, 8,00 m × 4,50 m, mit Bodenplatte) bis spätestens 05.01.2028 vollständig zu beseitigen.\",\"computation\":\"The Bescheid itself fixes a calendar date for performance: 'bis spätestens 05.01.2028'. No period calculation is needed; the due date is as printed.\",\"due_date\":\"2028-01-05\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"reminder\",\"title\":\"Zwangsgeld (1.500 €) falls due only if removal is late\",\"quote\":\"Kommen Sie der Verpflichtung in Nr. 1 nicht fristgerecht nach, wird ein Zwangsgeld in Höhe von 1.500,00 € fällig.\",\"computation\":\"This is a conditional penalty payment tied to non-compliance with item 1. It is not an independent deadline; it is triggered the moment the removal deadline in Nr. 1 (05.01.2028) passes without the shelter having been removed.\",\"due_date\":\"2028-01-05\",\"confidence\":\"high\",\"amount\":1500},{\"kind\":\"deadline\",\"title\":\"File Klage (court action) against the Bescheid at the Bayerisches Verwaltungsgericht Musterhut\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage erhoben werden bei dem Bayerischen Verwaltungsgericht Musterhut, Hausanschrift: Gerichtsplatz 3, 84028 Musterhut.\",\"computation\":\"Bescheid dated Thursday 28.10.2027; no separate 'zur Post gegeben am' date is stated, so the printed date is the posting day. The Landratsamt is a general authority (not a Finanzamt), so the 4-day delivery fiction applies without the §108 Abs.3 AO weekend/holiday shift of the delivery day itself: 28.10.2027 + 4 calendar days = 01.11.2027 (Monday) counts as Bekanntgabe even though 01.11.2027 is Allerheiligen, a public holiday in Bayern, because only tax offices get that shift. The one-month Klage period under §74 VwGO/§57 VwGO runs per §188 Abs.2 BGB: it ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 01.12.2027. Checking that end date: 01.12.2027 is a Wednesday, not a Saturday, Sunday or public holiday, so no further shift under §57 Abs.2 VwGO/§222 Abs.2 ZPO is required.\",\"due_date\":\"2027-12-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"klage\",\"contract\":null,\"warnings\":[\"The letter states that an objection/action cannot be filed by ordinary e-mail ('Die Einlegung eines Rechtsbehelfs per einfacher E-Mail ist nicht zugelassen und entfaltet keine rechtlichen Wirkungen') — any Klage must be filed in writing (or via the authorised electronic court mailbox) directly with the Verwaltungsgericht, not by simple e-mail.\",\"Filing the Klage triggers a court procedural fee ('Mit der Erhebung der Klage wird eine Verfahrensgebühr fällig.') — budget for this separately from the threatened 1.500 € Zwangsgeld.\",\"The deemed-delivery date of 01.11.2027 falls on Allerheiligen, a public holiday in Bayern; because this is a general authority (not a Finanzamt), that date is not shifted to the next working day under the stated rules, so double-check the Landratsamt's actual postmark/dispatch date if it differs from the printed Bescheid date, as that would change the Klage deadline.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landratsamt Musterfelden – Bauamt (Untere Bauaufsichtsbehörde)",
+      "document_date": "2027-10-28",
+      "references": [
+        {
+          "label": "Az.",
+          "value": "41-602-BV/1873/27"
+        }
+      ],
+      "amounts": [
+        1500
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Remove the horse shelter (Pferdeunterstand)",
+          "quote": "Herr Korbinian Beispielmaier wird verpflichtet, den auf dem Grundstück Fl.-Nr. 1187/2 der Gemarkung Mustervils errichteten Pferdeunterstand (Holzbau, 8,00 m × 4,50 m, mit Bodenplatte) bis spätestens 05.01.2028 vollständig zu beseitigen.",
+          "computation": "The Bescheid itself fixes a calendar date for performance: 'bis spätestens 05.01.2028'. No period calculation is needed; the due date is as printed.",
+          "due_date": "2028-01-05",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "reminder",
+          "title": "Zwangsgeld (1.500 €) falls due only if removal is late",
+          "quote": "Kommen Sie der Verpflichtung in Nr. 1 nicht fristgerecht nach, wird ein Zwangsgeld in Höhe von 1.500,00 € fällig.",
+          "computation": "This is a conditional penalty payment tied to non-compliance with item 1. It is not an independent deadline; it is triggered the moment the removal deadline in Nr. 1 (05.01.2028) passes without the shelter having been removed.",
+          "due_date": "2028-01-05",
+          "confidence": "high",
+          "amount": 1500
+        },
+        {
+          "kind": "deadline",
+          "title": "File Klage (court action) against the Bescheid at the Bayerisches Verwaltungsgericht Musterhut",
+          "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach seiner Bekanntgabe Klage erhoben werden bei dem Bayerischen Verwaltungsgericht Musterhut, Hausanschrift: Gerichtsplatz 3, 84028 Musterhut.",
+          "computation": "Bescheid dated Thursday 28.10.2027; no separate 'zur Post gegeben am' date is stated, so the printed date is the posting day. The Landratsamt is a general authority (not a Finanzamt), so the 4-day delivery fiction applies without the §108 Abs.3 AO weekend/holiday shift of the delivery day itself: 28.10.2027 + 4 calendar days = 01.11.2027 (Monday) counts as Bekanntgabe even though 01.11.2027 is Allerheiligen, a public holiday in Bayern, because only tax offices get that shift. The one-month Klage period under §74 VwGO/§57 VwGO runs per §188 Abs.2 BGB: it ends on the day of the following month bearing the same number as the day of the triggering event, i.e. 01.12.2027. Checking that end date: 01.12.2027 is a Wednesday, not a Saturday, Sunday or public holiday, so no further shift under §57 Abs.2 VwGO/§222 Abs.2 ZPO is required.",
+          "due_date": "2027-12-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "klage",
+      "contract": null,
+      "warnings": [
+        "The letter states that an objection/action cannot be filed by ordinary e-mail ('Die Einlegung eines Rechtsbehelfs per einfacher E-Mail ist nicht zugelassen und entfaltet keine rechtlichen Wirkungen') — any Klage must be filed in writing (or via the authorised electronic court mailbox) directly with the Verwaltungsgericht, not by simple e-mail.",
+        "Filing the Klage triggers a court procedural fee ('Mit der Erhebung der Klage wird eine Verfahrensgebühr fällig.') — budget for this separately from the threatened 1.500 € Zwangsgeld.",
+        "The deemed-delivery date of 01.11.2027 falls on Allerheiligen, a public holiday in Bayern; because this is a general authority (not a Finanzamt), that date is not shifted to the next working day under the stated rules, so double-check the Landratsamt's actual postmark/dispatch date if it differs from the printed Bescheid date, as that would change the Klage deadline."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5886,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3413,
+      "cost_usd": 0.07362199999999999,
+      "duration_ms": 60524,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

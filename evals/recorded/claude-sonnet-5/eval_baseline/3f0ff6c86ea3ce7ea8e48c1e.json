@@ -1,0 +1,87 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f219d64b3b875f1cfae3cb66850ae0ed7251f1221501ffefa4a9c0a289ed0feb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-I2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-02-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Sprachinstitut Beispielwort GmbH\",\"document_date\":\"2027-01-29\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay course and exam fee invoice\",\"quote\":\"Please transfer the course fee no later than 14 days after the date of this invoice, quoting the invoice number.\",\"computation\":\"This is a private company invoice, so no deemed-delivery rule applies; the stated period runs from the invoice's own date. Start: invoice date Fri 29 Jan 2027. Under § 187 Abs. 1 BGB the day of the event (29 Jan) is not counted, so counting begins 30 Jan 2027. A 14-day period ending under § 188 Abs. 1 BGB falls on Fri 12 Feb 2027. That day is a Friday and not a public holiday in Berlin (sender's seat) or NRW (recipient's region), so no § 193 BGB shift is needed. Due date: 12 Feb 2027 (send a day earlier to allow for bank transfer time under § 675s BGB).\",\"due_date\":\"2027-02-12\",\"confidence\":\"high\",\"amount\":815}],\"remedy_type\":\"none\",\"contract\":null,\"references\":[{\"label\":\"Invoice number\",\"value\":\"SW-2027-0129\"}],\"amounts\":[815],\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Sprachinstitut Beispielwort GmbH",
+      "document_date": "2027-01-29",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay course and exam fee invoice",
+          "quote": "Please transfer the course fee no later than 14 days after the date of this invoice, quoting the invoice number.",
+          "computation": "This is a private company invoice, so no deemed-delivery rule applies; the stated period runs from the invoice's own date. Start: invoice date Fri 29 Jan 2027. Under § 187 Abs. 1 BGB the day of the event (29 Jan) is not counted, so counting begins 30 Jan 2027. A 14-day period ending under § 188 Abs. 1 BGB falls on Fri 12 Feb 2027. That day is a Friday and not a public holiday in Berlin (sender's seat) or NRW (recipient's region), so no § 193 BGB shift is needed. Due date: 12 Feb 2027 (send a day earlier to allow for bank transfer time under § 675s BGB).",
+          "due_date": "2027-02-12",
+          "confidence": "high",
+          "amount": 815
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "SW-2027-0129"
+        }
+      ],
+      "amounts": [
+        815
+      ],
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 1656,
+      "cache_read_tokens": 26152,
+      "cache_creation_tokens": 5148,
+      "cost_usd": 0.0423944,
+      "duration_ms": 22835,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 14,
+            "unit": "days",
+            "anchor": "document_date",
+            "anchor_date": "2027-01-29",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB",
+            "text": "Please transfer the course fee no later than 14 days after the date of this invoice, quoting the invoice number."
+          },
+          "document_date": "2027-01-29",
+          "sender_kind": "company",
+          "sender_name": "Sprachinstitut Beispielwort GmbH",
+          "region": "BE",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-02-12\",\"weekday\":\"Friday\",\"send_by\":\"2027-02-11\",\"summary\":\"14 days after the letter's date (Fri 29 Jan 2027) is Fri 12 Feb 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 29 Jan 2027\",\"date\":\"2027-01-29\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"14 days later: Fri 12 Feb 2027\",\"date\":\"2027-02-12\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Fri 12 Feb 2027 is a working day, so it stays\",\"date\":\"2027-02-12\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Thu 11 Feb 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-02-11\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-02-03\",\"letter_date\":\"2027-01-29\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE61 3705 0198 0005 5544 10"
+        },
+        "result": "{\"iban\":\"DE61 3705 0198 0005 5544 10\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005554410\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

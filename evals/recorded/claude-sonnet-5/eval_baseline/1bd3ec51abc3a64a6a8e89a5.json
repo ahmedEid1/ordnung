@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"61aef5ed922499b917981e8ca0fc69afa4e6700d77b350202670324cc9eb3e19\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-09-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-08-31\",\"items\":[{\"kind\":\"task\",\"title\":\"Return signed Form W-8BEN\",\"quote\":\"Please sign the enclosed form and return it to Member Services no later than\\nSeptember 13, 2027.\",\"computation\":\"The letter prints an explicit calendar date by which the signed form must reach Member Services: September 13, 2027. This is a deadline set unilaterally by a foreign (US) private company, not a German authority or a BGB-governed period, so no deemed-delivery rule, no §§187/188 BGB counting, and no German weekend/holiday shift under §193 BGB applies to it (those rules protect declarations owed under German law; here the credit union simply names the day the form must be back in their hands). The date is therefore taken as stated.\",\"due_date\":\"2027-09-13\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"bank_letter\",\"references\":[{\"label\":\"Member no.\",\"value\":\"4471-0092-18\"}],\"remedy_type\":\"none\",\"sender_name\":\"Example Harbor Federal Credit Union\",\"warnings\":[\"The sender's contact domain is 'exampleharbor.example' and its address is a generic 'Member Services' P.O.-style address with no personal contact — '.example' is a reserved placeholder domain, not a real one, so this cannot be verified as a genuine credit-union letter; confirm the request through the number or website printed on your actual account statements before signing and returning any form.\",\"The letter threatens an immediate 24% withholding on interest if the form is not returned by the deadline, a pressure tactic also used in tax-form phishing scams targeting people who moved abroad; verify legitimacy before sending any signed tax-status form (W-8BEN contains personal/tax ID data).\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-08-31",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed Form W-8BEN",
+          "quote": "Please sign the enclosed form and return it to Member Services no later than\nSeptember 13, 2027.",
+          "computation": "The letter prints an explicit calendar date by which the signed form must reach Member Services: September 13, 2027. This is a deadline set unilaterally by a foreign (US) private company, not a German authority or a BGB-governed period, so no deemed-delivery rule, no §§187/188 BGB counting, and no German weekend/holiday shift under §193 BGB applies to it (those rules protect declarations owed under German law; here the credit union simply names the day the form must be back in their hands). The date is therefore taken as stated.",
+          "due_date": "2027-09-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "bank_letter",
+      "references": [
+        {
+          "label": "Member no.",
+          "value": "4471-0092-18"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Example Harbor Federal Credit Union",
+      "warnings": [
+        "The sender's contact domain is 'exampleharbor.example' and its address is a generic 'Member Services' P.O.-style address with no personal contact — '.example' is a reserved placeholder domain, not a real one, so this cannot be verified as a genuine credit-union letter; confirm the request through the number or website printed on your actual account statements before signing and returning any form.",
+        "The letter threatens an immediate 24% withholding on interest if the form is not returned by the deadline, a pressure tactic also used in tax-form phishing scams targeting people who moved abroad; verify legitimacy before sending any signed tax-status form (W-8BEN contains personal/tax ID data)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2502,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2455,
+      "cost_usd": 0.036132000000000004,
+      "duration_ms": 31647,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

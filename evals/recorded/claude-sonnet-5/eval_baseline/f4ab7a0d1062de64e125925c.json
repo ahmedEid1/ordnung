@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"4dea940c777d47fc134400076aa964667f0a1dea47c56d6f3bc32e3cc4acfca9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-I1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-09-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"insurance\",\"sender_name\":\"Beispiel Assekuranz AG\",\"document_date\":\"2025-09-29\",\"references\":[{\"label\":\"Schadennummer\",\"value\":\"KS-25-0919-4471\"},{\"label\":\"Versicherungsschein\",\"value\":\"KH 552 104 87\"}],\"amounts\":[],\"items\":[{\"kind\":\"task\",\"title\":\"Submit cost estimate and photos of damage (or expert report if over €1,000)\",\"quote\":\"Schicken Sie uns den Kostenvoranschlag und Fotos der Schäden bitte innerhalb von 12 Werktagen nach dem Datum dieses Schreibens (Werktage sind Montag bis Samstag; Sonntage und gesetzliche Feiertage zählen nicht mit).\",\"computation\":\"This is a private deadline set by the insurer, counted from the letter's own date (29.09.2025), a Monday. Under §§187, 188 BGB the day of the triggering event is not counted, so counting starts on 30.09.2025. The letter itself defines 'Werktage' as Monday–Saturday, excluding Sundays and statutory public holidays. Counting qualifying days from 30.09.2025: 30.09 (Tue, day1), 01.10 (Wed, day2), 02.10 (Thu, day3), 03.10 (Fri) is Tag der Deutschen Einheit, a nationwide public holiday, so it does not count, 04.10 (Sat, day4), 05.10 (Sun) excluded, 06.10 (Mon, day5), 07.10 (Tue, day6), 08.10 (Wed, day7), 09.10 (Thu, day8), 10.10 (Fri, day9), 11.10 (Sat, day10), 12.10 (Sun) excluded, 13.10 (Mon, day11), 14.10 (Tue, day12). The 12th qualifying Werktag is Tuesday 14.10.2025. Since that day is itself a normal working day (not a Saturday/Sunday/holiday), no further shift is needed.\",\"due_date\":\"2025-10-14\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "insurance",
+      "sender_name": "Beispiel Assekuranz AG",
+      "document_date": "2025-09-29",
+      "references": [
+        {
+          "label": "Schadennummer",
+          "value": "KS-25-0919-4471"
+        },
+        {
+          "label": "Versicherungsschein",
+          "value": "KH 552 104 87"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "task",
+          "title": "Submit cost estimate and photos of damage (or expert report if over €1,000)",
+          "quote": "Schicken Sie uns den Kostenvoranschlag und Fotos der Schäden bitte innerhalb von 12 Werktagen nach dem Datum dieses Schreibens (Werktage sind Montag bis Samstag; Sonntage und gesetzliche Feiertage zählen nicht mit).",
+          "computation": "This is a private deadline set by the insurer, counted from the letter's own date (29.09.2025), a Monday. Under §§187, 188 BGB the day of the triggering event is not counted, so counting starts on 30.09.2025. The letter itself defines 'Werktage' as Monday–Saturday, excluding Sundays and statutory public holidays. Counting qualifying days from 30.09.2025: 30.09 (Tue, day1), 01.10 (Wed, day2), 02.10 (Thu, day3), 03.10 (Fri) is Tag der Deutschen Einheit, a nationwide public holiday, so it does not count, 04.10 (Sat, day4), 05.10 (Sun) excluded, 06.10 (Mon, day5), 07.10 (Tue, day6), 08.10 (Wed, day7), 09.10 (Thu, day8), 10.10 (Fri, day9), 11.10 (Sat, day10), 12.10 (Sun) excluded, 13.10 (Mon, day11), 14.10 (Tue, day12). The 12th qualifying Werktag is Tuesday 14.10.2025. Since that day is itself a normal working day (not a Saturday/Sunday/holiday), no further shift is needed.",
+          "due_date": "2025-10-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5750,
+      "cache_read_tokens": 13582,
+      "cache_creation_tokens": 7434,
+      "cost_usd": 0.0899604,
+      "duration_ms": 58646,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

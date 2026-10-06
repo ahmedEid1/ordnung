@@ -1,0 +1,83 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"3c05470afb3c1cc68ffaf53a3f8a54e4b91b0d3da8d86d447814a852e4a7418b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-03-25\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-J2"
+    ],
+    "prompt_head": "Today is Thursday, 2027-03-25 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Beispiel Umzugslogistik GmbH\",\"document_date\":\"2027-03-19\",\"references\":[{\"label\":\"Rechnung Nr.\",\"value\":\"UL-27-0331\"},{\"label\":\"Kunden-Nr.\",\"value\":\"K 20 914\"}],\"amounts\":[1330.78],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay moving invoice\",\"quote\":\"Bitte gleichen Sie die Rechnung innerhalb von 10 Tagen nach dem Rechnungsdatum aus, ohne Abzüge.\",\"computation\":\"Invoice date (document_date) is Fri 19.03.2027. Under § 187 Abs. 1 BGB the day of the event itself is not counted, so the 10-day period starts on 20.03.2027. Counting 10 days forward (§ 188 Abs. 1 BGB) lands on Mon 29.03.2027. However 29.03.2027 is Ostermontag (Easter Monday), a public holiday observed nationwide including NW. Under § 193 BGB, when the last day of a period for a declaration or payment falls on a Sunday, Saturday or public holiday, it shifts to the next business day: Tue 30.03.2027.\",\"due_date\":\"2027-03-30\",\"confidence\":\"high\",\"amount\":1330.78}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Beispiel Umzugslogistik GmbH",
+      "document_date": "2027-03-19",
+      "references": [
+        {
+          "label": "Rechnung Nr.",
+          "value": "UL-27-0331"
+        },
+        {
+          "label": "Kunden-Nr.",
+          "value": "K 20 914"
+        }
+      ],
+      "amounts": [
+        1330.78
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay moving invoice",
+          "quote": "Bitte gleichen Sie die Rechnung innerhalb von 10 Tagen nach dem Rechnungsdatum aus, ohne Abzüge.",
+          "computation": "Invoice date (document_date) is Fri 19.03.2027. Under § 187 Abs. 1 BGB the day of the event itself is not counted, so the 10-day period starts on 20.03.2027. Counting 10 days forward (§ 188 Abs. 1 BGB) lands on Mon 29.03.2027. However 29.03.2027 is Ostermontag (Easter Monday), a public holiday observed nationwide including NW. Under § 193 BGB, when the last day of a period for a declaration or payment falls on a Sunday, Saturday or public holiday, it shifts to the next business day: Tue 30.03.2027.",
+          "due_date": "2027-03-30",
+          "confidence": "high",
+          "amount": 1330.78
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1239,
+      "cache_read_tokens": 15671,
+      "cache_creation_tokens": 4496,
+      "cost_usd": 0.033516199999999996,
+      "duration_ms": 14871,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 10,
+            "unit": "days",
+            "anchor": "document_date",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 188 BGB",
+            "text": "Bitte gleichen Sie die Rechnung innerhalb von 10 Tagen nach dem Rechnungsdatum aus, ohne Abzüge."
+          },
+          "document_date": "2027-03-19",
+          "sender_kind": "company",
+          "sender_name": "Beispiel Umzugslogistik GmbH",
+          "recipient_region": "NW",
+          "region": "NW"
+        },
+        "result": "{\"due_date\":\"2027-03-30\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-03-25\",\"summary\":\"10 days after the letter's date (Fri 19 Mar 2027) is Mon 29 Mar 2027, a public holiday, Ostermontag, so the deadline moves to Tue 30 Mar 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Fri 19 Mar 2027\",\"date\":\"2027-03-19\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"10 days later: Mon 29 Mar 2027\",\"date\":\"2027-03-29\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 29 Mar 2027 is a public holiday, Ostermontag, so the deadline moves to Tue 30 Mar 2027\",\"date\":\"2027-03-30\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Thu 25 Mar 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-03-25\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-03-25\",\"letter_date\":\"2027-03-19\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

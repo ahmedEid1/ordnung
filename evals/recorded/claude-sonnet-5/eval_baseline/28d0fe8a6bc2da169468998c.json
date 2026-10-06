@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e5e80e7fb010ef2ea506259577a46d53748d7ed10ff81a2604a74e5d78cacf73\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-I1"
+    ],
+    "prompt_head": "Today is Monday, 2025-05-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"health_insurance\",\"sender_name\":\"BKK Musterwerk\",\"document_date\":\"2025-05-07\",\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"T274019385\"},{\"label\":\"Unser Zeichen\",\"value\":\"FK-25-11872\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of taxi travel costs\",\"quote\":\"Wenn Sie mit unserer Entscheidung nicht einverstanden sind, legen Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch ein – schriftlich oder zur Niederschrift bei der BKK Musterwerk, Am Werkstor 12, 38440 Beispielsburg.\",\"computation\":\"Letter dated (posted) Wed 2025-05-07 by a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X. Deemed delivery = 4th day after posting = Sun 2025-05-11. Unlike tax offices, the delivery day for social-law bodies does NOT move even though it falls on a Sunday (BSG B 14 AS 12/09 R). The one-month Widerspruch period (§ 84 SGG) then runs from that delivery day; per § 188 Abs. 2 BGB the period ends on the day in the following month bearing the same date number as the delivery day: 2025-06-11 (Wednesday). This day is not a Saturday, Sunday or public holiday in NRW, so no further shift under § 26 Abs. 3 SGB X is needed.\",\"due_date\":\"2025-06-11\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter rejects the reimbursement request and states no payment is due; there is no monetary amount to extract from this letter.\"]}",
+    "data": {
+      "kind": "health_insurance",
+      "sender_name": "BKK Musterwerk",
+      "document_date": "2025-05-07",
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "T274019385"
+        },
+        {
+          "label": "Unser Zeichen",
+          "value": "FK-25-11872"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of taxi travel costs",
+          "quote": "Wenn Sie mit unserer Entscheidung nicht einverstanden sind, legen Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch ein – schriftlich oder zur Niederschrift bei der BKK Musterwerk, Am Werkstor 12, 38440 Beispielsburg.",
+          "computation": "Letter dated (posted) Wed 2025-05-07 by a statutory health insurer (Krankenkasse), a social-law body under § 37 Abs. 2 SGB X. Deemed delivery = 4th day after posting = Sun 2025-05-11. Unlike tax offices, the delivery day for social-law bodies does NOT move even though it falls on a Sunday (BSG B 14 AS 12/09 R). The one-month Widerspruch period (§ 84 SGG) then runs from that delivery day; per § 188 Abs. 2 BGB the period ends on the day in the following month bearing the same date number as the delivery day: 2025-06-11 (Wednesday). This day is not a Saturday, Sunday or public holiday in NRW, so no further shift under § 26 Abs. 3 SGB X is needed.",
+          "due_date": "2025-06-11",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter rejects the reimbursement request and states no payment is due; there is no monetary amount to extract from this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3068,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2690,
+      "cost_usd": 0.04255,
+      "duration_ms": 37066,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
