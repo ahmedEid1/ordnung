@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"14b8d0085141149701ea4110a45c3af8b894581b150cfd2ac58791e5bdaf2b70\",\"mode\":\"text\",\"region\":\"HB\",\"today\":\"2027-03-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-03-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Bremen (HB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> tag"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Beispiel-Weserufer\",\"document_date\":\"2027-03-23\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"460/127/51309\"},{\"label\":\"Identifikationsnummer\",\"value\":\"57 118 402 693\"}],\"amounts\":[6418,1284],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay income tax back-payment (Nachzahlung) for 2025\",\"quote\":\"Die Nachzahlung von 1.284,00 € ist bis zum 04.05.2027 fällig.\",\"computation\":\"The letter explicitly sets the due date as 04.05.2027. Checking the weekday: 01.01.2027 is a Friday, so 04.05.2027 falls on a Tuesday - not a Saturday, Sunday or public holiday, so no shift under §108 Abs. 3 AO is needed. The stated date stands.\",\"due_date\":\"2027-05-04\",\"confidence\":\"high\",\"amount\":1284},{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Ihr Einspruch muss innerhalb eines Monats eingelegt werden; die Monatsfrist rechnet vom Ende des Tages an, an dem Ihnen der Bescheid bekannt gegeben worden ist.\",\"computation\":\"Posting date (Aufgabe zur Post) = 25.03.2027 (Thursday). The letter states the simple-letter delivery fiction: bekannt gegeben am vierten Tag nach Aufgabe zur Post (§122 Abs. 2 Nr. 1 AO) = 25.03.2027 + 4 days = 29.03.2027. However, Easter Sunday 2027 falls on 28.03.2027 (computed via the Gaussian Easter algorithm), making 29.03.2027 Ostermontag, a statutory public holiday in every German Land including Bremen. Per the established AO administrative practice (AEAO zu §122), when this fictional delivery day falls on a Saturday, Sunday or public holiday, delivery is deemed to occur on the next business day: 30.03.2027 (Tuesday). The one-month Einspruchsfrist then runs 'vom Ende des Tages' of that Bekanntgabe day, i.e. the day itself is excluded from the count (§187 Abs. 1 BGB via §108 Abs. 1 AO), and per §188 Abs. 2 BGB a month-long period that begins this way ends on the day of the following month bearing the same calendar number: 30.04.2027. That day is a Friday and not a Bremen public holiday, so no further shift applies.\",\"due_date\":\"2027-04-30\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The fictional delivery day (29.03.2027, 4th day after posting) falls on Ostermontag (Easter Monday), a public holiday; the Einspruch deadline above (30.04.2027) assumes the standard shift of the fiction to the next business day (30.03.2027) — please verify the letter's actual arrival date, since if it genuinely arrived later than this legal fiction, the one-month deadline would shift accordingly (the letter itself notes the fiction does not apply if the Bescheid 'nicht oder zu einem späteren Zeitpunkt zugegangen ist').\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Beispiel-Weserufer",
+      "document_date": "2027-03-23",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "460/127/51309"
+        },
+        {
+          "label": "Identifikationsnummer",
+          "value": "57 118 402 693"
+        }
+      ],
+      "amounts": [
+        6418,
+        1284
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay income tax back-payment (Nachzahlung) for 2025",
+          "quote": "Die Nachzahlung von 1.284,00 € ist bis zum 04.05.2027 fällig.",
+          "computation": "The letter explicitly sets the due date as 04.05.2027. Checking the weekday: 01.01.2027 is a Friday, so 04.05.2027 falls on a Tuesday - not a Saturday, Sunday or public holiday, so no shift under §108 Abs. 3 AO is needed. The stated date stands.",
+          "due_date": "2027-05-04",
+          "confidence": "high",
+          "amount": 1284
+        },
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Ihr Einspruch muss innerhalb eines Monats eingelegt werden; die Monatsfrist rechnet vom Ende des Tages an, an dem Ihnen der Bescheid bekannt gegeben worden ist.",
+          "computation": "Posting date (Aufgabe zur Post) = 25.03.2027 (Thursday). The letter states the simple-letter delivery fiction: bekannt gegeben am vierten Tag nach Aufgabe zur Post (§122 Abs. 2 Nr. 1 AO) = 25.03.2027 + 4 days = 29.03.2027. However, Easter Sunday 2027 falls on 28.03.2027 (computed via the Gaussian Easter algorithm), making 29.03.2027 Ostermontag, a statutory public holiday in every German Land including Bremen. Per the established AO administrative practice (AEAO zu §122), when this fictional delivery day falls on a Saturday, Sunday or public holiday, delivery is deemed to occur on the next business day: 30.03.2027 (Tuesday). The one-month Einspruchsfrist then runs 'vom Ende des Tages' of that Bekanntgabe day, i.e. the day itself is excluded from the count (§187 Abs. 1 BGB via §108 Abs. 1 AO), and per §188 Abs. 2 BGB a month-long period that begins this way ends on the day of the following month bearing the same calendar number: 30.04.2027. That day is a Friday and not a Bremen public holiday, so no further shift applies.",
+          "due_date": "2027-04-30",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The fictional delivery day (29.03.2027, 4th day after posting) falls on Ostermontag (Easter Monday), a public holiday; the Einspruch deadline above (30.04.2027) assumes the standard shift of the fiction to the next business day (30.03.2027) — please verify the letter's actual arrival date, since if it genuinely arrived later than this legal fiction, the one-month deadline would shift accordingly (the letter itself notes the fiction does not apply if the Bescheid 'nicht oder zu einem späteren Zeitpunkt zugegangen ist')."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 10224,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3397,
+      "cost_usd": 0.1164564,
+      "duration_ms": 107289,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -22,6 +22,15 @@
   "8": "76ef28592fbf9dd4",
   "9": "eebf578dfd9160f3"
  },
+ "reading_gaps": {
+  "1": "6b7fbe5d24a6aae2"
+ },
+ "reading_gaps_parts": {
+  "1": "2bbcb02097de1e28"
+ },
+ "reading_gaps_schema": {
+  "1": "0d7bf93979603ece"
+ },
  "transcribe": {
   "1": "0aade81ca5f0536b"
  },

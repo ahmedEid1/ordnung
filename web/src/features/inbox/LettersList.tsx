@@ -17,7 +17,7 @@ import { useOpenedTrayDocs, useTrayByDoc } from "@/features/tour/newMail";
 import { actionFromItem } from "@/features/today/selection";
 import { ActionCountdown } from "@/features/today/TopThree";
 import { api } from "@/api/endpoints";
-import { useJobProgress } from "@/api/sse";
+import { claudeWaitReason, useJobProgress } from "@/api/sse";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { NBSP, protectRefs } from "@/lib/glue";
@@ -130,7 +130,8 @@ function ReadingStatus({ doc }: { doc: Document }) {
   const job = useJobProgress(doc.id);
   const step = job?.status === "done" ? PIPELINE_STEPS.length : stageToStep(job?.stage);
   let name = doc.status === "queued" ? "Waiting to be read…" : "Reading…";
-  if (job) name = step >= PIPELINE_STEPS.length ? JOB_STAGE_COPY.done.label : `${PIPELINE_STEPS[step]?.label ?? "Reading"}…`;
+  if (claudeWaitReason(job)) name = "Waiting for Claude…";
+  else if (job) name = step >= PIPELINE_STEPS.length ? JOB_STAGE_COPY.done.label : `${PIPELINE_STEPS[step]?.label ?? "Reading"}…`;
   const detail = job ? copyFor(JOB_STAGE_COPY, job.status === "done" ? "done" : (job.stage ?? "intake")).label : undefined;
   return (
     <div className="mt-2 flex min-w-0 items-center gap-2.5">

@@ -1,6 +1,7 @@
 import { Fragment, useMemo, type ReactNode } from "react";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
+import { langProps } from "@/components/ui/ModelText";
 import { parseMarkdown, type Block, type Inline } from "./markdown";
 import type { CitationRef } from "./citations";
 import { formatInlineDates } from "@/lib/format";
@@ -14,8 +15,11 @@ export interface MarkdownProps {
   citations: ReadonlyMap<string, CitationRef> | null;
   /** Renders a validated citation chip. */
   renderCitation: (ref: CitationRef, key: string) => ReactNode;
-  /** The answer's language (its check note's label says it): a German answer's ISO dates read German. */
-  language?: "en" | "de";
+  /**
+   * The answer's language as a code (`answerLanguage`): the answer is marked with it (right to left for Arabic), and
+   * a German answer's ISO dates read German.
+   */
+  language?: string;
   /**
    * The app's today (`useTodayISO`): this year's dates leave the year out ("Thu 15 Oct"), as on every
    * other page (UI audit round 2). Without it a date written out keeps its year, and an ISO date gets one.
@@ -307,7 +311,7 @@ export function Markdown({ text, citations, renderCitation, language = "en", tod
   return (
     // a long compound ("Wohnungsgeberbestätigung") or reference wraps anywhere rather than widen the page,
     // inside any flex or grid parent too (UI audit round 1: 344 px wide at 320)
-    <div lang={language === "de" ? "de" : undefined} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
+    <div {...langProps(language, text)} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
       {blocks.map((b, i) => renderBlock(b, i, r))}
     </div>
   );

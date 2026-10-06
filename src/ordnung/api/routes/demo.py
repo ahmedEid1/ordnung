@@ -8,10 +8,11 @@ The work is done by the demo package; this module only needs these functions, lo
 * ``list_mail(ctx) -> list[MailTrayItem]``
 * ``open_mail(ctx, mail_id) -> tuple[Document, Job]`` — ingests a tray letter; ``KeyError`` for an
   unknown id.
-* ``suggested_questions() -> list[str]`` — the Ask chips (the recorded questions).
+* ``recorded_questions(ctx) -> list[str]`` — the Ask chips: the recorded questions, while their answers
+  fit the letters and to-dos as they are.
 
-Optional, used in demo mode when present: ``demo_safe_stream(events, demo=True)`` (a friendly event
-instead of a missing recording in Ask), ``paced_replay(events)`` (a recorded answer streamed at a
+Optional, used in demo mode when present: ``demo_safe_stream(events, demo=True, question=…, ctx=…)`` (a
+friendly event instead of a missing recording in Ask), ``paced_replay(events)`` (a recorded answer streamed at a
 reading pace) and ``friendly_llm_error(exc, demo=True) -> str``.
 
 Without the demo package the endpoints answer 503; outside demo mode they do not exist (404).
@@ -121,8 +122,9 @@ async def update_tour(patch: TourPatch, state: DemoDep) -> TourState:
 
 @router.get("/questions", response_model=list[str])
 async def suggested_questions(state: DemoDep) -> list[str]:
-    """The Ask page's suggested questions — word for word the ones the demo has recorded answers for."""
-    return [str(question) for question in await _call("suggested_questions")]
+    """The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none
+    once the letters or to-dos changed since the demo started (the recorded answers no longer fit)."""
+    return [str(question) for question in await _call("recorded_questions", state.ctx)]
 
 
 @router.get("/mail", response_model=list[MailTrayItem])

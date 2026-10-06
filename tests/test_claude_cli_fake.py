@@ -187,6 +187,49 @@ async def test_no_claude_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         await ClaudeCLIBackend(max_retries=0).complete(letter)
 
 
+async def test_claude_installed_after_the_backend_was_made_is_found(
+    fake: FakeClaude, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest
+) -> None:
+    """Not found when the backend was made: each call looks on PATH again, so installing Claude while
+    Ordnung runs needs no restart (and no status check in between)."""
+    path = os.environ["PATH"]
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    backend = ClaudeCLIBackend(max_retries=0)
+    assert backend.binary is None
+    with pytest.raises(ClaudeNotInstalled):
+        await backend.complete(letter)
+    monkeypatch.setenv("PATH", path)  # installed meanwhile
+    fake.play({"transcript": "extract_structured.jsonl"})
+    assert (await backend.complete(letter)).data == ANSWER
+    assert backend.binary == str(fake.path)
+
+
+@pytest.mark.parametrize("broken", ["not_executable", "moved"])
+async def test_a_claude_that_cant_be_started_is_not_installed(
+    fake: FakeClaude, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest, broken: str
+) -> None:
+    """ROB G3: an operating-system error starting ``claude`` (not executable, moved or uninstalled since it
+    was found) is :class:`ClaudeNotInstalled` with a readable message — for a reading, Ask's stream and the
+    probe behind "Run check" and ``doctor --probe`` — never a crash."""
+    found = str(fake.path)
+    backend, asking = ClaudeCLIBackend(max_retries=0), ClaudeCLIBackend(max_retries=0)
+    assert backend.binary == asking.binary == found
+    if broken == "not_executable":
+        fake.path.chmod(0o644)
+    else:
+        fake.path.rename(tmp_path / "claude-elsewhere")
+    with pytest.raises(ClaudeNotInstalled, match="could not be started"):
+        await backend.complete(letter)
+    assert backend.binary is None  # looked for again next time
+    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
+    events = [event async for event in asking.stream(request)]
+    assert [event.type for event in events] == ["error"] and "could not be started" in (events[0].error or "")
+    ok, message, _ = await claude_cli.probe(binary=found)  # Settings' "Run check" with that path
+    expected = "could not be started" if broken == "not_executable" else "was not found"
+    assert not ok and expected in message
+    assert fake.calls == []
+
+
 # --------------------------------------------------------------------------------------------------
 # answers
 # --------------------------------------------------------------------------------------------------
@@ -402,7 +445,9 @@ async def test_a_cli_that_never_reads_the_request_times_out(fake: FakeClaude, le
 
 async def test_cancelling_a_call_kills_the_whole_process_group(fake: FakeClaude, letter: LLMRequest) -> None:
     fake.play({"child": True, "lines": ['{"type": "system", "subtype": "init"}'], "hang": True})
-    task = asyncio.create_task(ClaudeCLIBackend(max_retries=0).complete(letter))
+    # only the cancel ends this call: a call timeout must not, however slow a busy machine starts the fake
+    long = letter.model_copy(update={"timeout_s": 600})
+    task = asyncio.create_task(ClaudeCLIBackend(max_retries=0).complete(long))
     assert await _eventually(lambda: bool(fake.calls), within=10), "the fake claude never started"
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -415,7 +460,7 @@ async def test_stopping_a_stream_early_kills_the_process_group(fake: FakeClaude)
     """Ask's reader goes away (the browser closed the page) after the first event."""
     fake.play({"child": True, "transcript": "ask_stream.jsonl", "hang": True})
     request = LLMRequest(
-        purpose="ask", prompt="When is the parking fine due?", system="Answer.", timeout_s=20
+        purpose="ask", prompt="When is the parking fine due?", system="Answer.", timeout_s=600
     )
     stream = ClaudeCLIBackend(max_retries=0).stream(request)
     first: StreamEvent = await anext(stream)

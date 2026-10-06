@@ -13,7 +13,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, Outlet, RouterProvider, useNavigate } from "react-router";
 import type { ReactNode } from "react";
 import { qk } from "@/api/hooks";
-import { handleServerEvent, __resetEventsForTests } from "@/api/sse";
+import { handleServerEvent, seedFromQueue, __resetEventsForTests } from "@/api/sse";
 import { ApiError } from "@/api/client";
 import type { Job, Profile } from "@/api/types";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
@@ -396,6 +396,42 @@ describe("paused banner", () => {
     expect(banner).toHaveTextContent(/^Claude is taking a break until Mon 5 Jan 2099, 15:30 · 2 letters waiting\. Usage limit reached\./);
     const row = banner.firstElementChild!;
     for (const cls of [...SHELL_GUTTERS.split(" "), PAGE_WIDTHS.default]) expect(row.className).toContain(cls);
+  });
+});
+
+describe("waiting for Claude", () => {
+  it("has no end: it names Claude connection and stays until Claude is ready", async () => {
+    stubFetch({ "/jobs": [{ id: "j1", doc_id: "doc_a", status: "queued" }] as Job[] });
+    const { client } = renderWithProviders(
+      <PageMetaProvider>
+        <PausedBanner />
+      </PageMetaProvider>,
+    );
+    act(() => handleServerEvent(client, { type: "llm.paused", data: { until: "", reason: "Claude Code isn't installed on this computer yet." } }));
+    const banner = await screen.findByRole("status");
+    expect(await within(banner).findByText("· 1 letter waiting")).toBeInTheDocument();
+    expect(banner).toHaveTextContent(
+      /^Waiting for Claude · 1 letter waiting\. Claude Code isn't installed on this computer yet\. Your letters are safe in the queue and are read as soon as Claude is connected — Claude connection\.$/,
+    );
+    expect(within(banner).getByRole("link", { name: "Claude connection" })).toHaveAttribute("href", "/settings?section=claude");
+    act(() => handleServerEvent(client, { type: "llm.resumed", data: {} }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("shows after a reload from the queue alone (right after a restart the server knows of no pause yet)", async () => {
+    const reason = "Waiting for Claude: Claude Code isn't signed in. Ordnung reads this letter as soon as Claude is connected (Settings → Claude connection).";
+    stubFetch({ "/jobs": [{ id: "j1", doc_id: "doc_a", status: "queued", waiting_reason: reason }] as Job[] });
+    renderWithProviders(
+      <PageMetaProvider>
+        <PausedBanner />
+      </PageMetaProvider>,
+    );
+    await act(() => seedFromQueue(Date.now()));
+    const banner = await screen.findByRole("status");
+    expect(await within(banner).findByText("· 1 letter waiting")).toBeInTheDocument();
+    expect(banner).toHaveTextContent(
+      /^Waiting for Claude · 1 letter waiting\. Your letters are safe in the queue and are read as soon as Claude is connected — Claude connection\.$/,
+    );
   });
 });
 

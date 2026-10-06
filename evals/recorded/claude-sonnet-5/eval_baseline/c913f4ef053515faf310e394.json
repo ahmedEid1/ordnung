@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"d8b087e1e58240a32af4e56c58564db475252d2b80ecd509df21d5d4e9c97b49\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2025-08-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-08-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document"
+  },
+  "response": {
+    "text": "{\"amounts\":[118.5],\"contract\":null,\"document_date\":\"2025-08-20\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.\",\"computation\":\"The Zustellungsurkunde on page 2 records actual delivery ('zugest. am') as 23.08.2025 (a Saturday). Since actual delivery is documented, this date governs rather than the statutory 3-day-fiction. Under §187 Abs.1 BGB (applied via §110 OWiG/§43 StPO) the day of the triggering event (delivery) is not counted; the period runs by weeks under §188 Abs.2 BGB, so it ends on the day in the last week that bears the same name as the day of the triggering event (Saturday). Two weeks after Saturday 23.08.2025 is Saturday 06.09.2025. As that is a Saturday, §193 BGB shifts the deadline to the next business day: Monday 08.09.2025 (no Brandenburg public holiday intervenes).\",\"due_date\":\"2025-09-08\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine (Geldbuße, fees and delivery costs) once the notice becomes final\",\"quote\":\"Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.\",\"computation\":\"Assuming no Einspruch is filed, Rechtskraft (finality) occurs with the expiry of the Einspruchsfrist, i.e. at the end of Monday 08.09.2025. Applying the same weekly-period rule (§188 Abs.2 BGB) with Monday as the reference day, two weeks later falls on Monday 22.09.2025, which is not a Brandenburg public holiday, so the payment falls due on that date. This computation is conditional on no Einspruch being lodged in the meantime; if an Einspruch is filed, no payment is due and this date is void.\",\"due_date\":\"2025-09-22\",\"confidence\":\"medium\",\"amount\":118.5}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBS-BB 25.441872.6\"},{\"label\":\"Kennzeichen\",\"value\":\"TF-DM 318\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Zentrale Bußgeldstelle Beispielmark · Land Brandenburg · Polizei\",\"warnings\":[\"The payment due date (22.09.2025) is an estimate contingent on the notice becoming final, i.e. on no Einspruch being filed by 08.09.2025; if an Einspruch is lodged this payment obligation does not arise.\",\"The Einspruch deadline relies on the handwritten delivery date (23.08.2025) noted on the Zustellungsurkunde copy on page 2; verify this matches the actually received envelope, as it is a Saturday, which is unusual for postal delivery and worth double-checking.\"]}",
+    "data": {
+      "amounts": [
+        118.5
+      ],
+      "contract": null,
+      "document_date": "2025-08-20",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.",
+          "computation": "The Zustellungsurkunde on page 2 records actual delivery ('zugest. am') as 23.08.2025 (a Saturday). Since actual delivery is documented, this date governs rather than the statutory 3-day-fiction. Under §187 Abs.1 BGB (applied via §110 OWiG/§43 StPO) the day of the triggering event (delivery) is not counted; the period runs by weeks under §188 Abs.2 BGB, so it ends on the day in the last week that bears the same name as the day of the triggering event (Saturday). Two weeks after Saturday 23.08.2025 is Saturday 06.09.2025. As that is a Saturday, §193 BGB shifts the deadline to the next business day: Monday 08.09.2025 (no Brandenburg public holiday intervenes).",
+          "due_date": "2025-09-08",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine (Geldbuße, fees and delivery costs) once the notice becomes final",
+          "quote": "Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.",
+          "computation": "Assuming no Einspruch is filed, Rechtskraft (finality) occurs with the expiry of the Einspruchsfrist, i.e. at the end of Monday 08.09.2025. Applying the same weekly-period rule (§188 Abs.2 BGB) with Monday as the reference day, two weeks later falls on Monday 22.09.2025, which is not a Brandenburg public holiday, so the payment falls due on that date. This computation is conditional on no Einspruch being lodged in the meantime; if an Einspruch is filed, no payment is due and this date is void.",
+          "due_date": "2025-09-22",
+          "confidence": "medium",
+          "amount": 118.5
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBS-BB 25.441872.6"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "TF-DM 318"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Zentrale Bußgeldstelle Beispielmark · Land Brandenburg · Polizei",
+      "warnings": [
+        "The payment due date (22.09.2025) is an estimate contingent on the notice becoming final, i.e. on no Einspruch being filed by 08.09.2025; if an Einspruch is lodged this payment obligation does not arise.",
+        "The Einspruch deadline relies on the handwritten delivery date (23.08.2025) noted on the Zustellungsurkunde copy on page 2; verify this matches the actually received envelope, as it is a Saturday, which is unusual for postal delivery and worth double-checking."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4972,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3217,
+      "cost_usd": 0.06321639999999999,
+      "duration_ms": 54897,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

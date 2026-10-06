@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import gc
 import io
 import struct
+import sys
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -115,6 +117,18 @@ def test_the_passphrase_is_not_trimmed() -> None:
 def test_an_empty_passphrase_is_refused() -> None:
     with pytest.raises(container.BackupError):
         EncryptedWriter(io.BytesIO(), "", kdf=FAST)
+
+
+def test_a_refused_writer_is_let_go_quietly(monkeypatch: pytest.MonkeyPatch) -> None:
+    # closing a writer refused before its header was written must not fail when it is collected
+    unraisable: list[object] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+    out = io.BytesIO()
+    with pytest.raises(container.BackupError):
+        EncryptedWriter(out, "", kdf=FAST)
+    gc.collect()
+    assert unraisable == []
+    assert out.getvalue() == b""
 
 
 # --------------------------------------------------------------------------------------------------

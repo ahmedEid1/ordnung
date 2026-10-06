@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"04f74450248356dcfccb684b5f65fa8d163370850597fdb3aa74e21405adeac3\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2027-06-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-I2"
+    ],
+    "prompt_head": "Today is Friday, 2027-06-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-06-14\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch against rejection of resident parking permit\",\"quote\":\"Gegen die Ablehnung können Sie Widerspruch erheben; er muss innerhalb eines Monats, nachdem Ihnen dieser Bescheid bekannt gegeben wurde, bei der Stadt Musterbüll, Markt 1, 25899 Musterbüll, schriftlich oder zur Niederschrift eingehen.\",\"computation\":\"Letter dated Mon 14.06.2027; no separate 'zur Post gegeben' date is stated, so the letter date is the posting day. Sender is a general (non-tax) authority (Stadt Musterbüll), so the 4-day deemed-delivery rule applies but the delivery day does NOT shift off a weekend/holiday. Counting 4 calendar days from 14.06.2027: 15.06 (day1), 16.06 (day2), 17.06 (day3), 18.06.2027 Fri (day4) = deemed delivery (Bekanntgabe). One-month Widerspruch period under § 84 SGG/§ 70 VwGO analogue (§§ 187 Abs.2, 188 Abs.2 BGB): the day of delivery (18.06) is not counted as day 1; the period ends on the day in the following month bearing the same number as the delivery day, i.e. 18.07.2027. 18.07.2027 falls on a Sunday (18.06.2027 is Fri, +30 days = +4 weeks +2 days = Sun). Since the last day is a Sunday, the deadline moves to the next working day under the general rule for objection periods (§ 193 BGB / § 31 Abs.3 VwVfG analogue): Monday 19.07.2027. No SH public holiday intervenes.\",\"due_date\":\"2027-07-19\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit declaration of permanent private use of the vehicle (optional, no deadline given)\",\"quote\":\"Reichen Sie diese Erklärung nach, prüfen wir Ihren Antrag gern erneut.\",\"computation\":\"The letter invites submission of a declaration that the applicant may permanently use the employer-registered vehicle privately, as an alternative to pursuing the Widerspruch, but states no specific date or period for doing so. No reliable due date can be computed; it is at most implicitly before any renewed decision, but there is no deadline in the text.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Kassenzeichen\",\"value\":\"BP-2027-0388\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Stadt Musterbüll – Fachdienst Verkehr\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-06-14",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch against rejection of resident parking permit",
+          "quote": "Gegen die Ablehnung können Sie Widerspruch erheben; er muss innerhalb eines Monats, nachdem Ihnen dieser Bescheid bekannt gegeben wurde, bei der Stadt Musterbüll, Markt 1, 25899 Musterbüll, schriftlich oder zur Niederschrift eingehen.",
+          "computation": "Letter dated Mon 14.06.2027; no separate 'zur Post gegeben' date is stated, so the letter date is the posting day. Sender is a general (non-tax) authority (Stadt Musterbüll), so the 4-day deemed-delivery rule applies but the delivery day does NOT shift off a weekend/holiday. Counting 4 calendar days from 14.06.2027: 15.06 (day1), 16.06 (day2), 17.06 (day3), 18.06.2027 Fri (day4) = deemed delivery (Bekanntgabe). One-month Widerspruch period under § 84 SGG/§ 70 VwGO analogue (§§ 187 Abs.2, 188 Abs.2 BGB): the day of delivery (18.06) is not counted as day 1; the period ends on the day in the following month bearing the same number as the delivery day, i.e. 18.07.2027. 18.07.2027 falls on a Sunday (18.06.2027 is Fri, +30 days = +4 weeks +2 days = Sun). Since the last day is a Sunday, the deadline moves to the next working day under the general rule for objection periods (§ 193 BGB / § 31 Abs.3 VwVfG analogue): Monday 19.07.2027. No SH public holiday intervenes.",
+          "due_date": "2027-07-19",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit declaration of permanent private use of the vehicle (optional, no deadline given)",
+          "quote": "Reichen Sie diese Erklärung nach, prüfen wir Ihren Antrag gern erneut.",
+          "computation": "The letter invites submission of a declaration that the applicant may permanently use the employer-registered vehicle privately, as an alternative to pursuing the Widerspruch, but states no specific date or period for doing so. No reliable due date can be computed; it is at most implicitly before any renewed decision, but there is no deadline in the text.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Kassenzeichen",
+          "value": "BP-2027-0388"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Stadt Musterbüll – Fachdienst Verkehr",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2703,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2610,
+      "cost_usd": 0.03858,
+      "duration_ms": 31763,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

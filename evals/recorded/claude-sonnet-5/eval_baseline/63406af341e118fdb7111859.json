@@ -1,0 +1,96 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"91c0c4a23cc12246f74d8aaaaf8f1fd8f90beb104f71198a342c1aad08c1854a\",\"mode\":\"text\",\"region\":\"BB\",\"today\":\"2026-07-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-J1"
+    ],
+    "prompt_head": "Today is Thursday, 2026-07-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Brandenburg (BB), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Jobcenter Musterhavel-Fläming\",\"document_date\":\"2026-06-30\",\"references\":[{\"label\":\"BG-Nummer\",\"value\":\"05817//0093412\"},{\"label\":\"Kundennummer\",\"value\":\"731D225509\"}],\"amounts\":[1233.96],\"items\":[{\"kind\":\"deadline\",\"title\":\"Submit signed rental contract and deposit proof\",\"quote\":\"Damit wir die neue Miete berücksichtigen können, reichen Sie bitte bis zum 14.07.2026 den unterschriebenen Mietvertrag und den Nachweis über die Kaution ein.\",\"computation\":\"The letter prints a fixed calendar date for this submission: 14.07.2026. No period calculation is needed; this is the last day the signed Mietvertrag and the Kautionsnachweis must reach the Jobcenter so the new rent can be considered from August 2026.\",\"due_date\":\"2026-07-14\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Bescheid\",\"quote\":\"Der Widerspruch muss innerhalb eines Monats nach Bekanntgabe beim Jobcenter Musterhavel-Fläming, Fläminger Weg 4, 14943 Beispielsruh (Havel), eingehen.\",\"computation\":\"Letter is dated Tue 30.06.2026 and is sent by ordinary post. Under § 37 Abs. 2 SGB X it counts as given (bekannt gegeben) on the 4th day after posting: Sat 04.07.2026 — for this social-law deemed-delivery rule that day does not shift even though it falls on a Saturday. Counting of the one-month Widerspruchsfrist then starts the next day under § 187 Abs. 1 BGB / § 26 Abs. 1 SGB X, i.e. from 04.07.2026, and under § 188 Abs. 2 BGB the month ends on the day in the following month bearing the same number: Tue 04.08.2026. That day is itself a working day in Brandenburg, so no further shift under § 26 Abs. 3 SGB X applies. The Widerspruch must reach the Jobcenter by this date (to arrive, not merely be posted by then).\",\"due_date\":\"2026-08-04\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Jobcenter Musterhavel-Fläming",
+      "document_date": "2026-06-30",
+      "references": [
+        {
+          "label": "BG-Nummer",
+          "value": "05817//0093412"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "731D225509"
+        }
+      ],
+      "amounts": [
+        1233.96
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Submit signed rental contract and deposit proof",
+          "quote": "Damit wir die neue Miete berücksichtigen können, reichen Sie bitte bis zum 14.07.2026 den unterschriebenen Mietvertrag und den Nachweis über die Kaution ein.",
+          "computation": "The letter prints a fixed calendar date for this submission: 14.07.2026. No period calculation is needed; this is the last day the signed Mietvertrag and the Kautionsnachweis must reach the Jobcenter so the new rent can be considered from August 2026.",
+          "due_date": "2026-07-14",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Bescheid",
+          "quote": "Der Widerspruch muss innerhalb eines Monats nach Bekanntgabe beim Jobcenter Musterhavel-Fläming, Fläminger Weg 4, 14943 Beispielsruh (Havel), eingehen.",
+          "computation": "Letter is dated Tue 30.06.2026 and is sent by ordinary post. Under § 37 Abs. 2 SGB X it counts as given (bekannt gegeben) on the 4th day after posting: Sat 04.07.2026 — for this social-law deemed-delivery rule that day does not shift even though it falls on a Saturday. Counting of the one-month Widerspruchsfrist then starts the next day under § 187 Abs. 1 BGB / § 26 Abs. 1 SGB X, i.e. from 04.07.2026, and under § 188 Abs. 2 BGB the month ends on the day in the following month bearing the same number: Tue 04.08.2026. That day is itself a working day in Brandenburg, so no further shift under § 26 Abs. 3 SGB X applies. The Widerspruch must reach the Jobcenter by this date (to arrive, not merely be posted by then).",
+          "due_date": "2026-08-04",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3502,
+      "cache_read_tokens": 16282,
+      "cache_creation_tokens": 6731,
+      "cost_usd": 0.0652084,
+      "duration_ms": 40968,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "anchor_date": "2026-06-30",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 37 Abs. 2 SGB X, § 84 SGG / Widerspruchsfrist",
+            "text": "Der Widerspruch muss innerhalb eines Monats nach Bekanntgabe beim Jobcenter Musterhavel-Fläming ... eingehen. Bekannt gegeben ist er am vierten Tag, nachdem wir ihn zur Post gegeben haben (§ 37 Abs. 2 SGB X)."
+          },
+          "document_date": "2026-06-30",
+          "sender_kind": "authority",
+          "sender_name": "Jobcenter Musterhavel-Fläming",
+          "remedy_type": "widerspruch",
+          "region": "BB",
+          "recipient_region": "BB",
+          "today": "2026-07-02"
+        },
+        "result": "{\"due_date\":\"2026-08-04\",\"weekday\":\"Tuesday\",\"send_by\":\"2026-07-29\",\"summary\":\"Letter dated Tue 30 Jun 2026 counts as delivered on Sat 4 Jul (this day does not move for this kind of letter); one month later is Tue 4 Aug 2026.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Tue 30 Jun 2026 (the letter's date; the real posting day can only be later)\",\"date\":\"2026-06-30\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sat 4 Jul 2026\",\"date\":\"2026-07-04\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"For social-law letters this day does not move, even though it is a Saturday\",\"date\":\"2026-07-04\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Sat 4 Jul 2026\",\"date\":\"2026-07-04\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Tue 4 Aug 2026\",\"date\":\"2026-08-04\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 4 Aug 2026 is a working day, so it stays\",\"date\":\"2026-08-04\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Wed 29 Jul 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-07-29\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgg_84\",\"title\":\"Objection in social law (Widerspruch): one month\",\"citation\":\"§ 84 Abs. 1 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgg/__84.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-07-02\",\"letter_date\":\"2026-06-30\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Brandenburg\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0d3bd3735fe08c159c8dd917ec4227f5cd515d9122f5ecd6626c580df33973b3\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2027-10-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-I1"
+    ],
+    "prompt_head": "Today is Monday, 2027-10-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldbehörde Mustersaar\",\"document_date\":\"2027-10-11\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBB 6.2-27/0921457\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"WND-NM 77\"}],\"amounts\":[228.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File objection (Einspruch) against the fine notice\",\"quote\":\"Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.\",\"computation\":\"This is a formally delivered notice (Postzustellungsurkunde); the delivery date is the one written on the envelope, no days added: zugestellt am 18.10.2027 (Monday). For an Einspruch against a Bußgeldbescheid the period is two weeks after formal delivery (§ 67 OWiG, § 43 StPO). Under §§ 187 Abs.1, 188 Abs.2 BGB the delivery day itself is not counted; a two-week period ends on the day two weeks later that bears the same name as the delivery day, i.e. Monday 01.11.2027. That day is Allerheiligen (All Saints' Day), a public holiday observed in Saarland, so under § 43 Abs. 2 StPO the deadline moves to the next working day, Tuesday 02.11.2027.\",\"due_date\":\"2027-11-02\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine once it becomes final (Rechtskraft)\",\"quote\":\"danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.\",\"computation\":\"The letter instructs not to pay before the notice is final (Rechtskraft) and to pay within two weeks after that. Assuming no Einspruch is filed, the notice becomes final the day after the objection deadline expires, i.e. 02.11.2027 (Tuesday) is the day it becomes unchallengeable/final. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day itself is not counted and the two-week payment period ends on the matching weekday two weeks later: Tuesday 16.11.2027. That day is not a public holiday in Saarland, so no shift is needed. This date is only valid if no Einspruch is lodged by 02.11.2027.\",\"due_date\":\"2027-11-16\",\"confidence\":\"medium\",\"amount\":228.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2027-11-16) is an estimate: the letter says payment is due two weeks after the notice becomes final (Rechtskraft), which only happens if no Einspruch is filed by the objection deadline (2027-11-02); filing an objection suspends any payment obligation under this notice.\",\"Verify the IBAN DE18 5900 0000 0003 8400 00 independently (e.g. via the phone number or website printed in the letterhead) before transferring money, as a general precaution with any payment instruction received by post.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldbehörde Mustersaar",
+      "document_date": "2027-10-11",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBB 6.2-27/0921457"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "WND-NM 77"
+        }
+      ],
+      "amounts": [
+        228.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File objection (Einspruch) against the fine notice",
+          "quote": "Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.",
+          "computation": "This is a formally delivered notice (Postzustellungsurkunde); the delivery date is the one written on the envelope, no days added: zugestellt am 18.10.2027 (Monday). For an Einspruch against a Bußgeldbescheid the period is two weeks after formal delivery (§ 67 OWiG, § 43 StPO). Under §§ 187 Abs.1, 188 Abs.2 BGB the delivery day itself is not counted; a two-week period ends on the day two weeks later that bears the same name as the delivery day, i.e. Monday 01.11.2027. That day is Allerheiligen (All Saints' Day), a public holiday observed in Saarland, so under § 43 Abs. 2 StPO the deadline moves to the next working day, Tuesday 02.11.2027.",
+          "due_date": "2027-11-02",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine once it becomes final (Rechtskraft)",
+          "quote": "danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.",
+          "computation": "The letter instructs not to pay before the notice is final (Rechtskraft) and to pay within two weeks after that. Assuming no Einspruch is filed, the notice becomes final the day after the objection deadline expires, i.e. 02.11.2027 (Tuesday) is the day it becomes unchallengeable/final. Applying §§ 187 Abs.1, 188 Abs.2 BGB, the day itself is not counted and the two-week payment period ends on the matching weekday two weeks later: Tuesday 16.11.2027. That day is not a public holiday in Saarland, so no shift is needed. This date is only valid if no Einspruch is lodged by 02.11.2027.",
+          "due_date": "2027-11-16",
+          "confidence": "medium",
+          "amount": 228.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2027-11-16) is an estimate: the letter says payment is due two weeks after the notice becomes final (Rechtskraft), which only happens if no Einspruch is filed by the objection deadline (2027-11-02); filing an objection suspends any payment obligation under this notice.",
+        "Verify the IBAN DE18 5900 0000 0003 8400 00 independently (e.g. via the phone number or website printed in the letterhead) before transferring money, as a general precaution with any payment instruction received by post."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3651,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3371,
+      "cost_usd": 0.051104,
+      "duration_ms": 37823,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

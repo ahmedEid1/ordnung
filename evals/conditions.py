@@ -3,7 +3,10 @@
 * ``ordnung`` — the ingestion pipeline's own logic without the app, the database or the global
   clock: the text layer (visible text only; invisible text is reported, never sent), transcription
   of pages without a text layer with the pipeline's own request, the pipeline's extraction request
-  (:func:`ordnung.ingest.extract.extract_document`, including its repair attempt), verification of
+  (:func:`ordnung.ingest.extract.read_document`, the code behind the app's ``extract_document``: its repair
+  attempt, and its one completeness re-ask when the reading check finds the reading incomplete — a replay
+  without that re-ask's recording keeps the first reading, signal ``reading_reask_missing``; with one,
+  ``reading_reask:accepted`` or ``reading_reask:rejected``), verification of
   every quote against the page text, and the rules engine for every date (``compute_due`` with the
   pipeline's confidence grading, ``compute_contract`` for contract terms). The app's check of the reading
   itself runs too (:mod:`ordnung.ingest.gaps`): an incomplete reading's code-made objection deadline is
@@ -56,15 +59,18 @@ from evals.records import (
 )
 from ordnung.assistant import rules_tools
 from ordnung.ingest.extract import (
+    MISSING_PARTS,
+    Completion,
     ExtractionError,
     ExtractionInput,
     canonical_json,
-    extract_document,
     prompt_pages,
+    read_document,
+    reask_warning,
     validation_problems,
     wrap_untrusted,
 )
-from ordnung.ingest.gaps import CHECK_SLOT
+from ordnung.ingest.gaps import CHECK_SLOT, DEADLINE_SLOT, formally_served, is_check_slot
 from ordnung.ingest.intake import render_pages
 from ordnung.ingest.pipeline import HIDDEN_TEXT_WARNING, NO_TEXT_ERROR, injection_warnings
 from ordnung.ingest.plan import (
@@ -88,12 +94,13 @@ from ordnung.llm.base import (
     LLMError,
     LLMRequest,
     LLMResponse,
+    ReplayMiss,
     StreamEvent,
     ToolCall,
 )
 from ordnung.llm.claude_cli import extract_json
 from ordnung.llm.runtime import LLMService
-from ordnung.llm.schemas import extraction_schema, schema_for, transcription_schema
+from ordnung.llm.schemas import COMPLETION_REQUIRED, extraction_schema, schema_for, transcription_schema
 from ordnung.models import ContractTerms, DocumentExtraction, DocumentKind, ItemKind, Page, RemedyType
 from ordnung.rules import RuleContext, compute_contract, is_private_sender, scope_for_party_kind
 from ordnung.rules.calendar_de import REGION_NAMES
@@ -117,6 +124,7 @@ ORDNUNG_PROMPTS = (
     "extract",
     "extract_text",
     "extract_repair",
+    "reading_gaps",
     "transcribe_system",
     "transcribe",
 )
@@ -175,7 +183,11 @@ class MeteredBackend:
     """Wraps the shared backend for one task: sets the per-call timeout and records every call.
 
     Retries and backoff are the wrapped backend's job (``ClaudeCLIBackend`` retries transient errors
-    and timeouts, and a bad structured output once).
+    and timeouts, and a bad structured output once). A replay miss is no call — nothing was sent and
+    nothing answered — so it is not recorded: a replay without the completeness re-ask's recording
+    (``reading_reask_missing``) accounts exactly the calls the recorded run made. This holds for every miss
+    (an extraction's too: an errored prediction, scored only with ``--allow-errors``, counts no call for it).
+    A failed call is logged under this wrapper's backend name (``replay`` in a replay-first live run).
     """
 
     def __init__(self, inner: LLMBackend, log: CallLog, *, timeout_s: float | None = None) -> None:
@@ -191,6 +203,8 @@ class MeteredBackend:
         started = time.perf_counter()
         try:
             resp = await self.inner.complete(self._prepare(req))
+        except ReplayMiss:
+            raise
         except LLMError as exc:
             self.log.calls.append(
                 CallRecord(
@@ -334,8 +348,9 @@ def ordnung_rule_context(
     all — follows the sender's kind, name and remedy notice; the letter's kind and the end a termination
     announces (graded against the letter's ``pages``) route the dates of high-stakes letters
     (``rules.routing``); and a court's letter is marked as one, and a labour court's, from the sender's
-    name. Only what the app learns from the person is left out: the benchmark has no confirmed arrival
-    day and no sender record with its Land.
+    name. Of what the app learns from the person, the benchmark has no confirmed arrival day; the Land the
+    letterhead names stands in for the sender's Land, which the app knows only once the person sets it
+    (``scripts.eval_without_land`` replays the benchmark without it).
     """
     sender = extraction.sender
     remedy = extraction.remedy
@@ -359,6 +374,7 @@ def ordnung_rule_context(
         end_date_grounding=end_date_grounding(extraction, pages),
         court=is_court(name),
         labour_court=is_labour_court(name),
+        formal_service=formally_served(pages),
     )
 
 
@@ -420,7 +436,7 @@ def _ordnung_item(verified: VerifiedItem, computed: ComputedDate) -> PredictedIt
         rule_ids=list(receipt.rule_ids) if receipt else [],
         explanation=receipt.summary if receipt else "",
         notes=list(receipt.warnings) if receipt else [],
-        origin="code" if verified.slot_key == CHECK_SLOT else "model",
+        origin="code" if is_check_slot(verified.slot_key) else "model",
     )
 
 
@@ -431,6 +447,27 @@ def _payment_signal(extraction: DocumentExtraction) -> str | None:
         return None
     iban = normalize_iban(payment.iban)
     return None if iban_valid(iban) else invalid_iban_message(iban)
+
+
+#: The signal of a reading kept because the replay has no recording of its completeness re-ask.
+REASK_MISSING = "reading_reask_missing"
+#: The letters whose completeness re-ask a replay may miss (the first reading is then kept, signal
+#: :data:`REASK_MISSING`). None: the one letter the re-ask fires on in the runs recorded before it existed,
+#: ``holdout2-adversarial-injection_visible-1``, has had its re-ask recorded since (2026-10-03). A re-ask with
+#: no recording is a replay error like every other missing recording — a change that makes the check fire
+#: must record that call, never score the first reading silently.
+REASK_UNRECORDED: frozenset[str] = frozenset()
+
+
+def reask_signals(completion: Completion | None) -> list[str]:
+    """The completeness re-ask's signal, if the reading had one: ``reading_reask_missing`` when the replay has
+    no recording of it (the first reading was kept, as recorded), else ``reading_reask:accepted`` or
+    ``reading_reask:rejected`` (its answer replaced the first reading, or not)."""
+    if completion is None:
+        return []
+    if completion.outcome == "missing":
+        return [REASK_MISSING]
+    return [f"reading_reask:{completion.outcome}"]
 
 
 async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService, *, model: str) -> Prediction:
@@ -461,9 +498,23 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
         simulated_today=entry.today,
     )
     try:
-        extraction = await extract_document(llm, data, model=model)
+        # the app's extraction, with its repair and its completeness re-ask, judged against the to-do the check
+        # below would file; a replay without the re-ask's recording keeps the first reading (the run as recorded
+        # before the re-ask existed) — for the allowed letters only. Every other error is the run's, as live.
+        reading = await read_document(
+            llm,
+            data,
+            model=model,
+            unrecorded=(ReplayMiss,) if entry.id in REASK_UNRECORDED else (),
+            arrived=date.fromisoformat(entry.today),
+            injected=bool(found_injection),
+        )
     except (ExtractionError, ClaudeBadOutput) as exc:
         return base.model_copy(update={"failed": str(exc), "warnings": warnings, "signals": signals})
+    extraction = reading.extraction
+    signals += reask_signals(reading.completion)
+    if reading.completion is not None and reading.completion.accepted:
+        warnings.append(reask_warning(reading.completion.gap, injected=bool(found_injection)))
     verification = verify_extraction(
         entry.id,
         extraction,
@@ -471,9 +522,13 @@ async def run_ordnung(entry: Entry, document: PreparedDocument, llm: LLMService,
         check_reading=True,
         injected=bool(found_injection),
         today=date.fromisoformat(entry.today),
+        cross_check=reading.cross_check,
     )
     if any(verified.slot_key == CHECK_SLOT for verified in verification.items):
         signals.append("reading_incomplete")
+    if any(verified.slot_key.split("#")[0] == DEADLINE_SLOT for verified in verification.items):
+        # a fixed date the letter sets (pay by, send by) that the reading left out: code filed it (origin "code")
+        signals.append("deadline_left_out")
     # the placeholder of an empty reading without a remedy notice names no obligation: it is never scored
     scored = [
         verified
@@ -697,7 +752,10 @@ def ordnung_prompt_hashes() -> dict[str, tuple[str, str]]:
     """``name → (version, digest)`` of the app prompts (and extraction schema) the ordnung condition sends.
 
     The app's replay keys hold only the prompt versions, so the runner compares these digests with
-    the ones stored next to the recorded answers (see ``evals.run``).
+    the ones stored next to the recorded answers (see ``evals.run``). What the completeness re-ask adds in code is
+    locked under ``reading_gaps``'s version: the fields its stricter schema requires besides the extraction's
+    (the rest of that schema is the extraction's, locked under ``extract_system`` — a change there changes the
+    re-ask's key too, ``<base>.c<n>``) and the parts its note names (model-facing text written in code).
     """
     hashes = {
         name: (version, text_sha(body))
@@ -705,6 +763,8 @@ def ordnung_prompt_hashes() -> dict[str, tuple[str, str]]:
         for version, body in [ordnung_prompts.load(name)]
     }
     hashes["extraction_schema"] = (hashes["extract_system"][0], text_sha(canonical_json(extraction_schema())))
+    hashes["reading_gaps_schema"] = (hashes["reading_gaps"][0], text_sha(canonical_json(COMPLETION_REQUIRED)))
+    hashes["reading_gaps_parts"] = (hashes["reading_gaps"][0], text_sha(canonical_json(MISSING_PARTS)))
     hashes["transcription_schema"] = (
         hashes["transcribe_system"][0],
         text_sha(canonical_json(transcription_schema())),

@@ -11,8 +11,11 @@ silently disappears.
 - The *Ask* agent only has **read-only** MCP tools; there are no write tools in v1.
 - No model output or document classification can close, cancel, dismiss, mark missed or delete an
   obligation without an explicit user click (a cancellation confirmation becomes an Idea: "Confirm?").
-- Reprocessing merges and never overwrites user-modified rows; deleting goes to trash first and shows
-  how many open deadlines would be removed.
+- Reprocessing merges and never overwrites user-modified rows; deleting shows how many open deadlines
+  would be removed before it happens. (*Superseded in part:* this said deleting goes to trash first. The
+  web app has always deleted a letter for good after that confirmation, and the CLI deletes none; there
+  is no Trash page, and only the raw API's `DELETE` without `purge` still moves a letter to a trash. See
+  [ADR 0014](0014-proof-files-are-deleted-for-good.md).)
 - Legally operative sentences in letters come from fixed templates; the model writes only polite
   free text and the translation, and checks reject unknown § citations and new identifiers.
 

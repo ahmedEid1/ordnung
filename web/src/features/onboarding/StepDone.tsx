@@ -85,7 +85,7 @@ export function StepDone({ firstName, skippedAi, headingRef }: { firstName: stri
         eyebrow="Setup complete"
         description={
           skippedAi
-            ? "Add your first letters — they are stored and searchable now, and read as soon as Claude is connected."
+            ? "Add your first letters — Ordnung stores them now and reads them as soon as Claude is connected."
             : `Add your first letters — ${ACCEPTED_SHORT}. Ordnung reads them and files every date and amount.`
         }
       >

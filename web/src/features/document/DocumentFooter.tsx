@@ -56,6 +56,16 @@ export function keepTogether(text: string): string {
   return [head, ...rest.map((part) => part.replace(/ /g, "\u00a0"))].join("\u00a0· ");
 }
 
+/**
+ * Where the letter went: nowhere while it is private, or while no model call carried it — the API knows
+ * (`given_to_model`): a letter that waits, or whose call never started (Claude not installed), was not sent.
+ */
+export function sentText(detail: DocumentDetail): string {
+  if (detail.document.ai_private) return "This letter never left your computer.";
+  if (!detail.given_to_model) return "Not sent to Claude. The letter hasn't left your computer.";
+  return "The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on this computer.";
+}
+
 export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const navigate = useNavigate();
@@ -77,13 +87,10 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
         <Icon className="mt-[3px] size-3.5 shrink-0" aria-hidden />
         <span className="min-w-0 [overflow-wrap:anywhere]">{keepTogether(provenanceText(doc))}</span>
       </p>
-      <p className="mt-2 text-[12px] leading-5 text-muted">
-        {doc.ai_private
-          ? "This letter never left your computer."
-          : "The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on this computer."}
-      </p>
+      <p className="mt-2 text-[12px] leading-5 text-muted">{sentText(detail)}</p>
       <div className="mt-4 flex flex-wrap gap-2">
-        {!doc.ai_private && !busy ? (
+        {/* a letter that couldn't be read has its "Try again" at the top: no second button for the same thing */}
+        {!doc.ai_private && !busy && doc.status !== "failed" ? (
           <Button
             size="sm"
             icon={RotateCw}

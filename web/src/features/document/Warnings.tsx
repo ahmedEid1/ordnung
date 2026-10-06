@@ -14,7 +14,7 @@ import { api } from "@/api/endpoints";
 import { qk, useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { GROUNDING_COPY } from "@/lib/copy";
-import { formatDate, glueText, toISODate } from "@/lib/format";
+import { daysUntil, formatDate, glueText, toISODate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/DateText";
@@ -22,8 +22,11 @@ import { Callout } from "@/components/ui/Callout";
 import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
 import { Glossary } from "@/components/ui/Glossary";
 import { Input } from "@/components/ui/Field";
+import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
-import { arrivalSavedNote, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { focusAfterLeaving } from "@/features/today/focus";
+import { useLetterLanguage } from "./WhyThisDate";
+import { arrivalSavedNote, isCourtServed, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
@@ -99,12 +102,32 @@ function withoutPleaseCheck(w: string): string {
 const GAP_WARNING = /^(?:Claude's reading of this letter came back almost blank|This letter explains how to (?:object|challenge it in court), but Claude's reading)/;
 
 /**
+ * The warning that Claude's first answer left something out and Ordnung asked once more, using the second answer
+ * (`reask_warning` in `src/ordnung/ingest/extract.py`). Shown among the letter's warnings; never a scam sign.
+ */
+export const REASK_WARNING = /^Claude's first answer for this letter left out/;
+
+/**
+ * The action of the cross-check Ordnung keeps beside that second answer after an almost blank first one, in the
+ * slot of its own to-do (`CROSS_CHECK_ACTION` in `src/ordnung/ingest/extract.py`).
+ */
+export const CROSS_CHECK = /^Ordnung's first reading of this letter came back blank/;
+
+/**
+ * The warning that Claude's reading left out a date the letter sets (pay by, send by) and Ordnung added it as a
+ * to-do of its own (`deadline_warning` in `src/ordnung/ingest/gaps.py`): no scam sign, and said only while one of
+ * those to-dos still needs checking.
+ */
+const DEADLINE_WARNING = /^Claude's reading of this letter left out /;
+
+/**
  * Warnings shown in the scam banner / generic list (the hidden-text one has its own banner, the online demo's
  * own note sits in the verdict, the count of unconfirmed dates is said by their own cards, the incomplete
  * reading's note only while its to-do needs checking).
  */
 function otherWarnings(doc: Document, items: Item[]): string[] {
   const checking = items.some((i) => i.slot_key === READING_CHECK_SLOT && needsCheck(i));
+  const checkingDates = items.some((i) => isDeadlineCheck(i) && needsCheck(i));
   const shown = doc.warnings.filter(
     (w) =>
       w.trim() &&
@@ -112,9 +135,22 @@ function otherWarnings(doc: Document, items: Item[]): string[] {
       !(doc.hidden_text && isHiddenTextWarning(w)) &&
       !w.startsWith(DEMO_NOTE) &&
       !UNCONFIRMED_DATES.test(w.trim()) &&
-      (checking || !GAP_WARNING.test(w.trim())),
+      (checking || !GAP_WARNING.test(w.trim())) &&
+      (checkingDates || !DEADLINE_WARNING.test(w.trim())),
   );
   return squareIbanClaims(shown, doc.payment?.iban ? doc.payment.iban_valid : null);
+}
+
+const WARNINGS_ID = "letter-warnings";
+const checkHeadingId = (itemId: string) => `check-${itemId}`;
+
+/**
+ * A "Please check" card is about to leave (confirmed, dated, done or dismissed): once it has, focus goes to the card
+ * now in its place, or to the to-dos' heading — where the to-do is listed — when no card is left, never to <body>
+ * (UX audit U4).
+ */
+function focusAfterChecked(itemId: string) {
+  focusAfterLeaving(() => Array.from(document.querySelectorAll<HTMLElement>(`#${WARNINGS_ID} h2`)), checkHeadingId(itemId), "todos-title");
 }
 
 export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
@@ -149,7 +185,7 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
 
   if (!blocks.length) return null;
   return (
-    <section aria-label="Warnings and things to check" className="space-y-3">
+    <section id={WARNINGS_ID} aria-label="Warnings and things to check" className="space-y-3">
       {blocks}
     </section>
   );
@@ -167,7 +203,15 @@ const TOP_SIGNS = 3;
 function scamSigns(reasons: string[]): string[] {
   const rank = (w: string) =>
     /^possible scam/i.test(w) ? 0 : /iban|payee|account|bank/i.test(w) ? 1 : /deadline|hours|threat|pressure|not to contact/i.test(w) ? 2 : 3;
-  return reasons.filter((w) => !/^please check\b/i.test(w) && !GAP_WARNING.test(w.trim())).sort((a, b) => rank(a) - rank(b));
+  return reasons
+    .filter(
+      (w) =>
+        !/^please check\b/i.test(w) &&
+        !GAP_WARNING.test(w.trim()) &&
+        !REASK_WARNING.test(w.trim()) &&
+        !DEADLINE_WARNING.test(w.trim()),
+    )
+    .sort((a, b) => rank(a) - rank(b));
 }
 
 function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc: Document; reasons: string[] }) {
@@ -304,13 +348,18 @@ function AdviceCard({ type, addressee }: { type: "klage" | "unclear"; addressee:
  * kind may be an authority's (a company, insurer, utility or employer), so a late arrival may not move
  * the date — the question says so, and the toast after saving says what the engine did.
  */
+/** How many days after the letter's own date an envelope date still counts (`LETTER_DATE_SPAN` in src/ordnung/ingest/gaps.py). */
+const ENVELOPE_SPAN_DAYS = 14;
+
 function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: Item[]; mayBePublic: boolean }) {
   const todayISO = useTodayISO();
   const qc = useQueryClient();
   const served = isServed(doc, items);
+  // a court's letter, or an authority's served with a Postzustellungsurkunde: the same envelope, other words
+  const sender = isCourtServed(doc, items) ? "the court's letter" : "the letter";
   const update = useUpdateDocument();
-  // A court's letter counts from the date the postman wrote on the envelope, often days before it was
-  // opened — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
+  // A court's letter, or an authority's served with a Postzustellungsurkunde, counts from the date the postman
+  // wrote on the yellow envelope, often days before it was opened or picked up — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
   // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
   // sets later by mistake (review round 2 of phase 2: a dismissal uploaded after a holiday saved "today").
   const highStakes = HIGH_STAKES.has(doc.kind ?? "");
@@ -363,9 +412,14 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     title?.focus({ preventScroll: true });
     title?.scrollIntoView({ block: "start" });
     if (served) {
+      // an authority's letter served with a Postzustellungsurkunde: a date more than two weeks after the letter's own
+      // is no envelope date of this letter's — the letter's date is kept (`envelope_start` in src/ordnung/ingest/gaps.py)
+      const far = sender === "the letter" && Boolean(doc.doc_date) && daysUntil(date, doc.doc_date!) > ENVELOPE_SPAN_DAYS;
       // a start the letter itself names counts when it is earlier (see "Why this date?")
       toast.success("Thanks — dates updated", {
-        description: `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
+        description: far
+          ? `${formatDate(date, { style: "short" })} is more than two weeks after the letter's date, so we still count from the letter's date, the earliest it can be — see “Why this date?”.`
+          : `Counting from ${formatDate(date, { style: "short" })}, the delivery date on the envelope — or from an earlier start the letter names.`,
       });
       return;
     }
@@ -392,8 +446,8 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
           <p className="mt-1 text-[13.5px] leading-relaxed text-ink/85">
             {served ? (
               <>
-                {subject} from the day the court's letter was delivered — the postman wrote that date on the yellow envelope it
-                came in. Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
+                {subject} from the day {sender} was delivered — the postman wrote that date on the yellow envelope it came
+                in, also when it was left at the post office for you to pick up (not the day you picked it up or opened it). Until you tell us, we count from the letter date{doc.doc_date ? ` (${formatDate(doc.doc_date, { style: "day" })})` : ""}, the
                 earliest possible.
               </>
             ) : (
@@ -456,18 +510,34 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
  */
 export const READING_CHECK_SLOT = "check:reading";
 
+/**
+ * The slot of a to-do Ordnung files itself for a fixed date the letter sets for the person (pay by, send by) that
+ * Claude's reading left out (`DEADLINE_SLOT` in `src/ordnung/ingest/gaps.py`): `check:deadline#2026-10-15-payment`, one per date and kind
+ */
+export const DEADLINE_CHECK_SLOT = "check:deadline";
+
+/** A to-do Ordnung filed for a date the reading left out ({@link DEADLINE_CHECK_SLOT}). */
+export function isDeadlineCheck(item: Pick<Item, "slot_key">): boolean {
+  return (item.slot_key ?? "").split("#")[0] === DEADLINE_CHECK_SLOT;
+}
+
 /** Why a to-do needs checking, under its title. */
 function checkReason(item: Item, scam: boolean, notFound: boolean): string {
   if (scam)
     return "This letter shows signs of a scam: don't pay before you've checked with the sender, using contact details you already know.";
   if (item.slot_key === READING_CHECK_SLOT) {
-    // the placeholder "Read this letter yourself" is a task; the objection deadline, dated or not, a deadline
+    // the placeholder "Read this letter yourself" is a task, and so is its cross-check beside a second answer
+    // Ordnung used (ADR 0016); the objection deadline, dated or not, a deadline
     if (item.kind === "task")
-      return "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do something by a date, give this to-do that date with “Set a date”.";
+      return CROSS_CHECK.test(item.action ?? "")
+        ? "Ordnung's first reading of this letter came back blank, so it asked Claude once more and used the second answer. Check the letter for a deadline Claude may have missed; if it gives one, give this to-do that date with “Set a date”."
+        : "Claude's reading of this letter came back almost blank. Read the letter yourself; if it asks you to do something by a date, give this to-do that date with “Set a date”.";
     return item.due_date
       ? "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left it out."
       : "Ordnung found the letter's instructions on how to object but couldn't work out the date from them — enter the deadline with “Set a date”.";
   }
+  if (isDeadlineCheck(item))
+    return "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.";
   return notFound ? GROUNDING_COPY.unverified.label + "." : "The date or amount doesn't match the sentence it came from.";
 }
 
@@ -506,9 +576,19 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   const own = item.slot_key === READING_CHECK_SLOT;
   // "Read this letter yourself": reading it is the whole task — when the letter asks for nothing, it's done
   const placeholder = own && item.kind === "task";
+  // the letter's words, in the letter's language
+  const quoteLang = useLetterLanguage(ev?.doc_id);
+  // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
+  // page (UX audit U4), and after a failed save the keyboard is still where it was; once saved, the card leaves
+  const unlessBusy = (run: () => void) => () => {
+    if (pending) return;
+    focusAfterChecked(item.id);
+    run();
+  };
+  const busy = pending || undefined;
 
   return (
-    <CheckCard>
+    <CheckCard headingId={checkHeadingId(item.id)}>
       <p className="mt-1 text-[15px] font-medium leading-snug text-ink wrap-break-word">
         {own ? <WithGermanTerms text={item.title} /> : item.title}
         {item.due_date && !scam ? (
@@ -520,7 +600,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       </p>
       <p className="mt-1 text-[13px] leading-5 text-ink/75">{checkReason(item, scam, notFound)}</p>
       {ev?.quote ? (
-        <blockquote lang="de" className="mt-2 text-[13.5px] leading-relaxed text-ink">
+        <blockquote lang={quoteLanguage({ text: ev.quote, language: quoteLang }) ?? "de"} className="mt-2 text-[13.5px] leading-relaxed text-ink">
           <button type="button" onClick={() => select(`item:${item.id}:${item.evidence.indexOf(ev)}`)} className="min-h-6 text-left hover:underline">
             <span className="marker box-decoration-clone px-0.5">“{ev.quote}”</span>
           </button>
@@ -528,10 +608,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : null}
       {scam ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+          <Button size="sm" variant="secondary" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
             Not a real to-do
           </Button>
-          <Button size="sm" variant="ghost" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+          <Button size="sm" variant="ghost" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
             It's a real to-do
           </Button>
         </div>
@@ -540,7 +620,10 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
           className="mt-3 flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (date) changeDate(item, date, () => setEditing(false));
+            if (!date) return;
+            // a date of the person's own needs no check: the card leaves
+            focusAfterChecked(item.id);
+            changeDate(item, date, () => setEditing(false));
           }}
         >
           <label className="sr-only" htmlFor={`date-${item.id}`}>
@@ -557,19 +640,19 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {placeholder ? (
-            <Button size="sm" variant="secondary" icon={Check} onClick={() => markDone(item, { title: "Marked as read" })} disabled={pending}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => markDone(item, { title: "Marked as read" }))} aria-disabled={busy}>
               I've read it — nothing to do
             </Button>
           ) : own && !item.due_date ? null : (
             // an undated deadline of Ordnung's own has no date to call correct: "Correct" would file it undated for good
-            <Button size="sm" variant="secondary" icon={Check} onClick={() => confirmItem(item)} disabled={pending}>
+            <Button size="sm" variant="secondary" icon={Check} onClick={unlessBusy(() => confirmItem(item))} aria-disabled={busy}>
               Correct
             </Button>
           )}
           <Button size="sm" variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
             {item.due_date ? "Change date" : "Set a date"}
           </Button>
-          <Button size="sm" variant="ghost" icon={X} onClick={() => dismiss(item)} disabled={pending}>
+          <Button size="sm" variant="ghost" icon={X} onClick={unlessBusy(() => dismiss(item))} aria-disabled={busy}>
             Not a real to-do
           </Button>
         </div>
@@ -582,13 +665,13 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
  * The one "Please check" card — a to-do to confirm and the reading's other warnings look alike: the same
  * box, icon and heading (UI audit round 1: an eyebrow h2 on one, a callout's bold title on the other).
  */
-function CheckCard({ children }: { children: ReactNode }) {
+function CheckCard({ headingId, children }: { headingId?: string; children: ReactNode }) {
   return (
     <div className="rounded-2xl border border-warn/30 bg-warn-soft px-4 py-4 sm:px-5">
       <div className="flex gap-3">
         <TriangleAlert className="mt-px size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="eyebrow leading-5 text-warn-ink">Please check</h2>
+          <h2 id={headingId} className="eyebrow leading-5 text-warn-ink">Please check</h2>
           {children}
         </div>
       </div>

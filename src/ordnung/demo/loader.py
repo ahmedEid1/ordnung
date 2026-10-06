@@ -3,7 +3,8 @@
 * :func:`build_demo` creates a fresh demo data directory: the persona's profile, ``settings.demo``,
   the simulated today (meta ``simulated_today``), then every sample that is *not* in the tray, read
   one by one in manifest order through the real pipeline with the manifest's received dates; then
-  the day's triggers, the weekly review and the brief. Backends: ``replay`` — strict replay of the
+  the day's triggers, the weekly review and the brief; then every record it wrote is dated at the start
+  of the simulated day (:func:`stamp_start_of_day`). Backends: ``replay`` — strict replay of the
   recorded fixtures; ``record`` — replay what exists and record the rest with the live ``claude``
   CLI, refusing any document that is not a sample. Recording also plays every combination of opened
   tray letters and asks the suggested questions in each, so the demo can answer them whichever
@@ -32,8 +33,10 @@ import sqlite3
 import tempfile
 from collections.abc import AsyncIterator, Callable, Iterator, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, time, tzinfo
 from pathlib import Path
 from typing import Any, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from platformdirs import user_data_dir
 from pydantic import BaseModel, ValidationError
@@ -63,14 +66,13 @@ from ordnung.locking import LOCK_NAME
 from ordnung.models import (
     AppSettings,
     BriefOutput,
-    CaptureOutput,
     DocumentExtraction,
     DraftOutput,
     Profile,
     ReviewOutput,
     TranscriptionOutput,
 )
-from ordnung.secretary.brief import generate_brief
+from ordnung.secretary.brief import brief_key, generate_brief, get_brief
 from ordnung.secretary.review import run_review
 from ordnung.tick import SIMULATED_TODAY_KEY, DailyTick, local_today
 
@@ -89,7 +91,6 @@ OUTPUT_MODELS: dict[str, type[BaseModel]] = {
     "review": ReviewOutput,
     "brief": BriefOutput,
     "draft": DraftOutput,
-    "capture": CaptureOutput,
 }
 DUMP_TABLES = (
     "meta",
@@ -497,12 +498,47 @@ async def _secretary(ctx: AppContext, run: _BuildRun) -> None:
     await generate_brief(store, ctx.llm, today)
 
 
+#: The columns a build stamps with the clock (``clock.now_iso``): when a record was added, changed or read, and
+#: when an activity entry or a model call was logged.
+STAMPED_COLUMNS = frozenset({"created_at", "updated_at", "processed_at", "ai_processed_at", "ts"})
+
+
+def start_of_day(day: date, zone: str) -> str:
+    """00:00 of ``day`` in the time zone ``zone`` (UTC when it is unknown), as a UTC timestamp."""
+    try:
+        tz: tzinfo = ZoneInfo(zone)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = UTC
+    return datetime.combine(day, time(0), tzinfo=tz).astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def stamp_start_of_day(store: Store) -> None:
+    """Date every record the build wrote on the simulated day at 00:00 of that day in the person's time zone,
+    whatever the time the demo was built at: a record stamped at 05:36 UTC was "changed" after a calendar
+    export made at 07:00 in Berlin, so the Idea to add the dates to the calendar came back right after the
+    download instead of going away. Letters keep the days they arrived on (``_added_on_arrival``); none of
+    these stamps is an input of a recorded model call, Ask's ledger fingerprint or the demo check."""
+    start = start_of_day(local_today(store), store.get_profile().timezone)
+    with store.tx() as conn:
+        tables = [row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+        for table in tables:
+            columns = {row[1] for row in conn.execute(f'PRAGMA table_info("{table}")')} & STAMPED_COLUMNS
+            for column in sorted(columns):
+                conn.execute(f'UPDATE "{table}" SET "{column}" = ? WHERE "{column}" > ?', (start, start))
+    brief = get_brief(store, local_today(store))
+    if brief is not None and brief.generated_at is not None and brief.generated_at > start:
+        store.set_meta(
+            brief_key(local_today(store)), brief.model_copy(update={"generated_at": start}).model_dump_json()
+        )
+
+
 async def _build_base(target: Path, plan: _Plan, run: _BuildRun) -> None:
     ctx = build_context(target, backend_obj=run.backend)
     try:
         _seed(ctx, plan.manifest)
         await _read_library(ctx, plan, run)
         await _secretary(ctx, run)
+        stamp_start_of_day(ctx.store)
     finally:
         ctx.close()
 

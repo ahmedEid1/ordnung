@@ -41,8 +41,12 @@ GALLERY_PER_FAMILY = 2
 HOLDOUT_SPLIT = "holdout"
 #: The split written after the release's last change to how letters are read, recorded once, nothing tuned on it (evals/generate.py).
 HOLDOUT2_SPLIT = "holdout2"
-#: The held-out splits: a run on either is accepted wherever a held-out run is expected.
-HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT)
+#: The split written after the code freeze, audited blind, recorded once, nothing tuned on it (evals/generate.py).
+HOLDOUT3_SPLIT = "holdout3"
+#: The held-out splits: a run on any of them is accepted wherever a held-out run is expected.
+HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT, HOLDOUT3_SPLIT)
+#: The results of ``scripts/eval_without_land.py``: Ordnung replayed with and without the sender's Land.
+WITHOUT_LAND_SCHEMA = "ordnung-eval-without-land/1"
 
 #: Categorical slots 1–4 of the reference palette, in this fixed order (validated as a set on the light
 #: surface for adjacent bars; aqua and yellow are below 3:1, so every bar carries its value as text).
@@ -546,6 +550,9 @@ def render_markdown(
     holdout_rescored: Mapping[str, Any] | None = None,
     holdout2_run: Mapping[str, Any] | None = None,
     holdout2_rescored: Mapping[str, Any] | None = None,
+    without_land: Mapping[str, Any] | None = None,
+    holdout3_run: Mapping[str, Any] | None = None,
+    holdout3_rescored: Mapping[str, Any] | None = None,
 ) -> str:
     """``docs/evals.md`` for one or more runs (one per model; the first is the headline).
 
@@ -559,14 +566,25 @@ def render_markdown(
     code: one more row in its table, labelled re-scored and not held-out, never in its place (see
     :func:`check_holdout_rescored`). ``holdout2_run`` and ``holdout2_rescored`` are the same for the
     holdout2 split (written after the release's last change to how letters are read), shown in a section of their own
-    after the holdout one. Either slot accepts a run on either held-out split; each section is rendered
-    for its run's split.
+    after the holdout one. ``holdout3_run`` and ``holdout3_rescored`` are the same for the holdout3 split
+    (written after the code freeze, audited blind), shown in a section of their own after the holdout2 one.
+    Any of these slots accepts a run on any held-out split; each section is rendered for its run's split.
+    ``without_land`` is ``scripts/eval_without_land.py``'s results: Ordnung replayed on
+    each split with and without the sender's Land (see :func:`check_without_land`), shown in a section of its
+    own — the app's numbers until the person sets a sender's Land.
     """
     if not runs:
         return render_pending_markdown()
     main = runs[0]
     meta = main["meta"]
-    for held_out, held_out_rescored in ((holdout_run, holdout_rescored), (holdout2_run, holdout2_rescored)):
+    if without_land is not None:
+        check_without_land(without_land)
+    held_out_pairs = (
+        (holdout_run, holdout_rescored),
+        (holdout2_run, holdout2_rescored),
+        (holdout3_run, holdout3_rescored),
+    )
+    for held_out, held_out_rescored in held_out_pairs:
         if held_out is not None:
             check_holdout_run(held_out)
         if held_out_rescored is not None:
@@ -575,17 +593,14 @@ def render_markdown(
                     "a re-scored holdout run is shown beside the held-out run: give the held-out run too"
                 )
             check_holdout_rescored(held_out, held_out_rescored)
-    if (
-        holdout_run is not None
-        and holdout2_run is not None
-        and holdout_run["meta"].get("split") == holdout2_run["meta"].get("split")
-    ):
-        raise ValueError("the two held-out runs are runs on two different held-out splits")
+    check_distinct_held_out_splits(holdout_run, holdout2_run, holdout3_run)
     sections = [
-        _intro(main, prompt_runs, holdout_run, holdout2_run),
+        _intro(main, prompt_runs, holdout_run, holdout2_run, without_land, holdout3_run=holdout3_run),
         _headline(main, chart, rescored),
         _holdout_section(main, holdout_run, holdout_rescored) if holdout_run else "",
         _holdout_section(main, holdout2_run, holdout2_rescored) if holdout2_run else "",
+        _holdout_section(main, holdout3_run, holdout3_rescored) if holdout3_run else "",
+        _without_land_section(without_land) if without_land else "",
         _rescored_section(main, rescored) if rescored else "",
         _prompt_section(main, rescored, prompt_runs, prompt_note) if prompt_runs else "",
         _taxonomy_section(main),
@@ -605,9 +620,19 @@ def render_markdown(
             holdout_split=holdout_run["meta"].get("split") if holdout_run else HOLDOUT_SPLIT,
             holdout2_model=holdout2_run["meta"].get("model") if holdout2_run else None,
             holdout2_split=holdout2_run["meta"].get("split") if holdout2_run else HOLDOUT2_SPLIT,
+            without_land=without_land is not None,
+            holdout3_model=holdout3_run["meta"].get("model") if holdout3_run else None,
+            holdout3_split=holdout3_run["meta"].get("split") if holdout3_run else HOLDOUT3_SPLIT,
         ),
     ]
     return "\n\n".join(section.strip() for section in sections if section.strip()) + "\n"
+
+
+def check_distinct_held_out_splits(*held_out_runs: Mapping[str, Any] | None) -> None:
+    """The held-out runs given for one page are runs on different held-out splits; raises ``ValueError`` if not."""
+    splits = [run["meta"].get("split") for run in held_out_runs if run is not None]
+    if len(splits) != len(set(splits)):
+        raise ValueError("the two held-out runs are runs on two different held-out splits")
 
 
 def _held_out_line(holdout_run: Mapping[str, Any]) -> str:
@@ -616,6 +641,11 @@ def _held_out_line(holdout_run: Mapping[str, Any]) -> str:
     every = set(CONDITIONS) <= set(recorded)
     who = "Every condition" if every else " and ".join(_label(c) for c in recorded)
     verb = "was" if every or len(recorded) == 1 else "were"
+    if holdout_run["meta"].get("split") == HOLDOUT3_SPLIT:
+        return (
+            f"\n> {who} {verb} also recorded once on the fresh holdout3 split ({holdout_run['meta'].get('date')}), "
+            "written after the code freeze and audited blind (“Held-out run: the holdout3 split”)."
+        )
     if holdout_run["meta"].get("split") == HOLDOUT2_SPLIT:
         return (
             f"\n> {who} {verb} also recorded once on the fresh holdout2 split ({holdout_run['meta'].get('date')}), "
@@ -632,6 +662,9 @@ def _intro(
     prompt_runs: Sequence[Mapping[str, Any]] = (),
     holdout_run: Mapping[str, Any] | None = None,
     holdout2_run: Mapping[str, Any] | None = None,
+    without_land: Mapping[str, Any] | None = None,
+    *,
+    holdout3_run: Mapping[str, Any] | None = None,
 ) -> str:
     meta = results["meta"]
     backend = {"replay": "recorded outputs (replay)", "live": "live model calls"}.get(
@@ -662,9 +695,14 @@ def _intro(
             f"\n> Ordnung was run again on {', '.join(dates)} with the extraction prompt the app uses now "
             "(“The prompt the app uses now”); the numbers above stay those of the published run."
         )
-    for held_out in (holdout_run, holdout2_run):
+    for held_out in (holdout_run, holdout2_run, holdout3_run):
         if held_out is not None:
             added += _held_out_line(held_out)
+    if without_land is not None:
+        added += (
+            f"\n> Ordnung was replayed on {without_land['meta'].get('date')} without the sender's Land, as the app "
+            "runs until the person sets it (“Without the sender's Land”)."
+        )
     return f"""# Benchmark: who gets German deadlines right?
 
 > Generated by `python -m evals.run` on {meta.get("date")} from {backend}. Model `{meta.get("model")}`,
@@ -863,13 +901,13 @@ the tool results recorded when they ran.
 
 
 def check_holdout_run(results: Mapping[str, Any]) -> None:
-    """A held-out run is one complete run on a held-out split (holdout or holdout2), of Ordnung alone or
+    """A held-out run is one complete run on a held-out split (holdout, holdout2 or holdout3), of Ordnung alone or
     with the baselines; raises ``ValueError`` if not."""
     meta = results["meta"]
     split = meta.get("split")
     if split not in HELD_OUT_SPLITS:
         raise ValueError(
-            f"a held-out run is a run on the {' or '.join(HELD_OUT_SPLITS)} split, not on {split!r}"
+            f"a held-out run is a run on the {', '.join(HELD_OUT_SPLITS[:-1])} or {HELD_OUT_SPLITS[-1]} split, not on {split!r}"
         )
     if meta.get("partial"):
         raise ValueError(f"a held-out run covers the whole {split} split; this run was filtered")
@@ -929,6 +967,18 @@ def _holdout_row(label: str, metrics: Mapping[str, Any], published: Mapping[str,
     ]
 
 
+def reask_outcomes(results: Mapping[str, Any]) -> dict[str, str]:
+    """The letters whose Ordnung prediction used a recorded completeness re-ask (ADR 0016): entry id →
+    ``accepted`` or ``rejected`` — model answers a replay of a held-out run's recordings adds to them."""
+    found: dict[str, str] = {}
+    for entry in results.get("entries") or []:
+        prediction = ((entry.get("conditions") or {}).get("ordnung") or {}).get("prediction") or {}
+        for signal in prediction.get("signals") or []:
+            if str(signal).startswith("reading_reask:"):
+                found[str(entry["id"])] = str(signal).split(":", 1)[1]
+    return found
+
+
 def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, Any]) -> str:
     """What the re-scored row is: the held-out recordings replayed on code with a check written after the
     held-out run and informed by its late dates — so not held-out (the file's ``meta.note`` follows)."""
@@ -941,8 +991,18 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
         else "informed by it"
     )
     note = " ".join(str(meta.get("note") or "").split())
+    reasked = reask_outcomes(rescored)
+    outputs = (
+        "the held-out run's recorded outputs plus "
+        f"{len(reasked)} model answer{'s' if len(reasked) != 1 else ''} recorded after it — the completeness "
+        "re-ask (ADR 0016) of "
+        + ", ".join(f"`{entry}` ({outcome})" for entry, outcome in sorted(reasked.items()))
+        + " —"
+        if reasked
+        else "the same recorded outputs"
+    )
     return (
-        "**Re-scored, not held-out.** The row “Ordnung, re-scored” replays the same recorded outputs with the "
+        f"**Re-scored, not held-out.** The row “Ordnung, re-scored” replays {outputs} with the "
         f"code of commit `{meta.get('commit') or '?'}`{_commit_note(dict(meta))} ({meta.get('date')}). That code "
         f"has a check written after the held-out run and {informed}, so the {holdout['meta'].get('split')} split is no "
         "longer held-out for it: the held-out row above stays the held-out number."
@@ -952,15 +1012,24 @@ def _holdout_rescored_note(holdout: Mapping[str, Any], rescored: Mapping[str, An
 
 def _held_out_intro(name: str) -> str:
     """What a held-out split is and when its letters were written (the method sentence of its section)."""
+    if name == HOLDOUT3_SPLIT:
+        return """The holdout3 split is a third fresh sample of the same template families (variants I and J, with
+new senders, recipients, wording, layout, dates, amounts and regions, among them Länder the earlier
+splits used little) and of the same adversarial attack classes. **The holdout3 letters were written
+after the code freeze, audited blind, are recorded once, and nothing was tuned on them.** No prompt and
+no code change was informed by these letters."""
     if name == HOLDOUT2_SPLIT:
         return """The holdout2 split is a second fresh sample of the same template families (variants G and H, with
 new senders, recipients, wording, layout, dates, amounts and regions) and of the same adversarial
 attack classes. **The holdout2 letters were written after the release's last change to how letters are
-read, are recorded once, and nothing was tuned on them.** No prompt was informed by these letters. Two
-code changes came after them: a rules-table date their label audit found, which changes no date on them
-(see the note below); and a check for incomplete readings (`ingest/gaps.py`), with a guard on readings'
-objection dates calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
-re-scored row only, never in the held-out row."""
+read, are recorded once, and nothing was tuned on them.** Three changes came after them: a rules-table
+date their label audit found, which changes no date on them (see the note below);
+a check for incomplete readings (`ingest/gaps.py`), with a guard on readings' objection dates
+calibrated on every split's recordings, written after Ordnung's empty reading of `holdout2-adversarial-injection_visible-1`, which changes that one letter's date in a
+re-scored row only, never in the held-out row; and, because of that same reading, a prompt that asks
+Claude once more when a reading comes back incomplete (ADR 0016) — the one prompt informed by these
+letters — whose answer for that letter is now recorded (one more live call, on 2026-10-03) and used
+in the re-scored row only."""
     return """The test split was meant to be held out, but extraction prompts 9 to 12 were each recorded on it, so
 it no longer is. The holdout split is a fresh sample of the same template families (variants E and
 F, with new senders, wording, layout, dates and amounts) and of the same adversarial attack classes.
@@ -972,7 +1041,7 @@ page, “the held-out run” is the first recording on the test split."""
 def _holdout_section(
     published: Mapping[str, Any], holdout: Mapping[str, Any], rescored: Mapping[str, Any] | None = None
 ) -> str:
-    """The run on a held-out split (holdout or holdout2): its own table, with the published run's accuracy
+    """The run on a held-out split (holdout, holdout2 or holdout3): its own table, with the published run's accuracy
     beside each row — and, after it, Ordnung re-scored on later code (``rescored``), labelled as not held-out."""
     meta = holdout["meta"]
     name = str(meta.get("split"))
@@ -1124,6 +1193,71 @@ held-out**; the sections below describe the published run.
 {table}
 
 {tail}"""
+
+
+def check_without_land(results: Mapping[str, Any]) -> None:
+    """``scripts/eval_without_land.py``'s results (both replays of every split it ran); raises ``ValueError``
+    if not."""
+    if results.get("schema") != WITHOUT_LAND_SCHEMA or not results.get("splits"):
+        raise ValueError(f"not a results file of scripts/eval_without_land.py ({WITHOUT_LAND_SCHEMA})")
+
+
+def _without_land_section(without_land: Mapping[str, Any]) -> str:
+    """Ordnung as the app runs it until the person sets a sender's Land, beside the benchmark's own setup."""
+    meta, splits = without_land["meta"], without_land["splits"]
+    rows = [
+        [
+            f"`{split}`",
+            rate(numbers["with_land"]["due_date_accuracy"], counts=True),
+            rate(numbers["without_land"]["due_date_accuracy"], counts=True),
+            rate(numbers["without_land"]["dangerous_late_rate"], ci=False),
+            f"{numbers['letterhead_land']} of {numbers['entries']}",
+        ]
+        for split, numbers in splits.items()
+    ]
+    table = _table(
+        [
+            "Split",
+            "With the letterhead's Land",
+            "Without the sender's Land",
+            "Dangerous late",
+            "Letters whose letterhead names a Land",
+        ],
+        rows,
+    )
+    changed = [change for numbers in splits.values() for change in numbers["changed"]]
+    early = sorted(-change["days_off"] for change in changed if change["direction"] == "early")
+    late = sum(int(numbers["without_land"]["dangerous_late_rate"]["k"]) for numbers in splits.values())
+    spread = f"{early[0]}–{early[-1]}" if early and early[0] != early[-1] else f"{early[0] if early else 0}"
+    late_text = "no date is late" if late == 0 else f"{late} dates are dangerously late"
+    letters = "\n".join(
+        f"- `{change['entry_id']}` ({change['letterhead_land'] or 'no Land'}): {human_date(change['without_land'])} "
+        f"instead of {human_date(change['with_land'])}"
+        + (
+            ""
+            if change["with_land"] == change["expected"]
+            else f", the label {human_date(change['expected'])}"
+        )
+        for change in changed
+    )
+    path = f"evals/results/{results_filename(str(meta.get('date')), str(meta.get('model')), 'without-land')}"
+    return f"""## Without the sender's Land
+
+Every condition on this page is given the holiday Land the dataset names: for Ordnung, the Land printed on
+the letterhead is the sender's. The app has no such Land: it knows a sender's Land only once the person sets
+it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
+this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
+delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
+commit `{meta.get("commit") or "?"}` ({meta.get("date")}; `python -m scripts.eval_without_land`, results in
+`{path}`); no model was called. **The “without” column is the app's own result for a sender whose Land the
+person has not set.**
+
+{table}
+
+Without the Land, {len(changed)} dates change; {len(early)} of them come out {spread} days early, and
+{late_text}. The letters (with the Land their letterhead names):
+
+{letters}"""
 
 
 def _taxonomy_section(results: Mapping[str, Any]) -> str:
@@ -1606,9 +1740,11 @@ output. None has tools, except *LLM + rules tool*: its only tools are Ordnung's 
 (`ordnung mcp --rules-only`, no file, web or shell access), whose "today" is the letter's — a
 `today` the model passes is not used (in recordings made before that pin it was; the tool-use table
 counts those calls) — with a cost cap of $1 per call so a looping agent would be stopped. The holiday Land comes from the
-dataset for every condition (the letterhead's Land,
-else the person's): the baselines are told it in the prompt, Ordnung's rules engine receives it as
-the app would get it from the sender's address or the person's settings; none has to infer it. The baselines' prompts ask for step-by-step working before each date, tell the model to
+dataset for every condition (the Land printed on the letterhead, about 30 % of letters, else the
+person's): the baselines are told it in the prompt and Ordnung's rules engine receives the letterhead's
+Land as the sender's; none has to infer it. The app does not have it: it knows a sender's Land only once
+the person sets it for that sender, and until then uses nationwide holidays and the 3-day rule, at lower
+confidence (early, never late). The app's own results are the rows “Without the sender's Land”. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
 verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
@@ -1655,9 +1791,13 @@ def _reproduce_section(
     holdout_split: str = HOLDOUT_SPLIT,
     holdout2_model: str | None = None,
     holdout2_split: str = HOLDOUT2_SPLIT,
+    without_land: bool = False,
+    holdout3_model: str | None = None,
+    holdout3_split: str = HOLDOUT3_SPLIT,
 ) -> str:
-    """How to rerun the page; ``holdout_model`` / ``holdout2_model`` are the held-out runs' own models (on
-    ``holdout_split`` / ``holdout2_split``), which may differ from ``meta``'s."""
+    """How to rerun the page; ``holdout_model`` / ``holdout2_model`` / ``holdout3_model`` are the held-out runs' own
+    models (on ``holdout_split`` / ``holdout2_split`` / ``holdout3_split``), which may differ from ``meta``'s;
+    ``without_land``: the page shows the replay without the sender's Land."""
     model = meta.get("model", "sonnet")
     split = meta.get("split", "test")
     held = (
@@ -1677,6 +1817,24 @@ def _reproduce_section(
         )
     else:
         later_held = ""
+    if holdout3_model:
+        held += (
+            f"\npython -m evals.run --split {holdout3_split} --model {holdout3_model} --results-dir /tmp/{holdout3_split} "
+            "# replayed on the checked-out code (not the held-out number)"
+        )
+        later_held += (
+            " The run on the holdout3 split joins the page with `--holdout3-run evals/results/<holdout3 run>.json "
+            "[--holdout3-rescored …] [--holdout3-note …]` and never rewrites it either."
+        )
+    if without_land:
+        held += (
+            "\npython -m scripts.eval_without_land   "
+            "# Ordnung on every split with and without the sender's Land (replayed, no tokens)"
+        )
+        later_held += (
+            " The replay without the sender's Land joins it with `--without-land "
+            "evals/results/<date>-<model>-without-land.json`."
+        )
     added = sorted(meta.get("added_conditions") or {})
     later = "".join(
         f"\n{_label(name)} was added after the run: it is recorded on its own (`python -m evals.run --live "
@@ -1693,6 +1851,9 @@ python -m evals.run --split {split} --model {model}          # recompute from re
 python -m evals.run --live --split {split} --model {model}   # call the model and record new outputs{held}
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
+
+Plain `ordnung eval` (like the first command) also writes `evals/results/<today>-{model}-{split}.json`;
+pass `--results-dir` to keep the checkout clean.
 
 Recorded outputs live in `evals/recorded/<model>/` (keyed like the app's replay fixtures), the full
 results with every prediction in `evals/results/`. A replay scores the recorded outputs with the
@@ -2044,6 +2205,9 @@ def write_docs(
     holdout_rescored: Mapping[str, Any] | None = None,
     holdout2_run: Mapping[str, Any] | None = None,
     holdout2_rescored: Mapping[str, Any] | None = None,
+    without_land: Mapping[str, Any] | None = None,
+    holdout3_run: Mapping[str, Any] | None = None,
+    holdout3_rescored: Mapping[str, Any] | None = None,
 ) -> tuple[Path, Path | None]:
     """Regenerate ``docs/evals.md`` (and the chart of the first run); returns both paths."""
     for run in runs:
@@ -2052,15 +2216,10 @@ def write_docs(
                 f"a {run['meta'].get('split')} run is shown beside the published run (holdout_run, holdout2_run), never "
                 "as the page's headline"
             )
-    for held_out in (holdout_run, holdout2_run):
+    for held_out in (holdout_run, holdout2_run, holdout3_run):
         if held_out is not None:
             check_holdout_run(held_out)
-    if (
-        holdout_run is not None
-        and holdout2_run is not None
-        and holdout_run["meta"].get("split") == holdout2_run["meta"].get("split")
-    ):
-        raise ValueError("the two held-out runs are runs on two different held-out splits")
+    check_distinct_held_out_splits(holdout_run, holdout2_run, holdout3_run)
     chart: Path | None = None
     reference = None
     if runs:
@@ -2078,6 +2237,9 @@ def write_docs(
             holdout_rescored=holdout_rescored,
             holdout2_run=holdout2_run,
             holdout2_rescored=holdout2_rescored,
+            without_land=without_land,
+            holdout3_run=holdout3_run,
+            holdout3_rescored=holdout3_rescored,
         ),
         encoding="utf-8",
     )
@@ -2167,6 +2329,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="with --holdout2-run: a replay of the holdout2 recordings with the current code, shown as one more "
         "row of its table, labelled re-scored and not held-out",
     )
+    parser.add_argument(
+        "--holdout3-run",
+        type=Path,
+        metavar="RUN.json",
+        help="the run on the holdout3 split (written after the code freeze, audited blind, recorded once; Ordnung "
+        "alone or every condition), shown in its own section after the holdout2 one",
+    )
+    parser.add_argument(
+        "--holdout3-note",
+        type=Path,
+        metavar="FILE",
+        help="with --holdout3-run: a written note on that recording, stored in its results file and shown with it",
+    )
+    parser.add_argument(
+        "--holdout3-rescored",
+        type=Path,
+        metavar="RUN.json",
+        help="with --holdout3-run: a replay of the holdout3 recordings with the current code, shown as one more "
+        "row of its table, labelled re-scored and not held-out",
+    )
+    parser.add_argument(
+        "--without-land",
+        type=Path,
+        metavar="RUN.json",
+        help="the results of scripts/eval_without_land.py (Ordnung replayed with and without the sender's Land), "
+        "shown in a section of their own",
+    )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:
         parser.error("give results files or --pending")
@@ -2219,6 +2408,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.holdout2_rescored and not args.holdout2_run:
         parser.error("--holdout2-rescored goes with --holdout2-run")
     holdout2_rescored = load_results(args.holdout2_rescored) if args.holdout2_rescored else None
+    if args.holdout3_note and not args.holdout3_run:
+        parser.error("--holdout3-note goes with --holdout3-run")
+    if args.holdout3_note:  # kept in the results file, like --holdout-note
+        results = load_results(args.holdout3_run)
+        note = " ".join(args.holdout3_note.read_text(encoding="utf-8").split())
+        write_json(args.holdout3_run, {**results, "meta": {**results["meta"], "holdout_note": note}})
+    holdout3_run = load_results(args.holdout3_run) if args.holdout3_run else None
+    if args.holdout3_rescored and not args.holdout3_run:
+        parser.error("--holdout3-rescored goes with --holdout3-run")
+    holdout3_rescored = load_results(args.holdout3_rescored) if args.holdout3_rescored else None
+    without_land = load_results(args.without_land) if args.without_land else None
     try:
         docs, chart = write_docs(
             runs,
@@ -2231,6 +2431,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             holdout_rescored=holdout_rescored,
             holdout2_run=holdout2_run,
             holdout2_rescored=holdout2_rescored,
+            without_land=without_land,
+            holdout3_run=holdout3_run,
+            holdout3_rescored=holdout3_rescored,
         )
     except ValueError as exc:
         parser.error(str(exc))

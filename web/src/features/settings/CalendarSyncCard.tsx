@@ -477,6 +477,9 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
   const [mode, setMode] = useState<CalendarSyncMode>(status.mode);
   const [disconnecting, setDisconnecting] = useState(false);
   const previewId = useId();
+  // how many events the calendar gets now: the saved mode's preview (the status never builds them)
+  const current = useCalendarSyncPreview(status.mode);
+  const events = current.data?.events.length;
   const where = status.calendar_name ?? hostOf(status.url);
   const last = lastSyncLine(status.last_sync);
   const needsPassword = !status.password_saved || status.paused;
@@ -521,7 +524,8 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
             {status.username} · <span className="font-mono text-[12.5px]"><BreakablePath path={status.url ?? ""} /></span>
           </p>
           <p role="status" className={cn("mt-2 text-[13px] leading-5", last.tone === "warn" ? "text-warn-ink" : "text-ink/85")}>
-            {last.text} {status.synced} of {status.events} {status.events === 1 ? "event is" : "events are"} in the calendar.
+            {last.text}
+            {events === undefined ? null : ` ${status.synced} of ${events} ${events === 1 ? "event is" : "events are"} in the calendar.`}
           </p>
         </div>
       </div>

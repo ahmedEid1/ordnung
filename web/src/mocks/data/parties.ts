@@ -13,7 +13,7 @@ function party(p: P): Party {
     phone: null,
     website: null,
     notes: null,
-    region: "NW",
+    region: null,
     ibans: [],
     created_at: ts("2026-01-10"),
     updated_at: ts("2026-09-20"),
@@ -43,7 +43,6 @@ export const PARTIES: Party[] = [
     address: "Postfach 10 20 30, 12340 Musterstadt",
     email: "kuendigung@funknetz.example",
     website: "funknetz.example",
-    region: null,
   }),
   party({
     id: "pty_fitwell",
@@ -72,7 +71,6 @@ export const PARTIES: Party[] = [
     address: "Versicherungsallee 9, 12349 Musterstadt",
     email: "service@muster-versicherung.example",
     ibans: ["DE84520503530000554433"],
-    region: null,
   }),
   party({
     id: "pty_bkk",
@@ -118,6 +116,9 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Personalnummer", value: "WS-0417" }],
     address: "Innovationsring 17, 12345 Musterstadt",
     email: "people@mustertech.example",
+    // reading a letter never sets a sender's Land; the demo's high-stakes receipts (scripts/gen_mock_high_stakes.py)
+    // count this one as set — as Sam would set it in the drawer ("Which state is this sender in?")
+    region: "NW",
   }),
   party({
     id: "pty_techmarkt",
@@ -127,7 +128,6 @@ export const PARTIES: Party[] = [
     address: "Handelsstraße 50, 12341 Musterstadt",
     email: "buchhaltung@techmarkt.example",
     ibans: ["DE70123478000048213000"],
-    region: null,
   }),
   party({
     id: "pty_dentist",
@@ -168,7 +168,6 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Scholar ID", value: "GF-2025-0311" }],
     email: "scholars@globalfutures.example",
     website: "globalfutures.example/portal",
-    region: null,
   }),
   party({
     id: "pty_musterbank",
@@ -192,6 +191,7 @@ export const PARTIES: Party[] = [
     kind: "authority",
     identifiers: [{ label: "Geschäftsnummer", value: "26-4471902-0-3" }],
     address: "58084 Hagen",
+    region: "NW", // set, like Muster Tech's: the court payment order's generated receipts count NRW's holidays
   }),
 ];
 

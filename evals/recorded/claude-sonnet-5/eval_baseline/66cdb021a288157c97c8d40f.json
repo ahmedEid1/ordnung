@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"7a21e5c8707b49066f50330902111052056c7bd8b29c467150587341dfe60245\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-01-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Mahngericht Beispielstadt – Zentrale Mahnabteilung\",\"document_date\":\"2027-01-08\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"27-0108447-1-9\"}],\"amounts\":[980,143.3,126.5,1249.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the claimed amount (Mahnbescheid)\",\"quote\":\"Der Betrag ist bis zum 15.01.2027 zu zahlen.\",\"computation\":\"The letter states a fixed calendar date for payment, 15.01.2027, rather than a period to be counted from delivery. Used as printed.\",\"due_date\":\"2027-01-15\",\"confidence\":\"medium\",\"amount\":1249.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The place names used throughout the letter are literal German placeholder words (\\\"Beispielstadt\\\" = \\\"Example City\\\", \\\"Beispielfeld\\\" = \\\"Example Field\\\", claimant \\\"Beispiel Online-Spielothek Ltd.\\\" = \\\"Example Online-Casino Ltd.\\\"), which no real German Mahngericht or court document would use — this strongly suggests the letter is a template, test document, or forgery rather than a genuine court Mahnbescheid.\",\"A genuine German Mahnbescheid is legally required to include a Rechtsbehelfsbelehrung informing the recipient of the right to file a Widerspruch (objection) within two weeks of service, before any Vollstreckungsbescheid can be requested; this letter contains no such instruction at all and instead presents a flat payment deadline, which is inconsistent with the real Mahnverfahren procedure and is a red flag for a fake or deceptive dunning letter.\",\"The letter instructs payment exclusively to a private law firm's account (Kanzlei Brandner Forderungsservice, IBAN DE10 7005 0000 0044 7120 91) and explicitly states the court itself will not accept payment, combined with an urgent threat of immediate enforcement without further hearing — this payee and pressure pattern should be independently verified (e.g. by contacting the actual Amtsgericht / Mahngericht for the stated Geschäftszeichen) before sending any money.\",\"The underlying claim arises from an online gambling (\\\"Spielothek\\\") usage contract; such claims can have disputed legal enforceability in Germany depending on the operator's licensing status at the time, so the validity of the debt itself should be checked, ideally with legal advice, before paying.\",\"Because of the strong indications that this document may not be an authentic court Mahnbescheid, the computed payment due date (15.01.2027) and the statutory two-week Widerspruch period that would normally apply to a real Mahnbescheid could not be reliably established from this letter alone; confidence on the payment deadline is therefore only medium.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Mahngericht Beispielstadt – Zentrale Mahnabteilung",
+      "document_date": "2027-01-08",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "27-0108447-1-9"
+        }
+      ],
+      "amounts": [
+        980,
+        143.3,
+        126.5,
+        1249.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the claimed amount (Mahnbescheid)",
+          "quote": "Der Betrag ist bis zum 15.01.2027 zu zahlen.",
+          "computation": "The letter states a fixed calendar date for payment, 15.01.2027, rather than a period to be counted from delivery. Used as printed.",
+          "due_date": "2027-01-15",
+          "confidence": "medium",
+          "amount": 1249.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The place names used throughout the letter are literal German placeholder words (\"Beispielstadt\" = \"Example City\", \"Beispielfeld\" = \"Example Field\", claimant \"Beispiel Online-Spielothek Ltd.\" = \"Example Online-Casino Ltd.\"), which no real German Mahngericht or court document would use — this strongly suggests the letter is a template, test document, or forgery rather than a genuine court Mahnbescheid.",
+        "A genuine German Mahnbescheid is legally required to include a Rechtsbehelfsbelehrung informing the recipient of the right to file a Widerspruch (objection) within two weeks of service, before any Vollstreckungsbescheid can be requested; this letter contains no such instruction at all and instead presents a flat payment deadline, which is inconsistent with the real Mahnverfahren procedure and is a red flag for a fake or deceptive dunning letter.",
+        "The letter instructs payment exclusively to a private law firm's account (Kanzlei Brandner Forderungsservice, IBAN DE10 7005 0000 0044 7120 91) and explicitly states the court itself will not accept payment, combined with an urgent threat of immediate enforcement without further hearing — this payee and pressure pattern should be independently verified (e.g. by contacting the actual Amtsgericht / Mahngericht for the stated Geschäftszeichen) before sending any money.",
+        "The underlying claim arises from an online gambling (\"Spielothek\") usage contract; such claims can have disputed legal enforceability in Germany depending on the operator's licensing status at the time, so the validity of the debt itself should be checked, ideally with legal advice, before paying.",
+        "Because of the strong indications that this document may not be an authentic court Mahnbescheid, the computed payment due date (15.01.2027) and the statutory two-week Widerspruch period that would normally apply to a real Mahnbescheid could not be reliably established from this letter alone; confidence on the payment deadline is therefore only medium."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6079,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2511,
+      "cost_usd": 0.07194400000000001,
+      "duration_ms": 69137,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

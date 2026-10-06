@@ -628,6 +628,8 @@ export type DocumentPatch = Schemas["DocumentPatch"];
 export type ItemCreate = Schemas["ItemCreate"];
 export type ItemPatch = Schemas["ItemPatch"];
 export type ContractPatch = Schemas["ContractPatch"];
+/** `PATCH /api/parties/{id}`: the Land a sender is in (`null`: "Don't know"). */
+export type PartyPatch = Schemas["PartyPatch"];
 export type SuggestionPatch = Schemas["SuggestionPatch"];
 export type DraftCreate = Schemas["DraftCreate"];
 export type DraftPatch = Schemas["DraftPatch"];

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"87753f9d76fb4c7e9f9aebc2f8f883bdd6de4d5f0e19258e82c8edfa6b74c610\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-12-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-I3"
+    ],
+    "prompt_head": "Today is Saturday, 2026-12-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[43],\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwiesen\",\"document_date\":\"2026-12-21\",\"remedy_type\":\"einspruch\",\"contract\":null,\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/318/07452\"},{\"label\":\"Vertragsnummer\",\"value\":\"BSK 4471209-06\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against Arbeitnehmer-Sparzulage assessment\",\"quote\":\"Rechtsbehelfsbelehrung: Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterwiesen erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.\",\"computation\":\"Letter is dated Monday 21.12.2026; assuming (absent other information) that it was also handed to the post (Aufgabe zur Post) on that date, the statutory delivery fiction of §122 Abs.2 AO ('am vierten Tag nach der Aufgabe zur Post', as quoted: 'Als bekannt gegeben gilt ein Bescheid, den wir mit der Post verschicken, am vierten Tag nach der Aufgabe zur Post') places deemed delivery on the 4th day after 21.12.2026, i.e. 25.12.2026. 25.12. (1. Weihnachtstag) and 26.12. (2. Weihnachtstag) are statutory holidays in NW, and 27.12.2026 is a Sunday; the fiction therefore shifts to the next Werktag, Monday 28.12.2026, which counts as Bekanntgabe. The one-month Einspruch period of §355 AO begins the day after Bekanntgabe (§108 Abs.1 AO, §187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 28.01.2027. That date is a Thursday, not a weekend or NW holiday, so no further shift applies. Final deadline: 28.01.2027.\",\"due_date\":\"2027-01-28\",\"confidence\":\"medium\",\"amount\":null}],\"warnings\":[\"The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated; the due date assumes it matches the printed letter date (21.12.2026), which is the common default but could be wrong if posting was delayed.\"]}",
+    "data": {
+      "amounts": [
+        43
+      ],
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwiesen",
+      "document_date": "2026-12-21",
+      "remedy_type": "einspruch",
+      "contract": null,
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/318/07452"
+        },
+        {
+          "label": "Vertragsnummer",
+          "value": "BSK 4471209-06"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against Arbeitnehmer-Sparzulage assessment",
+          "quote": "Rechtsbehelfsbelehrung: Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Musterwiesen erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.",
+          "computation": "Letter is dated Monday 21.12.2026; assuming (absent other information) that it was also handed to the post (Aufgabe zur Post) on that date, the statutory delivery fiction of §122 Abs.2 AO ('am vierten Tag nach der Aufgabe zur Post', as quoted: 'Als bekannt gegeben gilt ein Bescheid, den wir mit der Post verschicken, am vierten Tag nach der Aufgabe zur Post') places deemed delivery on the 4th day after 21.12.2026, i.e. 25.12.2026. 25.12. (1. Weihnachtstag) and 26.12. (2. Weihnachtstag) are statutory holidays in NW, and 27.12.2026 is a Sunday; the fiction therefore shifts to the next Werktag, Monday 28.12.2026, which counts as Bekanntgabe. The one-month Einspruch period of §355 AO begins the day after Bekanntgabe (§108 Abs.1 AO, §187 Abs.1 BGB) and ends, per §188 Abs.2 BGB, on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 28.01.2027. That date is a Thursday, not a weekend or NW holiday, so no further shift applies. Final deadline: 28.01.2027.",
+          "due_date": "2027-01-28",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The exact date the letter was actually handed to the postal service (Aufgabe zur Post) is not stated; the due date assumes it matches the printed letter date (21.12.2026), which is the common default but could be wrong if posting was delayed."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5296,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2588,
+      "cost_usd": 0.06394040000000001,
+      "duration_ms": 59358,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

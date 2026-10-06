@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { CirclePause } from "lucide-react";
 import { useJobs } from "@/api/hooks";
 import { useEvents } from "@/api/sse";
@@ -29,19 +30,34 @@ function PausedMessage({ paused }: { paused: LlmPausedEvent }) {
   const { data: jobs } = useJobs(true);
   // count letters, not jobs
   const waiting = new Set((jobs ?? []).flatMap((j) => (j.doc_id ? [j.doc_id] : []))).size;
-  const ends = pauseEnds(paused.until);
+  // no end: Claude isn't installed or signed in — reading goes on once it is
+  const forClaude = !paused.until;
+  const ends = forClaude ? null : pauseEnds(paused.until);
+  const title = forClaude ? "Waiting for Claude" : ends ? `Claude is taking a break ${ends}` : "Claude is taking a short break";
   return (
     <p className="min-w-0 text-balance text-ink/90">
-      <span className="font-semibold text-warn-ink">{ends ? `Claude is taking a break ${ends}` : "Claude is taking a short break"}</span>
+      <span className="font-semibold text-warn-ink">{title}</span>
       {waiting ? <span className="whitespace-nowrap"> · {waiting === 1 ? "1 letter waiting" : `${waiting} letters waiting`}</span> : null}.{" "}
-      {paused.reason ? `${paused.reason} ` : ""}Your letters are safe in the queue and will be read automatically — nothing gets lost.
+      {paused.reason ? `${paused.reason} ` : ""}
+      {forClaude ? (
+        <>
+          Your letters are safe in the queue and are read as soon as Claude is connected —{" "}
+          <Link to="/settings?section=claude" className="font-medium text-accent underline underline-offset-2 hover:no-underline">
+            Claude connection
+          </Link>
+          .
+        </>
+      ) : (
+        "Your letters are safe in the queue and will be read automatically — nothing gets lost."
+      )}
     </p>
   );
 }
 
 /**
- * Shown while the AI worker is paused (Claude usage limit): letters stay safely queued and are
- * read automatically once the pause is over. Lined up with the top bar and the page column.
+ * Shown while the AI worker is paused — Claude's usage limit, or Claude not installed or not signed in:
+ * letters stay safely queued and are read automatically once the pause is over (or Claude is
+ * connected). Lined up with the top bar and the page column.
  */
 export function PausedBanner() {
   const { paused } = useEvents();

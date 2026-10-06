@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0c15f3bdf904d0440e3d6eab89485599ec2d589d7e799fefd2c43d966a3c15e7\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2025-12-13\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-I1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-12-13 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrus"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Landkreis Beispiel-Seenplatte · Der Landrat · Fachdienst Wasser und Boden – Untere Wasserbehörde\",\"document_date\":\"2025-12-09\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"66.2-BS-0417/25\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against refusal of water-law permit for jetty\",\"quote\":\"Diese Entscheidung können Sie mit dem Widerspruch angreifen, den Sie binnen eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift an den Landkreis Beispiel-Seenplatte, Der Landrat, Seenplattenring 12, 17033 Neu Beispielhagen, richten.\",\"computation\":\"Letter is dated 09.12.2025 (Tuesday); assumed posted same day via ordinary mail ('einfache Post'). Per the letter's own notice, citing § 41 Abs. 2 VwVfG M-V, the decision is deemed notified (bekannt gegeben) on the fourth day after posting. Counting from the posting day as day 0 (not included): day 1 = 10.12., day 2 = 11.12., day 3 = 12.12., day 4 = 13.12.2025 (Saturday) = deemed Bekanntgabe. This fiction of notification is not shifted even though it falls on a Saturday (the weekend/holiday rule of § 31 VwVfG i.V.m. § 193 BGB applies only to the final day of a running deadline, not to the day a notice fiction occurs). The one-month Widerspruch period then runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB analog) and, per § 188 Abs. 2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 13.01.2026. 13.01.2026 is a Tuesday and not a public holiday in Mecklenburg-Vorpommern, so no further shift applies. The Widerspruch must reach the Landkreis in writing (or be declared for the record) by this date.\",\"due_date\":\"2026-01-13\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact postal dispatch date is not stated in the letter; the deadline computation assumes dispatch on the letter's own date (09.12.2025), which is the standard but unverified assumption — if actual posting was later, the deadline shifts accordingly.\",\"The letter applies a four-day (rather than the federally standard three-day) postal notification fiction, citing § 41 Abs. 2 VwVfG M-V specifically; this Land-specific rule was taken at face value from the letter's own text.\",\"No fees are charged for this decision ('Für diesen Bescheid werden keine Kosten erhoben.'), so no payment is due; the printed IBAN in the letterhead is not linked to any payment demand in this letter.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Landkreis Beispiel-Seenplatte · Der Landrat · Fachdienst Wasser und Boden – Untere Wasserbehörde",
+      "document_date": "2025-12-09",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "66.2-BS-0417/25"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against refusal of water-law permit for jetty",
+          "quote": "Diese Entscheidung können Sie mit dem Widerspruch angreifen, den Sie binnen eines Monats nach Bekanntgabe schriftlich oder zur Niederschrift an den Landkreis Beispiel-Seenplatte, Der Landrat, Seenplattenring 12, 17033 Neu Beispielhagen, richten.",
+          "computation": "Letter is dated 09.12.2025 (Tuesday); assumed posted same day via ordinary mail ('einfache Post'). Per the letter's own notice, citing § 41 Abs. 2 VwVfG M-V, the decision is deemed notified (bekannt gegeben) on the fourth day after posting. Counting from the posting day as day 0 (not included): day 1 = 10.12., day 2 = 11.12., day 3 = 12.12., day 4 = 13.12.2025 (Saturday) = deemed Bekanntgabe. This fiction of notification is not shifted even though it falls on a Saturday (the weekend/holiday rule of § 31 VwVfG i.V.m. § 193 BGB applies only to the final day of a running deadline, not to the day a notice fiction occurs). The one-month Widerspruch period then runs from the day after Bekanntgabe (§ 187 Abs. 1 BGB analog) and, per § 188 Abs. 2 BGB, ends on the day of the following month bearing the same number as the Bekanntgabe day, i.e. 13.01.2026. 13.01.2026 is a Tuesday and not a public holiday in Mecklenburg-Vorpommern, so no further shift applies. The Widerspruch must reach the Landkreis in writing (or be declared for the record) by this date.",
+          "due_date": "2026-01-13",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact postal dispatch date is not stated in the letter; the deadline computation assumes dispatch on the letter's own date (09.12.2025), which is the standard but unverified assumption — if actual posting was later, the deadline shifts accordingly.",
+        "The letter applies a four-day (rather than the federally standard three-day) postal notification fiction, citing § 41 Abs. 2 VwVfG M-V specifically; this Land-specific rule was taken at face value from the letter's own text.",
+        "No fees are charged for this decision ('Für diesen Bescheid werden keine Kosten erhoben.'), so no payment is due; the printed IBAN in the letterhead is not linked to any payment demand in this letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 5192,
+      "cache_read_tokens": 9090,
+      "cache_creation_tokens": 6895,
+      "cost_usd": 0.081326,
+      "duration_ms": 57808,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

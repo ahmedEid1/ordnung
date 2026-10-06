@@ -2,11 +2,12 @@
  * The Inbox letters list on real pages (what jsdom can't measure): rows fit from 320 px to
  * 1920 px — to-do chips on one line inside their column, titles on at most two lines (or one,
  * with the full title in the tooltip, in the table layout), the table only where the list is wide
- * enough — and a letter read from New mail sits on top ("Just read"), "New" until it was opened.
+ * enough — and a letter read from New mail sits on top ("Just read"), "New" until it was opened; Enter on a
+ * row takes the keyboard to the letter's heading.
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
 import type { Page } from "@playwright/test";
-import { expect, letterDetail, open, openMail, setTour, shownAs, test } from "./helpers";
+import { expect, letterDetail, open, openMail, setTour, settle, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -105,3 +106,31 @@ test("a letter read from New mail sits on top as 'Just read', New until its page
   await open(page, "/inbox", "Inbox");
   await expect(row.getByText("New", { exact: true }).first()).toBeVisible();
 });
+
+// UX audit U10, final check of the fix wave: Enter on a row focused the letter page's stand-in heading while the
+// letter loaded; it was replaced when the letter came, and focus fell to <body>. The letter is made to come a
+// moment later, as on a busy machine, so the stand-in is always shown first.
+for (const width of [390, 1280]) {
+  test(`at ${width} px, Enter on a row keeps the keyboard on the letter's heading once it has loaded`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "/inbox", "Inbox");
+    await page.route(
+      (url) => /^\/api\/documents\/doc_[^/]+$/.test(url.pathname),
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await route.fallback();
+      },
+    );
+    const row = page.locator("section[aria-labelledby^='grp-'] a[href^='/documents/']").first();
+    await row.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForURL(/\/documents\/doc_/);
+    // the letter's own heading, not the stand-in shown while it loads
+    const h1 = page.locator("main h1:not([data-loading])");
+    await expect(h1).toBeFocused();
+    await expect(h1).not.toHaveText("Letter");
+    await page.waitForLoadState("networkidle");
+    await settle(page);
+    await expect(h1).toBeFocused();
+  });
+}

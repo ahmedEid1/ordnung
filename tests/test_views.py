@@ -123,6 +123,18 @@ def test_dashboard_areas(store: Store, ids: dict[str, str]) -> None:
     assert (areas["residence"].label, areas["mobility"].label) == ("Residence permit", "Getting around")
 
 
+def test_letters_not_read_make_no_all_good_area(store: Store) -> None:
+    """UX U2: two letters that couldn't be read were filed under "Other" as "All good · 2 letters, nothing
+    due" — Ordnung doesn't know what they ask, so they are in no area until they are read."""
+    add_doc(store, "failed-1", status="failed")
+    add_doc(store, "failed-2", status="failed")
+    add_doc(store, "reading", status="processing")
+    assert dashboard(store, TODAY).areas == []
+    add_doc(store, "bill", area="money", kind="invoice")
+    (money,) = dashboard(store, TODAY).areas
+    assert (money.area, money.headline) == ("money", "1 letter, nothing due")
+
+
 def test_area_dates_follow_the_one_urgency_scale(store: Store) -> None:
     """UI audit R1-backend-3: a direct debit is listed by the day the money moves (not a "send by" a
     day earlier) and never turns urgent; a deadline tomorrow does. An appointment tomorrow needs attention,

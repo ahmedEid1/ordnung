@@ -61,6 +61,9 @@ DAY_OF_MONTH_NOT_IN_QUOTE = "day_of_month_not_in_quote"
 # The to-do code files for a reading that came back incomplete (ordnung.ingest.gaps): its date is Ordnung's,
 # worked out from the letter's own words, never the reading's — always ``low`` and "Please check".
 READING_INCOMPLETE = "reading_incomplete"
+# The to-do code files for a fixed date the letter sets (pay by, send by) that the reading left out
+# (ordnung.ingest.gaps.deadline_items): the letter's own date, but Ordnung's to-do — always ``low`` and "Please check".
+DEADLINE_LEFT_OUT = "deadline_left_out"
 
 PageInput = PageText | Page | tuple[int, str, Sequence[Word | Sequence[Any]], str]
 """A page to search: a :class:`PageText`, a stored :class:`~ordnung.models.Page`, or
@@ -1179,6 +1182,7 @@ REASON_TEXT: dict[str, str] = {
     WORKING_DAY_NOT_IN_QUOTE: "The working day (e.g. “the 3rd working day”) doesn't appear in the sentence it was taken from — please check it.",
     DAY_OF_MONTH_NOT_IN_QUOTE: "The day of the month (e.g. “on the 1st of each month”) doesn't appear in the sentence it was taken from — please check it.",
     READING_INCOMPLETE: "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.",
+    DEADLINE_LEFT_OUT: "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.",
 }
 #: The note an incomplete reading's to-do carried before (UX review 2, R2UX-5: it said "worked this date out"
 #: also when no date could be worked out), as receipts already stored say it.
@@ -1211,7 +1215,7 @@ def grade_reading(
     if reasons:
         failures += 1
         notes.extend(REASON_TEXT.get(reason, reason) for reason in reasons)
-    if AMBIGUOUS_DATE in reasons or READING_INCOMPLETE in reasons:
+    if AMBIGUOUS_DATE in reasons or READING_INCOMPLETE in reasons or DEADLINE_LEFT_OUT in reasons:
         failures = max(failures, 2)
     confidence: Confidence = "high" if failures == 0 else "medium" if failures == 1 else "low"
     return receipt.model_copy(update={"confidence": confidence, "warnings": [*receipt.warnings, *notes]})

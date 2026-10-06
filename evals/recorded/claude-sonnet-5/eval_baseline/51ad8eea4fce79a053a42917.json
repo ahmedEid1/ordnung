@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"45529248ac08bc8bdb227c0611eb88c35e9507efa495ef4774ee44e2f3a46313\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-10-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-J2"
+    ],
+    "prompt_head": "Today is Friday, 2026-10-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"amounts\":[70,25,3.5,98.5],\"contract\":null,\"document_date\":\"2026-10-21\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against Bußgeldbescheid\",\"quote\":\"Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.\",\"computation\":\"The Zustellungsurkunde (service certificate, page 2) records actual delivery on 28.10.2026 (Wednesday) — this is the authoritative delivery date, taking precedence over the 'Erlassen am 21.10.2026' issuance date. Per § 187 Abs. 1 BGB, the day of the triggering event (delivery, 28.10.2026) is not counted; the 2-week Einspruchsfrist begins the next day, 29.10.2026. Per § 188 Abs. 2 BGB, a period of weeks ends with the expiry of the day of the last week bearing the same name/number as the day on which the period began, i.e. 14 days after 28.10.2026 = 11.11.2026 (Wednesday). 11.11.2026 is a regular weekday in Niedersachsen (no public holiday), so no shift under § 193 BGB applies. Einspruch must reach the Bußgeldstelle by this date.\",\"due_date\":\"2026-11-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the Geldbuße and costs once the Bescheid becomes final (contingent on no Einspruch)\",\"quote\":\"Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.\",\"computation\":\"The Bescheid becomes rechtskräftig (final) upon expiry of the Einspruchsfrist without an objection having been filed, i.e. at the end of 11.11.2026. The letter states payment becomes due 'zwei Wochen danach' (two weeks after that). Adding 14 calendar days to 11.11.2026 gives 25.11.2026 (Wednesday), which is not a weekend or public holiday in Niedersachsen. This due date is conditional on no Einspruch being filed; if an Einspruch is lodged, the Bescheid does not become final and this payment deadline does not apply.\",\"due_date\":\"2026-11-25\",\"confidence\":\"medium\",\"amount\":98.5}],\"kind\":\"fine\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi 12.3-26/88140\"},{\"label\":\"Kennzeichen\",\"value\":\"HK-HM 290\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Landkreis Musterheide – Bußgeldstelle\",\"warnings\":[\"The letter's printed issuance date ('Erlassen am 21.10.2026') differs from the delivery date recorded on the attached Zustellungsurkunde (zugestellt 28.10.2026); the Einspruchsfrist calculation uses the actual delivery date (28.10.2026) as that is the legally relevant trigger, but the person should double-check the original Zustellungsurkunde to confirm the recorded delivery date is correct.\",\"The payment due date (25.11.2026) only applies if no Einspruch is filed by 11.11.2026; filing an Einspruch suspends this payment obligation entirely.\"]}",
+    "data": {
+      "amounts": [
+        70,
+        25,
+        3.5,
+        98.5
+      ],
+      "contract": null,
+      "document_date": "2026-10-21",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against Bußgeldbescheid",
+          "quote": "Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.",
+          "computation": "The Zustellungsurkunde (service certificate, page 2) records actual delivery on 28.10.2026 (Wednesday) — this is the authoritative delivery date, taking precedence over the 'Erlassen am 21.10.2026' issuance date. Per § 187 Abs. 1 BGB, the day of the triggering event (delivery, 28.10.2026) is not counted; the 2-week Einspruchsfrist begins the next day, 29.10.2026. Per § 188 Abs. 2 BGB, a period of weeks ends with the expiry of the day of the last week bearing the same name/number as the day on which the period began, i.e. 14 days after 28.10.2026 = 11.11.2026 (Wednesday). 11.11.2026 is a regular weekday in Niedersachsen (no public holiday), so no shift under § 193 BGB applies. Einspruch must reach the Bußgeldstelle by this date.",
+          "due_date": "2026-11-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the Geldbuße and costs once the Bescheid becomes final (contingent on no Einspruch)",
+          "quote": "Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.",
+          "computation": "The Bescheid becomes rechtskräftig (final) upon expiry of the Einspruchsfrist without an objection having been filed, i.e. at the end of 11.11.2026. The letter states payment becomes due 'zwei Wochen danach' (two weeks after that). Adding 14 calendar days to 11.11.2026 gives 25.11.2026 (Wednesday), which is not a weekend or public holiday in Niedersachsen. This due date is conditional on no Einspruch being filed; if an Einspruch is lodged, the Bescheid does not become final and this payment deadline does not apply.",
+          "due_date": "2026-11-25",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "kind": "fine",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi 12.3-26/88140"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HK-HM 290"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Landkreis Musterheide – Bußgeldstelle",
+      "warnings": [
+        "The letter's printed issuance date ('Erlassen am 21.10.2026') differs from the delivery date recorded on the attached Zustellungsurkunde (zugestellt 28.10.2026); the Einspruchsfrist calculation uses the actual delivery date (28.10.2026) as that is the legally relevant trigger, but the person should double-check the original Zustellungsurkunde to confirm the recorded delivery date is correct.",
+        "The payment due date (25.11.2026) only applies if no Einspruch is filed by 11.11.2026; filing an Einspruch suspends this payment obligation entirely."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5064,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3155,
+      "cost_usd": 0.06388839999999998,
+      "duration_ms": 55898,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

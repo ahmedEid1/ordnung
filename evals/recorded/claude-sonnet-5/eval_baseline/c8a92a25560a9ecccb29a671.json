@@ -1,0 +1,106 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"315385466e5b56ff32f864b0d680b87b5225b513b02149ad4a4b47196e03b367\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-I2"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-04-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwiesen\",\"document_date\":\"2025-04-23\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/318/07452\"}],\"amounts\":[4627,425],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the tax assessment\",\"quote\":\"Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt.\",\"computation\":\"Letter dated Wed 23.04.2025 (posting day, per § 122 Abs. 2 AO). Deemed delivery is the 4th day after posting = Sun 27.04.2025; since that is a Sunday, under § 108 Abs. 3 AO it shifts to the next business day, Mon 28.04.2025. The one-month Einspruch period of § 355 AO starts the day after (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO) and ends one month later on the same numbered day (§ 188 Abs. 2 BGB): Wed 28.05.2025. That day is a normal working day in NW, so no further shift applies. Final day for the Einspruch to reach the Finanzamt: 28.05.2025.\",\"due_date\":\"2025-05-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Erstattung) credited to account\",\"quote\":\"Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.\",\"computation\":\"The letter only says the 425,00 € refund will arrive 'in den nächsten Tagen' (in the next few days) after the letter's date of 23.04.2025, without giving a fixed calendar date, so no exact due date can be computed; this is informational rather than an obligation on the recipient.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":425}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The refund IBAN (DE38 2609 0050 0053 1044 77) is the taxpayer's own bank account as stated in the tax return, not the Finanzamt's — only the Finanzamt's own IBAN (DE07 2600 0000 0004 0700 00, for any future payments owed) should be checked against official sources before use; both IBANs are well-formed but a valid IBAN does not by itself prove ownership, so confirm the refund account matches what was actually declared in the Steuererklärung.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwiesen",
+      "document_date": "2025-04-23",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/318/07452"
+        }
+      ],
+      "amounts": [
+        4627,
+        425
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the tax assessment",
+          "quote": "Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt.",
+          "computation": "Letter dated Wed 23.04.2025 (posting day, per § 122 Abs. 2 AO). Deemed delivery is the 4th day after posting = Sun 27.04.2025; since that is a Sunday, under § 108 Abs. 3 AO it shifts to the next business day, Mon 28.04.2025. The one-month Einspruch period of § 355 AO starts the day after (§ 187 Abs. 1 BGB, § 108 Abs. 1 AO) and ends one month later on the same numbered day (§ 188 Abs. 2 BGB): Wed 28.05.2025. That day is a normal working day in NW, so no further shift applies. Final day for the Einspruch to reach the Finanzamt: 28.05.2025.",
+          "due_date": "2025-05-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Erstattung) credited to account",
+          "quote": "Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.",
+          "computation": "The letter only says the 425,00 € refund will arrive 'in den nächsten Tagen' (in the next few days) after the letter's date of 23.04.2025, without giving a fixed calendar date, so no exact due date can be computed; this is informational rather than an obligation on the recipient.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 425
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The refund IBAN (DE38 2609 0050 0053 1044 77) is the taxpayer's own bank account as stated in the tax return, not the Finanzamt's — only the Finanzamt's own IBAN (DE07 2600 0000 0004 0700 00, for any future payments owed) should be checked against official sources before use; both IBANs are well-formed but a valid IBAN does not by itself prove ownership, so confirm the refund account matches what was actually declared in the Steuererklärung."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2285,
+      "cache_read_tokens": 15988,
+      "cache_creation_tokens": 6768,
+      "cost_usd": 0.053127600000000004,
+      "duration_ms": 26238,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "legal_basis": "§355 AO",
+            "text": "Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt. Geht er Ihnen mit der Post zu, ist das der vierte Tag nach seiner Aufgabe zur Post, außer er erreicht Sie erst später."
+          },
+          "document_date": "2025-04-23",
+          "sender_kind": "tax_office",
+          "sender_name": "Finanzamt Musterwiesen",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "einspruch"
+        },
+        "result": "{\"due_date\":\"2025-05-28\",\"weekday\":\"Wednesday\",\"send_by\":\"2025-05-22\",\"summary\":\"Letter dated Wed 23 Apr 2025 counts as delivered on Sun 27 Apr, moved to Mon 28 Apr; one month later is Wed 28 May 2025.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Wed 23 Apr 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-04-23\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Sun 27 Apr 2025\",\"date\":\"2025-04-27\",\"rule_id\":\"ao_122_2_1\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\"},{\"label\":\"Sun 27 Apr 2025 is a Sunday, so delivery moves to Mon 28 Apr 2025\",\"date\":\"2025-04-28\",\"rule_id\":\"ao_fiction_shift\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\"},{\"label\":\"Counting starts the day after Mon 28 Apr 2025\",\"date\":\"2025-04-28\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Wed 28 May 2025\",\"date\":\"2025-05-28\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Wed 28 May 2025 is a working day, so it stays\",\"date\":\"2025-05-28\",\"rule_id\":\"ao_108_3\",\"citation\":\"§ 108 Abs. 3 AO\"},{\"label\":\"Send by Thu 22 May 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-05-22\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_122_2_1\",\"title\":\"Tax letters: delivered on the 4th day after posting\",\"citation\":\"§ 122 Abs. 2 Nr. 1 AO; Art. 97 § 1 Abs. 15 EGAO (PostModG)\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"ao_fiction_shift\",\"title\":\"Tax delivery day moves off weekends and holidays\",\"citation\":\"BFH IX R 68/98; § 108 Abs. 3 AO; AEAO zu § 108 Nr. 2\",\"url\":\"https://dejure.org/dienste/vernetzung/rechtsprechung?Gericht=BFH&Datum=14.10.2003&Aktenzeichen=IX+R+68/98\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"ao_355\",\"title\":\"Tax objection (Einspruch): one month\",\"citation\":\"§ 355 Abs. 1 AO; § 357 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__355.html\"},{\"id\":\"ao_108_3\",\"title\":\"Weekend and holiday shift (tax)\",\"citation\":\"§ 108 Abs. 3 AO\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__108.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-04-29\",\"letter_date\":\"2025-04-23\",\"delivery_law\":\"tax law (§ 122 AO)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE38 2609 0050 0053 1044 77"
+        },
+        "result": "{\"iban\":\"DE38 2609 0050 0053 1044 77\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"26090050\"},\"account_number\":\"0053104477\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Germany, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 9 October 2025: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE07 2600 0000 0004 0700 00"
+        },
+        "result": "{\"iban\":\"DE07 2600 0000 0004 0700 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"26000000\"},\"account_number\":\"0004070000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Germany, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 9 October 2025: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

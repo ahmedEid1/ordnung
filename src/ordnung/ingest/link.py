@@ -73,6 +73,11 @@ FUZZY_MIN = 92.0
 #: Below this plain similarity a fuzzy match must share two words ("Finanzamt" ≠ "Finanzamt X").
 FUZZY_GUARD = 70.0
 MIN_IDENTIFIER_CHARS = 5
+#: Longest sender name kept for a party. Party names go into every later reading's list of known
+#: senders, so one letter must not plant a page of text (or an extra line) there; at most
+#: ``MAX_KNOWN_PARTIES`` (200) such lines are sent, and no more than 16 KB in all
+#: (``extract.MAX_KNOWN_PARTIES_BYTES``).
+MAX_PARTY_NAME = 120
 
 CASE_PREFERENCE: tuple[ReferenceKind, ...] = (
     "aktenzeichen",
@@ -212,6 +217,14 @@ def party_id_for(name: str) -> str:
     return content_id("pty", normalise_name(name))
 
 
+def party_name(name: str) -> str:
+    """A sender name as a party keeps it: one line, no control or format characters, at most
+    :data:`MAX_PARTY_NAME` characters."""
+    spaced = (" " if unicodedata.category(char) == "Cc" else char for char in name)  # line breaks, tabs
+    visible = "".join(char for char in spaced if unicodedata.category(char)[0] != "C")
+    return " ".join(visible.split())[:MAX_PARTY_NAME].strip()
+
+
 def name_score(a: str, b: str) -> float:
     """Fuzzy similarity of two names (``token_set_ratio`` of the processed names, 0–100).
 
@@ -234,12 +247,6 @@ def party_scores(parties: Iterable[Party], name: str) -> list[tuple[float, Party
         for party in parties
     ]
     return sorted((entry for entry in scored if entry[0] > 0), key=lambda entry: -entry[0])
-
-
-def find_party_fuzzy(parties: Iterable[Party], name: str) -> Party | None:
-    """The party whose name or alias is most similar to ``name`` (score ≥ :data:`FUZZY_MIN`)."""
-    scored = party_scores(parties, name)
-    return scored[0][1] if scored and scored[0][0] >= FUZZY_MIN else None
 
 
 @dataclass(frozen=True)
@@ -306,8 +313,11 @@ def ensure_party(store: Store, extraction: DocumentExtraction, *, trace: Span = 
     """Resolve the sender's party (creating it if new) and merge the new details into it.
 
     ``trace`` is described with how the sender was matched (:func:`ordnung.trace.facts.party_match`).
+    The sender's name is matched and kept as :func:`party_name` makes it.
     """
     sender = extraction.sender
+    if sender is not None:
+        sender = sender.model_copy(update={"name": party_name(sender.name)})
     identifiers = party_identifiers(sender, extraction.references)
     match = match_party(store, sender, extraction.references)
     party, decision = match.party, match.decision

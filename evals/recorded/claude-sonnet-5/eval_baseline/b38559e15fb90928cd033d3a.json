@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"9e460c7da9dba49f9047f98fd749849a71d12c7a85590bae75c3d73f3dee28a9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-09-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Pflegekasse der BKK Musterwerk\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"T274019385\"},{\"label\":\"Vorgang\",\"value\":\"WU-0419\"}],\"amounts\":[],\"items\":[{\"amount\":null,\"computation\":\"The remedy clause states the Widerspruch period runs \\\"innerhalb eines Monats nach Bekanntgabe\\\" (within one month after notification). Under German administrative/social law, notification by post is deemed to occur on the third day after mailing (§ 37 Abs. 2 SGB X), and the one-month period then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB to the same numbered day of the following month, extended to the next business day if that falls on a weekend or NRW public holiday. However, the letter bears no printed date anywhere (no 'Datum' field, no date in the letterhead or body), so neither the mailing date nor the deemed delivery date (Bekanntgabe) can be established. Without that anchor date, the exact one-month deadline cannot be computed.\",\"confidence\":\"low\",\"due_date\":null,\"kind\":\"deadline\",\"quote\":\"erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk\",\"title\":\"File Widerspruch against rejection of Wohnumfeld subsidy\"}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter has no visible document date (no 'Datum' field or dated line anywhere on the page), so the start of the one-month Widerspruch period cannot be determined; the recipient should check the envelope's postmark or any dated cover page to establish when the letter was actually sent/received, and should not delay filing a Widerspruch while this is unclear.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Pflegekasse der BKK Musterwerk",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "T274019385"
+        },
+        {
+          "label": "Vorgang",
+          "value": "WU-0419"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "amount": null,
+          "computation": "The remedy clause states the Widerspruch period runs \"innerhalb eines Monats nach Bekanntgabe\" (within one month after notification). Under German administrative/social law, notification by post is deemed to occur on the third day after mailing (§ 37 Abs. 2 SGB X), and the one-month period then runs under §§ 187 Abs. 1, 188 Abs. 2 BGB to the same numbered day of the following month, extended to the next business day if that falls on a weekend or NRW public holiday. However, the letter bears no printed date anywhere (no 'Datum' field, no date in the letterhead or body), so neither the mailing date nor the deemed delivery date (Bekanntgabe) can be established. Without that anchor date, the exact one-month deadline cannot be computed.",
+          "confidence": "low",
+          "due_date": null,
+          "kind": "deadline",
+          "quote": "erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk",
+          "title": "File Widerspruch against rejection of Wohnumfeld subsidy"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter has no visible document date (no 'Datum' field or dated line anywhere on the page), so the start of the one-month Widerspruch period cannot be determined; the recipient should check the envelope's postmark or any dated cover page to establish when the letter was actually sent/received, and should not delay filing a Widerspruch while this is unclear."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2166,
+      "cache_read_tokens": 8760,
+      "cache_creation_tokens": 3960,
+      "cost_usd": 0.03926,
+      "duration_ms": 25299,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

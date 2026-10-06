@@ -14,7 +14,7 @@ Written policy:
   the prompt cache, as the conventions ask — ``gen_ai.usage.cache_read.input_tokens``,
   ``gen_ai.usage.cache_creation.input_tokens``, ``gen_ai.usage.output_tokens`` and ``error.type``
   for a failed call. What the conventions do not name is under ``ordnung.*`` (purpose, prompt
-  version, cost, cache use, outcome, repair link).
+  version, cost, cache use, outcome, repair link — ``ordnung.llm.completes`` for the completeness re-ask).
 * **No text, and ids that can't be traced back.** Like the stored spans, the export holds no letter
   text and no names: a step names the record it points to by id (``ordnung.ref.type``/``ordnung.ref.id``).
   Many of Ordnung's ids are hashes of what they identify (a letter's is its file's hash, a sender's
@@ -148,6 +148,9 @@ def _nanos(moment: str) -> int:
 def _gen_ai(span: TraceSpan) -> dict[str, Any]:
     call, attrs = span.call, span.attributes
     request_model = attrs.get("request_model") or (call.model if call else None)
+    # the completeness re-ask (ADR 0016) names the call it follows in the repair link, but repairs nothing
+    reask = (attrs.get("prompt") or (call.prompt_name if call else None)) == "reading_gaps"
+    link = "ordnung.llm.completes" if reask else "ordnung.llm.repair_of"
     values: dict[str, Any] = {
         "gen_ai.operation.name": GEN_AI_OPERATION,
         "gen_ai.provider.name": GEN_AI_PROVIDER,
@@ -160,7 +163,7 @@ def _gen_ai(span: TraceSpan) -> dict[str, Any]:
         "ordnung.llm.cache_hit": attrs.get("cache_hit"),
         "ordnung.llm.outcome": attrs.get("outcome"),
         "ordnung.llm.call_id": attrs.get("call_id"),
-        "ordnung.llm.repair_of": attrs.get("repair_of"),
+        link: attrs.get("repair_of"),
     }
     if call is not None:
         values |= {
@@ -177,7 +180,7 @@ def _gen_ai(span: TraceSpan) -> dict[str, Any]:
             "ordnung.llm.bytes_sent": call.bytes_sent,
         }
     if attrs.get("outcome") == "failed":
-        # the backend's error (sign-in, timeout …), or an answer a repair could not make usable
+        # the backend's error (sign-in, timeout …), or an answer a repair (or the re-ask) could not make usable
         values["error.type"] = "llm_error" if call is not None and call.error else "invalid_output"
     return values
 

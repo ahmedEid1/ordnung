@@ -107,7 +107,8 @@ def run_summary(
         result=result_status(attributes.get("result")),
         model_calls=len(calls),
         cache_hits=sum(call.cache_hit for call in calls),
-        repairs=sum(call.repair_of is not None for call in calls),
+        # the completeness re-ask names the call it follows too (``repair_of``) but repairs nothing
+        repairs=sum(call.repair_of is not None and call.prompt_name != "reading_gaps" for call in calls),
         input_tokens=sum(call.input_tokens for call in calls),
         output_tokens=sum(call.output_tokens for call in calls),
         cache_read_tokens=sum(call.cache_read_tokens for call in calls),

@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"320cbd94290ae7ca6c74ac711972013f6c3288c58c68cfe6d42fbfa9b541152f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-01-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Tanzschule Beispielschritt\",\"document_date\":\"2027-01-05\",\"references\":[{\"label\":\"Teilnehmer-Nr.\",\"value\":\"TS-3094\"}],\"amounts\":[168],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay dance course fee\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 25.01.2027,\\ndamit Ihr Platz fest reserviert bleibt.\",\"computation\":\"The letter gives two different final dates for the same payment: the body text says 'bis zum 25.01.2027' while the payment information box separately states 'zahlbar bis 03.02.2027'. This is a self-contradiction within the letter. Per the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to 25.01.2027, with lowered confidence and a warning noting the discrepancy. No weekend/holiday adjustment is needed here since this is a private deadline fixed by calendar date, not a statutory period, and 25.01.2027 is a Monday anyway.\",\"due_date\":\"2027-01-25\",\"confidence\":\"low\",\"amount\":168}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter states two different payment deadlines for the same course fee: 'bis zum 25.01.2027' in the main text and 'zahlbar bis 03.02.2027' in the payment information box; the earlier date (25.01.2027) was used to be safe, but the person should clarify which date is correct with the dance school.\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Tanzschule Beispielschritt",
+      "document_date": "2027-01-05",
+      "references": [
+        {
+          "label": "Teilnehmer-Nr.",
+          "value": "TS-3094"
+        }
+      ],
+      "amounts": [
+        168
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay dance course fee",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 25.01.2027,\ndamit Ihr Platz fest reserviert bleibt.",
+          "computation": "The letter gives two different final dates for the same payment: the body text says 'bis zum 25.01.2027' while the payment information box separately states 'zahlbar bis 03.02.2027'. This is a self-contradiction within the letter. Per the rule to use the earliest plausible date when a letter contradicts itself, the due date is set to 25.01.2027, with lowered confidence and a warning noting the discrepancy. No weekend/holiday adjustment is needed here since this is a private deadline fixed by calendar date, not a statutory period, and 25.01.2027 is a Monday anyway.",
+          "due_date": "2027-01-25",
+          "confidence": "low",
+          "amount": 168
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter states two different payment deadlines for the same course fee: 'bis zum 25.01.2027' in the main text and 'zahlbar bis 03.02.2027' in the payment information box; the earlier date (25.01.2027) was used to be safe, but the person should clarify which date is correct with the dance school."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2016,
+      "cache_read_tokens": 7966,
+      "cache_creation_tokens": 9132,
+      "cost_usd": 0.0582892,
+      "duration_ms": 22266,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

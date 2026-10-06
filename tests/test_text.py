@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import io
+import random
+import re
+import threading
+import time
 from email.message import EmailMessage
 from pathlib import Path
 
+import pdfplumber
 import pypdfium2 as pdfium
 import pytest
+from fpdf import FPDF
+from fpdf.enums import EncryptionMethod
+from pdfminer.arcfour import Arcfour
 from PIL import Image
 
 from helpers_docs import (
@@ -240,6 +248,135 @@ def test_unreadable_pdf_falls_back_to_empty_pages(tmp_path: Path) -> None:
     broken.write_bytes(b"%PDF-1.4 not a pdf")
     pages = extract_pdf_pages(broken, [RenderedPage(1, 10, 10, tmp_path / "p.jpg")])
     assert pages == [PageText(page=1, text="")]
+
+
+def _with_info(pdf: bytes, *objects: bytes) -> bytes:
+    """``pdf`` with an incremental update: new objects (``objects[0]`` the first new number, written with
+    ``{n}`` for the numbers) and a trailer whose document information is the first of them."""
+    size = int(re.findall(rb"/Size (\d+)", pdf)[-1])
+    startxref = int(re.findall(rb"startxref\s+(\d+)", pdf)[-1])
+    root = re.findall(rb"/Root (\d+ \d+ R)", pdf)[-1]
+    body, offsets = b"", []
+    for index, template in enumerate(objects):
+        offsets.append(len(pdf) + len(body) + 1)
+        numbers = {f"n{i}": size + i for i in range(len(objects))}
+        body += b"\n%d 0 obj\n%s\nendobj\n" % (size + index, template.decode().format(**numbers).encode())
+    xref = b"xref\n%d %d\n" % (size, len(objects)) + b"".join(b"%010d 00000 n \n" % at for at in offsets)
+    trailer = b"trailer\n<< /Size %d /Root %s /Info %d 0 R /Prev %d >>\nstartxref\n%d\n%%%%EOF\n" % (
+        size + len(objects),
+        root,
+        size,
+        startxref,
+        len(pdf) + len(body),
+    )
+    return pdf + body + xref + trailer
+
+
+def _extract_within(tmp_path: Path, data: bytes, seconds: float = 30) -> list[PageText]:
+    """:func:`extract_pdf_pages` of ``data``, failing the test if it hasn't returned after ``seconds``."""
+    found: list[list[PageText]] = []
+    reading = threading.Thread(target=lambda: found.append(_extract(tmp_path, data)[1]), daemon=True)
+    reading.start()
+    reading.join(seconds)
+    assert not reading.is_alive(), "reading the text layer hung"
+    return found[0]
+
+
+def test_a_reference_to_itself_never_hangs_the_text_layer(tmp_path: Path) -> None:
+    """A PDF whose document information is an object that refers to itself (``5 0 obj 5 0 R endobj``) passes
+    intake, and used to hang pdfplumber for good while the reading worker read its text layer: the text layer
+    now gives up and the page is read from its image, like a photo."""
+    letter = make_pdf([[Line(72, 100, "Hallo Welt, dies ist ein Brief mit genug Text darin.")]])
+    assert _extract_within(tmp_path, _with_info(letter, b"{n0} 0 R")) == [PageText(page=1, text="")]
+    # two objects referring to each other loop the same way
+    assert _extract_within(tmp_path, _with_info(letter, b"{n1} 0 R", b"{n0} 0 R")) == [
+        PageText(page=1, text="")
+    ]
+
+
+def test_a_reference_to_a_reference_is_still_read(tmp_path: Path) -> None:
+    """The bound only stops loops: document information stored behind a reference to a reference (legal, if
+    odd) leaves the text layer read as usual."""
+    letter = make_pdf([[Line(72, 100, "Hallo Welt, dies ist ein Brief mit genug Text darin.")]])
+    [page] = _extract_within(tmp_path, _with_info(letter, b"{n1} 0 R", b"<< /Title (Brief) >>"))
+    assert page.text == "Hallo Welt, dies ist ein Brief mit genug Text darin."
+
+
+def _page_entry_to_itself(pdf: bytes, key: bytes) -> bytes:
+    """``pdf`` with an incremental update: the first page's ``key`` entry is a new object that refers to
+    itself (``n 0 obj n 0 R endobj``)."""
+    size = int(re.findall(rb"/Size (\d+)", pdf)[-1])
+    startxref = int(re.findall(rb"startxref\s+(\d+)", pdf)[-1])
+    root = re.findall(rb"/Root (\d+ \d+ R)", pdf)[-1]
+    found = re.search(rb"\n(\d+) 0 obj\n(<<[^>]*/Type /Page\n>>)", pdf)
+    assert found is not None
+    page = re.sub(rb"/%s \d+ 0 R" % key, b"/%s %d 0 R" % (key, size), found[2])
+    body = b"\n%s 0 obj\n%s\nendobj\n" % (found[1], page)
+    offsets = {int(found[1]): len(pdf) + 1, size: len(pdf) + len(body) + 1}
+    body += b"\n%d 0 obj\n%d 0 R\nendobj\n" % (size, size)
+    xref = b"xref\n" + b"".join(b"%d 1\n%010d 00000 n \n" % entry for entry in sorted(offsets.items()))
+    trailer = b"trailer\n<< /Size %d /Root %s /Prev %d >>\nstartxref\n%d\n%%%%EOF\n" % (
+        size + 1,
+        root,
+        startxref,
+        len(pdf) + len(body),
+    )
+    return pdf + body + xref + trailer
+
+
+@pytest.mark.parametrize("key", [b"Contents", b"Resources"])
+def test_a_page_that_refers_to_itself_is_read_from_its_image(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, key: bytes
+) -> None:
+    """A page whose contents or resources are an object that refers to itself: the text layer gives up, the
+    PDF's file is closed without reading its pages again (which failed the letter), and the page is read
+    from its image, like a photo."""
+    letter = make_pdf([[Line(72, 100, "Hallo Welt, dies ist ein Brief mit genug Text darin.")]])
+    opened: list[pdfplumber.PDF] = []
+    real_open = text_module.open_pdf
+
+    def spy(path: Path) -> pdfplumber.PDF:
+        opened.append(real_open(path))
+        return opened[-1]
+
+    monkeypatch.setattr(text_module, "open_pdf", spy)
+    assert _extract_within(tmp_path, _page_entry_to_itself(letter, key)) == [PageText(page=1, text="")]
+    [pdf] = opened
+    assert pdf.stream.closed
+
+
+def test_rc4_returns_what_pdfminer_s_cipher_does() -> None:
+    generator = random.Random(7)
+    for key_length in (1, 5, 16, 40):
+        key = generator.randbytes(key_length)
+        for length in (0, 1, 255, 256, 4097):
+            data = generator.randbytes(length)
+            assert text_module.rc4(key, data) == Arcfour(key).process(data)
+
+
+def test_rc4_takes_linear_time() -> None:
+    """pdfminer's own cipher takes over a minute for 1 MB (its time grows with the square of the length)."""
+    data = random.Random(7).randbytes(2_000_000)
+    started = time.monotonic()
+    sealed = text_module.rc4(b"schluessel", data)
+    assert time.monotonic() - started < 10
+    assert sealed[:4096] == Arcfour(b"schluessel").process(data[:4096])
+
+
+def test_an_rc4_protected_page_of_a_megabyte_is_read_in_seconds(tmp_path: Path) -> None:
+    """The text layer of an edit-protected PDF (RC4, as banks send them) is decrypted with :func:`rc4`: a page
+    whose content is 1.5 MB took pdfminer's cipher over a minute."""
+    pdf = FPDF()
+    pdf.set_compression(False)
+    pdf.add_page()
+    pdf.set_font("helvetica", size=12)
+    pdf.cell(text="Kontoauszug September 2026")
+    pdf._out("% " + "x" * 1_500_000)  # a comment in the page's content stream
+    pdf.set_encryption(owner_password="bank-owner", encryption_method=EncryptionMethod.RC4)
+    started = time.monotonic()
+    [page] = _extract_within(tmp_path, bytes(pdf.output()))
+    assert time.monotonic() - started < 15
+    assert page.text == "Kontoauszug September 2026"
 
 
 @pytest.mark.parametrize(

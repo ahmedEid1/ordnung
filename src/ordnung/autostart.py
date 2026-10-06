@@ -16,7 +16,9 @@ Written policy (ADR 0007):
 * **What runs.** ``<this Python> -m ordnung --data-dir <the data folder> serve --no-browser`` (and
   ``--port`` when it isn't the default) — absolute paths, so the login environment's ``PATH`` does
   not matter for Ordnung itself; the ``PATH`` of the terminal that ran ``enable`` is recorded
-  (Linux, macOS) so the service finds the same ``claude`` command. A crash is restarted (systemd:
+  (Linux, macOS) so the service finds the same ``claude`` command, and so is Claude Code's telemetry
+  opt-out ``CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`` when it is set there (every system; see
+  docs/privacy.md), which the login environment would not have. A crash is restarted (systemd:
   after 30 s; launchd: on an unsuccessful exit); a clean stop stays stopped.
 * **The sign-in link stays private.** ``serve`` prints its link with the session token on standard
   output, so the service discards standard output (systemd ``StandardOutput=null``, launchd
@@ -32,9 +34,9 @@ Written policy (ADR 0007):
 * **Not for the demo.** The demo is started with ``ordnung demo`` (the CLI refuses a demo folder).
 * **Quoting.** systemd: every ``ExecStart`` argument in double quotes with ``\\`` and ``"``
   escaped, ``%`` doubled (specifiers) and ``$`` doubled (variables); ``Environment=`` the same
-  without ``$``. The plist is written by :mod:`plistlib`. Windows ``.cmd``: every argument in double
-  quotes with ``%`` doubled (a Windows path can't contain ``"``). A line break in any value is
-  refused.
+  without ``$``. The plist is written by :mod:`plistlib`. Windows ``.cmd``: every argument (and the
+  ``set "NAME=value"`` of a recorded variable) in double quotes with ``%`` doubled (a Windows path
+  can't contain ``"``). A line break in any value is refused.
 * **Encoding.** Every entry is UTF-8. cmd.exe reads a batch file in the console's code page (850 on
   a German Windows), so the ``.cmd`` switches to UTF-8 (``chcp 65001``) on its second line, before
   any character outside ASCII — a user folder like ``C:\\Users\\Jürgen`` is read as written.
@@ -63,6 +65,8 @@ STARTUP_NAME = "Ordnung.cmd"
 RESTART_AFTER_S = 30
 ENTRY_MODE = 0o600
 HEADER = "Written by `ordnung autostart enable`; `ordnung autostart disable` removes it."
+#: Claude Code's telemetry opt-out (docs/privacy.md): recorded into the entry when set at ``enable``
+TELEMETRY_OPT_OUT = "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"
 KINDS: dict[System, str] = {
     "linux": "systemd user service",
     "macos": "LaunchAgent",
@@ -131,6 +135,11 @@ def _no_line_breaks(values: tuple[str, ...] | list[str]) -> None:
         raise AutostartError("A path with a line break can't be put into a start-up entry.")
 
 
+def _recorded(env: Mapping[str, str], *names: str) -> dict[str, str]:
+    """Those of ``names`` that are set in ``env``: the entry starts Ordnung with them."""
+    return {name: env[name] for name in names if env.get(name)}
+
+
 # --------------------------------------------------------------------------------------------------
 # Linux: a systemd user unit
 # --------------------------------------------------------------------------------------------------
@@ -156,7 +165,7 @@ def systemd_unquote(line: str) -> list[str]:
     return words
 
 
-def _unit(argv: tuple[str, ...], path_env: str | None) -> str:
+def _unit(argv: tuple[str, ...], environment: Mapping[str, str]) -> str:
     lines = [
         f"# {HEADER}",
         "[Unit]",
@@ -166,8 +175,10 @@ def _unit(argv: tuple[str, ...], path_env: str | None) -> str:
         "[Service]",
         "Type=simple",
     ]
-    if path_env:
-        lines.append(f"Environment={systemd_quote('PATH=' + path_env, exec_line=False)}")
+    lines += [
+        f"Environment={systemd_quote(f'{name}={value}', exec_line=False)}"
+        for name, value in environment.items()
+    ]
     lines += [
         "ExecStart=" + " ".join(systemd_quote(arg) for arg in argv),
         "Restart=on-failure",
@@ -188,7 +199,7 @@ def _linux(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry:
     return Entry(
         system="linux",
         path=unit,
-        content=_unit(argv, env.get("PATH")),
+        content=_unit(argv, _recorded(env, "PATH", TELEMETRY_OPT_OUT)),
         argv=argv,
         link=folder / "default.target.wants" / UNIT_NAME,
         start_now=f"systemctl --user daemon-reload && systemctl --user restart {UNIT_NAME}",
@@ -201,7 +212,7 @@ def _linux(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry:
 # --------------------------------------------------------------------------------------------------
 
 
-def _plist(argv: tuple[str, ...], path_env: str | None, home: Path) -> str:
+def _plist(argv: tuple[str, ...], environment: Mapping[str, str], home: Path) -> str:
     agent: dict[str, object] = {
         "Label": LAUNCH_LABEL,
         "ProgramArguments": list(argv),
@@ -210,8 +221,8 @@ def _plist(argv: tuple[str, ...], path_env: str | None, home: Path) -> str:
         "StandardOutPath": "/dev/null",
         "StandardErrorPath": str(home / "Library" / "Logs" / "ordnung.log"),
     }
-    if path_env:
-        agent["EnvironmentVariables"] = {"PATH": path_env}
+    if environment:
+        agent["EnvironmentVariables"] = dict(environment)
     return plistlib.dumps(agent, sort_keys=True).decode("utf-8")
 
 
@@ -221,7 +232,7 @@ def _macos(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry:
     return Entry(
         system="macos",
         path=path,
-        content=_plist(argv, env.get("PATH"), home),
+        content=_plist(argv, _recorded(env, "PATH", TELEMETRY_OPT_OUT), home),
         argv=argv,
         start_now=f"launchctl bootout {target} 2>/dev/null; launchctl bootstrap gui/$(id -u) '{path}'",
         stop_now=f"launchctl bootout {target}",
@@ -244,12 +255,13 @@ def cmd_quote(value: str) -> str:
 UTF8_CODE_PAGE = "chcp 65001 >nul"
 
 
-def _cmd(argv: tuple[str, ...]) -> str:
+def _cmd(argv: tuple[str, ...], environment: Mapping[str, str]) -> str:
     lines = [
         "@echo off",
         UTF8_CODE_PAGE,
         f"rem {HEADER}",
         "rem Starts Ordnung (the local web app) in a minimised window when you sign in; closing it stops Ordnung.",
+        *(f"set {cmd_quote(f'{name}={value}')}" for name, value in environment.items()),
         'start "Ordnung" /min ' + " ".join(cmd_quote(arg) for arg in argv),
     ]
     return "\r\n".join(lines) + "\r\n"
@@ -261,7 +273,7 @@ def _windows(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry
     return Entry(
         system="windows",
         path=path,
-        content=_cmd(argv),
+        content=_cmd(argv, _recorded(env, TELEMETRY_OPT_OUT)),
         argv=argv,
         start_now=f'"{path}"',
         stop_now="Close the minimised “Ordnung” window.",
@@ -287,7 +299,7 @@ def plan(
     env = os.environ if env is None else env
     home = home or Path.home()
     argv = serve_argv(Path(data_dir).expanduser().absolute(), port=port, python=python)
-    values = [*argv, env.get("PATH") or "", str(home)]
+    values = [*argv, env.get("PATH") or "", env.get(TELEMETRY_OPT_OUT) or "", str(home)]
     _no_line_breaks(values)
     builders = {"linux": _linux, "macos": _macos, "windows": _windows}
     return builders[system](argv, env, home)
@@ -386,7 +398,8 @@ def state(
 ) -> State:
     """Is there an entry, which data folder does it start, and does it run what ``enable`` would
     write now for ``data_dir`` (default: its own folder) — this Python, that folder, its port?
-    The recorded ``PATH`` is not compared: it differs between terminals without making anything stale."""
+    The recorded variables (``PATH``, the telemetry opt-out) are not compared: they differ between
+    terminals without making anything stale."""
     where = location(platform=platform, env=env, home=home)
     if not where.path.is_file():
         return State(system=where.system, path=where.path, enabled=False)

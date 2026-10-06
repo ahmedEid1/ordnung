@@ -141,7 +141,6 @@ class SettingsPatch(BaseModel):
     inbox_auto_read: bool | None = Field(
         default=None, description="read new files from the watched folder at once (else they wait for you)"
     )
-    ocr: bool | None = None
     llm_brief: bool | None = None
     llm_review: bool | None = None
     desktop_notifications: DesktopNotifyMode | None = None

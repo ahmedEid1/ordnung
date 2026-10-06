@@ -1,0 +1,91 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1aae17b188795f078ee91a3d69d11fe0b8f910e59b65d0cdd0964a50dadef884\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-07-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-I2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-07-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Kleintierpraxis Dr. med. vet. Lena Musterpfote\",\"document_date\":\"2026-07-09\",\"references\":[{\"label\":\"Rechnungs-Nr.\",\"value\":\"KT-2026-3381\"},{\"label\":\"Patienten-Nr.\",\"value\":\"P-0417\"}],\"amounts\":[244.53],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay vet invoice for Pepper's treatment\",\"quote\":\"Wir bitten um Ausgleich des Gesamtbetrags innerhalb von 21 Tagen nach dem Datum der Rechnung.\",\"computation\":\"The invoice is dated 09.07.2026 (Thursday). This is a private-law payment deadline, not an authority letter, so no deemed-delivery rule applies; the period runs from the invoice's own date. Under § 187 Abs. 1 BGB the day of the event (09.07.2026) is not counted, so counting starts 10.07.2026. 21 days later (§ 188 Abs. 1 BGB) falls on 30.07.2026, a Thursday. Since 30.07.2026 is a regular working day (no weekend/public-holiday shift needed under § 193 BGB), the due date stays 30.07.2026.\",\"due_date\":\"2026-07-30\",\"confidence\":\"high\",\"amount\":244.53}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Kleintierpraxis Dr. med. vet. Lena Musterpfote",
+      "document_date": "2026-07-09",
+      "references": [
+        {
+          "label": "Rechnungs-Nr.",
+          "value": "KT-2026-3381"
+        },
+        {
+          "label": "Patienten-Nr.",
+          "value": "P-0417"
+        }
+      ],
+      "amounts": [
+        244.53
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay vet invoice for Pepper's treatment",
+          "quote": "Wir bitten um Ausgleich des Gesamtbetrags innerhalb von 21 Tagen nach dem Datum der Rechnung.",
+          "computation": "The invoice is dated 09.07.2026 (Thursday). This is a private-law payment deadline, not an authority letter, so no deemed-delivery rule applies; the period runs from the invoice's own date. Under § 187 Abs. 1 BGB the day of the event (09.07.2026) is not counted, so counting starts 10.07.2026. 21 days later (§ 188 Abs. 1 BGB) falls on 30.07.2026, a Thursday. Since 30.07.2026 is a regular working day (no weekend/public-holiday shift needed under § 193 BGB), the due date stays 30.07.2026.",
+          "due_date": "2026-07-30",
+          "confidence": "high",
+          "amount": 244.53
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 1810,
+      "cache_read_tokens": 15647,
+      "cache_creation_tokens": 5245,
+      "cost_usd": 0.0422174,
+      "duration_ms": 20622,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 21,
+            "unit": "days",
+            "anchor": "document_date",
+            "anchor_date": "2026-07-09",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "legal_basis": "§§ 187, 193 BGB",
+            "text": "Wir bitten um Ausgleich des Gesamtbetrags innerhalb von 21 Tagen nach dem Datum der Rechnung."
+          },
+          "document_date": "2026-07-09",
+          "sender_kind": "company",
+          "sender_name": "Kleintierpraxis Dr. med. vet. Lena Musterpfote",
+          "region": "BW",
+          "recipient_region": "NW"
+        },
+        "result": "{\"due_date\":\"2026-07-30\",\"weekday\":\"Thursday\",\"send_by\":\"2026-07-29\",\"summary\":\"21 days after the letter's date (Thu 9 Jul 2026) is Thu 30 Jul 2026.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Thu 9 Jul 2026\",\"date\":\"2026-07-09\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"21 days later: Thu 30 Jul 2026\",\"date\":\"2026-07-30\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Thu 30 Jul 2026 is a working day, so it stays\",\"date\":\"2026-07-30\",\"rule_id\":\"bgb_193\",\"citation\":\"§ 193 BGB\"},{\"label\":\"Send by Wed 29 Jul 2026 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2026-07-29\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"bgb_193\",\"title\":\"Weekend and holiday shift (private law)\",\"citation\":\"§ 193 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__193.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2026-07-12\",\"letter_date\":\"2026-07-09\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"recipient_region: a payment to a company or person is made where the payer lives (§§ 269, 270 Abs. 4 BGB), so that Land's holidays apply\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE73 3705 0198 0005 5928 00"
+        },
+        "result": "{\"iban\":\"DE73 3705 0198 0005 5928 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005592800\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

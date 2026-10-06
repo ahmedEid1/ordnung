@@ -82,7 +82,7 @@ describe("walking the wizard", () => {
     expect(cont).toHaveAttribute("aria-disabled", "true");
     expect(cont).toHaveAccessibleDescription("Choose your state to continue.");
     const group = screen.getByRole("group", { name: "Your state (Bundesland)" });
-    expect(group).toHaveAccessibleDescription("Affects public holidays and deadlines.");
+    expect(group).toHaveAccessibleDescription("Decides the public holidays for payments you make. A letter's deadlines use its sender's state.");
 
     cont.focus();
     await user.keyboard("{Enter}");

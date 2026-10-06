@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import os
 import random
 import sqlite3
 import threading
+import weakref
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -19,7 +21,14 @@ from ordnung.db import store as store_module
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import NotFoundError, Store, normalize_identifier, search_tokens
 from ordnung.ids import PREFIXES, content_id, doc_id_for_sha, new_id, prefix_of
-from ordnung.llm.base import DEFAULT_MODEL, LLMRequest, Usage
+from ordnung.llm.base import (
+    DEFAULT_MODEL,
+    Attachment,
+    ClaudeNotInstalled,
+    ClaudeTimeout,
+    LLMRequest,
+    Usage,
+)
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService, UsageSink
 from ordnung.models import (
@@ -245,6 +254,46 @@ def test_a_threads_connection_is_closed_when_the_thread_ends(store: Store) -> No
     assert store.get_meta("still") == "usable"
     assert not run_threads(1, lambda _: store.set_meta("from", "a new thread"))
     assert store.get_meta("from") == "a new thread" and store._connections == [mine]
+
+
+def test_the_ended_thread_finalizer_does_nothing_under_another_pid(store: Store) -> None:
+    """Under another pid it runs in a forked child, where SQLite must not be touched."""
+    mine = store._conn()
+    store_module._close_ended_thread_connection(weakref.ref(store), mine, os.getpid() + 1)
+    assert store._connections == [mine]
+    assert mine.execute("SELECT 1").fetchone()[0] == 1
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs fork()")
+@pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
+def test_a_forked_child_leaves_the_other_threads_connections_alone(store: Store) -> None:
+    """uvloop starts ``claude`` by forking and running Python in the child before it execs. The child
+    drops the parent's other threads, and closing their connections there waited forever on a SQLite
+    mutex another thread held at the fork: the server froze, and the stuck child kept its port."""
+    opened, done = threading.Event(), threading.Event()
+    held: list[sqlite3.Connection] = []
+
+    def hold() -> None:
+        held.append(store._conn())
+        opened.set()
+        done.wait()
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    try:
+        assert opened.wait(5)
+        child = os.fork()
+        if child == 0:  # the forked child: its other threads are gone, their connections untouched
+            try:
+                held[0].execute("SELECT 1")
+            except BaseException:
+                os._exit(1)
+            os._exit(0)
+        _, status = os.waitpid(child, 0)
+    finally:
+        done.set()
+        thread.join()
+    assert os.waitstatus_to_exitcode(status) == 0
 
 
 def test_tx_commits(store: Store) -> None:
@@ -1512,6 +1561,86 @@ async def test_llm_service_uses_the_store_as_cache_and_ledger(store: Store) -> N
     stats = store.usage_stats()
     assert (stats.calls, stats.cache_hits) == (2, 1)
     assert store.purge_cache_for("doc_1") == 1
+
+
+async def test_a_call_whose_cli_never_started_carried_no_letter(store: Store, tmp_path: Path) -> None:
+    """FEAT G4: Claude not installed — the call's row names no letter and no bytes, so the letter is not
+    "given to the model"; a call that did start (even one that failed) carried it, and so did a reading."""
+    store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
+    page = tmp_path / "page-1.jpg"
+    page.write_bytes(b"\xff\xd8 a page \xff\xd9")
+    request = LLMRequest(
+        purpose="extract",
+        prompt="p",
+        system="s",
+        doc_ids=["doc_1"],
+        attachments=[Attachment(path=page, media_type="image/jpeg")],
+    )
+
+    def refuse(error: Exception) -> LLMService:
+        def respond(req: LLMRequest) -> None:
+            raise error
+
+        return LLMService(FakeBackend(respond), sink=store)
+
+    with pytest.raises(ClaudeNotInstalled):
+        await refuse(ClaudeNotInstalled("The “claude” command was not found.")).complete(request)
+    [never] = store.usage_stats().recent
+    assert (never.ok, never.doc_ids, never.pages_sent, never.bytes_sent) == (False, [], 0, 0)
+    assert not store.given_to_model("doc_1")
+    with pytest.raises(ClaudeTimeout):
+        await refuse(ClaudeTimeout("Claude did not answer within 240 s")).complete(request)
+    started = store.usage_stats().recent[0]
+    assert (started.doc_ids, started.pages_sent) == (["doc_1"], 1) and started.bytes_sent > 0
+    assert store.given_to_model("doc_1")
+    store.add_document(id="doc_2", sha256="b" * 64, filename="b.pdf", mime="application/pdf", file_path="b")
+    assert not store.given_to_model("doc_2")
+    store.update_document("doc_2", ai_processed_at="2026-09-25T10:00:00Z")
+    assert store.given_to_model("doc_2")
+
+
+def test_deleting_a_letter_forgets_its_calls_errors(store: Store) -> None:
+    """SEC S10: a usage-log row keeps only the anonymous numbers once its letter is deleted — its error too,
+    which may quote Claude's answer."""
+    store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
+    store.log_llm_call(
+        "extract", "sonnet", "claude-cli", Usage(), ok=False, error="answer: …", doc_ids=["doc_1"]
+    )
+    store.log_llm_call("ask", "sonnet", "claude-cli", Usage(), ok=False, error="429")
+    assert store.delete_document("doc_1", purge_files=False)
+    forgotten, kept = sorted(store.usage_stats().recent, key=lambda call: call.purpose != "extract")
+    assert (forgotten.doc_ids, forgotten.error, forgotten.ok) == ([], None, False)
+    assert kept.error == "429"
+
+
+def test_a_refused_upload_leaves_no_files(store: Store, paths: Paths) -> None:
+    """ROB G2: an upload whose document was never stored leaves neither its original nor its page images —
+    unless a document has that file."""
+    original = paths.files / "ab" / ("ab" + "c" * 62 + ".pdf")
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b"%PDF-1.4 refused")
+    derived = paths.derived / "doc_refused"
+    derived.mkdir(parents=True)
+    (derived / "page-1.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+    assert store.discard_upload("ab" + "c" * 62, "doc_refused", original)
+    assert not original.exists() and not derived.exists()
+    kept = paths.files / "dd" / ("dd" + "e" * 62 + ".pdf")
+    kept.parent.mkdir(parents=True)
+    kept.write_bytes(b"%PDF-1.4 kept")
+    store.add_document(sha256="dd" + "e" * 62, filename="k.pdf", mime="application/pdf", file_path=kept)
+    assert not store.discard_upload("dd" + "e" * 62, "doc_other", kept)
+    assert kept.exists()
+
+
+def test_settings_stored_by_an_older_version_still_load(store: Store) -> None:
+    """The demo database (and any older install) stores settings with the never-built quick capture's model,
+    a bank model and ``ocr``: they load, without those."""
+    stored = AppSettings().model_dump() | {"ocr": True}
+    stored["models"] |= {"capture": "haiku", "bank": "haiku"}
+    store.set_meta("settings", json.dumps(stored))
+    settings = store.get_settings()
+    assert settings.model_dump() == AppSettings().model_dump()
+    assert "ocr" not in settings.model_dump() and "capture" not in settings.models.model_dump()
 
 
 def test_cache_put_get_replace_and_purge(store: Store) -> None:

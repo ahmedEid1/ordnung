@@ -63,7 +63,13 @@ function UploadRow({ job, grouped }: { job: JobProgress; grouped?: boolean }) {
   const name = doc?.title ?? doc?.filename ?? "New letter";
   const photo = doc?.text_mode === "vision" || doc?.mime?.startsWith("image/");
   const Icon = photo ? Camera : FileText;
-  const stageLabel = failed ? (job.error ?? "Couldn't read this letter") : done ? "Filed — everything is on your timeline" : copyFor(JOB_STAGE_COPY, job.stage ?? "intake").label + "…";
+  // a letter waiting in the queue (for Claude) says why instead of "Opening the file…"
+  const waiting = job.status === "queued" && job.waiting_reason;
+  const stageLabel = failed
+    ? (job.error ?? "Couldn't read this letter")
+    : done
+      ? "Filed — everything is on your timeline"
+      : waiting || copyFor(JOB_STAGE_COPY, job.stage ?? "intake").label + "…";
 
   // gone some other way (read in place, a batch recap) while focused: focus moves on, not to the page
   useLayoutEffect(() => {

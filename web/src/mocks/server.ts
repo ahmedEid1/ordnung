@@ -28,6 +28,7 @@ import type {
   Health,
   Item,
   ItemAside,
+  ItemCreate,
   Job,
   LetterAdvice,
   ListedItem,
@@ -59,6 +60,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
 import { ordinal } from "@/features/contracts/model";
+import { BUNDESLAENDER } from "@/features/onboarding/options";
 
 /** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
 const COURT_OBJECTION_RECIPIENT =
@@ -159,7 +161,8 @@ function calendarRefusals<T>(work: () => T): T {
 
 const DEMO_TRANSLATE_MESSAGE =
   "The demo replays recorded answers, so it can't translate your changes. Run “ordnung serve” (with Claude Code signed in) to re-translate letters you edited.";
-const DEMO_DELETE_MESSAGE = "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, run “ordnung demo --reset”.";
+const DEMO_DELETE_MESSAGE =
+  "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”.";
 const STATIC_MESSAGE = "Install Ordnung to try this with your own letters — the online demo only replays recorded examples.";
 
 function needsClaude(ctx: Ctx) {
@@ -323,6 +326,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     can_wait_again: wasKeptFromWaiting(db, d),
     // the Idea's list, as the API gives it; the page falls back to the letter's warnings (none are given here)
     scam_signs: [],
+    // no failed calls are logged here: a letter was given to Claude once it was read
+    given_to_model: Boolean(d.ai_processed_at),
     proof_of: db.state.proofs
       .filter((p) => p.doc_id === id)
       .flatMap((p) => {
@@ -1525,12 +1530,10 @@ const routes: [string, string, Handler][] = [
     "POST",
     "/items",
     ({ db, body }) => {
-      const b = (body ?? {}) as Partial<Item>;
-      if (!b.title || !b.kind) throw new HttpError(422, "A to-do needs a title and a kind.");
-      const it = makeItem({ ...b, id: newId("itm"), kind: b.kind, title: b.title, origin: "manual", grounding: "user", due_date_source: b.due_date ? "manual" : "none", created_at: nowTs(), updated_at: nowTs() });
-      db.state.items.push(it);
-      emit("item.updated", { item_id: it.id });
-      return new Reply(201, it);
+      const added = db.addItem(newId("itm"), (body ?? {}) as ItemCreate);
+      if ("status" in added) throw new HttpError(added.status, added.message);
+      emit("item.updated", { item_id: added.item.id });
+      return new Reply(201, added.item);
     },
   ],
   [
@@ -1614,6 +1617,22 @@ const routes: [string, string, Handler][] = [
   ],
   ["GET", "/parties", ({ db }) => [...db.state.parties].sort((a, b) => a.name.localeCompare(b.name))],
   ["GET", "/parties/:id", ({ db, params }) => partyDetail(db, params.id!)],
+  // like the API: the Land a sender is in (null: "Don't know"); the API also recomputes its letters' dates
+  [
+    "PATCH",
+    "/parties/:id",
+    ({ db, params, body }) => {
+      const party = db.state.parties.find((p) => p.id === params.id) ?? notFound("Unknown person or organisation.");
+      const region = (body as { region?: unknown } | null)?.region;
+      const code = typeof region === "string" ? BUNDESLAENDER.find((b) => b.code === region.trim().toUpperCase())?.code : undefined;
+      if (region !== null && !code) throw new HttpError(422, `“${String(region)}” is not a German Bundesland (use a code like NW or BY).`);
+      if ((code ?? null) !== party.region) {
+        Object.assign(party, { region: code ?? null, updated_at: nowTs() });
+        emit("item.updated", {});
+      }
+      return party;
+    },
+  ],
   ["GET", "/cases/:id", ({ db, params }) => caseDetail(db, params.id!)],
 
   // views

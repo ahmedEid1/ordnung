@@ -58,9 +58,12 @@ SPECIMEN.
 9. Benchmark run live and published (`docs/evals.md`), README with GIF, diagram, numbers.
 10. CI green: backend, frontend, e2e (Playwright over demo mode incl. axe checks), `demo --check`.
 
-**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview), static hosted demo
-export, model/cost trade-off eval, Ask agent eval, "please check" received-date question, ⌘K search,
-per-document pipeline trace view.
+**P1 — only after P0 is green:** quick capture bar ("Add anything…" with preview) — *not built* (its
+model purpose, schema, lane and settings were removed); static
+hosted demo export (a `VITE_STATIC_DEMO=1` build of the browser-only demo) — built; model/cost trade-off
+eval — *not built* (`ordnung eval --models` can run several models, but no comparison is published); Ask
+agent eval (`docs/evals-ask.md`) — built; "please check" received-date question — built; ⌘K search —
+built; per-document pipeline trace view — built.
 
 **Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR, LLM party
 tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
@@ -91,7 +94,7 @@ only call Ordnung's **read-only** MCP tools; the UI never renders model output a
 src/ordnung/            (the main modules; the package itself is the complete list)
   cli.py  config.py  clock.py  ids.py  models.py  events.py  app_context.py  views.py  tick.py
   payments.py  numbers.py  girocode.py  recurrence.py  doctor.py  locking.py  server.py
-  db/ (schema.sql, migrations/NNNN_*.sql, store.py)
+  db/ (migrations/NNNN_*.sql, migrate.py, store.py)
   llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
   rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
           routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
@@ -138,8 +141,8 @@ Key additions in v2 (to implement in models.py):
 - `Document.ai_processed_at`, `Document.ai_private: bool` ("Keep private — no AI").
 - `DocumentStatus` gains `"held"` (phase 2): a file from the watched folder, or an attachment of one,
   stored and read on this computer only until the person answers (§ 8.1); a held letter is always
-  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>`, `capture` …
-- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude); the
+  `ai_private` too. `Document.source`: `upload`, `folder`, `email:<the e-mail's id>` …
+- `AppSettings.model: str = "claude-sonnet-5"` — the model every call runs on (Settings → Claude connection); the
   per-purpose `AppSettings.models` aliases only key the recordings; the cache is keyed by the model
   a call runs on, so a new choice is a new call (§ 7).
 - `AppSettings.inbox_auto_read: bool = False`; `DocumentDetail.attachments: list[EmailAttachment]`
@@ -155,12 +158,13 @@ SQLite `<data>/ordnung.db`. Every connection: `isolation_level=None` (autocommit
 transactions), `PRAGMA journal_mode=WAL; busy_timeout=5000; synchronous=NORMAL; foreign_keys=ON`.
 `Store.tx()` = `BEGIN IMMEDIATE … COMMIT/ROLLBACK` (re-entrant per thread). Migrations: `PRAGMA
 user_version` + `db/migrations/NNNN_name.sql` applied in order on open (0001 = the v1 schema;
-0002 = proof of sending and call notes; 0003 = reading traces). What ships is numbered 0001, 0002, …
+0002 = proof of sending and call notes; 0003 = reading traces; 0004 = a contract's notice day and early
+notice; 0005 = a contract that names the statutory notice periods). What ships is numbered 0001, 0002, …
 without a gap; on a development branch a number may be handed out ahead, so the runner only requires
 that numbers start at 0001 and never repeat. It keeps a ledger of what ran (`schema_migrations`:
 version, name) and applies every migration not in it, in number order — also a lower number that
 arrives after a database ran a higher one; `user_version` holds the highest (a newer database is
-refused). A database from before the ledger at version 1 ran 0001 (it gets 0002 and 0003); one past 1
+refused). A database from before the ledger at version 1 ran 0001 (it gets 0002 to 0005); one past 1
 without a ledger, or one whose ledger records a different migration under one of the numbers (a
 development build from before a renumbering), is refused with the reason (see `db/migrate.py`).
 The MCP server opens the DB read-only (`mode=ro` URI + `PRAGMA query_only=ON`).
@@ -369,7 +373,7 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   `ORDNUNG_CLAUDE_MODEL` (an override for every call while it is set; the recorders don't use it:
   the demo records with the default model, the benchmarks with the run's `--model` on a backend
   without the setting) >
-  `AppSettings.model` (Settings → Claude; `claude-sonnet-5` by default — a pinned id, an alias moves
+  `AppSettings.model` (Settings → Claude connection; `claude-sonnet-5` by default — a pinned id, an alias moves
   with releases; an id or alias as Claude Code takes it: no spaces, not starting with a dash, so a
   Bedrock or Vertex id and `sonnet[1m]` pass; read when the call is made, so a save counts from the
   next call) > the request's own model (`settings.models.<purpose>`, an alias that keys the
@@ -377,8 +381,8 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   by the model the call runs on: a letter read again after a new choice is read anew. The usage
   log and the trace name the model that answered (`modelUsage`), else the one the call named. The
   demo's settings are the defaults, so it records with the default model. `health` names the pin
-  (`model_pinned`) so Settings → Claude can say the saved model waits while the variable is set.
-- **Lanes**: interactive (ask, draft, capture, brief; semaphore 1) and background (transcribe,
+  (`model_pinned`) so Settings → Claude connection can say the saved model waits while the variable is set.
+- **Lanes**: interactive (ask, draft, brief, doctor; semaphore 1) and background (transcribe,
   extract, review; semaphore `settings.concurrency`, default 2).
 - **Keys**: `llm_key(req) = f"{purpose}:{prompt_version}:{model}:{sha256(canonical(stable_inputs))}"`
   — callers pass `cache_key` = canonical stable inputs (e.g. extract: file sha + page modes + language +
@@ -386,15 +390,19 @@ claude -p --input-format stream-json --output-format stream-json --verbose
 - **Usage log** (`llm_calls`, one row per call): accounting (tokens, cost, latency, cache hit) plus
   the replay/cache key, the prompt template and version, the model the CLI says answered, and — when
   the caller passes its trace step — job, pipeline stage and span; `repair_of` links a repair to the
-  call it retried and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
+  call it retried (and the completeness re-ask to the call it completes, ADR 0016 — no repair count
+  includes it) and `outcome` is `ok | invalid | repaired | failed` (`LLMService`, one policy).
 - **Replay**: strict in CI/`demo --check` (miss = failure); in the interactive demo a miss becomes a
-  friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, one
-  message in `assistant/ask.py`), other model calls one plain message ("The demo replays recorded
-  answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
+  friendly note, never an error dialog: Ask's one `demo_miss` event (`error_code: "demo_miss"`, its
+  message in `assistant/ask.py`, which points to the suggested questions only while the demo offers
+  them), other model calls one plain message ("The demo replays recorded answers only …"). API messages are plain text (commands in “quotes”, never Markdown).
 - `doctor` is zero-token: `claude --version`, `claude auth status` (JSON), warns if
   `ANTHROPIC_API_KEY` is set (API billing overrides the subscription), optional 1-call probe on the
   model every call runs on (the CLI reads the setting; "Run check" passes it), whose row names it
-  and whose fix on a failure points at that model after the sign-in.
+  and whose fix on a failure points at that model after the sign-in; and checks the database
+  read-only (`PRAGMA quick_check`, schema version); its fix names `ordnung restore FILE --force`. A
+  `claude` that can't be started (moved, not executable) is reported as not installed, never a crash,
+  and one not found is looked for again at the next call.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -404,6 +412,9 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    once); render pages (`derived/<doc>/page-N.jpg`, 1600 px) + thumbnail; EXIF transpose.
 2. **text** — per page: pdfplumber text + words (coordinates normalised to the page box, CropBox
    and rotation handled) → `text_source="text"` if ≥ 40 meaningful chars, else needs transcription.
+   The text layer is read on a pdfminer document that gives up after 1000 lookups answering with
+   another reference, so a PDF whose objects refer to themselves (`5 0 obj 5 0 R endobj`) can't hang
+   the reading: its pages are transcribed instead.
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
@@ -413,6 +424,39 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    a new amount on a letter that states a rent contract) become the payment every month from that day
    that the prompt asks for and `recurrence.py` point 9 needs, quoting the change's sentence — never for
    a rent increase that needs consent (§ 558b BGB) or beside a recurring payment that holds the amount.
+   **Completeness re-ask** (`extract.read_document`, ADR 0016): a valid answer that the reading check
+   (**Incomplete reading** below: `gaps.reading_gap` on the same pages, computed as the check computes it)
+   finds almost blank or without the objection deadline the letter's notice states is asked for **once**
+   more — `purpose="extract"`, the same request with Ordnung's note appended (`prompts/reading_gaps.md`: only
+   the parts that gap left out, in plain words — for an almost blank reading the sender, the letter's date,
+   the to-dos and the objection deadline the letter's own instructions state, for a left-out objection only
+   that deadline — the full reading asked for again, and text in the letter that asks for a shorter answer,
+   fewer deadlines or claims a period was lifted named as content to warn about, never an instruction; the
+   letter stays in its untrusted block and the note carries none of its text, nor of the first answer), a
+   stricter copy of the schema for this call only (sender, letter date and to-dos required, `null` or an
+   empty list allowed), version `<base>.c<n>` and a `complete=<sorted gaps>` marker in its cache key, added
+   only when set, so every other key and recording is unchanged. **It never leaves the letter worse off than
+   the first reading with the check behind it**: its answer is used only when it validates and
+   `extract.judge_completion` finds, against the to-do the check files for the first reading (the floor), that
+   it is strictly less incomplete also with the first answer's kind, high-stakes kind, sender and letter date
+   pinned; its letter date is the first's, or (earlier, or where the first gave none) the one the letter gives
+   for itself; every dated to-do of the first is kept on the same or an earlier date, also as computed in each
+   reading's own context in every Land; the floor is covered (a to-do dating the objection, or the check's own
+   to-do for it at least as dated; a dated to-do found on the letter where the floor asks the person to read
+   it); it gives no objection date — nor a dated to-do naming a remedy under another nature — where the floor
+   has none, and none that may end after a dated floor (by shape, and computed in every Land with the floor in
+   the first reading's context: zero tolerance, even where the later date is legally right); every dated to-do
+   it adds and any sender it names anew or otherwise is found on the letter; and at least the first answer's
+   share of its quotes is found. Otherwise — and on any model error (`unanswered`) or an unusable answer — the
+   first reading is kept and the check files its to-do as without the re-ask; only a replay miss raises (the
+   demo replays strictly). It is never repaired, and never sent once the letter was trashed or deleted meanwhile
+   (nor is the repair). An accepted answer adds a letter warning (no scam sign) that the first answer left
+   something out and Ordnung asked once more; where the floor was "Read this letter yourself", that to-do stays
+   beside the answer as a low "Please check" cross-check ("Check the letter for a missed deadline",
+   `extract.cross_check`). Its trace step is "Extract · complete"
+   (`extract_complete`: the gap, whether its answer was used, why not) and its usage-log row names the call it
+   completes (`repair_of`, which no repair count includes). The check at **verify** runs on whichever reading
+   is kept.
 5. **verify** — for each quote: normalise (with offset map) → `partial_ratio_alignment` against each
    page; score ≥ 90 **and** every digit token of the quote present verbatim on that page →
    located. Grounding: text page → `verified` (+ boxes from matched words); transcript page →
@@ -469,8 +513,9 @@ first winning: **empty** — no to-do, no sender, no letter date, no key fact, n
 change or payment details and no remedy; **remedy left out** — the letter states how to object within a
 period (a sentence naming a Widerspruch, Einspruch, Klage, objection or appeal with a period, or the
 sentence after it when that one names neither a remedy nor a payment; words split across lines joined as
-quotes are matched; never a sentence that only says when to pay or when to give reasons, nor list lines
-above the notice's heading) in words that speak of a remedy against *this* letter (not a later or
+quotes are matched; never a sentence that only says when to pay or when to give reasons, one that reports a
+remedy already lodged without offering one — a Widerspruchsbescheid's reasoning "…, da er nicht innerhalb eines
+Monats … erhoben wurde" —, nor list lines above the notice's heading) in words that speak of a remedy against *this* letter (not a later or
 hypothetical decision's, one already lodged, a direct debit's, one the letter rules out, or one counted back
 from an event), its text shows an administrative act (or a public body's "diese Entscheidung", or a heading
 "Bescheid"), it is not filed as a kind whose deadline the law files itself (court payment
@@ -478,36 +523,65 @@ and enforcement orders, dismissals, landlord notices, rent increases) unless the
 kind out or its notices give no shorter period than the law, and no to-do dates the objection with a
 date that computes (an objection item, or a dated to-do quoting the notice; a `remedy` read without its
 date doesn't count). Either way the letter gets **one** to-do in slot `check:reading`, never with a date
-later than the letter allows: the period of all the notices state (and the sentences after them) that
+later than the letter allows when its own date is read — the exceptions are an envelope date the person types
+for a letter served with a Postzustellungsurkunde (a pickup day counts up to 14 days late) and the planted
+layouts ADR 0015 lists: the period of all the notices state (and the sentences after them) that
 ends first, counted from the letter's date — dated only when it is from a week to a month and no notice
 holds a period that can't be read or dated (Werktage, years) or counts back from an event ("zwei Wochen
 vor …"), and with deemed delivery only when every notice counts from notification (by post, or the day
 after a portal download; never on formal service: Postzustellungsurkunde, PZU, förmliche Zustellung,
 Empfangsbekenntnis, Rückschein); the start is the earliest date the letter gives for itself, carried in
-the DateSpec. Dates its words name as its own set it — the first page's "Datum"/"Date:" label or a label
+the DateSpec. Dates of the letter's own kinds set it — the first page's "Datum"/"Date:" label or a label
 of the letter's own date (Bescheid-, Brief-, Ausstellungs-, Erstellungs-, Bearbeitungsdatum, "erstellt am"),
 a place and date among its header lines or DIN 5008's date line under the recipient's address (never under a
-line ending in ":"), a date alone on that date line, the reference line (the values under a "Datum" column,
-unless a due word stands before them), "mit diesem Bescheid vom …", the decision its notice names right
-before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit vom …")
-and the reading's date; never an appointment's "Datum:" ("Ihr Termin:" / "Uhrzeit"). None when those are
-more than 14 days apart (then no date at all), none from one date alone more than 60 days before the letter
-arrived, none after it arrived, and none on a Widerspruchsbescheid dated only by the decision it reshapes.
-Other dates (another "…datum", a print or copy date, a date alone, a continuation page's, a decision or
-period the notice names with words between) only lower it, within those 14 days; alone they set none. A
-notice about another decision named without a date ("Gegen den Gebührenbescheid …") lowers it to that
-decision's date where the letter gives it elsewhere. After a Widerspruchsbescheid a court action names the
-to-do on a tie. The letter's date
-once entered counts when it gives none. Recomputed, an earlier stored letter date or arrival moves it
-earlier, never later; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
+line ending in ":"; "Ort, Datum: …" too) whose place the page names after a postcode on its line or in a line
+above it — shortened, with its river or district, umlauts spelled out ("Frankfurt a. M.", "Halle (Saale)",
+"Berlin-Mitte", "Muenchen"), never with another word after it ("Frankfurt Hauptwache") — (the date's own column
+on an address line the text layer ran it into, "Ihr Zeichen:" beside it), a date alone on that date line (never
+with an appointment's time under it; opening hours that say so or run Mo–Fr, and a line with its own date and
+time, are none), a date alone on the page's first line when the header gives no other (a date the page names as
+its own at its foot, on that page or a later one, lowers it and the date line's: either may be a received stamp), the reference line (the values under a "Datum" column, unless a due word stands before
+them, never a payments table's or a "Stichtag" column's), "mit diesem Bescheid vom …", the decision its notice
+names right before "vom" ("Bescheid vom …", never "Antrag vom", "Ihr Schreiben vom" or a period's "für die Zeit
+vom …") and the reading's date; never an appointment's "Datum:" ("Ihr Termin:", "Ihr Termin", "Einladung …" /
+"Uhrzeit"; never an info block's "Termine nach Vereinbarung" or a department's "Terminvergabe" above it). None
+when those are more than 14 days apart (then no date at all), none from one date alone more
+than 60 days before the letter arrived, none after it arrived, and none on a Widerspruchsbescheid dated only
+by the decision it reshapes. Other dates (another "…datum", "Stand:" in the header or on the date line — in the
+body it is none of the letter's —, a print or copy date, a date alone, a
+continuation page's, a decision or period the notice names with words between, and a date named like the
+letter's own but of no own kind: a place the page names nowhere else, "Abholung am Schalter, …") only lower it,
+within those 14 days; alone they set none — so while the letter's own date is unread, such a line, planted
+later or an appointment's, starts nothing without the reading's date beside it. A notice about another
+decision named without a date ("Gegen den Gebührenbescheid …", or "Hiergegen …" / "dagegen" on a letter that
+never names itself a decision) lowers it to that decision's date where the letter gives it elsewhere (never the
+hearing before this one, "Mit Schreiben vom … haben wir Sie angehört"), so one more than 14 days earlier leaves no
+start, and on a reminder or cover letter that never gives it ("Zahlungserinnerung", "die noch offen ist") leaves no
+start (a letter that decides itself now, "lehnen wir ab", "setzen wir … fest", is no reminder); otherwise it counts from the letter's own date. "… nach Bekanntgabe des Bescheides" beside "Gegen diesen
+Bescheid …" is this letter. On a decision on a remedy a sentence reporting one already lodged is no notice, never a
+condition ("…, wenn nicht … Einspruch eingelegt worden ist"); on any other letter it stays one. After a Widerspruchsbescheid a court action names the to-do on a tie. On a
+letter served with a Postzustellungsurkunde (a short line of its header: "Mit Postzustellungsurkunde",
+"Zustellung gegen PZU", or "Dieser Bescheid wird Ihnen mit Postzustellungsurkunde zugestellt" — never a copy, a
+representative's, a negation or a reference number; every notice counting from notification or service, none
+naming an earlier decision unless it names this letter too or a decision on a remedy — `gaps.formally_served`,
+`RuleContext.formal_service`) the to-do cites `pzu`, as every to-do counted from arrival does, also when the
+letter's own notice is set beside a reading's date: the app asks "When was it delivered?" for the date on the
+yellow envelope ("not the day you picked it up"), nothing prefilled, and the to-do then counts from that date
+(§ 3 VwZG with §§ 180, 181 ZPO; § 41 Abs. 5 VwVfG) when it is after the letter's own and within 14 days of it; a
+later one keeps the letter's, and the receipt says so. A reading of such a letter gets no deemed delivery days. A
+pickup or opening day typed instead of the envelope's (or an arrival saved before this rule, once the letter is
+planned again) counts up to 14 days late. The letter's date once entered counts when it gives none. Recomputed,
+an earlier stored letter date or arrival moves it earlier, never later — but the envelope's date of a served
+letter, within 14 days of its own; the letter rules for the model's readings (§ 574b BGB …) never apply to it. Without
 a notice — or for an almost blank reading of a letter whose notices are all ruled out — it is an undated
 "Read this letter yourself". Its quote is the notice's own words, at most 600
 characters. It is always `low` and "Please check" (`reading_incomplete`), also when
 its dates are recomputed, until the person confirms, re-dates, finishes or dismisses it; a warning says
 why (a court action gets its own wording and the "get advice" warning), and when the letter carries text
 addressed to an AI its action says to send the objection only to an address the person already knows. A
-later complete reading removes it unless the person acted on it. No model is asked again and the reading
-itself (its sender, date and remedy) stays as the model gave it. A reading that does date the objection,
+later complete reading removes it unless the person acted on it. The check itself asks no model — the
+completeness re-ask at **extract** came before it — and the reading kept (its sender, date and remedy)
+stays as the model gave it. A reading that does date the objection,
 but more than 7 days after the period the letter's own notice gives, or with a longer period than the
 notice's, gets that period beside its own date as a second date (`gaps.notice_rival`, settled like any two
 dates: the earlier kept, both named — "Claude's reading and the letter's own instructions …" —, `low` and
@@ -515,10 +589,32 @@ dates: the earlier kept, both named — "Claude's reading and the letter's own i
 periods, the one ending first; never the reading's kind or date), counted from the date the first page
 names as its own (none without one) and from every earlier start the letter's stored dates allow, without
 the letter's kind (a notice from notification ranked from its latest deemed delivery); a notice whose own
-words count from service or arrival starts on an arrival the person confirmed (one from notification on a
-formally served letter keeps the letter's date). Recomputed too, also once the person confirmed it.
+words count from service or arrival starts on an arrival the person confirmed, and on a letter served with a
+Postzustellungsurkunde (asked for as the envelope's date) one from notification does too, within 14 days of the
+letter's date (on any other letter it keeps the letter's date: an arrival entered may be a pickup or a day saved
+later). Recomputed too, also once the person confirmed it.
 Measured on every recorded reading, the reading's date is 0 to 7 days after the notice's, so it never
-fires there.
+fires there. A reading that keeps its sender but leaves out a fixed date the letter's visible text sets for the
+person (`gaps.deadline_items`) — a payment's label ("Zahlbar bis", "Fällig am:", "Due date:") or a
+second-person or imperative verb with a full date ("Bitte überweisen Sie … bis zum …", "… ist bis zum … zu
+zahlen", "ist am … fällig", "Bitte reichen Sie … bis zum … ein", "… bis spätestens … vorzulegen", "please pay /
+submit … by …"), never in a sentence that names a remedy, a condition, something past or already done, the
+sender's own act or a direct debit, an appointment, a discount or a preference, a validity, or an option the
+person may take ("Bei Interesse …", a request after "Möchten Sie …?"), never a period's end ("für den Zeitraum bis
+zum …"), never the letter's own date or one before it, nor one past on the day the letter arrived — gets one
+to-do per such date and kind (at most three, the earliest) in slot `check:deadline#<date>-<nature>` when no dated
+to-do of the reading falls within 3 days of it, none quotes a sentence with that date, it is no later occurrence
+of a recurring to-do of the reading (its very day), and no to-do of the reading has it as its rival (a letter that
+gives one payment two dates: the reading's to-do names it beside its own). A payment's label or "fällig" files none
+on a letter that collects by direct debit, is paid or a credit note, or pays out (unless something is still owed);
+nor does the full price beside a reading's payment dated by its discount, nor a payment a reading's warning doubts.
+Reading the letter again never files one that a to-do the person acted on (edited, paid, snoozed, dismissed)
+already covers within 3 days (`plan._covered_deadlines`), and one the person acted on moves onto the new reading's
+to-do for its day. Its date is the letter's own, never moved (`shift_rule: none`), its quote the letter's line or
+sentence; titled "Check this date in the letter" and worded as a cross-check, never "Pay" in its Idea; always `low`
+and "Please check" (`deadline_left_out`) with a warning that says why; never for an almost blank reading (its own to-do sends the
+person to the letter) or one whose warnings call the letter a scam. In the benchmark it is Ordnung's to-do
+(`origin: code`, signal `deadline_left_out`), never the model's. On every recorded reading it files none.
 
 Only the stages that happen are reported to the stepper: a photo goes from **intake** straight to
 **transcribe** ("Reading the photo or scan"), a PDF whose pages all have text skips **transcribe**
@@ -537,6 +633,21 @@ that ran to the end, plus its newest paused or stopped attempt while it is withi
 lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
+Claude not installed or not signed in pauses it too, without an end (`llm.paused` with an empty `until`,
+banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason` "Waiting for
+Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure and ends
+its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`) — and so does each letter
+for Claude claimed meanwhile (put back for 30 s at a time; private and held letters are still read).
+Reading resumes once a Claude status check sees Claude ready: `GET /api/health` (a missing or
+signed-out status is kept 15 s, a ready one 10 min) or the worker's own check every 30 s. A `claude`
+found on PATH is used from then on, so installing Claude needs no restart. A reading that finds Claude
+not installed or not signed in drops the cached status, so the next check asks again; when a check said
+"ready" and the next reading fails the same way (a key Claude refuses), the worker's own check waits
+twice as long each time, up to 30 min. `llm.resumed` follows once a letter gets past Claude, not a
+check alone. A page that connects during a pause (a reload, a new tab) gets the current `llm.paused`
+first — while a letter only Claude can read still waits — and reads each letter's `waiting_reason`
+from `GET /api/jobs?active_only=true`; a letter waiting for Claude then shows "This letter waits for
+Claude" with the dates list and *Add a date* instead of the stepper.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
 non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
@@ -623,7 +734,10 @@ whose adding was stopped before its attachments adds them.
   While today's notification waits for its first try the loop wakes up for it (its time, or a
   minute after start-up) instead of sleeping the whole 15 minutes.
 - **Triggers** (`run_triggers(store, today) -> dict[rule_id, list[Suggestion]]`, then
-  `reconcile_suggestions` expires absent ones): `deadline_soon`, `overdue`, `contract_cancel_window`
+  `reconcile_suggestions` expires absent ones; after an edit through the API they run in the background
+  — `IngestWorker.refresh_ideas`: one run at a time, an edit made meanwhile gets one more — so the
+  request answers at once and the Ideas follow with `suggestions.updated`; after a reading they run once
+  per letter): `deadline_soon`, `overdue`, `contract_cancel_window`
   (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
   permit 90 d — apply before expiry, § 81 Abs. 4 AufenthG), `passport_before_permit`,
   `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
@@ -672,7 +786,10 @@ whose adding was stopped before its attachments adds them.
   due date. It ends "N overdue" while anything is overdue — a to-do, a letter to send past the day it had
   to arrive by, or a *Waiting for* entry past its day — else "All clear until <next day to act>" — or
   "N things to do today" (`due_today`) when that day is today (after a missed send-by day too; contract
-  decisions and snoozed to-dos count). Only the moments of the last session and of a dismissed prompt
+  decisions and snoozed to-dos count). Never "All clear" while letters aren't read (waiting from the
+  folder, waiting in the queue — for Claude, say — or being read, or couldn't be read): then "Nothing due from the letters that were read" and how many; *New
+  since your last review* lists such letters every week, whenever they came. Only the moments of the
+  last session and of a dismissed prompt
   are stored (`meta`: `weekly_session_at`, `weekly_prompt_dismissed_at`, each `day|timestamp`). Today
   suggests it once — 7 days after the last session or "Not now", on a Sunday 4 days after — and only when
   a step has something to show; the session says the day it will next (`next_prompt`). Nothing is paid,
@@ -990,7 +1107,8 @@ their own page under their letter (`/letters/{id}/proofs/{doc}`), deleted with t
 person keeps the files (`DELETE drafts/{id}?keep_proof_files=true`: they become their own private
 documents). A file already in Ordnung (the same bytes) is linked as it is and said to be so: made
 private now if no model call ever carried it (`llm_calls`, a cached answer or a transcribed page —
-also a reading that failed, or paused on a rate limit, after the model had it), else named as given
+also a reading that failed, or paused on a rate limit, after the model had it; never a call whose CLI
+didn't start, Claude not installed), else named as given
 to Claude (`notice`) — "kept private" is never claimed for it, also not when it was marked private
 later; one still waiting from the watched folder (`held`) gets the answer *Keep private* then, so
 *Read these* never offers a proof to Claude; the same file uploaded to the Inbox again says which
@@ -1061,8 +1179,7 @@ read (a backfilled archive's 2025 deposit), and the send-by dates of contracts w
 or confirmed. The Timeline marks money coming in "Money in" (never overdue) and a to-do set aside by why
 ("Replaced by the reminder"); the Settings preview calls a past event "Date passed";
 `meta.last_calendar_export_at` drives the "3 new dates since your last calendar update" card.
-Browser notifications (Notification API) while the app is open. Local feed URL documented as
-"desktop calendar on this computer" only.
+Browser notifications (Notification API) while the app is open.
 
 **Reminders while Ordnung is closed** (`notify/desktop.py`, `autostart.py`; the policies are in
 their docstrings):
@@ -1132,10 +1249,15 @@ their docstrings):
 ## 13. HTTP API — `api/`
 
 Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
-`/?token=…` → HttpOnly SameSite=Strict cookie; CLI reads `<data>/server.json` {port, token, pid});
-non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin, none} and
-foreign `Origin`; strict CSP on the SPA; GETs are side-effect free; originals served with `nosniff`
-and `attachment` unless PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
+`/?token=…` → HttpOnly SameSite=Strict cookie, its name per port; CLI reads `<data>/server.json` {port,
+token, pid}); non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin,
+none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with three bounded exceptions:
+`health?probe=1` ("Run check") makes one tiny live model call, at most once a minute; `health` itself,
+when its Claude status is stale, checks Claude again (no model call), uses a `claude` found on PATH from
+then on and, once Claude is ready, lets the letters waiting for it be read (§8); and downloading a
+drafted letter's PDF (or a sent letter's Nachweis) records its SHA-256 among the last 200, so the watched
+folder never takes it for a letter received; originals served with `nosniff` and `attachment` unless
+PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
@@ -1149,7 +1271,9 @@ readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading de
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
 the person compared with the paper letter; 409 when they changed or the code is refused for another
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
-(PATCH), `parties`, `parties/{id}`, `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
+(PATCH), `parties`, `parties/{id}` (GET; PATCH `{region}`: the Land the person says a sender is in, `null`
+"Don't know" — recomputes the to-dos of that sender's letters), `cases/{id}`, `timeline?from&to`,
+`lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
 `brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
 `week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
@@ -1168,14 +1292,16 @@ replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tr
 calendar's events and app password go first (`calendar_events_removed`; 409 and nothing deleted
 when that can't be done), then empties the database in place and removes Ordnung's files, keeping
 the lock and `server.json`; 409 in the demo),
-`calendar/sync` (GET: available here, the connected calendar, the last sync; PUT `{url, username,
+`calendar/sync` (GET: available here, the connected calendar, the last sync — never the events; the
+preview's length is how many the calendar gets; PUT `{url, username,
 password|null, mode}`: connect or change the mode — checked with the server, the password to the
 keyring, then sent), `calendar/sync/preview?mode=` (every event as it would be sent),
 `calendar/sync/discover` (POST `{url, username, password}`: the calendars that take events),
 `calendar/sync/run` (POST: send what changed now), `calendar/sync/disconnect` (POST
 `{remove_events}`; refusals carry `code`: `address`, `auth`, `not_calendar`, `network`,
 `not_connected`, …; the demo answers 409),
-`reminders/desktop` (GET: the notification tool, today's text in each mode, the last day shown, the
+`reminders/desktop` (GET: the notification tool, today's text in each mode, left out with
+`?preview=false`, the last day shown, the
 last failure, whether it is the demo, the start-at-login entry and the command for this folder), `reminders/desktop/test` (POST `{mode}`: show it now), `backup` (GET: what a
 backup would hold; POST `{passphrase}`: the encrypted backup file, streamed while it is made — the
 passphrase is never stored, logged or echoed),
@@ -1228,14 +1354,18 @@ check" · computation receipt → "Why this date?" (plain sentence first; "Show 
 steps + citations) · German terms shown as "Einspruch (objection)" with a glossary tooltip.
 
 Pages:
-1. **Today** — (1) secretary's note; (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
+1. **Today** — (1) secretary's note — Claude's only while the agenda it was written from is unchanged;
+   after a to-do is marked paid or a letter is read, the note written by code until "Write a new note";
+   (2) top-3 this week: countdown ("send by Fri 16 Oct · in 5
    days"), reason, one verb button (Pay · Draft letter · Mark done · Check); (3) coming up (30 days);
    (4) ≤ 3 Ideas with action-named buttons ("Draft cancellation", "Remind me in a week", "Not
    relevant"); (5) life at a glance (only areas with data; an area's status follows the app's one
    urgency scale — overdue, today or tomorrow is urgent, the week needs attention, and a direct debit,
    money coming in, a fee paid on site or an appointment never turns urgent); (6) recent letters
    (collapsed; newest first by the day each was received, else dated, else added);
-   "All clear until Friday" empty state; "calendar outdated" card; undo toasts.
+   "All clear until Friday" empty state — never while letters couldn't be read, wait from the
+   folder or wait in the queue (for Claude, say): then "Nothing due from the letters that were read" and the card "N letters couldn't be read
+   — Try again"; "calendar outdated" card; undo toasts.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
@@ -1245,7 +1375,10 @@ Pages:
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
-   … · text of 2 pages" badge; 390 px layout stacks the image below the card. An e-mail lists its
+   … · text of 2 pages" badge, and under it where the letter went — "Not sent to Claude" while no
+   model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
+   not installed, carried nothing), else that its text or image was sent to Anthropic; 390 px layout
+   stacks the image below the card. An e-mail lists its
    attachments and what became of each (linked when added); an attachment says which e-mail it came
    with; a held letter says it waits, with *Read it with Claude* and *Keep private*. A second tab, **How
    it was read** (`?view=trace`), shows the reading as a waterfall: summary (time, calls to
@@ -1264,7 +1397,11 @@ Pages:
    any amount too; every bar and marker carries its area and the to-do or contract it stands for, and a
    contract with no end says so (`open_end`); below, month-grouped list (past/future), filters. Letters
    about the flat (lease, landlord, running costs, broadcasting fee) are shown under Home even when
-   they were read under "residence", which is the residence-permit area.
+   they were read under "residence", which is the residence-permit area. Timeline and every letter's
+   "To-dos & dates" have "Add a date": what it is, the day, the kind (reminder, deadline, payment,
+   appointment, to-do, expiry date), an optional amount and, on Timeline, an optional letter. It is the
+   person's own to-do (`POST /api/items`, origin `manual`), also on a letter kept private or one Claude
+   couldn't read.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
    check", usually no notice period in the letter) offers "Check the letter" and "Add notice
@@ -1412,7 +1549,10 @@ Metrics with n and 95 % bootstrap CIs: due-date accuracy (overall and per kind),
 sender/reference/amount accuracy, item recall/precision, evidence grounding rate, false-verified
 rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. Output:
 `evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
-metrics from recorded outputs with thresholds. The extraction prompts are the Ordnung condition's, so a
+metrics from recorded outputs with thresholds. Every condition is given the dataset's holiday Land (the one
+the letterhead prints, else the person's); the app has no sender's Land until the person sets it, so
+`scripts/eval_without_land.py` also replays Ordnung without it (`evals/results/<date>-<model>-without-land.json`,
+shown in `docs/evals.md` as "Without the sender's Land"). The extraction prompts are the Ordnung condition's, so a
 change to them is recorded again on the benchmark: versions 9 to 11 (labels, actions and consequences
 in the person's language, dates and amounts written as that language writes them, an explanation that
 names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
@@ -1548,8 +1688,10 @@ user-confirmed arrival date; until then fall back to the document date with `low
 `business_days` (Mon–Fri excl. holidays), `werktage` (Mon–Sat excl. holidays).
 
 **Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
-region of the place of performance is known: `Party.region` (user-set or from the party's postcode
-when unambiguous) — otherwise they are ignored (earlier date). A date counted *back* over a regional
+region of the place of performance is known: `Party.region`, which only the person sets (*Which state is
+this sender in?* in the sender's drawer, `PATCH parties/{id}`; reading a letter never sets it, and nothing
+derives it from a postcode) — while it is unknown, the engine uses nationwide holidays (earlier date). A
+date counted *back* over a regional
 holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
 where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
 Holidays of only part of a Land (Mariä Himmelfahrt in Bavarian communities with more Catholic than

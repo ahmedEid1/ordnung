@@ -9,7 +9,7 @@ import { CalendarDays, ChevronDown, ExternalLink, HelpCircle, Quote } from "luci
 import type { ComputationStep, Confidence, Grounding } from "@/api/types";
 import { useRules } from "@/api/hooks";
 import { CONFIDENCE_COPY, TONES, copyFor } from "@/lib/copy";
-import { formatInlineText, looksGerman } from "@/lib/format";
+import { formatInlineText, languageCode, languageName, looksGerman } from "@/lib/format";
 import { useToday } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { Button } from "./Button";
@@ -47,6 +47,16 @@ export interface ReceiptQuote {
   source?: "letter" | "law";
   /** The law the words stand for ("§ 4 S. 1 KSchG"), for a `law` quote. */
   citation?: string | null;
+  /**
+   * The language of the letter the words come from (its `language`: "de", "German"), so a screen reader reads
+   * them with that language's voice (UX audit U5). Unknown, the words themselves decide whether they are German.
+   */
+  language?: string | null;
+}
+
+/** The language a quote is in, as a code: its letter's, else German when the words look German, else none. */
+export function quoteLanguage(quote: Pick<ReceiptQuote, "text" | "language">): string | null {
+  return languageCode(quote.language) ?? (looksGerman(quote.text) ? "de" : null);
 }
 
 export interface ReceiptProps {
@@ -191,7 +201,9 @@ export function Receipt({
   const [open, setOpen] = useState(defaultShowRules);
   const rulesId = useId();
   const today = useToday();
-  const german = quote ? looksGerman(quote.text) : false;
+  const language = quote ? quoteLanguage(quote) : null;
+  // "(in German — …)" for words not in English, the page's language
+  const foreign = language && language !== "en" ? languageName(language) : null;
   const hasRules = steps.length > 0 || Boolean(holidayCalendar);
   return (
     <div className="space-y-3.5">
@@ -218,10 +230,10 @@ export function Receipt({
               {quote.source === "law"
                 ? `What the law says, in short${quote.citation ? ` — ${quote.citation}` : ""}`
                 : "What the letter says"}
-              {german ? " (in German — the sentence above says it in English)" : ""}
+              {foreign ? ` (in ${foreign} — the sentence above says it in English)` : ""}
             </span>
           </figcaption>
-          <blockquote lang={german ? "de" : undefined} className="text-sm leading-relaxed text-ink">
+          <blockquote lang={language && language !== "en" ? language : undefined} className="text-sm leading-relaxed text-ink">
             {/* the yellow marker is the page image's sign for words found in the letter — never the law's */}
             <span className={cn(quote.source === "law" ? "" : "marker box-decoration-clone px-0.5")}>
               {formatInlineText(quote.text, { rewrite: false })}
@@ -282,8 +294,8 @@ export function ReceiptTrigger({ children = "Why this date?", context, className
 }
 
 export interface ReceiptPopoverProps {
-  /** The receipt (usually a {@link Receipt}). */
-  content: ReactNode;
+  /** The receipt (usually a {@link Receipt}), or a render function receiving `close` (see {@link PopoverProps}). */
+  content: PopoverProps["content"];
   /** Trigger text and popover title (default "Why this date?"). */
   title?: string;
   /** What it is about ("Pay TechMarkt"): in the popover's name and, for screen readers, the trigger's. */

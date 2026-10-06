@@ -1,0 +1,100 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"e40d0bf5d960eabb93f70202409e933508cc5bb0b5efe31b12eb47b7735d020b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-price_increase-J1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Funkwelle Beispiel GmbH\",\"document_date\":\"2026-04-13\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"FW-30 551 802\"}],\"amounts\":[24.99,27.99],\"items\":[{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (§ 57 Abs. 1 TKG) over the price increase\",\"quote\":\"Dieses Recht können Sie innerhalb von drei Monaten ausüben, nachdem Ihnen diese Mitteilung zugegangen ist; der Vertrag endet dann frühestens mit dem Tag, an dem die Preiserhöhung wirksam wird.\",\"computation\":\"The letter is from a company (telecom provider), not an authority, so no statutory deemed-delivery period applies (§ 130 Abs. 1 BGB: a declaration to a private party takes effect on actual arrival, not a fixed number of days after posting). The exact day the letter arrived at the recipient's address is not stated, so the earliest plausible start is the letter's own date, 13.04.2026 (Monday). Under § 187 Abs. 1 BGB the day of arrival is not counted, so the 3-month period begins 14.04.2026. Under § 188 Abs. 2 BGB a period of months ends with the day of the last month that bears the same number as the start day: three months after 13.04.2026 is 13.07.2026, a Monday, which is not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. Because the actual arrival date is unknown and typically a few days after posting, the true last day could fall a few days later than 13.07.2026; the date below is the earliest plausible (most conservative) last day.\",\"due_date\":\"2026-07-13\",\"confidence\":\"low\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Price increase for tariff \\\"Funkwelle Flex 30\\\" takes effect\",\"quote\":\"zum 01.06.2026 erhöhen wir den monatlichen Grundpreis Ihres Tarifs „Funkwelle Flex 30“ von 24,99 € auf 27,99 €.\",\"computation\":\"The letter states a fixed calendar date for the price change taking effect: 01.06.2026. No counting of a period is needed; this is the date as printed.\",\"due_date\":\"2026-06-01\",\"confidence\":\"high\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not state the day it actually arrived (Zugang), only its own date (13.04.2026); the 3-month special-termination window was computed from that date as the earliest plausible start (§ 130 BGB applies to private senders, not the authority deemed-delivery rules), so the real last day to exercise the Sonderkündigungsrecht could be a few days later than 13.07.2026 if the letter arrived after 13.04.2026 — confirm the actual delivery/receipt date if this is close to being used.\",\"The recipient's address on the letter ('73728 Musterlingen am Neckar') carries a postcode in Baden-Württemberg, not Nordrhein-Westfalen as stated for this person; this mismatch should be checked, though it does not affect which Land's holidays govern the deadline (that follows the sender's seat in Musterköln, NRW).\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Funkwelle Beispiel GmbH",
+      "document_date": "2026-04-13",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "FW-30 551 802"
+        }
+      ],
+      "amounts": [
+        24.99,
+        27.99
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (§ 57 Abs. 1 TKG) over the price increase",
+          "quote": "Dieses Recht können Sie innerhalb von drei Monaten ausüben, nachdem Ihnen diese Mitteilung zugegangen ist; der Vertrag endet dann frühestens mit dem Tag, an dem die Preiserhöhung wirksam wird.",
+          "computation": "The letter is from a company (telecom provider), not an authority, so no statutory deemed-delivery period applies (§ 130 Abs. 1 BGB: a declaration to a private party takes effect on actual arrival, not a fixed number of days after posting). The exact day the letter arrived at the recipient's address is not stated, so the earliest plausible start is the letter's own date, 13.04.2026 (Monday). Under § 187 Abs. 1 BGB the day of arrival is not counted, so the 3-month period begins 14.04.2026. Under § 188 Abs. 2 BGB a period of months ends with the day of the last month that bears the same number as the start day: three months after 13.04.2026 is 13.07.2026, a Monday, which is not a Saturday, Sunday or public holiday in NRW, so no shift under § 193 BGB is needed. Because the actual arrival date is unknown and typically a few days after posting, the true last day could fall a few days later than 13.07.2026; the date below is the earliest plausible (most conservative) last day.",
+          "due_date": "2026-07-13",
+          "confidence": "low",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Price increase for tariff \"Funkwelle Flex 30\" takes effect",
+          "quote": "zum 01.06.2026 erhöhen wir den monatlichen Grundpreis Ihres Tarifs „Funkwelle Flex 30“ von 24,99 € auf 27,99 €.",
+          "computation": "The letter states a fixed calendar date for the price change taking effect: 01.06.2026. No counting of a period is needed; this is the date as printed.",
+          "due_date": "2026-06-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not state the day it actually arrived (Zugang), only its own date (13.04.2026); the 3-month special-termination window was computed from that date as the earliest plausible start (§ 130 BGB applies to private senders, not the authority deemed-delivery rules), so the real last day to exercise the Sonderkündigungsrecht could be a few days later than 13.07.2026 if the letter arrived after 13.04.2026 — confirm the actual delivery/receipt date if this is close to being used.",
+        "The recipient's address on the letter ('73728 Musterlingen am Neckar') carries a postcode in Baden-Württemberg, not Nordrhein-Westfalen as stated for this person; this mismatch should be checked, though it does not affect which Land's holidays govern the deadline (that follows the sender's seat in Musterköln, NRW)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5751,
+      "cache_read_tokens": 27806,
+      "cache_creation_tokens": 8973,
+      "cost_usd": 0.09897520000000001,
+      "duration_ms": 69290,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "document_date": "2026-04-13",
+          "sender_kind": "telecom",
+          "sender_name": "Funkwelle Beispiel GmbH",
+          "recipient_region": "NW",
+          "region": "NW",
+          "remedy_type": "none",
+          "spec": {
+            "type": "relative",
+            "amount": 3,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "notice",
+            "legal_basis": "§ 57 Abs. 1 TKG",
+            "text": "Dieses Recht können Sie innerhalb von drei Monaten ausüben, nachdem Ihnen diese Mitteilung zugegangen ist"
+          }
+        },
+        "result": "{\"due_date\":\"2026-07-13\",\"weekday\":\"Monday\",\"send_by\":\"2026-07-07\",\"safe_date\":\"2026-07-13\",\"summary\":\"Three months after the letter's date (Mon 13 Apr 2026) is Mon 13 Jul 2026.\",\"confidence\":\"low\",\"warnings\":[\"No delivery days were added: the rule that a letter counts as delivered a few days after posting is only for authorities' letters, and this sender is not an authority. The period runs from the day the letter arrived.\",\"The day the letter arrived was not given, so the period was counted from the date printed on it — the earliest plausible start.\"],\"steps\":[{\"label\":\"Not an authority's letter, so no delivery days: the period runs from the letter's date (Mon 13 Apr 2026)\",\"date\":\"2026-04-13\",\"rule_id\":\"private_sender_arrival\",\"citation\":\"§ 130 Abs. 1 BGB\"},{\"label\":\"Counting starts the day after Mon 13 Apr 2026\",\"date\":\"2026-04-13\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Three months later: Mon 13 Jul 2026\",\"date\":\"2026-07-13\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Send by Tue 7 Jul 2026 to allow 4 business days for a letter to arrive\",\"date\":\"2026-07-07\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"private_sender_arrival\",\"title\":\"Letters from companies count from arrival\",\"citation\":\"§ 130 Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__130.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2026-04-18\",\"letter_date\":\"2026-04-13\",\"received_date\":\"2026-04-13\",\"received_date_from\":\"document_date: assumed, the earliest plausible arrival\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"Pass received_date if you know the day the letter arrived; until then the letter's date is used (the earliest plausible start).\",\"If the letter is an authority's decision after all (a Bescheid), pass its kind (authority, tax_office, immigration_office …): its deemed-delivery rule then applies. A Klage to a labour or civil court, a Widerspruch under the BGB or VVG, or a firm's own 'Einspruch' window does not make it one.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE24 3705 0198 0005 5508 08"
+        },
+        "result": "{\"iban\":\"DE24 3705 0198 0005 5508 08\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005550808\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

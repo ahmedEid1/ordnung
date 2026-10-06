@@ -1,0 +1,64 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c4c082c28486f21104abe980d0bd19e2ffd66e7c64bf283ce79ce3a0a0f2dc3d\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-03-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-I1"
+    ],
+    "prompt_head": "Today is Monday, 2026-03-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"appointment\",\"sender_name\":\"Radiologie am Beispielhof – MVZ\",\"document_date\":\"2026-03-04\",\"references\":[{\"label\":\"Patienten-ID\",\"value\":\"RB-0094417\"}],\"amounts\":[],\"items\":[{\"kind\":\"appointment\",\"title\":\"MRI scan of lumbar spine\",\"quote\":\"Wir haben für Sie folgenden Termin reserviert: Donnerstag, 26.03.2026, 14:20 Uhr, Anmeldung im Erdgeschoss.\",\"computation\":\"The letter states the appointment date and time directly: Thursday, 26.03.2026, 14:20. No calculation needed, the date is given explicitly.\",\"due_date\":\"2026-03-26\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Cancel appointment if unable to attend (at least 24 hours in advance)\",\"quote\":\"Können Sie den Termin nicht wahrnehmen, sagen Sie bitte mindestens 24 Stunden vorher ab.\",\"computation\":\"The appointment is on 26.03.2026 at 14:20. The letter requires cancellation at least 24 hours before the appointment time if it cannot be kept. Counting back 24 hours from 26.03.2026 14:20 gives 25.03.2026 14:20 as the latest moment a cancellation may be made (this is the practical deadline, not a statutory period subject to §§187 ff. BGB weekend/holiday extension, since it is a service-provider condition tied to the appointment time itself, and 25.03.2026 is a Wednesday, a normal business day).\",\"due_date\":\"2026-03-25\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "appointment",
+      "sender_name": "Radiologie am Beispielhof – MVZ",
+      "document_date": "2026-03-04",
+      "references": [
+        {
+          "label": "Patienten-ID",
+          "value": "RB-0094417"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "MRI scan of lumbar spine",
+          "quote": "Wir haben für Sie folgenden Termin reserviert: Donnerstag, 26.03.2026, 14:20 Uhr, Anmeldung im Erdgeschoss.",
+          "computation": "The letter states the appointment date and time directly: Thursday, 26.03.2026, 14:20. No calculation needed, the date is given explicitly.",
+          "due_date": "2026-03-26",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Cancel appointment if unable to attend (at least 24 hours in advance)",
+          "quote": "Können Sie den Termin nicht wahrnehmen, sagen Sie bitte mindestens 24 Stunden vorher ab.",
+          "computation": "The appointment is on 26.03.2026 at 14:20. The letter requires cancellation at least 24 hours before the appointment time if it cannot be kept. Counting back 24 hours from 26.03.2026 14:20 gives 25.03.2026 14:20 as the latest moment a cancellation may be made (this is the practical deadline, not a statutory period subject to §§187 ff. BGB weekend/holiday extension, since it is a service-provider condition tied to the appointment time itself, and 25.03.2026 is a Wednesday, a normal business day).",
+          "due_date": "2026-03-25",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1257,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2506,
+      "cost_usd": 0.023222400000000004,
+      "duration_ms": 14322,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

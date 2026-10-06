@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"721c1ec0d049a5a58baa976861f408b966224831b471302b4086bdbfc43831f9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-12\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-I2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-05-12 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"employment\",\"sender_name\":\"Beispiel Logistik Süd GmbH\",\"document_date\":\"2027-05-11\",\"references\":[{\"label\":\"Personalnummer\",\"value\":\"40 718\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"Reply with decision on deferred compensation (bAV) offer\",\"quote\":\"Teilen Sie uns Ihre Entscheidung bitte binnen 10 Arbeitstagen ab dem Briefdatum mit.\",\"computation\":\"Letter is dated Tuesday 11.05.2027 ('ab dem Briefdatum'). Applying the standard civil-law counting rule for a period beginning with a specified day (§187 Abs. 1 BGB analogy): the letter date itself is not counted as day 1; counting of the 10 'Arbeitstage' (Mon-Fri, statutory holidays excluded, as defined in the letter) starts on Wednesday 12.05.2027. Business days: Wed 12.05 (1), Thu 13.05 (2), Fri 14.05 (3); weekend 15-16.05 skipped; Mon 17.05.2027 is Pfingstmontag (Whit Monday), a statutory public holiday in NRW, so it is skipped; Tue 18.05 (4), Wed 19.05 (5), Thu 20.05 (6), Fri 21.05 (7); weekend 22-23.05 skipped; Mon 24.05 (8), Tue 25.05 (9), Wed 26.05.2027 (10th Arbeitstag). So the 10th working day, and the deadline to notify the employer of the decision, is Wednesday 26.05.2027.\",\"due_date\":\"2027-05-26\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The exact start of the 10-Arbeitstage count is ambiguous: if the letter date (11.05.2027) itself is counted as the first working day instead of being excluded, the deadline would fall one working day earlier, on 25.05.2027 instead of 26.05.2027 — confirm the intended counting method with the employer if the exact day matters.\",\"17.05.2027 (Pfingstmontag) is a statutory public holiday in NRW and was excluded from the working-day count.\"]}",
+    "data": {
+      "kind": "employment",
+      "sender_name": "Beispiel Logistik Süd GmbH",
+      "document_date": "2027-05-11",
+      "references": [
+        {
+          "label": "Personalnummer",
+          "value": "40 718"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Reply with decision on deferred compensation (bAV) offer",
+          "quote": "Teilen Sie uns Ihre Entscheidung bitte binnen 10 Arbeitstagen ab dem Briefdatum mit.",
+          "computation": "Letter is dated Tuesday 11.05.2027 ('ab dem Briefdatum'). Applying the standard civil-law counting rule for a period beginning with a specified day (§187 Abs. 1 BGB analogy): the letter date itself is not counted as day 1; counting of the 10 'Arbeitstage' (Mon-Fri, statutory holidays excluded, as defined in the letter) starts on Wednesday 12.05.2027. Business days: Wed 12.05 (1), Thu 13.05 (2), Fri 14.05 (3); weekend 15-16.05 skipped; Mon 17.05.2027 is Pfingstmontag (Whit Monday), a statutory public holiday in NRW, so it is skipped; Tue 18.05 (4), Wed 19.05 (5), Thu 20.05 (6), Fri 21.05 (7); weekend 22-23.05 skipped; Mon 24.05 (8), Tue 25.05 (9), Wed 26.05.2027 (10th Arbeitstag). So the 10th working day, and the deadline to notify the employer of the decision, is Wednesday 26.05.2027.",
+          "due_date": "2027-05-26",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The exact start of the 10-Arbeitstage count is ambiguous: if the letter date (11.05.2027) itself is counted as the first working day instead of being excluded, the deadline would fall one working day earlier, on 25.05.2027 instead of 26.05.2027 — confirm the intended counting method with the employer if the exact day matters.",
+        "17.05.2027 (Pfingstmontag) is a statutory public holiday in NRW and was excluded from the working-day count."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4519,
+      "cache_read_tokens": 8683,
+      "cache_creation_tokens": 5979,
+      "cost_usd": 0.0708506,
+      "duration_ms": 48981,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

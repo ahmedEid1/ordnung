@@ -8,9 +8,11 @@ terminal escape sequences, Windows process handling and dependency floors.
 from __future__ import annotations
 
 import asyncio
+import functools
 import io
 import json
 import os
+import random
 import stat
 import sys
 import time
@@ -22,6 +24,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fpdf import FPDF
+from fpdf.enums import EncryptionMethod
 from PIL import Image
 from rich.console import Console
 
@@ -31,7 +35,7 @@ from ordnung import clock
 from ordnung.cli import LOGIN_PAGE_NAME, launch_browser, login_page, summary_table
 from ordnung.config import REPO_DIR, Paths
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
-from ordnung.ingest import intake, text
+from ordnung.ingest import expansion, intake, text
 from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.ingest.intake import IntakeError, normalise_upload, render_pages, safe_filename, store_original
 from ordnung.ingest.text import html_to_text, layout_text
@@ -119,7 +123,7 @@ async def test_the_forwarding_page_signs_the_browser_in(data_dir: Path) -> None:
 
         login = await api.client.get("/?token=s3cret-token", headers=cross_site)
         assert login.status_code == 200
-        assert "ordnung_token=s3cret-token" in login.headers["set-cookie"]
+        assert login.headers["set-cookie"].startswith("ordnung_token_8765=s3cret-token;")
         assert "url=/'" in login.text and "s3cret-token" not in login.text
 
     from starlette.requests import Request
@@ -175,6 +179,276 @@ def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
         normalise_upload(huge_image, "huge.pdf")
 
     normalise_upload(letter_pdf(), "letter.pdf")  # an ordinary letter passes
+
+
+ENCRYPTIONS = [EncryptionMethod.RC4, EncryptionMethod.AES_128, EncryptionMethod.AES_256]
+
+
+def _zeros_deflated(megabytes: int, wbits: int = zlib.MAX_WBITS) -> bytes:
+    """Deflated zero bytes (zlib format; raw deflate with ``wbits=-15``), compressed piece by piece."""
+    compressor = zlib.compressobj(9, zlib.DEFLATED, wbits)
+    chunk = bytes(1024 * 1024)
+    return b"".join(compressor.compress(chunk) for _ in range(megabytes)) + compressor.flush()
+
+
+def _protected_pdf(method: EncryptionMethod, user_password: str = "") -> FPDF:
+    """A bank statement protected with an owner password, as banks send them: it opens without a
+    password unless ``user_password`` is set."""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("helvetica", size=12)
+    pdf.cell(text="Kontoauszug September 2026")
+    pdf.set_encryption(owner_password="bank-owner", user_password=user_password, encryption_method=method)
+    return pdf
+
+
+def _with_encrypted_stream(
+    pdf: FPDF, raw: bytes, filters: bytes, number: int = 99, key_number: int | None = None
+) -> bytes:
+    """The PDF plus one more stream object, ``number``, encrypted with the PDF's own key (as fpdf2 encrypts
+    it) for object ``key_number`` (default: ``number``)."""
+    body = bytes(pdf.output())
+    sealed = pdf._security_handler.encrypt_stream(raw, number if key_number is None else key_number)
+    stream = b"\n%d 0 obj\n<< /Length %d /Filter %s >>\nstream\n" % (number, len(sealed), filters)
+    return body + stream + sealed + b"\nendstream\nendobj\n"
+
+
+def _rc4_decrypted(monkeypatch: pytest.MonkeyPatch) -> list[int]:
+    """The length of every piece of data the bomb check decrypts with RC4 from now on."""
+    lengths: list[int] = []
+    real = expansion.rc4
+
+    def spy(key: bytes, data: bytes) -> bytes:
+        lengths.append(len(data))
+        return real(key, data)
+
+    monkeypatch.setattr(expansion, "rc4", spy)
+    return lengths
+
+
+@pytest.mark.parametrize("method", ENCRYPTIONS)
+def test_encrypted_pdf_decompression_bomb_is_rejected(method: EncryptionMethod) -> None:
+    bomb = _with_encrypted_stream(_protected_pdf(method), _nested_bomb(), b"[/FlateDecode /FlateDecode]")
+    started = time.monotonic()
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+    assert time.monotonic() - started < 10
+
+
+def test_encrypted_bomb_behind_a_planted_endstream_is_measured_to_its_end() -> None:
+    pdf = _protected_pdf(EncryptionMethod.RC4)
+    bytes(pdf.output())  # sets the document's key
+    keystream = pdf._security_handler.encrypt_stream(bytes(16), 99)
+    # a first stored block whose 9 bytes encrypt to "endstream", then 300 MB of zeros
+    planted = bytes(a ^ b for a, b in zip(b"endstream", keystream[7:16], strict=True))
+    adler = zlib.adler32(planted)
+    for _ in range(300):
+        adler = zlib.adler32(bytes(1024 * 1024), adler)
+    stored = b"\x00" + (9).to_bytes(2, "little") + (0xFFFF ^ 9).to_bytes(2, "little") + planted
+    bomb_data = b"\x78\xda" + stored + _zeros_deflated(300, -zlib.MAX_WBITS) + adler.to_bytes(4, "big")
+    bomb = _with_encrypted_stream(pdf, bomb_data, b"/FlateDecode")
+    data_start = bomb.index(b"stream\n", bomb.index(b"99 0 obj")) + len(b"stream\n")
+    assert bomb.index(b"endstream", data_start) == data_start + 7
+
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+
+
+def test_an_encrypted_bomb_keyed_to_the_end_of_its_object_number_is_rejected() -> None:
+    """PDFium decrypts an object with the number a cross-reference table asks for, and finds "12 0 obj"
+    inside "9912 0 obj": a stream is decrypted with every number its object may have."""
+    pdf = _protected_pdf(EncryptionMethod.RC4)
+    bomb = _with_encrypted_stream(pdf, _nested_bomb(), TWO_FLATES, number=9912, key_number=12)
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(bomb, "kontoauszug.pdf")
+
+
+def test_an_encrypted_stream_an_image_codec_reads_is_not_decrypted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An image codec's data is bounded by the pixel check, so the bomb check has nothing to measure in it
+    (an RC4 PDF with an 8 MB one, its object numbered 1234567890, took 40 s: decrypted for every number its
+    object might have)."""
+    decrypted = _rc4_decrypted(monkeypatch)
+    noise = random.Random(7).randbytes(2_000_000)
+    image = _with_encrypted_stream(
+        _protected_pdf(EncryptionMethod.RC4), noise, b"/DCTDecode", number=1234567890
+    )
+    expansion.check_pdf_expansion(image)
+    assert sum(decrypted) < 50_000  # the letter's own page and font
+
+
+def test_filter_chains_that_differ_only_after_their_measured_part_are_measured_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``/Filter`` given 200 times, each a Flate stage then a filter that doesn't expand: the stream is
+    decrypted once for its object (it was decrypted for every chain and every number: 241 s for 1 MB),
+    and a wrong number's key only for the piece in which its filters fail."""
+    decrypted = _rc4_decrypted(monkeypatch)
+    data = zlib.compress(random.Random(7).randbytes(500_000), 1)
+    chains = b" /Filter ".join(b"[/FlateDecode /JBIG%d]" % index for index in range(200))
+    expansion.check_pdf_expansion(_with_encrypted_stream(_protected_pdf(EncryptionMethod.RC4), data, chains))
+    assert len(data) < sum(decrypted) < len(data) + 50_000
+
+
+def test_decrypting_counts_against_the_measuring_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Measuring may read and decrypt four times the file plus some slack. With the slack set so that
+    reading the stream once fits but reading and decrypting it doesn't, the PDF is refused."""
+    data = zlib.compress(random.Random(7).randbytes(500_000), 1)
+    pdf = _with_encrypted_stream(_protected_pdf(EncryptionMethod.RC4), data, b"/FlateDecode")
+    monkeypatch.setattr(expansion, "_READ_SLACK", 3 * len(data) // 2 - 4 * len(pdf))
+    with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
+        expansion.check_pdf_expansion(pdf)
+    monkeypatch.setattr(expansion, "_READ_SLACK", 5 * len(data) // 2 - 4 * len(pdf))
+    expansion.check_pdf_expansion(pdf)
+
+
+@pytest.mark.parametrize("method", ENCRYPTIONS)
+def test_pdf_protected_only_by_an_owner_password_is_read(method: EncryptionMethod, tmp_path: Path) -> None:
+    data, mime, _ = normalise_upload(bytes(_protected_pdf(method).output()), "kontoauszug.pdf")
+    stored = store_original(tmp_path / "files", data, "kontoauszug.pdf")
+    pages = render_pages(stored.path, mime, tmp_path / "derived", "doc_test")
+    [page] = text.extract_pdf_pages(stored.path, pages)
+    assert "Kontoauszug September 2026" in page.text
+
+
+def test_pdf_that_needs_a_password_is_rejected_as_protected() -> None:
+    with pytest.raises(IntakeError, match="password-protected"):
+        normalise_upload(bytes(_protected_pdf(EncryptionMethod.AES_256, "geheim").output()), "brief.pdf")
+
+
+def test_encrypted_pdf_whose_decryption_cant_be_reproduced_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(expansion, "_security_handler", lambda data: None)  # pdfminer can't decrypt it
+    with pytest.raises(IntakeError, match="protected in a way that can't be checked"):
+        normalise_upload(bytes(_protected_pdf(EncryptionMethod.AES_128).output()), "kontoauszug.pdf")
+
+
+def test_bomb_behind_a_crypt_filter_is_rejected() -> None:
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(_pdf_with_stream(_nested_bomb(), b"[/Crypt /FlateDecode /FlateDecode]"), "bomb.pdf")
+
+
+@functools.cache
+def _nested_bomb() -> bytes:
+    """Under 1 KB that expand to 300 MB through two FlateDecode filters."""
+    return zlib.compress(_zeros_deflated(300), 9)
+
+
+def _one_page(dictionary: bytes, data: bytes, before: bytes = b"") -> bytes:
+    """A one-page PDF whose page content is object 4 (``dictionary``, then ``data``); ``before`` holds
+    more objects in front of it."""
+    return (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] /Contents 4 0 R >>\nendobj\n"
+        + before
+        + b"4 0 obj\n"
+        + dictionary
+        + b"\nstream\n"
+        + data
+        + b"\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Size 7 >>\n%%EOF\n"
+    )
+
+
+TWO_FLATES = b"[/FlateDecode /FlateDecode]"
+
+
+@pytest.mark.parametrize(
+    ("dictionary", "before"),
+    [
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" /X (9 0 obj) >>", b"", id="a fake object header in a string"
+        ),
+        pytest.param(
+            b"<< /F#69lter " + TWO_FLATES + b" >>", b"", id="the /Filter key written with an escape"
+        ),
+        pytest.param(
+            b"<< /Filter [/Fl#61teDecode /FlateDecode] >>", b"", id="a filter name written with an escape"
+        ),
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" /Pad [" + b"0 " * 40_000 + b"] >>", b"", id="an 80 KB dictionary"
+        ),
+        pytest.param(
+            b"<< /Filter 6 0 R >>", b"6 0 obj\n" + TWO_FLATES + b"\nendobj\n", id="an indirect /Filter"
+        ),
+        pytest.param(
+            b"<< /Filter " + TWO_FLATES + b" >>",
+            b"5 0 obj\n<< >>\nstream\nabc\nendobj\n",
+            id="a stream before it that has no endstream",
+        ),
+    ],
+)
+def test_bombs_a_byte_scan_would_miss_are_rejected(dictionary: bytes, before: bytes) -> None:
+    """PDFium reads these page contents as the bomb they are (each peaked at 600 MB while rendering a
+    300 MB version); the check reads the dictionaries as PDF syntax, as PDFium does."""
+    with pytest.raises(IntakeError, match="expands to far more data"):
+        normalise_upload(_one_page(dictionary, _nested_bomb(), before), "bomb.pdf")
+
+
+def test_numbers_longer_than_any_real_pdfs_are_refused_not_a_crash() -> None:
+    huge = b"9" * 5000  # Python won't read more than 4300 digits as one int
+    with pytest.raises(IntakeError, match="image that is too large"):
+        normalise_upload(
+            _one_page(b"<< /Subtype /Image /Width " + huge + b" /Height 1 >>", b"x"), "brief.pdf"
+        )
+    with pytest.raises(IntakeError):  # not an object PDFium can use: the file can't be opened
+        normalise_upload(b"%PDF-1.4\n" + huge + b" 0 obj\n<< >>\nstream\nx\nendstream\nendobj\n", "brief.pdf")
+
+
+def test_a_filter_that_cant_be_looked_up_is_rejected() -> None:
+    with pytest.raises(IntakeError, match="built in a way that can't be checked"):
+        normalise_upload(_one_page(b"<< /Filter 6 0 R >>", _nested_bomb()), "brief.pdf")
+
+
+LOOSE_STREAM = b"stream\n" + zlib.compress(bytes(64)) + b"\nendstream\n"
+
+
+def test_thousands_of_stream_keywords_without_an_object_are_refused_quickly() -> None:
+    """Each ``stream`` keyword with no ``N G obj`` in front had the 64 KB in front of it scanned for one:
+    20,000 of them in 0.6 MB took 33 s, and the PDF was accepted."""
+    started = time.monotonic()
+    with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + LOOSE_STREAM * 20_000)
+    assert time.monotonic() - started < 5
+    # a damaged file's few loose streams are still measured
+    bomb = b"<< /Filter " + TWO_FLATES + b" >>\nstream\n" + _nested_bomb()
+    with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + LOOSE_STREAM * 100 + bomb)
+
+
+def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() -> None:
+    """Each keyword's dictionary runs back to the ``N G obj`` in front of it: 8,000 keywords behind each of
+    50 objects (2.8 MB) had 11 GB scanned, for 40 s, and the PDF was accepted."""
+    started = time.monotonic()
+    with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
+        expansion.check_pdf_expansion(b"%PDF-1.4\n" + (b"1 0 obj\n<< >>\n" + b"stream\n" * 8000) * 50)
+    assert time.monotonic() - started < 5
+
+
+def test_unusual_but_valid_syntax_is_accepted() -> None:
+    """Comments and nested, escaped parentheses in dictionaries, an indirect /Length and /Filter, a hex
+    string, an escaped name and CR line ends: an ordinary letter's content is measured and passes."""
+    content = zlib.compress(b"BT /F1 12 Tf 10 50 Td (Hallo \\(Welt\\) (ok)) Tj ET")
+    dictionary = (
+        b"<< /Length 5 0 R % the length is object 5\r/Filter 6 0 R /X (a \\) b (c) d) /H <4869> /N#61me 1 >>"
+    )
+    objects = b"5 0 obj\n%d\nendobj\n6 0 obj\n/FlateDecode\nendobj\n" % len(content)
+    normalise_upload(_one_page(dictionary, content, objects), "brief.pdf")
+
+
+def test_an_encrypt_entry_that_refers_to_itself_does_not_hang_the_upload() -> None:
+    body = (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>\nendobj\n"
+        b"5 0 obj\n5 0 R\nendobj\n"
+    )
+    entries = b"".join(b"%010d 00000 n \n" % body.index(b"%d 0 obj" % number) for number in (1, 2, 3))
+    xref = b"xref\n0 4\n0000000000 65535 f \n" + entries + b"5 1\n%010d 00000 n \n" % body.index(b"5 0 obj")
+    trailer = b"trailer\n<< /Root 1 0 R /Size 6 /Encrypt 5 0 R >>\nstartxref\n%d\n%%%%EOF\n" % len(body)
+    started = time.monotonic()
+    normalise_upload(body + xref + trailer, "brief.pdf")  # PDFium doesn't see it as encrypted either
+    assert time.monotonic() - started < 10
 
 
 def test_a_job_that_keeps_crashing_the_process_is_not_requeued_forever(store: Store) -> None:
@@ -522,6 +796,33 @@ async def test_uploads_are_capped_per_request(data_dir: Path, monkeypatch: pytes
         assert response.status_code == 413 and "at most 2 files" in response.text
         too_big = [("files", ("big.txt", b"Sehr geehrte Damen und Herren, " * 400))]
         assert (await api.client.post("/api/documents", files=too_big)).status_code == 413
+
+
+async def test_a_huge_upload_is_refused_before_its_body_is_read() -> None:
+    from ordnung.api.security import MAX_REQUEST_BYTES, SecurityMiddleware
+
+    async def app(scope: Any, receive: Any, send: Any) -> None:
+        raise AssertionError("the app (and its form parser) must not see the request")
+
+    async def receive() -> dict[str, Any]:
+        raise AssertionError("the body must not be read")
+
+    sent: list[dict[str, Any]] = []
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    length = str(MAX_REQUEST_BYTES + 1).encode()
+    headers = [(b"host", b"127.0.0.1:8765"), (b"x-ordnung-client", b"web"), (b"content-length", length)]
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/api/documents",
+        "query_string": b"",
+        "headers": headers,
+    }
+    await SecurityMiddleware(app, token=None)(scope, receive, send)
+    assert sent[0]["status"] == 413 and b"at most 200 MB" in sent[1]["body"]
 
 
 def test_downloaded_originals_carry_the_extension_of_their_real_type() -> None:

@@ -1,0 +1,65 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7a21e5c8707b49066f50330902111052056c7bd8b29c467150587341dfe60245\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-09\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-scam-2"
+    ],
+    "prompt_head": "Today is Saturday, 2027-01-09 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Mahngericht Beispielstadt – Zentrale Mahnabteilung\",\"document_date\":\"2027-01-08\",\"references\":[{\"label\":\"Geschäftszeichen\",\"value\":\"27-0108447-1-9\"}],\"amounts\":[1249.8],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay the demanded sum from the Mahnbescheid\",\"quote\":\"Der Betrag ist bis zum 15.01.2027 zu zahlen.\",\"computation\":\"The letter states an explicit calendar due date, 15.01.2027, with no period to compute. Checking the calendar: 15 January 2027 is a Friday, not a weekend day, and not a public holiday in Nordrhein-Westfalen, so no §193 BGB shift is needed. Due date stands as printed: 2027-01-15.\",\"due_date\":\"2027-01-15\",\"confidence\":\"high\",\"amount\":1249.8}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This document carries very strong hallmarks of a fraudulent/scam \\\"Mahnbescheid\\\": a genuine Mahnbescheid under §692 ZPO must include a Widerspruchsbelehrung informing the recipient of a 2-week right to object, which is entirely absent here — real court payment orders always explain this remedy.\",\"The court is named \\\"Mahngericht Beispielstadt\\\" — 'Beispielstadt' literally means 'example city' and is not a real German court name; actual German Mahngerichte are specific named Amtsgerichte (e.g. Amtsgericht Hagen for NRW cases).\",\"The letter instructs payment exclusively to a private law firm's account ('Kanzlei Brandner Forderungsservice', IBAN DE10 7005 0000 0044 7120 91) while claiming 'Zahlungen an das Gericht werden nicht angenommen' — redirecting court-related debt payments to a third-party law-firm IBAN with urgency and enforcement threats is a well-known debt-collection scam pattern; do not pay this IBAN without independently verifying the case with the actual competent Amtsgericht.\",\"The creditor is described as 'Beispiel Online-Spielothek Ltd.', an offshore-style online gambling company — fake gambling-debt collection via forged court documents is a recurring scam type in Germany.\",\"The sender's e-mail domain 'mahngericht-beispielstadt.example' uses the '.example' top-level domain, which is reserved by internet standards for documentation/placeholder use and is never used by real organizations — this strongly suggests the letter is a template or fabricated document rather than a genuine court mailing.\",\"The payment deadline (15.01.2027) is only about one week after the letter's issue date (08.01.2027) and creates strong time pressure combined with threats of immediate enforcement (Vollstreckungsbescheid, Gerichtsvollzieher) without any hearing — a classic pressure tactic used in scams.\",\"Given all the above, the recipient should independently contact their local competent Amtsgericht (Mahngericht) directly through officially published contact details — not any phone number or email printed on this letter — before taking any action or making any payment.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Mahngericht Beispielstadt – Zentrale Mahnabteilung",
+      "document_date": "2027-01-08",
+      "references": [
+        {
+          "label": "Geschäftszeichen",
+          "value": "27-0108447-1-9"
+        }
+      ],
+      "amounts": [
+        1249.8
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay the demanded sum from the Mahnbescheid",
+          "quote": "Der Betrag ist bis zum 15.01.2027 zu zahlen.",
+          "computation": "The letter states an explicit calendar due date, 15.01.2027, with no period to compute. Checking the calendar: 15 January 2027 is a Friday, not a weekend day, and not a public holiday in Nordrhein-Westfalen, so no §193 BGB shift is needed. Due date stands as printed: 2027-01-15.",
+          "due_date": "2027-01-15",
+          "confidence": "high",
+          "amount": 1249.8
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This document carries very strong hallmarks of a fraudulent/scam \"Mahnbescheid\": a genuine Mahnbescheid under §692 ZPO must include a Widerspruchsbelehrung informing the recipient of a 2-week right to object, which is entirely absent here — real court payment orders always explain this remedy.",
+        "The court is named \"Mahngericht Beispielstadt\" — 'Beispielstadt' literally means 'example city' and is not a real German court name; actual German Mahngerichte are specific named Amtsgerichte (e.g. Amtsgericht Hagen for NRW cases).",
+        "The letter instructs payment exclusively to a private law firm's account ('Kanzlei Brandner Forderungsservice', IBAN DE10 7005 0000 0044 7120 91) while claiming 'Zahlungen an das Gericht werden nicht angenommen' — redirecting court-related debt payments to a third-party law-firm IBAN with urgency and enforcement threats is a well-known debt-collection scam pattern; do not pay this IBAN without independently verifying the case with the actual competent Amtsgericht.",
+        "The creditor is described as 'Beispiel Online-Spielothek Ltd.', an offshore-style online gambling company — fake gambling-debt collection via forged court documents is a recurring scam type in Germany.",
+        "The sender's e-mail domain 'mahngericht-beispielstadt.example' uses the '.example' top-level domain, which is reserved by internet standards for documentation/placeholder use and is never used by real organizations — this strongly suggests the letter is a template or fabricated document rather than a genuine court mailing.",
+        "The payment deadline (15.01.2027) is only about one week after the letter's issue date (08.01.2027) and creates strong time pressure combined with threats of immediate enforcement (Vollstreckungsbescheid, Gerichtsvollzieher) without any hearing — a classic pressure tactic used in scams.",
+        "Given all the above, the recipient should independently contact their local competent Amtsgericht (Mahngericht) directly through officially published contact details — not any phone number or email printed on this letter — before taking any action or making any payment."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4815,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2513,
+      "cost_usd": 0.05883039999999999,
+      "duration_ms": 56862,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

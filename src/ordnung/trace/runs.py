@@ -15,7 +15,8 @@ Written policy (ADR 0007):
   readings hash the letter and the reading's number, so a rebuild gives the same ids.
 * **How a reading ended** is a code, never a message that could quote the letter or the model:
   ``done``; ``failed`` with the kind of failure (:data:`FAILURES`); or interrupted — ``paused`` by a
-  usage limit or ``stopped`` by a shutdown — and read again later. The view turns codes into the
+  usage limit or by Claude not installed or not signed in (:data:`INTERRUPTIONS` says which), or
+  ``stopped`` by a shutdown — and read again later. The view turns codes into the
   sentences of :func:`ending_message`.
 * **What is kept.** A letter keeps its newest :data:`KEPT_READINGS` readings that ran to the end
   (done or failed) and, of the interrupted ones, only the newest — and only while it is newer than
@@ -53,10 +54,12 @@ RECORDED_GAP = timedelta(minutes=2)
 #: Readings that did not run to the end: they are read again later and don't count towards
 #: :data:`KEPT_READINGS`.
 INTERRUPTED: frozenset[str] = frozenset({"paused", "stopped"})
-#: Why a reading failed, as the code the root span stores, and the sentence the view shows.
+#: Why a reading failed, as the code the root span stores, and the sentence the view shows
+#: (``not_installed`` and ``not_signed_in``: readings stored before Claude not ready paused them instead).
 FAILURES: dict[str, str] = {
     "no_text": "We couldn't find any readable text in this document.",
     "trashed": "The letter was deleted before it was read, so it was not sent to Claude.",
+    "trashed_meanwhile": "The letter was deleted while it was being read, so it was not sent to Claude again.",
     "gone": "The letter no longer existed.",
     "file": "The file couldn't be read.",
     "not_installed": "Claude Code wasn't installed.",
@@ -68,6 +71,8 @@ FAILURES: dict[str, str] = {
 }
 INTERRUPTIONS: dict[str, str] = {
     "paused": "Paused: Claude's usage limit was reached. The letter is read again when it resets.",
+    "paused_not_installed": "Paused: Claude Code wasn't installed. The letter is read once Claude is ready.",
+    "paused_not_signed_in": "Paused: Claude Code wasn't signed in. The letter is read once Claude is ready.",
     "stopped": "Stopped: Ordnung was closed before the letter was finished. It is read again at the next start.",
 }
 
@@ -118,14 +123,14 @@ def _tracer(
 
 
 def finish_trace(store: Store, tracer: Tracer, ended: ReadingEnd = "done", code: str | None = None) -> bool:
-    """End a reading as ``ended`` (with the failure's ``code`` from :data:`FAILURES`) and store it;
-    ``False`` when it was not stored (see the module docstring)."""
+    """End a reading as ``ended`` (with the failure's ``code`` from :data:`FAILURES`, or why it paused
+    from :data:`INTERRUPTIONS`) and store it; ``False`` when it was not stored (see the module docstring)."""
     if ended == "done":
         tracer.finish(ended=ended)
     elif ended == "failed":
         tracer.finish(error=code if code in FAILURES else "unexpected", ended=ended, result="failed")
     else:
-        tracer.finish(error=ended, ended=ended)
+        tracer.finish(error=code if code in INTERRUPTIONS else ended, ended=ended)
     try:
         if store.get_document(tracer.doc_id) is None:
             return False

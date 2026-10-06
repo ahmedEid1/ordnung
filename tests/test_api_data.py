@@ -4,6 +4,7 @@ keeps working, and the demo's refusal."""
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -57,12 +58,14 @@ async def test_delete_everything_wipes_the_data_folder(data_dir: Path) -> None:
         for body in (None, {}, {"confirm": "delete"}, {"confirm": "DELETE", "also": 1}):
             refused = await client.request("DELETE", "/api/data", json=body)
             assert refused.status_code == 422, body
+            assert "clear-site-data" not in refused.headers
         assert (await client.get("/api/documents")).json()
 
         events = record_events(api.ctx.bus)
         response = await client.request("DELETE", "/api/data", json=CONFIRM)
 
         assert response.status_code == 200, response.text
+        assert response.headers["clear-site-data"] == '"cache"'  # the browser drops what it cached
         result = response.json()
         assert result["kept"] == ["notes-of-mine.txt"]
         assert {"files", "derived", "drafts", "inbox", "ordnung.db"} <= set(result["removed"])
@@ -84,7 +87,7 @@ async def test_delete_everything_wipes_the_data_folder(data_dir: Path) -> None:
         for name in ("ordnung.db", "ordnung.db-wal"):
             raw_bytes = (data_dir / name).read_bytes() if (data_dir / name).exists() else b""
             assert b"Sam Rivera" not in raw_bytes and TAX_LETTER.marker.encode() not in raw_bytes, name
-        with sqlite3.connect(api.ctx.paths.db) as raw:
+        with contextlib.closing(sqlite3.connect(api.ctx.paths.db)) as raw, raw:
             assert raw.execute("PRAGMA user_version").fetchone()[0] == latest_version()
             assert raw.execute("SELECT COUNT(*) FROM documents").fetchone()[0] == 0
             assert raw.execute("SELECT COUNT(*) FROM llm_cache").fetchone()[0] == 0
@@ -106,7 +109,9 @@ async def test_the_demo_cannot_be_deleted(data_dir: Path) -> None:
         await api.upload(("letter.pdf", TAX_LETTER.pdf()))
         refused = await api.client.request("DELETE", "/api/data", json=CONFIRM)
         assert refused.status_code == 409
-        assert refused.json()["detail"] == DEMO_MESSAGE and "ordnung demo --reset" in DEMO_MESSAGE
+        assert refused.json()["detail"] == DEMO_MESSAGE
+        # the reset doesn't touch a demo that runs, so the message says to stop it first
+        assert "stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”." in DEMO_MESSAGE
         assert len((await api.client.get("/api/documents")).json()) == 1
 
 

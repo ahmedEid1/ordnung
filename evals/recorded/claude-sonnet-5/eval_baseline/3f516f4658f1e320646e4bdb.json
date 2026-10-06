@@ -1,0 +1,67 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b3915053d5a36088f27d41d87657c1d60c540daae3b340b0384583bd8cbbda9a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-09-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Rentenversicherung Musterküste\",\"document_date\":\"2025-08-27\",\"references\":[{\"label\":\"Versicherungsnummer\",\"value\":\"65 140383 M 044\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the Feststellungsbescheid\",\"quote\":\"Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Rentenversicherung Musterküste, Kontenweg 18, 23560 Beispielbeck.\",\"computation\":\"Bescheid dated Wed 27.08.2025, sent by post; letter states Bekanntgabe fiction of the 4th day after posting ('Schicken wir Ihnen den Bescheid per Brief, so ist er mit dem vierten Tag nach dessen Aufgabe zur Post bekannt gegeben'), applying the current (2024-amended) version of §37 Abs. 2 SGB X. Assuming Aufgabe zur Post = document date 27.08.2025 (Wed), the 4th day after is 31.08.2025 (Sun). Per §37 Abs. 2 SGB X, if that day falls on a Saturday, Sunday or public holiday, Bekanntgabe shifts to the next working day: Monday 01.09.2025. The one-month Widerspruchsfrist then runs per §§187 Abs.1, 188 Abs.2 BGB (via §64 SGB X / §84 SGG): the period ends on the day of the following month that numerically corresponds to the Bekanntgabe day (01.09.2025) -> 01.10.2025 (Wednesday). 01.10.2025 is not a Saturday, Sunday or NRW public holiday, so no further shift. Deadline: 01.10.2025.\",\"due_date\":\"2025-10-01\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Submit missing proof for 01.07.2006-31.12.2006 period\",\"quote\":\"Reichen Sie Unterlagen nach, prüfen wir das gern erneut.\",\"computation\":\"The letter invites submission of evidence for the unaccounted period but states no deadline or date by which this must happen; no period or calendar date is given from which a due date could be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The Widerspruch deadline (01.10.2025) was computed assuming the letter was actually posted on its printed date (27.08.2025); if the actual mailing date differed, the deadline shifts accordingly.\",\"No deadline is given for submitting the missing proof for July-December 2006, so that task has no enforceable due date; the person should ask the Rentenversicherung for a deadline or submit promptly.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Rentenversicherung Musterküste",
+      "document_date": "2025-08-27",
+      "references": [
+        {
+          "label": "Versicherungsnummer",
+          "value": "65 140383 M 044"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the Feststellungsbescheid",
+          "quote": "Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Rentenversicherung Musterküste, Kontenweg 18, 23560 Beispielbeck.",
+          "computation": "Bescheid dated Wed 27.08.2025, sent by post; letter states Bekanntgabe fiction of the 4th day after posting ('Schicken wir Ihnen den Bescheid per Brief, so ist er mit dem vierten Tag nach dessen Aufgabe zur Post bekannt gegeben'), applying the current (2024-amended) version of §37 Abs. 2 SGB X. Assuming Aufgabe zur Post = document date 27.08.2025 (Wed), the 4th day after is 31.08.2025 (Sun). Per §37 Abs. 2 SGB X, if that day falls on a Saturday, Sunday or public holiday, Bekanntgabe shifts to the next working day: Monday 01.09.2025. The one-month Widerspruchsfrist then runs per §§187 Abs.1, 188 Abs.2 BGB (via §64 SGB X / §84 SGG): the period ends on the day of the following month that numerically corresponds to the Bekanntgabe day (01.09.2025) -> 01.10.2025 (Wednesday). 01.10.2025 is not a Saturday, Sunday or NRW public holiday, so no further shift. Deadline: 01.10.2025.",
+          "due_date": "2025-10-01",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Submit missing proof for 01.07.2006-31.12.2006 period",
+          "quote": "Reichen Sie Unterlagen nach, prüfen wir das gern erneut.",
+          "computation": "The letter invites submission of evidence for the unaccounted period but states no deadline or date by which this must happen; no period or calendar date is given from which a due date could be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The Widerspruch deadline (01.10.2025) was computed assuming the letter was actually posted on its printed date (27.08.2025); if the actual mailing date differed, the deadline shifts accordingly.",
+        "No deadline is given for submitting the missing proof for July-December 2006, so that task has no enforceable due date; the person should ask the Rentenversicherung for a deadline or submit promptly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3244,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2656,
+      "cost_usd": 0.04369239999999999,
+      "duration_ms": 35206,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

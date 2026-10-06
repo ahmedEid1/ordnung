@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"2e225670ee4789b08bb8be828787ed716510dbaae19f29aa087bbea560939a8f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-I2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-05-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[734],\"contract\":null,\"document_date\":\"2025-05-05\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the BAföG decision\",\"quote\":\"Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated Monday 05.05.2025, sent by ordinary mail. Under § 41 Abs. 2 SGB X / VwVfG, a letter sent by post is deemed delivered (Bekanntgabe) on the 3rd day after posting, i.e. 05.05.2025 + 3 days = Thursday 08.05.2025 (no earlier/later actual receipt is shown, so the statutory fiction applies). The one-month Widerspruch period runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (08.05.2025) is not counted, and the period ends on the day of the following month bearing the same number, i.e. 08.06.2025. That day is a Sunday (and Pentecost Sunday); the next day, 09.06.2025, is Pfingstmontag, a statutory holiday in NRW (and nationwide) in 2025. Under § 193 BGB the period is extended to the next working day, which is Tuesday 10.06.2025.\",\"due_date\":\"2025-06-10\",\"confidence\":\"medium\",\"amount\":null}],\"kind\":\"authority_letter\",\"references\":[{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Studierendenwerk Mustertor\",\"warnings\":[\"The recipient's address (Schillerhöhe 5, 73728 Musterlingen am Neckar) is in a different region than the issuing Studierendenwerk/Hochschule Mustertor (postal code 35392, apparently Hesse); this mismatch looks like a template artifact but should be double-checked against the original letter.\",\"The exact delivery date of the letter is not stated, so the one-month Widerspruch deadline was computed using the statutory 3-day delivery presumption (§ 41 Abs. 2 SGB X/VwVfG); if the letter is proven to have arrived later, the deadline shifts accordingly.\",\"The letter asks the recipient to report changes in income, housing or studies 'sofort' (immediately), but gives no specific date, so this ongoing duty could not be turned into a dated item.\"]}",
+    "data": {
+      "amounts": [
+        734
+      ],
+      "contract": null,
+      "document_date": "2025-05-05",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the BAföG decision",
+          "quote": "Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated Monday 05.05.2025, sent by ordinary mail. Under § 41 Abs. 2 SGB X / VwVfG, a letter sent by post is deemed delivered (Bekanntgabe) on the 3rd day after posting, i.e. 05.05.2025 + 3 days = Thursday 08.05.2025 (no earlier/later actual receipt is shown, so the statutory fiction applies). The one-month Widerspruch period runs under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of Bekanntgabe (08.05.2025) is not counted, and the period ends on the day of the following month bearing the same number, i.e. 08.06.2025. That day is a Sunday (and Pentecost Sunday); the next day, 09.06.2025, is Pfingstmontag, a statutory holiday in NRW (and nationwide) in 2025. Under § 193 BGB the period is extended to the next working day, which is Tuesday 10.06.2025.",
+          "due_date": "2025-06-10",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "kind": "authority_letter",
+      "references": [
+        {
+          "label": "Förderungsnummer",
+          "value": "412 2025 07731"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Studierendenwerk Mustertor",
+      "warnings": [
+        "The recipient's address (Schillerhöhe 5, 73728 Musterlingen am Neckar) is in a different region than the issuing Studierendenwerk/Hochschule Mustertor (postal code 35392, apparently Hesse); this mismatch looks like a template artifact but should be double-checked against the original letter.",
+        "The exact delivery date of the letter is not stated, so the one-month Widerspruch deadline was computed using the statutory 3-day delivery presumption (§ 41 Abs. 2 SGB X/VwVfG); if the letter is proven to have arrived later, the deadline shifts accordingly.",
+        "The letter asks the recipient to report changes in income, housing or studies 'sofort' (immediately), but gives no specific date, so this ongoing duty could not be turned into a dated item."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 6353,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2582,
+      "cost_usd": 0.07448640000000001,
+      "duration_ms": 72888,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

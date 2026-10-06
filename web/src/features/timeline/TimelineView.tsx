@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
 import { LanesChart, defaultLaneRange, refTarget, type LaneSelection, type LaneTarget } from "@/features/lanes";
+import { AddDateButton } from "@/features/items/AddDateDialog";
 import { CalendarExport } from "./CalendarExport";
 import { TimelineFilters } from "./TimelineFilters";
 import { TimelineList } from "./TimelineList";
@@ -43,7 +44,10 @@ import { useStickyError } from "@/lib/hooks";
 
 const DESCRIPTION = "Your year ahead as life lanes — permits, contracts, deadlines and study — and every date, month by month.";
 
-/** A fresh install: one clear first step instead of empty lanes, filters and a second empty list. */
+/**
+ * A fresh install: one clear first step instead of empty lanes, filters and a second empty list — or a date of
+ * the person's own, which needs no letter (and no Claude).
+ */
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
   return (
@@ -52,9 +56,12 @@ function FirstRun() {
       title="Your year is still empty"
       description="Add a letter — a bill, a contract, a notice from an office — and Ordnung puts every deadline, payment and appointment on your lanes and here, month by month."
       action={
-        <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
-          Add letters
-        </Button>
+        <>
+          <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading}>
+            Add letters
+          </Button>
+          <AddDateButton />
+        </>
       }
     >
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
@@ -171,7 +178,16 @@ export function TimelineView() {
 
   return (
     <>
-      <PageHeader title="Timeline" description={DESCRIPTION} actions={loaded && openDates > 0 ? <CalendarExport /> : undefined} />
+      <PageHeader
+        title="Timeline"
+        description={DESCRIPTION}
+        actions={
+          <>
+            <AddDateButton />
+            {loaded && openDates > 0 ? <CalendarExport /> : null}
+          </>
+        }
+      />
 
       <section aria-label="Your year ahead" data-tour={TOUR_TARGETS.timelineLanes} className="mb-8">
         <LanesChart

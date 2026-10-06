@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"f109b9e5fa3c990e237962ea38250c53ee4f111348391772db978637b7146d60\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-09-14\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-appointment-J1"
+    ],
+    "prompt_head": "Today is Monday, 2026-09-14 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"kind\":\"other\",\"sender_name\":\"Küchenwerkstatt Beispielholz GmbH\",\"document_date\":\"2026-09-09\",\"remedy_type\":\"none\",\"references\":[{\"label\":\"Auftrag\",\"value\":\"KW-26-0612\"},{\"label\":\"Kundennummer\",\"value\":\"KD 31 118\"}],\"items\":[{\"kind\":\"appointment\",\"title\":\"Kitchen installation appointment\",\"quote\":\"Unser Montageteam kommt am Samstag, 19.09.2026, um 07:30 Uhr und braucht voraussichtlich den ganzen Tag.\",\"computation\":\"The letter states a fixed calendar date and time for the installation team's visit: Saturday, 19.09.2026, 07:30. No counting or delivery-deeming rule applies; the date is taken as printed.\",\"due_date\":\"2026-09-19\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Empty the kitchen and make water/power connections accessible before the team arrives\",\"quote\":\"Bitte räumen Sie die Küche vorher vollständig aus und sorgen Sie dafür, dass die Wasser- und Stromanschlüsse zugänglich sind.\",\"computation\":\"The letter asks that this be done 'vorher' (beforehand), i.e. before the installation team's arrival at 07:30 on Saturday 19.09.2026. No separate calendar date is given, so the latest moment this can be done is immediately before the 07:30 start on the appointment day itself (in practice the evening before is advisable).\",\"due_date\":\"2026-09-19\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"deadline\",\"title\":\"Notify the company if the installation date does not work\",\"quote\":\"Ist der Termin für Sie nicht möglich, melden Sie sich bitte bis Mittwoch der Montagewoche.\",\"computation\":\"The installation ('Montage') is scheduled for Saturday 19.09.2026. The 'Montagewoche' (installation week) is the calendar week containing that Saturday, i.e. Monday 14.09.2026 to Sunday 20.09.2026. 'Mittwoch der Montagewoche' is therefore Wednesday 16.09.2026. This is a plain calendar-week reference stated by the company, not a statutory period, so no BGB counting or weekend/holiday shift rule applies.\",\"due_date\":\"2026-09-16\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"Today's date for this task was fixed by the user's instructions as 2026-09-14, even though a later system note mentioned 2026-10-06; the computed dates follow the user's explicit instruction, but if the real 'today' is actually in October 2026, the 19.09.2026 appointment and its 16.09.2026 notice deadline would already be in the past — this should be double-checked against the actual current date.\",\"The letter states the old kitchen was already dismantled by the recipient themselves ('wie vereinbart') — worth confirming this matches the recipient's own recollection, as it is a factual claim embedded in the letter rather than an instruction to verify.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "kind": "other",
+      "sender_name": "Küchenwerkstatt Beispielholz GmbH",
+      "document_date": "2026-09-09",
+      "remedy_type": "none",
+      "references": [
+        {
+          "label": "Auftrag",
+          "value": "KW-26-0612"
+        },
+        {
+          "label": "Kundennummer",
+          "value": "KD 31 118"
+        }
+      ],
+      "items": [
+        {
+          "kind": "appointment",
+          "title": "Kitchen installation appointment",
+          "quote": "Unser Montageteam kommt am Samstag, 19.09.2026, um 07:30 Uhr und braucht voraussichtlich den ganzen Tag.",
+          "computation": "The letter states a fixed calendar date and time for the installation team's visit: Saturday, 19.09.2026, 07:30. No counting or delivery-deeming rule applies; the date is taken as printed.",
+          "due_date": "2026-09-19",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Empty the kitchen and make water/power connections accessible before the team arrives",
+          "quote": "Bitte räumen Sie die Küche vorher vollständig aus und sorgen Sie dafür, dass die Wasser- und Stromanschlüsse zugänglich sind.",
+          "computation": "The letter asks that this be done 'vorher' (beforehand), i.e. before the installation team's arrival at 07:30 on Saturday 19.09.2026. No separate calendar date is given, so the latest moment this can be done is immediately before the 07:30 start on the appointment day itself (in practice the evening before is advisable).",
+          "due_date": "2026-09-19",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "deadline",
+          "title": "Notify the company if the installation date does not work",
+          "quote": "Ist der Termin für Sie nicht möglich, melden Sie sich bitte bis Mittwoch der Montagewoche.",
+          "computation": "The installation ('Montage') is scheduled for Saturday 19.09.2026. The 'Montagewoche' (installation week) is the calendar week containing that Saturday, i.e. Monday 14.09.2026 to Sunday 20.09.2026. 'Mittwoch der Montagewoche' is therefore Wednesday 16.09.2026. This is a plain calendar-week reference stated by the company, not a statutory period, so no BGB counting or weekend/holiday shift rule applies.",
+          "due_date": "2026-09-16",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "Today's date for this task was fixed by the user's instructions as 2026-09-14, even though a later system note mentioned 2026-10-06; the computed dates follow the user's explicit instruction, but if the real 'today' is actually in October 2026, the 19.09.2026 appointment and its 16.09.2026 notice deadline would already be in the past — this should be double-checked against the actual current date.",
+        "The letter states the old kitchen was already dismantled by the recipient themselves ('wie vereinbart') — worth confirming this matches the recipient's own recollection, as it is a factual claim embedded in the letter rather than an instruction to verify."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3274,
+      "cache_read_tokens": 6440,
+      "cache_creation_tokens": 2659,
+      "cost_usd": 0.04466799999999999,
+      "duration_ms": 35021,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

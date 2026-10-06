@@ -252,11 +252,6 @@ MISSING_PORTAL = "Save the portal's confirmation, or a screenshot of the sent me
 _NOTHING_KEPT = {"letter": MISSING_LETTER, "in_person": MISSING_IN_PERSON, "portal": MISSING_PORTAL}
 
 
-def is_proof_file(document: Document) -> bool:
-    """Whether a document is the file of a letter's proof (see :data:`PROOF_SOURCE`)."""
-    return document.source == PROOF_SOURCE
-
-
 def followup_item_id(draft_id: str) -> str:
     """The id of a sent letter's follow-up to-do ("Check for a reply")."""
     return content_id("itm", FOLLOWUP_SLOT, draft_id)

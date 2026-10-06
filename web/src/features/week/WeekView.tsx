@@ -9,7 +9,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
-import { useWeek, useWeekDone } from "@/api/hooks";
+import { useDocuments, useWeek, useWeekDone } from "@/api/hooks";
 import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
@@ -24,7 +24,7 @@ import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Stepper } from "@/components/ui/Stepper";
 import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { useFormatDate, useTodayISO } from "@/lib/today";
-import { cn, prefersReducedMotion } from "@/lib/utils";
+import { cn, plural, prefersReducedMotion } from "@/lib/utils";
 import { STEP_META, WEEKLY_REVIEW, entryHref, stepCount, type StepId } from "./steps";
 import { WeekEntryRow } from "./WeekEntryRow";
 import { useStickyError } from "@/lib/hooks";
@@ -175,6 +175,22 @@ export const isCountedToday = (entry: WeekEntry, step: WeekStep, today: string):
   (entry.ref.type === "item" || entry.ref.type === "contract") &&
   step.id !== "check";
 
+/** A letter row Ordnung has not read: waiting from the watched folder, being read, or that couldn't be read. */
+export const isUnreadRow = (entry: WeekEntry): boolean =>
+  entry.ref.type === "document" && ["held", "queued", "processing", "failed"].includes(entry.status ?? "");
+
+/**
+ * How many letters wait from the watched folder, wait in the queue (for Claude, say) or are being read, or
+ * couldn't be read — what Today counts as not read (final check F-M1: a letter waiting for Claude is queued).
+ */
+function useUnreadCount(): number {
+  const held = useDocuments({ status: "held" });
+  const failed = useDocuments({ status: "failed" });
+  const all = useDocuments();
+  const queued = (all.data ?? []).filter((d) => d.status === "queued" || d.status === "processing").length;
+  return (held.data?.length ?? 0) + (failed.data?.length ?? 0) + queued;
+}
+
 /** The steps holding rows that match, with how many each holds (in the session's order). */
 export function stepsWith(week: Pick<WeeklySession, "steps">, match: (entry: WeekEntry, step: WeekStep) => boolean): { step: WeekStep; count: number }[] {
   return week.steps.map((step) => ({ step, count: step.entries.filter((entry) => match(entry, step)).length })).filter((found) => found.count > 0);
@@ -207,7 +223,7 @@ function StepLinks({ found, many, onShow }: { found: { step: WeekStep; count: nu
   );
 }
 
-function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId) => void }) {
+function AllClear({ week, unread, onShow }: { week: WeeklySession; unread: number; onShow: (step: StepId) => void }) {
   const formatDate = useFormatDate();
   const todayISO = useTodayISO();
   const next = week.next_deadline;
@@ -218,18 +234,23 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
   const today = !overdue && Boolean(next?.date && next.date <= week.today);
   // the backend counts every day to act that is today (`due_today`); the next one is always among them
   const todayCount = today ? Math.max(1, week.due_today) : 0;
+  // letters from the watched folder and letters that couldn't be read (`unread`) ask for who knows what: never
+  // "All clear" while there are any — as on Today (UX U2), which counts them the same way
   const title = overdue
     ? `${overdue} ${overdue === 1 ? "thing is" : "things are"} overdue`
     : today
       ? todayCount === 1
         ? "One thing to do today"
         : `${todayCount} things to do today`
-      : next?.date
-        ? // "until tomorrow" beside a red "tomorrow" is no all-clear: only today is
-          daysUntil(next.date, todayISO) <= 1
-          ? "All clear for today"
-          : `All clear until ${formatDate(next.date)}`
-        : "All clear";
+      : unread
+        ? "Nothing due from the letters that were read"
+        : next?.date
+          ? // "until tomorrow" beside a red "tomorrow" is no all-clear: only today is
+            daysUntil(next.date, todayISO) <= 1
+            ? "All clear for today"
+            : `All clear until ${formatDate(next.date)}`
+          : "All clear";
+  const unreadSteps = unread ? stepsWith(week, (entry, step) => step.id === "new" && isUnreadRow(entry)) : [];
   const overdueSteps = overdue ? stepsWith(week, isCountedOverdue) : [];
   const todaySteps = todayCount > 1 ? stepsWith(week, (e, step) => isCountedToday(e, step, week.today)) : [];
   return (
@@ -239,8 +260,8 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
           <TriangleAlert className="size-7" />
         </span>
       ) : (
-        // the tick is for "All clear": a day with something to do shows its calendar
-        <EmptyArt kind={today ? "calendar" : "clear"} className="mb-3" />
+        // the tick is for "All clear": a day with something to do, or letters not read, show the calendar
+        <EmptyArt kind={today || unread ? "calendar" : "clear"} className="mb-3" />
       )}
       <h2 id="week-done-title" ref={heading} tabIndex={-1} className="display text-[26px] font-semibold leading-tight text-ink outline-none">
         {title}
@@ -249,6 +270,12 @@ function AllClear({ week, onShow }: { week: WeeklySession; onShow: (step: StepId
         <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
           {overdue === 1 ? "Its date has passed: act on it first" : "Their dates have passed: act on them first"}, or contact the sender if you
           can't. <StepLinks found={overdueSteps} many={overdue > 1} onShow={onShow} />
+        </p>
+      ) : null}
+      {unread ? (
+        <p className="mt-2 max-w-md text-[14.5px] leading-relaxed text-muted">
+          {plural(unread, "letter")} {unread === 1 ? "isn't" : "aren't"} read yet: Ordnung can't tell what {unread === 1 ? "it asks" : "they ask"}{" "}
+          until {unread === 1 ? "it is" : "they are"}. <StepLinks found={unreadSteps} many={unread > 1} onShow={onShow} />
         </p>
       ) : null}
       {next?.date ? (
@@ -340,6 +367,8 @@ function WeekSkeleton() {
 export function WeekView() {
   const q = useWeek();
   const done = useWeekDone();
+  // loaded with the steps, so the ending says it from its first word
+  const unread = useUnreadCount();
   const formatDate = useFormatDate();
   const [params, setParams] = useSearchParams();
   const [visited, setVisited] = useState<Set<StepId>>(() => new Set());
@@ -409,6 +438,7 @@ export function WeekView() {
         {header}
         <AllClear
           week={week}
+          unread={unread}
           onShow={(id) => {
             setFinished(false);
             setReturned(true);

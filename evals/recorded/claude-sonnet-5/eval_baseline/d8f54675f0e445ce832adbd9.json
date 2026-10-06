@@ -1,0 +1,54 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"57e5f08629ba9af9d6a471187bb09ca65d405aaef9def25ae463b68ff912ea94\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-01-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-contract_confirmation-I1"
+    ],
+    "prompt_head": "Today is Wednesday, 2026-01-28 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"contract\",\"sender_name\":\"Beispielnetz Mobil GmbH\",\"document_date\":\"2026-01-23\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"BN 7 204 118 3\"},{\"label\":\"Rufnummer\",\"value\":\"0151 555 77 104\"}],\"amounts\":[17.99],\"items\":[],\"remedy_type\":\"none\",\"contract\":{\"current_term_end\":\"2027-01-23\",\"cancel_by\":\"2026-12-23\"},\"warnings\":[]}",
+    "data": {
+      "kind": "contract",
+      "sender_name": "Beispielnetz Mobil GmbH",
+      "document_date": "2026-01-23",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "BN 7 204 118 3"
+        },
+        {
+          "label": "Rufnummer",
+          "value": "0151 555 77 104"
+        }
+      ],
+      "amounts": [
+        17.99
+      ],
+      "items": [],
+      "remedy_type": "none",
+      "contract": {
+        "current_term_end": "2027-01-23",
+        "cancel_by": "2026-12-23"
+      },
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1358,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2560,
+      "cost_usd": 0.02493,
+      "duration_ms": 17399,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

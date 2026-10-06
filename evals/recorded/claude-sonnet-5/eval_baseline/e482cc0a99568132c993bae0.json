@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"e40d0bf5d960eabb93f70202409e933508cc5bb0b5efe31b12eb47b7735d020b\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-04-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-price_increase-J1"
+    ],
+    "prompt_head": "Today is Saturday, 2026-04-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"price_increase\",\"sender_name\":\"Funkwelle Beispiel GmbH\",\"document_date\":\"2026-04-13\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"FW-30 551 802\"}],\"amounts\":[24.99,27.99],\"items\":[{\"kind\":\"milestone\",\"title\":\"Price increase for tariff \\\"Funkwelle Flex 30\\\" takes effect\",\"quote\":\"zum 01.06.2026 erhöhen wir den monatlichen Grundpreis Ihres Tarifs „Funkwelle Flex 30“ von 24,99 € auf 27,99 €.\",\"computation\":\"The letter states the new price applies from a fixed calendar date, 01.06.2026. This date is used as printed; no counting needed.\",\"due_date\":\"2026-06-01\",\"confidence\":\"high\",\"amount\":27.99},{\"kind\":\"deadline\",\"title\":\"Exercise special termination right (Sonderkündigungsrecht) due to the price increase\",\"quote\":\"Dieses Recht können Sie innerhalb von drei Monaten ausüben, nachdem Ihnen diese Mitteilung zugegangen ist; der Vertrag endet dann frühestens mit dem Tag, an dem die Preiserhöhung wirksam wird.\",\"computation\":\"The letter is a private (non-authority) notice, so no statutory Bekanntgabefiktion applies; the 3-month period under § 57 Abs. 1 TKG runs from actual receipt (Zugang), which is not separately stated. As the earliest plausible reading, the receipt date is taken to be the letter's own date, 13.04.2026 (Monday) — a letter cannot be received before it is dated, so this is the earliest possible start and yields the earliest (safest) deadline. Under §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of receipt is not counted and the 3-month period ends on the day with the same calendar number 3 months later: 13.04. + 3 months = 13.07.2026. 13.07.2026 is a Monday and not a public holiday in NW, so no weekend/holiday shift under § 193 BGB is needed. The actual (unknown) later receipt date would only push this deadline further out, never earlier.\",\"due_date\":\"2026-07-13\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter does not state a separate posting/dispatch date distinct from the letter date (13.04.2026); as this is a private company (not subject to the statutory Zugangsfiktion for authorities), the exact date of actual receipt (Zugang) that starts the 3-month special-termination period is unknown. The due date 2026-07-13 was computed using the letter date itself as the earliest plausible receipt date, which is a conservative (safe-side) assumption — the true deadline could be a few days later if the letter arrived after 13.04.2026, so the recipient should confirm the actual delivery date and, if in doubt, act well before 2026-07-13.\",\"An earlier context in this conversation stated today's date as 2026-10-06, contradicting the task's explicit instruction to use 2026-04-18 as today; per the task's own instruction ('even if other context mentions a different date'), 2026-04-18 was used, which is also consistent with the letter's own date (13.04.2026) lying shortly before it.\"]}",
+    "data": {
+      "kind": "price_increase",
+      "sender_name": "Funkwelle Beispiel GmbH",
+      "document_date": "2026-04-13",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "FW-30 551 802"
+        }
+      ],
+      "amounts": [
+        24.99,
+        27.99
+      ],
+      "items": [
+        {
+          "kind": "milestone",
+          "title": "Price increase for tariff \"Funkwelle Flex 30\" takes effect",
+          "quote": "zum 01.06.2026 erhöhen wir den monatlichen Grundpreis Ihres Tarifs „Funkwelle Flex 30“ von 24,99 € auf 27,99 €.",
+          "computation": "The letter states the new price applies from a fixed calendar date, 01.06.2026. This date is used as printed; no counting needed.",
+          "due_date": "2026-06-01",
+          "confidence": "high",
+          "amount": 27.99
+        },
+        {
+          "kind": "deadline",
+          "title": "Exercise special termination right (Sonderkündigungsrecht) due to the price increase",
+          "quote": "Dieses Recht können Sie innerhalb von drei Monaten ausüben, nachdem Ihnen diese Mitteilung zugegangen ist; der Vertrag endet dann frühestens mit dem Tag, an dem die Preiserhöhung wirksam wird.",
+          "computation": "The letter is a private (non-authority) notice, so no statutory Bekanntgabefiktion applies; the 3-month period under § 57 Abs. 1 TKG runs from actual receipt (Zugang), which is not separately stated. As the earliest plausible reading, the receipt date is taken to be the letter's own date, 13.04.2026 (Monday) — a letter cannot be received before it is dated, so this is the earliest possible start and yields the earliest (safest) deadline. Under §§ 187 Abs. 1, 188 Abs. 2 BGB, the day of receipt is not counted and the 3-month period ends on the day with the same calendar number 3 months later: 13.04. + 3 months = 13.07.2026. 13.07.2026 is a Monday and not a public holiday in NW, so no weekend/holiday shift under § 193 BGB is needed. The actual (unknown) later receipt date would only push this deadline further out, never earlier.",
+          "due_date": "2026-07-13",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter does not state a separate posting/dispatch date distinct from the letter date (13.04.2026); as this is a private company (not subject to the statutory Zugangsfiktion for authorities), the exact date of actual receipt (Zugang) that starts the 3-month special-termination period is unknown. The due date 2026-07-13 was computed using the letter date itself as the earliest plausible receipt date, which is a conservative (safe-side) assumption — the true deadline could be a few days later if the letter arrived after 13.04.2026, so the recipient should confirm the actual delivery date and, if in doubt, act well before 2026-07-13.",
+        "An earlier context in this conversation stated today's date as 2026-10-06, contradicting the task's explicit instruction to use 2026-04-18 as today; per the task's own instruction ('even if other context mentions a different date'), 2026-04-18 was used, which is also consistent with the letter's own date (13.04.2026) lying shortly before it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 8887,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2486,
+      "cost_usd": 0.099924,
+      "duration_ms": 107933,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2e225670ee4789b08bb8be828787ed716510dbaae19f29aa087bbea560939a8f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-I2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-05-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Studierendenwerk Mustertor – Amt für Ausbildungsförderung\",\"document_date\":\"2025-05-05\",\"references\":[{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\"}],\"amounts\":[734],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against the BAföG award decision\",\"quote\":\"Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated Mon 5 May 2025. As a social-law authority letter (BAföG administered under SGB X rules), it counts as delivered on the 4th day after posting: Fri 9 May 2025 (§ 37 Abs. 2 SGB X). The one-month Widerspruch period starts the following day (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X) and ends one month later on Mon 9 Jun 2025 (§ 188 Abs. 2 BGB). 9 Jun 2025 is Pfingstmontag, a public holiday in NW, so the deadline shifts to the next business day, Tue 10 Jun 2025 (§ 26 Abs. 3 SGB X).\",\"due_date\":\"2025-06-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"reminder\",\"title\":\"Report changes in income, housing or studies immediately\",\"quote\":\"Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit.\",\"computation\":\"The letter demands this be done 'sofort' (immediately) whenever such a change occurs; it names no calendar date or counting period, so no fixed due date can be derived — it is a standing, ongoing obligation rather than a one-off deadline.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Studierendenwerk Mustertor – Amt für Ausbildungsförderung",
+      "document_date": "2025-05-05",
+      "references": [
+        {
+          "label": "Förderungsnummer",
+          "value": "412 2025 07731"
+        }
+      ],
+      "amounts": [
+        734
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against the BAföG award decision",
+          "quote": "Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated Mon 5 May 2025. As a social-law authority letter (BAföG administered under SGB X rules), it counts as delivered on the 4th day after posting: Fri 9 May 2025 (§ 37 Abs. 2 SGB X). The one-month Widerspruch period starts the following day (§ 187 Abs. 1 BGB, § 26 Abs. 1 SGB X) and ends one month later on Mon 9 Jun 2025 (§ 188 Abs. 2 BGB). 9 Jun 2025 is Pfingstmontag, a public holiday in NW, so the deadline shifts to the next business day, Tue 10 Jun 2025 (§ 26 Abs. 3 SGB X).",
+          "due_date": "2025-06-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "reminder",
+          "title": "Report changes in income, housing or studies immediately",
+          "quote": "Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit.",
+          "computation": "The letter demands this be done 'sofort' (immediately) whenever such a change occurs; it names no calendar date or counting period, so no fixed due date can be derived — it is a standing, ongoing obligation rather than a one-off deadline.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2530,
+      "cache_read_tokens": 15698,
+      "cache_creation_tokens": 5390,
+      "cost_usd": 0.0500076,
+      "duration_ms": 29881,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 1,
+            "unit": "months",
+            "anchor": "deemed_delivery",
+            "delivery_rule": "de_admin_post",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "legal_basis": "§ 41 VwVfG, § 70 SGB X / BAföG Widerspruch",
+            "text": "legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor ein"
+          },
+          "document_date": "2025-05-05",
+          "sender_kind": "authority",
+          "sender_name": "Studierendenwerk Mustertor – Amt für Ausbildungsförderung",
+          "region": "NW",
+          "recipient_region": "NW",
+          "remedy_type": "widerspruch"
+        },
+        "result": "{\"due_date\":\"2025-06-10\",\"weekday\":\"Tuesday\",\"send_by\":\"2025-06-03\",\"summary\":\"Letter dated Mon 5 May 2025 counts as delivered on Fri 9 May; one month later is Mon 9 Jun 2025, a public holiday, Pfingstmontag, so the deadline moves to Tue 10 Jun 2025.\",\"confidence\":\"high\",\"warnings\":[\"Deemed delivery was applied: the letter counts as delivered some days after it was posted. If it was formally served instead — in a yellow envelope (Postzustellungsurkunde), or it says it was 'zugestellt' on a date — that rule does not apply and the period runs from the date written on the envelope, usually earlier.\"],\"steps\":[{\"label\":\"Posting day: Mon 5 May 2025 (the letter's date; the real posting day can only be later)\",\"date\":\"2025-05-05\",\"rule_id\":\"posting_day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\"},{\"label\":\"Counts as delivered on the 4th day after posting: Fri 9 May 2025\",\"date\":\"2025-05-09\",\"rule_id\":\"sgbx_37_2\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\"},{\"label\":\"Counting starts the day after Fri 9 May 2025\",\"date\":\"2025-05-09\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"One month later: Mon 9 Jun 2025\",\"date\":\"2025-06-09\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 9 Jun 2025 is a public holiday, Pfingstmontag, so the deadline moves to Tue 10 Jun 2025\",\"date\":\"2025-06-10\",\"rule_id\":\"sgbx_26_3\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\"},{\"label\":\"Send by Tue 3 Jun 2025 to allow 4 business days for a letter to arrive\",\"date\":\"2025-06-03\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"posting_day\",\"title\":\"The posting day\",\"citation\":\"§ 122 Abs. 2 AO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X; BFH II R 52/07\",\"url\":\"https://www.gesetze-im-internet.de/ao_1977/__122.html\"},{\"id\":\"sgbx_37_2\",\"title\":\"Social-law letters: delivered on the 4th day, no weekend shift\",\"citation\":\"§ 37 Abs. 2 SGB X; BSG B 14 AS 12/09 R\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__37.html\"},{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"sgbx_26_3\",\"title\":\"Weekend and holiday shift (social law)\",\"citation\":\"§ 26 Abs. 3 SGB X; § 64 Abs. 3 SGG\",\"url\":\"https://www.gesetze-im-internet.de/sgb_10/__26.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2025-05-10\",\"letter_date\":\"2025-05-05\",\"delivery_law\":\"social law (§ 37 SGB X)\",\"holiday_calendar\":\"Nordrhein-Westfalen\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[\"If the letter was formally served (a yellow envelope, or 'zugestellt am …'), pass spec.anchor receipt with the envelope's date as spec.anchor_date and spec.delivery_rule none.\"],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      }
+    ]
+  }
+}

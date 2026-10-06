@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -39,3 +40,19 @@ def store(paths: Paths) -> Iterator[Store]:
     opened = Store.open(paths)
     yield opened
     opened.close()
+
+
+@pytest.fixture
+def collection_paused() -> Iterator[None]:
+    """No garbage collection while a test drives a parser to the recursion limit. A finalizer of
+    an earlier test's garbage that runs at that depth (an unclosed connection's warning, a store's
+    thread finalizers) has no stack left and fails, and pytest charges that to this test; so earlier
+    garbage is collected first, at an ordinary depth."""
+    gc.collect()
+    enabled = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if enabled:
+            gc.enable()

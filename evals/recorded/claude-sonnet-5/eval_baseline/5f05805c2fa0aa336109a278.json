@@ -1,0 +1,80 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"1ec95954d40edf876851e4af583596b715316ef0dc2f7e162317ec88eef6557a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-08-16\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-J1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-08-16 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Musikschule Klangfarbe Musterlingen gGmbH\",\"document_date\":\"2025-08-13\",\"references\":[{\"label\":\"Schülernummer\",\"value\":\"S-2207\"},{\"label\":\"Unterrichtsvertrag\",\"value\":\"UV-2024-0912\"}],\"amounts\":[123],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding tuition fees and bank charges\",\"quote\":\"Wir bitten Sie, den Rückstand spätestens am 20. August 2025 zu überweisen.\",\"computation\":\"The letter states a fixed calendar date for payment: 20 August 2025. This is a private company's payment reminder, not an authority's letter, so no statutory deemed-delivery rule applies; the date given is taken as printed. Checking the calendar: 20 August 2025 is a Wednesday and is not a public holiday in Nordrhein-Westfalen (confirmed via holiday lookup), so no weekend/holiday shift under § 193 BGB is needed. Due date = 20 August 2025.\",\"due_date\":\"2025-08-20\",\"confidence\":\"high\",\"amount\":123}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a routine payment reminder from a private company (music school) after two failed direct debits, not from a public authority; it carries no legal-remedy instructions and no deemed-delivery rule applies.\",\"The IBAN printed (DE83 3705 0198 0005 5189 00) is structurally valid and matches the sender's own letterhead/bank name (Musterbank AG), but as with any payment request, confirm it is the school's known account before transferring, especially since it also asks you to report any change of bank details to them directly.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Musikschule Klangfarbe Musterlingen gGmbH",
+      "document_date": "2025-08-13",
+      "references": [
+        {
+          "label": "Schülernummer",
+          "value": "S-2207"
+        },
+        {
+          "label": "Unterrichtsvertrag",
+          "value": "UV-2024-0912"
+        }
+      ],
+      "amounts": [
+        123
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding tuition fees and bank charges",
+          "quote": "Wir bitten Sie, den Rückstand spätestens am 20. August 2025 zu überweisen.",
+          "computation": "The letter states a fixed calendar date for payment: 20 August 2025. This is a private company's payment reminder, not an authority's letter, so no statutory deemed-delivery rule applies; the date given is taken as printed. Checking the calendar: 20 August 2025 is a Wednesday and is not a public holiday in Nordrhein-Westfalen (confirmed via holiday lookup), so no weekend/holiday shift under § 193 BGB is needed. Due date = 20 August 2025.",
+          "due_date": "2025-08-20",
+          "confidence": "high",
+          "amount": 123
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a routine payment reminder from a private company (music school) after two failed direct debits, not from a public authority; it carries no legal-remedy instructions and no deemed-delivery rule applies.",
+        "The IBAN printed (DE83 3705 0198 0005 5189 00) is structurally valid and matches the sender's own letterhead/bank name (Musterbank AG), but as with any payment request, confirm it is the school's known account before transferring, especially since it also asks you to report any change of bank details to them directly."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2143,
+      "cache_read_tokens": 15692,
+      "cache_creation_tokens": 5222,
+      "cost_usd": 0.0454644,
+      "duration_ms": 27576,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE83 3705 0198 0005 5189 00"
+        },
+        "result": "{\"iban\":\"DE83 3705 0198 0005 5189 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005518900\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Germany, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 9 October 2025: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2025,
+          "region": "NW"
+        },
+        "result": "{\"year\":2025,\"region\":\"NW\",\"calendar\":\"Nordrhein-Westfalen\",\"holidays\":[{\"date\":\"2025-01-01\",\"weekday\":\"Wednesday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2025-04-18\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2025-04-21\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2025-05-01\",\"weekday\":\"Thursday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2025-05-29\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2025-06-09\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2025-06-19\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2025-10-03\",\"weekday\":\"Friday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2025-11-01\",\"weekday\":\"Saturday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2025-12-25\",\"weekday\":\"Thursday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2025-12-26\",\"weekday\":\"Friday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      }
+    ]
+  }
+}

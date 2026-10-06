@@ -39,3 +39,24 @@ describe("Deleting a letter (audit)", () => {
     expect(url).toBe("/api/documents/doc_1?purge=true");
   });
 });
+
+describe("Where the letter went (FEAT G4)", () => {
+  it("says a letter no model call carried was not sent to Claude (Claude not installed, or it waits)", () => {
+    const doc = makeDoc({ status: "queued", ai_processed_at: null });
+    renderWithProviders(<DocumentFooter detail={makeDetail({ document: doc, given_to_model: false })} />);
+    expect(screen.getByText("Not sent to Claude. The letter hasn't left your computer.")).toBeInTheDocument();
+    expect(screen.queryByText(/sent to Anthropic/)).toBeNull();
+  });
+
+  it("says it was sent once a call carried it, even if the reading then failed", () => {
+    const doc = makeDoc({ status: "failed", ai_processed_at: null });
+    renderWithProviders(<DocumentFooter detail={makeDetail({ document: doc, given_to_model: true })} />);
+    expect(screen.getByText(/The letter's text or image was sent to Anthropic/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not sent to Claude/)).toBeNull();
+  });
+
+  it("says a private letter never left the computer", () => {
+    renderWithProviders(<DocumentFooter detail={makeDetail({ document: makeDoc({ ai_private: true, ai_processed_at: null }) })} />);
+    expect(screen.getByText("This letter never left your computer.")).toBeInTheDocument();
+  });
+});

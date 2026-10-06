@@ -5,11 +5,15 @@
   visible, then runs the triggers — which is how a new Idea arrives over SSE. It is split into
   :func:`start_tray_item` (fast) and :func:`finish_tray_item`; :func:`open_mail` answers the API
   right after the first and reads the letter in a background task.
-* ``get_tour``/``update_tour``/``list_mail``/``open_mail`` are the functions ``/api/demo`` calls.
+* ``get_tour``/``update_tour``/``list_mail``/``open_mail``/``recorded_questions`` are the functions
+  ``/api/demo`` calls.
 * Which letters were opened (meta ``demo_tray``) and the tour (meta ``demo_tour``) live in the
   database, so they survive restarts and are reset with the demo.
 * A question the demo has no recording for must not look like a failure: :func:`demo_safe_stream`
-  turns the replay miss into one friendly error event.
+  turns the replay miss into one friendly error event — and a suggested question that misses (the
+  person changed the letters or to-dos its answers were recorded on) into one that says how to start
+  the demo over. The answers were recorded on the demo as it starts, in every state of the tray, so
+  after such a change :func:`recorded_questions` offers none.
 """
 
 from __future__ import annotations
@@ -22,13 +26,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ordnung.assistant.ask import demo_miss_event
+from ordnung.assistant.ask import build_request, demo_changed_event, demo_miss_event
 from ordnung.config import PACKAGE_DIR
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, Manifest, SampleDocument, load_manifest, samples_root
 from ordnung.ingest.pipeline import StageCallback, add_file, ingest_document, run_triggers
 from ordnung.llm.base import LLMError, ReplayMiss, StreamEvent
+from ordnung.llm.replay import ReplayBackend, fixture_path
 from ordnung.models import Document, Job, MailTrayItem, TourState
+from ordnung.tick import local_today
 
 if TYPE_CHECKING:
     from ordnung.app_context import AppContext
@@ -76,6 +82,23 @@ def suggested_questions(path: Path | None = None) -> list[str]:
     if not isinstance(raw, list) or not all(isinstance(question, str) for question in raw):
         raise DemoError(f"{source} must be a JSON list of questions.")
     return [" ".join(question.split()) for question in raw if question.strip()]
+
+
+def recorded_questions(ctx: AppContext) -> list[str]:
+    """``GET /api/demo/questions``: the suggested questions whose recorded answers replay on the letters and
+    to-dos as they are now — all of them in every state of the New-mail tray, none once the person changed
+    the letters or to-dos (the Ask page then says how to start over instead of offering questions that would
+    miss). A live fallback (``ordnung demo --live``) answers the rest, so then all of them."""
+    questions = suggested_questions()
+    backend = ctx.llm.backend
+    if not isinstance(backend, ReplayBackend) or backend.fallback is not None:
+        return questions
+    today = local_today(ctx.store)
+    return [
+        question
+        for question in questions
+        if fixture_path(backend.root, build_request(ctx, question, [], today)).exists()
+    ]
 
 
 def reset_demo_state(store: Store) -> None:
@@ -291,13 +314,33 @@ def is_replay_miss(event: StreamEvent) -> bool:
     )
 
 
-async def demo_safe_stream(events: AsyncIterator[StreamEvent], *, demo: bool) -> AsyncIterator[StreamEvent]:
-    """Pass ``events`` through; in demo mode a replay miss ends the stream with Ask's one ``demo_miss``
-    event (:data:`~ordnung.assistant.ask.DEMO_MISS`), which the web app shows as a note — asking again
-    can't help — instead of a failure."""
+def is_suggested(question: str) -> bool:
+    """Whether ``question`` is one of the suggested questions, word for word (as Ask's key compares it)."""
+    try:
+        return " ".join(question.split()) in suggested_questions()
+    except DemoError:
+        return False
+
+
+async def demo_safe_stream(
+    events: AsyncIterator[StreamEvent],
+    *,
+    demo: bool,
+    question: str | None = None,
+    ctx: AppContext | None = None,
+) -> AsyncIterator[StreamEvent]:
+    """Pass ``events`` through; in demo mode a replay miss ends the stream with one coded event, which the
+    web app shows as a note — asking again can't help — instead of a failure: ``demo_changed``
+    (:data:`~ordnung.assistant.ask.DEMO_CHANGED`) for a suggested ``question`` — the demo recorded it in
+    every state of the New-mail tray, so it misses only after the person changed the letters or to-dos —
+    else ``demo_miss`` (:data:`~ordnung.assistant.ask.DEMO_MISS`), which points to the suggested questions
+    only while ``ctx``'s demo still offers them (:func:`recorded_questions`)."""
     async for event in events:
         if demo and is_replay_miss(event):
-            yield demo_miss_event()
+            if question is not None and is_suggested(question):
+                yield demo_changed_event()
+            else:
+                yield demo_miss_event(offered=ctx is None or bool(recorded_questions(ctx)))
             return
         yield event
 

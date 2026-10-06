@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"6ca8cb36d6fe350418c06b4a5e0c7170c7afb531407f9d34a84fa0f4480a49db\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-I2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-02-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Rechtsanwälte Musterhoff & Kollegen\",\"document_date\":\"2026-02-05\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"MK 0219/26\"},{\"label\":\"Rechnungsnummer\",\"value\":\"R-2025-318\"}],\"amounts\":[1915.72],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding invoice amount for painting work\",\"quote\":\"Wir fordern Sie auf, den Gesamtbetrag bis spätestens Mittwoch, 25.02.2026 auf unser Kanzleikonto zu überweisen.\",\"computation\":\"The letter states an explicit calendar date for payment: 'bis spätestens Mittwoch, 25.02.2026'. No period calculation is needed; the due date is simply the date written. Checked that 25.02.2026 is indeed a Wednesday, matching the letter's statement, so the date is internally consistent. As this is a private payment demand (not from an authority), no Bekanntgabefiktion or §193 BGB weekend-shift applies to a date already fixed by calendar.\",\"due_date\":\"2026-02-25\",\"confidence\":\"high\",\"amount\":1915.72}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter threatens that the claim will be pursued in court 'ohne weitere Ankündigung' (without further notice) if payment is not received by the deadline; this is a private legal demand, not an official notice, and the recipient may wish to verify the underlying invoice and check whether the debt and the stated default date (13.11.2025) are accurate before paying.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Rechtsanwälte Musterhoff & Kollegen",
+      "document_date": "2026-02-05",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "MK 0219/26"
+        },
+        {
+          "label": "Rechnungsnummer",
+          "value": "R-2025-318"
+        }
+      ],
+      "amounts": [
+        1915.72
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding invoice amount for painting work",
+          "quote": "Wir fordern Sie auf, den Gesamtbetrag bis spätestens Mittwoch, 25.02.2026 auf unser Kanzleikonto zu überweisen.",
+          "computation": "The letter states an explicit calendar date for payment: 'bis spätestens Mittwoch, 25.02.2026'. No period calculation is needed; the due date is simply the date written. Checked that 25.02.2026 is indeed a Wednesday, matching the letter's statement, so the date is internally consistent. As this is a private payment demand (not from an authority), no Bekanntgabefiktion or §193 BGB weekend-shift applies to a date already fixed by calendar.",
+          "due_date": "2026-02-25",
+          "confidence": "high",
+          "amount": 1915.72
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter threatens that the claim will be pursued in court 'ohne weitere Ankündigung' (without further notice) if payment is not received by the deadline; this is a private legal demand, not an official notice, and the recipient may wish to verify the underlying invoice and check whether the debt and the stated default date (13.11.2025) are accurate before paying."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2694,
+      "cache_read_tokens": 13778,
+      "cache_creation_tokens": 4669,
+      "cost_usd": 0.048379599999999995,
+      "duration_ms": 31040,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

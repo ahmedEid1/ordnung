@@ -1,0 +1,77 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"14c750545db834a3a91102f54090eb9fe92683d39d771893ff1c4d795a059a6c\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-03-31\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-I2"
+    ],
+    "prompt_head": "Today is Monday, 2025-03-31 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[255],\"contract\":null,\"document_date\":\"2025-03-27\",\"items\":[{\"kind\":\"task\",\"title\":\"Notify Familienkasse if Marlene stops or interrupts her studies\",\"quote\":\"Bitte teilen Sie uns mit, wenn Marlene das Studium abbricht oder unterbricht.\",\"computation\":\"This is an ongoing, event-triggered obligation (notify if/when the study is abandoned or interrupted) with no calendar date or period attached in the letter, so no single due date can be computed; it must be reported promptly whenever such an event occurs.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Kindergeld payments begin\",\"quote\":\"für Ihre Tochter Marlene, geboren am 14.08.2006, setzen wir ab April 2025 Kindergeld in Höhe von 255,00 € monatlich fest (§§ 62, 63, 66 EStG).\",\"computation\":\"The decision fixes Kindergeld starting with the month of April 2025, i.e. from 1 April 2025 onward (monthly payments of €255.00).\",\"due_date\":\"2025-04-01\",\"confidence\":\"high\",\"amount\":255},{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch against the Kindergeld determination\",\"quote\":\"Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Musterrhein erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.\",\"computation\":\"Letter dated and presumably posted 27.03.2025 (Thursday), after 1 Jan 2025, so the 4-day delivery fiction applies (§122 Abs.2 Nr.1 AO, applied to Familienkasse Kindergeld decisions). Counting calendar days from the posting day (not counted): 28.03 (Fri)=day1, 29.03 (Sat)=day2, 30.03 (Sun)=day3, 31.03 (Mon)=day4. Since the Familienkasse is treated like a tax authority, if the 4th day fell on a weekend/holiday it would move to the next working day under §108 Abs.3 AO, but 31.03.2025 is already a normal working Monday, so deemed delivery = 31.03.2025. The one-month Einspruch period (§355 Abs.1 AO) runs from 31.03.2025: one month later with the same day number is 30.04.2025 (April has no 31st day, so under §188 Abs.2/3 BGB it falls on the last day of April, 30.04.2025). 30.04.2025 is a Wednesday, not a weekend or NW public holiday, so no further shift applies under §108 Abs.3 AO.\",\"due_date\":\"2025-04-30\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Kindergeldnummer\",\"value\":\"355FK207441\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Familienkasse Musterrhein\",\"warnings\":[\"The letter's own labels (\\\"Familienkasse (Musterausgabe)\\\", \\\"Beispielfeld\\\", \\\"Beispielmainz\\\", \\\"Bundesbank Muster\\\", example e-mail domain) look like placeholder/sample text rather than a genuine real-world address and sender, so the authenticity of this document should be double-checked before relying on it.\"]}",
+    "data": {
+      "amounts": [
+        255
+      ],
+      "contract": null,
+      "document_date": "2025-03-27",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Notify Familienkasse if Marlene stops or interrupts her studies",
+          "quote": "Bitte teilen Sie uns mit, wenn Marlene das Studium abbricht oder unterbricht.",
+          "computation": "This is an ongoing, event-triggered obligation (notify if/when the study is abandoned or interrupted) with no calendar date or period attached in the letter, so no single due date can be computed; it must be reported promptly whenever such an event occurs.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Kindergeld payments begin",
+          "quote": "für Ihre Tochter Marlene, geboren am 14.08.2006, setzen wir ab April 2025 Kindergeld in Höhe von 255,00 € monatlich fest (§§ 62, 63, 66 EStG).",
+          "computation": "The decision fixes Kindergeld starting with the month of April 2025, i.e. from 1 April 2025 onward (monthly payments of €255.00).",
+          "due_date": "2025-04-01",
+          "confidence": "high",
+          "amount": 255
+        },
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch against the Kindergeld determination",
+          "quote": "Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch bei der Familienkasse Musterrhein erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.",
+          "computation": "Letter dated and presumably posted 27.03.2025 (Thursday), after 1 Jan 2025, so the 4-day delivery fiction applies (§122 Abs.2 Nr.1 AO, applied to Familienkasse Kindergeld decisions). Counting calendar days from the posting day (not counted): 28.03 (Fri)=day1, 29.03 (Sat)=day2, 30.03 (Sun)=day3, 31.03 (Mon)=day4. Since the Familienkasse is treated like a tax authority, if the 4th day fell on a weekend/holiday it would move to the next working day under §108 Abs.3 AO, but 31.03.2025 is already a normal working Monday, so deemed delivery = 31.03.2025. The one-month Einspruch period (§355 Abs.1 AO) runs from 31.03.2025: one month later with the same day number is 30.04.2025 (April has no 31st day, so under §188 Abs.2/3 BGB it falls on the last day of April, 30.04.2025). 30.04.2025 is a Wednesday, not a weekend or NW public holiday, so no further shift applies under §108 Abs.3 AO.",
+          "due_date": "2025-04-30",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Kindergeldnummer",
+          "value": "355FK207441"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Familienkasse Musterrhein",
+      "warnings": [
+        "The letter's own labels (\"Familienkasse (Musterausgabe)\", \"Beispielfeld\", \"Beispielmainz\", \"Bundesbank Muster\", example e-mail domain) look like placeholder/sample text rather than a genuine real-world address and sender, so the authenticity of this document should be double-checked before relying on it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4067,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2598,
+      "cost_usd": 0.052172,
+      "duration_ms": 43307,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"f6e947174f587f88f1b5da38659cebf709bef84057d36a122532d64de6c743b1\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-05-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-I2"
+    ],
+    "prompt_head": "Today is Monday, 2027-05-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Kreis Beispielsauerland – Bußgeldstelle\",\"document_date\":\"2027-04-27\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"BG 27/4410/18-03\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"MS-LB 4410\"}],\"amounts\":[128.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.\",\"computation\":\"Formal service (förmliche Zustellung, § 182 ZPO) is documented on the delivery certificate copied on page 2, stamped with the delivery date 03.05.2027 (a Monday), which also matches today's date given for this task. The two-week objection period under § 67 Abs. 1 OWiG is counted like a BGB period: the day of delivery itself is not counted (§ 187 Abs. 1 BGB), so the period starts on 04.05.2027. Per § 188 Abs. 2 BGB, a period stated in weeks ends on the day of the last week that bears the same name as the day preceding the first day of the period, i.e. the day named like 03.05.2027 (Monday) two weeks later: 17.05.2027. That day, 17.05.2027, is Pfingstmontag (Whit Monday), a statutory public holiday in every German Land including Nordrhein-Westfalen, where the Bußgeldstelle (postcode 57390) is located. Under § 193 BGB the deadline shifts to the next working day, Tuesday 18.05.2027.\",\"due_date\":\"2027-05-18\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and costs after the Bescheid becomes final\",\"quote\":\"Bitte zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids; danach ist er innerhalb von zwei Wochen auf das Konto DE42 4600 0000 0003 0700 00 unter Angabe des Aktenzeichens zu überweisen.\",\"computation\":\"Payment is explicitly conditional on Rechtskraft (the Bescheid becoming final), which only occurs if no Einspruch is filed within the two-week objection period ending 18.05.2027 (see the deadline item above). Assuming no Einspruch is filed, Rechtskraft sets in the day after that deadline, i.e. 19.05.2027 (a Wednesday). Applying § 187 Abs. 1 BGB, the two-week payment period then starts on 20.05.2027, and under § 188 Abs. 2 BGB ends on the day named like 19.05.2027 (Wednesday) two weeks later: 02.06.2027. No NRW public holiday falls on that date (Fronleichnam 2027 is 27.05.2027), so no shift under § 193 BGB is needed. This date is only valid under the assumption that no Einspruch is filed and the Bescheid becomes final exactly on 19.05.2027; if an Einspruch is filed, this payment obligation does not arise at all, or arises at a different, currently unknown later date.\",\"due_date\":\"2027-06-02\",\"confidence\":\"low\",\"amount\":128.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date is conditional on the Bescheid becoming final (Rechtskraft), which itself depends on whether an Einspruch is filed within the objection period; the computed date of 2027-06-02 is only an assumption-based estimate and should be reconsidered once it is known whether an Einspruch was filed.\",\"Verify the IBAN DE42 4600 0000 0003 0700 00 against the official Sparkasse Beispielsauerland account before transferring any money, and only pay after Rechtskraft as instructed in the letter, not before.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Kreis Beispielsauerland – Bußgeldstelle",
+      "document_date": "2027-04-27",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "BG 27/4410/18-03"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "MS-LB 4410"
+        }
+      ],
+      "amounts": [
+        128.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.",
+          "computation": "Formal service (förmliche Zustellung, § 182 ZPO) is documented on the delivery certificate copied on page 2, stamped with the delivery date 03.05.2027 (a Monday), which also matches today's date given for this task. The two-week objection period under § 67 Abs. 1 OWiG is counted like a BGB period: the day of delivery itself is not counted (§ 187 Abs. 1 BGB), so the period starts on 04.05.2027. Per § 188 Abs. 2 BGB, a period stated in weeks ends on the day of the last week that bears the same name as the day preceding the first day of the period, i.e. the day named like 03.05.2027 (Monday) two weeks later: 17.05.2027. That day, 17.05.2027, is Pfingstmontag (Whit Monday), a statutory public holiday in every German Land including Nordrhein-Westfalen, where the Bußgeldstelle (postcode 57390) is located. Under § 193 BGB the deadline shifts to the next working day, Tuesday 18.05.2027.",
+          "due_date": "2027-05-18",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and costs after the Bescheid becomes final",
+          "quote": "Bitte zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids; danach ist er innerhalb von zwei Wochen auf das Konto DE42 4600 0000 0003 0700 00 unter Angabe des Aktenzeichens zu überweisen.",
+          "computation": "Payment is explicitly conditional on Rechtskraft (the Bescheid becoming final), which only occurs if no Einspruch is filed within the two-week objection period ending 18.05.2027 (see the deadline item above). Assuming no Einspruch is filed, Rechtskraft sets in the day after that deadline, i.e. 19.05.2027 (a Wednesday). Applying § 187 Abs. 1 BGB, the two-week payment period then starts on 20.05.2027, and under § 188 Abs. 2 BGB ends on the day named like 19.05.2027 (Wednesday) two weeks later: 02.06.2027. No NRW public holiday falls on that date (Fronleichnam 2027 is 27.05.2027), so no shift under § 193 BGB is needed. This date is only valid under the assumption that no Einspruch is filed and the Bescheid becomes final exactly on 19.05.2027; if an Einspruch is filed, this payment obligation does not arise at all, or arises at a different, currently unknown later date.",
+          "due_date": "2027-06-02",
+          "confidence": "low",
+          "amount": 128.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date is conditional on the Bescheid becoming final (Rechtskraft), which itself depends on whether an Einspruch is filed within the objection period; the computed date of 2027-06-02 is only an assumption-based estimate and should be reconsidered once it is known whether an Einspruch was filed.",
+        "Verify the IBAN DE42 4600 0000 0003 0700 00 against the official Sparkasse Beispielsauerland account before transferring any money, and only pay after Rechtskraft as instructed in the letter, not before."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 9366,
+      "cache_read_tokens": 9534,
+      "cache_creation_tokens": 11154,
+      "cost_usd": 0.1401908,
+      "duration_ms": 99096,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

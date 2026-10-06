@@ -465,13 +465,20 @@ class _ConnectionToken:
     __slots__ = ("__weakref__",)
 
 
-def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.Connection) -> None:
+def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.Connection, pid: int) -> None:
     """Close the connection of a thread that ended and forget it (no-op once the store is closed).
 
     Threads come and go — anyio's worker threads (the web API's sync routes, an MCP server's sync
     tools) end after ten idle seconds or with their event loop — and each opened a connection that
     :meth:`Store.close` alone would close, so a long-running process kept two file descriptors per
-    ended thread (Ask's replays, one event loop per tool call, ran out of them)."""
+    ended thread (Ask's replays, one event loop per tool call, ran out of them).
+
+    Never in a forked child (``pid`` is the process that opened ``conn``): a fork that runs Python
+    before its exec (uvloop's, starting ``claude``) drops the parent's other threads there, and
+    closing their connections could wait forever on a SQLite mutex another thread held at the fork —
+    and the parent, waiting for the exec, with it."""
+    if os.getpid() != pid:
+        return
     store = store_ref()
     if store is not None:
         with store._connections_lock, contextlib.suppress(ValueError):
@@ -624,7 +631,7 @@ class Store:
             self._connections.append(conn)
         self._local.conn = conn
         closer = self._local.closer = _ConnectionToken()
-        ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn)
+        ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn, os.getpid())
         # not at exit: a daemon thread may still be using its connection then
         ended.atexit = False  # type: ignore[misc, unused-ignore]  # older typeshed declares no atexit
         return conn
@@ -701,6 +708,18 @@ class Store:
         finally:
             if conn.in_transaction:
                 conn.execute("ROLLBACK")
+
+    def change_token(self) -> tuple[int, int, int] | None:
+        """A value that changes whenever this thread may read something else than before: another
+        connection committed (``PRAGMA data_version``), this one wrote (``total_changes``) or the schema
+        changed ("Delete everything"). Only values taken in the same thread compare; ``None`` inside a
+        transaction, whose reads may not be committed."""
+        conn = self._conn()
+        if conn.in_transaction:
+            return None
+        data = conn.execute("PRAGMA data_version").fetchone()[0]
+        schema = conn.execute("PRAGMA schema_version").fetchone()[0]
+        return int(data), conn.total_changes, int(schema)
 
     def _after_commit(self, callback: Callable[[], None]) -> None:
         """Inside :meth:`tx`: run ``callback`` once the outermost transaction commits (never on rollback)."""
@@ -1001,21 +1020,25 @@ class Store:
             "SELECT id, doc_ids FROM llm_calls WHERE doc_ids LIKE ?", (quoted,)
         ).fetchall():
             others = [value for value in json.loads(call["doc_ids"]) if value != doc_id]
-            # the replay key hashes the letter's content and the span and job point at its trace:
-            # only the anonymous numbers stay (purpose, prompt, model, tokens, cost, outcome)
+            # the replay key hashes the letter's content, the span and job point at its trace and an error
+            # may quote Claude's answer: only the anonymous numbers stay (purpose, prompt, model, tokens,
+            # cost, outcome)
             conn.execute(
-                "UPDATE llm_calls SET doc_ids = ?, request_key = NULL, span_id = NULL, job_id = NULL "
-                "WHERE id = ?",
+                "UPDATE llm_calls SET doc_ids = ?, request_key = NULL, span_id = NULL, job_id = NULL, "
+                "error = NULL WHERE id = ?",
                 (json.dumps(others), call["id"]),
             )
         conn.execute("DELETE FROM trace_spans WHERE doc_id = ?", (doc_id,))
 
     def given_to_model(self, doc_id: str) -> bool:
-        """Whether a model call ever carried the document: a logged call (a failed one too — the
-        file may have reached the model before the call failed), a cached answer tagged with it,
-        or a page a model transcribed. Used before telling the person a file was never read."""
+        """Whether a model ever had the document: it was read, or a model call carried it — a logged
+        call (a failed one too — the file may have reached the model before the call failed; never one
+        whose CLI didn't start, :mod:`ordnung.llm.runtime`), a cached answer tagged with it, or a page a
+        model transcribed. Used before telling the person a file was never read."""
         conn = self._conn()
-        row = conn.execute("SELECT sha256 FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        row = conn.execute("SELECT sha256, ai_processed_at FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        if row is not None and row["ai_processed_at"] is not None:
+            return True
         sha = row["sha256"] if row is not None else doc_id
         called = conn.execute(
             "SELECT 1 FROM llm_calls WHERE doc_ids LIKE ? LIMIT 1", (f'%"{doc_id}"%',)
@@ -1037,6 +1060,15 @@ class Store:
     def _data_path(self, stored: str) -> Path:
         path = Path(stored)
         return path if path.is_absolute() else self.data_dir / path
+
+    def discard_upload(self, sha256: str, doc_id: str, original: Path) -> bool:
+        """Remove what an upload left when its document was never stored (it was refused while its pages
+        were rendered …): the original and ``derived/<doc_id>`` — unless a document has this file (it was
+        there before, or added meanwhile); ``True`` when they were removed."""
+        if self.get_document_by_sha(sha256) is not None:
+            return False
+        self._purge_files(doc_id, original)
+        return True
 
     def _purge_files(self, doc_id: str, original: Path) -> None:
         data_dir = self.data_dir.resolve()
@@ -1871,15 +1903,15 @@ class Store:
         the replay/cache key, the prompt's name and version, and where the call belongs).
 
         A letter the call carried that was deleted while the call ran is treated as if it had been
-        deleted after the call (:meth:`delete_document`): its id, the replay key, span and job are
-        left out, and only the anonymous numbers are written.
+        deleted after the call (:meth:`delete_document`): its id, the replay key, span, job and error
+        are left out, and only the anonymous numbers are written.
         """
         with self.tx() as conn:
             carried = list(doc_ids or [])
             gone = self._gone_documents(conn, carried)
             if gone:
                 carried = [doc_id for doc_id in carried if doc_id not in gone]
-                request_key = span_id = job_id = None
+                request_key = span_id = job_id = error = None
             cursor = conn.execute(
                 "INSERT INTO llm_calls (ts, purpose, model, backend, duration_ms, input_tokens, "
                 "output_tokens, cache_read_tokens, cache_creation_tokens, cost_usd, ok, error, cache_hit, "

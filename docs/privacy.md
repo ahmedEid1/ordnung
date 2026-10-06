@@ -47,8 +47,19 @@ privacy settings before processing sensitive documents.
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
 | **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it |
 
+Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
+the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
+blank, or without the deadline to object the letter's instructions state) it is asked once more for what it
+left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)). A letter you
+delete while it is being read is not sent again.
+
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
-pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache.
+pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
+every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
+was read from, every letter a listed contract's terms were read from and a cancellation letter whose end
+date it gives — not only the letters it opened. A call whose `claude` never started (Claude
+not installed) sent nothing and lists no letter; a letter no call has carried says *Not sent to Claude*
+on its page.
 
 ## My numbers
 
@@ -61,8 +72,8 @@ showing it. A case's reference — an invoice number, a Kassenzeichen, an Aktenz
 its letter and the Pay panel print it in full anyway.
 
 The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
-while a letter in your ledger shows it: delete that letter and the number leaves the page (a letter in
-the trash keeps its numbers until you delete it for good). One copy outlives the letter: when a letter
+while a letter in your ledger shows it: delete that letter and the number leaves the page. One copy
+outlives the letter: when a letter
 is read, Ordnung notes the sender's customer, contract and membership numbers — and some document
 numbers, such as a passport number on an authority's letter — on that organisation's record, so later
 letters are matched to it. That copy stays after the letter is deleted, *Ask* can read it (the
@@ -99,7 +110,10 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   activity log, quotes from it in contracts you keep, the record of how it was read, and the cached
   model responses of every call that carried it (a secretary's note or review built from several
   letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
-  letter's content, are cleared too), and deleted database rows are overwritten rather than left behind.
+  letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
+  database rows are overwritten rather than left behind. Originals and page images are never kept in the
+  browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
+  its cache.
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
   connected for calendar sync, first removes Ordnung's events from it and the app password from your
@@ -133,17 +147,22 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   tracing tool: no letter text, titles or names, and every id replaced by a code made for that file
   (Ordnung's own ids are hashes of a file, a sender's name or a sentence, so they could confirm a
   guess). It still shows the dates Ordnung computed and the letter's dates they came from, the rules
-  that computed them (their public names, such as `zpo_692`), your Bundesland's holiday calendar, how many pages, quotes and to-dos there were, match scores, and the
+  that computed them (their public names, such as `zpo_692`), the holiday calendar each date used (a Bundesland's, or nationwide), how many pages, quotes and to-dos there were, match scores, and the
   prompts' versions and models — look it over before you share it.
 - **A letter deleted while it is being read** — if a call to Claude about it is still under way,
   its answer is not cached and the usage log keeps only the anonymous numbers, as for a letter
   deleted afterwards.
-- **Model** — choose the Claude model every call runs on (Settings → Claude; Sonnet 5 unless you
+- **Model** — choose the Claude model every call runs on (Settings → Claude connection; Sonnet 5 unless you
   change it). The demo and the benchmarks keep the model they were recorded with.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
   there. (The one thing that keeps itself current is calendar sync, and only after you
   connect a calendar: it updates Ordnung's own events there — see below.)
+- **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
+  your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
+  though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
+  this computer that serve pages on localhost, on any port. On a shared computer, only open local web
+  pages you trust while Ordnung is open.
 
 ## GiroCode (payment QR codes)
 
@@ -217,6 +236,7 @@ fetched from the internet.
   log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
   anything else. The server's sign-in link carries the session token, so the service throws away
   what `serve` prints: the token never lands in the system journal or a log file.
+  It also records `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` when that is set (see Hardening below).
   `ordnung autostart disable` removes the file.
 
 ## Calendar sync (optional)
@@ -292,6 +312,10 @@ took from them is), the lock and the running server's session file.
   `ps`), and **no tools** are enabled while reading documents — the model can only answer.
 - `--setting-sources ""` and `--strict-mcp-config` keep your own Claude Code hooks, settings and MCP
   servers out of Ordnung's calls; `--no-session-persistence` keeps them out of your Claude history.
+- Ordnung runs your own Claude Code CLI, so Claude Code's own telemetry and error reporting apply to its
+  calls as they do when you use Claude Code yourself. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` in
+  the environment you start Ordnung from to turn them off. With start at login, set it before
+  `ordnung autostart enable`, or run that again after setting it.
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
   removed before it reaches the model (a scan's invisible OCR layer is not read at all: the page is read
@@ -313,9 +337,12 @@ took from them is), the lock and the running server's session file.
   the model like hidden text in PDFs. When that isn't certain (media queries, Outlook-only parts,
   responsive and dark-mode copies, stylesheet colours) the text stays visible and the other defences
   apply; see [ADR 0007](decisions/0007-short-written-policies-over-growing-heuristics.md).
-- Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far,
-  photos with too many pixels and texts over 60 pages are refused, so a hostile file can't exhaust
-  your computer's memory.
+- Uploads are checked before anything decodes them: PDFs whose compressed streams expand too far (an
+  edit-protected PDF's measured decrypted), photos with too many pixels and texts over 60 pages are
+  refused, so a hostile file can't exhaust your computer's memory or keep the check busy for minutes. A PDF whose protection or structure
+  can't be checked this way is refused, with the hint to print it to a new PDF. A refused file leaves
+  nothing behind, and a PDF whose objects refer to themselves can't hang the reading of its text: its
+  pages are read from their images instead.
 - The local web server listens on `127.0.0.1` by default (another `--host` prints a warning and still
   needs the token) and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict

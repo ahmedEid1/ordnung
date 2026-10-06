@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python 3.11–3.13" src="https://img.shields.io/badge/python-3.11%E2%80%933.13-3776ab">
+  <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
   <img alt="Local-first" src="https://img.shields.io/badge/data-stays%20on%20your%20computer-0f6e66">
   <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
@@ -58,6 +58,10 @@ pipx install git+https://github.com/ahmedEid1/ordnung   # or: uv tool install gi
 ordnung demo                                             # opens http://127.0.0.1:8765 with a guided tour
 ```
 
+Ask's recorded answers fit the demo as it starts. After you mark things paid or done, Ask says so and
+offers *Start the demo over*, so you can ask again: stop the demo (Ctrl+C where it runs), then run
+`ordnung demo --reset`.
+
 To read your own letters, see [Install and run](#install-and-run).
 
 ## A tour
@@ -89,7 +93,7 @@ To read your own letters, see [Install and run](#install-and-run).
 </tr>
 <tr>
 <td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag the letter, and its demand is never counted, listed or given a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
-<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes pass axe's WCAG 2.2 AA checks, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
+<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical axe violations (WCAG 2.2 AA rules), with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
 </tr>
 </table>
 
@@ -120,11 +124,12 @@ For the tax assessment above, Claude returns only what the letter says. This is 
 answer:
 
 ```json
-{ "kind": "deadline", "title": "File objection (Einspruch) if you disagree with the assessment",
-  "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat.",
+{ "kind": "deadline",
+  "title": "Decide whether to file an objection (Einspruch) against the assessment",
   "date": { "type": "relative", "anchor": "deemed_delivery", "amount": 1, "unit": "months",
             "delivery_rule": "de_admin_post", "nature": "objection", "shift_rule": "auto",
-            "text": "einen Monat", "legal_basis": null } }
+            "text": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." },
+  "quote": "Die Frist für die Einlegung des Einspruchs beträgt einen Monat." }
 ```
 
 Code finds the quote in the letter's text (here, Claude's transcript of the photo), then the rules
@@ -202,7 +207,9 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, on a fresh held-out split⁵ | 94.6 % [88.5–100] | **3.6 %** (2 of 56) | yes |
 | **Ordnung**, held-out split with the two-dates check⁶ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung**, on a second held-out split, written after the last change to the reading⁷ | 96.4 % [90.9–100] | **0 %** | yes |
-| **Ordnung**, second held-out split with the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
+| **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
+| **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
+| **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | 100 % [91.8–100] | **0 %** | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -236,17 +243,36 @@ split's two letters of the same class, whose dates it leaves as they were read a
 ⁷ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the last change
 to how letters are read and checked, by an agent that read neither the reading code nor the prompts nor
 any result; a second agent audited the labels blind (all 56 matched). Recorded once on Sonnet 5 with every
-condition, nothing tuned on them. Two code changes came after them: their label audit found that
+condition, nothing tuned on them. Three changes came after them: their label audit found that
 Hamburg's 4-day delivery rule starts on 14 May 2025, not 1 January 2025 (no letter of any split is posted
-in that window, so it changes no date here); and the reading check of row ⁸, written because of this
-split's one missed date.
-⁸ The same recorded outputs, replayed after a code-only check written because of that missed date: when
-Claude's reading comes back nearly blank, or leaves out the objection deadline that the letter's own
-instructions on how to object state, Ordnung files that deadline itself, counted from the earliest date
-the letter gives for itself, at low confidence and marked "Please check" (with no date when the letter's
-dates or periods disagree). The split informed it, so this row is not held-out; the row above stays the
-held-out number. It fires on no other letter of the four splits or the demo. In the app, which doesn't
-know the sender's Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
+in that window, so it changes no date here); the reading check of row ⁸, written because of this
+split's one missed date; and, because of the same letter, a prompt that asks Claude once more when a
+reading comes back incomplete (ADR 0016), whose answer for that letter was recorded with one more live call
+on 3 October and is used in row ⁸ only.
+⁸ The same recorded outputs plus that one call, made after them, replayed with the code since. For the
+letter whose reading came back empty, Ordnung asks Claude once more (ADR 0016), and the recorded answer is
+used: it gives the letter's sender, its date and the objection deadline, which Ordnung dates Thu 10 Dec 2026
+at high confidence from the sentence it found on the letter. Behind it stands a code-only check (ADR 0015):
+when a reading still comes back nearly blank, or leaves out the objection deadline that the letter's own
+instructions on how to object state, Ordnung files that deadline itself, at low confidence and marked "Please
+check"; here it has nothing to add. Both were written because of that missed date, so this row is not
+held-out; the row above stays the held-out number. The row counts the extra call's cost and time, and
+neither fires on any other letter of the five splits or the demo. In the app, until you set the sender's
+Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
+⁹ The rows above give Ordnung's engine the Land printed on the letterhead as the sender's (19 of the test
+split's 63 letters name one). The app knows a sender's Land only once you set it for that sender (*Which
+state is this sender in?* in its drawer); until then it uses nationwide holidays and the 3-day delivery rule,
+at lower confidence. Replayed that way on the same recorded readings
+([`scripts/eval_without_land.py`](scripts/eval_without_land.py), no model called), Ordnung scores 85.7 % on
+the test split, 89.3 % on the holdout split and 83.9 % on the holdout2 split, against 98.2 % on each with the
+Land (rows ⁴, ⁶ and ⁸), and 91.1 % on the holdout3 split, against 100 % with it (row ¹⁰). Every extra miss is
+1–3 days early; none is late.
+¹⁰ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the code freeze by an
+agent that read neither the reading code, the rules engine, the prompts nor any result. Two more agents each
+derived every deadline from the letters and the law before seeing the labels, and both matched all of them;
+one letter was redrawn before the recording so that it tells the old and the new delivery rule apart (its
+date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them and
+no code changed since.
 
 What the numbers say:
 
@@ -284,13 +310,24 @@ What the numbers say:
   the model alone 43 of 56 with six. One miss is the deliberate count from a tax notice's own date (early).
   The other is new: on a letter with a visible instruction to AI assistants, the reading came back with no
   sender, no date and no to-do. Ordnung warned that the letter addresses an AI, but did not report its
-  objection deadline. Ordnung now catches such a reading itself and files the deadline from the letter's
-  own instructions on how to object, marked "Please check": replayed, the same readings give 55 of 56 and
+  objection deadline. Ordnung now catches such a reading itself: it asks Claude once more, and files the
+  deadline from the letter's own instructions on how to object, marked "Please check", if the answer still
+  leaves it out. Here the second answer, recorded once, was complete: the same readings give 55 of 56 and
   no late date (row ⁸, not held-out any more).
+- **Without the sender's Land: 85.7 %, and still no late date.** The benchmark tells Ordnung the Land on
+  the letterhead; the app knows it only once you set it for that sender, and until then counts a Land
+  authority's letter with nationwide holidays and the 3-day rule. Replayed that way, the same readings give
+  48 of 56 on the test split, 50 on the holdout split, 47 on the holdout2 split and 51 on the holdout3
+  split; every extra miss is 1–3 days early (row ⁹).
+- **Held out a third time, after the code freeze: 100 %, no late date.** On a third split of 63 new
+  letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
+  rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
+  late. Neither the completeness re-ask nor the reading check was needed on these letters.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
-Ordnung, extraction prompt 12: row ⁴) with the current engine without calling a model; CI
+Ordnung, extraction prompt 12: row ⁴) with the current engine without calling a model, and writes
+`evals/results/<today>-claude-sonnet-5-test.json` (pass `--results-dir` to keep the checkout clean); CI
 requires Ordnung to stay at 95 % or more with no dangerously late date.
 
 ### Answering questions: can you trust what Ask says?
@@ -328,6 +365,8 @@ month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 Your files and your database stay on this computer. When Claude reads a letter, that letter's text
 or image is sent to Anthropic through your own Claude account (Claude Code, the Claude program you
 installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.
+A letter's page says where it went: *Not sent to Claude* until a call to Claude has carried it (one that
+never started, because Claude isn't installed, carried nothing).
 
 The web server listens on `127.0.0.1` by default (another `--host` prints a warning and still needs
 the token) and requires a per-session token, a known `Host` header and same-origin requests. Settings
@@ -339,13 +378,17 @@ sync, off until you connect a calendar, is the only feature that sends anything 
 
 ## Install and run
 
-You need Python 3.11+ and, to read your own letters, the
-[Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) signed in with your Claude
-subscription (or an API key). Ordnung calls it in headless mode; there is nothing else to configure.
+You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters,
+[Claude Code](https://claude.com/claude-code) signed in with your Claude subscription (or an API key).
+Ordnung calls it in headless mode; there is nothing else to configure. Without Claude you can still store
+letters privately, search them and add your own dates (Timeline → Add a date, or on a letter's page). A
+letter added while Claude isn't installed or signed in waits (*Waiting for Claude*) instead of failing, and
+is read once Claude is ready, without a restart. CI tests Ordnung on Linux. The macOS and Windows code
+paths (autostart, notifications) exist but are not tested in CI.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
-ordnung doctor                  # checks Claude, the search index, fonts and your data folder
+ordnung doctor                  # checks Claude, the search index, fonts, your data folder and its database
 ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
@@ -353,6 +396,9 @@ ordnung ask "When can I cancel my phone contract?"
 ordnung autostart enable        # start at login; then switch on the morning notification in Settings → Reminders
 ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
+
+`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed or signed
+in, or for its usage limit to pass (it is stored and read once Claude is ready).
 
 **The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
@@ -368,13 +414,14 @@ Then ask Claude about a letter; it reads, Ordnung's engine computes. `--with-led
 client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-from-claude-desktop-or-claude-code)),
 and `--remove-ledger` takes that entry out again.
 
-**From a source checkout:**
+**From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
+(Vite 8 needs one of them):
 
 ```bash
-make install     # Python venv + web dependencies
+make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
 make check       # lint, types, tests
 make serve       # backend; `make web-dev` for the Vite dev server
-make e2e         # Playwright over the demo
+make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
 make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 ```
 
@@ -411,7 +458,7 @@ flowchart LR
 
 The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
 no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
-Sonnet 5 (`claude-sonnet-5`) unless you choose another model under Settings → Claude;
+Sonnet 5 (`claude-sonnet-5`) unless you choose another model under Settings → Claude connection;
 `ORDNUNG_CLAUDE_MODEL` overrides both for every call. The demo records with the default model; the
 benchmarks record with the model of the run (`--model`), on a backend without the setting.
 More in [docs/architecture.md](docs/architecture.md).
@@ -420,10 +467,10 @@ More in [docs/architecture.md](docs/architecture.md).
 
 | | |
 |---|---|
-| Tests | 5,400+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,400+ Vitest tests; 360+ Playwright tests over the real demo with axe accessibility checks in light and dark mode |
+| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude, with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
-| CI gates | ruff, mypy, ESLint, `tsc`, both test suites, rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite, and a check that the committed web build matches its sources |
+| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
 | Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
 
 ## Limitations
@@ -433,7 +480,19 @@ More in [docs/architecture.md](docs/architecture.md).
 - Not legal advice. The rules were researched against statutes and case law and checked against
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
-- No OCR of its own: photos and scans are transcribed by Claude, so they need a model call.
+- Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which
+  state is this sender in?* in its drawer, also offered under a date's *Why this date?*). Until then, for
+  letters from a Land authority it uses nationwide public holidays and the 3-day delivery rule at lower
+  confidence, so a date can come out a few days early (1–3 on the benchmark's letters, up to 5 around
+  Christmas), never late. The benchmark's Ordnung rows are given the Land printed on the letterhead.
+  Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout) and 83.9 % (holdout2), with no late dates
+  (row ⁹).
+- No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
+  above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
+  megapixels, are refused; take the photo at normal resolution.
+- Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
+  the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
+  Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
@@ -454,8 +513,12 @@ More in [docs/architecture.md](docs/architecture.md).
   prompt.
 - The check for incomplete readings works from the letter's text with fixed rules, in German and English
   wording only. When the letter's dates or periods disagree, or its own date can't be read, it files the
-  to-do without a date for you to fill in. It doesn't catch a reading that keeps the sender but drops a
-  deadline other than the objection deadline, and some layouts an attacker plants can still mislead it
+  to-do without a date for you to fill in. Besides the objection deadline it catches a fixed pay-by or send-by
+  date a reading left out only when the letter states it in strict words ("Zahlbar bis", "Bitte überweisen Sie
+  … bis zum …"), as a "Check this date in the letter" to-do; looser wording, a date without its year or a period
+  is missed. For a letter served with a yellow envelope (*Postzustellungsurkunde*) it counts from the date you
+  enter for the envelope: a pickup day entered instead can make the date up to 14 days late. Some layouts an
+  attacker plants can still mislead it
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
@@ -472,7 +535,7 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0015 incomplete readings get a check written by code](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md)
+  [0016 an incomplete reading is asked for once more](docs/decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)
 
 ## How this was built
 

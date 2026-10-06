@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"2cfab39aed3306c3d170fe6c41b50ff6f8e02d24a1024230a082d09a239582a0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-I1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-08-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispielmode Versand GmbH\",\"document_date\":\"2027-08-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"308 115 74\"},{\"label\":\"Bestellnummer\",\"value\":\"7741-882\"}],\"amounts\":[92.4],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for order 7741-882\",\"quote\":\"Bitte überweisen Sie den offenen Gesamtbetrag bis zum 25.08.2027 unter Angabe Ihrer Kundennummer.\",\"computation\":\"The letter states a fixed calendar date for payment: 'bis zum 25.08.2027'. This is a company-to-customer dunning letter, so no statutory deemed-delivery period applies; the printed date is simply the due date. 25.08.2027 is a Wednesday, so no weekend/holiday shift is needed.\",\"due_date\":\"2027-08-25\",\"confidence\":\"high\",\"amount\":92.4}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The letter includes a sympathetic remark ('Vielleicht ist die Überweisung im Urlaub einfach untergegangen') that is common in dunning letters to soften the demand; this is a normal first reminder (1. Mahnung), not itself a scam indicator, but the person should verify this debt and the IBAN DE10 3705 0198 0005 5530 00 against the original order/invoice before paying, since the IBAN's validity (confirmed: a well-formed German account at Musterbank AG) does not prove it belongs to Beispielmode Versand GmbH.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispielmode Versand GmbH",
+      "document_date": "2027-08-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "308 115 74"
+        },
+        {
+          "label": "Bestellnummer",
+          "value": "7741-882"
+        }
+      ],
+      "amounts": [
+        92.4
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for order 7741-882",
+          "quote": "Bitte überweisen Sie den offenen Gesamtbetrag bis zum 25.08.2027 unter Angabe Ihrer Kundennummer.",
+          "computation": "The letter states a fixed calendar date for payment: 'bis zum 25.08.2027'. This is a company-to-customer dunning letter, so no statutory deemed-delivery period applies; the printed date is simply the due date. 25.08.2027 is a Wednesday, so no weekend/holiday shift is needed.",
+          "due_date": "2027-08-25",
+          "confidence": "high",
+          "amount": 92.4
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The letter includes a sympathetic remark ('Vielleicht ist die Überweisung im Urlaub einfach untergegangen') that is common in dunning letters to soften the demand; this is a normal first reminder (1. Mahnung), not itself a scam indicator, but the person should verify this debt and the IBAN DE10 3705 0198 0005 5530 00 against the original order/invoice before paying, since the IBAN's validity (confirmed: a well-formed German account at Musterbank AG) does not prove it belongs to Beispielmode Versand GmbH."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2142,
+      "cache_read_tokens": 15575,
+      "cache_creation_tokens": 3411,
+      "cost_usd": 0.038187,
+      "duration_ms": 25529,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE10370501980005553000"
+        },
+        "result": "{\"iban\":\"DE10 3705 0198 0005 5530 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"37050198\"},\"account_number\":\"0005553000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

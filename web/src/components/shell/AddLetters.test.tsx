@@ -8,9 +8,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { renderWithProviders } from "@/test/render";
+import { qk } from "@/api/hooks";
+import { TEST_HEALTH, makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import { ACCEPTED_SHORT, AddLettersProvider, FileName, fileKind, useAddLetters } from "./AddLetters";
+import type { Health } from "@/api/types";
+import { ACCEPTED_SHORT, AddLettersProvider, FileName, addDescription, claudeNotReady, fileKind, useAddLetters } from "./AddLetters";
 import { DropZone } from "./DropZone";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
@@ -40,12 +42,15 @@ function Adder({ files }: { files: File[] }) {
   );
 }
 
-function renderAdder(files: File[]) {
+function renderAdder(files: File[], health: Health = TEST_HEALTH) {
+  const client = makeTestQueryClient();
+  client.setQueryData(qk.health, health);
   renderWithProviders(
     <AddLettersProvider>
       <Adder files={files} />
       <Toaster />
     </AddLettersProvider>,
+    { client },
   );
   return userEvent.setup();
 }
@@ -78,6 +83,35 @@ describe("Keep private — no AI: the dialog follows the switch", () => {
     await user.click(within(dialog).getByRole("switch", { name: /Keep private/ }));
     expect(dialog).toHaveAccessibleDescription(/kept as one letter with its pages in this order — on this computer only/);
     expect(dialog).not.toHaveAccessibleDescription(/read together/);
+  });
+});
+
+describe("Claude isn't ready: store now, read later", () => {
+  const health = (claude: Partial<Health["claude"]>, backend = "claude"): Health => ({
+    ...TEST_HEALTH,
+    backend,
+    claude: { ...TEST_HEALTH.claude, installed: false, ok: null, ...claude },
+  });
+
+  it("says so, keeps Keep private off and stores the letter to be read once Claude is connected", async () => {
+    const user = renderAdder([pdf("mietvertrag.pdf")], health({ installed: false, ok: false }));
+    await user.click(screen.getByRole("button", { name: "Add them" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add this letter?" });
+    expect(dialog).toHaveAccessibleDescription(/^Claude isn't installed yet, so Ordnung stores it now and reads it as soon as Claude is connected/);
+    expect(within(dialog).getByRole("switch", { name: /Keep private/ })).not.toBeChecked();
+    const store = within(dialog).getByRole("button", { name: "Store now, read later" });
+    await waitFor(() => expect(store).toHaveFocus()); // the dialog focuses it on the next frame
+    await user.click(store);
+    expect(sentForm().get("private")).toBe("false");
+  });
+
+  it("names signing in, and leaves a session that doesn't use Claude as it was", () => {
+    expect(claudeNotReady(health({ installed: true, ok: false }))).toBe("signed_out");
+    expect(claudeNotReady(health({ installed: true, ok: null }))).toBeNull(); // not checked yet: the first letter tells
+    expect(claudeNotReady(health({ installed: false }, "replay"))).toBeNull();
+    expect(claudeNotReady(undefined)).toBeNull();
+    expect(addDescription(false, true, "signed_out")).toMatch(/^Claude isn't signed in yet, so Ordnung stores them now and reads them/);
+    expect(addDescription(true, false, "missing")).toMatch(/^Stored on this computer only/);
   });
 });
 

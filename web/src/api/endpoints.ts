@@ -34,6 +34,7 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PartyPatch,
   PathsWith,
   ProfilePatch,
   ProofKind,
@@ -181,6 +182,8 @@ export const api = {
     call("patch", "/api/contracts/{contract_id}", { params: { contract_id: id }, body: patch }),
   parties: () => call("get", "/api/parties"),
   party: (id: string) => call("get", "/api/parties/{party_id}", { params: { party_id: id } }),
+  /** The Land a sender is in, which only the person can tell: its letters' dates are recomputed. */
+  updateParty: (id: string, patch: PartyPatch) => call("patch", "/api/parties/{party_id}", { params: { party_id: id }, body: patch }),
   case: (id: string) => call("get", "/api/cases/{case_id}", { params: { case_id: id } }),
 
   // -- views -------------------------------------------------------------------------------------
@@ -281,7 +284,8 @@ export const api = {
   calendarExported: () => call("post", "/api/calendar/exported"),
 
   // -- reminders outside the browser & backup ----------------------------------------------------
-  desktopReminders: () => call("get", "/api/reminders/desktop"),
+  /** `preview: false` leaves today's texts out (they are built from the agenda). */
+  desktopReminders: (preview = true) => call("get", "/api/reminders/desktop", { query: { preview: preview ? undefined : false } }),
   /** Show today's notification now (a sample when nothing is due); the morning one still comes. */
   testDesktopNotification: (mode: DesktopMode) => call("post", "/api/reminders/desktop/test", { body: { mode } }),
   backupInfo: () => call("get", "/api/backup"),

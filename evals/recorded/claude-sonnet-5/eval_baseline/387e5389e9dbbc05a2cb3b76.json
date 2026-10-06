@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2cfab39aed3306c3d170fe6c41b50ff6f8e02d24a1024230a082d09a239582a0\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-08-22\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-I1"
+    ],
+    "prompt_head": "Today is Sunday, 2027-08-22 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Beispielmode Versand GmbH\",\"document_date\":\"2027-08-18\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"308 115 74\"},{\"label\":\"Bestellnummer\",\"value\":\"7741-882\"}],\"amounts\":[92.4],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding balance for order 7741-882\",\"quote\":\"Bitte überweisen Sie den offenen Gesamtbetrag bis zum 25.08.2027 unter Angabe Ihrer Kundennummer.\",\"computation\":\"The letter is a private dunning notice from a mail-order company (not an authority), so the calendar date it states is used as written without recomputation: 25.08.2027.\",\"due_date\":\"2027-08-25\",\"confidence\":\"high\",\"amount\":92.4}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Beispielmode Versand GmbH",
+      "document_date": "2027-08-18",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "308 115 74"
+        },
+        {
+          "label": "Bestellnummer",
+          "value": "7741-882"
+        }
+      ],
+      "amounts": [
+        92.4
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding balance for order 7741-882",
+          "quote": "Bitte überweisen Sie den offenen Gesamtbetrag bis zum 25.08.2027 unter Angabe Ihrer Kundennummer.",
+          "computation": "The letter is a private dunning notice from a mail-order company (not an authority), so the calendar date it states is used as written without recomputation: 25.08.2027.",
+          "due_date": "2027-08-25",
+          "confidence": "high",
+          "amount": 92.4
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1315,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2459,
+      "cost_usd": 0.024096,
+      "duration_ms": 14719,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

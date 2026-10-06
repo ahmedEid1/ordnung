@@ -38,6 +38,8 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PartyDetail,
+  PartyPatch,
   ProfilePatch,
   ProofOverview,
   ProofPatch,
@@ -134,6 +136,7 @@ const LEDGER_PREFIXES = [
   qk.jobs,
   qk.folder,
   qk.waiting,
+  qk.questions,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -319,7 +322,9 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: (id: string) => api.deleteDocument(id, { purge: true }),
     meta: { errorTitle: "Couldn't delete the letter" },
-    onSuccess: () => invalidateLedger(qc),
+    // not awaited: the open letter's own refetch answers 404 and unmounts the page that asked, and then its
+    // "Letter deleted" and the way back to the Inbox would never run (e2e/real-app-letters.spec.ts)
+    onSuccess: () => void invalidateLedger(qc),
   });
 }
 
@@ -328,6 +333,16 @@ export function useReprocessDocument() {
   return useMutation({
     mutationFn: (id: string) => api.reprocessDocument(id),
     meta: { errorTitle: "Couldn't read the letter again" },
+    onSuccess: () => invalidateLedger(qc),
+  });
+}
+
+/** "Try again" for every letter that couldn't be read (Today's card): each one is read again. */
+export function useReprocessDocuments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: readonly string[]) => Promise.all(ids.map((id) => api.reprocessDocument(id))),
+    meta: { errorTitle: "Couldn't read the letters again" },
     onSuccess: () => invalidateLedger(qc),
   });
 }
@@ -483,6 +498,22 @@ export function useUpdateContract() {
 
 export function useParties() {
   return useQuery({ queryKey: qk.parties.list(), queryFn: api.parties, staleTime: MINUTE });
+}
+
+/**
+ * Set the Land a sender is in. The drawer shows it at once; the server recomputed the dates of its letters,
+ * so every ledger view refreshes.
+ */
+export function useUpdateParty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: PartyPatch }) => api.updateParty(id, patch),
+    meta: { errorTitle: "Couldn't save their state" },
+    onSuccess: (party) => {
+      qc.setQueryData<PartyDetail>(qk.parties.detail(party.id), (detail) => (detail ? { ...detail, party } : detail));
+      return invalidateLedger(qc);
+    },
+  });
 }
 
 export function useParty(id: string | null | undefined) {
@@ -947,9 +978,13 @@ export function useMarkCalendarExported() {
   return useMutation({ mutationFn: () => api.calendarExported(), meta: { errorTitle: "Couldn't note the calendar download" }, onSuccess: () => invalidateLedger(qc) });
 }
 
-/** The morning desktop notification: its tool, today's text in each mode, and start at login. */
-export function useDesktopReminders() {
-  return useQuery({ queryKey: ["reminders", "desktop"] as const, queryFn: api.desktopReminders, staleTime: 30_000 });
+/**
+ * The morning desktop notification: its tool, today's text in each mode, and start at login.
+ * `preview: false` (the check for background problems on every page) skips the texts, which the
+ * server builds from the agenda.
+ */
+export function useDesktopReminders({ preview = true }: { preview?: boolean } = {}) {
+  return useQuery({ queryKey: ["reminders", "desktop", preview ? "preview" : "status"] as const, queryFn: () => api.desktopReminders(preview), staleTime: 30_000 });
 }
 
 /** "Send a test notification" (the answer says whether the system showed it, and why not). */
@@ -1065,9 +1100,12 @@ export function useUpdateTour() {
   });
 }
 
-/** The demo's suggested Ask questions, served by the backend so they always match its recordings. */
+/**
+ * The demo's suggested Ask questions, served by the backend so they always match its recordings — none once
+ * the letters or to-dos changed since the demo started (the recorded answers no longer fit), so a ledger key.
+ */
 export function useDemoQuestions(enabled = true) {
-  return useQuery({ queryKey: qk.questions, queryFn: api.demoQuestions, staleTime: Infinity, enabled });
+  return useQuery({ queryKey: qk.questions, queryFn: api.demoQuestions, enabled });
 }
 
 export function useMailTray(enabled = true) {

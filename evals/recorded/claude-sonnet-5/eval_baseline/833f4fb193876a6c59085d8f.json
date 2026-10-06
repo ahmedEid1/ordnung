@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"2e225670ee4789b08bb8be828787ed716510dbaae19f29aa087bbea560939a8f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-10\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-social_decision-I2"
+    ],
+    "prompt_head": "Today is Saturday, 2025-05-10 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[734],\"contract\":null,\"document_date\":\"2025-05-05\",\"kind\":\"authority_letter\",\"sender_name\":\"Studierendenwerk Mustertor – Amt für Ausbildungsförderung\",\"remedy_type\":\"widerspruch\",\"references\":[{\"label\":\"Förderungsnummer\",\"value\":\"412 2025 07731\"}],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against BAföG decision\",\"quote\":\"Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.\",\"computation\":\"Letter dated/posted Monday 2025-05-05 by a public-law authority governed by the VwVfG (not a Finanzamt/Familienkasse, so the delivery day does not move even on a weekend/holiday). 4-day deemed-delivery rule (posted on/after 1 Jan 2025): day1=06 May, day2=07 May, day3=08 May, day4=09 May (Friday) -> deemed delivered Fri 2025-05-09. One-month Widerspruch period (§ 70 VwGO analog / general administrative law, counted per §§ 187 Abs.1, 188 Abs.2 BGB): period starts the day after delivery and ends on the day in the following month with the same number as the delivery day, i.e. 2025-06-09. 2025-06-09 is Whit Monday (Pfingstmontag), a nationwide public holiday, so per § 193 BGB the deadline moves to the next working day, Tuesday 2025-06-10.\",\"due_date\":\"2025-06-10\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"task\",\"title\":\"Report changes in income, housing or studies immediately\",\"quote\":\"Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit.\",\"computation\":\"The letter requires immediate ('sofort') notification of any relevant changes but gives no fixed calendar date or counting period, so no exact due date can be derived; this is an ongoing obligation for the whole funding period (04/2025–03/2026).\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"warnings\":[\"The letter sets an ongoing obligation to report changes \\\"sofort\\\" (immediately) with no specific date, so no exact deadline could be computed for that duty; act on any relevant change right away.\"]}",
+    "data": {
+      "amounts": [
+        734
+      ],
+      "contract": null,
+      "document_date": "2025-05-05",
+      "kind": "authority_letter",
+      "sender_name": "Studierendenwerk Mustertor – Amt für Ausbildungsförderung",
+      "remedy_type": "widerspruch",
+      "references": [
+        {
+          "label": "Förderungsnummer",
+          "value": "412 2025 07731"
+        }
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against BAföG decision",
+          "quote": "Wenn Sie diese Entscheidung überprüfen lassen möchten, legen Sie innerhalb eines Monats nach ihrer Bekanntgabe Widerspruch beim Studierendenwerk Mustertor, Mensaweg 2, 35392 Mustertor, ein – schriftlich oder zur Niederschrift.",
+          "computation": "Letter dated/posted Monday 2025-05-05 by a public-law authority governed by the VwVfG (not a Finanzamt/Familienkasse, so the delivery day does not move even on a weekend/holiday). 4-day deemed-delivery rule (posted on/after 1 Jan 2025): day1=06 May, day2=07 May, day3=08 May, day4=09 May (Friday) -> deemed delivered Fri 2025-05-09. One-month Widerspruch period (§ 70 VwGO analog / general administrative law, counted per §§ 187 Abs.1, 188 Abs.2 BGB): period starts the day after delivery and ends on the day in the following month with the same number as the delivery day, i.e. 2025-06-09. 2025-06-09 is Whit Monday (Pfingstmontag), a nationwide public holiday, so per § 193 BGB the deadline moves to the next working day, Tuesday 2025-06-10.",
+          "due_date": "2025-06-10",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "task",
+          "title": "Report changes in income, housing or studies immediately",
+          "quote": "Teilen Sie uns Änderungen bei Ihrem Einkommen, Ihrer Wohnung oder Ihrem Studium bitte sofort mit.",
+          "computation": "The letter requires immediate ('sofort') notification of any relevant changes but gives no fixed calendar date or counting period, so no exact due date can be derived; this is an ongoing obligation for the whole funding period (04/2025–03/2026).",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter sets an ongoing obligation to report changes \"sofort\" (immediately) with no specific date, so no exact deadline could be computed for that duty; act on any relevant change right away."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3606,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2584,
+      "cost_usd": 0.04750599999999999,
+      "duration_ms": 39477,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

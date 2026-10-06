@@ -9,6 +9,7 @@ real loopback socket.
 
 from __future__ import annotations
 
+import contextlib
 import sqlite3
 import ssl
 from collections.abc import Iterator
@@ -289,7 +290,7 @@ def test_connecting_checks_the_calendar_saves_the_password_in_the_keyring_and_se
     assert "calendar.connected" in kinds and "calendar.synced" in kinds
     # the password is nowhere in the database (the WAL folded in)
     store.close()
-    with sqlite3.connect(data_dir / "ordnung.db") as conn:
+    with contextlib.closing(sqlite3.connect(data_dir / "ordnung.db")) as conn, conn:
         conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     assert all(PASSWORD.encode() not in path.read_bytes() for path in data_dir.rglob("*") if path.is_file())
 

@@ -1,0 +1,57 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"f219d64b3b875f1cfae3cb66850ae0ed7251f1221501ffefa4a9c0a289ed0feb\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-02-03\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-I2"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-02-03 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Sprachinstitut Beispielwort GmbH\",\"document_date\":\"2027-01-29\",\"references\":[{\"label\":\"Invoice number\",\"value\":\"SW-2027-0129\"}],\"amounts\":[815],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay course invoice (B1 intensive course + telc exam fee)\",\"quote\":\"Please transfer the course fee no later than 14 days after the date of this invoice, quoting the invoice number.\",\"computation\":\"Private invoice deadline, counted under §§ 187, 188, 193 BGB. Start of period: invoice date 29 January 2027 (a Friday); as the event that starts the period, this day is not counted (§ 187 Abs. 1 BGB). Counting 14 days forward: 29 Jan + 14 days = 12 February 2027 (also a Friday, since 14 is a multiple of 7). 12 February 2027 is a Friday and not a public holiday in either Berlin (sender) or Nordrhein-Westfalen (payer's Land, relevant under §§ 269, 270 Abs. 4 BGB for payments to a company), so no § 193 BGB shift is needed. Due date: 12 February 2027.\",\"due_date\":\"2027-02-12\",\"confidence\":\"high\",\"amount\":815}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Sprachinstitut Beispielwort GmbH",
+      "document_date": "2027-01-29",
+      "references": [
+        {
+          "label": "Invoice number",
+          "value": "SW-2027-0129"
+        }
+      ],
+      "amounts": [
+        815
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay course invoice (B1 intensive course + telc exam fee)",
+          "quote": "Please transfer the course fee no later than 14 days after the date of this invoice, quoting the invoice number.",
+          "computation": "Private invoice deadline, counted under §§ 187, 188, 193 BGB. Start of period: invoice date 29 January 2027 (a Friday); as the event that starts the period, this day is not counted (§ 187 Abs. 1 BGB). Counting 14 days forward: 29 Jan + 14 days = 12 February 2027 (also a Friday, since 14 is a multiple of 7). 12 February 2027 is a Friday and not a public holiday in either Berlin (sender) or Nordrhein-Westfalen (payer's Land, relevant under §§ 269, 270 Abs. 4 BGB for payments to a company), so no § 193 BGB shift is needed. Due date: 12 February 2027.",
+          "due_date": "2027-02-12",
+          "confidence": "high",
+          "amount": 815
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1882,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2336,
+      "cost_usd": 0.029274,
+      "duration_ms": 21109,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

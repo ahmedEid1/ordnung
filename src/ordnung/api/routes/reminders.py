@@ -7,6 +7,8 @@ shows, :mod:`ordnung.notify.desktop`), the day it was last shown, the last one t
 show, and whether ``ordnung autostart`` starts this data folder at login (:mod:`ordnung.autostart`;
 read only — the web app never writes it). The command it offers sets up *this* data folder
 (``--data-dir`` when it isn't the default one); the demo offers none — it doesn't start at login.
+``?preview=false`` leaves today's texts out (they are built from the agenda): the app's check for
+background problems on every page needs only the last day shown and the last failure.
 ``POST /api/reminders/desktop/test`` shows today's notification now in the mode asked for — or a
 sample, when nothing is due — without using the day up.
 """
@@ -15,9 +17,9 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from platformdirs import user_data_dir
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -122,10 +124,9 @@ def autostart_command(data_dir: Path, *, default: Path | None = None) -> str:
     return shell_join(["ordnung", "autostart", "enable", "--data-dir", str(folder)])
 
 
-def _status(ctx: AppContext, demo: bool) -> DesktopReminders:
+def _status(ctx: AppContext, demo: bool, preview: bool) -> DesktopReminders:
     store = ctx.store
-    today = local_today(store)
-    texts = desktop.preview(store, today)
+    texts = desktop.preview(store, local_today(store)) if preview else {"discreet": None, "full": None}
     found = desktop.detect()
     kind = desktop.system_kind()
     entry = autostart.state(ctx.paths.data_dir)
@@ -151,10 +152,15 @@ def _status(ctx: AppContext, demo: bool) -> DesktopReminders:
 
 
 @router.get("/reminders/desktop", response_model=DesktopReminders)
-async def desktop_reminders(state: StateDep, ctx: CtxDep) -> DesktopReminders:
-    """The desktop notification's tool, today's text in each mode, and the start-at-login entry."""
+async def desktop_reminders(
+    state: StateDep,
+    ctx: CtxDep,
+    preview: Annotated[bool, Query(description="Include today's texts (built from the agenda)")] = True,
+) -> DesktopReminders:
+    """The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both
+    ``null``), and the start-at-login entry."""
     demo = state.demo or ctx.store.get_settings().demo
-    return await asyncio.to_thread(_status, ctx, demo)
+    return await asyncio.to_thread(_status, ctx, demo, preview)
 
 
 def _test(ctx: AppContext, mode: desktop.Mode) -> DesktopTestResult:

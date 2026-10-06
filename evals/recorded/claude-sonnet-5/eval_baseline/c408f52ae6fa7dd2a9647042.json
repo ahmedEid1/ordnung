@@ -1,0 +1,58 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"61aef5ed922499b917981e8ca0fc69afa4e6700d77b350202670324cc9eb3e19\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-09-02\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-english_letter-J1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-09-02 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2027-08-31\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Return signed Form W-8BEN\",\"quote\":\"Please sign the enclosed form and return it to Member Services no later than\\nSeptember 13, 2027.\",\"computation\":\"The letter states an explicit calendar date by which the signed form must be received by Member Services: September 13, 2027. This is a private (US company) deadline, not a German authority notice, so no German delivery-fiction or §§ 187/188 BGB counting rules apply; the date is used as written and does not move for weekends/holidays since it is a fixed calendar date, not a computed period-end.\",\"due_date\":\"2027-09-13\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"bank_letter\",\"references\":[{\"label\":\"Member no.\",\"value\":\"4471-0092-18\"}],\"remedy_type\":\"none\",\"sender_name\":\"Example Harbor Federal Credit Union\",\"warnings\":[\"The sender's address, phone number and email (members@exampleharbor.example, using the reserved .example domain) look like placeholder/sample contact details rather than a real institution's; verify the credit union's genuine contact information before sending any signed form.\",\"No Rechtsbehelfsbelehrung (legal remedy instructions) is present and none applies, since this is a private US company's administrative request, not a decision by a German authority.\"]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2027-08-31",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Return signed Form W-8BEN",
+          "quote": "Please sign the enclosed form and return it to Member Services no later than\nSeptember 13, 2027.",
+          "computation": "The letter states an explicit calendar date by which the signed form must be received by Member Services: September 13, 2027. This is a private (US company) deadline, not a German authority notice, so no German delivery-fiction or §§ 187/188 BGB counting rules apply; the date is used as written and does not move for weekends/holidays since it is a fixed calendar date, not a computed period-end.",
+          "due_date": "2027-09-13",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "bank_letter",
+      "references": [
+        {
+          "label": "Member no.",
+          "value": "4471-0092-18"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Example Harbor Federal Credit Union",
+      "warnings": [
+        "The sender's address, phone number and email (members@exampleharbor.example, using the reserved .example domain) look like placeholder/sample contact details rather than a real institution's; verify the credit union's genuine contact information before sending any signed form.",
+        "No Rechtsbehelfsbelehrung (legal remedy instructions) is present and none applies, since this is a private US company's administrative request, not a decision by a German authority."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1452,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2216,
+      "cost_usd": 0.024494000000000002,
+      "duration_ms": 18034,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

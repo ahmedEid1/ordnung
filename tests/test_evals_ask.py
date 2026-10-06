@@ -4,6 +4,7 @@ recorded with a stand-in agent and replayed exactly."""
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import sys
@@ -703,7 +704,8 @@ def test_the_benchmark_ledger_orders_ties_the_same_at_any_hour(tmp_path: Path) -
     store.update_item(first, due_date="2026-11-15", priority="normal")
     store.update_item(second, due_date="2026-11-15", priority="normal")
     store.close()
-    with sqlite3.connect(tmp_path / "ordnung.db") as db:  # the snapshot built late, the tray read early
+    # the snapshot built late, the tray read early
+    with contextlib.closing(sqlite3.connect(tmp_path / "ordnung.db")) as db, db:
         db.execute("UPDATE items SET created_at = '2026-09-28T22:23:13Z' WHERE id = ?", (first,))
         db.execute("UPDATE items SET created_at = '2026-09-28T00:30:00Z' WHERE id = ?", (second,))
 
@@ -717,7 +719,7 @@ def test_the_benchmark_ledger_orders_ties_the_same_at_any_hour(tmp_path: Path) -
     assert tied() == [second, first]  # by the hour of the day
     _settle_stamps(tmp_path)
     assert tied() == [first, second]  # by insertion, at any hour
-    with sqlite3.connect(tmp_path / "ordnung.db") as db:
+    with contextlib.closing(sqlite3.connect(tmp_path / "ordnung.db")) as db, db:
         stamps = {
             row[0] for row in db.execute("SELECT created_at FROM items WHERE id IN (?, ?)", (first, second))
         }

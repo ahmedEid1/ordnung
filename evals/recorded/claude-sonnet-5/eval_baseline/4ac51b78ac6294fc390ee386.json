@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"a9d0be4c32201a6fb4bca9e44e82c4cea4e2531d6e50496d23ffe8eed9434407\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-26\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-I1"
+    ],
+    "prompt_head": "Today is Thursday, 2024-12-26 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[3476,4105,38,667],\"contract\":null,\"document_date\":\"2024-12-24\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the 2023 income tax assessment\",\"quote\":\"Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispieltal-Süd erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.\",\"computation\":\"Letter dated Tue 24.12.2024, no separate 'zur Post gegeben am' date given, so posting day = 24.12.2024. Posted on/before 31 Dec 2024, so the 3-day Bekanntgabefiktion applies (also stated in the letter itself: 'am dritten Tag nach der Aufgabe zur Post'). Posting day not counted (§108 Abs.1 AO / §187 BGB): day 1 = Wed 25.12.2024, day 2 = Thu 26.12.2024, day 3 = Fri 27.12.2024. Day 3 (27.12.2024) is a Friday and not a public holiday in NW, so no shift under §108 Abs.3 AO is needed; delivery (Bekanntgabe) = Fri 27.12.2024. One-month Einspruch period (§355 Abs.1 AO) starts the next day (§187 Abs.1 BGB) and ends on the day with the same number one month later (§188 Abs.2 BGB): 27.12.2024 + 1 month = 27.01.2025. 27.01.2025 is a Monday, not a public holiday in NW/BW, so the deadline stands.\",\"due_date\":\"2025-01-27\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"99/062/71418\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Beispieltal-Süd\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        3476,
+        4105,
+        38,
+        667
+      ],
+      "contract": null,
+      "document_date": "2024-12-24",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the 2023 income tax assessment",
+          "quote": "Wer mit dieser Festsetzung nicht einverstanden ist, kann binnen eines Monats nach Bekanntgabe Einspruch beim Finanzamt Beispieltal-Süd erheben – schriftlich, elektronisch über ELSTER oder zur Niederschrift.",
+          "computation": "Letter dated Tue 24.12.2024, no separate 'zur Post gegeben am' date given, so posting day = 24.12.2024. Posted on/before 31 Dec 2024, so the 3-day Bekanntgabefiktion applies (also stated in the letter itself: 'am dritten Tag nach der Aufgabe zur Post'). Posting day not counted (§108 Abs.1 AO / §187 BGB): day 1 = Wed 25.12.2024, day 2 = Thu 26.12.2024, day 3 = Fri 27.12.2024. Day 3 (27.12.2024) is a Friday and not a public holiday in NW, so no shift under §108 Abs.3 AO is needed; delivery (Bekanntgabe) = Fri 27.12.2024. One-month Einspruch period (§355 Abs.1 AO) starts the next day (§187 Abs.1 BGB) and ends on the day with the same number one month later (§188 Abs.2 BGB): 27.12.2024 + 1 month = 27.01.2025. 27.01.2025 is a Monday, not a public holiday in NW/BW, so the deadline stands.",
+          "due_date": "2025-01-27",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "99/062/71418"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Beispieltal-Süd",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3438,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2575,
+      "cost_usd": 0.04579,
+      "duration_ms": 36651,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

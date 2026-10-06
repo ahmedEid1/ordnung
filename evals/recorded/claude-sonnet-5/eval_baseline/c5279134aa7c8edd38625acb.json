@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"9e460c7da9dba49f9047f98fd749849a71d12c7a85590bae75c3d73f3dee28a9\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-09-17\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-missing_date-2"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-09-17 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"social_insurance\",\"sender_name\":\"Pflegekasse der BKK Musterwerk\",\"document_date\":null,\"references\":[{\"label\":\"Versichertennummer\",\"value\":\"T274019385\"},{\"label\":\"Vorgang\",\"value\":\"WU-0419\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of subsidy\",\"quote\":\"Möchten Sie die Ablehnung nicht hinnehmen, erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk; das geht schriftlich oder zur Niederschrift.\",\"computation\":\"The one-month Widerspruch period under § 84 SGG starts on the day the letter is deemed delivered (§ 37 Abs. 2 SGB X: 4th day after posting, since the Pflegekasse is a social-law body and the delivery day is not moved even if it falls on a weekend/holiday). However, the letter carries no printed date and no separate 'zur Post gegeben am' posting date, so the posting day — and therefore the deemed delivery day and the start of the one-month period — cannot be determined from the document. No reliable due date can be computed.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The letter has no printed document date (no issue date, no 'zur Post gegeben am' notation), so the deemed delivery date and the one-month Widerspruch deadline cannot be computed; the recipient should check the envelope postmark or contact the Pflegekasse to confirm the posting date.\",\"No amount for the rejected Wohnumfeld subsidy is stated in the letter, so no payment figure could be extracted.\"]}",
+    "data": {
+      "kind": "social_insurance",
+      "sender_name": "Pflegekasse der BKK Musterwerk",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Versichertennummer",
+          "value": "T274019385"
+        },
+        {
+          "label": "Vorgang",
+          "value": "WU-0419"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of subsidy",
+          "quote": "Möchten Sie die Ablehnung nicht hinnehmen, erheben Sie bitte innerhalb eines Monats nach Bekanntgabe Widerspruch bei der Pflegekasse der BKK Musterwerk; das geht schriftlich oder zur Niederschrift.",
+          "computation": "The one-month Widerspruch period under § 84 SGG starts on the day the letter is deemed delivered (§ 37 Abs. 2 SGB X: 4th day after posting, since the Pflegekasse is a social-law body and the delivery day is not moved even if it falls on a weekend/holiday). However, the letter carries no printed date and no separate 'zur Post gegeben am' posting date, so the posting day — and therefore the deemed delivery day and the start of the one-month period — cannot be determined from the document. No reliable due date can be computed.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The letter has no printed document date (no issue date, no 'zur Post gegeben am' notation), so the deemed delivery date and the one-month Widerspruch deadline cannot be computed; the recipient should check the envelope postmark or contact the Pflegekasse to confirm the posting date.",
+        "No amount for the rejected Wohnumfeld subsidy is stated in the letter, so no payment figure could be extracted."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2815,
+      "cache_read_tokens": 13574,
+      "cache_creation_tokens": 3848,
+      "cost_usd": 0.0462648,
+      "duration_ms": 32912,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

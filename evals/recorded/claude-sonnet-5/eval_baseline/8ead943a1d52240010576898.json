@@ -1,0 +1,76 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b50fd1514c76440169d2a0ccc42dbe5723db58f3233b9dd8e769d35e9b45d0cd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2024-12-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-year_boundary-J2"
+    ],
+    "prompt_head": "Today is Saturday, 2024-12-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[37.29,1118.7],\"contract\":null,\"document_date\":\"2024-12-05\",\"items\":[{\"kind\":\"deadline\",\"title\":\"Widerspruch (objection) against the benefit decision\",\"quote\":\"Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Agentur für Arbeit Beispielkirchen, Agenturplatz 3, 45879 Beispielkirchen.\",\"computation\":\"Bescheid is dated 05.12.2024 (Thursday) and is sent by ordinary letter; per the letter's own clause and the standard 3-day fiction of delivery (analogous to § 37 Abs. 2 SGB X), the notice counts as given on the 3rd day after posting. Counting from 05.12.2024 (day 0): day 1 = 06.12. (Fri), day 2 = 07.12. (Sat), day 3 = 08.12. (Sun). Since the 3rd day falls on a Sunday, the deemed Bekanntgabe shifts to the next business day, Monday 09.12.2024. The one-month Widerspruchsfrist then runs from this Bekanntgabe under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of the event (09.12.2024) is excluded and the period ends on the day of the following month bearing the same number, i.e. 09.01.2025 (Thursday). This date is not a Saturday, Sunday or NRW public holiday, so no further shift under § 193 BGB is needed.\",\"due_date\":\"2025-01-09\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Start of unemployment benefit (Arbeitslosengeld) entitlement\",\"quote\":\"auf Ihren Antrag vom 18.11.2024 bewilligen wir Ihnen Arbeitslosengeld ab dem 01.01.2025 für 360 Kalendertage.\",\"computation\":\"The decision states the benefit award begins on the calendar date explicitly given in the letter, 01.01.2025; no counting is required.\",\"due_date\":\"2025-01-01\",\"confidence\":\"high\",\"amount\":1118.7},{\"kind\":\"task\",\"title\":\"Report any change in circumstances immediately (e.g. starting work, illness)\",\"quote\":\"Bitte melden Sie uns jede Änderung sofort, zum Beispiel eine Arbeitsaufnahme oder eine Erkrankung.\",\"computation\":\"This is an open-ended, recurring duty to notify the Agentur für Arbeit 'sofort' (immediately) whenever a relevant change occurs; the letter gives no fixed calendar date or period, so no single due date can be computed — it applies continuously for as long as benefits are received.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":null}],\"kind\":\"social_insurance\",\"references\":[{\"label\":\"Kundennummer\",\"value\":\"617C442095\"}],\"remedy_type\":\"widerspruch\",\"sender_name\":\"Agentur für Arbeit Beispielkirchen\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        37.29,
+        1118.7
+      ],
+      "contract": null,
+      "document_date": "2024-12-05",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Widerspruch (objection) against the benefit decision",
+          "quote": "Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder zur Niederschrift an die Agentur für Arbeit Beispielkirchen, Agenturplatz 3, 45879 Beispielkirchen.",
+          "computation": "Bescheid is dated 05.12.2024 (Thursday) and is sent by ordinary letter; per the letter's own clause and the standard 3-day fiction of delivery (analogous to § 37 Abs. 2 SGB X), the notice counts as given on the 3rd day after posting. Counting from 05.12.2024 (day 0): day 1 = 06.12. (Fri), day 2 = 07.12. (Sat), day 3 = 08.12. (Sun). Since the 3rd day falls on a Sunday, the deemed Bekanntgabe shifts to the next business day, Monday 09.12.2024. The one-month Widerspruchsfrist then runs from this Bekanntgabe under §§ 187 Abs. 1, 188 Abs. 2 BGB: the day of the event (09.12.2024) is excluded and the period ends on the day of the following month bearing the same number, i.e. 09.01.2025 (Thursday). This date is not a Saturday, Sunday or NRW public holiday, so no further shift under § 193 BGB is needed.",
+          "due_date": "2025-01-09",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of unemployment benefit (Arbeitslosengeld) entitlement",
+          "quote": "auf Ihren Antrag vom 18.11.2024 bewilligen wir Ihnen Arbeitslosengeld ab dem 01.01.2025 für 360 Kalendertage.",
+          "computation": "The decision states the benefit award begins on the calendar date explicitly given in the letter, 01.01.2025; no counting is required.",
+          "due_date": "2025-01-01",
+          "confidence": "high",
+          "amount": 1118.7
+        },
+        {
+          "kind": "task",
+          "title": "Report any change in circumstances immediately (e.g. starting work, illness)",
+          "quote": "Bitte melden Sie uns jede Änderung sofort, zum Beispiel eine Arbeitsaufnahme oder eine Erkrankung.",
+          "computation": "This is an open-ended, recurring duty to notify the Agentur für Arbeit 'sofort' (immediately) whenever a relevant change occurs; the letter gives no fixed calendar date or period, so no single due date can be computed — it applies continuously for as long as benefits are received.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": null
+        }
+      ],
+      "kind": "social_insurance",
+      "references": [
+        {
+          "label": "Kundennummer",
+          "value": "617C442095"
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "sender_name": "Agentur für Arbeit Beispielkirchen",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4882,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2610,
+      "cost_usd": 0.059888399999999994,
+      "duration_ms": 53823,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

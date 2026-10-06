@@ -1,0 +1,74 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0d3bd3735fe08c159c8dd917ec4227f5cd515d9122f5ecd6626c580df33973b3\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2027-10-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-I1"
+    ],
+    "prompt_head": "Today is Monday, 2027-10-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldbehörde Mustersaar\",\"document_date\":\"2027-10-11\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBB 6.2-27/0921457\"},{\"label\":\"Amtliches Kennzeichen\",\"value\":\"WND-NM 77\"}],\"amounts\":[200,228.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.\",\"computation\":\"The attached Zustellungsurkunde (official proof of service) records actual delivery on Monday, 18.10.2027, so this—not the letter's issue date of 11.10.2027—is the start event for the period. Under §187 Abs. 1 BGB, the day of the triggering event (the delivery day) is not counted, so the period runs from 19.10.2027. For a period stated in weeks, §188 Abs. 2 BGB provides that it ends with the expiry of the day in the last week that corresponds by name to the day of the event, i.e. the Monday two weeks after 18.10.2027, which is 01.11.2027. 01.11.2027 is Allerheiligen (All Saints' Day), a statutory public holiday in Saarland, so under §193 BGB the deadline moves to the next business day, Tuesday 02.11.2027.\",\"due_date\":\"2027-11-02\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine (Bußgeld) if no Einspruch is filed\",\"quote\":\"danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.\",\"computation\":\"Payment is explicitly only due 'nach Rechtskraft' (after the notice becomes final), which happens only if no Einspruch is filed within the objection period computed above (ending 02.11.2027). Assuming that condition is met, Rechtskraft occurs upon expiry of 02.11.2027. Applying §187 Abs. 1 / §188 Abs. 2 BGB by analogy (day of the triggering event not counted; two-week period ends on the corresponding weekday two weeks later), the payment period runs from 03.11.2027 and ends on Tuesday 16.11.2027, which is not a Saturday, Sunday or Saarland public holiday, so no further shift applies. This date is conditional: if an Einspruch is filed by 02.11.2027, no payment is due under this notice and this date no longer applies.\",\"due_date\":\"2027-11-16\",\"confidence\":\"medium\",\"amount\":228.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (16.11.2027) is only valid if no Einspruch is filed by 02.11.2027; if an Einspruch is filed, the notice does not become final and this payment date does not apply.\",\"The letter itself instructs the recipient not to pay before Rechtskraft, so the recipient should wait and confirm the notice has actually become final before transferring any money.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldbehörde Mustersaar",
+      "document_date": "2027-10-11",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBB 6.2-27/0921457"
+        },
+        {
+          "label": "Amtliches Kennzeichen",
+          "value": "WND-NM 77"
+        }
+      ],
+      "amounts": [
+        200,
+        228.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.",
+          "computation": "The attached Zustellungsurkunde (official proof of service) records actual delivery on Monday, 18.10.2027, so this—not the letter's issue date of 11.10.2027—is the start event for the period. Under §187 Abs. 1 BGB, the day of the triggering event (the delivery day) is not counted, so the period runs from 19.10.2027. For a period stated in weeks, §188 Abs. 2 BGB provides that it ends with the expiry of the day in the last week that corresponds by name to the day of the event, i.e. the Monday two weeks after 18.10.2027, which is 01.11.2027. 01.11.2027 is Allerheiligen (All Saints' Day), a statutory public holiday in Saarland, so under §193 BGB the deadline moves to the next business day, Tuesday 02.11.2027.",
+          "due_date": "2027-11-02",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine (Bußgeld) if no Einspruch is filed",
+          "quote": "danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.",
+          "computation": "Payment is explicitly only due 'nach Rechtskraft' (after the notice becomes final), which happens only if no Einspruch is filed within the objection period computed above (ending 02.11.2027). Assuming that condition is met, Rechtskraft occurs upon expiry of 02.11.2027. Applying §187 Abs. 1 / §188 Abs. 2 BGB by analogy (day of the triggering event not counted; two-week period ends on the corresponding weekday two weeks later), the payment period runs from 03.11.2027 and ends on Tuesday 16.11.2027, which is not a Saturday, Sunday or Saarland public holiday, so no further shift applies. This date is conditional: if an Einspruch is filed by 02.11.2027, no payment is due under this notice and this date no longer applies.",
+          "due_date": "2027-11-16",
+          "confidence": "medium",
+          "amount": 228.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (16.11.2027) is only valid if no Einspruch is filed by 02.11.2027; if an Einspruch is filed, the notice does not become final and this payment date does not apply.",
+        "The letter itself instructs the recipient not to pay before Rechtskraft, so the recipient should wait and confirm the notice has actually become final before transferring any money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 7474,
+      "cache_read_tokens": 9611,
+      "cache_creation_tokens": 9372,
+      "cost_usd": 0.11415819999999999,
+      "duration_ms": 80910,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

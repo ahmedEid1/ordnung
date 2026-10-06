@@ -13,6 +13,7 @@ import type {
   Draft,
   Evidence,
   Item,
+  ItemCreate,
   Lane,
   LaneBar,
   MailTrayItem,
@@ -42,6 +43,7 @@ import { LETTERS } from "./data/letters";
 import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
+import { item as makeItem } from "./data/helpers";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 import { paysOnSite } from "@/features/document/item-meta";
 import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
@@ -250,6 +252,50 @@ export class MockDb {
     const i = this.state.documents.findIndex((x) => x.id === d.id);
     if (i >= 0) this.state.documents[i] = d;
     else this.state.documents.unshift(d);
+  }
+
+  /**
+   * A to-do or date the person adds by hand ("Add a date"), as `POST /api/items` files it (`api/routes/items.py`):
+   * theirs (`origin: "manual"`, confirmed by them), its date set by them, its links checked, a payment one they
+   * make, in euros unless said — on a letter kept private or never read too. A refusal says why (the API's 404/422).
+   */
+  addItem(id: string, body: ItemCreate): { item: Item } | { status: number; message: string } {
+    const title = body.title?.trim();
+    if (!title || !body.kind) return { status: 422, message: "A to-do needs a title and a kind." };
+    if (body.party_id && !this.party(body.party_id)) return { status: 404, message: "Unknown person or organisation." };
+    if (body.case_id && !this.state.cases.some((c) => c.id === body.case_id)) return { status: 404, message: "Unknown thread." };
+    if (body.contract_id && !this.state.contracts.some((c) => c.id === body.contract_id)) return { status: 404, message: "Unknown contract." };
+    if (body.doc_id && !this.document(body.doc_id)) return { status: 404, message: "Unknown letter." };
+    const now = nowTs();
+    const amount = body.amount ?? null;
+    const item = makeItem({
+      id,
+      kind: body.kind,
+      title,
+      description: body.description ?? null,
+      due_date: body.due_date ?? null,
+      due_time: body.due_time ?? null,
+      amount,
+      currency: amount !== null ? (body.currency ?? "EUR") : null,
+      direction: body.kind === "payment" ? (body.direction ?? "out") : (body.direction ?? null),
+      recurrence: (body.recurrence as Item["recurrence"] | undefined) ?? null,
+      priority: body.priority ?? "normal",
+      area: body.area ?? "other",
+      party_id: body.party_id ?? null,
+      case_id: body.case_id ?? null,
+      contract_id: body.contract_id ?? null,
+      doc_id: body.doc_id ?? null,
+      location: body.location ?? null,
+      grounding: "user",
+      origin: "manual",
+      slot_key: null,
+      due_date_source: body.due_date ? "manual" : "none",
+      filed_on: this.today,
+      created_at: now,
+      updated_at: now,
+    });
+    this.state.items.push(item);
+    return { item };
   }
 
   log(kind: string, message: string, ref_type: string | null = null, ref_id: string | null = null, data: Record<string, unknown> = {}) {

@@ -3,9 +3,10 @@
 Checks that the ``claude`` CLI is installed and recent enough, that it is signed in (``claude auth
 status``, JSON), warns when ``ANTHROPIC_API_KEY`` is set (it overrides the subscription login and
 bills the API), and checks the local machine: SQLite FTS5 + trigram search, a writable data folder,
-free disk space, the bundled letter fonts and the built web app. ``probe=True`` adds one tiny live
-model call. The structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via
-:func:`claude_status`) and the Settings page.
+the database in it (opened read-only: SQLite's quick check and the schema version), free disk space,
+the bundled letter fonts and the built web app. ``probe=True`` adds one tiny live model call. The
+structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via :func:`claude_status`) and the
+Settings page.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from ordnung.config import web_dist_dir
+from ordnung.config import Paths, web_dist_dir
+from ordnung.db.migrate import SchemaError, applied_versions, current_version, discover
 from ordnung.llm import claude_cli
 from ordnung.models import CheckStatus, ClaudeStatus, DoctorCheck
 
@@ -31,17 +33,22 @@ __all__ = ["CheckStatus", "DoctorCheck"]  # re-exported: the check models live i
 MIN_CLAUDE_VERSION: tuple[int, int, int] = (2, 1, 0)
 MIN_FREE_BYTES = 100 * 1024 * 1024
 LOW_FREE_BYTES = 1024 * 1024 * 1024
+#: Where to get Claude Code — the address every install hint names (the reading job's error names it too).
+CLAUDE_CODE_URL = "https://claude.com/claude-code"
 INSTALL_HINT = (
-    "Install Claude Code (npm install -g @anthropic-ai/claude-code), run `claude` once to sign in, "
-    "then run `ordnung doctor` again."
+    f"Install Claude Code ({CLAUDE_CODE_URL}), run `claude` once to sign in, then run `ordnung doctor` again."
 )
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
 MODEL_HINT = (
-    "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude), may not be a "
-    "name Claude Code accepts."
+    "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude connection), may "
+    "not be a name Claude Code accepts."
 )
 UPDATE_HINT = "Update Claude Code with `claude update` (or npm install -g @anthropic-ai/claude-code)."
 API_KEY_HINT = "Unset it (`unset ANTHROPIC_API_KEY`) so Claude Code uses your Claude subscription."
+RESTORE_HINT = (
+    "Restore your latest backup with `ordnung restore FILE --force` (FILE is the .ordnung-backup file; "
+    "the damaged data is moved aside, not deleted)."
+)
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
@@ -251,6 +258,50 @@ def data_dir_check(data_dir: Path) -> DoctorCheck:
     return DoctorCheck(id="data_dir", label=label, status="ok", detail=str(data_dir))
 
 
+def database_check(data_dir: Path) -> DoctorCheck:
+    """The database of the data folder, opened read-only: SQLite's quick check, and a schema version
+    this Ordnung can read (an older one is brought up to date when Ordnung starts)."""
+    label = "Database"
+    db = Paths(data_dir).db
+    if not db.is_file():
+        return DoctorCheck(id="database", label=label, status="ok", detail="None yet (it will be created)")
+    try:
+        with contextlib.closing(sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+            problems = [str(row[0]) for row in conn.execute("PRAGMA quick_check(3)")]
+            version = current_version(conn)
+            shipped = {migration.version for migration in discover()}
+            unknown = applied_versions(conn) - shipped
+    except (sqlite3.Error, SchemaError) as exc:
+        return DoctorCheck(
+            id="database", label=label, status="fail", detail=f"{db} can't be read: {exc}", fix=RESTORE_HINT
+        )
+    if problems != ["ok"]:
+        return DoctorCheck(
+            id="database",
+            label=label,
+            status="fail",
+            detail=f"{db} is damaged: {'; '.join(problems)}",
+            fix=RESTORE_HINT,
+        )
+    latest = max(shipped)
+    if version > latest or unknown:
+        return DoctorCheck(
+            id="database",
+            label=label,
+            status="fail",
+            detail=(
+                f"A newer version of Ordnung wrote it (schema version {version}; this one reads up to "
+                f"{latest})."
+            ),
+            fix=f"Update Ordnung. Or {RESTORE_HINT[0].lower()}{RESTORE_HINT[1:]}",
+        )
+    if version < latest:
+        detail = f"Schema version {version} (brought up to {latest} when Ordnung starts)"
+    else:
+        detail = f"Schema version {version}"
+    return DoctorCheck(id="database", label=label, status="ok", detail=detail)
+
+
 def disk_check(data_dir: Path) -> DoctorCheck:
     """Free space where the data folder lives."""
     label = "Disk space"
@@ -328,6 +379,7 @@ def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
         fonts_check(),
         web_ui_check(),
         data_dir_check(folder),
+        database_check(folder),
         disk_check(folder),
     ]
 

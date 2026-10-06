@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tomllib
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -33,9 +34,15 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from evals import conditions  # noqa: E402
+
 NOW = "2026-09-25T10:00:00Z"
 
 
@@ -320,22 +327,85 @@ def test_readme_second_held_out_row_matches_its_one_recording() -> None:
     assert ordnung["adversarial"]["conflicting_dates_handled"]["k"] == 2
 
 
-def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
-    """Row ⁸: the same holdout2 recordings replayed with the reading check (not held-out); only the empty
-    reading of the injection letter changes, to its labelled date, and the row above stays held-out."""
+def test_readme_third_held_out_row_matches_its_one_recording() -> None:
+    """Row ¹⁰: the holdout3 split, written after the code freeze, recorded once with every condition on the
+    frozen code; the bullet's counts per condition, and no re-ask or reading check needed."""
     readme = _readme()
-    rescored = _results("2026-10-01-claude-sonnet-5-holdout2-rescored.json")
+    runs = sorted((ROOT / "evals" / "results").glob("*-holdout3.json"))
+    assert len(runs) == 1, "holdout3 is recorded once"
+    run = _results(runs[0].name)
+    meta, metrics = run["meta"], run["metrics"]
+    assert meta["split"] == "holdout3" and meta["backend"] == "live" and not meta["partial"]
+    assert set(meta["conditions"]) == {"ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"}
+    ordnung = metrics["ordnung"]
+    assert ordnung["dangerous_late_rate"]["k"] == 0
+    assert (
+        "| **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | "
+        f"{_with_interval(ordnung['due_date_accuracy'])} | **0 %** | yes |"
+    ) in readme
+    flat = _flat(readme)
+    assert (
+        f"¹⁰ {meta['entries']} more new letters ({meta['photos']} photos, {meta['adversarial']} adversarial; "
+        f"{meta['scored_items']} dated obligations)"
+    ) in flat
+    exact = {name: int(m["due_date_accuracy"]["k"]) for name, m in metrics.items()}
+    late = {name: int(m["dangerous_late_rate"]["k"]) for name, m in metrics.items()}
+    early = {name: int(m["early_rate"]["k"]) for name, m in metrics.items()}
+    assert exact["ordnung"] == exact["llm_rules_tool"] == meta["scored_items"]
+    assert (
+        f"(row ¹⁰), Ordnung got all {meta['scored_items']} dated deadlines right, and so did the agent with the "
+        "calculator."
+    ) in flat
+    assert (
+        f"rules-text prompt scored {exact['llm_rules_text']} of 56 with {_words(late['llm_rules_text'])} late "
+        f"date ({_words(early['llm_rules_text'])} early), the model alone {exact['llm_only']} of 56 with "
+        f"{_words(late['llm_only'])} late."
+    ) in flat
+    # the frozen code: the recording's fingerprint is the one every later replay of the Ordnung path has
+    assert meta["fingerprints"]["ordnung"] == conditions.fingerprint("ordnung", meta["model"])
+    signals = {
+        signal
+        for entry in run["entries"]
+        for signal in entry["conditions"]["ordnung"]["prediction"].get("signals") or []
+    }
+    assert not any(signal.startswith("reading_reask") for signal in signals)
+    assert ordnung["reading_check"]["filed"] == 0 and ordnung["deadline_check"]["filed"] == 0
+
+
+def test_readme_reading_check_row_matches_the_rescored_holdout2_run() -> None:
+    """Row ⁸: the same holdout2 recordings plus the one call recorded after them — the injection letter's
+    completeness re-ask (ADR 0016), accepted — replayed with the current code (not held-out); only that letter
+    changes, to its labelled date with the model's own to-do (the reading check files nothing), and the row above
+    stays held-out."""
+    readme = _readme()
+    rescored = _results("2026-10-06-claude-sonnet-5-holdout2-rescored.json")
     held = _results("2026-10-01-claude-sonnet-5-holdout2.json")
     meta = rescored["meta"]
     assert meta["split"] == "holdout2" and meta["backend"] == "replay" and meta["conditions"] == ["ordnung"]
     after = rescored["metrics"]["ordnung"]
     assert after["dangerous_late_rate"]["k"] == 0
     assert (
-        "| **Ordnung**, second held-out split with the reading check⁸ | "
+        "| **Ordnung**, second held-out split with the re-ask and the reading check⁸ | "
         f"{_with_interval(after['due_date_accuracy'])} | **0 %** | no |"
     ) in readme
     assert f"give {int(after['due_date_accuracy']['k'])} of 56 and\n  no late date (row ⁸" in readme
-    assert after["reading_check"] == {"filed": 1, "unmatched": 0, "letters": 1}
+    assert after["reading_check"] == {"filed": 0, "unmatched": 0, "letters": 0}
+    reasked = {
+        entry["id"]: signal
+        for entry in rescored["entries"]
+        for signal in entry["conditions"]["ordnung"]["prediction"]["signals"]
+        if signal.startswith("reading_reask")
+    }
+    assert reasked == {"holdout2-adversarial-injection_visible-1": "reading_reask:accepted"}
+    assert "reading_reask_missing" not in meta
+    [entry] = [e for e in rescored["entries"] if e["id"] == "holdout2-adversarial-injection_visible-1"]
+    prediction = entry["conditions"]["ordnung"]["prediction"]
+    assert len(prediction["calls"]) == 2
+    assert [(item["due_date"], item["origin"]) for item in prediction["items"]] == [("2026-12-10", "model")]
+    # the footnote says so: the recorded re-ask's own to-do, not the check's low one
+    footnote = _flat(readme).split("⁸ The same recorded outputs plus that one call", 1)[1].split("⁹ ", 1)[0]
+    assert "the recorded answer is used" in footnote and "Thu 10 Dec 2026 at high confidence" in footnote
+    assert "Wed 9 Dec instead of Thu 10 Dec 2026" in footnote
 
     def outcomes(run: dict[str, Any]) -> dict[str, str]:
         return {
@@ -390,6 +460,139 @@ def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
         assert "earlier recordings got wrong were gaps in the ledger" in readme.replace("\n", " ")
 
 
+def _flat(text: str) -> str:
+    """``text`` with every run of whitespace (line breaks, list indents) as one space."""
+    return " ".join(text.split())
+
+
+def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> None:
+    """M3: README row ⁹, its footnote, the bullet and Limitations, deadline-rules.md and docs/evals.md cite the
+    replay without the sender's Land (scripts/eval_without_land.py, as the app runs until the person sets a
+    sender's Land): its accuracy per split, no late date, extra misses 1–3 days early — and the numbers with the
+    Land it sets them against are the published replays' (rows ⁴, ⁶ and ⁸)."""
+    readme = _readme()
+    results = _results("2026-10-06-claude-sonnet-5-without-land.json")
+    assert results["schema"] == "ordnung-eval-without-land/1"
+    assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
+    splits = results["splits"]
+    assert set(splits) == {"test", "holdout", "holdout2", "holdout3", "dev"}
+    for name, numbers in splits.items():
+        assert numbers["without_land"]["dangerous_late_rate"]["k"] == 0, name
+        assert all(change["direction"] == "early" for change in numbers["changed"]), name
+    without = {
+        name: splits[name]["without_land"]["due_date_accuracy"]
+        for name in ("test", "holdout", "holdout2", "holdout3")
+    }
+    test, holdout, holdout2, holdout3 = (_pct(metric["value"]) for metric in without.values())
+    days = sorted({-change["days_off"] for name in without for change in splits[name]["changed"]})
+    early = f"{days[0]}–{days[-1]} days early"
+    # the rows with the Land are the published replays of the same recordings
+    published = {
+        "test": _results("2026-09-30-claude-sonnet-5-test.json"),
+        "holdout": _results("2026-09-30-claude-sonnet-5-holdout-rescored.json"),
+        "holdout2": _results("2026-10-06-claude-sonnet-5-holdout2-rescored.json"),
+    }
+    # holdout3's with the Land is its one live recording itself (row ¹⁰), not a replay
+    third = _results("2026-10-06-claude-sonnet-5-holdout3.json")
+    assert (
+        splits["holdout3"]["with_land"]["due_date_accuracy"]
+        == third["metrics"]["ordnung"]["due_date_accuracy"]
+    )
+    for name, run in published.items():
+        assert (
+            splits[name]["with_land"]["due_date_accuracy"] == run["metrics"]["ordnung"]["due_date_accuracy"]
+        )
+    with_land = {_pct(splits[name]["with_land"]["due_date_accuracy"]["value"]) for name in published}
+    assert len(with_land) == 1
+    # README: row ⁹, its footnote, the bullet and Limitations
+    assert (
+        f"| **Ordnung** as the app runs it, without the sender's Land⁹ | {_with_interval(without['test'])} "
+        "| **0 %** | no |"
+    ) in readme
+    flat = _flat(readme)
+    footnote = flat.split("⁹ The rows above", 1)[1].split(" What the numbers say", 1)[0]
+    assert (
+        f"({splits['test']['letterhead_land']} of the test split's {splits['test']['entries']} letters"
+        in footnote
+    )
+    assert (
+        f"Ordnung scores {test} % on the test split, {holdout} % on the holdout split and {holdout2} % on the "
+        f"holdout2 split, against {with_land.pop()} % on each with the Land (rows ⁴, ⁶ and ⁸), and {holdout3} % on "
+        f"the holdout3 split, against {_pct(splits['holdout3']['with_land']['due_date_accuracy']['value'])} % "
+        "with it (row ¹⁰)"
+    ) in footnote
+    assert f"Every extra miss is {early}; none is late." in footnote
+    counts = {name: int(metric["k"]) for name, metric in without.items()}
+    assert f"**Without the sender's Land: {test} %, and still no late date.**" in flat
+    assert (
+        f"{counts['test']} of {int(without['test']['n'])} on the test split, {counts['holdout']} on the holdout "
+        f"split, {counts['holdout2']} on the holdout2 split and {counts['holdout3']} on the holdout3 split; every "
+        f"extra miss is {early} (row ⁹)"
+    ) in flat
+    limitation = flat.split("## Limitations", 1)[1]
+    # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider (F-S11): a Baden-Württemberg
+    # authority's one-month objection period, letter dated Fri 21 Nov 2025, ends 5 days early without the Land
+    objection = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+    )
+    posted = date(2025, 11, 21)
+
+    def objection_ends(land: str | None) -> date:
+        context = RuleContext(today=posted, region=land, document_date=posted, delivery_scope="vwvfg")
+        due = compute_due(objection, context).due_date
+        assert due is not None
+        return date.fromisoformat(due)
+
+    christmas = (objection_ends("BW") - objection_ends(None)).days
+    assert christmas > days[-1]
+    assert (
+        f"a date can come out a few days early ({days[0]}–{days[-1]} on the benchmark's letters, up to {christmas} "
+        "around Christmas), never late"
+    ) in limitation
+    assert (
+        f"Ordnung scores {test} % (test), {holdout} % (holdout) and {holdout2} % (holdout2), with no late dates"
+        in limitation
+    )
+    # deadline-rules.md section 5 and the benchmark page, which renders the file itself
+    rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
+    assert (
+        f"Ordnung scores {test} % on the test split, {holdout} % on the holdout split and {holdout2} % on the "
+        "holdout2 split instead of"
+    ) in rules
+    evals_page = (ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+    section = evals_page.split("## Without the sender's Land", 1)[1].split("\n## ", 1)[0]
+    for name, numbers in splits.items():
+        assert (
+            f"| `{name}` | " in section
+            and f" ({int(numbers['without_land']['due_date_accuracy']['k'])}/" in section
+        )
+
+
+def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
+    """README "The model reads, code computes" shows "part of its recorded answer" for the demo's tax assessment:
+    every key and value of it is in that recording (``src/ordnung/demo/fixtures/extract/85ae2aa7….json``)."""
+    section = _readme().split("## The model reads, code computes", 1)[1]
+    excerpt = json.loads(section.split("```json\n", 1)[1].split("```", 1)[0])
+    (fixture,) = (ROOT / "src" / "ordnung" / "demo" / "fixtures" / "extract").glob("85ae2aa7*.json")
+    reading = json.loads(json.loads(fixture.read_text(encoding="utf-8"))["response"]["text"])
+    (item,) = [item for item in reading["items"] if item["quote"] == excerpt["quote"]]
+
+    def part_of(part: dict[str, Any], whole: dict[str, Any]) -> bool:
+        return all(
+            key in whole and (part_of(value, whole[key]) if isinstance(value, dict) else whole[key] == value)
+            for key, value in part.items()
+        )
+
+    assert part_of(excerpt, item)
+    # the letter whose receipt the README shows next (posted Tue 15 Sep 2026)
+    assert reading["document_date"] == "2026-09-15"
+
+
 async def test_readme_names_exactly_the_rules_tools() -> None:
     """README: the rules engine as MCP tools — the four it names are the rules-only server's."""
     paragraph = _readme().split("**The deadline engine in Claude Desktop or Claude Code.**", 1)[1]
@@ -442,8 +645,12 @@ def test_readme_backend_test_count_holds() -> None:
 
 
 _WEB = ROOT / "web"
+#: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_MOCK_CHECK=1`` (CI's
+#: end-to-end job, which has both toolchains): there a missing toolchain fails, so the README's Vitest and
+#: Playwright counts are always checked in CI.
 _needs_web = pytest.mark.skipif(
-    shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists(),
+    os.environ.get("ORDNUNG_REQUIRE_MOCK_CHECK") != "1"
+    and (shutil.which("node") is None or not (_WEB / "node_modules" / ".bin").exists()),
     reason="needs node and web/node_modules (npm ci in web/)",
 )
 

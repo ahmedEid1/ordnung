@@ -108,6 +108,17 @@ describe("a failed letter's card", () => {
   });
 });
 
+describe("a letter waiting for Claude", () => {
+  it("says why instead of a stage it isn't in", async () => {
+    renderCenter();
+    const reason = "Waiting for Claude: Claude Code isn't signed in. Ordnung reads this letter as soon as Claude is connected (Settings → Claude connection).";
+    act(() => seedJob(job("doc_parking", "queued", { stage: "intake", progress: 0, waiting_reason: reason })));
+    const list = screen.getByRole("list", { name: "Letters being read" });
+    expect(within(list).getByText(reason)).toBeInTheDocument();
+    expect(within(list).queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+});
+
 describe("several letters", () => {
   it("share one compact card that opens into their cards, in a list capped for phones", async () => {
     renderCenter();

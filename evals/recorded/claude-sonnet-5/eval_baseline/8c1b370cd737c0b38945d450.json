@@ -1,0 +1,141 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0d3bd3735fe08c159c8dd917ec4227f5cd515d9122f5ecd6626c580df33973b3\",\"mode\":\"text\",\"region\":\"SL\",\"today\":\"2027-10-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-I1"
+    ],
+    "prompt_head": "Today is Monday, 2027-10-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Saarland (SL), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_document> ta"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Zentrale Bußgeldbehörde Mustersaar\",\"document_date\":\"2027-10-11\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"ZBB 6.2-27/0921457\"},{\"label\":\"Amtl. Kennzeichen\",\"value\":\"WND-NM 77\"}],\"amounts\":[200,25,3.5,228.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the Bußgeldbescheid\",\"quote\":\"Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.\",\"computation\":\"The letter was formally served (förmliche Zustellung, Zustellungsurkunde per § 182 ZPO); the attached cover page states the actual delivery date, 'zugestellt am 18.10.2027' (Monday). For a formal service there is no 3/4-day deemed-delivery fiction; the stated delivery day itself starts the period. Under § 187 Abs. 1 BGB the day of delivery (18.10.2027) is not counted; the two-week (14-day) period under § 188 Abs. 2 BGB would end Monday 01.11.2027. That day is Allerheiligen, a public holiday in Saarland, so under § 31 Abs. 3 VwVfG / § 193 BGB the deadline shifts to the next working day, Tuesday 02.11.2027.\",\"due_date\":\"2027-11-02\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine, fee and delivery costs (after the Bescheid becomes final)\",\"quote\":\"Bitte zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids; danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.\",\"computation\":\"Payment is due two weeks after the Bescheid becomes rechtskräftig (final). Rechtskraft occurs at the end of the Einspruch period computed above, i.e. at the end of Tuesday 02.11.2027, provided no Einspruch is filed. Counting the two-week payment period under § 187 Abs. 1 / § 188 Abs. 2 BGB from the day after Rechtskraft (03.11.2027) gives Tuesday 16.11.2027, which is a normal working day in Saarland, so no further shift applies. This date assumes no Einspruch is lodged; filing an Einspruch would suspend Rechtskraft and this payment deadline entirely.\",\"due_date\":\"2027-11-16\",\"confidence\":\"medium\",\"amount\":228.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The letter is a Bußgeldbescheid (fine notice) with a formal Postzustellung; page 2 is a copy of the delivery envelope's front, on which the postal carrier (Zusteller) has entered 'zugestellt am 18.10.2027' — this actual service date, not the printed letter date of 11.10.2027, is what starts the two-week Einspruch period.\",\"The letter itself instructs 'zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids' — do not pay before the objection period has expired without an Einspruch being filed; paying early is not required and the payment deadline above only applies if no Einspruch is lodged.\",\"The IBAN DE18 5900 0000 0003 8400 00 is a well-formed German IBAN (Saarländische Musterkasse, BLZ 59000000) but a valid IBAN does not prove the payee; compare it against the bank details on the official Saarland Bußgeldbehörde website before paying, and check the payee name match your bank reports (Empfängerüberprüfung).\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Zentrale Bußgeldbehörde Mustersaar",
+      "document_date": "2027-10-11",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "ZBB 6.2-27/0921457"
+        },
+        {
+          "label": "Amtl. Kennzeichen",
+          "value": "WND-NM 77"
+        }
+      ],
+      "amounts": [
+        200,
+        25,
+        3.5,
+        228.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the Bußgeldbescheid",
+          "quote": "Dieser Bescheid wird rechtskräftig und vollstreckbar, wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen.",
+          "computation": "The letter was formally served (förmliche Zustellung, Zustellungsurkunde per § 182 ZPO); the attached cover page states the actual delivery date, 'zugestellt am 18.10.2027' (Monday). For a formal service there is no 3/4-day deemed-delivery fiction; the stated delivery day itself starts the period. Under § 187 Abs. 1 BGB the day of delivery (18.10.2027) is not counted; the two-week (14-day) period under § 188 Abs. 2 BGB would end Monday 01.11.2027. That day is Allerheiligen, a public holiday in Saarland, so under § 31 Abs. 3 VwVfG / § 193 BGB the deadline shifts to the next working day, Tuesday 02.11.2027.",
+          "due_date": "2027-11-02",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine, fee and delivery costs (after the Bescheid becomes final)",
+          "quote": "Bitte zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids; danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen.",
+          "computation": "Payment is due two weeks after the Bescheid becomes rechtskräftig (final). Rechtskraft occurs at the end of the Einspruch period computed above, i.e. at the end of Tuesday 02.11.2027, provided no Einspruch is filed. Counting the two-week payment period under § 187 Abs. 1 / § 188 Abs. 2 BGB from the day after Rechtskraft (03.11.2027) gives Tuesday 16.11.2027, which is a normal working day in Saarland, so no further shift applies. This date assumes no Einspruch is lodged; filing an Einspruch would suspend Rechtskraft and this payment deadline entirely.",
+          "due_date": "2027-11-16",
+          "confidence": "medium",
+          "amount": 228.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The letter is a Bußgeldbescheid (fine notice) with a formal Postzustellung; page 2 is a copy of the delivery envelope's front, on which the postal carrier (Zusteller) has entered 'zugestellt am 18.10.2027' — this actual service date, not the printed letter date of 11.10.2027, is what starts the two-week Einspruch period.",
+        "The letter itself instructs 'zahlen Sie den Betrag nicht vor Rechtskraft dieses Bescheids' — do not pay before the objection period has expired without an Einspruch being filed; paying early is not required and the payment deadline above only applies if no Einspruch is lodged.",
+        "The IBAN DE18 5900 0000 0003 8400 00 is a well-formed German IBAN (Saarländische Musterkasse, BLZ 59000000) but a valid IBAN does not prove the payee; compare it against the bank details on the official Saarland Bußgeldbehörde website before paying, and check the payee name match your bank reports (Empfängerüberprüfung)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 5030,
+      "cache_read_tokens": 29754,
+      "cache_creation_tokens": 9541,
+      "cost_usd": 0.0944268,
+      "duration_ms": 52939,
+      "turns": 6
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "receipt",
+            "anchor_date": "2027-10-18",
+            "nature": "objection",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "§ 65 OWiG, Rechtsbehelfsbelehrung: zwei Wochen nach Zustellung",
+            "text": "wenn Sie nicht innerhalb von zwei Wochen nach seiner Zustellung Einspruch einlegen"
+          },
+          "document_date": "2027-10-11",
+          "received_date": "2027-10-18",
+          "sender_kind": "authority",
+          "sender_name": "Zentrale Bußgeldbehörde Mustersaar",
+          "remedy_type": "einspruch",
+          "region": "SL",
+          "recipient_region": "SL",
+          "today": "2027-10-18"
+        },
+        "result": "{\"due_date\":\"2027-11-02\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-10-26\",\"summary\":\"Two weeks after delivery on Mon 18 Oct 2027 (as stated on the letter) is Mon 1 Nov 2027, a public holiday, Allerheiligen, so the deadline moves to Tue 2 Nov 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Mon 18 Oct 2027\",\"date\":\"2027-10-18\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Mon 1 Nov 2027\",\"date\":\"2027-11-01\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Mon 1 Nov 2027 is a public holiday, Allerheiligen, so the deadline moves to Tue 2 Nov 2027\",\"date\":\"2027-11-02\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Tue 26 Oct 2027 to allow 4 business days for a letter to arrive\",\"date\":\"2027-10-26\",\"rule_id\":\"postal_buffer\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"postal_buffer\",\"title\":\"Send-by date\",\"citation\":\"Ordnung safety policy; § 18 PostG (delivery targets)\"}],\"assumed\":{\"today\":\"2027-10-18\",\"letter_date\":\"2027-10-11\",\"received_date\":\"2027-10-18\",\"received_date_from\":\"spec.anchor_date: the delivery day the letter states\",\"holiday_calendar\":\"Saarland\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__german_holidays",
+        "input": {
+          "year": 2027,
+          "region": "SL"
+        },
+        "result": "{\"year\":2027,\"region\":\"SL\",\"calendar\":\"Saarland\",\"holidays\":[{\"date\":\"2027-01-01\",\"weekday\":\"Friday\",\"name\":\"Neujahr\",\"nationwide\":true},{\"date\":\"2027-03-26\",\"weekday\":\"Friday\",\"name\":\"Karfreitag\",\"nationwide\":true},{\"date\":\"2027-03-29\",\"weekday\":\"Monday\",\"name\":\"Ostermontag\",\"nationwide\":true},{\"date\":\"2027-05-01\",\"weekday\":\"Saturday\",\"name\":\"Erster Mai\",\"nationwide\":true},{\"date\":\"2027-05-06\",\"weekday\":\"Thursday\",\"name\":\"Christi Himmelfahrt\",\"nationwide\":true},{\"date\":\"2027-05-17\",\"weekday\":\"Monday\",\"name\":\"Pfingstmontag\",\"nationwide\":true},{\"date\":\"2027-05-27\",\"weekday\":\"Thursday\",\"name\":\"Fronleichnam\",\"nationwide\":false},{\"date\":\"2027-08-15\",\"weekday\":\"Sunday\",\"name\":\"Mariä Himmelfahrt\",\"nationwide\":false},{\"date\":\"2027-10-03\",\"weekday\":\"Sunday\",\"name\":\"Tag der Deutschen Einheit\",\"nationwide\":true},{\"date\":\"2027-11-01\",\"weekday\":\"Monday\",\"name\":\"Allerheiligen\",\"nationwide\":false},{\"date\":\"2027-12-25\",\"weekday\":\"Saturday\",\"name\":\"Erster Weihnachtstag\",\"nationwide\":true},{\"date\":\"2027-12-26\",\"weekday\":\"Sunday\",\"name\":\"Zweiter Weihnachtstag\",\"nationwide\":true}],\"disclaimer\":\"Information, not legal advice: the public holidays in Ordnung's calendar (German federal and Land law as of 2026-09-25), not reviewed by a lawyer.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__compute_deadline",
+        "input": {
+          "spec": {
+            "type": "relative",
+            "amount": 2,
+            "unit": "weeks",
+            "anchor": "explicit_date",
+            "anchor_date": "2027-11-02",
+            "nature": "payment",
+            "shift_rule": "auto",
+            "delivery_rule": "none",
+            "legal_basis": "innerhalb von zwei Wochen nach Rechtskraft",
+            "text": "danach ist er innerhalb von zwei Wochen auf das Konto DE18 5900 0000 0003 8400 00 unter Angabe des Aktenzeichens zu überweisen"
+          },
+          "sender_kind": "authority",
+          "sender_name": "Zentrale Bußgeldbehörde Mustersaar",
+          "region": "SL",
+          "today": "2027-10-18"
+        },
+        "result": "{\"due_date\":\"2027-11-16\",\"weekday\":\"Tuesday\",\"send_by\":\"2027-11-15\",\"summary\":\"Two weeks after Tue 2 Nov 2027 is Tue 16 Nov 2027.\",\"confidence\":\"high\",\"warnings\":[],\"steps\":[{\"label\":\"Counting starts the day after Tue 2 Nov 2027\",\"date\":\"2027-11-02\",\"rule_id\":\"bgb_187_1\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\"},{\"label\":\"Two weeks later: Tue 16 Nov 2027\",\"date\":\"2027-11-16\",\"rule_id\":\"bgb_188\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\"},{\"label\":\"Tue 16 Nov 2027 is a working day, so it stays\",\"date\":\"2027-11-16\",\"rule_id\":\"vwvfg_31_3\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\"},{\"label\":\"Send by Mon 15 Nov 2027 to allow 1 business day for a bank transfer to arrive\",\"date\":\"2027-11-15\",\"rule_id\":\"bgb_675s\",\"citation\":\"§ 675s Abs. 1 BGB\"}],\"rules\":[{\"id\":\"bgb_187_1\",\"title\":\"The day of the event is not counted\",\"citation\":\"§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG; § 26 Abs. 1 SGB X\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__187.html\"},{\"id\":\"bgb_188\",\"title\":\"When a period ends\",\"citation\":\"§ 188 Abs. 1, 2 BGB; § 43 Abs. 1 StPO; § 64 Abs. 2 SGG\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__188.html\"},{\"id\":\"vwvfg_31_3\",\"title\":\"Weekend and holiday shift (authorities)\",\"citation\":\"§ 31 Abs. 3 VwVfG; § 57 Abs. 2 VwGO with § 222 Abs. 2 ZPO\",\"url\":\"https://www.gesetze-im-internet.de/vwvfg/__31.html\"},{\"id\":\"bgb_675s\",\"title\":\"Bank transfers take up to one business day\",\"citation\":\"§ 675s Abs. 1 BGB\",\"url\":\"https://www.gesetze-im-internet.de/bgb/__675s.html\"}],\"assumed\":{\"today\":\"2027-10-18\",\"holiday_calendar\":\"Saarland\",\"holidays_from\":\"region: the Land where the deadline is met (the sender's seat)\"},\"hints\":[],\"disclaimer\":\"Information, not legal advice: computed by Ordnung's rules engine from the facts given (German law as of 2026-09-25), not reviewed by a lawyer. Check the result against the letter and get advice when a lot is at stake.\"}"
+      },
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "DE18 5900 0000 0003 8400 00"
+        },
+        "result": "{\"iban\":\"DE18 5900 0000 0003 8400 00\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"DE\",\"name\":\"Germany\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"bank_code\":{\"label\":\"Bankleitzahl (BLZ)\",\"value\":\"59000000\"},\"account_number\":\"0003840000\",\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. For a euro transfer to this account the bank also checks the payee's name against the account before it is sent (Empfängerüberprüfung, required in the euro area since 9 October 2025): if it reports no match or only a close one, or says the check was not possible, do not pay until you have confirmed the account.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

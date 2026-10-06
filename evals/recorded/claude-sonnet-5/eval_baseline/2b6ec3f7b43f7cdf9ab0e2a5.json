@@ -1,0 +1,73 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"45529248ac08bc8bdb227c0611eb88c35e9507efa495ef4774ee44e2f3a46313\",\"mode\":\"text\",\"region\":\"NI\",\"today\":\"2026-10-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-fine_bussgeld-J2"
+    ],
+    "prompt_head": "Today is Friday, 2026-10-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Niedersachsen (NI), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_documen"
+  },
+  "response": {
+    "text": "{\"kind\":\"fine\",\"sender_name\":\"Landkreis Musterheide – Bußgeldstelle\",\"document_date\":\"2026-10-21\",\"references\":[{\"label\":\"Aktenzeichen\",\"value\":\"OWi 12.3-26/88140\"},{\"label\":\"Kennzeichen\",\"value\":\"HK-HM 290\"}],\"amounts\":[98.5],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch against the Bußgeldbescheid\",\"quote\":\"Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.\",\"computation\":\"This is a formal delivery (förmliche Zustellung) per Postzustellungsurkunde (§ 182 ZPO); the scanned envelope states the delivery date directly: 'zugestellt 28.10.2026' (Wednesday). For formal delivery the date on the envelope is the delivery day itself, no days are added. The Einspruchsfrist is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day (28.10.2026) is not counted; a period stated in weeks ends on the day bearing the same name as the triggering day, two weeks later. Wed 28.10.2026 + 2 weeks = Wed 11.11.2026. That day is a plain working day in Niedersachsen (no public holiday, not a weekend), so no further shift under § 43 Abs. 2 StPO is needed.\",\"due_date\":\"2026-11-11\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Pay the fine (Geldbuße, Verwaltungsgebühr und Zustellungsauslagen) once the notice is final\",\"quote\":\"Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.\",\"computation\":\"Payment is only due if the Bescheid becomes rechtskräftig, i.e. if no Einspruch is filed within the two-week period ending 11.11.2026 (Wednesday). If so, the notice becomes final on the following day, 12.11.2026 (Thursday). 'Zwei Wochen danach' (two weeks after that) is counted the same way (§§ 187, 188 BGB, period in weeks, same weekday two weeks later): Thu 12.11.2026 + 2 weeks = Thu 26.11.2026, which is a normal working day in Niedersachsen, so no shift is needed. This date and amount are contingent on no Einspruch being lodged; if an Einspruch is filed, this payment obligation does not arise on this date.\",\"due_date\":\"2026-11-26\",\"confidence\":\"medium\",\"amount\":98.5}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The payment due date (2026-11-26) is conditional: it only applies if no Einspruch is filed by 2026-11-11; the letter itself does not state an explicit calendar date for 'rechtskräftig', so this was derived by assuming finality occurs the day after the Einspruchsfrist expires — double-check this interpretation or wait for a separate payment notice from the Bußgeldstelle.\",\"Before paying, verify the IBAN DE90 2500 0000 0009 7000 00 independently (e.g. via the authority's official phone number) rather than relying solely on the letter, as a general precaution against fraudulent payment instructions.\"]}",
+    "data": {
+      "kind": "fine",
+      "sender_name": "Landkreis Musterheide – Bußgeldstelle",
+      "document_date": "2026-10-21",
+      "references": [
+        {
+          "label": "Aktenzeichen",
+          "value": "OWi 12.3-26/88140"
+        },
+        {
+          "label": "Kennzeichen",
+          "value": "HK-HM 290"
+        }
+      ],
+      "amounts": [
+        98.5
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch against the Bußgeldbescheid",
+          "quote": "Die Einspruchsfrist beträgt zwei Wochen; sie beginnt mit der Zustellung dieses Bescheids.",
+          "computation": "This is a formal delivery (förmliche Zustellung) per Postzustellungsurkunde (§ 182 ZPO); the scanned envelope states the delivery date directly: 'zugestellt 28.10.2026' (Wednesday). For formal delivery the date on the envelope is the delivery day itself, no days are added. The Einspruchsfrist is two weeks (§ 67 OWiG, § 43 StPO), counted under §§ 187 Abs. 1, 188 Abs. 2 BGB: the delivery day (28.10.2026) is not counted; a period stated in weeks ends on the day bearing the same name as the triggering day, two weeks later. Wed 28.10.2026 + 2 weeks = Wed 11.11.2026. That day is a plain working day in Niedersachsen (no public holiday, not a weekend), so no further shift under § 43 Abs. 2 StPO is needed.",
+          "due_date": "2026-11-11",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Pay the fine (Geldbuße, Verwaltungsgebühr und Zustellungsauslagen) once the notice is final",
+          "quote": "Zahlen müssen Sie erst, wenn der Bescheid rechtskräftig ist; fällig wird der Betrag zwei Wochen danach.",
+          "computation": "Payment is only due if the Bescheid becomes rechtskräftig, i.e. if no Einspruch is filed within the two-week period ending 11.11.2026 (Wednesday). If so, the notice becomes final on the following day, 12.11.2026 (Thursday). 'Zwei Wochen danach' (two weeks after that) is counted the same way (§§ 187, 188 BGB, period in weeks, same weekday two weeks later): Thu 12.11.2026 + 2 weeks = Thu 26.11.2026, which is a normal working day in Niedersachsen, so no shift is needed. This date and amount are contingent on no Einspruch being lodged; if an Einspruch is filed, this payment obligation does not arise on this date.",
+          "due_date": "2026-11-26",
+          "confidence": "medium",
+          "amount": 98.5
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The payment due date (2026-11-26) is conditional: it only applies if no Einspruch is filed by 2026-11-11; the letter itself does not state an explicit calendar date for 'rechtskräftig', so this was derived by assuming finality occurs the day after the Einspruchsfrist expires — double-check this interpretation or wait for a separate payment notice from the Bußgeldstelle.",
+        "Before paying, verify the IBAN DE90 2500 0000 0009 7000 00 independently (e.g. via the authority's official phone number) rather than relying solely on the letter, as a general precaution against fraudulent payment instructions."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 4079,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 3149,
+      "cost_usd": 0.054496,
+      "duration_ms": 42238,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

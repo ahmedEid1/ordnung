@@ -158,17 +158,28 @@ export function needsCheck(i: Item): boolean {
 }
 
 /**
+ * The rules a to-do's receipt cites when its period runs from formal delivery, the date the postman wrote on
+ * the yellow envelope: a court's letter (`zpo_180`, § 180 ZPO) or a letter served with a Postzustellungsurkunde
+ * (`pzu`, § 3 VwZG with §§ 180, 181 ZPO — `ordnung.ingest.gaps.formally_served`).
+ */
+const SERVED_RULES: readonly string[] = ["zpo_180", "pzu"];
+
+function citesService(i: Item): boolean {
+  return Boolean(i.computation?.rule_ids.some((r) => SERVED_RULES.includes(r)));
+}
+
+/**
  * The period starts when the letter arrived (`receipt` anchor) — or the engine counted it from the
  * arrival because the sender is no authority (`private_sender_arrival`, § 130 BGB), whatever anchor
- * it was read with, or, for a court order, from when it was delivered (§ 180 ZPO) — and we don't know
- * that date yet: the rules engine fell back to the letter date (earliest possible) until the person
- * tells us. The computation decides, not the stored reading: a private sender's period from a date the
- * letter gives (`private_sender_no_delivery`) never asks.
+ * it was read with, or, for a court order or a letter served with a Postzustellungsurkunde, from when it
+ * was delivered (the yellow envelope's date) — and we don't know that date yet: the rules engine fell back
+ * to the letter date (earliest possible) until the person tells us. The computation decides, not the stored
+ * reading: a private sender's period from a date the letter gives (`private_sender_no_delivery`) never asks.
  */
 export function needsArrivalDate(i: Item, doc: Pick<Document, "received_date">): boolean {
   if (!isOpenItem(i)) return false;
   const fromArrival = Boolean(i.computation?.rule_ids.includes("private_sender_arrival"));
-  const served = Boolean(i.computation?.rule_ids.includes("zpo_180"));
+  const served = citesService(i);
   if (i.date_spec?.anchor !== "receipt" && !fromArrival && !served) return false;
   if (!doc.received_date) return true;
   return Boolean(i.computation?.rule_ids.some((r) => r.includes("fallback")));
@@ -206,12 +217,18 @@ export function arrivalSavedNote(arrived: string, items: readonly Item[]): strin
 const COURT_ORDERS = new Set<Document["kind"]>(["court_payment_order", "enforcement_order"]);
 
 /**
- * A court's letter whose period runs from formal delivery (§ 180 ZPO), so the question is "when was it
- * delivered?" (the date on the yellow envelope), never "when did it arrive?" with a Today button: filed
- * as a court order, or any to-do whose receipt cites § 180 ZPO (a Versäumnisurteil's Einspruch, an
- * order filed as another kind) — the same test as {@link needsArrivalDate}.
+ * A letter whose period runs from formal delivery, so the question is "when was it delivered?" (the date on
+ * the yellow envelope), never "when did it arrive?" with a Today button: filed as a court order, or any to-do
+ * whose receipt cites § 180 ZPO (a Versäumnisurteil's Einspruch, an order filed as another kind) or the
+ * Postzustellungsurkunde an authority's letter says it was served with (`pzu`) — the same test as
+ * {@link needsArrivalDate}.
  */
 export function isServed(doc: Pick<Document, "kind">, items: Item[]): boolean {
+  return COURT_ORDERS.has(doc.kind) || items.some(citesService);
+}
+
+/** A court's letter served formally (filed as a court order, or a to-do citing § 180 ZPO): "the court's letter". */
+export function isCourtServed(doc: Pick<Document, "kind">, items: Item[]): boolean {
   return COURT_ORDERS.has(doc.kind) || items.some((i) => Boolean(i.computation?.rule_ids.includes("zpo_180")));
 }
 

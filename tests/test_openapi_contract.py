@@ -54,24 +54,46 @@ def schema() -> dict[str, Any]:
 # --------------------------------------------------------------------------------------------------
 
 
+def _enums_sorted(value: Any) -> Any:
+    """``value`` with the values of every ``enum`` sorted. Their order follows Python's ``Literal``
+    cache: 3.11–3.13 reuse an equal union created earlier (``TimelineEntry.direction`` comes out as
+    ``["out", "in"]``), 3.14 keeps each one's own order."""
+    if isinstance(value, dict):
+        return {
+            key: sorted(item, key=json.dumps) if key == "enum" else _enums_sorted(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_enums_sorted(item) for item in value]
+    return value
+
+
 def test_web_openapi_json_is_current(schema: dict[str, Any]) -> None:
     assert OPENAPI_JSON.is_file(), f"web/openapi.json is missing — {REGENERATE}"
-    stored = json.loads(OPENAPI_JSON.read_text(encoding="utf-8"))
-    if stored != schema:
-        changed = sorted(set(stored.get("paths", {})) ^ set(schema["paths"]))
+    text = OPENAPI_JSON.read_text(encoding="utf-8")
+    stored, current = _enums_sorted(json.loads(text)), _enums_sorted(schema)
+    if stored != current:
+        changed = sorted(set(stored.get("paths", {})) ^ set(current["paths"]))
         components = stored.get("components", {}).get("schemas", {})
         differing = sorted(
             name
-            for name in {*components, *schema["components"]["schemas"]}
-            if components.get(name) != schema["components"]["schemas"].get(name)
+            for name in {*components, *current["components"]["schemas"]}
+            if components.get(name) != current["components"]["schemas"].get(name)
         )
         pytest.fail(
             f"web/openapi.json is stale — {REGENERATE}.\n"
             f"Paths added/removed: {changed or 'none'}\nChanged schemas: {differing[:20] or 'none'}"
         )
-    assert OPENAPI_JSON.read_text(encoding="utf-8") == openapi_json(schema), (
+    assert text == openapi_json(json.loads(text)), (
         f"web/openapi.json is not formatted as `ordnung openapi` prints it — {REGENERATE}"
     )
+
+
+def test_enum_order_is_not_part_of_the_contract() -> None:
+    reordered = {"direction": {"anyOf": [{"type": "string", "enum": ["in", "out"]}, {"type": "null"}]}}
+    cached = {"direction": {"anyOf": [{"type": "string", "enum": ["out", "in"]}, {"type": "null"}]}}
+    assert _enums_sorted(reordered) == _enums_sorted(cached)
+    assert _enums_sorted({"enum": ["in"]}) != _enums_sorted({"enum": ["in", "out"]})
 
 
 def _ts_components(text: str) -> dict[str, set[str]]:

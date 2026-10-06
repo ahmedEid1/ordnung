@@ -1,0 +1,59 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"c7f678df523a66c5673b9113544e31917fe08e3c41528e1c973fb2b7ecc4c57f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-10-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-missing_date-1"
+    ],
+    "prompt_head": "Today is Tuesday, 2027-10-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Garten- und Landschaftsbau Beispielgrün\",\"document_date\":null,\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"BG-1187\"}],\"amounts\":[726.23],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay invoice for autumn garden care and hedge trimming\",\"quote\":\"Wir bitten um Zahlung innerhalb von 14 Tagen nach Erhalt dieser Rechnung, Abzüge oder Skonto sind nicht vereinbart.\",\"computation\":\"The payment period is '14 Tage nach Erhalt dieser Rechnung' (14 days after receipt of this invoice), not after the invoice date. The letter itself bears no printed date, and no delivery/receipt date is stated or otherwise evidenced, so the start of the 14-day period (§ 187 Abs. 1 BGB, day of receipt not counted, period ends per § 188 Abs. 2 BGB) cannot be fixed. Without a known receipt date, the exact calendar due date cannot be computed; it can only be said to fall 14 days (plus weekend/holiday adjustment per § 193 BGB if the 14th day lands on a Saturday, Sunday or NW public holiday) after whatever day the addressee actually received the invoice.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":726.23}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"The invoice carries no printed date, and the payment term runs from 'Erhalt dieser Rechnung' (receipt of the invoice) rather than a fixed calendar date, so the exact due date cannot be determined from the letter alone — the recipient should check when they actually received it and count 14 days from there (adjusting to the next business day if that falls on a weekend or NW public holiday).\"]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Garten- und Landschaftsbau Beispielgrün",
+      "document_date": null,
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "BG-1187"
+        }
+      ],
+      "amounts": [
+        726.23
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay invoice for autumn garden care and hedge trimming",
+          "quote": "Wir bitten um Zahlung innerhalb von 14 Tagen nach Erhalt dieser Rechnung, Abzüge oder Skonto sind nicht vereinbart.",
+          "computation": "The payment period is '14 Tage nach Erhalt dieser Rechnung' (14 days after receipt of this invoice), not after the invoice date. The letter itself bears no printed date, and no delivery/receipt date is stated or otherwise evidenced, so the start of the 14-day period (§ 187 Abs. 1 BGB, day of receipt not counted, period ends per § 188 Abs. 2 BGB) cannot be fixed. Without a known receipt date, the exact calendar due date cannot be computed; it can only be said to fall 14 days (plus weekend/holiday adjustment per § 193 BGB if the 14th day lands on a Saturday, Sunday or NW public holiday) after whatever day the addressee actually received the invoice.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 726.23
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "The invoice carries no printed date, and the payment term runs from 'Erhalt dieser Rechnung' (receipt of the invoice) rather than a fixed calendar date, so the exact due date cannot be determined from the letter alone — the recipient should check when they actually received it and count 14 days from there (adjusting to the next business day if that falls on a weekend or NW public holiday)."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2794,
+      "cache_read_tokens": 8673,
+      "cache_creation_tokens": 4414,
+      "cost_usd": 0.0473386,
+      "duration_ms": 31257,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

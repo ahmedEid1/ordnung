@@ -26,7 +26,7 @@ from fixtures_llm import (
 from helpers_docs import photo
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
-from ordnung.assistant.ask import DEMO_MISS
+from ordnung.assistant.ask import DEMO_CHANGED, DEMO_MISS, DEMO_NOT_RECORDED
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import DemoError, load_manifest, tour
@@ -41,6 +41,7 @@ from ordnung.demo.loader import (
     prepare_demo,
     recording_backend,
     snapshot_version,
+    start_of_day,
     tray_states,
 )
 from ordnung.ids import doc_id_for_sha
@@ -535,9 +536,14 @@ async def test_stages_are_paced_in_demo_mode(monkeypatch: pytest.MonkeyPatch) ->
     assert slept == [0.6, 0.6]
 
 
-async def test_recorded_questions_replay_after_opening_tray_letters(life: SampleLife, tmp_path: Path) -> None:
+async def test_recorded_questions_replay_after_opening_tray_letters(
+    life: SampleLife, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from ordnung.assistant.ask import ask_stream
 
+    asks = tmp_path / "asks.json"
+    asks.write_text(json.dumps(QUESTIONS), encoding="utf-8")
+    monkeypatch.setattr(tour, "ASKS_FILE", asks)
     ctx = open_demo(life, tmp_path / "demo")
     try:
         await tour.open_tray_item(
@@ -549,13 +555,110 @@ async def test_recorded_questions_replay_after_opening_tray_letters(life: Sample
             "Your gym membership is on file"
         )
         missed = [
-            event async for event in tour.demo_safe_stream(ask_stream(ctx, "Anything free?"), demo=True)
+            event
+            async for event in tour.demo_safe_stream(ask_stream(ctx, "Anything free?"), demo=True, ctx=ctx)
         ]
         assert [event.type for event in missed] == ["error"]
-        assert missed[0].error == DEMO_MISS
+        assert missed[0].error == DEMO_MISS  # the suggested questions are offered: it points to them
         assert getattr(missed[0], "error_code", None) == "demo_miss"
     finally:
         ctx.close()
+
+
+async def test_a_recorded_question_after_a_change_says_how_to_start_over(
+    life: SampleLife, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """FEAT G2: after one "Mark done" every suggested question missed, and the note told the person to try a
+    suggested question — what had just failed. Now the Ask page offers none of them (``/api/demo/questions``),
+    and asking one anyway says the answers fit the demo as it started and how to start over (stop it first:
+    ``ordnung demo --reset`` doesn't reset a demo that runs); a question nobody recorded gets the note
+    without pointing to the suggested questions, which aren't offered."""
+    from ordnung.assistant.ask import ask_stream
+
+    asks = tmp_path / "asks.json"
+    asks.write_text(json.dumps(QUESTIONS), encoding="utf-8")
+    monkeypatch.setattr(tour, "ASKS_FILE", asks)
+    ctx = open_demo(life, tmp_path / "demo")
+
+    async def ask(question: str) -> list[StreamEvent]:
+        return [
+            event
+            async for event in tour.demo_safe_stream(
+                ask_stream(ctx, question), demo=True, question=question, ctx=ctx
+            )
+        ]
+
+    try:
+        assert tour.recorded_questions(ctx) == QUESTIONS
+        item = next(item for item in ctx.store.list_items() if item.status == "open")
+        ctx.store.update_item(item.id, status="done")
+        assert tour.recorded_questions(ctx) == []
+        (changed,) = await ask(f"  {QUESTIONS[1]} ")  # the key compares the words, not the spacing
+        assert (changed.type, changed.error, getattr(changed, "error_code", None)) == (
+            "error",
+            DEMO_CHANGED,
+            "demo_changed",
+        )
+        assert "suggested question" in DEMO_CHANGED and "try one of" not in DEMO_CHANGED.lower()
+        assert "Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”." in DEMO_CHANGED
+        (missed,) = await ask("Anything free?")
+        assert (missed.error, getattr(missed, "error_code", None)) == (DEMO_NOT_RECORDED, "demo_miss")
+        assert "suggested question" not in DEMO_NOT_RECORDED
+        ctx.store.update_item(item.id, status="open")  # put back as it was: the recording fits again
+        assert tour.recorded_questions(ctx) == QUESTIONS
+        assert (await ask(QUESTIONS[1]))[-1].type == "done"
+    finally:
+        ctx.close()
+
+
+def test_with_a_live_fallback_every_suggested_question_is_offered(
+    life: SampleLife, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``ordnung demo --live`` lets Claude answer what was not recorded, so a change takes no question away."""
+    asks = tmp_path / "asks.json"
+    asks.write_text(json.dumps(QUESTIONS), encoding="utf-8")
+    monkeypatch.setattr(tour, "ASKS_FILE", asks)
+    prepared = prepare_demo(
+        tmp_path / "demo", samples=life.samples, fixtures=life.fixtures, snapshot=life.snapshot
+    )
+    ctx = build_context(prepared.data_dir, backend_obj=ReplayBackend(life.fixtures, fallback=FakeBackend()))
+    try:
+        item = next(item for item in ctx.store.list_items() if item.status == "open")
+        ctx.store.update_item(item.id, status="done")
+        assert tour.recorded_questions(ctx) == QUESTIONS
+    finally:
+        ctx.close()
+
+
+def test_the_build_dates_its_records_at_the_start_of_the_simulated_day(
+    life: SampleLife, tmp_path: Path
+) -> None:
+    """FEAT G5: records stamped at the time of day the demo was built (05:36 UTC) counted as changed after a
+    calendar export made earlier in the morning, so the Idea to add the dates came back as "N new dates
+    since your last calendar update" instead of going away."""
+    from ordnung.secretary.triggers import CALENDAR_META_KEY, Ledger, calendar_outdated
+
+    built = build_demo(tmp_path / "demo", samples=life.samples, fixtures=life.fixtures)
+    start = "2026-09-24T22:00:00Z"  # 00:00 on Fri 25 Sep in Berlin, the persona's time zone
+    assert start_of_day(date.fromisoformat(TODAY), "Europe/Berlin") == start
+    assert start_of_day(date.fromisoformat(TODAY), "Nowhere/Unknown") == "2026-09-25T00:00:00Z"
+    store = Store.open(Paths(built.data_dir))
+    try:
+        stamps = {stamp for item in store.list_items() for stamp in (item.created_at, item.updated_at)}
+        stamps |= {contract.updated_at for contract in store.list_contracts()}
+        stamps |= {doc.processed_at for doc in store.list_documents()}
+        stamps |= {entry.ts for entry in store.list_activity()}
+        assert stamps == {start}
+        # the letters keep the days they arrived on
+        assert {doc.created_at[:10] for doc in store.list_documents()} == {"2026-09-20"}
+        brief = get_brief(store, date.fromisoformat(TODAY))
+        assert brief is not None and brief.generated_at == start
+        day = date.fromisoformat(TODAY)
+        assert calendar_outdated(Ledger(store, day))  # "Add your dates to your calendar"
+        store.set_meta(CALENDAR_META_KEY, "2026-09-24T22:30:00Z")  # exported at 00:30 that morning
+        assert calendar_outdated(Ledger(store, day)) == []
+    finally:
+        store.close()
 
 
 async def test_demo_safe_stream_passes_everything_through_outside_the_demo() -> None:

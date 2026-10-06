@@ -1,0 +1,71 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_tool.s3.t1.u2.d1.h421dc97b",
+    "cache_key": "{\"condition\":\"llm_rules_tool\",\"doc\":\"0a763668edc9129f8ceeb7bbedbc42e95f59b9245d95a0d4433ff5686b72ac51\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-10-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"EuroForderung Beispiel Inkasso Ltd.\",\"document_date\":\"2025-10-14\",\"references\":[{\"label\":\"Akte\",\"value\":\"EFB-25-447192\"}],\"amounts\":[341.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay disputed collection demand\",\"quote\":\"Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.\",\"computation\":\"The letter prints a fixed calendar date for payment: 22.10.2025. This is a private collection agency's letter, not an authority, so no statutory deemed-delivery rule (§122 AO, §41 VwVfG etc.) applies; the printed date itself is the stated deadline. 22.10.2025 is a Wednesday, not a weekend day or a public holiday in NW, so no shift under §193 BGB is needed. Note: the underlying claim's legitimacy is doubtful (see warnings), so this date reflects only what the letter demands, not a confirmed legal obligation.\",\"due_date\":\"2025-10-22\",\"confidence\":\"high\",\"amount\":341.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This bears strong hallmarks of a dubious/scam debt-collection letter: an alleged phone order for a 'Gewinnspiel-Eintragungsservice' (prize-draw registration service), a Bulgarian collection agency for a German consumer debt, and threats of Schufa-style listing, wage garnishment (Pfändung) and account freezing 'ohne weitere Ankündigung' (without further notice) — none of which a private collection agency can actually carry out without a court judgment (Vollstreckungstitel) first.\",\"The payment account is in Bulgaria (IBAN BG30 BUIN 9561 1000 4728 10) and the named recipient 'V. Dimitrova' is a private individual, not the sender company 'EuroForderung Beispiel Inkasso Ltd.' — a mismatch between payee name and company name is a classic red flag; do not pay without independently verifying the claim and the payee.\",\"The sentence 'Ein Widerspruch ist ausgeschlossen' (an objection is excluded) is legally dubious: German consumers always retain the right to dispute an invoice or a debt-collector's claim; a private company cannot lawfully exclude this right, and the instruction to only ask questions by e-mail (no phone, no postal contact for queries) is another pressure tactic typical of scam dunning letters.\",\"The charges include a flat 'Kontoführungsgebühr Inkasso' (collection account-keeping fee) of 25,00 € and 'Mahn- und Bearbeitungskosten' of 49,50 € on top of the alleged 267,00 € in subscription fees; such add-on fees from unregulated foreign collectors are frequently unenforceable under German law and should be checked before any payment is made.\",\"Before paying, verify whether the original 'Gewinnspiel' contract from 03.06.2025 was ever validly concluded and whether it was properly revoked (Widerrufsrecht), and consider that many such letters are sent speculatively to consumers who never actually ordered anything.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "EuroForderung Beispiel Inkasso Ltd.",
+      "document_date": "2025-10-14",
+      "references": [
+        {
+          "label": "Akte",
+          "value": "EFB-25-447192"
+        }
+      ],
+      "amounts": [
+        341.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay disputed collection demand",
+          "quote": "Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.",
+          "computation": "The letter prints a fixed calendar date for payment: 22.10.2025. This is a private collection agency's letter, not an authority, so no statutory deemed-delivery rule (§122 AO, §41 VwVfG etc.) applies; the printed date itself is the stated deadline. 22.10.2025 is a Wednesday, not a weekend day or a public holiday in NW, so no shift under §193 BGB is needed. Note: the underlying claim's legitimacy is doubtful (see warnings), so this date reflects only what the letter demands, not a confirmed legal obligation.",
+          "due_date": "2025-10-22",
+          "confidence": "high",
+          "amount": 341.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This bears strong hallmarks of a dubious/scam debt-collection letter: an alleged phone order for a 'Gewinnspiel-Eintragungsservice' (prize-draw registration service), a Bulgarian collection agency for a German consumer debt, and threats of Schufa-style listing, wage garnishment (Pfändung) and account freezing 'ohne weitere Ankündigung' (without further notice) — none of which a private collection agency can actually carry out without a court judgment (Vollstreckungstitel) first.",
+        "The payment account is in Bulgaria (IBAN BG30 BUIN 9561 1000 4728 10) and the named recipient 'V. Dimitrova' is a private individual, not the sender company 'EuroForderung Beispiel Inkasso Ltd.' — a mismatch between payee name and company name is a classic red flag; do not pay without independently verifying the claim and the payee.",
+        "The sentence 'Ein Widerspruch ist ausgeschlossen' (an objection is excluded) is legally dubious: German consumers always retain the right to dispute an invoice or a debt-collector's claim; a private company cannot lawfully exclude this right, and the instruction to only ask questions by e-mail (no phone, no postal contact for queries) is another pressure tactic typical of scam dunning letters.",
+        "The charges include a flat 'Kontoführungsgebühr Inkasso' (collection account-keeping fee) of 25,00 € and 'Mahn- und Bearbeitungskosten' of 49,50 € on top of the alleged 267,00 € in subscription fees; such add-on fees from unregulated foreign collectors are frequently unenforceable under German law and should be checked before any payment is made.",
+        "Before paying, verify whether the original 'Gewinnspiel' contract from 03.06.2025 was ever validly concluded and whether it was properly revoked (Widerrufsrecht), and consider that many such letters are sent speculatively to consumers who never actually ordered anything."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3148,
+      "cache_read_tokens": 15732,
+      "cache_creation_tokens": 5007,
+      "cost_usd": 0.0546624,
+      "duration_ms": 39602,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": [
+      {
+        "name": "mcp__ordnung_rules__check_iban",
+        "input": {
+          "iban": "BG30 BUIN 9561 1000 4728 10"
+        },
+        "result": "{\"iban\":\"BG30 BUIN 9561 1000 4728 10\",\"valid\":true,\"problems\":[],\"country\":{\"code\":\"BG\",\"name\":\"Bulgaria\"},\"length\":{\"expected\":22,\"actual\":22},\"checksum_ok\":true,\"note\":\"A well-formed IBAN says nothing about who owns the account. Compare it with earlier letters or the sender's official website; if a letter or email says the account has changed, confirm that through contact details you already know before paying. This IBAN is from Bulgaria, whose banks have to answer the check of the payee's name before a euro transfer (Empfängerüberprüfung) only from 1 January 2027: until then your bank may say the check was not possible, and it not warning you says nothing about who holds the account — confirm it through contact details you already know before paying.\",\"disclaimer\":\"Information, not legal or financial advice: what the IBAN's own characters show, checked by Ordnung's code. It cannot tell whether the account exists or who holds it.\"}"
+      }
+    ]
+  }
+}

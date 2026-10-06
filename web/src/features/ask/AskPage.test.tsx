@@ -30,7 +30,13 @@ describe("Ask page", () => {
       "Which deadlines are coming up in October?",
       "When does my residence permit expire, and what should I do before then?",
     ]);
-    expect(screen.getByText(/Only the letters it opens are sent to Anthropic/)).toBeInTheDocument();
+    // search sends titles and snippets of letters it never opens: the note says so (not "only the letters it opens")
+    expect(
+      screen.getByText(
+        "Claude searches your records with read-only tools. What its tools return (titles and snippets of matching letters, your to-dos and dates, and the letters it opens) is sent to Anthropic through your own Claude account.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Only the letters it opens/)).toBeNull();
     expect(screen.getByText(/Not legal advice/)).toBeInTheDocument();
   });
 
@@ -104,6 +110,70 @@ describe("Ask page", () => {
     expect(screen.getByRole("status")).toHaveTextContent("No recorded answer for this question.");
     // the suggested questions are right there
     expect(screen.getByRole("list", { name: "Suggested questions" })).toBeInTheDocument();
+  });
+
+  it("a suggested question asked after the demo changed says how to start over — not to try a suggested question", async () => {
+    // FEAT G2: after one "Mark done" every suggested question missed, and the note said to try one of them
+    useMockApi();
+    const base = globalThis.fetch;
+    const changed = { type: "error", error: "The demo's answers…", text: "The demo's answers…", error_code: "demo_changed" };
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.endsWith("/api/ask")) return base(input, init);
+      return Promise.resolve(new Response(`data: ${JSON.stringify(changed)}\n\n`, { status: 200, headers: { "content-type": "text/event-stream" } }));
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<AskPage />, { route: "/ask" });
+    const phone = "When does my phone contract end, and by when do I have to cancel it?";
+    await user.click(screen.getByRole("button", { name: phone }));
+    const turn = await screen.findByRole("article", { name: `Question: ${phone}` });
+    expect(await within(turn).findByText("The recorded answers no longer fit")).toBeInTheDocument();
+    expect(turn).toHaveTextContent(/recorded for Sam's letters as the demo started, and you have changed his to-dos or letters since/);
+    // the reset doesn't touch a demo that runs: stop it first
+    expect(turn).toHaveTextContent("Stop the demo (Ctrl+C where it runs), then run ordnung demo --reset.");
+    expect(within(turn).getByText("ordnung demo --reset").tagName).toBe("CODE");
+    expect(turn).not.toHaveTextContent(/try one of the suggested questions/);
+    expect(within(turn).getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data#set-data-reset");
+    expect(within(turn).queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("The recorded answers no longer fit.");
+    // no more chips that would miss too
+    expect(screen.queryByRole("list", { name: "Suggested questions" })).toBeNull();
+
+    // a question nobody recorded doesn't point to the suggested ones any more either
+    vi.stubGlobal("fetch", base);
+    await user.type(screen.getByLabelText("Your question"), "Who won the football?{Enter}");
+    const other = await screen.findByRole("article", { name: "Question: Who won the football?" });
+    expect(await within(other).findByText("No recorded answer for this question")).toBeInTheDocument();
+    expect(other).toHaveTextContent("there is none for this question");
+    expect(other).not.toHaveTextContent(/suggested questions/);
+  });
+
+  it("once the demo changed, the empty Ask page offers to start over instead of questions that would miss", async () => {
+    useMockApi();
+    const base = globalThis.fetch;
+    // the backend offers no suggested question while its recordings don't fit the changed to-dos
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.endsWith("/api/demo/questions")) return base(input, init);
+      return Promise.resolve(new Response("[]", { status: 200, headers: { "content-type": "application/json" } }));
+    });
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, backend: "replay" });
+    renderWithProviders(<AskPage />, { route: "/ask", client });
+    expect(await screen.findByText("The recorded answers no longer fit")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Start the demo over" })).toHaveAttribute("href", "/settings?section=data#set-data-reset");
+    expect(screen.queryByRole("list", { name: "Suggested questions" })).toBeNull();
+    expect(screen.queryByText(/replay answers recorded/)).toBeNull();
+  });
+
+  it("the untouched demo says its answers fit the demo as it starts", async () => {
+    useMockApi();
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, backend: "replay" });
+    renderWithProviders(<AskPage />, { route: "/ask", client });
+    expect(await screen.findByText("Demo: the suggested questions replay answers recorded for the sample letters as the demo starts.")).toBeInTheDocument();
+    expect(await screen.findByRole("list", { name: "Suggested questions" })).toBeInTheDocument();
+    expect(screen.queryByText("The recorded answers no longer fit")).toBeNull();
   });
 
   it("the online demo explains an unknown question once, in its note — no repeated answer to copy", async () => {

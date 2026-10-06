@@ -145,9 +145,16 @@ export function draftKindFor(item: Item): DraftKind | null {
   return null;
 }
 
+/** A to-do Ordnung filed itself for an incomplete reading: the objection's (`check:reading`) or a date the reading
+ * left out (`check:deadline#<date>-<nature>`; `ordnung.ingest.gaps.is_check_slot`). */
+function isOwnCheck(item: Pick<Item, "slot_key">): boolean {
+  const slot = item.slot_key ?? "";
+  return slot === "check:reading" || slot.split("#")[0] === "check:deadline";
+}
+
 function needsCheckFor(item: Item, reviewIds: Set<string>): boolean {
   // Ordnung's own to-do the person confirmed or dated: nothing left to check (as `needsCheck` on the letter page)
-  if (item.slot_key === "check:reading" && item.grounding === "user") return false;
+  if (isOwnCheck(item) && item.grounding === "user") return false;
   return (
     item.grounding === "unverified" ||
     item.computation?.confidence === "low" ||
@@ -192,9 +199,10 @@ function firstSentence(text: string | null | undefined): string | null {
 
 /**
  * The receipt note of the to-do Ordnung adds for an incomplete reading (`REASON_TEXT[READING_INCOMPLETE]`): its
- * wording now, and the one receipts stored before say ("worked this date out").
+ * wording now, and the one receipts stored before say ("worked this date out") — and that of a to-do for a date the
+ * reading left out (`REASON_TEXT[DEADLINE_LEFT_OUT]`).
  */
-const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions/;
+const READING_INCOMPLETE_NOTE = /^Ordnung (?:took this deadline|worked this date out) from the letter's own instructions|^Ordnung took this date from the letter's own words/;
 
 function reasonForItem(
   item: Item,
@@ -204,7 +212,7 @@ function reasonForItem(
 ): string | null {
   if (needsCheck) {
     // the to-do Ordnung added for an incomplete reading: why it's there, not a side note on delivery days
-    const own = item.slot_key === "check:reading" ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
+    const own = isOwnCheck(item) ? item.computation?.warnings.find((n) => READING_INCOMPLETE_NOTE.test(n)) : undefined;
     const w = own ?? item.computation?.warnings[0] ?? (item.doc_id ? docWarnings.get(item.doc_id)?.[0] : undefined);
     if (w) return w;
   }
@@ -544,12 +552,16 @@ function verbPhrase(a: TodayAction): string {
  * Code-generated fallback for the secretary's note (when the AI note is unavailable): one or two
  * plain sentences built only from the ledger, so every date and amount is right by construction.
  */
-export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0): string {
-  // letters from the watched folder nobody read: their dates are unknown, so nothing is "all clear"
-  const unread = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
+export function agendaSentence(top: readonly TodayAction[], upcoming: readonly TodayAction[], today: string, waiting = 0, failed = 0, queued = 0): string {
+  // letters from the watched folder nobody read, letters that couldn't be read and letters in the queue (waiting
+  // for Claude, say): their dates are unknown, so nothing is "all clear"
+  const held = waiting ? ` ${waiting === 1 ? "One letter" : `${waiting} letters`} from your folder ${waiting === 1 ? "isn't" : "aren't"} read yet.` : "";
+  const broken = failed ? ` ${failed === 1 ? "One letter" : `${failed} letters`} couldn't be read.` : "";
+  const inQueue = queued ? ` ${queued === 1 ? "One letter waits" : `${queued} letters wait`} to be read.` : "";
+  const unread = `${held}${broken}${inQueue}`;
   if (!top.length) {
     const next = upcoming[0];
-    if (waiting) return `Nothing due from the letters that were read.${unread}`;
+    if (unread) return `Nothing due from the letters that were read.${unread}`;
     if (!next) return "Nothing needs you right now. New letters will show up here as soon as they're read.";
     return `Nothing needs you this week. Next up: ${verbPhrase(next)} ${next.dateRole === "on" ? "on" : "by"} ${shortDay(next.actionDate, today)}.`;
   }

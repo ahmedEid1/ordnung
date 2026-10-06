@@ -200,6 +200,18 @@ describe("actions from to-dos & dates", () => {
     expect(old.reason).toBe(stored);
   });
 
+  it("gives a date the reading left out its own reason, and asks no check once the person confirmed it (check:deadline)", () => {
+    const own = "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.";
+    const receipt = makeReceipt({ due_date: "2026-10-15", confidence: "low", warnings: ["Weekends and holidays don't move this date.", own] });
+    const payment = { kind: "payment" as const, title: "Check this date in the letter", due_date: "2026-10-15", doc_id: "doc_d", computation: receipt };
+    const ctx = { today: TODAY, reviewDocs: [{ id: "doc_d", warnings: ["Claude's reading of this letter left out a date the letter sets for you."] }] };
+    const a = actionFromItem(item({ ...payment, slot_key: "check:deadline#2026-10-15-payment" }), ctx)!;
+    expect(a.needsCheck).toBe(true);
+    expect(a.reason).toBe(own);
+    const confirmed = actionFromItem(item({ ...payment, slot_key: "check:deadline", grounding: "user" }), { today: TODAY, reviewDocs: [] })!;
+    expect(confirmed.needsCheck).toBe(false);
+  });
+
   it("never asks to check Ordnung's own to-do once the person confirmed or dated it (R3UX-1)", () => {
     const own = "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.";
     const receipt = makeReceipt({ due_date: "2026-12-09", confidence: "low", warnings: [own] });
@@ -430,6 +442,18 @@ describe("words", () => {
     expect(agendaSentence([], [], TODAY, 2)).toBe("Nothing due from the letters that were read. 2 letters from your folder aren't read yet.");
     const tm = actionFromItem(item({ kind: "payment", title: "Pay TechMarkt reminder", due_date: "2026-09-30", amount: 94.99 }), ctx)!;
     expect(agendaSentence([tm], [], TODAY, 1)).toMatch(/by Wednesday\. One letter from your folder isn't read yet\.$/);
+  });
+
+  it("never says 'nothing needs you' while letters couldn't be read (UX U2)", () => {
+    expect(agendaSentence([], [], TODAY, 0, 2)).toBe("Nothing due from the letters that were read. 2 letters couldn't be read.");
+    expect(agendaSentence([], [], TODAY, 1, 1)).toBe(
+      "Nothing due from the letters that were read. One letter from your folder isn't read yet. One letter couldn't be read.",
+    );
+  });
+
+  it("never says 'nothing needs you' while letters wait in the queue — for Claude, say (final check F-M1)", () => {
+    expect(agendaSentence([], [], TODAY, 0, 0, 2)).toBe("Nothing due from the letters that were read. 2 letters wait to be read.");
+    expect(agendaSentence([], [], TODAY, 0, 1, 1)).toBe("Nothing due from the letters that were read. One letter couldn't be read. One letter waits to be read.");
   });
 });
 

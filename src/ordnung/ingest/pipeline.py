@@ -28,7 +28,6 @@ stage, a PDF whose every page has its own text no "transcribe".
 from __future__ import annotations
 
 import asyncio
-import importlib
 import inspect
 import logging
 import sqlite3
@@ -53,7 +52,13 @@ from ordnung.ingest.attachments import (
     email_parent,
     email_source,
 )
-from ordnung.ingest.extract import ExtractionError, ExtractionInput, extract_document, prompt_pages
+from ordnung.ingest.extract import (
+    ExtractionError,
+    ExtractionInput,
+    prompt_pages,
+    read_document,
+    reask_warning,
+)
 from ordnung.ingest.intake import (
     TEXT_TYPES,
     IntakeError,
@@ -96,8 +101,18 @@ from ordnung.ingest.text import (
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
-from ordnung.models import PROOF_SOURCE, Direction, Document, DocumentExtraction, EmailAttachment, Job, Page
+from ordnung.models import (
+    PROOF_SOURCE,
+    Direction,
+    Document,
+    DocumentExtraction,
+    EmailAttachment,
+    Job,
+    Page,
+    Party,
+)
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, RuleContext, parse_date
+from ordnung.secretary.triggers import is_scam_warning, run_and_reconcile
 from ordnung.trace import facts
 from ordnung.trace.runs import finish_trace, start_trace
 from ordnung.trace.spans import NO_SPAN, Span
@@ -137,9 +152,16 @@ HIDDEN_TEXT_WARNING = (
     "This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — "
     "hidden text is a common trick in scams, so be careful."
 )
+#: How the warning about text addressed to an AI starts (:func:`injection_warnings`).
+INJECTION_WARNING = "This document contains text addressed to an AI"
 NO_TEXT_ERROR = "We couldn't find any readable text in this document."
-UNEXPECTED_ERROR = "Something went wrong while reading this document. Try “Reprocess”; if it keeps failing, please report it."
+UNEXPECTED_ERROR = "Something went wrong while reading this letter. Press “Try again”; if it keeps failing, please report it."
 TRASHED_ERROR = "This letter was deleted before it was read, so it was not sent to Claude."
+#: The letter was put in the trash (or deleted) while Claude was reading it: no further call sends it again (the
+#: repair, the completeness re-ask) — it was sent once, so the message says so.
+TRASHED_AGAIN_ERROR = (
+    "This letter was deleted while Claude was reading it, so it was not sent to Claude again."
+)
 
 _LEDGER_LOCKS: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock] = (
     weakref.WeakKeyDictionary()
@@ -382,8 +404,10 @@ async def add_file_result(
             )
         return Added(known, new=False)
     doc_id = doc_id_for_sha(stored.sha256)
-    rendered = await asyncio.to_thread(render_pages, stored.path, stored.mime, store.paths.derived, doc_id)
     try:
+        rendered = await asyncio.to_thread(
+            render_pages, stored.path, stored.mime, store.paths.derived, doc_id
+        )
         with store.tx():
             document = store.add_document(
                 id=doc_id,
@@ -400,11 +424,15 @@ async def add_file_result(
             )
             store.set_pages(doc_id, _page_rows(store, rendered))
             job = store.enqueue_job("ingest", doc_id)
-    except sqlite3.IntegrityError:  # the same file was added concurrently
-        concurrent = store.get_document_by_sha(stored.sha256)
-        if concurrent is None:
-            raise
-        return Added(concurrent, new=False)
+    except Exception as exc:
+        if isinstance(exc, sqlite3.IntegrityError):  # the same file was added concurrently
+            concurrent = store.get_document_by_sha(stored.sha256)
+            if concurrent is not None:
+                return Added(concurrent, new=False)
+        # refused (a page that can't be rendered …): its file and page images go too, unless a
+        # document has that file
+        store.discard_upload(stored.sha256, doc_id, stored.path)
+        raise
     store.log_activity(
         "document.added",
         _added_message(store, upload.filename, source, hold),
@@ -675,8 +703,8 @@ def injection_warnings(pages: Sequence[Page]) -> list[str]:
         return []
     shown = "; ".join(f"“{phrase}”" for phrase in phrases[:3])
     return [
-        f"This document contains text addressed to an AI ({shown}). Ordnung treated it as ordinary "
-        "content and ignored it — be careful with this document."
+        f"{INJECTION_WARNING} ({shown}). Ordnung treated it as ordinary content and ignored it — be careful "
+        "with this document."
     ]
 
 
@@ -833,6 +861,16 @@ def _refuse_trashed(store: Store, doc_id: str) -> None:
         raise IntakeError(TRASHED_ERROR)
 
 
+def _refuse_gone(store: Store, doc_id: str) -> None:
+    """Before a further call sends the letter again (the repair, the completeness re-ask): never once it was
+    deleted for good or put in the trash while the call before it ran."""
+    current = store.get_document(doc_id)
+    if current is None:
+        raise NotFoundError(f"documents: no row with id {doc_id!r}")
+    if current.deleted_at is not None:
+        raise IntakeError(TRASHED_AGAIN_ERROR)
+
+
 def _extraction_input(ctx: AppContext, document: Document, pages: Sequence[Page]) -> ExtractionInput:
     profile = ctx.store.get_profile()
     today = person_today(ctx.store).isoformat()
@@ -845,8 +883,29 @@ def _extraction_input(ctx: AppContext, document: Document, pages: Sequence[Page]
         region=profile.region,
         country=profile.country,
         person_name=profile.name,
-        known_parties=ctx.store.list_parties()[:MAX_KNOWN_PARTIES],
+        known_parties=_known_parties(ctx.store),
         simulated_today=today if clock.simulated() else None,
+    )
+
+
+def _known_parties(store: Store) -> list[Party]:
+    """The senders a reading's prompt names (at most :data:`MAX_KNOWN_PARTIES`): never one first seen on a
+    letter with scam signs or text addressed to an AI — that letter may have planted the name (SPEC § 21)."""
+    first: dict[str, Document] = {}
+    for document in store.list_documents(include_deleted=True):
+        seen = first.get(document.party_id or "")
+        if document.party_id and (
+            seen is None or (document.created_at, document.id) < (seen.created_at, seen.id)
+        ):
+            first[document.party_id] = document
+    planted = {party_id for party_id, document in first.items() if _suspicious(document)}
+    return [party for party in store.list_parties() if party.id not in planted][:MAX_KNOWN_PARTIES]
+
+
+def _suspicious(document: Document) -> bool:
+    """A letter with scam signs in its reading (hidden text, a scam-like warning) or text addressed to an AI."""
+    return document.hidden_text or any(
+        is_scam_warning(warning) or warning.startswith(INJECTION_WARNING) for warning in document.warnings
     )
 
 
@@ -958,13 +1017,24 @@ async def _run_stages(
     warnings += injected
     _refuse_trashed(store, document.id)
     await progress.stage("extract")
-    extraction = await extract_document(
+    arrived = parse_date(document.received_date) or person_today(store)
+    reading = await read_document(
         ctx.llm,
         _extraction_input(ctx, document, pages),
         model=models.extract,
         use_cache=not force,
         trace=trace,
+        # a re-ask that gets no answer keeps the first reading and the check behind it: never a failed letter
+        unanswered=(LLMError,),
+        # the repair and the re-ask send the letter again: never once it was trashed or deleted meanwhile
+        before_again=lambda: _refuse_gone(store, document.id),
+        # judged against the very to-do the check at verify would file
+        arrived=arrived,
+        injected=bool(injected),
     )
+    extraction = reading.extraction
+    if reading.completion is not None and reading.completion.accepted:
+        warnings.append(reask_warning(reading.completion.gap, injected=bool(injected)))
     await progress.stage("verify")
     verification = await asyncio.to_thread(
         verify_extraction,
@@ -974,7 +1044,8 @@ async def _run_stages(
         trace=trace,
         check_reading=True,
         injected=bool(injected),
-        today=parse_date(document.received_date) or person_today(store),
+        today=arrived,
+        cross_check=reading.cross_check,
     )
     await progress.stage("compute")
     profile = store.get_profile()
@@ -1021,20 +1092,23 @@ def failure_code(exc: BaseException) -> str:
     """Why a reading failed, as the code its trace keeps (:data:`ordnung.trace.runs.FAILURES`) — an
     error's message may quote the letter or the model, so a trace never keeps it."""
     if isinstance(exc, IntakeError):
-        return "trashed" if str(exc) == TRASHED_ERROR else "file"
+        return {TRASHED_ERROR: "trashed", TRASHED_AGAIN_ERROR: "trashed_meanwhile"}.get(str(exc), "file")
     if isinstance(exc, ExtractionError):
         return "no_text" if str(exc) == NO_TEXT_ERROR else "unusable_answer"
     if isinstance(exc, NotFoundError):
         return "gone"
-    for kind, code in (
-        (ClaudeNotInstalled, "not_installed"),
-        (ClaudeAuthError, "not_signed_in"),
-        (ClaudeTimeout, "timeout"),
-        (LLMError, "claude_error"),
-    ):
-        if isinstance(exc, kind):
-            return code
-    return "unexpected"
+    if isinstance(exc, ClaudeTimeout):
+        return "timeout"
+    return "claude_error" if isinstance(exc, LLMError) else "unexpected"
+
+
+def pause_code(exc: ClaudeRateLimited | ClaudeNotInstalled | ClaudeAuthError) -> str:
+    """Why a reading paused, as the code its trace keeps (:data:`ordnung.trace.runs.INTERRUPTIONS`)."""
+    if isinstance(exc, ClaudeNotInstalled):
+        return "paused_not_installed"
+    if isinstance(exc, ClaudeAuthError):
+        return "paused_not_signed_in"
+    return "paused"
 
 
 def _mark_failed(store: Store, doc_id: str, message: str) -> None:
@@ -1057,8 +1131,9 @@ async def ingest_document(
     ``force`` bypasses the model cache (reprocess). ``on_stage(stage, progress)`` may be sync or
     async. With ``job_id`` the job row follows the stages and ends ``done`` or ``failed``.
     On failure the document becomes ``failed`` with a readable ``error`` and the exception is
-    re-raised — except a rate limit or a stop, which put the document back to ``queued`` for the
-    worker. A held letter (:mod:`ordnung.ingest.held`) keeps waiting whatever happens to its local
+    re-raised — except a rate limit, Claude not installed or not signed in, or a stop, which put the
+    document back to ``queued`` for the worker (no failure is announced; the reading's trace ends
+    ``paused`` or ``stopped``) and re-raise. A held letter (:mod:`ordnung.ingest.held`) keeps waiting whatever happens to its local
     job: stopped or failed, its status stays as the person's answer left it (``held`` until they
     answer), and a failure is only written to ``error``. Every reading, however it ends, is kept as a
     trace (:mod:`ordnung.trace.runs`).
@@ -1077,10 +1152,10 @@ async def ingest_document(
         if not progress.quiet:
             store.update_document(doc_id, status="processing", error=None)
         document = await _run_stages(ctx, document, progress, force=force, trace=tracer.root)
-    except ClaudeRateLimited:
+    except (ClaudeRateLimited, ClaudeNotInstalled, ClaudeAuthError) as exc:
         if not progress.quiet:
             _set_status_quietly(store, doc_id, "queued")
-        finish_trace(store, tracer, "paused")
+        finish_trace(store, tracer, "paused", pause_code(exc))
         raise
     except asyncio.CancelledError:
         if not progress.quiet:
@@ -1119,40 +1194,18 @@ def _set_status_quietly(store: Store, doc_id: str, status: Literal["queued"]) ->
 
 
 # --------------------------------------------------------------------------------------------------
-# Triggers hook
+# Triggers
 # --------------------------------------------------------------------------------------------------
-
-TriggersHook = Callable[[Store, date], object]
-
-
-def triggers_hook() -> TriggersHook | None:
-    """``ordnung.secretary.triggers.run_and_reconcile`` if that module exists (else ``None``)."""
-    try:
-        module = importlib.import_module("ordnung.secretary.triggers")
-    except ModuleNotFoundError as exc:
-        if exc.name != "ordnung.secretary.triggers":
-            log.warning("the triggers module could not be imported", exc_info=True)
-        return None
-    except ImportError:
-        log.warning("the triggers module could not be imported", exc_info=True)
-        return None
-    hook = getattr(module, "run_and_reconcile", None)
-    return hook if callable(hook) else None
 
 
 async def run_triggers(ctx: AppContext) -> bool:
-    """Run the deterministic triggers (Ideas) after ledger changes; ``False`` if unavailable or failed.
+    """Run the deterministic triggers (Ideas) after ledger changes; ``False`` if they failed.
 
     Never raises: a broken trigger must not fail the document that was just read.
     """
-    hook = triggers_hook()
-    if hook is None:
-        return False
     try:
         async with ledger_lock():
-            result = await asyncio.to_thread(hook, ctx.store, person_today(ctx.store))
-            if inspect.isawaitable(result):
-                await result
+            await asyncio.to_thread(run_and_reconcile, ctx.store, person_today(ctx.store))
     except Exception:
         log.warning("running the triggers failed", exc_info=True)
         return False

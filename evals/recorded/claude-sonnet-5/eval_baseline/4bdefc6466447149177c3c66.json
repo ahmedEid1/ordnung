@@ -1,0 +1,60 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"80e9a213f2fb722653cea0b605300c3527f4dc1b71b1f2a0d3274a8354424e05\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-06-30\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-contract_confirmation-J1"
+    ],
+    "prompt_head": "Today is Wednesday, 2027-06-30 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[68.52],\"contract\":{\"current_term_end\":\"2028-07-31\",\"cancel_by\":\"2028-06-30\"},\"items\":[{\"kind\":\"payment\",\"title\":\"Annual premium direct debit\",\"quote\":\"Den Jahresbeitrag buchen wir zum Versicherungsbeginn von Ihrem Konto ab.\",\"computation\":\"The letter states the policy start (Versicherungsbeginn) is 01.08.2027, 0:00 Uhr, and that the annual premium ('Jahresbeitrag') will be debited from the account at that start date. No separate payment date is given, so the due date equals the stated Versicherungsbeginn.\",\"due_date\":\"2027-08-01\",\"confidence\":\"high\",\"amount\":68.52}],\"kind\":\"insurance\",\"document_date\":\"2027-06-24\",\"references\":[{\"label\":\"Versicherungsschein-Nr.\",\"value\":\"PHV-27-5530918\"}],\"remedy_type\":\"none\",\"sender_name\":\"Musterhanse Versicherung AG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [
+        68.52
+      ],
+      "contract": {
+        "current_term_end": "2028-07-31",
+        "cancel_by": "2028-06-30"
+      },
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Annual premium direct debit",
+          "quote": "Den Jahresbeitrag buchen wir zum Versicherungsbeginn von Ihrem Konto ab.",
+          "computation": "The letter states the policy start (Versicherungsbeginn) is 01.08.2027, 0:00 Uhr, and that the annual premium ('Jahresbeitrag') will be debited from the account at that start date. No separate payment date is given, so the due date equals the stated Versicherungsbeginn.",
+          "due_date": "2027-08-01",
+          "confidence": "high",
+          "amount": 68.52
+        }
+      ],
+      "kind": "insurance",
+      "document_date": "2027-06-24",
+      "references": [
+        {
+          "label": "Versicherungsschein-Nr.",
+          "value": "PHV-27-5530918"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Musterhanse Versicherung AG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2241,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2505,
+      "cost_usd": 0.03354,
+      "duration_ms": 25119,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

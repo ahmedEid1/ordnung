@@ -14,6 +14,7 @@ import { MOCK_WEEK, MOCK_WEEK_DEADLINES } from "@/mocks/data/numbers";
 import { mockWeek, nextPromptDay } from "@/mocks/numbers";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import type { MockServer } from "@/mocks/server";
 import { chooseStepLabels, staggeredLabelsFit } from "@/components/ui/Stepper";
 import { MEANING_ICONS } from "@/lib/copy";
 import { STEP_META, WEEKLY_REVIEW, entryHref, sessionHighlights, stepCount } from "./steps";
@@ -41,6 +42,11 @@ async function renderWeek(route = "/week", steps = 7) {
   );
   await screen.findByText(new RegExp(`^Step \\d of ${steps}$`));
   return { user, ...out };
+}
+
+/** Sam answered the letters waiting from his folder: none is left unread, so the ending may say "All clear". */
+function noLettersWaiting(srv: MockServer): void {
+  for (const d of srv.db.state.documents) if (d.status === "held") d.status = "processed";
 }
 
 /** A row as `ordnung/secretary/week.py` writes one (the fields a test does not care about empty). */
@@ -227,6 +233,7 @@ describe("the session page", () => {
     const { calls, srv } = useMockApi();
     // the demo's phone promise is overdue: kept, nothing is (see "the static demo's session follows the visitor")
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
+    noLettersWaiting(srv);
     const { user } = await renderWeek("/week?step=file");
     expect(screen.getByText("Nothing here this week — you're done: press Finish.")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
@@ -300,7 +307,7 @@ describe("the session page", () => {
   });
 
   it("says “One thing to do today” only when there is one", async () => {
-    useMockApi();
+    noLettersWaiting(useMockApi().srv);
     const today = MOCK_WEEK.today;
     const form = row({ key: "form", title: "Hand in the form", date: today, date_role: "due" });
     const week = { ...MOCK_WEEK, next_deadline: form, due_today: 1, overdue: 0 };
@@ -584,9 +591,51 @@ describe("the static demo's session follows the visitor", () => {
     expect(mockWeek(srv.db).overdue).toBe(0);
   });
 
+  it("never ends “All clear” while letters aren't read — as Today says (UX U2)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // nothing overdue
+    noLettersWaiting(srv);
+    const scan = srv.db.state.documents[0]!;
+    scan.status = "failed";
+    const failedRow = row({ key: `document:${scan.id}`, title: scan.title ?? scan.filename, kind: "other", status: "failed", note: "Couldn't be read — open it to try again." });
+    const failedEntry = { ...failedRow, ref: { type: "document" as const, id: scan.id }, doc_id: scan.id };
+    const week = mockWeek(srv.db);
+    const withFailed = { ...week, steps: week.steps.map((s) => (s.id === "new" ? { ...s, entries: [failedEntry, ...s.entries] } : s)) };
+    vi.spyOn(api, "week").mockResolvedValue(withFailed);
+    vi.spyOn(api, "weekDone").mockResolvedValue({ ...withFailed, last_session: MOCK_WEEK.today });
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    const heading = await screen.findByRole("heading", { name: "Nothing due from the letters that were read" });
+    expect(heading).toHaveFocus();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.getByText(/^1 letter isn't read yet: Ordnung can't tell what it asks until it is\./)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "See it" }));
+    await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: /^New/ })).toHaveFocus());
+  });
+
+  it("never ends “All clear” while a letter waits in the queue — for Claude, say (final check F-M1)", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // nothing overdue
+    noLettersWaiting(srv);
+    const scan = srv.db.state.documents[0]!;
+    scan.status = "queued"; // Claude isn't installed: the letter waits instead of failing
+    const queuedRow = row({ key: `document:${scan.id}`, title: scan.title ?? scan.filename, kind: "other", status: "queued", note: "Being read." });
+    const queuedEntry = { ...queuedRow, ref: { type: "document" as const, id: scan.id }, doc_id: scan.id };
+    const week = mockWeek(srv.db);
+    const withQueued = { ...week, steps: week.steps.map((s) => (s.id === "new" ? { ...s, entries: [queuedEntry, ...s.entries] } : s)) };
+    vi.spyOn(api, "week").mockResolvedValue(withQueued);
+    vi.spyOn(api, "weekDone").mockResolvedValue({ ...withQueued, last_session: MOCK_WEEK.today });
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    expect(await screen.findByRole("heading", { name: "Nothing due from the letters that were read" })).toBeInTheDocument();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.getByText(/^1 letter isn't read yet: Ordnung can't tell what it asks until it is\./)).toBeInTheDocument();
+  });
+
   it("finishes “All clear until” the next transfer after paying the first", async () => {
     const { srv } = useMockApi();
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // the phone promise was kept
+    noLettersWaiting(srv);
     const first = mockWeek(srv.db).next_deadline!;
     srv.db.state.items.find((i) => i.id === first.ref.id)!.status = "done";
     const { user } = await renderWeek("/week?step=file");

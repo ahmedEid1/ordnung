@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"0a763668edc9129f8ceeb7bbedbc42e95f59b9245d95a0d4433ff5686b72ac51\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-10-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[267,49.5,25,341.5],\"contract\":null,\"document_date\":\"2025-10-14\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay disputed collection claim\",\"quote\":\"Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.\",\"computation\":\"The letter states an explicit calendar date ('bis zum 22.10.2025') rather than a period to be counted. 22.10.2025 is a Wednesday, not a weekend day or a public holiday in NRW, so no §193 BGB shift applies. The due date is simply the date printed.\",\"due_date\":\"2025-10-22\",\"confidence\":\"high\",\"amount\":341.5}],\"kind\":\"dunning\",\"references\":[{\"label\":\"Akte\",\"value\":\"EFB-25-447192\"}],\"remedy_type\":\"none\",\"sender_name\":\"EuroForderung Beispiel Inkasso Ltd.\",\"warnings\":[\"The payment is demanded to a Bulgarian IBAN (BG30 BUIN...) payable to a private individual (V. Dimitrova), not a German business account – this is a strong scam/fraud indicator for a German debt‑collection claim and should be verified before any payment is made.\",\"The letter threatens immediate Schufa‑style credit‑bureau entry, wage garnishment ('Pfändung Ihres Gehalts') and bank‑account freezing ('Sperrung Ihres Bankkontos') without any mention of a court judgment or enforceable title; under German law such measures require a Vollstreckungstitel and cannot lawfully be imposed by a collection agency on its own – this is a pressure/intimidation tactic typical of scam dunning letters.\",\"The sentence 'Ein Widerspruch ist ausgeschlossen.' (an objection is excluded) is misleading: a debtor can always dispute a private claim, and no collection agency can legally exclude this right; this phrasing, combined with restricting contact to e‑mail only ('Rückfragen nur per E‑Mail'), matches known patterns of fraudulent 'Gewinnspiel‑Eintragungsservice' collection scams.\",\"The underlying contract (a phone‑ordered lottery‑entry subscription service allegedly concluded 03.06.2025) is not evidenced by any order confirmation, Grundpreisangabe or widerrufsbelehrung in this letter; before paying, the recipient should demand proof of the original contract and consider contacting a consumer protection agency (Verbraucherzentrale) rather than paying the foreign account directly.\",\"Sender and recipient names/places ('EuroForderung Beispiel', 'Laura Beispielwinkel', 'Musterlingen am Neckar') appear to be placeholder/sample values rather than real identifying data, suggesting this document may be a template rather than a genuine individualized collection letter.\"]}",
+    "data": {
+      "amounts": [
+        267,
+        49.5,
+        25,
+        341.5
+      ],
+      "contract": null,
+      "document_date": "2025-10-14",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay disputed collection claim",
+          "quote": "Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.",
+          "computation": "The letter states an explicit calendar date ('bis zum 22.10.2025') rather than a period to be counted. 22.10.2025 is a Wednesday, not a weekend day or a public holiday in NRW, so no §193 BGB shift applies. The due date is simply the date printed.",
+          "due_date": "2025-10-22",
+          "confidence": "high",
+          "amount": 341.5
+        }
+      ],
+      "kind": "dunning",
+      "references": [
+        {
+          "label": "Akte",
+          "value": "EFB-25-447192"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "EuroForderung Beispiel Inkasso Ltd.",
+      "warnings": [
+        "The payment is demanded to a Bulgarian IBAN (BG30 BUIN...) payable to a private individual (V. Dimitrova), not a German business account – this is a strong scam/fraud indicator for a German debt‑collection claim and should be verified before any payment is made.",
+        "The letter threatens immediate Schufa‑style credit‑bureau entry, wage garnishment ('Pfändung Ihres Gehalts') and bank‑account freezing ('Sperrung Ihres Bankkontos') without any mention of a court judgment or enforceable title; under German law such measures require a Vollstreckungstitel and cannot lawfully be imposed by a collection agency on its own – this is a pressure/intimidation tactic typical of scam dunning letters.",
+        "The sentence 'Ein Widerspruch ist ausgeschlossen.' (an objection is excluded) is misleading: a debtor can always dispute a private claim, and no collection agency can legally exclude this right; this phrasing, combined with restricting contact to e‑mail only ('Rückfragen nur per E‑Mail'), matches known patterns of fraudulent 'Gewinnspiel‑Eintragungsservice' collection scams.",
+        "The underlying contract (a phone‑ordered lottery‑entry subscription service allegedly concluded 03.06.2025) is not evidenced by any order confirmation, Grundpreisangabe or widerrufsbelehrung in this letter; before paying, the recipient should demand proof of the original contract and consider contacting a consumer protection agency (Verbraucherzentrale) rather than paying the foreign account directly.",
+        "Sender and recipient names/places ('EuroForderung Beispiel', 'Laura Beispielwinkel', 'Musterlingen am Neckar') appear to be placeholder/sample values rather than real identifying data, suggesting this document may be a template rather than a genuine individualized collection letter."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3088,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2620,
+      "cost_usd": 0.041988399999999995,
+      "duration_ms": 36709,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"cceb68c6f81a94af32aeca17191a5ebce1d814e8b10907db17e3e80c5183d123\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-07-06\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-relative_business_days-J1"
+    ],
+    "prompt_head": "Today is Sunday, 2025-07-06 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"amounts\":[],\"contract\":null,\"document_date\":\"2025-07-04\",\"items\":[{\"kind\":\"task\",\"title\":\"Return signed usage contract\",\"quote\":\"Bitte senden Sie uns ein unterschriebenes Exemplar innerhalb von 14 Werktagen ab dem Datum dieses Briefes zurück; mitgezählt werden Montag bis Samstag, nicht aber Sonntage und Feiertage.\",\"computation\":\"Private deadline, counted under §§ 187 Abs. 1, 193 BGB. Start event is the letter's date, Friday 04.07.2025; that day is not counted, so the period starts Saturday 05.07.2025. 'Werktage' here are explicitly defined by the letter as Monday–Saturday, excluding Sundays and public holidays. Counting only such days from 05.07.2025: day1=Sat 05.07, day2=Mon 07.07 (Sun 06.07 skipped), day3=Tue 08.07, day4=Wed 09.07, day5=Thu 10.07, day6=Fri 11.07, day7=Sat 12.07, day8=Mon 14.07 (Sun 13.07 skipped), day9=Tue 15.07, day10=Wed 16.07, day11=Thu 17.07, day12=Fri 18.07, day13=Sat 19.07, day14=Mon 21.07 (Sun 20.07 skipped). No NRW public holidays fall in this window. The 14th qualifying day is Monday 21.07.2025, which is itself a working day, so no further shift is needed under § 193 BGB.\",\"due_date\":\"2025-07-21\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"milestone\",\"title\":\"Apartment allocation / move-in date\",\"quote\":\"der Vorstand hat Ihnen die Wohnung Lindenhof 6 zum 01.09.2025 zugeteilt.\",\"computation\":\"The letter states the apartment is allocated to the member as of this calendar date; no counting is needed, the date is taken as printed.\",\"due_date\":\"2025-09-01\",\"confidence\":\"high\",\"amount\":null}],\"kind\":\"rent_lease\",\"references\":[{\"label\":\"Wohnungsnummer\",\"value\":\"LH6-2L\"},{\"label\":\"Mitglied\",\"value\":\"M-8840\"}],\"remedy_type\":\"none\",\"sender_name\":\"Wohnungsgenossenschaft Beispielheim eG\",\"warnings\":[]}",
+    "data": {
+      "amounts": [],
+      "contract": null,
+      "document_date": "2025-07-04",
+      "items": [
+        {
+          "kind": "task",
+          "title": "Return signed usage contract",
+          "quote": "Bitte senden Sie uns ein unterschriebenes Exemplar innerhalb von 14 Werktagen ab dem Datum dieses Briefes zurück; mitgezählt werden Montag bis Samstag, nicht aber Sonntage und Feiertage.",
+          "computation": "Private deadline, counted under §§ 187 Abs. 1, 193 BGB. Start event is the letter's date, Friday 04.07.2025; that day is not counted, so the period starts Saturday 05.07.2025. 'Werktage' here are explicitly defined by the letter as Monday–Saturday, excluding Sundays and public holidays. Counting only such days from 05.07.2025: day1=Sat 05.07, day2=Mon 07.07 (Sun 06.07 skipped), day3=Tue 08.07, day4=Wed 09.07, day5=Thu 10.07, day6=Fri 11.07, day7=Sat 12.07, day8=Mon 14.07 (Sun 13.07 skipped), day9=Tue 15.07, day10=Wed 16.07, day11=Thu 17.07, day12=Fri 18.07, day13=Sat 19.07, day14=Mon 21.07 (Sun 20.07 skipped). No NRW public holidays fall in this window. The 14th qualifying day is Monday 21.07.2025, which is itself a working day, so no further shift is needed under § 193 BGB.",
+          "due_date": "2025-07-21",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "milestone",
+          "title": "Apartment allocation / move-in date",
+          "quote": "der Vorstand hat Ihnen die Wohnung Lindenhof 6 zum 01.09.2025 zugeteilt.",
+          "computation": "The letter states the apartment is allocated to the member as of this calendar date; no counting is needed, the date is taken as printed.",
+          "due_date": "2025-09-01",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "kind": "rent_lease",
+      "references": [
+        {
+          "label": "Wohnungsnummer",
+          "value": "LH6-2L"
+        },
+        {
+          "label": "Mitglied",
+          "value": "M-8840"
+        }
+      ],
+      "remedy_type": "none",
+      "sender_name": "Wohnungsgenossenschaft Beispielheim eG",
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 2986,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2502,
+      "cost_usd": 0.040978,
+      "duration_ms": 29635,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -7,8 +7,8 @@
  * (`demo/asks.json`) on a ledger it recorded it on — every combination of opened New-mail letters on the
  * untouched demo (`demo/loader.py`, `_exercise_asks`; the key is the question, today and a hash of the
  * ledger: every field of every letter, to-do, contract and party but its timestamps). Any test that changes
- * the ledger and doesn't put it back exactly leaves every later question with "No recorded answer for this
- * question". The layout project runs its files in name order, and files before `layout.spec.ts` (where these
+ * the ledger and doesn't put it back exactly leaves every later recorded question with "The recorded answers
+ * no longer fit". The layout project runs its files in name order, and files before `layout.spec.ts` (where these
  * tests were) change the ledger for a while and put it back (a contract's notice terms in
  * `contracts-layout.spec.ts`, which checks that it came back; letters from a watched folder in
  * `folder-layout.spec.ts`). Here the tests run before all of them, on the ledger the tour, the pages and the
@@ -30,7 +30,7 @@ async function ask(page: Page, question: string): Promise<void> {
   await page.getByRole("textbox").first().press("Enter");
   await expect(turns).toHaveCount(before + 1);
   const status = page.getByRole("main").getByRole("status");
-  await expect(status).toHaveText(/^(Answer ready|No recorded answer for this question)\.$/);
+  await expect(status).toHaveText(/^(Answer ready|No recorded answer for this question|The recorded answers no longer fit)\.$/);
   expect(
     await status.textContent(),
     `“${question}” is one of the demo's recorded questions: no recording on this ledger means a test run before this one changed a letter, to-do or contract and didn't put it back`,

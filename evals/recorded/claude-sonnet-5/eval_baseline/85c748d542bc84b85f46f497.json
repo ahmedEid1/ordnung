@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"7a82e0d7ee5cfd1a0ec2ecd189ecb512968385fcbfb5f64ef811de96651907fd\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-05-27\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-invoice_relative-J1"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-05-27 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"invoice\",\"sender_name\":\"Physiotherapie Beispielbalance\",\"document_date\":\"2025-05-23\",\"references\":[{\"label\":\"Rechnungsnummer\",\"value\":\"PB-0525-117\"},{\"label\":\"Patienten-Nr.\",\"value\":\"11 840\"}],\"amounts\":[301.3],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay physiotherapy invoice\",\"quote\":\"Den Betrag überweisen Sie bitte binnen 30 Tagen ab dem oben genannten Rechnungsdatum; als Verwendungszweck genügt die Rechnungsnummer.\",\"computation\":\"This is a private (civil-law) invoice, not an administrative act, so the period runs under §§ 187, 193 BGB. The triggering event is the Rechnungsdatum itself (23.05.2025); under § 187(1) BGB the day of the event is not counted, so the 30-day period starts on 24.05.2025. Counting 30 days from 24.05.2025: May has 8 remaining days (24-31), leaving 22 days to reach June; 24+22=22.06.2025 is day 30. 22.06.2025 is a Sunday. Under § 193 BGB, if the last day of a period for a payment falls on a Sunday, Saturday or public holiday, the period ends on the next working day. 23.06.2025 is a Monday and not a public holiday in NRW (Fronleichnam, 19.06.2025, already past), so the due date shifts to 23.06.2025.\",\"due_date\":\"2025-06-23\",\"confidence\":\"high\",\"amount\":301.3}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "invoice",
+      "sender_name": "Physiotherapie Beispielbalance",
+      "document_date": "2025-05-23",
+      "references": [
+        {
+          "label": "Rechnungsnummer",
+          "value": "PB-0525-117"
+        },
+        {
+          "label": "Patienten-Nr.",
+          "value": "11 840"
+        }
+      ],
+      "amounts": [
+        301.3
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay physiotherapy invoice",
+          "quote": "Den Betrag überweisen Sie bitte binnen 30 Tagen ab dem oben genannten Rechnungsdatum; als Verwendungszweck genügt die Rechnungsnummer.",
+          "computation": "This is a private (civil-law) invoice, not an administrative act, so the period runs under §§ 187, 193 BGB. The triggering event is the Rechnungsdatum itself (23.05.2025); under § 187(1) BGB the day of the event is not counted, so the 30-day period starts on 24.05.2025. Counting 30 days from 24.05.2025: May has 8 remaining days (24-31), leaving 22 days to reach June; 24+22=22.06.2025 is day 30. 22.06.2025 is a Sunday. Under § 193 BGB, if the last day of a period for a payment falls on a Sunday, Saturday or public holiday, the period ends on the next working day. 23.06.2025 is a Monday and not a public holiday in NRW (Fronleichnam, 19.06.2025, already past), so the due date shifts to 23.06.2025.",
+          "due_date": "2025-06-23",
+          "confidence": "high",
+          "amount": 301.3
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 3207,
+      "cache_read_tokens": 8711,
+      "cache_creation_tokens": 5007,
+      "cost_usd": 0.0538482,
+      "duration_ms": 36492,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

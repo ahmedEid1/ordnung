@@ -255,6 +255,7 @@ class EncryptedWriter(io.RawIOBase):
         random_bytes: Callable[[int], bytes] = os.urandom,
     ) -> None:
         super().__init__()
+        self._sealed = True  # nothing to seal until the header is written: a refused writer closes quietly
         if not passphrase:
             raise BackupError("A backup needs a passphrase.")
         if not MIN_CHUNK_SIZE <= chunk_size <= MAX_CHUNK_SIZE:
@@ -271,8 +272,8 @@ class EncryptedWriter(io.RawIOBase):
         self._aead = AESGCM(keys.data)
         self._buffer = bytearray()
         self._counter = 0
-        self._sealed = False
         out.write(self._header.raw)
+        self._sealed = False
 
     def writable(self) -> bool:
         return True

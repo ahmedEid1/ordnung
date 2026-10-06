@@ -198,6 +198,32 @@ describe("To-dos & dates", () => {
     expect(tick.querySelector("span")).toHaveClass("border-muted");
   });
 
+  it("keeps focus on the mark-done button while the change is saved: aria-disabled, not disabled (UX audit U4)", async () => {
+    let answer: () => void = () => {};
+    const patches: unknown[] = [];
+    vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        patches.push(JSON.parse(String(init.body)));
+        await new Promise<void>((resolve) => (answer = resolve));
+      }
+      return new Response(JSON.stringify({}), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    renderWithProviders(<ItemsList items={[makeItem({ title: "Send the form" })]} docId="doc_1" />, { client: client() });
+    const user = userEvent.setup();
+    const tick = screen.getByRole("button", { name: "Mark “Send the form” as done" });
+    tick.focus();
+    await user.keyboard(" ");
+    await waitFor(() => expect(tick).toHaveAttribute("aria-disabled", "true"));
+    expect(tick).not.toBeDisabled();
+    expect(tick).toHaveFocus();
+    // a second press while it is saved sends nothing more
+    await user.keyboard(" ");
+    expect(patches).toEqual([{ status: "done" }]);
+    await act(async () => answer());
+    await waitFor(() => expect(tick).not.toHaveAttribute("aria-disabled"));
+    expect(tick).toHaveFocus();
+  });
+
   it("keeps a ticked-off to-do in its place until you leave the page", () => {
     const a = makeItem({ id: "itm_a", title: "First", ...due("2026-10-01") });
     const b = makeItem({ id: "itm_b", title: "Second", ...due("2026-10-05") });

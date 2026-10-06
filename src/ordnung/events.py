@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -14,9 +13,6 @@ from typing import Any
 class Event:
     type: str  # "job.progress" | "document.processed" | "suggestions.updated" | "item.updated" | ...
     data: dict[str, Any] = field(default_factory=dict)
-
-    def to_sse(self) -> dict[str, str]:
-        return {"event": self.type, "data": json.dumps(self.data, default=str)}
 
 
 class EventBus:
@@ -50,8 +46,12 @@ class EventBus:
                     q.get_nowait()
             q.put_nowait(event)
 
-    async def subscribe(self) -> AsyncIterator[Event]:
+    async def subscribe(self, current: Callable[[], Iterable[Event]] | None = None) -> AsyncIterator[Event]:
+        """Every event published from now on, after ``current()``'s: the state at this moment (a pause under
+        way), taken as the subscription starts so that no event falls between the two."""
         q: asyncio.Queue[Event] = asyncio.Queue(self._max_queue)
+        for event in current() if current is not None else ():
+            q.put_nowait(event)
         self._subscribers.add(q)
         try:
             while True:

@@ -50,10 +50,11 @@ class StreamEvent(BaseModel):
     name: str | None = Field(default=None, description="tool name (tool_use / tool_result)")
     input: dict[str, Any] | None = Field(default=None, description="tool input (tool_use)")
     error: str | None = None
-    error_code: Literal["demo_miss"] | None = Field(
+    error_code: Literal["demo_miss", "demo_changed"] | None = Field(
         default=None,
         description="why there is no answer (error), when asking again can't help: demo_miss — the demo has no "
-        "recorded answer for this question",
+        "recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos "
+        "changed since the demo started (it has to start over)",
     )
     note: str | None = Field(
         default=None, description="what the answer check left out or quoted (done); shown apart from the text"
@@ -68,14 +69,16 @@ class StreamEvent(BaseModel):
 
 
 def _service_stream(state: ApiState, question: str, thread_id: str | None) -> AsyncIterator[LLMStreamEvent]:
-    """The Ask service's events; in the demo a missing recording becomes one friendly event."""
+    """The Ask service's events; in the demo a missing recording becomes one friendly event (which says
+    so when a suggested question misses because the person changed the demo, and points to the suggested
+    questions only while the demo offers them)."""
     events = ask_stream(state.ctx, question, thread_id)
     friendly = optional_demo_function("demo_safe_stream") if state.demo else None
     if friendly is None:
         return events
     # a replayed answer would appear all at once: stream it at a reading pace, like the real thing
     paced = optional_demo_function("paced_replay")
-    safe = friendly(events, demo=True)
+    safe = friendly(events, demo=True, question=question, ctx=state.ctx)
     return paced(safe) if paced is not None else safe
 
 

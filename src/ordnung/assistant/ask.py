@@ -32,16 +32,18 @@ with the note under its label (in the answer's language) as its last paragraph, 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
 from collections import deque
-from collections.abc import AsyncIterator, Collection, Iterable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal, Protocol
 
 from ordnung import clock
+from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.citations import (
     REF_TYPES,
     Citation,
@@ -95,10 +97,26 @@ UNSUPPORTED_ANSWER_DE = (
     "können den Brief, die Aufgabe oder den Vertrag in Ordnung öffnen und dort Daten und Beträge ansehen."
 )
 CHECK_FAILED = "Ordnung couldn't check this answer against your records, so it isn't shown. Please ask again."
-#: The one message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``).
-DEMO_MISS = (
-    "The demo replays answers recorded for its sample letters, and there is none for this question. "
-    "Try one of the suggested questions."
+#: What an answer that broke off with an unexpected error says (the error itself goes to the log).
+UNEXPECTED_STOP = (
+    "Something went wrong while answering, so there is no answer. Please ask again; if it keeps happening, "
+    "run “ordnung doctor”."
+)
+#: The message for a question the demo has no recorded answer for (sent with ``error_code`` ``demo_miss``) once
+#: no suggested question is offered either (the person changed the demo: :data:`DEMO_CHANGED`).
+DEMO_NOT_RECORDED = (
+    "The demo replays answers recorded for its sample letters, and there is none for this question."
+)
+#: The message for a question the demo has no recorded answer for, while the suggested questions are offered.
+DEMO_MISS = f"{DEMO_NOT_RECORDED} Try one of the suggested questions."
+#: The message for a suggested question the demo recorded, asked after the person changed the letters or to-dos
+#: (sent with ``error_code`` ``demo_changed``): its answers were recorded on Sam's letters as the demo started,
+#: so every suggested question misses until the demo starts over — which ``ordnung demo --reset`` does only
+#: once the running demo is stopped.
+DEMO_CHANGED = (
+    "The demo's answers were recorded for Sam's letters as the demo started, and you have changed his "
+    "to-dos or letters since, so they no longer fit. To ask the suggested questions again, start the demo "
+    "over. Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
 )
 EMPTY_QUESTION = "Please type a question."
 
@@ -123,8 +141,10 @@ class AskContext(Protocol):
 
 
 #: Why an answer could not be given, when the UI shows more than the message: ``demo_miss`` — the demo
-#: has no recorded answer for the question (asking again cannot help, a suggested question can).
-AskErrorCode = Literal["demo_miss"]
+#: has no recorded answer for the question (asking again cannot help, a suggested question can);
+#: ``demo_changed`` — a suggested question the demo recorded, but the person changed the letters or to-dos
+#: since the demo started (only starting the demo over helps).
+AskErrorCode = Literal["demo_miss", "demo_changed"]
 
 
 class AskEvent(StreamEvent):
@@ -267,8 +287,19 @@ async def ask_stream(
     one :class:`AskEvent` ``done`` event with the checked answer — or a single ``error`` event, also
     when the check itself fails (it fails closed). The model's words are never sent before the check
     (ADR 0008): an answer that stops, fails or cannot be checked shows none of them. The check runs
-    in a worker thread.
+    in a worker thread. An unexpected error (``claude`` moved or not executable, a database that can't be
+    written) ends the stream with :data:`UNEXPECTED_STOP` instead of cutting it off without a word.
     """
+    try:
+        async with contextlib.aclosing(_answer(ctx, question, thread_id)) as events:
+            async for event in events:
+                yield event
+    except Exception:
+        logger.exception("Ask: the answer stopped with an unexpected error")
+        yield StreamEvent(type="error", error=UNEXPECTED_STOP)
+
+
+async def _answer(ctx: AskContext, question: str, thread_id: str | None) -> AsyncGenerator[StreamEvent, None]:
     question = question.strip()
     if not question:
         yield StreamEvent(type="error", error=EMPTY_QUESTION)
@@ -322,10 +353,17 @@ def _failure(ctx: AskContext, event: StreamEvent | None) -> StreamEvent:
     return StreamEvent(type="error", error=message)
 
 
-def demo_miss_event() -> AskEvent:
+def demo_miss_event(*, offered: bool = True) -> AskEvent:
     """The event shown instead of an answer the demo has no recording for (nothing was stored, so it
-    names no thread)."""
-    return AskEvent(type="error", error=DEMO_MISS, text=DEMO_MISS, error_code="demo_miss")
+    names no thread); it points to the suggested questions only while they are ``offered``."""
+    message = DEMO_MISS if offered else DEMO_NOT_RECORDED
+    return AskEvent(type="error", error=message, text=message, error_code="demo_miss")
+
+
+def demo_changed_event() -> AskEvent:
+    """The event shown instead of a recorded answer that no longer fits: a suggested question asked after
+    the person changed the demo's letters or to-dos (:data:`DEMO_CHANGED`; nothing was stored)."""
+    return AskEvent(type="error", error=DEMO_CHANGED, text=DEMO_CHANGED, error_code="demo_changed")
 
 
 @dataclass
@@ -365,8 +403,32 @@ class _Turn:
         if doc is not None and not doc.ai_private and doc_id not in self.request.doc_ids:
             self.request.doc_ids.append(doc_id)
 
+    def _letters_in(self, text: str) -> Iterator[str]:
+        """The letters a ledger tool result sends text of: every record its letter-text part is keyed by —
+        a letter itself (a search hit's title and snippet), the letter a to-do was read from (its title or
+        quote), or every letter a contract's terms were read from (its source and evidence) and the
+        cancellation letter ``list_contracts`` names beside it (the end date that letter claims). A party's
+        name stands in many letters and names none of them."""
+        result = parse_tool_result(text)
+        cancellations = _cancellation_letters(result.record)
+        for ref_id in result.letters:
+            prefix = ref_id.split("_", 1)[0]
+            if prefix == "doc":
+                yield ref_id
+            elif prefix == "itm":
+                item = self.store.get_item(ref_id)
+                if item is not None and item.doc_id:
+                    yield item.doc_id
+            elif prefix == "ctr":
+                contract = self.store.get_contract(ref_id)
+                if contract is not None:
+                    letters = [contract.source_doc_id, *(ev.doc_id for ev in contract.evidence)]
+                    yield from filter(None, letters)
+                if ref_id in cancellations:
+                    yield cancellations[ref_id]
+
     def tool_result(self, event: StreamEvent) -> StreamEvent:
-        """Keep the result for validation and summarise it for the trace.
+        """Keep the result for validation, note the letters it sent text of and summarise it for the trace.
 
         A result belongs to the call with its ``tool_use_id`` (parallel calls may answer out of
         order); a result without an id (fakes, older recordings) to the oldest call without an id still
@@ -383,6 +445,8 @@ class _Turn:
         name = self.calls[index]["name"] if index is not None else "tool"
         if name in TOOL_NAMES:
             self.results.append(text)
+            for doc_id in self._letters_in(text):
+                self._note_sent(doc_id)
         summary = result_summary(name, text)
         if index is not None:
             self.calls[index]["result"] = summary
@@ -392,6 +456,19 @@ class _Turn:
         if tool_use_id:
             return self._by_id.pop(tool_use_id, None)
         return self._waiting.popleft() if self._waiting else None
+
+
+def _cancellation_letters(record: Any) -> dict[str, str]:
+    """Contract id → the cancellation letter a ``list_contracts`` row names as pending the person's
+    confirmation (its ``cancellation_letter``)."""
+    rows = record.get("contracts") if isinstance(record, dict) else None
+    found: dict[str, str] = {}
+    for row in rows if isinstance(rows, list) else []:
+        letter = row.get("cancellation_letter") if isinstance(row, dict) else None
+        doc_id = letter.get("doc_id") if isinstance(letter, dict) else None
+        if isinstance(doc_id, str) and isinstance(row.get("id"), str):
+            found[row["id"]] = doc_id
+    return found
 
 
 # --------------------------------------------------------------------------------------------------

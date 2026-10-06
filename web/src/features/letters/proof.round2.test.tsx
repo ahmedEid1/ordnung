@@ -122,6 +122,8 @@ describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
     renderAt(PROOF_PAGE);
     const busy = document.querySelector("[aria-busy='true']")!;
     expect(busy).toHaveTextContent("Opening the proof…");
+    // its heading is a stand-in: focus waits for the proof's own (Layout's PageAnnouncer)
+    expect(within(busy as HTMLElement).getByRole("heading", { level: 1, name: "Proof" })).toHaveAttribute("data-loading");
     expect(classOf(busy)).toMatch(/(^| )max-w-3xl( |$)/);
     expect(classOf(busy)).not.toMatch(/(^| )mx-auto( |$)/);
   });
@@ -141,7 +143,7 @@ describe("a proof that can't be loaded (R2-proof-3)", () => {
     renderAt(PROOF_PAGE);
     const alert = await screen.findByRole("alert", {}, { timeout: 5000 });
     expect(within(alert).getByRole("heading", { level: 1, name: "Couldn't open this proof" })).toBeInTheDocument();
-    expect(alert).toHaveTextContent("Your letters are safe — Ordnung didn't answer. Is it still running?");
+    expect(alert).toHaveTextContent("Your letters are safe — Ordnung ran into a problem while loading this page.");
     // the server's words only under "Technical details", never as the sentence
     expect(within(alert).getByText("Technical details")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to the letter" })).toHaveAttribute("href", "/letters/drf_gym");

@@ -17,10 +17,12 @@ import hashlib
 import json
 import logging
 import re
+import threading
+import weakref
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
@@ -34,7 +36,7 @@ from ordnung.drafts.proof import (
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
-from ordnung.ingest.gaps import CHECK_SLOT
+from ordnung.ingest.gaps import CHECK_SLOT, is_check_slot
 from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
@@ -438,25 +440,124 @@ class PriceIncreaseWindow:
     receipt: ComputationReceipt
 
 
+@dataclass
+class _Rows:
+    """The rows a :class:`Ledger` reads, as of one state of the database: every letter once (in the
+    trash and proof files too, by sender for the scam checks), the to-dos, contracts and parties — and,
+    once worked out, what depends on nothing else: each letter's scam warning signs and its reading,
+    and which payment reminders took over which letters' payments."""
+
+    profile: Profile
+    documents: dict[str, Document]
+    by_party: dict[str, list[Document]]
+    items: list[Item]
+    contracts: list[Contract]
+    parties: list[Party]
+    scam_reasons: dict[str, list[str]] = field(default_factory=dict)
+    extractions: dict[str, DocumentExtraction | None] = field(default_factory=dict)
+    covered: dict[str, Document] | None = None
+
+    @classmethod
+    def load(cls, store: Store) -> _Rows:
+        with store.snapshot():
+            every = store.list_documents(include_deleted=True)
+            by_party: dict[str, list[Document]] = {}
+            for doc in every:
+                if doc.party_id:
+                    by_party.setdefault(doc.party_id, []).append(doc)
+            return cls(
+                profile=store.get_profile(),
+                # proof files belong to their letter (``drafts.proof``): they are no letters of the ledger
+                documents={
+                    doc.id: doc for doc in every if doc.deleted_at is None and doc.source != PROOF_SOURCE
+                },
+                by_party=by_party,
+                items=store.list_items(),
+                contracts=store.list_contracts(),
+                parties=store.list_parties(),
+            )
+
+
+class _RowsStore:
+    """The store as the scam checks (:mod:`ordnung.secretary.scam`) read it, answered from :class:`_Rows`:
+    a sender's letters (in the trash too), the parties and the profile. Any other read goes to the store."""
+
+    def __init__(self, store: Store, rows: _Rows) -> None:
+        self._store = store
+        self._rows = rows
+
+    def list_documents(self, *args: Any, **filters: Any) -> list[Document]:
+        if not args and filters.keys() == {"party_id", "include_deleted"} and filters["include_deleted"]:
+            return list(self._rows.by_party.get(filters["party_id"], ()))
+        return self._store.list_documents(*args, **filters)
+
+    def list_parties(self) -> list[Party]:
+        return list(self._rows.parties)
+
+    def get_profile(self) -> Profile:
+        return self._rows.profile
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._store, name)
+
+
+class _RowsCache:
+    """The rows last loaded from one store, shared by every Ledger built while the database stays as it
+    was — the Ledgers of one request, and of the requests after it until something changes.
+
+    Whether it changed is :meth:`Store.change_token`, which only compares within one thread: each thread
+    keeps the token it saw last and which load was current then. An unchanged token means nothing was
+    committed since, so the current load still holds (a newer one was made after the thread looked).
+    Inside a transaction, which may read what isn't committed, the rows are loaded afresh and not kept.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._rows: _Rows | None = None
+        self._loads = 0
+        self._seen = threading.local()
+
+    def rows(self, store: Store) -> _Rows:
+        token = store.change_token()
+        if token is None:
+            return _Rows.load(store)
+        with self._lock:
+            seen: tuple[tuple[int, int, int], int] | None = getattr(self._seen, "last", None)
+            if self._rows is None or seen is None or seen[0] != token:
+                self._rows = _Rows.load(store)
+                self._loads += 1
+            self._seen.last = (token, self._loads)
+            return self._rows
+
+
+_CACHES: weakref.WeakKeyDictionary[Store, _RowsCache] = weakref.WeakKeyDictionary()
+_CACHES_LOCK = threading.Lock()
+
+
+def _rows_of(store: Store) -> _Rows:
+    with _CACHES_LOCK:
+        cache = _CACHES.get(store)
+        if cache is None:
+            cache = _CACHES[store] = _RowsCache()
+    return cache.rows(store)
+
+
 class Ledger:
-    """A read-only snapshot of the store as of ``today`` (loaded once per trigger run or view)."""
+    """A read-only snapshot of the store as of ``today``. The rows are loaded once per state of the
+    database (:class:`_RowsCache`), so the Ledgers of a request and of the requests after it share them;
+    what depends on ``today`` is worked out per Ledger."""
 
     def __init__(self, store: Store, today: date) -> None:
         self.store = store
         self.today = today
-        self.profile = store.get_profile()
-        # proof files belong to their letter (``drafts.proof``): they are no letters of the ledger
-        self.documents: dict[str, Document] = {
-            doc.id: doc for doc in store.list_documents(exclude_source=PROOF_SOURCE)
-        }
-        self.items: list[Item] = store.list_items()
-        self.contracts: list[Contract] = store.list_contracts()
-        self.parties: dict[str, Party] = {party.id: party for party in store.list_parties()}
+        self._rows = _rows_of(store)
+        self.profile = self._rows.profile
+        self.documents: dict[str, Document] = dict(self._rows.documents)
+        self.items: list[Item] = list(self._rows.items)
+        self.contracts: list[Contract] = list(self._rows.contracts)
+        self.parties: dict[str, Party] = {party.id: party for party in self._rows.parties}
         self._computations: dict[str, ContractComputation] = {}
-        self._extractions: dict[str, DocumentExtraction | None] = {}
         self._sent_drafts: list[Draft] | None = None
-        self._scam_reasons: dict[str, list[str]] = {}
-        self._covered: dict[str, Document] | None = None
         self._attached: dict[str, Document] | None = None
         self._attachments: dict[str, list[Document]] | None = None
         self._proofs: dict[str, list[Proof]] | None = None
@@ -495,24 +596,25 @@ class Ledger:
         )
 
     def covering_reminders(self) -> dict[str, Document]:
-        """Letter id → the live payment reminder (Mahnung) that took over its payments (cached).
+        """Letter id → the live payment reminder (Mahnung) that took over its payments (worked out once
+        per state of the database).
 
         Worked out on read: only reminders that are not in the trash and show no scam signs count,
         whichever of the letters was read first.
         """
-        if self._covered is None:
+        if self._rows.covered is None:
             reminders = [
                 doc
                 for doc in self.documents.values()
                 if doc.kind in PAYMENT_DEMAND_KINDS and not self.scam_reasons(doc)
             ]
-            self._covered = {
+            self._rows.covered = {
                 doc.id: reminder
                 for reminder in sorted(reminders, key=lambda d: (d.doc_date or "", d.created_at, d.id))
                 for doc in self.documents.values()
                 if reminder_covers(reminder, doc)
             }
-        return self._covered
+        return self._rows.covered
 
     def is_superseded_by_reminder(self, item: Item) -> bool:
         """An invoice payment whose payment reminder (Mahnung) arrived: act on the reminder instead.
@@ -593,10 +695,11 @@ class Ledger:
         return self._computations[contract.id]
 
     def extraction(self, doc_id: str) -> DocumentExtraction | None:
-        """The stored model extraction of a document (cached)."""
-        if doc_id not in self._extractions:
-            self._extractions[doc_id] = self.store.get_extraction(doc_id)
-        return self._extractions[doc_id]
+        """The stored model extraction of a document (read once per state of the database)."""
+        known = self._rows.extractions
+        if doc_id not in known:
+            known[doc_id] = self.store.get_extraction(doc_id)
+        return known[doc_id]
 
     def sent_drafts(self) -> list[Draft]:
         """Letters marked as sent, newest first."""
@@ -703,12 +806,20 @@ class Ledger:
         return doc is not None and doc.kind == "dunning"
 
     def scam_reasons(self, doc: Document) -> list[str]:
-        """Scam warning signs of an incoming letter (cached; empty for outgoing letters and notes)."""
-        if doc.id not in self._scam_reasons:
-            party = self.parties.get(doc.party_id) if doc.party_id else None
-            found = _scam_reasons(self.store, doc, party) if doc.direction == "incoming" else []
-            self._scam_reasons[doc.id] = found
-        return self._scam_reasons[doc.id]
+        """Scam warning signs of an incoming letter (empty for outgoing letters and notes), the sender's
+        earlier letters read from the shared rows. Worked out once per state of the database for the
+        letter as the rows hold it; a copy read elsewhere (another version, one in the trash) each time."""
+        if doc.direction != "incoming":
+            return []
+        party = self.parties.get(doc.party_id) if doc.party_id else None
+        reads = cast(Store, _RowsStore(self.store, self._rows))
+        held = self._rows.documents.get(doc.id)
+        if held is not doc and held != doc:
+            return _scam_reasons(reads, doc, party)
+        known = self._rows.scam_reasons
+        if doc.id not in known:
+            known[doc.id] = _scam_reasons(reads, doc, party)
+        return known[doc.id]
 
     def scam_signs(self, doc: Document) -> list[str]:
         """The warning signs a letter with scam signs shows — on its page and in its Idea, one list and one
@@ -823,6 +934,10 @@ def item_action(ledger: Ledger, item: Item) -> SuggestionAction:
     """The one verb for an item: Pay · Draft objection · Draft cancellation · Check the letter."""
     doc = ledger.document(item.doc_id)
     nature = item.date_spec.nature if item.date_spec else "other"
+    if is_check_slot(item.slot_key) and item.slot_key != CHECK_SLOT and doc is not None:
+        # a date Ordnung took from the letter for a reading that left it out (check:deadline): a cross-check, never
+        # "Pay"
+        return _open("document", doc.id, "Check the letter")
     if item.kind == "payment":
         return _open("document", doc.id, "Pay") if doc else _open("item", item.id, "Pay")
     if nature == "objection" and doc and doc.remedy and doc.remedy.type in ("einspruch", "widerspruch"):
@@ -1483,6 +1598,12 @@ def please_check(ledger: Ledger) -> list[Suggestion]:
                 "Claude's reading of this letter came back incomplete, so Ordnung added a to-do from the "
                 "letter's own words. Open the letter and check it."
             )
+        elif any(is_check_slot(item.slot_key) for item in unsure):
+            # a fixed date the letter sets (pay by, send by) that the reading left out: found, not "not found"
+            body = (
+                "Claude's reading of this letter left out a date the letter sets for you, so Ordnung added a to-do "
+                "from the letter's own words. Open the letter and check it."
+            )
         elif unsure:
             listed = ", ".join(item.title for item in unsure[:3])
             body = f"We couldn't find some dates or amounts in the letter ({listed}). Open it and confirm or correct them."
@@ -1548,6 +1669,8 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             if i.doc_id == doc.id
             and i.kind == "payment"
             and i.due_date
+            # a date code took from the letter is to be checked: never a "Pay" nudge
+            and not is_check_slot(i.slot_key)
             and not ledger.is_superseded_by_reminder(i)
             and not ledger.is_covered_by_attachment(i)
         ]
@@ -1591,6 +1714,12 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
     return ideas
 
 
+def is_scam_warning(warning: str) -> bool:
+    """A warning that says a letter may be a scam (its reading's, or the payment check's) — not one that
+    only says an IBAN fails its checksum."""
+    return any(word in warning.casefold() for word in _SCAM_WORDS) and not is_checksum_note(warning)
+
+
 def is_checksum_note(warning: str) -> bool:
     """A warning that only says an IBAN fails its checksum (added by the pipeline or the model)."""
     text = warning.casefold()
@@ -1615,7 +1744,9 @@ _NOT_A_SIGN = re.compile(
     r"^(?:please check\b|\d+\s+dates?\s+could not be confirmed)|invisible text|hidden text"
     r"|addressed to (?:an? )?(?:AI|KI)\b|\bKI-Assistent|AI assistant|prompt injection"
     r"|^Claude's reading of this letter came back almost blank|^This letter explains how to (?:object|challenge it "
-    r"in court), but Claude's reading",
+    r"in court), but Claude's reading|^Claude's reading of this letter left out"
+    # the completeness re-ask's answer was used (ordnung.ingest.extract.REASK_WARNING)
+    r"|^Claude's first answer for this letter left out",
     re.I,
 )
 HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the page."
@@ -1648,9 +1779,7 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     reasons.extend(
         w
         for w in doc.warnings
-        if any(word in w.casefold() for word in _SCAM_WORDS)
-        and not is_checksum_note(w)
-        and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
+        if is_scam_warning(w) and not (doc.hidden_text and _NOT_A_SIGN.search(w))  # hidden text is said once
     )
     finding = None
     if _scam is not None and party is not None and doc.payment is not None:

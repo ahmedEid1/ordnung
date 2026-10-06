@@ -12,7 +12,8 @@ No calendar sync runs meanwhile (it would write its record back into the emptied
 data-folder lock and ``server.json`` stay, so the running server keeps working and the command line
 still finds it. Entries Ordnung did not create (for
 example when the data folder was pointed at a folder with other files) are never touched; they are
-listed in the answer. The zero-token demo refuses (409): ``ordnung demo --reset`` starts it over.
+listed in the answer, which also tells the browser to empty its cache (``Clear-Site-Data``). The
+zero-token demo refuses (409): ``ordnung demo --reset``, once the demo is stopped, starts it over.
 """
 
 from __future__ import annotations
@@ -24,12 +25,13 @@ import shutil
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import clock
 from ordnung.api.deps import StateDep
 from ordnung.api.routes.calendar_sync import SecretsDep, TransportDep
+from ordnung.api.routes.documents import CLEAR_CACHE
 from ordnung.app_context import SIMULATED_TODAY_KEY, AppContext
 from ordnung.calendar import caldav
 from ordnung.calendar.secrets import SecretStore
@@ -40,8 +42,8 @@ router = APIRouter(tags=["data"])
 log = logging.getLogger(__name__)
 
 DEMO_MESSAGE = (
-    "This is the demo, so there is nothing of yours to delete. "
-    "To start over with Sam's original letters, run “ordnung demo --reset”."
+    "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, "
+    "stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
 )
 KEPT_FILES = frozenset({LOCK_NAME, SERVER_FILE})
 _DB_SUFFIXES = ("", "-wal", "-shm", "-journal")
@@ -152,10 +154,14 @@ def wipe_data_dir(ctx: AppContext, secrets: SecretStore | None = None, transport
     },
 )
 async def delete_everything(
-    body: DeleteEverything, state: StateDep, secrets: SecretsDep, transport: TransportDep
+    body: DeleteEverything,
+    state: StateDep,
+    secrets: SecretsDep,
+    transport: TransportDep,
+    response: Response,
 ) -> DataDeleted:
     """Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
-    (Ordnung's events leave a connected calendar first).
+    (Ordnung's events leave a connected calendar first), and the browser empties its cache.
 
     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise)."""
     ctx = state.ctx
@@ -185,4 +191,5 @@ async def delete_everything(
     await state.folder.reconfigure()
     for event in ("profile.updated", "item.updated", "suggestions.updated"):
         ctx.bus.publish(event)
+    response.headers.update(CLEAR_CACHE)
     return result

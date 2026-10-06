@@ -1,0 +1,66 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"6ca8cb36d6fe350418c06b4a5e0c7170c7afb531407f9d34a84fa0f4480a49db\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2026-02-08\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-I2"
+    ],
+    "prompt_head": "Today is Sunday, 2026-02-08 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_d"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Rechtsanwälte Musterhoff & Kollegen\",\"document_date\":\"2026-02-05\",\"references\":[{\"label\":\"Unser Zeichen\",\"value\":\"MK 0219/26\"},{\"label\":\"Rechnungsnummer\",\"value\":\"R-2025-318\"}],\"amounts\":[1640,21.57,254.15,1915.72],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay outstanding debt for painting work\",\"quote\":\"Wir fordern Sie auf, den Gesamtbetrag bis spätestens Mittwoch, 25.02.2026 auf unser\\nKanzleikonto zu überweisen.\",\"computation\":\"The letter states an explicit calendar date for payment: 'bis spätestens Mittwoch, 25.02.2026'. This is a fixed deadline set by the creditor's counsel, not a statutory period requiring computation from delivery. Checked that 25.02.2026 falls on a Wednesday as stated (Jan 1, 2026 is a Thursday; day 56 of the year, 55 days later = Thursday + 55 mod 7 = +6 = Wednesday), confirming internal consistency. As this is a private-law demand (not an administrative act), no statutory delivery-fiction or weekend/holiday roll-forward rule applies to shift the date; the due date is the date printed.\",\"due_date\":\"2026-02-25\",\"confidence\":\"high\",\"amount\":1915.72}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This is a private debt-collection demand from a law firm (not a court or authority) threatening court action; verify independently (e.g. with the painting company or an independent lawyer/consumer advice center) that the underlying invoice R-2025-318 and the claimed amount, interest, and legal fees are actually owed before paying, and double-check the IBAN before transferring any money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Rechtsanwälte Musterhoff & Kollegen",
+      "document_date": "2026-02-05",
+      "references": [
+        {
+          "label": "Unser Zeichen",
+          "value": "MK 0219/26"
+        },
+        {
+          "label": "Rechnungsnummer",
+          "value": "R-2025-318"
+        }
+      ],
+      "amounts": [
+        1640,
+        21.57,
+        254.15,
+        1915.72
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay outstanding debt for painting work",
+          "quote": "Wir fordern Sie auf, den Gesamtbetrag bis spätestens Mittwoch, 25.02.2026 auf unser\nKanzleikonto zu überweisen.",
+          "computation": "The letter states an explicit calendar date for payment: 'bis spätestens Mittwoch, 25.02.2026'. This is a fixed deadline set by the creditor's counsel, not a statutory period requiring computation from delivery. Checked that 25.02.2026 falls on a Wednesday as stated (Jan 1, 2026 is a Thursday; day 56 of the year, 55 days later = Thursday + 55 mod 7 = +6 = Wednesday), confirming internal consistency. As this is a private-law demand (not an administrative act), no statutory delivery-fiction or weekend/holiday roll-forward rule applies to shift the date; the due date is the date printed.",
+          "due_date": "2026-02-25",
+          "confidence": "high",
+          "amount": 1915.72
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This is a private debt-collection demand from a law firm (not a court or authority) threatening court action; verify independently (e.g. with the painting company or an independent lawyer/consumer advice center) that the underlying invoice R-2025-318 and the claimed amount, interest, and legal fees are actually owed before paying, and double-check the IBAN before transferring any money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2648,
+      "cache_read_tokens": 8962,
+      "cache_creation_tokens": 4650,
+      "cost_usd": 0.0468804,
+      "duration_ms": 29769,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"0a763668edc9129f8ceeb7bbedbc42e95f59b9245d95a0d4433ff5686b72ac51\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-10-15\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-scam-1"
+    ],
+    "prompt_head": "Today is Wednesday, 2025-10-15 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"EuroForderung Beispiel Inkasso Ltd.\",\"document_date\":\"2025-10-14\",\"references\":[{\"label\":\"Akte\",\"value\":\"EFB-25-447192\"}],\"amounts\":[341.5],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay alleged collection debt\",\"quote\":\"Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.\",\"computation\":\"The letter states a fixed calendar date for payment ('bis zum 22.10.2025'), not a period to be counted. 22 October 2025 is a Wednesday, not a weekend day or a public holiday in NRW or nationwide, so no shift under §193 BGB is needed. The due date is used exactly as printed.\",\"due_date\":\"2025-10-22\",\"confidence\":\"high\",\"amount\":341.5}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[\"This letter shows strong hallmarks of a fake/predatory debt-collection scam for a dubious 'Gewinnspiel-Eintragungsservice' (prize-draw registration service) allegedly ordered by phone: a foreign (Bulgarian) IBAN, a payee name (V. Dimitrova) that does not match the sending company, aggressive threats of wage garnishment and account blocking without any court order or title, a demand to pay within days, and a claim that objecting is impossible.\",\"The statement 'Ein Widerspruch ist ausgeschlossen' (an objection is excluded) has no legal basis — a consumer always retains the right to dispute a claimed debt, and a private collection agency cannot lawfully garnish wages or freeze a bank account without a court title.\",\"Restricting contact to e-mail only ('Rückfragen nur per E-Mail') is a common tactic to avoid verification by phone and should be treated as a red flag.\",\"Before paying anything, verify the alleged June 2025 telephone order and the claimed company/mandate independently (e.g. via a consumer protection center, Verbraucherzentrale) rather than using the bank details given in this letter.\",\"Do not use the supplied IBAN (foreign account, individual payee name) to send any money.\"]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "EuroForderung Beispiel Inkasso Ltd.",
+      "document_date": "2025-10-14",
+      "references": [
+        {
+          "label": "Akte",
+          "value": "EFB-25-447192"
+        }
+      ],
+      "amounts": [
+        341.5
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay alleged collection debt",
+          "quote": "Überweisen Sie den Betrag bis zum 22.10.2025 auf das Konto IBAN BG30 BUIN 9561 1000 4728 10, Empfänger: V. Dimitrova.",
+          "computation": "The letter states a fixed calendar date for payment ('bis zum 22.10.2025'), not a period to be counted. 22 October 2025 is a Wednesday, not a weekend day or a public holiday in NRW or nationwide, so no shift under §193 BGB is needed. The due date is used exactly as printed.",
+          "due_date": "2025-10-22",
+          "confidence": "high",
+          "amount": 341.5
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": [
+        "This letter shows strong hallmarks of a fake/predatory debt-collection scam for a dubious 'Gewinnspiel-Eintragungsservice' (prize-draw registration service) allegedly ordered by phone: a foreign (Bulgarian) IBAN, a payee name (V. Dimitrova) that does not match the sending company, aggressive threats of wage garnishment and account blocking without any court order or title, a demand to pay within days, and a claim that objecting is impossible.",
+        "The statement 'Ein Widerspruch ist ausgeschlossen' (an objection is excluded) has no legal basis — a consumer always retains the right to dispute a claimed debt, and a private collection agency cannot lawfully garnish wages or freeze a bank account without a court title.",
+        "Restricting contact to e-mail only ('Rückfragen nur per E-Mail') is a common tactic to avoid verification by phone and should be treated as a red flag.",
+        "Before paying anything, verify the alleged June 2025 telephone order and the claimed company/mandate independently (e.g. via a consumer protection center, Verbraucherzentrale) rather than using the bank details given in this letter.",
+        "Do not use the supplied IBAN (foreign account, individual payee name) to send any money."
+      ]
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 4663,
+      "cache_read_tokens": 13680,
+      "cache_creation_tokens": 6322,
+      "cost_usd": 0.074662,
+      "duration_ms": 55039,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

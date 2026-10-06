@@ -21,21 +21,24 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { ApiError } from "@/api/client";
-import { useCalls, useDrafts, useNumbers, useParty } from "@/api/hooks";
+import { useCalls, useDrafts, useNumbers, useParty, useUpdateParty } from "@/api/hooks";
 import type { CallSheet, Contract, Document, Item, ItemAside, Party } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Field, Select } from "@/components/ui/Field";
 import { KindBadge, KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { toast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { useClipboard } from "@/features/today/clipboard";
 import { factLabel } from "@/features/document/fact-text";
 import { NumberRow } from "@/features/numbers/NumberRow";
+import { BUNDESLAENDER } from "@/features/onboarding/options";
 import { CONTRACT_CATEGORY_COPY, copyFor, DRAFT_KIND_COPY, documentKindLabel, partyKindLabel } from "@/lib/copy";
 import { glueText } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
@@ -446,7 +449,13 @@ function Header({ party }: { party: Party }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       <KindBadge partyKind={party.kind} size="md" label={partyKindLabel(party.kind)} />
       {looksAbroad(party) ? null : (
-        <Tooltip content={region ? `Deadlines with them skip the public holidays of ${region}.` : "Their state isn't known, so only nationwide holidays count — the safer, earlier date."}>
+        <Tooltip
+          content={
+            region
+              ? `Deadlines with them skip the public holidays of ${region}.`
+              : "Their state isn't known, so only nationwide holidays count — the safer, earlier date. You can choose it under State."
+          }
+        >
           <button
             type="button"
             className="inline-flex min-h-6 cursor-help items-center gap-1 rounded-md text-[12.5px] text-muted underline decoration-muted/40 decoration-dotted underline-offset-[3px] hover:text-ink"
@@ -457,6 +466,47 @@ function Header({ party }: { party: Party }) {
         </Tooltip>
       )}
     </div>
+  );
+}
+
+/**
+ * "Which state is this sender in?" — the Land decides which public holidays the dates of its letters skip
+ * and, for a Land authority, how many days its post takes to count as delivered. Nothing Ordnung reads tells
+ * it for sure, so only the person sets it; until then nationwide holidays and the 3-day rule count, at lower
+ * confidence: an earlier date, never a later one. Saved on change: the server recomputes its letters' dates.
+ */
+function SenderLand({ party }: { party: Party }) {
+  const update = useUpdateParty();
+  const shown = update.isPending ? (update.variables.patch.region ?? "") : (party.region ?? "");
+  const choose = (value: string) =>
+    update.mutate(
+      { id: party.id, patch: { region: value || null } },
+      {
+        onSuccess: (saved) => {
+          const state = regionName(saved.region);
+          toast.success(state ? `Saved: ${saved.name} is in ${state}` : "Saved: their state isn't known", {
+            description: state ? `Their dates now skip the public holidays of ${state}.` : "Their dates use nationwide holidays again — the earlier date.",
+          });
+        },
+      },
+    );
+  return (
+    <Section title="State" id="pty-region">
+      <Field
+        label="Which state is this sender in?"
+        hint="Their deadlines skip that state's public holidays. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule: an earlier date, never a later one."
+      >
+        {/* German names, as letterheads print them */}
+        <Select value={shown} onChange={(e) => choose(e.target.value)} className="sm:max-w-xs">
+          <option value="">Don't know</option>
+          {BUNDESLAENDER.map((b) => (
+            <option key={b.code} value={b.code}>
+              {b.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+    </Section>
   );
 }
 
@@ -617,6 +667,8 @@ export function PartyDrawer() {
         <div>
           <JumpLinks links={jumps} />
           {party.aliases.length ? <p className="-mt-3 mb-6 break-words text-[13px] leading-5 text-muted">Also known as {party.aliases.join(", ")}</p> : null}
+
+          {looksAbroad(party) ? null : <SenderLand party={party} />}
 
           <PartyNumbers party={party} copier={{ copy, copied }} />
 

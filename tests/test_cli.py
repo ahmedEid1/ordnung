@@ -4,6 +4,7 @@ friendly errors and the exclusive data-folder lock."""
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -20,7 +21,7 @@ from typing import Any
 import pytest
 from typer.testing import CliRunner
 
-from fixtures_llm import TAX_LETTER, TODAY, fake_backend
+from fixtures_llm import TAX_LETTER, TODAY, Router, fake_backend
 from ordnung import cli, clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.cli import app, reachable_server
@@ -28,6 +29,7 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.demo import load_manifest
 from ordnung.demo.loader import build_demo
+from ordnung.llm.base import ClaudeNotInstalled, ClaudeTimeout
 from ordnung.llm.fake import FakeBackend
 from ordnung.locking import DataDirLock, DataDirLocked
 from ordnung.models import Document, DocumentDetail, DocumentStatus, Item, Party
@@ -155,6 +157,34 @@ def test_privacy_statuses_name_who_does_not_read_the_letter(
         ai_private=private,
     )
     assert cli._status_text(document) == expected
+
+
+@pytest.mark.parametrize(
+    ("error", "shown"),
+    [
+        (ClaudeTimeout("Claude took too long to answer."), "Failed — Claude took too long to answer."),
+        (ClaudeNotInstalled("The “claude” command was not found."), "Waiting for Claude"),
+    ],
+    ids=["failed", "waiting-for-claude"],
+)
+def test_add_exits_non_zero_when_a_letter_was_not_read(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch, error: Exception, shown: str
+) -> None:
+    """A letter that failed — or waits for Claude to be installed — is stored, and the exit code says
+    not everything was read (scripts can tell)."""
+    router = Router()
+    router.errors["extract"] = lambda: error
+    monkeypatch.setattr(
+        cli, "open_context", lambda folder: build_context(folder, backend_obj=fake_backend(router))
+    )
+    letter = tmp_path / "steuerbescheid.pdf"
+    letter.write_bytes(TAX_LETTER.pdf())
+    result = invoke("add", str(letter), "--data-dir", str(data_dir))
+    assert result.exit_code == 1, result.output
+    assert shown in result.output and "Not every letter was read" in result.output
+    assert "Traceback" not in result.output
+    if isinstance(error, ClaudeNotInstalled):
+        assert "Claude Code isn't installed on this computer yet." in result.output
 
 
 def test_add_rejects_unreadable_files_without_a_traceback(
@@ -312,6 +342,13 @@ class FakeApi(BaseHTTPRequestHandler):
         self._record()
         if self.path == "/api/health":
             self._json({"data_dir": str(self.server.data_dir), "today": TODAY})
+        elif self.path == "/api/jobs?active_only=true":
+            stamp = "2026-09-25T10:00:00Z"
+            reason = "Waiting for Claude: Claude Code isn't signed in. Ordnung reads this letter as soon as …"
+            job = {"id": "job_1", "doc_id": "doc_aaaaaaaaaaaa", "waiting_reason": reason}
+            self._json([job | {"created_at": stamp, "updated_at": stamp}] if self.server.waiting else [])
+        elif self.path.startswith("/api/documents/") and self.server.waiting:
+            self._json(DocumentDetail(document=_document(status="queued")).model_dump(mode="json"))
         elif self.path == "/api/brief":
             self._json({"date": TODAY, "text": "Two things this week.", "source": "template"})
         elif self.path.startswith("/api/documents/"):
@@ -365,6 +402,8 @@ class FakeApi(BaseHTTPRequestHandler):
 class FakeServer(ThreadingHTTPServer):
     data_dir: Path
     requests: list[tuple[str, str, dict[str, str], bytes]]
+    #: the letter added stays queued, its job waiting for Claude
+    waiting: bool = False
 
 
 @pytest.fixture
@@ -445,6 +484,18 @@ def test_add_goes_through_the_running_server(api: FakeServer, tmp_path: Path) ->
     assert b'name="combine"' in upload and b"true" in upload and b'filename="fine.pdf"' in upload
 
 
+def test_add_through_the_server_stops_waiting_for_a_letter_that_waits_for_claude(
+    api: FakeServer, tmp_path: Path
+) -> None:
+    """The running app keeps the letter until Claude is ready; the command says so instead of hanging."""
+    api.waiting = True
+    letter = tmp_path / "letter.pdf"
+    letter.write_bytes(TAX_LETTER.pdf())
+    result = invoke("add", str(letter), "--data-dir", str(api.data_dir))
+    assert result.exit_code == 1, result.output
+    assert "Waiting for Claude" in result.output and "isn't signed in" in result.output
+
+
 # --------------------------------------------------------------------------------------------------
 # serve
 # --------------------------------------------------------------------------------------------------
@@ -460,7 +511,7 @@ def test_serve_holds_the_folder_and_writes_server_json(
 
     def fake_run(self: uvicorn.Server) -> None:
         seen["info"] = read_server_info(data_dir)
-        seen["app"] = self.config.app
+        seen["app"], seen["loop"] = self.config.app, self.config.loop
         with pytest.raises(DataDirLocked):
             DataDirLock(data_dir).acquire()
 
@@ -475,6 +526,7 @@ def test_serve_holds_the_folder_and_writes_server_json(
     assert info.login_url == f"http://127.0.0.1:{port}/?token={info.token}"
     assert info.login_url in result.output.replace("\n", "").replace("│", "").replace(" ", "")
     assert seen["app"] == {"token": info.token, "demo": False}
+    assert seen["loop"] == "asyncio"  # not uvloop: it runs Python in the child it forks to start `claude`
     assert not (data_dir / "server.json").exists()
     DataDirLock(data_dir).acquire().release()
 
@@ -593,14 +645,33 @@ def test_demo_serves_the_demo_folder_with_replay(demo_env: Path, monkeypatch: py
         return object()
 
     monkeypatch.setattr(cli, "_create_app", create)
-    monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
+    monkeypatch.setattr(uvicorn.Server, "run", lambda self: seen.update(loop=self.config.loop))
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     result = invoke("demo", "--no-browser", "--port", str(port), "--reset")
     assert result.exit_code == 0, result.output
-    assert seen == {"backend": "replay", "demo": True, "today": TODAY}
+    assert seen == {"backend": "replay", "demo": True, "today": TODAY, "loop": "asyncio"}
     assert "Ordnung demo" in result.output
+
+
+@pytest.mark.parametrize(
+    "args", [("--reset",), ("--rebuild",), ("--reset", "--no-serve")], ids=["reset", "rebuild", "no-serve"]
+)
+def test_demo_reset_while_the_demo_runs_says_to_stop_it_first(
+    demo_env: Path, api: FakeServer, args: tuple[str, ...]
+) -> None:
+    """Settings → Data and Ask send people to ``ordnung demo --reset`` while the demo runs: it used to
+    say "already running", exit 0 and reset nothing."""
+    result = invoke("demo", *args, "--no-browser", "--data-dir", str(api.data_dir))
+    assert result.exit_code == 1, result.output
+    port = api.server_address[1]
+    option = args[0]
+    assert " ".join(result.output.split()) == (
+        f"✗ The demo is running at http://127.0.0.1:{port}. "
+        f"Stop the demo (Ctrl+C where it runs), then run `ordnung demo {option}`."
+    )
+    assert not (api.data_dir / "ordnung.db").exists()
 
 
 # --------------------------------------------------------------------------------------------------
@@ -662,7 +733,40 @@ def test_doctor_without_claude_fails_with_a_fix(
     monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
     result = invoke("doctor", "--data-dir", str(data_dir))
     assert result.exit_code == 1
-    assert "npm install -g @anthropic-ai/claude-code" in result.output
+    assert "https://claude.com/claude-code" in result.output
+
+
+def test_doctor_names_a_damaged_database_and_the_way_back(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``serve`` sends a damaged database to the doctor, which must say so (also with ``--probe``,
+    which reads the chosen model from that database)."""
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    with Store.open(Paths(data_dir)) as store:
+        for n in range(300):
+            store.set_meta(f"key-{n}", "x" * 200)
+    db = Paths(data_dir).db
+    db.write_bytes(db.read_bytes()[: db.stat().st_size // 3])
+    for args in ((), ("--probe",)):
+        result = invoke("doctor", *args, "--data-dir", str(data_dir))
+        assert result.exit_code == 1, result.output
+        assert "Database" in result.output and "ordnung restore FILE --force" in plain(result.output)
+
+
+def test_a_database_from_a_newer_ordnung_is_explained(data_dir: Path) -> None:
+    import sqlite3
+
+    from ordnung.db.migrate import latest_version
+
+    with Store.open(Paths(data_dir)):
+        pass
+    with contextlib.closing(sqlite3.connect(Paths(data_dir).db)) as conn, conn:
+        conn.execute(f"PRAGMA user_version = {latest_version() + 1}")
+    result = invoke("brief", "--no-llm", "--data-dir", str(data_dir))
+    assert result.exit_code == 1
+    out = plain(result.output)
+    assert "A newer version of Ordnung wrote this database" in out and "Unexpected error" not in out
+    assert "Update Ordnung, or restore a backup made with this version" in out
 
 
 def test_mcp_help() -> None:

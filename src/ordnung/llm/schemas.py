@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from ordnung.models import (
     BriefOutput,
-    CaptureOutput,
     DocumentExtraction,
     DraftOutput,
     DraftTranslationOutput,
@@ -47,6 +46,24 @@ def extraction_schema() -> dict[str, Any]:
     return schema_for(DocumentExtraction)
 
 
+#: What the completeness re-ask must answer besides the extraction's own required fields
+#: (:func:`ordnung.ingest.extract.completion_request`): present, though ``null`` where the letter states no
+#: sender or date of its own, and an empty list when it asks nothing of the person.
+COMPLETION_REQUIRED = ("sender", "document_date", "items")
+
+
+@cache
+def completion_schema() -> dict[str, Any]:
+    """A stricter copy of :func:`extraction_schema`, for the completeness re-ask only: the same fields and
+    types, with :data:`COMPLETION_REQUIRED` required too, so the CLI's schema check refuses an answer that
+    leaves them out. The answer is still validated with ``DocumentExtraction``; the extraction schema itself
+    (locked under ``extract_system``'s version) is unchanged."""
+    schema = copy.deepcopy(extraction_schema())
+    required = list(schema.get("required", []))
+    schema["required"] = [*required, *(name for name in COMPLETION_REQUIRED if name not in required)]
+    return schema
+
+
 @cache
 def review_schema() -> dict[str, Any]:
     return schema_for(ReviewOutput)
@@ -55,11 +72,6 @@ def review_schema() -> dict[str, Any]:
 @cache
 def brief_schema() -> dict[str, Any]:
     return schema_for(BriefOutput)
-
-
-@cache
-def capture_schema() -> dict[str, Any]:
-    return schema_for(CaptureOutput)
 
 
 @cache

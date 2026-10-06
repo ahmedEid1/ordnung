@@ -63,8 +63,8 @@ describe("DocumentPage", () => {
     expect(screen.getByRole("link", { name: "Back to Inbox" })).toHaveAttribute("href", "/inbox");
   });
 
-  it("has its h1 while the letter loads", () => {
+  it("has its h1 while the letter loads: a stand-in, so focus waits for the letter's own (Layout's PageAnnouncer)", () => {
     renderPage(() => new Promise<Response>(() => {}));
-    expect(screen.getByRole("heading", { level: 1, name: "Letter" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Letter" })).toHaveAttribute("data-loading");
   });
 });

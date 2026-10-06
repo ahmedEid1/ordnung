@@ -150,7 +150,7 @@ export interface paths {
         /**
          * Delete Everything
          * @description Delete every letter, date, contract, draft, chat and setting — Ordnung starts over empty
-         *     (Ordnung's events leave a connected calendar first).
+         *     (Ordnung's events leave a connected calendar first), and the browser empties its cache.
          *
          *     ``body`` must be ``{"confirm": "DELETE"}`` (422 otherwise).
          */
@@ -667,7 +667,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Party
+         * @description Set the Land a sender is in (``null``: "Don't know"); a new one recomputes the dates of its letters.
+         */
+        patch: operations["update_party_api_parties__party_id__patch"];
         trace?: never;
     };
     "/api/cases/{case_id}": {
@@ -1446,7 +1450,8 @@ export interface paths {
         };
         /**
          * Desktop Reminders
-         * @description The desktop notification's tool, today's text in each mode, and the start-at-login entry.
+         * @description The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both
+         *     ``null``), and the start-at-login entry.
          */
         get: operations["desktop_reminders_api_reminders_desktop_get"];
         put?: never;
@@ -1554,7 +1559,8 @@ export interface paths {
         };
         /**
          * Suggested Questions
-         * @description The Ask page's suggested questions — word for word the ones the demo has recorded answers for.
+         * @description The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none
+         *     once the letters or to-dos changed since the demo started (the recorded answers no longer fit).
          */
         get: operations["suggested_questions_api_demo_questions_get"];
         put?: never;
@@ -1658,11 +1664,6 @@ export interface components {
              * @default false
              */
             inbox_auto_read: boolean;
-            /**
-             * Ocr
-             * @default true
-             */
-            ocr: boolean;
             /**
              * Llm Brief
              * @default true
@@ -2080,11 +2081,6 @@ export interface components {
              * @default false
              */
             paused: boolean;
-            /**
-             * Events
-             * @description How many events the calendar gets now
-             */
-            events: number;
             /**
              * Synced
              * @description How many of Ordnung's events are in the calendar
@@ -2940,6 +2936,11 @@ export interface components {
             proof_of: components["schemas"]["ProofLink"][];
             /** Scam Signs */
             scam_signs: string[];
+            /**
+             * Given To Model
+             * @default false
+             */
+            given_to_model: boolean;
         };
         /**
          * DocumentPatch
@@ -3535,7 +3536,7 @@ export interface components {
              * @default extracted
              * @enum {string}
              */
-            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            origin: "extracted" | "manual" | "rule" | "draft";
             /** Location */
             location: string | null;
             /** Filed On */
@@ -4079,7 +4080,7 @@ export interface components {
              * @default extracted
              * @enum {string}
              */
-            origin: "extracted" | "manual" | "rule" | "capture" | "draft";
+            origin: "extracted" | "manual" | "rule" | "draft";
             /** Location */
             location: string | null;
             /** Filed On */
@@ -4187,16 +4188,6 @@ export interface components {
              * @default haiku
              */
             brief: string;
-            /**
-             * Capture
-             * @default haiku
-             */
-            capture: string;
-            /**
-             * Bank
-             * @default haiku
-             */
-            bank: string;
         };
         /** MoneySummary */
         MoneySummary: {
@@ -4413,6 +4404,17 @@ export interface components {
             cases: components["schemas"]["Case"][];
             /** Set Aside */
             set_aside: components["schemas"]["ItemAside"][];
+        };
+        /**
+         * PartyPatch
+         * @description What the person tells Ordnung about a sender.
+         */
+        PartyPatch: {
+            /**
+             * Region
+             * @description the Land (Bundesland) the sender is in, as a code like NW or BY; null: not known
+             */
+            region: string | null;
         };
         /** PaymentDetails */
         PaymentDetails: {
@@ -4877,8 +4879,6 @@ export interface components {
              * @description read new files from the watched folder at once (else they wait for you)
              */
             inbox_auto_read?: boolean | null;
-            /** Ocr */
-            ocr?: boolean | null;
             /** Llm Brief */
             llm_brief?: boolean | null;
             /** Llm Review */
@@ -4926,9 +4926,9 @@ export interface components {
             error?: string | null;
             /**
              * Error Code
-             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question
+             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos changed since the demo started (it has to start over)
              */
-            error_code?: "demo_miss" | null;
+            error_code?: ("demo_miss" | "demo_changed") | null;
             /**
              * Note
              * @description what the answer check left out or quoted (done); shown apart from the text
@@ -5899,7 +5899,8 @@ export interface components {
         };
         /**
          * LlmPausedEvent
-         * @description ``llm.paused``: Claude's usage limit was reached; reading continues at ``until``.
+         * @description ``llm.paused``: reading pauses: Claude's usage limit (continues at ``until``), or Claude not
+         *     installed or not signed in (``until`` empty: continues once Claude is ready).
          */
         LlmPausedEvent: {
             /** Until */
@@ -7217,6 +7218,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartyDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_party_api_parties__party_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                party_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartyPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Party"];
                 };
             };
             /** @description Validation Error */
@@ -8601,7 +8637,10 @@ export interface operations {
     };
     desktop_reminders_api_reminders_desktop_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Include today's texts (built from the agenda) */
+                preview?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8615,6 +8654,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesktopReminders"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

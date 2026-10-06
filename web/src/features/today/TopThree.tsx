@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
-import { cn } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
@@ -35,7 +35,6 @@ import { actionHref } from "./useTodayData";
 import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
-import { waitingTitle } from "./WaitingCard";
 import { LetterText } from "@/components/ui/LetterText";
 import { GiroCodeSection, canReadLetterAgain } from "@/features/girocode/GiroCode";
 import { IbanCheck, PayFooter, TransferDetails, amountForTransfer, hasTransferDetails } from "@/features/pay/TransferDetails";
@@ -377,8 +376,8 @@ function ActionCard({ action, index, party, today }: { action: TodayAction; inde
 /**
  * "Top 3 this week": the three most urgent actions, each with a countdown, a reason, the
  * person/organisation, one verb button and "Why this date?". Shows "All clear until …" when
- * nothing is due — unless letters from the watched folder wait unread: then it says so. When a card
- * leaves (paid, done) focus moves to the card now in its place.
+ * nothing is due — unless letters aren't read (from the watched folder, or they couldn't be read): then
+ * it says so. When a card leaves (paid, done) focus moves to the card now in its place.
  */
 export function TopThree({
   actions,
@@ -391,7 +390,7 @@ export function TopThree({
   next: TodayAction | undefined;
   partyById: Map<string, Party>;
   today: string;
-  /** Letters from the watched folder nobody read yet: while any wait, nothing is "all clear". */
+  /** Letters not read: from the watched folder, or that couldn't be read. While there are any, nothing is "all clear". */
   waiting?: number;
 }) {
   const section = useRef<HTMLElement>(null);
@@ -416,7 +415,7 @@ export function TopThree({
             title={waiting ? "Nothing due from the letters that were read" : allClearTitle(next?.actionDate, today)}
             description={
               waiting
-                ? `${waitingTitle(waiting)} — their dates show up here once they're read.`
+                ? `${plural(waiting, "letter")} ${waiting === 1 ? "isn't" : "aren't"} read yet — ${waiting === 1 ? "its" : "their"} dates show up here once ${waiting === 1 ? "it's" : "they're"} read.`
                 : next
                   ? `Nothing needs you this week. Next up: ${next.title}.`
                   : "Nothing needs you right now. New letters show up here as soon as they are read."

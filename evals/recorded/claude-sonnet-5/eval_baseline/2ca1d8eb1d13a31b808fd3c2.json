@@ -1,0 +1,70 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"b035e512bff2ac7b5c916ac7e6b963ebf2fa51028d0298c518ba7949ca616333\",\"mode\":\"text\",\"region\":\"MV\",\"today\":\"2027-02-05\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-I1"
+    ],
+    "prompt_head": "Today is Friday, 2027-02-05 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Mecklenburg-Vorpommern (MV), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untruste"
+  },
+  "response": {
+    "text": "{\"amounts\":[6318,772],\"contract\":null,\"document_date\":\"2027-02-02\",\"kind\":\"tax_assessment\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"079/241/30586\"}],\"remedy_type\":\"einspruch\",\"sender_name\":\"Finanzamt Neu Beispielhagen\",\"items\":[{\"kind\":\"deadline\",\"title\":\"File Einspruch (objection) against the tax assessment\",\"quote\":\"Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt. Geht er Ihnen mit der Post zu, ist das der vierte Tag nach seiner Aufgabe zur Post, außer er erreicht Sie erst später.\",\"computation\":\"Letter dated Tue 02.02.2027; assuming Aufgabe zur Post on the same day (no earlier/later posting date stated). Per current §122 Abs.2 Nr.1 AO (amended 2017: 'vierter Tag'), deemed delivery (Bekanntgabe) is the 4th day after posting: 03.02 (Wed, day1), 04.02 (Thu, day2), 05.02 (Fri, day3), 06.02 (Sat, day4). Since the 4th day (06.02.2027) is a Saturday, the AO's own weekend/holiday rule in §122 Abs.2 last sentence AO shifts Bekanntgabe to the next business day: Monday 08.02.2027. The one-month Einspruchsfrist (§355 Abs.1 AO) begins with Bekanntgabe (§187 Abs.1 BGB analog: day of Bekanntgabe itself not counted as a full day, but under §188 Abs.2 BGB the monthly period ends on the day of the following month bearing the same number as the Bekanntgabe day). So the period would nominally end on 08.03.2027. However, 08.03.2027 (Monday) is 'Internationaler Frauentag', a statutory public holiday in Mecklenburg-Vorpommern since 2023. Under §108 Abs.3 AO / §193 BGB, when the last day of a period falls on a Saturday, Sunday or holiday, the period ends on the next business day: Tuesday 09.03.2027, which is an ordinary working day.\",\"due_date\":\"2027-03-09\",\"confidence\":\"medium\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund credited to taxpayer's account\",\"quote\":\"Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.\",\"computation\":\"The letter only states the refund will arrive 'in den nächsten Tagen' (in the next few days) after the letter's date (02.02.2027), without giving an exact date. No precise due date can be derived; this is informational rather than an obligation of the recipient.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":772}],\"warnings\":[\"The Einspruch deadline is calculated assuming the letter was posted (Aufgabe zur Post) on its printed date, 02.02.2027; if actual mailing was later, the deadline shifts accordingly.\",\"08.03.2027 is a public holiday (Internationaler Frauentag) in Mecklenburg-Vorpommern, which pushed the nominal one-month deadline to the next business day, 09.03.2027 — worth double-checking against the actual envelope postmark.\"]}",
+    "data": {
+      "amounts": [
+        6318,
+        772
+      ],
+      "contract": null,
+      "document_date": "2027-02-02",
+      "kind": "tax_assessment",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "079/241/30586"
+        }
+      ],
+      "remedy_type": "einspruch",
+      "sender_name": "Finanzamt Neu Beispielhagen",
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Einspruch (objection) against the tax assessment",
+          "quote": "Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt. Geht er Ihnen mit der Post zu, ist das der vierte Tag nach seiner Aufgabe zur Post, außer er erreicht Sie erst später.",
+          "computation": "Letter dated Tue 02.02.2027; assuming Aufgabe zur Post on the same day (no earlier/later posting date stated). Per current §122 Abs.2 Nr.1 AO (amended 2017: 'vierter Tag'), deemed delivery (Bekanntgabe) is the 4th day after posting: 03.02 (Wed, day1), 04.02 (Thu, day2), 05.02 (Fri, day3), 06.02 (Sat, day4). Since the 4th day (06.02.2027) is a Saturday, the AO's own weekend/holiday rule in §122 Abs.2 last sentence AO shifts Bekanntgabe to the next business day: Monday 08.02.2027. The one-month Einspruchsfrist (§355 Abs.1 AO) begins with Bekanntgabe (§187 Abs.1 BGB analog: day of Bekanntgabe itself not counted as a full day, but under §188 Abs.2 BGB the monthly period ends on the day of the following month bearing the same number as the Bekanntgabe day). So the period would nominally end on 08.03.2027. However, 08.03.2027 (Monday) is 'Internationaler Frauentag', a statutory public holiday in Mecklenburg-Vorpommern since 2023. Under §108 Abs.3 AO / §193 BGB, when the last day of a period falls on a Saturday, Sunday or holiday, the period ends on the next business day: Tuesday 09.03.2027, which is an ordinary working day.",
+          "due_date": "2027-03-09",
+          "confidence": "medium",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund credited to taxpayer's account",
+          "quote": "Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.",
+          "computation": "The letter only states the refund will arrive 'in den nächsten Tagen' (in the next few days) after the letter's date (02.02.2027), without giving an exact date. No precise due date can be derived; this is informational rather than an obligation of the recipient.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 772
+        }
+      ],
+      "warnings": [
+        "The Einspruch deadline is calculated assuming the letter was posted (Aufgabe zur Post) on its printed date, 02.02.2027; if actual mailing was later, the deadline shifts accordingly.",
+        "08.03.2027 is a public holiday (Internationaler Frauentag) in Mecklenburg-Vorpommern, which pushed the nominal one-month deadline to the next business day, 09.03.2027 — worth double-checking against the actual envelope postmark."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 5356,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 3045,
+      "cost_usd": 0.0663684,
+      "duration_ms": 60824,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

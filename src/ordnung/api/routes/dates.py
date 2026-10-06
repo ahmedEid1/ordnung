@@ -3,7 +3,8 @@
 * :func:`recompute_document_items` — after the person confirms when a letter arrived (or corrects
   its date or kind), the letter's extracted to-dos are recomputed from their stored DateSpecs and so
   are the deadlines the law adds to its kind (filed again only when the person chose the kind);
-  :func:`recompute_all_items` does it for every letter after the holiday region changed;
+  :func:`recompute_all_items` does it for every letter after the holiday region changed, and
+  :func:`recompute_party_items` for one sender's letters after the person set the Land it is in;
 * :func:`manual_date_fields` — a date the person typed in becomes ``due_date_source="manual"`` with
   a send-by date and a receipt from the engine;
 * :func:`refresh_review_status` — a letter is "Please check" exactly while one of its open to-dos
@@ -20,7 +21,7 @@ from typing import Any
 
 from ordnung.db.store import Store
 from ordnung.ingest.conflicts import Rival, find_rivals
-from ordnung.ingest.gaps import CHECK_SLOT, check_reasons, remedy_notices, square_gap_warnings
+from ordnung.ingest.gaps import check_reasons, is_check_slot, remedy_notices, square_gap_warnings
 from ordnung.ingest.plan import (
     VerifiedItem,
     checked_evidence,
@@ -102,8 +103,8 @@ def _verified(
     rivals: tuple[Rival, ...] = ()
     if evidence is not None and item.grounding != "user":
         reasons = consistency_reasons(extracted, pages)
-        if item.slot_key == CHECK_SLOT:
-            reasons = check_reasons(reasons)
+        if is_check_slot(item.slot_key):
+            reasons = check_reasons(reasons, item.slot_key or "")
     if evidence is not None:
         # a confirmed to-do keeps the letter's other dates: the date the person confirmed was the earlier one
         rivals = find_rivals(extracted, [extracted, *others], pages)
@@ -254,6 +255,15 @@ def recompute_all_items(store: Store, today: date) -> list[Item]:
     changed: list[Item] = []
     with store.tx():
         for document in store.list_documents(include_deleted=True):
+            changed.extend(recompute_document_items(store, document, today))
+    return changed
+
+
+def recompute_party_items(store: Store, party_id: str, today: date) -> list[Item]:
+    """Recompute the extracted to-dos of one sender's letters (the Land the person set for it changed)."""
+    changed: list[Item] = []
+    with store.tx():
+        for document in store.list_documents(party_id=party_id, include_deleted=True):
             changed.extend(recompute_document_items(store, document, today))
     return changed
 

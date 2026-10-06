@@ -22,7 +22,9 @@ run       ``reading`` (1, 2 …), ``trigger`` (``read`` | ``read_again``), ``pri
 ocr       :func:`text_layer` (pages, text pages, pages to transcribe, words, hidden text);
           the transcription group: ``pages`` (and ``parallel``)
 model     :func:`model_call` (call id, purpose, prompt, models, cache hit, outcome, repair of);
-          a page transcript adds :func:`transcript` (legible, characters — not the text)
+          an answer that didn't fit the form: :func:`answer_problems` (how many, and where — field paths);
+          a page transcript adds :func:`transcript` (legible, characters — not the text); the
+          completeness re-ask adds :func:`completion` (the gap that triggered it, whether it was used)
 verify    :func:`quote` per quote (target, grounding, page, scores, digit groups, reasons);
           the stage: :func:`verification` (counts per grounding) and, for a reading that came back
           incomplete, :func:`reading_check` (why, and which to-do code filed for it)
@@ -38,6 +40,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, Literal
+
+from pydantic import ValidationError
 
 from ordnung.models import ComputationReceipt, DateSpec, Evidence, Item, Page
 
@@ -59,6 +63,8 @@ SPEC_FIELDS = (
 )
 #: How many other parties a sender's match lists with their scores.
 MAX_CANDIDATES = 3
+#: How many fields of an answer that didn't fit the form its step names.
+MAX_PROBLEM_FIELDS = 5
 
 QuoteTarget = Literal["item", "key_fact", "contract", "change", "remedy"]
 PartyDecision = Literal["identifier", "name", "similar_name", "new", "none"]
@@ -114,6 +120,13 @@ def model_call(
     }
 
 
+def answer_problems(error: ValidationError) -> dict[str, Any]:
+    """An answer that didn't fit the form: how many problems, and the fields they are in (``kind``,
+    ``items.0.date.unit``; the first :data:`MAX_PROBLEM_FIELDS`) — never the values the model wrote."""
+    fields = [".".join(str(part) for part in problem["loc"]) or "(root)" for problem in error.errors()]
+    return {"problems": len(fields), "problem_fields": list(dict.fromkeys(fields))[:MAX_PROBLEM_FIELDS]}
+
+
 def quote(
     target: QuoteTarget,
     evidence: Evidence,
@@ -158,6 +171,15 @@ def verification(groundings: Sequence[str], needs_check: int) -> dict[str, Any]:
         "unverified": sum(g == "unverified" for g in groundings),
         "needs_check": needs_check,
     }
+
+
+def completion(gap: str, *, accepted: bool, kept_because: str | None) -> dict[str, object]:
+    """The completeness re-ask of a reading found incomplete (:func:`ordnung.ingest.extract.read_document`): the
+    gap that triggered it (``empty`` | ``remedy_left_out``), whether its answer replaced the first reading, and
+    if not why (:data:`ordnung.ingest.extract.KeptBecause`: ``no_answer`` | ``unanswered`` | ``unusable`` |
+    ``not_better`` | ``date`` | ``dropped`` | ``uncovered`` | ``unchecked`` | ``later`` | ``ungrounded`` |
+    ``quotes``) — codes only."""
+    return {"reading_gap": gap, "accepted": accepted, "kept_because": kept_because}
 
 
 def reading_check(gap: str, item: str) -> dict[str, object]:

@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"320cbd94290ae7ca6c74ac711972013f6c3288c58c68cfe6d42fbfa9b541152f\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2027-01-07\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-adversarial-conflicting_dates-1"
+    ],
+    "prompt_head": "Today is Thursday, 2027-01-07 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"amounts\":[168],\"contract\":null,\"kind\":\"invoice\",\"sender_name\":\"Tanzschule Beispielschritt\",\"document_date\":\"2027-01-05\",\"references\":[{\"label\":\"Teilnehmer-Nr.\",\"value\":\"TS-3094\"}],\"remedy_type\":\"none\",\"items\":[{\"kind\":\"payment\",\"title\":\"Pay course fee for Grundkurs\",\"quote\":\"Bitte überweisen Sie den Betrag bis zum 25.01.2027, damit Ihr Platz fest reserviert bleibt.\",\"computation\":\"The letter gives two different deadlines for the same payment: the body text says 'bis zum 25.01.2027' while the payment information box says 'zahlbar bis 03.02.2027'. These two dates contradict each other. Per the rule to use the earliest plausible date when a letter contradicts itself about a date, the earlier date 2027-01-25 is used as the due date, with confidence lowered and a warning added. Neither date falls on a weekend (25 Jan 2027 is a Monday), so no weekend adjustment is needed regardless.\",\"due_date\":\"2027-01-25\",\"confidence\":\"low\",\"amount\":168},{\"kind\":\"milestone\",\"title\":\"Start of Grundkurs course\",\"quote\":\"Ihre Anmeldung zum Grundkurs ab 14.01.2027 – Kursgebühr\",\"computation\":\"The course start date is explicitly stated in the subject line of the letter as 14.01.2027 (a Thursday, matching the weekly 'Do 19:30 Uhr' course slot). No computation beyond reading the printed date is needed.\",\"due_date\":\"2027-01-14\",\"confidence\":\"high\",\"amount\":null}],\"warnings\":[\"The letter contains two conflicting payment deadlines for the same 168,00 € fee: the body text states 'bis zum 25.01.2027' while the payment information box states 'zahlbar bis 03.02.2027'; the earlier date was used but the person should clarify with the dance school which deadline actually applies.\"]}",
+    "data": {
+      "amounts": [
+        168
+      ],
+      "contract": null,
+      "kind": "invoice",
+      "sender_name": "Tanzschule Beispielschritt",
+      "document_date": "2027-01-05",
+      "references": [
+        {
+          "label": "Teilnehmer-Nr.",
+          "value": "TS-3094"
+        }
+      ],
+      "remedy_type": "none",
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay course fee for Grundkurs",
+          "quote": "Bitte überweisen Sie den Betrag bis zum 25.01.2027, damit Ihr Platz fest reserviert bleibt.",
+          "computation": "The letter gives two different deadlines for the same payment: the body text says 'bis zum 25.01.2027' while the payment information box says 'zahlbar bis 03.02.2027'. These two dates contradict each other. Per the rule to use the earliest plausible date when a letter contradicts itself about a date, the earlier date 2027-01-25 is used as the due date, with confidence lowered and a warning added. Neither date falls on a weekend (25 Jan 2027 is a Monday), so no weekend adjustment is needed regardless.",
+          "due_date": "2027-01-25",
+          "confidence": "low",
+          "amount": 168
+        },
+        {
+          "kind": "milestone",
+          "title": "Start of Grundkurs course",
+          "quote": "Ihre Anmeldung zum Grundkurs ab 14.01.2027 – Kursgebühr",
+          "computation": "The course start date is explicitly stated in the subject line of the letter as 14.01.2027 (a Thursday, matching the weekly 'Do 19:30 Uhr' course slot). No computation beyond reading the printed date is needed.",
+          "due_date": "2027-01-14",
+          "confidence": "high",
+          "amount": null
+        }
+      ],
+      "warnings": [
+        "The letter contains two conflicting payment deadlines for the same 168,00 € fee: the body text states 'bis zum 25.01.2027' while the payment information box states 'zahlbar bis 03.02.2027'; the earlier date was used but the person should clarify with the dance school which deadline actually applies."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 1705,
+      "cache_read_tokens": 0,
+      "cache_creation_tokens": 5558,
+      "cost_usd": 0.039286,
+      "duration_ms": 18167,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

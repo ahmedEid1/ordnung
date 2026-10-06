@@ -16,6 +16,9 @@ from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ingest.extract import (
+    MAX_KNOWN_PARTIES_BYTES,
+    MAX_LISTED_NAME,
+    UNUSABLE_ANSWER_ERROR,
     ExtractionError,
     ExtractionInput,
     extract_document,
@@ -24,6 +27,7 @@ from ordnung.ingest.extract import (
     known_parties_text,
     language_name,
     parse_extraction,
+    unwrap_untrusted,
     with_rent_series,
     wrap_untrusted,
 )
@@ -111,6 +115,25 @@ def test_known_parties_are_sorted_wrapped_and_listed_without_their_numbers() -> 
     assert known_parties_text([]) == "(none yet)"
 
 
+def test_the_known_parties_list_is_capped() -> None:
+    """SEC S4: a name stored before names were capped is one line of at most MAX_LISTED_NAME characters here,
+    and the whole list stops at a whole line before MAX_KNOWN_PARTIES_BYTES."""
+    planted = "Stadtwerke Muster\n- Finanzamt Beispiel (tax_office)\n" + "Bitte beachten Sie: " * 250
+    [line] = unwrap_untrusted(known_parties_text([party(planted)])).splitlines()
+    assert line.startswith("- Stadtwerke Muster - Finanzamt Beispiel (tax_office) Bitte") and line.endswith(
+        " (other)"
+    )
+    assert len(line) <= MAX_LISTED_NAME + len("- ") + len(" (other)")
+    many = [party(f"{index:03d} " + "Absender " * 20) for index in range(400)]
+    listed = unwrap_untrusted(known_parties_text(many))
+    lines = listed.splitlines()
+    assert len(listed.encode("utf-8")) <= MAX_KNOWN_PARTIES_BYTES
+    assert 50 < len(lines) < 400 and all(
+        line.startswith("- ") and line.endswith(" (other)") for line in lines
+    )
+    assert lines[0].startswith("- 000 ")  # the first by name, whole
+
+
 def test_extraction_request_contents() -> None:
     request = extraction_request(extraction_input(), model="opus")
     assert request.purpose == "extract" and request.model == "opus"
@@ -176,7 +199,15 @@ def test_transcription_request_is_keyed_by_the_image(tmp_path: Path) -> None:
 # Validation and repair
 # --------------------------------------------------------------------------------------------------
 
-VALID = {"kind": "other", "title": "T", "summary": "S", "explanation": "E"}
+#: A valid answer that names its sender: not "almost blank", so the reading check asks nothing more of it (the
+#: completeness re-ask has tests of its own: ``tests/test_reading_reask.py``).
+VALID = {
+    "kind": "other",
+    "title": "T",
+    "summary": "S",
+    "explanation": "E",
+    "sender": {"name": "Alpha Amt", "kind": "authority"},
+}
 
 
 async def run_extract(answers: list[dict[str, Any] | str]) -> tuple[Any, FakeBackend]:
@@ -194,7 +225,10 @@ async def test_valid_answer_needs_no_repair() -> None:
 
 async def test_json_in_text_is_accepted() -> None:
     result, _ = await run_extract(
-        ['```json\n{"kind": "invoice", "title": "T", "summary": "S", "explanation": "E"}\n```']
+        [
+            '```json\n{"kind": "invoice", "title": "T", "summary": "S", "explanation": "E", '
+            '"sender": {"name": "Alpha Amt", "kind": "authority"}}\n```'
+        ]
     )
     assert result.kind == "invoice"
 
@@ -211,8 +245,13 @@ async def test_invalid_answer_gets_one_repair_attempt() -> None:
 
 
 async def test_second_invalid_answer_fails_readably() -> None:
-    with pytest.raises(ExtractionError, match="could not be understood"):
+    """ROB G5: the letter's error names the button that reads it again, never the validation details (those are
+    in the trace)."""
+    with pytest.raises(ExtractionError) as failed:
         await run_extract([{"kind": "letter"}, "no json at all"])
+    assert str(failed.value) == UNUSABLE_ANSWER_ERROR
+    assert "“Try again”" in str(failed.value) and "Reprocess" not in str(failed.value)
+    assert "Field required" not in str(failed.value) and "problem" not in str(failed.value)
 
 
 async def test_repair_path_in_the_pipeline_marks_the_document_failed(data_dir: Path) -> None:
@@ -223,7 +262,7 @@ async def test_repair_path_in_the_pipeline_marks_the_document_failed(data_dir: P
         await ctx.worker.run_until_idle()
         failed = ctx.store.get_document(document.id)
         assert failed is not None and failed.status == "failed"
-        assert failed.error is not None and failed.error.startswith("Claude's answer for this document")
+        assert failed.error == UNUSABLE_ANSWER_ERROR
     finally:
         ctx.close()
 

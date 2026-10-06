@@ -6,6 +6,9 @@ Uploads (``POST /api/documents``, multipart): ``files`` (``files[]`` is accepted
 jobs; files that were already in Ordnung are reported by id in ``duplicates``, rejected files in
 ``errors``. Deleting moves a letter to the trash (``?purge=true`` deletes it and everything derived
 from it for good).
+
+Originals, page images and thumbnails are sent with ``no-store``, and deleting for good also tells the
+browser to empty its cache (``Clear-Site-Data``), so no copy of a deleted letter stays in the browser.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ from functools import partial
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -77,8 +80,8 @@ router = APIRouter(tags=["documents"])
 INLINE_TYPES = frozenset({"application/pdf", "image/jpeg", "image/png", "image/webp"})
 MAX_UPLOAD_FILES = 60
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
-FILE_CACHE = "private, max-age=3600"
-IMAGE_CACHE = "private, max-age=86400"
+NO_STORE = "no-store"
+CLEAR_CACHE = {"Clear-Site-Data": '"cache"'}
 LIVE_IDEA_STATUSES = ("new", "accepted", "dismissed", "snoozed", "done")
 NOT_FOUND = "This letter doesn't exist (any more)."
 
@@ -309,6 +312,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         can_wait_again=was_kept_from_waiting(store, document),
         proof_of=_proof_of(store, doc_id),
         scam_signs=Ledger(store, today).scam_signs(document) if document.direction == "incoming" else [],
+        given_to_model=store.given_to_model(doc_id),
     )
 
 
@@ -580,10 +584,15 @@ def _delete(store: Store, doc_id: str, purge: bool) -> DeleteResult:
 
 @router.delete("/documents/{doc_id}", response_model=DeleteResult)
 async def delete_document(
-    doc_id: str, ctx: CtxDep, purge: Annotated[bool, Query(description="Delete for good")] = False
+    doc_id: str,
+    ctx: CtxDep,
+    response: Response,
+    purge: Annotated[bool, Query(description="Delete for good")] = False,
 ) -> DeleteResult:
     """Move a letter to the trash, or with ``purge`` delete it with its pages, to-dos and cache."""
     result = await asyncio.to_thread(_delete, ctx.store, doc_id, purge)
+    if purge:
+        response.headers.update(CLEAR_CACHE)
     ctx.bus.publish("document.deleted", doc_id=doc_id, purged=purge)
     await ledger_changed(ctx)
     return result
@@ -615,7 +624,7 @@ def document_file(doc_id: str, store: StoreDep) -> FileResponse:
         media_type=document.mime,
         filename=download_name(document.filename, document.mime),
         content_disposition_type="inline" if inline else "attachment",
-        headers={"Cache-Control": FILE_CACHE, "X-Content-Type-Options": "nosniff"},
+        headers={"Cache-Control": NO_STORE, "X-Content-Type-Options": "nosniff"},
     )
 
 
@@ -624,7 +633,7 @@ def page_image(doc_id: str, page: int, store: StoreDep) -> FileResponse:
     """A rendered page (JPEG, 1-based page number)."""
     stored = require(store.get_page(doc_id, page), "This page doesn't exist.")
     path = _inside(store, store.data_dir / stored.image_path)
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": IMAGE_CACHE})
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": NO_STORE})
 
 
 @router.get("/documents/{doc_id}/thumbnail.jpg", response_class=FileResponse)
@@ -632,4 +641,4 @@ def thumbnail(doc_id: str, store: StoreDep) -> FileResponse:
     """A small image of the first page."""
     require(store.get_document(doc_id), NOT_FOUND)
     path = _inside(store, store.paths.derived / doc_id / THUMBNAIL_NAME)
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": IMAGE_CACHE})
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": NO_STORE})

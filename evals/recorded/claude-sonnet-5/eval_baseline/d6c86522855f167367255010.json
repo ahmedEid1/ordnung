@@ -1,0 +1,62 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_only.s3.u2.d1.h5036dca5",
+    "cache_key": "{\"condition\":\"llm_only\",\"doc\":\"04f74450248356dcfccb684b5f65fa8d163370850597fdb3aa74e21405adeac3\",\"mode\":\"text\",\"region\":\"SH\",\"today\":\"2027-06-18\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-municipal_decision-I2"
+    ],
+    "prompt_head": "Today is Friday, 2027-06-18 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Schleswig-Holstein (SH), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_do"
+  },
+  "response": {
+    "text": "{\"kind\":\"authority_letter\",\"sender_name\":\"Stadt Musterbüll – Fachdienst Verkehr\",\"document_date\":\"2027-06-14\",\"references\":[{\"label\":\"Kassenzeichen\",\"value\":\"BP-2027-0388\"},{\"label\":\"Fahrzeug-Kennzeichen\",\"value\":\"NF-JM 512\"}],\"amounts\":[],\"items\":[{\"kind\":\"deadline\",\"title\":\"File Widerspruch against rejection of resident parking permit\",\"quote\":\"Gegen die Ablehnung können Sie Widerspruch erheben; er muss innerhalb eines Monats, nachdem Ihnen dieser Bescheid bekannt gegeben wurde, bei der Stadt Musterbüll, Markt 1, 25899 Musterbüll, schriftlich oder zur Niederschrift eingehen. Für die Bekanntgabe zählt bei Postversand der vierte Tag, nachdem der Bescheid zur Post gegeben wurde.\",\"computation\":\"The letter itself fixes the Bekanntgabe (deemed-delivery) rule as the 4th day after posting (not the usual 3rd day under §41 VwVfG/§122 AO). No separate mailing date is shown, so the posting date is assumed to equal the document date, 14.06.2027 (Monday). Counting 4 days from posting (15.,16.,17.,18. June) gives deemed delivery on 18.06.2027 (Friday) – no weekend/holiday adjustment needed for this intermediate date. The one-month Widerspruchsfrist then runs under §§187 Abs.1, 188 Abs.2 BGB: it starts the day after Bekanntgabe (19.06.2027) and ends on the day one month later that numerically corresponds to the Bekanntgabe day, i.e. 18.07.2027. Checking the weekday: 18.06.2027 is a Friday; 30 days later (June has 30 days) shifts the weekday by 2, so 18.07.2027 falls on a Sunday. Under §193 BGB, when the last day of a period is a Sunday, Saturday or public holiday, the period ends on the next working day. 19.07.2027 (Monday) is not a public holiday in Schleswig-Holstein, so the Widerspruch must reach the city by that date.\",\"due_date\":\"2027-07-19\",\"confidence\":\"medium\",\"amount\":null}],\"remedy_type\":\"widerspruch\",\"contract\":null,\"warnings\":[\"The exact posting date (Zur-Post-Gabe) is not stated in the letter; the due-date calculation assumes it equals the document date (14.06.2027), which lowers confidence in the exact deadline – verify the actual postmark/envelope date if available.\",\"The letter notes that if the person submits proof of permanent private use of the vehicle, the application will be reconsidered, but no deadline is given for this submission, so no due date could be set for it.\"]}",
+    "data": {
+      "kind": "authority_letter",
+      "sender_name": "Stadt Musterbüll – Fachdienst Verkehr",
+      "document_date": "2027-06-14",
+      "references": [
+        {
+          "label": "Kassenzeichen",
+          "value": "BP-2027-0388"
+        },
+        {
+          "label": "Fahrzeug-Kennzeichen",
+          "value": "NF-JM 512"
+        }
+      ],
+      "amounts": [],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "File Widerspruch against rejection of resident parking permit",
+          "quote": "Gegen die Ablehnung können Sie Widerspruch erheben; er muss innerhalb eines Monats, nachdem Ihnen dieser Bescheid bekannt gegeben wurde, bei der Stadt Musterbüll, Markt 1, 25899 Musterbüll, schriftlich oder zur Niederschrift eingehen. Für die Bekanntgabe zählt bei Postversand der vierte Tag, nachdem der Bescheid zur Post gegeben wurde.",
+          "computation": "The letter itself fixes the Bekanntgabe (deemed-delivery) rule as the 4th day after posting (not the usual 3rd day under §41 VwVfG/§122 AO). No separate mailing date is shown, so the posting date is assumed to equal the document date, 14.06.2027 (Monday). Counting 4 days from posting (15.,16.,17.,18. June) gives deemed delivery on 18.06.2027 (Friday) – no weekend/holiday adjustment needed for this intermediate date. The one-month Widerspruchsfrist then runs under §§187 Abs.1, 188 Abs.2 BGB: it starts the day after Bekanntgabe (19.06.2027) and ends on the day one month later that numerically corresponds to the Bekanntgabe day, i.e. 18.07.2027. Checking the weekday: 18.06.2027 is a Friday; 30 days later (June has 30 days) shifts the weekday by 2, so 18.07.2027 falls on a Sunday. Under §193 BGB, when the last day of a period is a Sunday, Saturday or public holiday, the period ends on the next working day. 19.07.2027 (Monday) is not a public holiday in Schleswig-Holstein, so the Widerspruch must reach the city by that date.",
+          "due_date": "2027-07-19",
+          "confidence": "medium",
+          "amount": null
+        }
+      ],
+      "remedy_type": "widerspruch",
+      "contract": null,
+      "warnings": [
+        "The exact posting date (Zur-Post-Gabe) is not stated in the letter; the due-date calculation assumes it equals the document date (14.06.2027), which lowers confidence in the exact deadline – verify the actual postmark/envelope date if available.",
+        "The letter notes that if the person submits proof of permanent private use of the vehicle, the application will be reconsidered, but no deadline is given for this submission, so no due date could be set for it."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3301,
+      "cache_read_tokens": 3122,
+      "cache_creation_tokens": 2608,
+      "cost_usd": 0.044070399999999996,
+      "duration_ms": 37821,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}

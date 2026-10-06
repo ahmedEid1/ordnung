@@ -36,6 +36,7 @@ import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
 import { ADVICE_LINKS, AdviceLinks, Disclaimer } from "@/components/ui/Disclaimer";
 import { KindBadge } from "@/components/ui/KindBadge";
+import { useModelLang } from "@/components/ui/ModelText";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { Popover } from "@/components/ui/Popover";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -68,6 +69,7 @@ import {
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
+import { isDeadlineCheck, READING_CHECK_SLOT } from "./Warnings";
 import { canSuspend, needsTypedCourt } from "@/features/letters/logic";
 import { composerHref } from "@/features/today/selection";
 import { PayPanel } from "./PayPanel";
@@ -248,6 +250,9 @@ export interface VerdictCardProps {
 export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: VerdictCardProps) {
   const doc = detail.document;
   const today = useToday();
+  // the title and the summary are Claude's, in the person's language (a file name is no one's)
+  const titleLang = useModelLang(doc.title);
+  const summaryLang = useModelLang(doc.summary);
   const scam = scamSuggestion(detail);
   const decisionIdea = decisionSuggestion(detail);
   // a price increase's special right / a notice window leads — not the new monthly fee
@@ -313,6 +318,7 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
         <h1
           id="verdict-title"
           tabIndex={-1}
+          {...(doc.title && doc.title !== doc.filename ? titleLang : {})}
           className={cn(
             // German compounds break at their joints (soft hyphens, marked German), never mid-syllable, and a
             // reference number never at its hyphens; the detail-page title size (26 → 30 px, as the "How it was
@@ -347,7 +353,11 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
           ) : null}
         </div>
         {/* money and dates the app's way, units and reference numbers kept whole ("MV-" / "2025-0412", "184.30" / "€") */}
-        {doc.summary ? <p className="mt-3 text-[15px] leading-relaxed text-ink/80 wrap-break-word">{englishInline(doc.summary)}</p> : null}
+        {doc.summary ? (
+          <p className="mt-3 text-[15px] leading-relaxed text-ink/80 wrap-break-word" {...summaryLang}>
+            {englishInline(doc.summary)}
+          </p>
+        ) : null}
         {demoNote ? (
           // the online demo's own note (a re-filed letter keeps the old kind's dates): next to what it is about
           <p className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13px] leading-snug text-warn-ink">
@@ -634,7 +644,11 @@ function DateBox({
         {checkDate ? (
           <p className="mt-2.5 flex items-start gap-1.5 text-[13px] leading-5 text-warn-ink">
             <TriangleAlert className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-            <span>We couldn't find this date in the letter — please check it below.</span>
+            <span>
+              {item.slot_key === READING_CHECK_SLOT || isDeadlineCheck(item)
+                ? "Ordnung took this date from the letter itself — please check it below."
+                : "We couldn't find this date in the letter — please check it below."}
+            </span>
           </p>
         ) : null}
         {askArrival ? (

@@ -11,7 +11,9 @@ The row's ``outcome`` is decided here, by one policy (:func:`call_outcome`): the
 the call it retries (``repair_of``, from :attr:`~ordnung.llm.base.LLMResponse.call_id`).
 
 A letter deleted while a call that carried it was under way is treated as deleted after the call: the
-sink writes the call's row without the letter's id, replay key, span or job, and caches nothing.
+sink writes the call's row without the letter's id, replay key, span or job, and caches nothing. A call whose
+CLI never started (:class:`~ordnung.llm.base.ClaudeNotInstalled`) carried nothing: its row names no letter and
+no bytes sent, so a letter that was never sent is never said to have been (``Store.given_to_model``).
 """
 
 from __future__ import annotations
@@ -24,7 +26,15 @@ from collections.abc import AsyncIterator, Callable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
-from ordnung.llm.base import LLMBackend, LLMError, LLMRequest, LLMResponse, StreamEvent, Usage
+from ordnung.llm.base import (
+    ClaudeNotInstalled,
+    LLMBackend,
+    LLMError,
+    LLMRequest,
+    LLMResponse,
+    StreamEvent,
+    Usage,
+)
 from ordnung.models import CallOutcome
 from ordnung.trace.facts import model_call
 from ordnung.trace.spans import NO_SPAN, Span
@@ -167,11 +177,14 @@ class LLMService:
         outcome: CallOutcome | None = None,
         trace: Span = NO_SPAN,
         repair_of: int | None = None,
+        sent: bool = True,
     ) -> int | None:
         """Write the usage-log row of a call; returns its id (``None`` without a log, or when writing
-        failed — accounting never breaks a call)."""
+        failed — accounting never breaks a call). ``sent=False``: the call never started, so it carried
+        no letter and no bytes."""
         if self.sink is None:
             return None
+        carried = sent and not (resp and resp.cache_hit)
         try:
             return self.sink.log_llm_call(
                 purpose=req.purpose,
@@ -181,9 +194,9 @@ class LLMService:
                 ok=error is None,
                 error=error,
                 cache_hit=bool(resp and resp.cache_hit),
-                doc_ids=list(req.doc_ids),
-                pages_sent=0 if (resp and resp.cache_hit) else len(req.attachments),
-                bytes_sent=0 if (resp and resp.cache_hit) else _bytes_sent(req),
+                doc_ids=list(req.doc_ids) if sent else [],
+                pages_sent=len(req.attachments) if carried else 0,
+                bytes_sent=_bytes_sent(req) if carried else 0,
                 request_key=request_key(req),
                 prompt_name=req.prompt_name or req.purpose,
                 prompt_version=req.prompt_version,
@@ -264,7 +277,15 @@ class LLMService:
         try:
             resp = await self.backend.complete(req)
         except LLMError as exc:
-            call_id = self._record(req, None, str(exc), outcome="failed", trace=trace, repair_of=repair_of)
+            call_id = self._record(
+                req,
+                None,
+                str(exc),
+                outcome="failed",
+                trace=trace,
+                repair_of=repair_of,
+                sent=not isinstance(exc, ClaudeNotInstalled),
+            )
             self._describe(trace, req, None, call_id=call_id, outcome="failed", repair_of=repair_of)
             raise
         resp = self._settle(req, resp, trace=trace, validate=validate, repair_of=repair_of)

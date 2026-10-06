@@ -1,0 +1,68 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"315385466e5b56ff32f864b0d680b87b5225b513b02149ad4a4b47196e03b367\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-04-29\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-tax_assessment-I2"
+    ],
+    "prompt_head": "Today is Tuesday, 2025-04-29 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted_"
+  },
+  "response": {
+    "text": "{\"kind\":\"tax_assessment\",\"sender_name\":\"Finanzamt Musterwiesen\",\"document_date\":\"2025-04-23\",\"references\":[{\"label\":\"Steuernummer\",\"value\":\"20/318/07452\"}],\"amounts\":[425],\"items\":[{\"kind\":\"deadline\",\"title\":\"Deadline to file Einspruch (objection) against the tax assessment\",\"quote\":\"Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt. Geht er Ihnen mit der Post zu, ist das der vierte Tag nach seiner Aufgabe zur Post, außer er erreicht Sie erst später.\",\"computation\":\"Letter dated (and presumed posted) Wednesday 23.04.2025, no separate 'zur Post gegeben' date stated, so posting day = 23.04.2025. Posted on/after 1 Jan 2025 → deemed delivered on the 4th calendar day after posting: 23.04.2025 + 4 days = 27.04.2025 (Sunday). This is a Finanzamt (tax office), so under §108 Abs.3 AO the delivery day moves to the next working day because the 4th day is a Sunday: Monday 28.04.2025 becomes the deemed delivery day. The one-month Einspruch period under §355 Abs.1 AO runs from that delivery day per §§187 Abs.1, 188 Abs.2 BGB (day of event not counted, period ends on the day with the same number one month later): 28.04.2025 + 1 month = 28.05.2025 (Wednesday). 28.05.2025 is not a Saturday, Sunday or NW/national public holiday, so no further shift under §108 Abs.3 AO applies.\",\"due_date\":\"2025-05-28\",\"confidence\":\"high\",\"amount\":null},{\"kind\":\"payment\",\"title\":\"Tax refund (Erstattung) credited to taxpayer's account\",\"quote\":\"Wir erstatten Ihnen 425,00 €. Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.\",\"computation\":\"The letter only states the refund will arrive 'in den nächsten Tagen' (in the next few days) after the 23.04.2025 document date, without giving an exact calendar date, so no precise due date can be computed; this is an automatic credit to the taxpayer, not an action the taxpayer must perform.\",\"due_date\":null,\"confidence\":\"low\",\"amount\":425}],\"remedy_type\":\"einspruch\",\"contract\":null,\"warnings\":[\"The exact date of the 425,00 € refund credit is not stated (only 'in den nächsten Tagen'), so no precise due_date could be set for that item; verify the credit actually arrives at the stated IBAN DE38 2609 0050 0053 1044 77.\"]}",
+    "data": {
+      "kind": "tax_assessment",
+      "sender_name": "Finanzamt Musterwiesen",
+      "document_date": "2025-04-23",
+      "references": [
+        {
+          "label": "Steuernummer",
+          "value": "20/318/07452"
+        }
+      ],
+      "amounts": [
+        425
+      ],
+      "items": [
+        {
+          "kind": "deadline",
+          "title": "Deadline to file Einspruch (objection) against the tax assessment",
+          "quote": "Für den Einspruch haben Sie einen Monat Zeit; die Frist läuft ab dem Ende des Tages, an dem der Bescheid als bekannt gegeben gilt. Geht er Ihnen mit der Post zu, ist das der vierte Tag nach seiner Aufgabe zur Post, außer er erreicht Sie erst später.",
+          "computation": "Letter dated (and presumed posted) Wednesday 23.04.2025, no separate 'zur Post gegeben' date stated, so posting day = 23.04.2025. Posted on/after 1 Jan 2025 → deemed delivered on the 4th calendar day after posting: 23.04.2025 + 4 days = 27.04.2025 (Sunday). This is a Finanzamt (tax office), so under §108 Abs.3 AO the delivery day moves to the next working day because the 4th day is a Sunday: Monday 28.04.2025 becomes the deemed delivery day. The one-month Einspruch period under §355 Abs.1 AO runs from that delivery day per §§187 Abs.1, 188 Abs.2 BGB (day of event not counted, period ends on the day with the same number one month later): 28.04.2025 + 1 month = 28.05.2025 (Wednesday). 28.05.2025 is not a Saturday, Sunday or NW/national public holiday, so no further shift under §108 Abs.3 AO applies.",
+          "due_date": "2025-05-28",
+          "confidence": "high",
+          "amount": null
+        },
+        {
+          "kind": "payment",
+          "title": "Tax refund (Erstattung) credited to taxpayer's account",
+          "quote": "Wir erstatten Ihnen 425,00 €. Der Betrag geht in den nächsten Tagen auf dem Konto DE38 2609 0050 0053 1044 77 ein, das Sie in der Erklärung angegeben haben.",
+          "computation": "The letter only states the refund will arrive 'in den nächsten Tagen' (in the next few days) after the 23.04.2025 document date, without giving an exact calendar date, so no precise due date can be computed; this is an automatic credit to the taxpayer, not an action the taxpayer must perform.",
+          "due_date": null,
+          "confidence": "low",
+          "amount": 425
+        }
+      ],
+      "remedy_type": "einspruch",
+      "contract": null,
+      "warnings": [
+        "The exact date of the 425,00 € refund credit is not stated (only 'in den nächsten Tagen'), so no precise due_date could be set for that item; verify the credit actually arrives at the stated IBAN DE38 2609 0050 0053 1044 77."
+      ]
+    },
+    "usage": {
+      "input_tokens": 2,
+      "output_tokens": 3225,
+      "cache_read_tokens": 5530,
+      "cache_creation_tokens": 2876,
+      "cost_usd": 0.044864,
+      "duration_ms": 36202,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
