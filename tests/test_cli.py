@@ -510,7 +510,7 @@ def test_serve_holds_the_folder_and_writes_server_json(
 
     def fake_run(self: uvicorn.Server) -> None:
         seen["info"] = read_server_info(data_dir)
-        seen["app"] = self.config.app
+        seen["app"], seen["loop"] = self.config.app, self.config.loop
         with pytest.raises(DataDirLocked):
             DataDirLock(data_dir).acquire()
 
@@ -525,6 +525,7 @@ def test_serve_holds_the_folder_and_writes_server_json(
     assert info.login_url == f"http://127.0.0.1:{port}/?token={info.token}"
     assert info.login_url in result.output.replace("\n", "").replace("│", "").replace(" ", "")
     assert seen["app"] == {"token": info.token, "demo": False}
+    assert seen["loop"] == "asyncio"  # not uvloop: it runs Python in the child it forks to start `claude`
     assert not (data_dir / "server.json").exists()
     DataDirLock(data_dir).acquire().release()
 
@@ -643,14 +644,33 @@ def test_demo_serves_the_demo_folder_with_replay(demo_env: Path, monkeypatch: py
         return object()
 
     monkeypatch.setattr(cli, "_create_app", create)
-    monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
+    monkeypatch.setattr(uvicorn.Server, "run", lambda self: seen.update(loop=self.config.loop))
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))
         port = probe.getsockname()[1]
     result = invoke("demo", "--no-browser", "--port", str(port), "--reset")
     assert result.exit_code == 0, result.output
-    assert seen == {"backend": "replay", "demo": True, "today": TODAY}
+    assert seen == {"backend": "replay", "demo": True, "today": TODAY, "loop": "asyncio"}
     assert "Ordnung demo" in result.output
+
+
+@pytest.mark.parametrize(
+    "args", [("--reset",), ("--rebuild",), ("--reset", "--no-serve")], ids=["reset", "rebuild", "no-serve"]
+)
+def test_demo_reset_while_the_demo_runs_says_to_stop_it_first(
+    demo_env: Path, api: FakeServer, args: tuple[str, ...]
+) -> None:
+    """Settings → Data and Ask send people to ``ordnung demo --reset`` while the demo runs: it used to
+    say "already running", exit 0 and reset nothing."""
+    result = invoke("demo", *args, "--no-browser", "--data-dir", str(api.data_dir))
+    assert result.exit_code == 1, result.output
+    port = api.server_address[1]
+    option = args[0]
+    assert " ".join(result.output.split()) == (
+        f"✗ The demo is running at http://127.0.0.1:{port}. "
+        f"Stop the demo (Ctrl+C where it runs), then run `ordnung demo {option}`."
+    )
+    assert not (api.data_dir / "ordnung.db").exists()
 
 
 # --------------------------------------------------------------------------------------------------
