@@ -8,6 +8,10 @@
  * connection that stays lost asks `/health`, so the app says when Ordnung stopped answering (and
  * "Back online" once it answers again — see `app/queryClient.ts`).
  *
+ * A pause and a letter's reason to wait are said once, when they start: on connecting (a reload, a
+ * new tab) the server sends a pause under way first, and the queue (`GET /jobs`) says which letters
+ * wait and why — see {@link seedFromQueue}.
+ *
  * Components read state with {@link useEvents} / {@link useJobProgress} and can react to raw events
  * with {@link useServerEvent}.
  */
@@ -15,7 +19,8 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { invalidateLedger, qk } from "./hooks";
 import { apiPath } from "./client";
-import type { JobProgressEvent, JobStatus, LlmPausedEvent, ServerEvent, ServerEventType } from "./types";
+import { api } from "./endpoints";
+import type { Job, JobProgressEvent, JobStatus, LlmPausedEvent, ServerEvent, ServerEventType } from "./types";
 
 export interface JobProgress extends JobProgressEvent {
   /** ms timestamp of the first event seen for this document */
@@ -63,6 +68,24 @@ void everyEvent;
 
 /** Where the progress of a job is kept: its document (the upload stepper), else the job itself. */
 const jobKey = (ev: JobProgressEvent) => ev.doc_id ?? ev.job_id ?? "job";
+
+/** How a job's `waiting_reason` starts while its letter waits for Claude (`WAITING_FOR_CLAUDE` in `ingest/worker.py`). */
+export const WAITING_FOR_CLAUDE = "Waiting for Claude";
+
+/**
+ * Why a letter waits for Claude — not installed or not signed in, or its usage limit — from its job's
+ * progress: "Waiting for Claude: …"; null while it doesn't.
+ */
+/**
+ * A wait for Claude Code itself — not installed or not signed in — that only a Claude check ends (a usage limit
+ * ends by itself, and the server says so while it runs): the reason that may show the banner on connecting.
+ */
+const CLAUDE_NOT_READY = `${WAITING_FOR_CLAUDE}: Claude Code isn't `;
+
+export function claudeWaitReason(job: Pick<JobProgressEvent, "status" | "waiting_reason"> | undefined): string | null {
+  const reason = job?.status === "queued" ? job.waiting_reason : null;
+  return reason?.startsWith(WAITING_FOR_CLAUDE) ? reason : null;
+}
 
 // ------------------------------------------------------------------------------------------------
 // Store
@@ -115,6 +138,32 @@ function applyJobProgress(ev: JobProgressEvent) {
     const next: JobProgress = { ...ev, startedAt: prev?.startedAt ?? now, updatedAt: now };
     return { ...s, jobs: { ...s.jobs, [key]: next } };
   });
+}
+
+/**
+ * On connecting, what the queue says (`GET /jobs`): the letters that wait, with why — the server says it only
+ * when a letter starts waiting, so a reload or a new tab showed "Opening the file…" for good (final check,
+ * F-M2). A letter heard of since the connection opened (`openedAt`) keeps what it heard. A letter waiting for
+ * Claude shows the banner too when the server sent no pause first (it sends one under way): right after a
+ * restart, before the worker tried the letter again — `llm.paused` or `llm.resumed` follows that try.
+ * Exported for tests.
+ */
+export async function seedFromQueue(openedAt: number): Promise<void> {
+  let jobs: Job[];
+  try {
+    jobs = await api.jobs(true);
+  } catch {
+    return; // the live events still say what changes
+  }
+  let forClaude = false;
+  for (const job of jobs) {
+    if (!job.doc_id || job.status !== "queued" || !job.waiting_reason) continue;
+    if ((state.jobs[job.doc_id]?.updatedAt ?? -Infinity) >= openedAt) continue;
+    const seed: JobProgressEvent = { job_id: job.id, doc_id: job.doc_id, stage: "intake", progress: 0, status: "queued", waiting_reason: job.waiting_reason };
+    applyJobProgress(seed);
+    forClaude ||= job.waiting_reason.startsWith(CLAUDE_NOT_READY);
+  }
+  if (forClaude) setState((s) => (s.paused ? s : { ...s, paused: { until: "", reason: "" } }));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -227,6 +276,7 @@ function open(qc: QueryClient) {
   es.onopen = () => {
     backoff = 1000;
     clearOfflineTimer();
+    void seedFromQueue(Date.now());
     if (everConnected) {
       // we may have missed events while offline; a successful refetch also says "Back online"
       void invalidateLedger(qc);

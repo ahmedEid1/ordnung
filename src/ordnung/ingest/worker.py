@@ -8,9 +8,13 @@
 * Claude not installed or not signed in pauses reading too, without an end (``llm.paused`` with an
   empty ``until``): the letter waits in the queue instead of failing, and so does every letter for
   Claude claimed meanwhile (put back for :data:`CLAUDE_RECHECK_S` seconds at a time; private letters
-  are read as usual). Reading goes on once a check sees Claude ready
-  (:meth:`IngestWorker.claude_ready` — the API's Claude status check, and the worker's own every
-  :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``). A new process simply tries again.
+  are read as usual), and the API's cached Claude status is dropped (``claude_failed``). Reading goes
+  on once a check sees Claude ready (:meth:`IngestWorker.claude_ready` — the API's Claude status
+  check, and the worker's own every :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``);
+  ``llm.resumed`` follows once a letter gets past Claude. When a reading fails the same way right
+  after a check said "ready" (a key Claude refuses), the worker waits twice as long before its next
+  check, up to :data:`CLAUDE_RECHECK_MAX_S`. A new process simply tries again.
+* A page that connects during a pause hears of it first (:meth:`IngestWorker.current_pause`).
 * Other failures (unreadable answers, a timeout …) fail the job and the document with a readable
   message — the pipeline records them.
 * After each processed document the triggers engine runs, and after an edit
@@ -55,6 +59,8 @@ _EPOCH_RE = re.compile(r"^\d{9,11}(?:\.\d+)?$")
 WAITING_FOR_CLAUDE = "Waiting for Claude"
 #: Seconds between the worker's own checks for Claude while letters wait for it (zero tokens).
 CLAUDE_RECHECK_S = 30.0
+#: The longest time between those checks after checks said "ready" and readings failed all the same.
+CLAUDE_RECHECK_MAX_S = 30 * 60.0
 NOT_INSTALLED_REASON = "Claude Code isn't installed on this computer yet."
 NOT_SIGNED_IN_REASON = "Claude Code isn't signed in."
 #: How the reason of a letter waiting because Claude is not installed or not signed in starts.
@@ -123,6 +129,15 @@ class IngestWorker:
         self.waiting_for_claude: str | None = None
         #: Checks whether Claude is ready now (zero tokens); set by the API, which owns that check.
         self.claude_check: Callable[[], Awaitable[bool]] | None = None
+        #: Drops the API's cached Claude status after a reading found Claude not ready (set by the API).
+        self.claude_failed: Callable[[], None] | None = None
+        #: The wait for Claude the app was told of (``llm.paused``), until a letter gets past Claude.
+        self._told_waiting: str | None = None
+        #: Why letters waited when a check last said Claude was ready, until a reading shows whether it is.
+        self._ready_after: str | None = None
+        #: Seconds between the worker's own checks for Claude now (see :meth:`_wait_for_claude`).
+        self.claude_recheck_s = CLAUDE_RECHECK_S
+        self._pause_reason = ""
         self._checked_claude_at: float | None = None
         self._claude_checking: asyncio.Task[None] | None = None
         self._ideas: asyncio.Task[None] | None = None
@@ -154,20 +169,57 @@ class IngestWorker:
         if self._wake is not None:
             self._wake.set()
 
+    def current_pause(self) -> dict[str, str] | None:
+        """What a page that connects now hears first (``llm.paused``'s data): the wait for Claude the app was
+        told of, else a usage limit that hasn't ended; ``None`` while reading goes on."""
+        if self._told_waiting is not None and self._letter_waits_for_claude():
+            return {"until": "", "reason": self._told_waiting}
+        if self.paused_until is not None and self.is_paused():
+            return {"until": self.paused_until.isoformat(), "reason": self._pause_reason}
+        return None
+
     def claude_ready(self) -> None:
-        """A check found Claude installed and signed in: the letters waiting for it are read now."""
+        """A check found Claude installed and signed in: the letters waiting for it are read now, and no longer
+        say they wait. The app hears that reading goes on once one of them gets past Claude (or now, when
+        none waits)."""
         if self.waiting_for_claude is None:
             return
+        self._ready_after = self.waiting_for_claude
         self.waiting_for_claude = None
         self._checked_claude_at = None
         store = self.ctx.store
+        released = 0
         for job in store.list_jobs(active_only=True):
             if job.status == "queued" and job.waiting_reason and job.waiting_reason.startswith(_NOT_READY):
                 with contextlib.suppress(Exception):  # deleted meanwhile
-                    store.update_job(job.id, not_before=None)
+                    store.update_job(job.id, not_before=None, waiting_reason=None)
+                    released += 1
+                    self.ctx.bus.publish(
+                        "job.progress",
+                        job_id=job.id,
+                        doc_id=job.doc_id,
+                        stage="intake",
+                        progress=0.0,
+                        status="queued",
+                    )
+        if not released:
+            self._reading_goes_on()
+        self.notify()
+
+    def _reading_goes_on(self, *, seen: bool = False) -> None:
+        """The wait for Claude is over: the app hears so (``llm.resumed``) when it was told of the wait — or may
+        have seen it on a letter's job (``seen``) — and no usage limit still pauses reading."""
+        if self._told_waiting is None and not seen:
+            return
+        self._claude_answered()
         if not self.is_paused():
             self.ctx.bus.publish("llm.resumed")
-        self.notify()
+
+    def _claude_answered(self) -> None:
+        """Claude answered a reading (or said its usage limit was reached): it is installed and signed in."""
+        self._told_waiting = None
+        self._ready_after = None
+        self.claude_recheck_s = CLAUDE_RECHECK_S
 
     def _stored_pause(self) -> datetime | None:
         raw = self.ctx.store.get_meta(PAUSE_META_KEY)
@@ -299,6 +351,8 @@ class IngestWorker:
         if self.waiting_for_claude is not None and self._needs_claude(job.doc_id):
             self._park(job, self.waiting_for_claude, said=job.waiting_reason)
             return
+        # it waited for Claude in an earlier process: a page may have shown that wait from the job
+        waited = bool(job.waiting_reason and job.waiting_reason.startswith(_NOT_READY))
         if job.waiting_reason or job.not_before:
             store.update_job(job.id, waiting_reason=None, not_before=None)
         try:
@@ -315,8 +369,18 @@ class IngestWorker:
             self._requeue(job, "Ordnung was stopped before this letter was finished; it will continue.")
             raise
         except Exception:
-            return  # the pipeline recorded the failure on the job and the document
+            # the pipeline recorded the failure on the job and the document; Claude was ready all the same
+            self._got_past_claude(job, waited)
+            return
+        self._got_past_claude(job, waited)
         await run_triggers(self.ctx)
+
+    def _got_past_claude(self, job: Job, waited: bool) -> None:
+        """A letter for Claude was read (or failed for a reason of its own): the wait for Claude is over."""
+        if self.waiting_for_claude is not None or (self._told_waiting is None and not waited):
+            return  # nothing waited, or another letter just found Claude not ready
+        if self._needs_claude(job.doc_id):
+            self._reading_goes_on(seen=waited)
 
     def _requeue(self, job: Job, reason: str, not_before: datetime | None = None) -> None:
         with contextlib.suppress(Exception):
@@ -330,7 +394,9 @@ class IngestWorker:
         local = self.paused_until.astimezone().strftime("%H:%M")
         reason = f"{WAITING_FOR_CLAUDE}: the usage limit was reached. Ordnung continues at about {local}."
         self._requeue(job, reason, not_before=self.paused_until)
-        self.ctx.bus.publish("llm.paused", until=self.paused_until.isoformat(), reason=str(exc))
+        self._claude_answered()  # this pause replaces a wait for Claude the app heard of
+        self._pause_reason = str(exc)
+        self.ctx.bus.publish("llm.paused", until=self.paused_until.isoformat(), reason=self._pause_reason)
         self.ctx.bus.publish(
             "job.progress",
             job_id=job.id,
@@ -344,13 +410,34 @@ class IngestWorker:
     def _wait_for_claude(self, job: Job, exc: ClaudeNotInstalled | ClaudeAuthError) -> None:
         """The pipeline paused the letter because Claude isn't ready (it put it back to ``queued``; a held
         letter keeps the status its answer gave it): its job goes back to the queue, waiting, and so do the
-        letters for Claude after it."""
+        letters for Claude after it. The API's cached status is dropped, so its next check asks Claude again;
+        when a check said "ready" just before this same failure, the next one waits twice as long."""
         why = NOT_INSTALLED_REASON if isinstance(exc, ClaudeNotInstalled) else NOT_SIGNED_IN_REASON
+        if self.claude_failed is not None:
+            self.claude_failed()
         if self.waiting_for_claude is None:
+            if self._ready_after is not None:
+                again = why == self._ready_after
+                self.claude_recheck_s = (
+                    min(self.claude_recheck_s * 2, CLAUDE_RECHECK_MAX_S) if again else CLAUDE_RECHECK_S
+                )
+                self._ready_after = None
             self._checked_claude_at = time.monotonic()
+        if why != self._told_waiting:
+            self._told_waiting = why
             self.ctx.bus.publish("llm.paused", until="", reason=why)
         self.waiting_for_claude = why
         self._park(job, why, said=None)  # the app last heard the reading's stages
+
+    def _letter_waits_for_claude(self) -> bool:
+        """Whether a letter only Claude can read is still in the queue: one deleted or kept private meanwhile
+        no longer keeps the wait announced to pages that connect."""
+        return any(
+            job.kind in self.JOB_KINDS
+            and job.status in ("queued", "running")
+            and self._needs_claude(job.doc_id)
+            for job in self.ctx.store.list_jobs(active_only=True)
+        )
 
     def _needs_claude(self, doc_id: str | None) -> bool:
         """A letter only Claude can read (a private one is read on this computer)."""
@@ -383,14 +470,15 @@ class IngestWorker:
         )
 
     def _check_claude(self) -> None:
-        """Ask ``claude_check`` again, at most every :data:`CLAUDE_RECHECK_S` seconds, one check at a time."""
+        """Ask ``claude_check`` again, at most every :data:`CLAUDE_RECHECK_S` seconds (longer after a "ready" that
+        wasn't, see :meth:`_wait_for_claude`), one check at a time."""
         check = self.claude_check
         if check is None or self._stopping or self._wake is None:
             return
         if self._claude_checking is not None and not self._claude_checking.done():
             return
         now = time.monotonic()
-        if self._checked_claude_at is not None and now - self._checked_claude_at < CLAUDE_RECHECK_S:
+        if self._checked_claude_at is not None and now - self._checked_claude_at < self.claude_recheck_s:
             return
         self._checked_claude_at = now
 
@@ -409,5 +497,5 @@ class IngestWorker:
         if self.paused_until is not None and not self.is_paused():
             self.paused_until = None
             self.ctx.store.set_meta(PAUSE_META_KEY, None)
-            if self.waiting_for_claude is None:
+            if self._told_waiting is None:
                 self.ctx.bus.publish("llm.resumed")

@@ -204,7 +204,7 @@ export function TodayView() {
     );
   }
 
-  const { dash, derived, partyById, reviewDocs, failedDocs, unread } = data;
+  const { dash, derived, partyById, reviewDocs, failedDocs, queuedDocs, unread } = data;
   const name = dash.greeting_name || profileName;
 
   if (!dash.stats.documents && !dash.recent_documents.length && !derived.candidates.length && !dash.stats.contracts && !unread) {
@@ -216,7 +216,7 @@ export function TodayView() {
     );
   }
 
-  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day, dash.waiting, failedDocs.length);
+  const fallback = agendaSentence(derived.top, derived.nextUp ? [derived.nextUp] : [], derived.day, dash.waiting, failedDocs.length, queuedDocs.length);
   // an Idea that only says "Please check: <letter>" repeats the card that lists that letter
   const listed = new Set(reviewDocs.slice(0, PLEASE_CHECK_SHOWN).map((d) => d.id));
   const ideas = [...derived.ideas.shown, ...derived.ideas.more].filter((s) => !repeatsPleaseCheck(s, listed));

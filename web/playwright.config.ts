@@ -2,12 +2,12 @@ import { defineConfig, devices } from "@playwright/test";
 import {
   BASE_URL,
   DATA_DIR,
-  FAKE_CLAUDE,
   FAKE_CLAUDE_SCENARIO,
   ORDNUNG_BIN,
   OUTPUT_DIR,
   PORT,
   REAL_BASE_URL,
+  REAL_CLAUDE,
   REAL_DATA_DIR,
   REAL_PORT,
   REAL_STORAGE_STATE,
@@ -97,7 +97,7 @@ export default defineConfig({
     {
       command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_PORT} --data-dir "${REAL_DATA_DIR}"`,
       url: `${REAL_BASE_URL}/api/health`,
-      env: { ORDNUNG_CLAUDE_BIN: FAKE_CLAUDE, FAKE_CLAUDE_SCENARIO },
+      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",

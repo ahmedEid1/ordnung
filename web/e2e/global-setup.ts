@@ -5,16 +5,19 @@
  *
  * The real app also starts from scratch every run: Delete everything, then a finished setup without
  * Claude's own notes and reviews (the fake Claude can't write them). The fake Claude's one answer is the
- * recorded demo reading of `REAL_LETTER`, as the `result` event of Claude Code's stream-json.
+ * recorded demo reading of `REAL_LETTER`, as the `result` event of Claude Code's stream-json; the real app
+ * runs it through the link `REAL_CLAUDE`, made here.
  */
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
   BASE_URL,
   DATA_DIR,
+  FAKE_CLAUDE,
   FAKE_CLAUDE_SCENARIO,
   REAL_BASE_URL,
+  REAL_CLAUDE,
   REAL_DATA_DIR,
   REAL_LETTER,
   REAL_READINGS,
@@ -77,6 +80,9 @@ function recordedReading(): unknown {
 }
 
 async function realAppSession(): Promise<void> {
+  // Claude installed (a test that took it away puts it back, but may have failed first): before the first check
+  rmSync(REAL_CLAUDE, { force: true });
+  symlinkSync(FAKE_CLAUDE, REAL_CLAUDE);
   const token = sessionToken(REAL_DATA_DIR);
   if ((await health(REAL_BASE_URL, token, REAL_DATA_DIR)).demo) throw new Error(`The server on ${REAL_BASE_URL} runs the demo, not the real app.`);
   const result = { type: "result", subtype: "success", is_error: false, result: "", num_turns: 1, structured_output: recordedReading() };

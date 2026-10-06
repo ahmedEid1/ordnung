@@ -1,13 +1,14 @@
-/** Live progress while Ordnung reads (or re-reads) a letter, and the "couldn't read it" state. */
+/** Live progress while Ordnung reads (or re-reads) a letter, the "waiting for Claude" state and the "couldn't read it" state. */
 import { useEffect, useRef } from "react";
-import { CircleX, RotateCw } from "lucide-react";
+import { Link } from "react-router";
+import { ArrowRight, CirclePause, CircleX, RotateCw } from "lucide-react";
 import type { Document } from "@/api/types";
 import { useReprocessDocument } from "@/api/hooks";
-import { dismissJob, seedJob, useJobProgress } from "@/api/sse";
+import { WAITING_FOR_CLAUDE, claudeWaitReason, dismissJob, seedJob, useEvents, useJobProgress } from "@/api/sse";
 import { setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { FileNameText } from "@/components/ui/FileNameText";
 import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { Stepper } from "@/components/ui/Stepper";
 
 /**
@@ -16,6 +17,47 @@ import { Stepper } from "@/components/ui/Stepper";
  */
 export function wasReadBefore(doc: Pick<Document, "title" | "kind">): boolean {
   return Boolean(doc.title || doc.kind);
+}
+
+/** Why a letter in the queue waits for Claude (its job's reason: not installed or signed in, a usage limit); else null. */
+export function useClaudeWait(doc: Pick<Document, "id" | "status">): string | null {
+  const job = useJobProgress(doc.id);
+  return doc.status === "queued" ? claudeWaitReason(job) : null;
+}
+
+/**
+ * The letter waits in the queue until Claude can read it: why, and where to connect Claude — no stepper that
+ * never moves past "Opening the file…" (final check, F-M2). No "Try again" either: it is read as soon as Claude
+ * is ready, and a second reading would only queue it twice.
+ */
+function ClaudeWaitCard({ reason, again }: { reason: string; again: boolean }) {
+  const { paused } = useEvents();
+  // a usage limit ends by itself (the banner says when); anything else is fixed under Claude connection
+  const connect = !paused?.until;
+  const rest = reason.slice(WAITING_FOR_CLAUDE.length).replace(/^:\s*/, "");
+  const why = rest.charAt(0).toUpperCase() + rest.slice(1); // a usage limit's reason starts in lower case
+  return (
+    <div className="card flex gap-3 border-warn/30 px-5 py-4">
+      <CirclePause className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+      <div className="min-w-0 flex-1">
+        {again ? (
+          <p className="text-md font-semibold text-warn-ink">Waiting for Claude to read it again</p>
+        ) : (
+          <h1 className="text-md font-semibold text-warn-ink">This letter waits for Claude</h1>
+        )}
+        <p className="mt-1 text-[13.5px] leading-5 text-muted wrap-break-word">
+          {again ? "What's shown below is from the earlier reading. " : ""}
+          {why} Your file is safe.
+        </p>
+        {connect ? (
+          <Link to="/settings?section=claude" className={buttonVariants({ size: "sm", className: "mt-3" })}>
+            Claude connection
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -41,7 +83,9 @@ export function ProcessingCard({ doc }: { doc: Document }) {
   }, [doc.id]);
   const again = wasReadBefore(doc);
   const name = doc.title ?? doc.filename;
+  const claudeWait = useClaudeWait(doc);
 
+  if (claudeWait) return <ClaudeWaitCard reason={claudeWait} again={again} />;
   if (doc.status === "failed" || job?.status === "failed") {
     const reason = job?.error ?? doc.error ?? "Something went wrong while reading it.";
     return (
@@ -78,7 +122,7 @@ export function ProcessingCard({ doc }: { doc: Document }) {
 
   const done = job?.status === "done";
   const step = done ? PIPELINE_STEPS.length : stageToStep(job?.stage);
-  // waiting in the queue (for Claude): why, instead of "Opening the file…"
+  // waiting in the queue for another reason (Ordnung was stopped while reading it): why, instead of "Opening the file…"
   const waiting = job?.status === "queued" ? job.waiting_reason : null;
   const label = done ? "Filed — loading what was found…" : waiting || `${copyFor(JOB_STAGE_COPY, job?.stage ?? "intake").label}…`;
   return (
