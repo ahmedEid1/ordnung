@@ -445,7 +445,9 @@ async def test_a_cli_that_never_reads_the_request_times_out(fake: FakeClaude, le
 
 async def test_cancelling_a_call_kills_the_whole_process_group(fake: FakeClaude, letter: LLMRequest) -> None:
     fake.play({"child": True, "lines": ['{"type": "system", "subtype": "init"}'], "hang": True})
-    task = asyncio.create_task(ClaudeCLIBackend(max_retries=0).complete(letter))
+    # only the cancel ends this call: a call timeout must not, however slow a busy machine starts the fake
+    long = letter.model_copy(update={"timeout_s": 600})
+    task = asyncio.create_task(ClaudeCLIBackend(max_retries=0).complete(long))
     assert await _eventually(lambda: bool(fake.calls), within=10), "the fake claude never started"
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -458,7 +460,7 @@ async def test_stopping_a_stream_early_kills_the_process_group(fake: FakeClaude)
     """Ask's reader goes away (the browser closed the page) after the first event."""
     fake.play({"child": True, "transcript": "ask_stream.jsonl", "hang": True})
     request = LLMRequest(
-        purpose="ask", prompt="When is the parking fine due?", system="Answer.", timeout_s=20
+        purpose="ask", prompt="When is the parking fine due?", system="Answer.", timeout_s=600
     )
     stream = ClaudeCLIBackend(max_retries=0).stream(request)
     first: StreamEvent = await anext(stream)
