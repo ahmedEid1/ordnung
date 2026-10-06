@@ -1,0 +1,61 @@
+{
+  "request": {
+    "purpose": "eval_baseline",
+    "model": "claude-sonnet-5",
+    "prompt_version": "llm_rules_text.s3.r1.u2.d1.hf0642150",
+    "cache_key": "{\"condition\":\"llm_rules_text\",\"doc\":\"1ec95954d40edf876851e4af583596b715316ef0dc2f7e162317ec88eef6557a\",\"mode\":\"text\",\"region\":\"NW\",\"today\":\"2025-08-16\"}",
+    "attachments": [],
+    "doc_ids": [
+      "holdout3-dunning_fixed-J1"
+    ],
+    "prompt_head": "Today is Saturday, 2025-08-16 — use this as today's date for this letter, even if other context\nmentions a different date. The person lives in Nordrhein-Westfalen (NW), Germany. Use the public\nholidays of that Land unless the letter shows that the relevant office sits in another Land.\n\nThe letter's text follows, page by page: a line `=== Page N ===` starts page N. Everything between\nthe <untrusted"
+  },
+  "response": {
+    "text": "{\"kind\":\"dunning\",\"sender_name\":\"Musikschule Klangfarbe Musterlingen gGmbH\",\"document_date\":\"2025-08-13\",\"references\":[{\"label\":\"Schülernummer\",\"value\":\"S-2207\"},{\"label\":\"Unterrichtsvertrag\",\"value\":\"UV-2024-0912\"}],\"amounts\":[123],\"items\":[{\"kind\":\"payment\",\"title\":\"Pay overdue tuition fees and return fees\",\"quote\":\"Wir bitten Sie, den Rückstand spätestens am 20. August 2025 zu überweisen.\",\"computation\":\"The letter states a specific calendar date for payment: 20 August 2025 (a Wednesday). This is a fixed date given by a private party (not a statutory period), so no weekend/holiday adjustment applies.\",\"due_date\":\"2025-08-20\",\"confidence\":\"high\",\"amount\":123}],\"remedy_type\":\"none\",\"contract\":null,\"warnings\":[]}",
+    "data": {
+      "kind": "dunning",
+      "sender_name": "Musikschule Klangfarbe Musterlingen gGmbH",
+      "document_date": "2025-08-13",
+      "references": [
+        {
+          "label": "Schülernummer",
+          "value": "S-2207"
+        },
+        {
+          "label": "Unterrichtsvertrag",
+          "value": "UV-2024-0912"
+        }
+      ],
+      "amounts": [
+        123
+      ],
+      "items": [
+        {
+          "kind": "payment",
+          "title": "Pay overdue tuition fees and return fees",
+          "quote": "Wir bitten Sie, den Rückstand spätestens am 20. August 2025 zu überweisen.",
+          "computation": "The letter states a specific calendar date for payment: 20 August 2025 (a Wednesday). This is a fixed date given by a private party (not a statutory period), so no weekend/holiday adjustment applies.",
+          "due_date": "2025-08-20",
+          "confidence": "high",
+          "amount": 123
+        }
+      ],
+      "remedy_type": "none",
+      "contract": null,
+      "warnings": []
+    },
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 2275,
+      "cache_read_tokens": 13634,
+      "cache_creation_tokens": 4052,
+      "cost_usd": 0.0416928,
+      "duration_ms": 27203,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  }
+}
