@@ -465,13 +465,20 @@ class _ConnectionToken:
     __slots__ = ("__weakref__",)
 
 
-def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.Connection) -> None:
+def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.Connection, pid: int) -> None:
     """Close the connection of a thread that ended and forget it (no-op once the store is closed).
 
     Threads come and go — anyio's worker threads (the web API's sync routes, an MCP server's sync
     tools) end after ten idle seconds or with their event loop — and each opened a connection that
     :meth:`Store.close` alone would close, so a long-running process kept two file descriptors per
-    ended thread (Ask's replays, one event loop per tool call, ran out of them)."""
+    ended thread (Ask's replays, one event loop per tool call, ran out of them).
+
+    Never in a forked child (``pid`` is the process that opened ``conn``): a fork that runs Python
+    before its exec (uvloop's, starting ``claude``) drops the parent's other threads there, and
+    closing their connections could wait forever on a SQLite mutex another thread held at the fork —
+    and the parent, waiting for the exec, with it."""
+    if os.getpid() != pid:
+        return
     store = store_ref()
     if store is not None:
         with store._connections_lock, contextlib.suppress(ValueError):
@@ -624,7 +631,7 @@ class Store:
             self._connections.append(conn)
         self._local.conn = conn
         closer = self._local.closer = _ConnectionToken()
-        ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn)
+        ended = weakref.finalize(closer, _close_ended_thread_connection, weakref.ref(self), conn, os.getpid())
         # not at exit: a daemon thread may still be using its connection then
         ended.atexit = False  # type: ignore[misc, unused-ignore]  # older typeshed declares no atexit
         return conn

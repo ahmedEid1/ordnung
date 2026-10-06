@@ -9,6 +9,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov/
+.hypothesis/
 /dist/
 /build/
 

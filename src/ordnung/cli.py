@@ -518,7 +518,10 @@ def _serve(
                 _announce(info, demo=demo, data_dir=folder)
                 if open_browser:
                     _open_browser_when_ready(folder, info)
-                uvicorn.Server(uvicorn.Config(asgi, host=host, port=port, log_level="warning")).run()
+                # the plain asyncio loop: uvloop runs Python in the child it forks to start `claude`,
+                # where the store's thread cleanup could deadlock (see ordnung.db.store)
+                config = uvicorn.Config(asgi, host=host, port=port, log_level="warning", loop="asyncio")
+                uvicorn.Server(config).run()
         finally:
             context.close()
             (folder / LOGIN_PAGE_NAME).unlink(missing_ok=True)
@@ -1091,6 +1094,17 @@ def _demo_prepare(folder: Path, *, reset: bool, rebuild: bool, record: bool) -> 
     return prepare
 
 
+def _refuse_while_running(folder: Path, option: str) -> None:
+    """``--reset`` and ``--rebuild`` replace the demo's database: not while the demo runs on it (its
+    server holds the folder, and ``demo`` would only point to it with nothing reset)."""
+    running = reachable_server(folder)
+    if running is not None:
+        raise _fail(
+            f"The demo is running at {running.base_url}.",
+            hint=f"Stop the demo (Ctrl+C where it runs), then run `ordnung demo {option}`.",
+        )
+
+
 def _demo_serve(
     ctx: typer.Context,
     data_dir: Path | None,
@@ -1175,6 +1189,8 @@ def demo(
                 "Recording new demo answers needs ORDNUNG_RECORD=1.",
                 hint="ORDNUNG_RECORD=1 ordnung demo --live --rebuild (sends only the sample letters to Claude).",
             )
+        if reset or rebuild:
+            _refuse_while_running(_demo_folder(ctx, data_dir), "--rebuild" if rebuild else "--reset")
         if serve:
             _demo_serve(
                 ctx,

@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
+import os
 import random
 import sqlite3
 import threading
+import weakref
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -252,6 +254,46 @@ def test_a_threads_connection_is_closed_when_the_thread_ends(store: Store) -> No
     assert store.get_meta("still") == "usable"
     assert not run_threads(1, lambda _: store.set_meta("from", "a new thread"))
     assert store.get_meta("from") == "a new thread" and store._connections == [mine]
+
+
+def test_the_ended_thread_finalizer_does_nothing_under_another_pid(store: Store) -> None:
+    """Under another pid it runs in a forked child, where SQLite must not be touched."""
+    mine = store._conn()
+    store_module._close_ended_thread_connection(weakref.ref(store), mine, os.getpid() + 1)
+    assert store._connections == [mine]
+    assert mine.execute("SELECT 1").fetchone()[0] == 1
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="needs fork()")
+@pytest.mark.filterwarnings("ignore:This process .* is multi-threaded:DeprecationWarning")
+def test_a_forked_child_leaves_the_other_threads_connections_alone(store: Store) -> None:
+    """uvloop starts ``claude`` by forking and running Python in the child before it execs. The child
+    drops the parent's other threads, and closing their connections there waited forever on a SQLite
+    mutex another thread held at the fork: the server froze, and the stuck child kept its port."""
+    opened, done = threading.Event(), threading.Event()
+    held: list[sqlite3.Connection] = []
+
+    def hold() -> None:
+        held.append(store._conn())
+        opened.set()
+        done.wait()
+
+    thread = threading.Thread(target=hold)
+    thread.start()
+    try:
+        assert opened.wait(5)
+        child = os.fork()
+        if child == 0:  # the forked child: its other threads are gone, their connections untouched
+            try:
+                held[0].execute("SELECT 1")
+            except BaseException:
+                os._exit(1)
+            os._exit(0)
+        _, status = os.waitpid(child, 0)
+    finally:
+        done.set()
+        thread.join()
+    assert os.waitstatus_to_exitcode(status) == 0
 
 
 def test_tx_commits(store: Store) -> None:
