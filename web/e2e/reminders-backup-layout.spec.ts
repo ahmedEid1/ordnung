@@ -4,7 +4,8 @@
  * look: nothing scrolls sideways at 320 px, the notification preview and long calendar addresses
  * wrap inside their cards, focus is never hidden under the fixed bars, the passphrase and
  * disconnect dialogs fit a phone as a sheet, all pass axe in light and dark mode — and a backup
- * made through the browser really is an Ordnung backup file.
+ * made through the browser really is an Ordnung backup file. Settings → Your computers says that the
+ * demo never syncs (hand-off sync's two real computers are e2e/real-app-sync.spec.ts).
  */
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
@@ -287,6 +288,23 @@ test("a backup made in the browser is an encrypted Ordnung backup", async ({ pag
   expect(bytes.length).toBeGreaterThan(100_000); // the demo's letters and page images, encrypted
   expect(bytes.includes(Buffer.from("Sam Rivera"))).toBe(false);
   await expect(page.getByRole("region", { name: "Encrypted backup" }).getByRole("status")).toContainText(`Downloaded ${download.suggestedFilename()}`);
+});
+
+/** `ordnung.sync.DEMO_MESSAGE`: the demo's answer to hand-off sync (tests/test_e2e_support.py keeps the two equal). */
+const SYNC_DEMO_MESSAGE = "This is the demo, so it doesn't sync. Your own Ordnung can.";
+
+test("the demo never syncs: Settings → Your computers says so, and setting it up is refused", async ({ page }) => {
+  const status = (await (await page.request.get("/api/sync")).json()) as { available: boolean; unavailable: string | null; connected: boolean; mode: string };
+  expect(status).toMatchObject({ available: false, unavailable: SYNC_DEMO_MESSAGE, connected: false, mode: "off" });
+  // refused before anything is looked at: no folder is inspected or written, no passphrase is kept
+  const refused = await page.request.put("/api/sync", {
+    data: { folder: "/nonexistent/ordnung-sync", name: "demo", passphrase: "orbit velvet canyon maple thunder", keep: null },
+    headers: { "X-Ordnung-Client": "web" },
+  });
+  expect(refused.status()).toBe(409);
+  expect(await refused.json()).toEqual({ detail: SYNC_DEMO_MESSAGE, code: "unavailable" });
+  await open(page, "/settings?section=computers", "Settings");
+  await expect(page.getByRole("main").getByText(SYNC_DEMO_MESSAGE).first()).toBeVisible();
 });
 
 for (const scheme of ["light", "dark"] as const) {

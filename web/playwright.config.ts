@@ -3,14 +3,20 @@ import {
   BASE_URL,
   DATA_DIR,
   FAKE_CLAUDE_SCENARIO,
+  keyringEnv,
   ORDNUNG_BIN,
   OUTPUT_DIR,
   PHONE_ADDRESS,
   PHONE_TEST_ADDRESS_ENV,
   PORT,
+  REAL_B_BASE_URL,
+  REAL_B_DATA_DIR,
+  REAL_B_KEYRING,
+  REAL_B_PORT,
   REAL_BASE_URL,
   REAL_CLAUDE,
   REAL_DATA_DIR,
+  REAL_KEYRING,
   REAL_PORT,
   REAL_STORAGE_STATE,
   STORAGE_STATE,
@@ -23,7 +29,10 @@ import {
  * deleted at the start of each run (e2e/global-setup.ts); the tests share them, so they run in one
  * worker, in order — the demo's New-mail letters and tour are shared state. The real app's phone access
  * (e2e/real-app-phone.spec.ts) listens on loopback only (`ORDNUNG_PHONE_TEST_ADDRESS`, e2e/env.ts), on the
- * port after the real app's, while that spec turns it on.
+ * port after the real app's, while that spec turns it on. Hand-off sync (e2e/real-app-sync.spec.ts) needs a
+ * second computer: another `ordnung serve` on its own data folder, on the port after that. Both real apps keep
+ * their secrets in a password store of their own made for the tests (`tests/e2e_support/e2e_keyring.py`): CI's
+ * Linux has no keyring, and Ordnung refuses the ones that don't keep passwords safely.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers).
@@ -65,7 +74,7 @@ export default defineConfig({
   // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
   // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
   // Then dates of the person's own (e2e/add-date.spec.ts: added to the shared demo, then taken away), and last
-  // the real app: e2e/real-app-*.spec.ts, against `ordnung serve`.
+  // the real app: e2e/real-app-*.spec.ts, against `ordnung serve` (real-app-sync.spec.ts with the second one).
   // One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: desktop },
@@ -102,7 +111,17 @@ export default defineConfig({
       command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_PORT} --data-dir "${REAL_DATA_DIR}"`,
       url: `${REAL_BASE_URL}/api/health`,
       // phone access may listen on loopback only (the one address it is then offered), never on a network
-      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, [PHONE_TEST_ADDRESS_ENV]: PHONE_ADDRESS },
+      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, [PHONE_TEST_ADDRESS_ENV]: PHONE_ADDRESS, ...keyringEnv(REAL_KEYRING) },
+      reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
+      stdout: "ignore",
+      stderr: "pipe",
+      timeout: 120_000,
+    },
+    {
+      // hand-off sync's other computer: a data folder and a password store of its own, the same fake Claude
+      command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_B_PORT} --data-dir "${REAL_B_DATA_DIR}"`,
+      url: `${REAL_B_BASE_URL}/api/health`,
+      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, ...keyringEnv(REAL_B_KEYRING) },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",
