@@ -1619,6 +1619,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sync Status
+         * @description Whether sync can be used here, this computer's mode, the other computers, a choice, problems,
+         *     notices and kept copies (from memory: never the folder or the password store).
+         */
+        get: operations["sync_status_api_sync_get"];
+        /**
+         * Connect Sync
+         * @description Set up a new sync folder (the passphrase twice in the form) or join an existing one; joining
+         *     while this computer has letters answers the choice first, unless ``keep`` answers it.
+         */
+        put: operations["connect_sync_api_sync_put"];
+        post?: never;
+        /**
+         * Disconnect Sync
+         * @description Disconnect this computer: its last changes are saved first, its head says it left, and
+         *     ``<data>/sync/`` goes (kept copies stay). The folder and the other computers keep everything.
+         */
+        delete: operations["disconnect_sync_api_sync_delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change Sync
+         * @description Rename this computer, answer a problem, or dismiss a notice.
+         */
+        patch: operations["change_sync_api_sync_patch"];
+        trace?: never;
+    };
+    "/api/sync/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inspect Sync Folder
+         * @description What ``folder`` would be: a new sync, one to join, or refused (and why). Nothing is written.
+         */
+        post: operations["inspect_sync_folder_api_sync_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/use-here": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Sync Here
+         * @description “Use Ordnung here”: bring everything over and make this computer the one in use — or wait until
+         *     it has arrived (``take_over_waiting``), or answer with the choice when both computers changed.
+         */
+        post: operations["use_sync_here_api_sync_use_here_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/choose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose Sync
+         * @description Keep the chosen computer's Ordnung; the other one is kept as an encrypted copy on its own
+         *     computer. Choosing makes this computer the one in use.
+         */
+        post: operations["choose_sync_api_sync_choose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Sync
+         * @description Save into the sync folder now; ``hand_over`` then stands by.
+         */
+        post: operations["save_sync_api_sync_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/passphrase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Passphrase
+         * @description Type the passphrase again: checked against the folder, then kept in the password store.
+         */
+        post: operations["sync_passphrase_api_sync_passphrase_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/refill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refill Sync
+         * @description Fill an emptied sync folder again from this computer (never done by itself: an unmounted share
+         *     looks empty too).
+         */
+        post: operations["refill_sync_api_sync_refill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/computers/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Forget Computer
+         * @description Forget a lost computer: its changes that are nowhere else are kept as a copy here first. It
+         *     still knows the passphrase (a new sync folder locks it out).
+         */
+        delete: operations["forget_computer_api_sync_computers__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/kept/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Kept
+         * @description A kept copy as a download (open it with ``ordnung restore`` and the sync passphrase). ``name``
+         *     must match :data:`~ordnung.sync.KEPT_RE` and be listed in the status.
+         */
+        get: operations["download_kept_api_sync_kept__name__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Kept
+         * @description Delete a kept copy for good.
+         */
+        delete: operations["delete_kept_api_sync_kept__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -2764,9 +2968,14 @@ export interface components {
             kept: string[];
             /**
              * Calendar Events Removed
-             * @description Ordnung's events removed from the connected calendar first (null: none was connected)
+             * @description Ordnung's events removed from the connected calendar first (null: none was connected, or another computer still sends to it)
              */
             calendar_events_removed: number | null;
+            /**
+             * Calendar Shared With
+             * @description Hand-off sync: another computer that sends to the same calendar, so Ordnung's events were left there and only this computer's connection was removed
+             */
+            calendar_shared_with: string | null;
         };
         /**
          * DateSpec
@@ -2827,6 +3036,12 @@ export interface components {
              * @constant
              */
             confirm: "DELETE";
+            /**
+             * Unreceived Ok
+             * @description Hand-off sync: delete although no other computer has this computer's latest changes yet (the second confirmation; otherwise 409 ``not_received``)
+             * @default false
+             */
+            unreceived_ok?: boolean;
         };
         /**
          * DeleteResult
@@ -5445,6 +5660,572 @@ export interface components {
             id: string;
         };
         /**
+         * SyncArriving
+         * @description A version still arriving from the sync tool.
+         */
+        SyncArriving: {
+            /**
+             * From Computer
+             * @description The computer it comes from
+             */
+            from_computer: string;
+            /**
+             * Have
+             * @description Files already here
+             */
+            have: number;
+            /**
+             * Need
+             * @description Files it needs in all
+             */
+            need: number;
+            /** Have Bytes */
+            have_bytes: number;
+            /** Need Bytes */
+            need_bytes: number;
+            /**
+             * Since
+             * @description This computer's clock: when waiting began
+             */
+            since: string;
+            /**
+             * Stalled
+             * @description Nothing more arrived for 30 minutes
+             */
+            stalled: boolean;
+            /**
+             * Online Only
+             * @description Files the sync tool keeps online-only on this computer (placeholders, dataless files): they arrive only once the folder is available offline
+             */
+            online_only: number;
+        };
+        /**
+         * SyncChange
+         * @description Small changes and answers to a problem (each optional).
+         */
+        SyncChange: {
+            /**
+             * Name
+             * @description A new name for this computer
+             */
+            name?: string | null;
+            /**
+             * Confirm Same Computer
+             * @description “This is the same computer” (after the data folder moved or was copied)
+             * @default false
+             */
+            confirm_same_computer?: boolean;
+            /**
+             * Keep As Is
+             * @description “Keep this computer's data as it is” (after it went back in time and the last saved state can't be put back)
+             * @default false
+             */
+            keep_as_is?: boolean;
+            /**
+             * Abandon Pull
+             * @description Give up a take-over that couldn't finish (this computer stands by)
+             * @default false
+             */
+            abandon_pull?: boolean;
+            /**
+             * Dismiss Notice
+             * @description A notice's ``id``
+             */
+            dismiss_notice?: string | null;
+        };
+        /**
+         * SyncChoice
+         * @description Both computers changed something: which computer's Ordnung to keep (the other is kept as a copy).
+         */
+        SyncChoice: {
+            /**
+             * Joining
+             * @description This computer is joining and already has its own letters
+             */
+            joining: boolean;
+            /** Sides */
+            sides: components["schemas"]["SyncSide"][];
+            /**
+             * Chosen
+             * @description The side chosen while it still arrives: kept as soon as it is here (``use-here`` with ``cancel`` stops waiting)
+             */
+            chosen: number | null;
+        };
+        /**
+         * SyncChoose
+         * @description Which computer's Ordnung to keep.
+         */
+        SyncChoose: {
+            /**
+             * Keep
+             * @description The chosen side's ``key``
+             */
+            keep: number;
+        };
+        /**
+         * SyncComputer
+         * @description A computer of this sync, as this computer sees it (never its id).
+         */
+        SyncComputer: {
+            /**
+             * Key
+             * @description A small number for the UI, stable per computer (``choose``, ``forget``)
+             */
+            key: number;
+            /**
+             * Name
+             * @description The name it was given (“anna-thinkpad”)
+             */
+            name: string;
+            /**
+             * This
+             * @description This computer
+             */
+            this: boolean;
+            /**
+             * In Use
+             * @description It is the one in use
+             */
+            in_use: boolean;
+            /**
+             * State
+             * @description What its latest head says: ``in_use``, ``standing_by``, ``closed`` (Ordnung was closed there while in use), ``left`` (it disconnected) or ``unknown`` (its head can't be read now)
+             * @enum {string}
+             */
+            state: "in_use" | "standing_by" | "closed" | "left" | "unknown";
+            /**
+             * Arrived At
+             * @description This computer's clock: when that computer's latest change arrived here
+             */
+            arrived_at: string | null;
+            /**
+             * Has Latest
+             * @description This computer's latest saved version has fully arrived there (null: can't tell, or this computer)
+             */
+            has_latest: boolean | null;
+            /**
+             * App Version
+             * @description The Ordnung version it runs
+             */
+            app_version: string;
+            /**
+             * Calendar
+             * @description Calendar sync there, compared with this computer's: ``none``; ``same`` calendar and mode; ``different_mode`` (the same calendar in another mode); ``other`` (another calendar, or none here)
+             * @enum {string}
+             */
+            calendar: "none" | "same" | "different_mode" | "other";
+        };
+        /**
+         * SyncConnect
+         * @description Set up a new sync folder or join one (the passphrase is checked by the route).
+         */
+        SyncConnect: {
+            /** Folder */
+            folder: string;
+            /**
+             * Name
+             * @description This computer's name (1 to 40 characters)
+             */
+            name: string;
+            /** Passphrase */
+            passphrase: string;
+            /**
+             * Keep
+             * @description Joining while this computer has its own letters: keep this computer's Ordnung, or the folder's (the other is kept as a copy)
+             */
+            keep?: ("this" | "folder") | null;
+        };
+        /**
+         * SyncConnected
+         * @description The result of setting up or joining: the status, or the choice to answer first.
+         */
+        SyncConnected: {
+            status: components["schemas"]["SyncStatus"];
+            /** @description Joining while this computer has its own letters: send ``keep`` to answer (nothing is connected yet) */
+            choice: components["schemas"]["SyncChoice"] | null;
+        };
+        /**
+         * SyncDisconnect
+         * @description Disconnect this computer.
+         */
+        SyncDisconnect: {
+            /**
+             * Forget Passphrase
+             * @description Also remove it from the password store
+             * @default true
+             */
+            forget_passphrase?: boolean;
+            /**
+             * Unreceived Ok
+             * @description Disconnect although no other computer has this computer's latest changes yet (the second confirmation)
+             * @default false
+             */
+            unreceived_ok?: boolean;
+        };
+        /**
+         * SyncFolderInfo
+         * @description What a folder would be for sync (nothing is written).
+         */
+        SyncFolderInfo: {
+            /**
+             * Kind
+             * @description ``new``: missing or empty (apart from sync-tool files): a new sync starts there; ``existing``: a sync to join; ``refused``: it can't be used (``problem`` says why)
+             * @enum {string}
+             */
+            kind: "new" | "existing" | "refused";
+            /**
+             * Folder
+             * @description The folder as Ordnung would use it (resolved)
+             */
+            folder: string;
+            /**
+             * Problem
+             * @description Why it can't be used, for people
+             */
+            problem: string | null;
+            /**
+             * Examples
+             * @description Up to three names of other files found in it
+             */
+            examples: string[];
+            /**
+             * Data Folder Synced
+             * @description Ordnung's data folder itself is inside a synced folder (a warning, never a refusal)
+             */
+            data_folder_synced: boolean;
+            /**
+             * Links Left Out
+             * @description Symbolic links in the data folder that sync leaves out (it never follows links)
+             */
+            links_left_out: string[];
+        };
+        /**
+         * SyncInspect
+         * @description A folder to look at.
+         */
+        SyncInspect: {
+            /** Folder */
+            folder: string;
+        };
+        /**
+         * SyncKept
+         * @description A kept copy: this computer's data saved before it was replaced (an encrypted backup).
+         */
+        SyncKept: {
+            /**
+             * Name
+             * @description Its file name (``ordnung-kept-2026-10-07-0912.ordnung-backup``)
+             */
+            name: string;
+            /**
+             * Path
+             * @description Where it is on this computer (for ``ordnung restore``)
+             */
+            path: string;
+            /** Size */
+            size: number;
+            /**
+             * Created At
+             * @description This computer's clock
+             */
+            created_at: string;
+            /**
+             * Why
+             * @description Why it was kept, for people (“before you kept desktop's Ordnung”)
+             */
+            why: string;
+        };
+        /**
+         * SyncLetter
+         * @description A letter in a side's summary: its title and the calendar date it was added (no clock time).
+         */
+        SyncLetter: {
+            /** Label */
+            label: string;
+            /** Added On */
+            added_on: string;
+        };
+        /**
+         * SyncNotice
+         * @description Something the person should know about once (dismissed with ``PATCH /api/sync``).
+         */
+        SyncNotice: {
+            /** Id */
+            id: string;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "chosen_elsewhere" | "kept" | "rolled_back" | "take_over_cancelled" | "brought_in" | "pull_abandoned";
+            /**
+             * Message
+             * @description For people
+             */
+            message: string;
+            /**
+             * Kept
+             * @description The kept copy it is about (its name)
+             */
+            kept: string | null;
+            /**
+             * At
+             * @description This computer's clock
+             */
+            at: string;
+        };
+        /**
+         * SyncPassphrase
+         * @description The passphrase typed again (checked against the folder by the route).
+         */
+        SyncPassphrase: {
+            /** Passphrase */
+            passphrase: string;
+        };
+        /**
+         * SyncProblem
+         * @description Why sync is paused or needs the person (the web shows the words, never the code).
+         */
+        SyncProblem: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "folder_missing" | "folder_empty" | "folder_other" | "folder_full" | "folder_unreachable" | "online_only" | "two_setups" | "passphrase_needed" | "keyring_unavailable" | "keyring_locked" | "newer_ordnung" | "arrival_stalled" | "not_received" | "pull_unfinished" | "no_space" | "damaged" | "local_damaged" | "copied_folder" | "local_rollback" | "save_failing" | "forgotten";
+            /**
+             * Title
+             * @description A short title for people
+             */
+            title: string;
+            /**
+             * Message
+             * @description What happened and what to do, for people
+             */
+            message: string;
+            /**
+             * Actions
+             * @description What the person can do about it, the main action first (none: wait, or the message says)
+             */
+            actions: ("passphrase" | "choose_folder" | "refill" | "same_computer" | "new_computer" | "keep_as_is" | "abandon")[];
+        };
+        /**
+         * SyncProgress
+         * @description How far a first save, or bringing a version over, has got.
+         */
+        SyncProgress: {
+            /**
+             * Done
+             * @description Files done
+             */
+            done: number;
+            /**
+             * Total
+             * @description Files in all
+             */
+            total: number;
+            /** Bytes Done */
+            bytes_done: number;
+            /** Bytes Total */
+            bytes_total: number;
+        };
+        /**
+         * SyncSave
+         * @description Save now.
+         */
+        SyncSave: {
+            /**
+             * Hand Over
+             * @description Then stand by, so another computer can take over
+             * @default false
+             */
+            hand_over?: boolean;
+        };
+        /**
+         * SyncSide
+         * @description One computer's Ordnung in a choice.
+         */
+        SyncSide: {
+            /**
+             * Key
+             * @description The computer's ``key`` (what ``choose`` takes)
+             */
+            key: number;
+            /** Computer */
+            computer: string;
+            /** This */
+            this: boolean;
+            /**
+             * Letters
+             * @description Letters in that Ordnung
+             */
+            letters: number;
+            /**
+             * Added
+             * @description Letters added there since the two last agreed
+             */
+            added: number;
+            /**
+             * Newest
+             * @description Up to three letters, newest added first
+             */
+            newest: components["schemas"]["SyncLetter"][];
+            /**
+             * Arrived At
+             * @description This computer's clock: when it arrived here
+             */
+            arrived_at: string | null;
+            /**
+             * Complete
+             * @description It has fully arrived here (choosing one that hasn't waits for it)
+             */
+            complete: boolean;
+            /** @description What is still arriving of it */
+            arriving: components["schemas"]["SyncArriving"] | null;
+        };
+        /**
+         * SyncStatus
+         * @description What Settings → Your computers, the top bar and the standing-by screen show.
+         */
+        SyncStatus: {
+            /**
+             * Available
+             * @description Sync can be used on this computer (a password store; never the demo)
+             */
+            available: boolean;
+            /**
+             * Unavailable
+             * @description Why not, in words
+             */
+            unavailable: string | null;
+            /**
+             * Install Command
+             * @description The command that makes it available
+             */
+            install_command: string | null;
+            /**
+             * Connected
+             * @description This computer syncs through a folder
+             */
+            connected: boolean;
+            /**
+             * Mode
+             * @description ``off`` (not connected), ``starting``, ``in_use`` (this computer is the one in use) or ``standing_by`` (another computer is: writes are refused)
+             * @enum {string}
+             */
+            mode: "off" | "starting" | "in_use" | "standing_by";
+            /**
+             * Activity
+             * @description ``idle``, ``saving``, ``waiting`` (for the sync tool), ``bringing_over`` (writes are refused for a moment) or ``keeping`` (writing a kept copy)
+             * @enum {string}
+             */
+            activity: "idle" | "saving" | "waiting" | "bringing_over" | "keeping";
+            progress: components["schemas"]["SyncProgress"] | null;
+            /**
+             * Folder
+             * @description The sync folder on this computer
+             */
+            folder: string | null;
+            /**
+             * This Computer
+             * @description This computer's name
+             */
+            this_computer: string | null;
+            /**
+             * Suggested Name
+             * @description The name offered when setting up (this computer's host name)
+             */
+            suggested_name: string;
+            /**
+             * In Use On
+             * @description The computer in use
+             */
+            in_use_on: string | null;
+            /**
+             * Computers
+             * @description Every computer, this one too
+             */
+            computers: components["schemas"]["SyncComputer"][];
+            /**
+             * Last Saved At
+             * @description This computer's clock: its last save into the folder
+             */
+            last_saved_at: string | null;
+            /**
+             * Pending Changes
+             * @description This computer has changes that aren't in the sync folder yet
+             * @default false
+             */
+            pending_changes: boolean;
+            /**
+             * Others Have Latest
+             * @description Another computer has received everything of this computer's (Disconnect and Delete everything ask twice when not)
+             * @default false
+             */
+            others_have_latest: boolean;
+            /**
+             * Up To Date
+             * @description Standing by: the newest version has fully arrived here
+             * @default false
+             */
+            up_to_date: boolean;
+            /**
+             * Base From
+             * @description Whose version this computer's data is (“the copy this computer has”)
+             */
+            base_from: string | null;
+            /**
+             * Base Arrived At
+             * @description This computer's clock: when it arrived
+             */
+            base_arrived_at: string | null;
+            arriving: components["schemas"]["SyncArriving"] | null;
+            /**
+             * Take Over Waiting
+             * @description “Use Ordnung here” waits until everything has arrived
+             * @default false
+             */
+            take_over_waiting: boolean;
+            /** @description Both computers changed: which to keep */
+            choice: components["schemas"]["SyncChoice"] | null;
+            problem: components["schemas"]["SyncProblem"] | null;
+            /** Notices */
+            notices: components["schemas"]["SyncNotice"][];
+            /**
+             * Kept
+             * @description Kept copies on this computer
+             */
+            kept: components["schemas"]["SyncKept"][];
+            /**
+             * Kept Warning
+             * @description The kept copies take more than 2 GB in all
+             * @default false
+             */
+            kept_warning: boolean;
+            /**
+             * Data Folder Synced
+             * @description Ordnung's data folder itself is inside a synced folder, so the sync tool uploads it unencrypted
+             * @default false
+             */
+            data_folder_synced: boolean;
+        };
+        /**
+         * SyncUseHere
+         * @description “Use Ordnung here”.
+         */
+        SyncUseHere: {
+            /**
+             * Older Copy
+             * @description Use the copy this computer has now instead of waiting for what arrives
+             * @default false
+             */
+            older_copy?: boolean;
+            /**
+             * Cancel
+             * @description Stop a waiting take-over (or a waiting choice)
+             * @default false
+             */
+            cancel?: boolean;
+        };
+        /**
          * ThreadMessage
          * @description A stored question or answer; an answer's check note is split off its text into ``note``.
          */
@@ -6361,6 +7142,7 @@ export interface components {
             "draft.sent": components["schemas"]["DraftSentEvent"];
             "demo.mail": components["schemas"]["DemoMailEvent"];
             "folder.updated": components["schemas"]["FolderUpdatedEvent"];
+            "sync.updated": components["schemas"]["SyncUpdatedEvent"];
         };
         /**
          * SuggestionsUpdatedEvent
@@ -6404,6 +7186,18 @@ export interface components {
             by_rule?: {
                 [key: string]: number;
             } | null;
+        };
+        /**
+         * SyncUpdatedEvent
+         * @description ``sync.updated``: hand-off sync's status changed (``GET /api/sync``); ``replaced``: this computer's
+         *     data was just replaced (a take-over, a choice, a change brought in), so every page loads again.
+         */
+        SyncUpdatedEvent: {
+            /**
+             * Replaced
+             * @default false
+             */
+            replaced?: boolean;
         };
     };
     responses: never;
@@ -6666,7 +7460,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataDeleted"];
                 };
             };
-            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted). */
+            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), the connected calendar's events couldn't be removed (nothing was deleted), or no other computer of hand-off sync has this computer's latest changes yet (``not_received``: send ``unreceived_ok``). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -9377,6 +10171,521 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    sync_status_api_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+        };
+    };
+    connect_sync_api_sync_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncConnected"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer already syncs (``already_connected``); the folder was set up by a newer Ordnung (``newer_ordnung``); the folder already serves 8 computers (``full``); the folder's key file hasn't fully arrived yet (``not_arrived``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the folder can't be used (``folder``); the name is empty or too long (``name``); a new folder's passphrase is too short or too easy to guess (``passphrase``); the passphrase doesn't open this folder (``wrong_passphrase``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description this computer lacks the space to bring Ordnung over (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disconnect_sync_api_sync_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncDisconnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); no other computer has this computer's latest changes yet: ``unreceived_ok`` goes on (``not_received``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_sync_api_sync_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to confirm or give up now (``not_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the name is empty or too long (``name``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inspect_sync_folder_api_sync_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncInspect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncFolderInfo"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    use_sync_here_api_sync_use_here_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncUseHere"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the other computer runs a newer Ordnung: update Ordnung here (``newer_ordnung``); a take-over must finish first (``pull_unfinished``); the passphrase isn't in the password store (``passphrase_needed``); the folder has a problem that stops a take-over (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space to take over (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    choose_sync_api_sync_choose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncChoose"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to choose, or no such side (``no_choice``); the chosen side hasn't arrived and can't be waited for (``not_arrived``); the passphrase is needed to keep this computer's copy (``passphrase_needed``); the folder has a problem that stops this (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space for it (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    save_sync_api_sync_save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); another computer is in use (``standby``); the folder can't be written now (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_passphrase_api_sync_passphrase_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncPassphrase"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the passphrase doesn't open this folder (``wrong_passphrase``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    refill_sync_api_sync_refill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the folder isn't empty, or another computer is in use (``not_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    forget_computer_api_sync_computers__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description no other computer has that number (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); that computer is the one in use (take over first) (``in_use``); its latest changes haven't arrived here, so they can't be kept yet (``not_arrived``); the passphrase is needed to keep its changes (``passphrase_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space to keep its changes (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    download_kept_api_sync_kept__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The kept copy (an encrypted backup) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description no kept copy of that name (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_kept_api_sync_kept__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description no kept copy of that name (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

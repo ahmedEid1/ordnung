@@ -15,10 +15,11 @@ Policy
   stay on your computer.** A phone may look at everything the everyday pages show, add letters
   (photos or files) and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists.
   It may not delete anything, download files or records (originals, generated PDFs, exports), change
-  settings, the profile, phone access, calendar sync, the watched folder or backups, decide about held
-  letters or let Claude read a letter kept private, or start background model work beyond those
-  everyday actions. The exact list is :mod:`ordnung.phone.scope`, checked before routing and published
-  in the OpenAPI schema (``x-ordnung-phone``); a route nobody classified is refused on a phone.
+  settings, the profile, phone access, calendar sync, hand-off sync, the watched folder or backups,
+  decide about held letters or let Claude read a letter kept private, or start background model work
+  beyond those everyday actions. The exact list is :mod:`ordnung.phone.scope`, checked before routing
+  and published in the OpenAPI schema (``x-ordnung-phone``); a route nobody classified is refused on a
+  phone.
 * **The letters stay on the computer.** The phone shows them; API answers carry ``no-store``, and on
   a phone the numbers of *My numbers* and the profile show only their last 4 characters
   (:mod:`ordnung.phone.mask`). What a phone changes is attributed to it in the privacy log

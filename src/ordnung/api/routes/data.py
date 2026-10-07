@@ -59,6 +59,11 @@ class DeleteEverything(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     confirm: Literal["DELETE"] = Field(description='Exactly "DELETE" — what the person typed to confirm')
+    unreceived_ok: bool = Field(
+        default=False,
+        description="Hand-off sync: delete although no other computer has this computer's latest changes "
+        "yet (the second confirmation; otherwise 409 ``not_received``)",
+    )
 
 
 class DataDeleted(BaseModel):
@@ -74,7 +79,13 @@ class DataDeleted(BaseModel):
     )
     calendar_events_removed: int | None = Field(
         default=None,
-        description="Ordnung's events removed from the connected calendar first (null: none was connected)",
+        description="Ordnung's events removed from the connected calendar first (null: none was connected, "
+        "or another computer still sends to it)",
+    )
+    calendar_shared_with: str | None = Field(
+        default=None,
+        description="Hand-off sync: another computer that sends to the same calendar, so Ordnung's events "
+        "were left there and only this computer's connection was removed",
     )
 
 
@@ -151,8 +162,9 @@ def wipe_data_dir(ctx: AppContext, secrets: SecretStore | None = None, transport
     response_model=DataDeleted,
     responses={
         409: {
-            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), or the "
-            "connected calendar's events couldn't be removed (nothing was deleted)."
+            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), the "
+            "connected calendar's events couldn't be removed (nothing was deleted), or no other computer of "
+            "hand-off sync has this computer's latest changes yet (``not_received``: send ``unreceived_ok``)."
         }
     },
     dependencies=[Depends(require_computer)],

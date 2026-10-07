@@ -21,10 +21,13 @@ from jsonschema import Draft202012Validator
 from fake_caldav import MemorySecrets
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from ordnung import clock
-from ordnung.api.routes import calendar_sync
+from ordnung.api.routes import calendar_sync, sync
 from test_api_support import TODAY, Api, api_for, sse_messages
 
-NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
+NOT_CALLED = {
+    "/api/events": "an endless event stream (tested in test_api_ledger)",
+    "/api/sync/kept/{name}": "no kept copy exists in the demo, which never syncs (tested in test_api_sync)",
+}
 
 
 @pytest.fixture(autouse=True)
@@ -213,6 +216,9 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         await _get(api, contract, "/api/calendar/sync/preview", mode="full")
         phone = await _get(api, contract, "/api/phone")
         assert phone["available"] is False and phone["devices"] == []  # never in the demo
+        api.app.dependency_overrides[sync.get_secrets] = lambda: MemorySecrets()  # not the real keyring
+        hand_off = await _get(api, contract, "/api/sync")
+        assert hand_off["available"] is False and hand_off["mode"] == "off"  # the demo never syncs
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")

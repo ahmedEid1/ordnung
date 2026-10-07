@@ -349,7 +349,7 @@
             }
           },
           "409": {
-            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted)."
+            "description": "The demo can't be deleted (``ordnung demo --reset`` starts it over), the connected calendar's events couldn't be removed (nothing was deleted), or no other computer of hand-off sync has this computer's latest changes yet (``not_received``: send ``unreceived_ok``)."
           },
           "422": {
             "description": "Validation Error",
@@ -4424,6 +4424,537 @@
         "x-ordnung-phone": true
       }
     },
+    "/api/sync": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Status",
+        "description": "Whether sync can be used here, this computer's mode, the other computers, a choice, problems,\nnotices and kept copies (from memory: never the folder or the password store).",
+        "operationId": "sync_status_api_sync_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Connect Sync",
+        "description": "Set up a new sync folder (the passphrase twice in the form) or join an existing one; joining\nwhile this computer has letters answers the choice first, unless ``keep`` answers it.",
+        "operationId": "connect_sync_api_sync_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncConnect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncConnected"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer already syncs (``already_connected``); the folder was set up by a newer Ordnung (``newer_ordnung``); the folder already serves 8 computers (``full``); the folder's key file hasn't fully arrived yet (``not_arrived``); this computer isn't syncing (``not_connected``)"
+          },
+          "422": {
+            "description": "the folder can't be used (``folder``); the name is empty or too long (``name``); a new folder's passphrase is too short or too easy to guess (``passphrase``); the passphrase doesn't open this folder (``wrong_passphrase``)"
+          },
+          "507": {
+            "description": "this computer lacks the space to bring Ordnung over (``no_space``)"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Disconnect Sync",
+        "description": "Disconnect this computer: its last changes are saved first, its head says it left, and\n``<data>/sync/`` goes (kept copies stay). The folder and the other computers keep everything.",
+        "operationId": "disconnect_sync_api_sync_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncDisconnect",
+                "default": {
+                  "forget_passphrase": true,
+                  "unreceived_ok": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); no other computer has this computer's latest changes yet: ``unreceived_ok`` goes on (``not_received``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Change Sync",
+        "description": "Rename this computer, answer a problem, or dismiss a notice.",
+        "operationId": "change_sync_api_sync_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to confirm or give up now (``not_needed``)"
+          },
+          "422": {
+            "description": "the name is empty or too long (``name``)"
+          }
+        }
+      }
+    },
+    "/api/sync/inspect": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Inspect Sync Folder",
+        "description": "What ``folder`` would be: a new sync, one to join, or refused (and why). Nothing is written.",
+        "operationId": "inspect_sync_folder_api_sync_inspect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncInspect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncFolderInfo"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/use-here": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Use Sync Here",
+        "description": "“Use Ordnung here”: bring everything over and make this computer the one in use — or wait until\nit has arrived (``take_over_waiting``), or answer with the choice when both computers changed.",
+        "operationId": "use_sync_here_api_sync_use_here_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncUseHere",
+                "default": {
+                  "older_copy": false,
+                  "cancel": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the other computer runs a newer Ordnung: update Ordnung here (``newer_ordnung``); a take-over must finish first (``pull_unfinished``); the passphrase isn't in the password store (``passphrase_needed``); the folder has a problem that stops a take-over (``folder_problem``)"
+          },
+          "507": {
+            "description": "this computer lacks the space to take over (``no_space``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/choose": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Choose Sync",
+        "description": "Keep the chosen computer's Ordnung; the other one is kept as an encrypted copy on its own\ncomputer. Choosing makes this computer the one in use.",
+        "operationId": "choose_sync_api_sync_choose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncChoose"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to choose, or no such side (``no_choice``); the chosen side hasn't arrived and can't be waited for (``not_arrived``); the passphrase is needed to keep this computer's copy (``passphrase_needed``); the folder has a problem that stops this (``folder_problem``)"
+          },
+          "507": {
+            "description": "this computer lacks the space for it (``no_space``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/save": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Save Sync",
+        "description": "Save into the sync folder now; ``hand_over`` then stands by.",
+        "operationId": "save_sync_api_sync_save_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncSave",
+                "default": {
+                  "hand_over": false
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); another computer is in use (``standby``); the folder can't be written now (``folder_problem``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/passphrase": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Passphrase",
+        "description": "Type the passphrase again: checked against the folder, then kept in the password store.",
+        "operationId": "sync_passphrase_api_sync_passphrase_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncPassphrase"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``)"
+          },
+          "422": {
+            "description": "the passphrase doesn't open this folder (``wrong_passphrase``)"
+          }
+        }
+      }
+    },
+    "/api/sync/refill": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Refill Sync",
+        "description": "Fill an emptied sync folder again from this computer (never done by itself: an unmounted share\nlooks empty too).",
+        "operationId": "refill_sync_api_sync_refill_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the folder isn't empty, or another computer is in use (``not_needed``)"
+          }
+        }
+      }
+    },
+    "/api/sync/computers/{key}": {
+      "delete": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Forget Computer",
+        "description": "Forget a lost computer: its changes that are nowhere else are kept as a copy here first. It\nstill knows the passphrase (a new sync folder locks it out).",
+        "operationId": "forget_computer_api_sync_computers__key__delete",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "no other computer has that number (``not_found``)"
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); that computer is the one in use (take over first) (``in_use``); its latest changes haven't arrived here, so they can't be kept yet (``not_arrived``); the passphrase is needed to keep its changes (``passphrase_needed``)"
+          },
+          "507": {
+            "description": "this computer lacks the space to keep its changes (``no_space``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/kept/{name}": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Download Kept",
+        "description": "A kept copy as a download (open it with ``ordnung restore`` and the sync passphrase). ``name``\nmust match :data:`~ordnung.sync.KEPT_RE` and be listed in the status.",
+        "operationId": "download_kept_api_sync_kept__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The kept copy (an encrypted backup)",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "404": {
+            "description": "no kept copy of that name (``not_found``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Delete Kept",
+        "description": "Delete a kept copy for good.",
+        "operationId": "delete_kept_api_sync_kept__name__delete",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "no kept copy of that name (``not_found``)"
+          },
+          "409": {
+            "description": "the demo, or no usable password store on this computer (``unavailable``)"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/events": {
       "get": {
         "tags": [
@@ -7489,14 +8020,27 @@
               }
             ],
             "title": "Calendar Events Removed",
-            "description": "Ordnung's events removed from the connected calendar first (null: none was connected)"
+            "description": "Ordnung's events removed from the connected calendar first (null: none was connected, or another computer still sends to it)"
+          },
+          "calendar_shared_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calendar Shared With",
+            "description": "Hand-off sync: another computer that sends to the same calendar, so Ordnung's events were left there and only this computer's connection was removed"
           }
         },
         "type": "object",
         "required": [
           "removed",
           "kept",
-          "calendar_events_removed"
+          "calendar_events_removed",
+          "calendar_shared_with"
         ],
         "title": "DataDeleted",
         "description": "What \"Delete everything\" removed."
@@ -7669,6 +8213,12 @@
             "const": "DELETE",
             "title": "Confirm",
             "description": "Exactly \"DELETE\" — what the person typed to confirm"
+          },
+          "unreceived_ok": {
+            "type": "boolean",
+            "title": "Unreceived Ok",
+            "description": "Hand-off sync: delete although no other computer has this computer's latest changes yet (the second confirmation; otherwise 409 ``not_received``)",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -15225,6 +15775,1022 @@
         ],
         "title": "SuggestionRef"
       },
+      "SyncArriving": {
+        "properties": {
+          "from_computer": {
+            "type": "string",
+            "title": "From Computer",
+            "description": "The computer it comes from"
+          },
+          "have": {
+            "type": "integer",
+            "title": "Have",
+            "description": "Files already here"
+          },
+          "need": {
+            "type": "integer",
+            "title": "Need",
+            "description": "Files it needs in all"
+          },
+          "have_bytes": {
+            "type": "integer",
+            "title": "Have Bytes"
+          },
+          "need_bytes": {
+            "type": "integer",
+            "title": "Need Bytes"
+          },
+          "since": {
+            "type": "string",
+            "title": "Since",
+            "description": "This computer's clock: when waiting began"
+          },
+          "stalled": {
+            "type": "boolean",
+            "title": "Stalled",
+            "description": "Nothing more arrived for 30 minutes"
+          },
+          "online_only": {
+            "type": "integer",
+            "title": "Online Only",
+            "description": "Files the sync tool keeps online-only on this computer (placeholders, dataless files): they arrive only once the folder is available offline"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_computer",
+          "have",
+          "need",
+          "have_bytes",
+          "need_bytes",
+          "since",
+          "stalled",
+          "online_only"
+        ],
+        "title": "SyncArriving",
+        "description": "A version still arriving from the sync tool."
+      },
+      "SyncChange": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "A new name for this computer"
+          },
+          "confirm_same_computer": {
+            "type": "boolean",
+            "title": "Confirm Same Computer",
+            "description": "“This is the same computer” (after the data folder moved or was copied)",
+            "default": false
+          },
+          "keep_as_is": {
+            "type": "boolean",
+            "title": "Keep As Is",
+            "description": "“Keep this computer's data as it is” (after it went back in time and the last saved state can't be put back)",
+            "default": false
+          },
+          "abandon_pull": {
+            "type": "boolean",
+            "title": "Abandon Pull",
+            "description": "Give up a take-over that couldn't finish (this computer stands by)",
+            "default": false
+          },
+          "dismiss_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dismiss Notice",
+            "description": "A notice's ``id``"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SyncChange",
+        "description": "Small changes and answers to a problem (each optional)."
+      },
+      "SyncChoice": {
+        "properties": {
+          "joining": {
+            "type": "boolean",
+            "title": "Joining",
+            "description": "This computer is joining and already has its own letters"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/SyncSide"
+            },
+            "type": "array",
+            "title": "Sides"
+          },
+          "chosen": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen",
+            "description": "The side chosen while it still arrives: kept as soon as it is here (``use-here`` with ``cancel`` stops waiting)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "joining",
+          "sides",
+          "chosen"
+        ],
+        "title": "SyncChoice",
+        "description": "Both computers changed something: which computer's Ordnung to keep (the other is kept as a copy)."
+      },
+      "SyncChoose": {
+        "properties": {
+          "keep": {
+            "type": "integer",
+            "title": "Keep",
+            "description": "The chosen side's ``key``"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "keep"
+        ],
+        "title": "SyncChoose",
+        "description": "Which computer's Ordnung to keep."
+      },
+      "SyncComputer": {
+        "properties": {
+          "key": {
+            "type": "integer",
+            "title": "Key",
+            "description": "A small number for the UI, stable per computer (``choose``, ``forget``)"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name it was given (“anna-thinkpad”)"
+          },
+          "this": {
+            "type": "boolean",
+            "title": "This",
+            "description": "This computer"
+          },
+          "in_use": {
+            "type": "boolean",
+            "title": "In Use",
+            "description": "It is the one in use"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "in_use",
+              "standing_by",
+              "closed",
+              "left",
+              "unknown"
+            ],
+            "title": "State",
+            "description": "What its latest head says: ``in_use``, ``standing_by``, ``closed`` (Ordnung was closed there while in use), ``left`` (it disconnected) or ``unknown`` (its head can't be read now)"
+          },
+          "arrived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived At",
+            "description": "This computer's clock: when that computer's latest change arrived here"
+          },
+          "has_latest": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Latest",
+            "description": "This computer's latest saved version has fully arrived there (null: can't tell, or this computer)"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version",
+            "description": "The Ordnung version it runs"
+          },
+          "calendar": {
+            "type": "string",
+            "enum": [
+              "none",
+              "same",
+              "different_mode",
+              "other"
+            ],
+            "title": "Calendar",
+            "description": "Calendar sync there, compared with this computer's: ``none``; ``same`` calendar and mode; ``different_mode`` (the same calendar in another mode); ``other`` (another calendar, or none here)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "this",
+          "in_use",
+          "state",
+          "arrived_at",
+          "has_latest",
+          "app_version",
+          "calendar"
+        ],
+        "title": "SyncComputer",
+        "description": "A computer of this sync, as this computer sees it (never its id)."
+      },
+      "SyncConnect": {
+        "properties": {
+          "folder": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Folder"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "This computer's name (1 to 40 characters)"
+          },
+          "passphrase": {
+            "type": "string",
+            "title": "Passphrase"
+          },
+          "keep": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "this",
+                  "folder"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep",
+            "description": "Joining while this computer has its own letters: keep this computer's Ordnung, or the folder's (the other is kept as a copy)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "folder",
+          "name",
+          "passphrase"
+        ],
+        "title": "SyncConnect",
+        "description": "Set up a new sync folder or join one (the passphrase is checked by the route)."
+      },
+      "SyncConnected": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/SyncStatus"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncChoice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Joining while this computer has its own letters: send ``keep`` to answer (nothing is connected yet)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "choice"
+        ],
+        "title": "SyncConnected",
+        "description": "The result of setting up or joining: the status, or the choice to answer first."
+      },
+      "SyncDisconnect": {
+        "properties": {
+          "forget_passphrase": {
+            "type": "boolean",
+            "title": "Forget Passphrase",
+            "description": "Also remove it from the password store",
+            "default": true
+          },
+          "unreceived_ok": {
+            "type": "boolean",
+            "title": "Unreceived Ok",
+            "description": "Disconnect although no other computer has this computer's latest changes yet (the second confirmation)",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SyncDisconnect",
+        "description": "Disconnect this computer."
+      },
+      "SyncFolderInfo": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "new",
+              "existing",
+              "refused"
+            ],
+            "title": "Kind",
+            "description": "``new``: missing or empty (apart from sync-tool files): a new sync starts there; ``existing``: a sync to join; ``refused``: it can't be used (``problem`` says why)"
+          },
+          "folder": {
+            "type": "string",
+            "title": "Folder",
+            "description": "The folder as Ordnung would use it (resolved)"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem",
+            "description": "Why it can't be used, for people"
+          },
+          "examples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Examples",
+            "description": "Up to three names of other files found in it"
+          },
+          "data_folder_synced": {
+            "type": "boolean",
+            "title": "Data Folder Synced",
+            "description": "Ordnung's data folder itself is inside a synced folder (a warning, never a refusal)"
+          },
+          "links_left_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Links Left Out",
+            "description": "Symbolic links in the data folder that sync leaves out (it never follows links)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "folder",
+          "problem",
+          "examples",
+          "data_folder_synced",
+          "links_left_out"
+        ],
+        "title": "SyncFolderInfo",
+        "description": "What a folder would be for sync (nothing is written)."
+      },
+      "SyncInspect": {
+        "properties": {
+          "folder": {
+            "type": "string",
+            "maxLength": 4096,
+            "title": "Folder"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "folder"
+        ],
+        "title": "SyncInspect",
+        "description": "A folder to look at."
+      },
+      "SyncKept": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Its file name (``ordnung-kept-2026-10-07-0912.ordnung-backup``)"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "Where it is on this computer (for ``ordnung restore``)"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "This computer's clock"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why",
+            "description": "Why it was kept, for people (“before you kept desktop's Ordnung”)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "path",
+          "size",
+          "created_at",
+          "why"
+        ],
+        "title": "SyncKept",
+        "description": "A kept copy: this computer's data saved before it was replaced (an encrypted backup)."
+      },
+      "SyncLetter": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "added_on": {
+            "type": "string",
+            "title": "Added On"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "added_on"
+        ],
+        "title": "SyncLetter",
+        "description": "A letter in a side's summary: its title and the calendar date it was added (no clock time)."
+      },
+      "SyncNotice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "chosen_elsewhere",
+              "kept",
+              "rolled_back",
+              "take_over_cancelled",
+              "brought_in",
+              "pull_abandoned"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "For people"
+          },
+          "kept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kept",
+            "description": "The kept copy it is about (its name)"
+          },
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "This computer's clock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "message",
+          "kept",
+          "at"
+        ],
+        "title": "SyncNotice",
+        "description": "Something the person should know about once (dismissed with ``PATCH /api/sync``)."
+      },
+      "SyncPassphrase": {
+        "properties": {
+          "passphrase": {
+            "type": "string",
+            "title": "Passphrase"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "passphrase"
+        ],
+        "title": "SyncPassphrase",
+        "description": "The passphrase typed again (checked against the folder by the route)."
+      },
+      "SyncProblem": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "folder_missing",
+              "folder_empty",
+              "folder_other",
+              "folder_full",
+              "folder_unreachable",
+              "online_only",
+              "two_setups",
+              "passphrase_needed",
+              "keyring_unavailable",
+              "keyring_locked",
+              "newer_ordnung",
+              "arrival_stalled",
+              "not_received",
+              "pull_unfinished",
+              "no_space",
+              "damaged",
+              "local_damaged",
+              "copied_folder",
+              "local_rollback",
+              "save_failing",
+              "forgotten"
+            ],
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "A short title for people"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "What happened and what to do, for people"
+          },
+          "actions": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "passphrase",
+                "choose_folder",
+                "refill",
+                "same_computer",
+                "new_computer",
+                "keep_as_is",
+                "abandon"
+              ]
+            },
+            "type": "array",
+            "title": "Actions",
+            "description": "What the person can do about it, the main action first (none: wait, or the message says)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "message",
+          "actions"
+        ],
+        "title": "SyncProblem",
+        "description": "Why sync is paused or needs the person (the web shows the words, never the code)."
+      },
+      "SyncProgress": {
+        "properties": {
+          "done": {
+            "type": "integer",
+            "title": "Done",
+            "description": "Files done"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Files in all"
+          },
+          "bytes_done": {
+            "type": "integer",
+            "title": "Bytes Done"
+          },
+          "bytes_total": {
+            "type": "integer",
+            "title": "Bytes Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "done",
+          "total",
+          "bytes_done",
+          "bytes_total"
+        ],
+        "title": "SyncProgress",
+        "description": "How far a first save, or bringing a version over, has got."
+      },
+      "SyncSave": {
+        "properties": {
+          "hand_over": {
+            "type": "boolean",
+            "title": "Hand Over",
+            "description": "Then stand by, so another computer can take over",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SyncSave",
+        "description": "Save now."
+      },
+      "SyncSide": {
+        "properties": {
+          "key": {
+            "type": "integer",
+            "title": "Key",
+            "description": "The computer's ``key`` (what ``choose`` takes)"
+          },
+          "computer": {
+            "type": "string",
+            "title": "Computer"
+          },
+          "this": {
+            "type": "boolean",
+            "title": "This"
+          },
+          "letters": {
+            "type": "integer",
+            "title": "Letters",
+            "description": "Letters in that Ordnung"
+          },
+          "added": {
+            "type": "integer",
+            "title": "Added",
+            "description": "Letters added there since the two last agreed"
+          },
+          "newest": {
+            "items": {
+              "$ref": "#/components/schemas/SyncLetter"
+            },
+            "type": "array",
+            "title": "Newest",
+            "description": "Up to three letters, newest added first"
+          },
+          "arrived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived At",
+            "description": "This computer's clock: when it arrived here"
+          },
+          "complete": {
+            "type": "boolean",
+            "title": "Complete",
+            "description": "It has fully arrived here (choosing one that hasn't waits for it)"
+          },
+          "arriving": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncArriving"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What is still arriving of it"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "computer",
+          "this",
+          "letters",
+          "added",
+          "newest",
+          "arrived_at",
+          "complete",
+          "arriving"
+        ],
+        "title": "SyncSide",
+        "description": "One computer's Ordnung in a choice."
+      },
+      "SyncStatus": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "Sync can be used on this computer (a password store; never the demo)"
+          },
+          "unavailable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable",
+            "description": "Why not, in words"
+          },
+          "install_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Install Command",
+            "description": "The command that makes it available"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected",
+            "description": "This computer syncs through a folder"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "off",
+              "starting",
+              "in_use",
+              "standing_by"
+            ],
+            "title": "Mode",
+            "description": "``off`` (not connected), ``starting``, ``in_use`` (this computer is the one in use) or ``standing_by`` (another computer is: writes are refused)"
+          },
+          "activity": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "saving",
+              "waiting",
+              "bringing_over",
+              "keeping"
+            ],
+            "title": "Activity",
+            "description": "``idle``, ``saving``, ``waiting`` (for the sync tool), ``bringing_over`` (writes are refused for a moment) or ``keeping`` (writing a kept copy)"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder",
+            "description": "The sync folder on this computer"
+          },
+          "this_computer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "This Computer",
+            "description": "This computer's name"
+          },
+          "suggested_name": {
+            "type": "string",
+            "title": "Suggested Name",
+            "description": "The name offered when setting up (this computer's host name)"
+          },
+          "in_use_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Use On",
+            "description": "The computer in use"
+          },
+          "computers": {
+            "items": {
+              "$ref": "#/components/schemas/SyncComputer"
+            },
+            "type": "array",
+            "title": "Computers",
+            "description": "Every computer, this one too"
+          },
+          "last_saved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Saved At",
+            "description": "This computer's clock: its last save into the folder"
+          },
+          "pending_changes": {
+            "type": "boolean",
+            "title": "Pending Changes",
+            "description": "This computer has changes that aren't in the sync folder yet",
+            "default": false
+          },
+          "others_have_latest": {
+            "type": "boolean",
+            "title": "Others Have Latest",
+            "description": "Another computer has received everything of this computer's (Disconnect and Delete everything ask twice when not)",
+            "default": false
+          },
+          "up_to_date": {
+            "type": "boolean",
+            "title": "Up To Date",
+            "description": "Standing by: the newest version has fully arrived here",
+            "default": false
+          },
+          "base_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base From",
+            "description": "Whose version this computer's data is (“the copy this computer has”)"
+          },
+          "base_arrived_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Arrived At",
+            "description": "This computer's clock: when it arrived"
+          },
+          "arriving": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncArriving"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "take_over_waiting": {
+            "type": "boolean",
+            "title": "Take Over Waiting",
+            "description": "“Use Ordnung here” waits until everything has arrived",
+            "default": false
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncChoice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Both computers changed: which to keep"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncProblem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/SyncNotice"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "kept": {
+            "items": {
+              "$ref": "#/components/schemas/SyncKept"
+            },
+            "type": "array",
+            "title": "Kept",
+            "description": "Kept copies on this computer"
+          },
+          "kept_warning": {
+            "type": "boolean",
+            "title": "Kept Warning",
+            "description": "The kept copies take more than 2 GB in all",
+            "default": false
+          },
+          "data_folder_synced": {
+            "type": "boolean",
+            "title": "Data Folder Synced",
+            "description": "Ordnung's data folder itself is inside a synced folder, so the sync tool uploads it unencrypted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "unavailable",
+          "install_command",
+          "connected",
+          "mode",
+          "activity",
+          "progress",
+          "folder",
+          "this_computer",
+          "suggested_name",
+          "in_use_on",
+          "computers",
+          "last_saved_at",
+          "pending_changes",
+          "others_have_latest",
+          "up_to_date",
+          "base_from",
+          "base_arrived_at",
+          "arriving",
+          "take_over_waiting",
+          "choice",
+          "problem",
+          "notices",
+          "kept",
+          "kept_warning",
+          "data_folder_synced"
+        ],
+        "title": "SyncStatus",
+        "description": "What Settings → Your computers, the top bar and the standing-by screen show."
+      },
+      "SyncUseHere": {
+        "properties": {
+          "older_copy": {
+            "type": "boolean",
+            "title": "Older Copy",
+            "description": "Use the copy this computer has now instead of waiting for what arrives",
+            "default": false
+          },
+          "cancel": {
+            "type": "boolean",
+            "title": "Cancel",
+            "description": "Stop a waiting take-over (or a waiting choice)",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SyncUseHere",
+        "description": "“Use Ordnung here”."
+      },
       "ThreadMessage": {
         "properties": {
           "id": {
@@ -17543,6 +19109,9 @@
           },
           "folder.updated": {
             "$ref": "#/components/schemas/FolderUpdatedEvent"
+          },
+          "sync.updated": {
+            "$ref": "#/components/schemas/SyncUpdatedEvent"
           }
         },
         "required": [
@@ -17562,7 +19131,8 @@
           "draft.created",
           "draft.sent",
           "demo.mail",
-          "folder.updated"
+          "folder.updated",
+          "sync.updated"
         ],
         "title": "ServerEvents",
         "type": "object"
@@ -17665,6 +19235,19 @@
           }
         },
         "title": "SuggestionsUpdatedEvent",
+        "type": "object"
+      },
+      "SyncUpdatedEvent": {
+        "additionalProperties": false,
+        "description": "``sync.updated``: hand-off sync's status changed (``GET /api/sync``); ``replaced``: this computer's\ndata was just replaced (a take-over, a choice, a change brought in), so every page loads again.",
+        "properties": {
+          "replaced": {
+            "default": false,
+            "title": "Replaced",
+            "type": "boolean"
+          }
+        },
+        "title": "SyncUpdatedEvent",
         "type": "object"
       }
     }

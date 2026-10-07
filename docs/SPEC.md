@@ -1315,11 +1315,12 @@ detached.
   "storage"` and an expired cookie. Removing a phone (`DELETE /api/phone/devices/{id}`, saved before its
   answer) cancels its live streams (`/api/events`, Ask), tells an upload still arriving that the client
   went away and lets every other request finish.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (60 operations) and `COMPUTER_ONLY` (42)
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (60 operations) and `COMPUTER_ONLY` (55)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
-  profile edits, phone access, backups, deleting, originals and held-letter decisions stay on the
-  computer. `classify` runs before routing (HEAD counts as GET; a path several templates match is a
-  phone's only when every match is; no match is refused); `mark_openapi` adds `x-ordnung-phone: true`.
+  profile edits, phone access, backups, deleting, originals, held-letter decisions and hand-off sync
+  stay on the computer. `classify` runs before routing (HEAD counts as GET; a path several templates
+  match is a phone's only when every match is; no match is refused); `mark_openapi` adds
+  `x-ordnung-phone: true`.
   Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
   `/api/backup`, `DELETE /api/data`), and `PATCH /api/documents/{id}` refuses `ai_private: false` from a
   phone. `/api/health` on a phone: `client: "phone"`, no data folder, no Claude path, no checks, `probe`

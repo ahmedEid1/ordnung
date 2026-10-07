@@ -59,6 +59,7 @@ const EVENT_TYPES = [
   "draft.sent",
   "demo.mail",
   "folder.updated",
+  "sync.updated",
 ] as const satisfies readonly ServerEventType[];
 
 // compile-time: the list above names every event of the API (fails when the backend adds one)

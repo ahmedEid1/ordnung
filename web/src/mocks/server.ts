@@ -1261,7 +1261,7 @@ const routes: [string, string, Handler][] = [
       phone.forget();
       Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [], readings: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db", ...phoneFolder], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
+      return { removed: ["derived", "drafts", "files", "ordnung.db", ...phoneFolder], kept: [], calendar_events_removed: calendarEventsRemoved, calendar_shared_with: null } satisfies DataDeleted;
     },
   ],
 
