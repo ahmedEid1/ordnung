@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import calendar
 import re
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
@@ -60,7 +61,6 @@ from ordnung.ingest.conflicts import (
     _SALUTATION,
     _SENTENCE_END,
     Rival,
-    _clauses,
     find_rivals,
     header,
     letter_statements,
@@ -73,6 +73,7 @@ from ordnung.ingest.verify import (
     DEADLINE_LEFT_OUT,
     PERIOD_NOT_IN_QUOTE,
     READING_INCOMPLETE,
+    DateMention,
     PageInput,
     date_spans,
     parse_periods,
@@ -114,6 +115,7 @@ __all__ = [
     "reading_gap",
     "remedy_notices",
     "start_variants",
+    "yearless_date",
 ]
 
 #: Slot of the to-do code files for an incomplete reading (one per letter).
@@ -2310,9 +2312,394 @@ def _affirmed(pattern: re.Pattern[str], sentence: str) -> bool:
     return False
 
 
+#: Where a condition's verb stands: a clause's start, or after a comma, a colon, a bracket or a dash ("Sollten Sie
+#: …", "…, sollten Sie …") — never after a subject or a date ("Bis spätestens …, den 04.11.2026 sollten uns die Belege
+#: vorliegen", "Die Belege sollten …": a request). A capital "Sollten" opens its sentence wherever it stands.
+_CLAUSE_OPENS = re.compile(r"(?:^|[,;:(–—-])\s*$")
+#: A deadline of the person's that "läuft … ab" ("Die Abgabefrist für die Erklärung läuft am … ab"): no validity.
+_DUE_FRIST = r"(?:zahlungs|überweisungs|abgabe|rücksende|rücksendungs|rückgabe|vorlage|einreichungs|einsende|nachreichungs)frist"
+_FRIST_RUNS = re.compile(
+    rf"(?:{_DUE_FRIST}|\bfrist\s+(?:für|zur|zum)\b)(?:\s+[\w-]+){{0,5}}\s*$", re.IGNORECASE
+)
+#: "We will need …", "We will expect …": a request, not the sender's own act.
+_WE_ASK = re.compile(r"\s+(?:need|require|expect)\b", re.IGNORECASE)
+
+
+def _not_owed(clause: str) -> bool:
+    """Whether a clause's words keep its dates from being the person's (:data:`_NOT_OWED`) — but for "sollten" after
+    a subject or a date (:data:`_CLAUSE_OPENS`), "läuft … ab" of a deadline (:data:`_FRIST_RUNS`) and "we will need"
+    (:data:`_WE_ASK`), which are no condition, validity or act of the sender's."""
+    for found in _NOT_OWED.finditer(clause):
+        word = found.group().casefold()
+        # (a window before the word: the clause's whitespace runs are single, and the patterns need a few words)
+        if (
+            word == "sollten"
+            and not found.group()[0].isupper()
+            and not _CLAUSE_OPENS.search(clause, max(0, found.start() - 8), found.start())
+        ):
+            continue
+        if word == "läuft" and _FRIST_RUNS.search(clause, max(0, found.start() - 240), found.start()):
+            continue
+        if re.fullmatch(r"we\s+(?:will|shall)", word) and _WE_ASK.match(clause, found.end()):
+            continue
+        return True
+    return False
+
+
+#: Someone else is the one to act: a sentence whose subject is a third party with a verb of its own ("Der Arbeitgeber
+#: hat die Unterlagen … einzureichen", "Ihr Vermieter muss …", "Die Krankenkasse muss …", "Herr Weber hat …", "Your
+#: landlord must …") — never one that is only named ("Die Bescheinigung des Arbeitgebers muss …", "… bei der Kasse").
+_ANOTHER_PARTY = re.compile(
+    r"(?:^|\n|[.;:]\s)\s*(?:(?:der|die|das|ihr|ihre|unser|unsere|the|your|our)\s+)?(?:[\w-]+\s+)?"
+    r"(?:\w{0,20}arbeitgeber|\w{0,20}vermieter(?:in)?|hausverwaltung|\w{0,20}verwalter(?:in)?|schuldner(?:in)?|gegenseite"
+    r"|gegner(?:in)?|\w{0,20}kasse|schule|bank|gutachter(?:in)?|sachverständige[rn]?|mieter(?:in)?|landlord|employer"
+    r"|tenant|other\s+party|debtor|insurer)"
+    r"\s+(?:hat|haben|muss|müssen|wird|werden|wurde|wurden|soll|sollen|has|have|must|will|is|are|was|were|needs?)\b"
+    r"|(?:^|\n|[.;:]\s)\s*(?:herr|frau|mr|mrs|ms)\.?\s+[\w-]+\s+(?:hat|muss|wird|soll|has|must|will)\b",
+    re.IGNORECASE,
+)
+#: Money paid to the person ("… an Sie zu überweisen", "Die Rückzahlung an Sie …", "auf Ihr Konto", "into your
+#: account"): no payment of hers.
+_PAID_TO_YOU = re.compile(
+    r"\ban\s+sie\s+(?:\S+\s+){0,2}?(?:zu\s+)?(?:überw|zahl|auszahl|erstatt)\w*"
+    r"|\w{0,20}(?:zahlung|überweisung|erstattung)\s+an\s+sie\b"
+    r"|\b(?:auf|an)\s+ihr(?:em|en)?\s+(?:\w+\s+)?konto\b|\b(?:into|to)\s+your\s+(?:\w+\s+)?account\b|\bpaid\s+to\s+you\b",
+    re.IGNORECASE,
+)
+
+#: A date set as a deadline in looser words (:func:`_loose_kind`): "bis (zum | spätestens …)" as in :data:`_BY`, or
+#: "spätestens (am | zum)", right before it.
+_BY_LATEST = rf"(?:{_BY}|\bspätestens\s+(?:(?:am|zum)\s+)?{_WEEKDAY_WORD}(?:den\s+)?$)"
+_BY_EN = (
+    rf"\b(?:by|before|no\s+later\s+than|not\s+later\s+than|on\s+or\s+before)\s+(?:the\s+)?{_WEEKDAY_WORD}$"
+)
+#: The words of a sentence between a request and its date (as in :data:`_PAY_YOU`); within one clause, past no comma
+#: but an amount's ("687,15 €"), for a request whose object may be another's ("Wir erwarten, dass Ihre Bank …").
+_GAP = r"(?:[^.;:!?]|\.(?=\d)){0,120}?"
+_CLAUSE_GAP = r"(?:[^.;:!?,]|[.,](?=\d)){0,120}?"
+#: What is asked for, as a noun ("Zahlung", "Rücksendung", "Rückantwort", "Stellungnahme").
+_ACT = (
+    r"\w{0,30}(?:zahlung|überweisung|ausgleich|begleichung|rücksendung|zusendung|übersendung|einsendung|rückgabe"
+    r"|abgabe|vorlage|einreichung|nachreichung|rückmeldung|antwort|stellungnahme|mitteilung|nachricht)\w{0,30}"
+)
+#: A field's start: a line's, or after a separator ("… · Zahlung bis: …", "Offener Betrag … – Frist: …").
+_FIELD = r"(?:^|\n|[·|]|\s[–—-]\s)\s*"
+#: The looser wordings whose words before the date set it alone (each sentence asks the person for something, or
+#: labels the day; what is asked — a payment or a declaration — is told by its words: :func:`_loose_words_kind`).
+_LOOSE_BEFORE = re.compile(
+    # "Wir erwarten Ihre Zahlung bis zum", "Ihre Stellungnahme erwarten wir bis", "Wir benötigen die Unterlagen bis",
+    # "Eine Rückmeldung erbitten wir bis zum"
+    rf"\b(?:wir\s+(?:erwarten|benötigen|erbitten)|(?:erwarten|benötigen|erbitten)\s+wir)\b{_CLAUSE_GAP}{_BY_LATEST}"
+    # "Wir bitten um Zahlung bis zum", "Wir bitten um Rücksendung des unterschriebenen Vertrags bis"
+    rf"|\b(?:wir\s+bitten|bitten\s+wir)\s+(?:sie\s+)?(?:\w+\s+)?um\s+(?:[\w-]+\s+){{0,2}}?{_ACT}\b{_GAP}{_BY_LATEST}"
+    # "Zahlung erbeten bis", "Rückantwort erbeten bis Freitag,"
+    rf"|\b{_ACT}\s+erbeten\s+{_BY}"
+    # "Senden Sie uns die Unterlagen bis zum" (a whole verb: "senden", "schicken" need no particle after the date)
+    rf"|\b(?:senden|schicken)\s+sie\b{_GAP}{_BY}"
+    # "Zahlungsfrist:", "Abgabefrist:", "Frist für die Zahlung:", "Unterlagen nachreichen – Frist:"
+    rf"|(?:^|[\s(·|–—-])(?:{_DUE_FRIST}|frist(?:\s+(?:für|zur|zum)\s+(?:[\w-]+\s+){{0,2}}?[\w-]+)?)\s*:\s*{_WEEKDAY_WORD}$"
+    # "Die Zahlungsfrist endet am", "Die Frist zur Einreichung der Unterlagen endet am", "… läuft am … ab"
+    rf"|(?:{_DUE_FRIST}|\bfrist\s+(?:für|zur|zum)\b)(?:\s+[\w-]+){{0,5}}?\s+(?:endet|läuft)\s+"
+    rf"(?:(?:am|zum|bis(?:\s+zum)?)\s+)?{_WEEKDAY_WORD}(?:den\s+)?$"
+    # "setzen wir Ihnen eine letzte Frist bis zum", "Wir räumen Ihnen … eine Frist bis zum … ein"
+    rf"|\b(?:setz\w{{0,3}}|räum\w{{0,3}}|gewähr\w{{0,3}})\b{_GAP}\bfrist\s+{_BY}"
+    # "Abgabetermin:", "Einsendeschluss ist der", "Letzter Zahlungstag:", "Letzter Tag für die Zahlung ist der"
+    r"|(?:^|[\s(·|–—-])(?:(?:abgabe|rückgabe|einsende|einreichungs|vorlage)(?:termin|schluss)"
+    r"|letzte[rn]?\s+(?:(?:zahlungs|überweisungs|abgabe|einsende|einreichungs|rückgabe)tag"
+    r"|tag\s+(?:für|zur|zum)\s+(?:die\s+|den\s+|das\s+)?[\w-]+))"
+    r"(?:\s+(?:für|zur|zum)\s+(?:die\s+|den\s+|das\s+)?(?:[\w-]+\s+){0,2}?[\w-]+)?"
+    rf"(?:\s*:|\s+ist\s+(?:der|am))\s*{_WEEKDAY_WORD}(?:den\s+)?$"
+    # a field "Zahlungseingang (bei uns) bis:", "Eingang der Unterlagen bei uns bis", "Zahlung bis:", "Vorlage bis"
+    rf"|{_FIELD}(?:zahlungseingang(?:\s+bei\s+uns)?|eingang\s+(?:der|des|ihrer|ihres)\s+[\w-]+(?:\s+bei\s+uns)?"
+    r"|(?:zahlung|überweisung|abgabe|rücksendung|rückgabe|vorlage|einreichung|einsendung|nachreichung)"
+    r"(?:\s+(?:der|des|ihrer|ihres)\s+[\w-]+)?)"
+    rf"\s+bis(?:\s+(?:zum|spätestens))?\s*:?\s*{_WEEKDAY_WORD}(?:den\s+)?$"
+    # English: "Payment must be received by", "The fee has to be paid by", "Your documents must arrive no later than"
+    rf"|\b(?:must|has\s+to|have\s+to|needs?\s+to|should)\s+(?:be\s+(?:received|paid|settled|filed|submitted|returned"
+    rf"|sent|credited|made|lodged)|arrive|reach\s+(?:us|our\s+\w+))\b{_GAP}{_BY_EN}"
+    rf"|\byou\s+(?:must|have\s+to|need\s+to|should|are\s+(?:required|asked|requested)\s+to)\s+"
+    rf"(?:pay|settle|submit|return|send|file|provide)\b{_GAP}{_BY_EN}"
+    rf"|\b(?:kindly|please\s+(?:make|arrange))\s+(?:pay|settle|return|submit|send|payment|the\s+payment)\b{_GAP}{_BY_EN}"
+    rf"|\bwe\s+must\s+(?:receive|have)\b{_GAP}{_BY_EN}"
+    # "We need your documents no later than", "We expect to receive …", "Payment is expected by"
+    rf"|\bwe\s+(?:will\s+|shall\s+)?(?:need|require|expect)\b{_GAP}{_BY_EN}"
+    rf"|\b(?:is|are)\s+(?:expected|required)\b{_GAP}{_BY_EN}|\blook\s+forward\s+to\s+receiving\b{_GAP}{_BY_EN}"
+    # "Please ensure that your payment reaches us by", "We kindly request payment on or before"
+    rf"|\bplease\s+(?:ensure|make\s+sure)\b{_GAP}{_BY_EN}"
+    rf"|\bwe\s+(?:kindly\s+)?(?:request|ask\s+(?:that\s+)?you|would\s+appreciate)\b{_GAP}{_BY_EN}"
+    # "The deadline for your reply is", "Payment deadline:", "Last day to pay:", "Reply by:"
+    rf"|\bdeadline\s+for\s+(?:[\w-]+\s+){{1,4}}?is\s+(?:the\s+)?{_WEEKDAY_WORD}$"
+    rf"|{_FIELD}(?:(?:payment|submission|return|reply)\s+deadline|deadline(?:\s+for\s+(?:[\w-]+\s+){{0,2}}?[\w-]+)?"
+    rf"|last\s+day\s+(?:to|for)\s+[\w-]+|(?:reply|respond|return)\s+by)\s*:\s*{_WEEKDAY_WORD}$",
+    re.IGNORECASE,
+)
+#: Up to six words of the date's own clause after it, then what sets the date.
+_AFTER_WORDS = r"^\s*(?:[^\s.;:!?,]+\s+){0,6}?"
+_PAY_INFINITIVE = r"(?:(?:be|ein)?zahlen|überweisen|begleichen|entrichten|ausgleichen)"
+_SEND_INFINITIVE = (
+    r"(?:zurück(?:senden|schicken|geben)|einreichen|einsenden|vorlegen|nachreichen|zusenden|senden|schicken"
+    r"|übersenden|übermitteln|mitteilen)"
+)
+_ZU_INFINITIVE = (
+    r"(?:zu\s+(?:zahlen|überweisen|begleichen|entrichten|leisten|erfolgen|senden|schicken|übersenden|übermitteln)"
+    r"|auszugleichen|einzuzahlen|einzureichen|einzusenden|vorzulegen|zurückzusenden|zurückzuschicken|zurückzugeben"
+    r"|abzugeben|nachzureichen|zuzusenden|mitzuteilen|zukommen\s+zu\s+lassen)"
+)
+#: How the date's own clause ends when it is a deadline someone must meet ("… muss bis … bei uns eingegangen sein",
+#: "… müssen uns bis … vorliegen", "… muss bis … erfolgen", "… sollte bis … auf unserem Konto sein").
+_ARRIVES = (
+    r"(?:eingegangen\s+sein|eingehen|vorliegen|gutgeschrieben\s+sein|erfolgen"
+    r"|(?:abgegeben|eingereicht|vorgelegt|zurückgegeben|zurückgesandt|zurückgesendet|zurückgeschickt|eingesandt"
+    r"|eingesendet|übersandt|übermittelt|nachgereicht|bezahlt|gezahlt|überwiesen|beglichen|ausgeglichen|entrichtet"
+    r"|geleistet)\s+(?:werden|sein)"
+    r"|(?:auf\s+unserem\s+konto|(?:wieder\s+)?bei\s+uns|hier)\s+sein)\b"
+)
+_MODAL = re.compile(r"\b(?:muss|müssen|sollte|sollten)\b", re.IGNORECASE)
+
+
+class _AfterDate(NamedTuple):
+    """A looser wording that the words after the date complete: ``before`` must end right before the date, ``after``
+    match the words after it, and — with ``modal`` — "muss" or "sollte" stand in the sentence around it; ``kind``,
+    when the wording itself tells what is asked ("Bitte gleichen Sie … aus": a payment)."""
+
+    before: re.Pattern[str]
+    after: re.Pattern[str]
+    modal: bool = False
+    kind: Literal["payment", "declaration"] | None = None
+
+
+_LATEST = re.compile(_BY_LATEST, re.IGNORECASE)
+_LOOSE_AFTER = (
+    # "Die Zahlung wird bis zum … erwartet.", "Die Unterlagen werden bis zum … benötigt."
+    _AfterDate(
+        re.compile(rf"\b(?:wird|werden)\b{_GAP}{_BY_LATEST}", re.IGNORECASE),
+        re.compile(r"^\s*(?:[^\s.;:!?,]+\s+){0,4}?(?:erwartet|benötigt)\b", re.IGNORECASE),
+    ),
+    # "Bis zum … erwarten wir Ihre Rückmeldung.", "Bis spätestens … bitten wir um Zahlung."
+    _AfterDate(
+        _LATEST,
+        re.compile(
+            rf"^\s*(?:(?:erwarten|benötigen|erbitten)\s+wir|bitten\s+wir\s+(?:sie\s+)?(?:\w+\s+)?um\s+"
+            rf"(?:[\w-]+\s+){{0,2}}?{_ACT})\b",
+            re.IGNORECASE,
+        ),
+    ),
+    # "Um Zahlung bis zum … wird gebeten.", "Überweisung bis spätestens … erbeten."
+    _AfterDate(
+        _LATEST, re.compile(r"^\s*(?:[^\s.;:!?,]+\s+){0,3}?(?:erbeten|wird\s+gebeten)\b", re.IGNORECASE)
+    ),
+    # "Der Betrag muss bis spätestens … auf unserem Konto eingegangen sein.", "Spätestens am … sollte der Betrag
+    # bei uns eingegangen sein.", "Die Überweisung muss bis … erfolgen."
+    _AfterDate(_LATEST, re.compile(rf"{_AFTER_WORDS}{_ARRIVES}", re.IGNORECASE), modal=True),
+    # "Der Rückstand ist bis … auszugleichen.", "… bis zum … auf das unten genannte Konto zu überweisen", "Die Zahlung
+    # hat bis … zu erfolgen.", "…, uns die Lohnbescheinigungen bis zum … zukommen zu lassen."
+    _AfterDate(_LATEST, re.compile(rf"{_AFTER_WORDS}{_ZU_INFINITIVE}\b", re.IGNORECASE)),
+    # "Bitte bis zum … überweisen.", "Abschnitt bitte bis Freitag, … ausgefüllt in der Schule abgeben."
+    _AfterDate(
+        re.compile(rf"\bbitte\s+{_BY}", re.IGNORECASE),
+        re.compile(
+            rf"^\s*(?:[^\s.;:!?,]+\s+){{0,5}}?(?:{_PAY_INFINITIVE}|{_SEND_INFINITIVE}|abgeben)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    # "Bitte gleichen Sie den offenen Betrag bis zum … aus."
+    _AfterDate(
+        re.compile(rf"\bgleichen\s+sie\b{_GAP}{_BY}", re.IGNORECASE),
+        re.compile(r"^\s*(?:[^\s.;:!?,]+\s+){0,3}?aus\b", re.IGNORECASE),
+        kind="payment",
+    ),
+    # "Bitte lassen Sie uns die fehlenden Belege bis zum … zukommen."
+    _AfterDate(
+        re.compile(rf"\blassen\s+sie\b{_GAP}{_BY}", re.IGNORECASE),
+        re.compile(r"^\s*(?:[^\s.;:!?,]+\s+){0,3}?zukommen\b", re.IGNORECASE),
+    ),
+    # "Für die Vorlage der Nachweise wird eine Frist bis … gesetzt."
+    _AfterDate(
+        re.compile(rf"\bfrist\s+{_BY}", re.IGNORECASE),
+        re.compile(r"^\s*(?:[^\s.;:!?,]+\s+){0,2}?(?:gesetzt|eingeräumt|gewährt)\b", re.IGNORECASE),
+    ),
+)
+#: The verb that completes a looser wording, when it tells what is asked ("… zu überweisen": a payment; "…
+#: zurücksenden": a declaration; "… abgeben", "… erfolgen" tell neither).
+_PAYS_VERB = re.compile(rf"\b(?:zu\s+)?{_PAY_INFINITIVE}\b|\b(?:auszugleichen|einzuzahlen)\b", re.IGNORECASE)
+_SENDS_VERB = re.compile(
+    rf"\b(?:zu\s+)?{_SEND_INFINITIVE}\b|\b(?:einzureichen|einzusenden|vorzulegen|zurückzusenden|zurückzuschicken"
+    r"|zurückzugeben|nachzureichen|zuzusenden|mitzuteilen)\b",
+    re.IGNORECASE,
+)
+#: What a word names, by the end of a compound ("Zahlungsnachweis" is a document, "Antragsgebühr" a fee): German
+#: stems found in a word, English words and currency signs whole.
+_PAY_STEMS = (
+    "zahlung", "überweisung", "betrag", "beträge", "beitrag", "beiträge", "gebühr", "rückstand", "rückstände",
+    "forderung", "ausgleich", "begleichung", "kosten", "summe", "geld", "miete", "entgelt", "steuer",
+)  # fmt: skip
+_SEND_STEMS = (
+    "unterlage", "erklärung", "nachweis", "bescheinigung", "formular", "bogen", "bögen", "zettel", "abschnitt",
+    "bericht", "antrag", "anträge", "beleg", "stellungnahme", "rückmeld", "antwort", "vertrag", "verträge",
+    "unterschrift", "auszug", "auszüge", "dokument", "kopie", "rücksend", "rückgabe", "abgabe", "einreich", "vorlage",
+    "nachreich", "einsend", "zusend", "übersend", "nachricht", "mitteilung", "angaben", "auskunft",
+)  # fmt: skip
+_PAY_WORDS = frozenset(
+    {
+        "€", "£", "$", "rate", "raten", "payment", "payments", "pay", "paid", "balance", "fee", "fees", "amount",
+        "invoice", "rent", "premium", "premiums", "charge", "charges", "arrears", "instalment", "installment", "sum",
+        "money", "debt",
+    }
+)  # fmt: skip
+_SEND_WORDS = frozenset(
+    {
+        "document", "documents", "form", "forms", "reply", "response", "evidence", "return", "questionnaire",
+        "agreement", "contract", "signature", "declaration", "application", "paperwork", "information", "details",
+        "proof", "certificate", "slip", "submission", "submit", "submitting",
+    }
+)  # fmt: skip
+_STEMS = [(stem, "payment") for stem in _PAY_STEMS] + [(stem, "declaration") for stem in _SEND_STEMS]
+_TOKEN = re.compile(r"[€£$]|\w+")
+
+
+def _word_kind(word: str) -> Literal["payment", "declaration"] | None:
+    """What a word names (:data:`_PAY_STEMS`, :data:`_SEND_STEMS`): the stem that ends last in it decides."""
+    folded = word.casefold()
+    if folded in _PAY_WORDS:
+        return "payment"
+    if folded in _SEND_WORDS:
+        return "declaration"
+    best: tuple[int, int, Literal["payment", "declaration"]] | None = None
+    for stem, kind in _STEMS:
+        at = folded.rfind(stem)
+        if at >= 0 and (best is None or (at + len(stem), len(stem)) > best[:2]):
+            best = (at + len(stem), len(stem), "payment" if kind == "payment" else "declaration")
+    return best[2] if best is not None else None
+
+
+def _loose_words_kind(before: str, after: str) -> Literal["payment", "declaration"] | None:
+    """What a looser wording asks for, by the words nearest the date: on its line before it (the last), on its
+    line after it (the first), then in its sentence before and after it — ``None`` when none names a payment or a
+    declaration (the wording sets no deadline of the person's that code can name)."""
+    line_before = before[before.rfind("\n") + 1 :]
+    newline = after.find("\n")
+    line_after = after if newline < 0 else after[:newline]
+    for region, last in (
+        (line_before, True),
+        (line_after[:120], False),
+        (before, True),
+        (after[:120], False),
+    ):
+        kinds = [kind for kind in map(_word_kind, _TOKEN.findall(region)) if kind is not None]
+        if kinds:
+            return kinds[-1] if last else kinds[0]
+    return None
+
+
+def _loose_kind(before: str, after: str) -> Literal["payment", "declaration"] | None:
+    """Whether looser words around a date set it as the day the person must pay or send something by
+    (:data:`_LOOSE_BEFORE`, :data:`_LOOSE_AFTER`: "Die Zahlung wird bis … erwartet", "… muss bis … eingegangen sein",
+    "Wir bitten um Zahlung bis …", "Zahlungsfrist: …", "Payment must be received by …"), and which: told by the verb
+    after the date when it says, else by the words nearest it (:func:`_loose_words_kind`). The guards of
+    :data:`_LOOSE_NOT_OWED` are the caller's."""
+    hint: Literal["payment", "declaration"] | None = None
+    if not _LOOSE_BEFORE.search(before):
+        for family in _LOOSE_AFTER:
+            if not family.before.search(before):
+                continue
+            completed = family.after.match(after)
+            if completed is None:
+                continue
+            if family.modal and not (_MODAL.search(before) or _MODAL.search(after)):
+                continue  # "…, dass die Zahlung bis zum … bei uns eingegangen sein muss": the modal after it
+            words = completed.group()
+            hint = family.kind or (
+                "payment"
+                if _PAYS_VERB.search(words)
+                else "declaration"
+                if _SENDS_VERB.search(words)
+                else None
+            )
+            break
+        else:
+            return None
+    return hint or _loose_words_kind(before, after)
+
+
+#: Words in a sentence that keep a looser wording's date from being the person's deadline, beside
+#: :data:`_NOT_OWED`: a negation ("Geht Ihre Zahlung nicht bis … ein", "Erhalten wir bis … keine Antwort" — never
+#: "no later than"), a condition's start ("Sollte der Betrag …", "Ohne Ihre Rückmeldung bis …", "Bei Zahlung bis …
+#: reduziert sich …", "Wer bis … zahlt"), an option ("… können … gestellt werden", "ist … möglich", "freiwillig",
+#: "Gelegenheit", "may", "can"), a cancellation or renewal ("Die Kündigung muss uns bis … vorliegen, damit …", "If you do
+#: not want the policy to renew …"), a period run out ("verstrichen", "abgelaufen"), a statement's cut-off
+#: ("Zahlungseingänge bis … wurden berücksichtigt"), a discount's saving and a debit's earliest day.
+_LOOSE_NOT_OWED = re.compile(
+    r"\b(?:nicht|nie|niemals|not|never)\b(?!\s+(?:später|later)\b)|\bkein\w*|\bno\b(?![.:]|\s+later\b|\s*\d)"
+    r"|(?:^|[,;:(–—-])\s*(?:sollte|should|ohne|without)\b|(?-i:\n\s*(?:Sollte|Ohne)\b)"
+    r"|\bbei\s+(?:[\w-]+\s+){0,2}?\w{0,20}(?:zahlung|überweisung|eingang|anmeldung|abgabe|buchung|bestellung)\w{0,10}"
+    r"\s+(?:bis|vor)\b"
+    r"|\bwer\b|\bwhoever\b"
+    r"|\b(?:sie|you)\s+(?:\w+\s+)?(?:kann|können|könnten|darf|dürfen|may|can|could)\b"
+    r"|\b(?:kann|können|könnten|darf|dürfen|may|can|could)\s+(?:sie|you)\b"
+    r"|\b(?:kann|können|könnten|darf|dürfen)\b(?:[^.;:!?]|\.(?=\d)){0,80}?\bwerden\b|\b(?:may|can|could)\s+be\b"
+    r"|\b(?:möglich\w*|möglichkeit\w*|freiwillig\w*|gerne?|optional|gelegenheit|interested)\b"
+    r"|\b(?:if\s+)?you\s+wish\b|\bwish\s+to\b|\bwould\s+like\b|(?<!\bwir\s)\b(?:möchte\w*|wünsch\w*)\b(?!\s+wir\b)"
+    r"|\bkündig\w*|\bgekündigt\b|\bcancel\w*|\brenew\w*|\bwiderruf\w*|\bstorn\w*|\bopt\s*-?\s*out\b"
+    r"|\banmeld\w*|\bbewerb\w*|\bgewinnspiel\w*|\bverlosung\w*|\bregist\w*|\benrol\w*|\bsign\s+up\b"
+    r"|verstrichen|abgelaufen|versäumt|überschritten|\bpassed\b|\bexpired\b|\blapsed\b"
+    r"|berücksichtigt|\benthalten\b|\bincluded?\b|\bshown\b|\bapplied\b"
+    r"|reduziert|ermäßig\w*|\b(?:sparen|ersparnis|ersparen)\b|\bsaves?\b|vergünstig\w*|frühbucher\w*"
+    r"|frühestens|\bearliest\b",
+    re.IGNORECASE,
+)
+
+#: How far after the letter's own date a date written without its year may fall (half a year): "bis 15.01." on a
+#: letter of 06.10.2026 is 15 Jan 2027; a day-month within half a year before the letter's date is past ("Die Frist
+#: bis 30.09. ist verstrichen" on a letter of 05.10.2026), so its next occurrence, further on, is read as no date.
+YEARLESS_REACH = 182
+
+
+def yearless_date(day: int, month: int, written: date) -> date | None:
+    """The day a date written without its year names ("bis 15.01.", "bis zum 30. Oktober"): the first such day after
+    ``written`` (the letter's own date) — ``None`` when that is more than :data:`YEARLESS_REACH` days on, or the
+    day-month falls in neither the letter's year nor the next (29.02.)."""
+    for year in (written.year, written.year + 1):
+        try:
+            candidate = date(year, month, day)
+        except ValueError:
+            continue
+        if candidate > written:
+            return candidate if (candidate - written).days <= YEARLESS_REACH else None
+    return None
+
+
+def _mention_day(mention: DateMention, start: date | None) -> date | None:
+    """The day a date of the letter names: its own, or — written without its year (a German day and month, "15.01.",
+    or a month's name) — the first such day after the letter's date (:func:`yearless_date`); none without that
+    date."""
+    if mention.year is not None:
+        return mention.as_date()
+    return yearless_date(mention.day, mention.month, start) if start is not None else None
+
+
+def _deadline_clauses(text: str) -> list[str]:
+    """The letter's sentences (:func:`~ordnung.ingest.conflicts.sentences`), never cut inside a date without its year
+    ("Die Zahlung wird bis zum 30. Oktober erwartet.": the full stop after "30" ends no sentence) nor at its own full
+    stop before a bracket ("Frist: 30.10. (Eingang der Unterlagen bei uns)")."""
+    clauses = sentences(text)
+    yearless = [(lo, hi) for lo, hi, mention in date_spans("".join(clauses)) if mention.year is None]
+    inside = {at for lo, hi in yearless for at in range(lo + 1, hi)}
+    ends = {hi for _lo, hi in yearless}
+    joined: list[str] = []
+    cut = 0
+    for clause in clauses:
+        if joined and (cut in inside or (cut in ends and clause.lstrip().startswith("("))):
+            joined[-1] += clause
+        else:
+            joined.append(clause)
+        cut += len(clause)
+    return joined
+
+
 def _deadline_kind(before: str, after: str) -> Literal["payment", "declaration"] | None:
-    """Whether the words around a date set it as the day the person must pay or send something by (strict: a
-    payment's label, a second-person or imperative verb, or "zu zahlen" / "einzureichen" / "fällig" after it)."""
+    """Whether the words around a date set it as the day the person must pay or send something by in strict words: a
+    payment's label, a second-person or imperative verb, or "zu zahlen" / "einzureichen" / "fällig" after it. Looser
+    words are :func:`_loose_kind`'s, which :func:`deadline_items` asks only when these say nothing, and guards more."""
     if _PAY_LABEL.search(before) or _PAY_YOU.search(before):
         return "payment"
     by = re.search(_BY, before, re.IGNORECASE) is not None
@@ -2333,7 +2720,8 @@ def _quote_around(clause: str, start: int, end: int) -> str:
     line_start = clause.rfind("\n", 0, start) + 1
     line_end = clause.find("\n", end)
     line_end = len(clause) if line_end < 0 else line_end
-    if _deadline_kind(clause[line_start:start], clause[end:line_end]) is not None:
+    before, after = clause[line_start:start], clause[end:line_end]
+    if (_deadline_kind(before, after) or _loose_kind(before, after)) is not None:
         return _flat(clause[line_start:line_end])
     flat = _flat(clause)
     if len(flat) <= QUOTE_CAP:
@@ -2405,13 +2793,21 @@ def deadline_items(
     extraction: DocumentExtraction, pages: Sequence[PageInput], *, today: date | None = None
 ) -> list[ExtractedItem]:
     """The to-dos for fixed dates the letter's visible text sets for the person and the reading left out: a date
-    with its year that a payment's label ("Zahlbar bis", "Fällig am:", "Due date:") or a second-person or imperative
-    verb sets ("Bitte überweisen Sie … bis zum …", "… ist bis zum … zu zahlen", "ist am … fällig", "Bitte reichen Sie
-    … bis zum … ein", "… bis spätestens … vorzulegen", "please pay / submit … by …") — never in a sentence that
-    names a remedy (the check of :func:`check_item` is for those), a condition, something past or already done, the
-    sender's own act or a direct debit, an appointment, a discount or a preference, a validity, or an option the
-    person may take (:data:`_NOT_OWED`, a request right after a question offering one: :data:`_OPTION_ASKED`); never
-    a period's end (:data:`_PERIOD_END`); never the letter's own date or one before it, nor one already past on
+    that a payment's label ("Zahlbar bis", "Fällig am:", "Due date:") or a second-person or imperative verb sets
+    ("Bitte überweisen Sie … bis zum …", "… ist bis zum … zu zahlen", "ist am … fällig", "Bitte reichen Sie … bis zum
+    … ein", "… bis spätestens … vorzulegen", "please pay / submit … by …": :func:`_deadline_kind`), or — guarded more
+    (:data:`_LOOSE_NOT_OWED`: no negation, condition, option, cancellation, cut-off or discount in the sentence) —
+    looser words (:func:`_loose_kind`: "Die Zahlung wird bis … erwartet", "… muss bis … eingegangen sein", "… müssen
+    uns bis … vorliegen", "Wir bitten um Zahlung bis …", "Wir erwarten / benötigen … bis …", "Zahlungsfrist: …",
+    "Abgabetermin: …", "Zahlungseingang bis: …", "Payment must be received by …", "The deadline for … is …"), whose
+    kind their words tell. A date without its year ("bis 15.01.", "bis zum 30. Oktober") is the first such day after
+    the letter's date, within half a year of it (:func:`yearless_date`) — none on a letter whose date is unknown —,
+    and is compared as that day with the reading's to-dos and quotes. Never in a sentence that names a remedy (the
+    check of :func:`check_item` is for those), a condition, something past or already done, the sender's own act or
+    a direct debit, an appointment, a discount or a preference, a validity, or an option the person may take
+    (:data:`_NOT_OWED`, a request right after a question offering one: :data:`_OPTION_ASKED`), nor one whose subject
+    is a third party or that pays money to the person (:data:`_ANOTHER_PARTY`, :data:`_PAID_TO_YOU`); never a
+    period's end (:data:`_PERIOD_END`); never the letter's own date or one before it, nor one already past on
     ``today`` (the day the letter arrived or is read: never an overdue to-do from code); and only when no dated to-do
     of the reading falls within :data:`DEADLINE_REACH` days of it, none quotes a sentence with that date (the reading
     read it), and it is no later occurrence of a recurring to-do of the reading (:func:`_series_days`,
@@ -2438,11 +2834,12 @@ def deadline_items(
     ]
     # a date in a sentence a to-do of the reading quotes: the reading read it (a date it misread there is the quote
     # check's to flag, verify.consistency_reasons) — no second to-do for that sentence
+    # (a date without its year counted as the letter's is: the first such day after the letter's date)
     quoted = {
         day
         for item in extraction.items
         for _start, _end, mention in date_spans(fold_punctuation(item.quote or ""))
-        if (day := mention.as_date()) is not None
+        if (day := _mention_day(mention, start)) is not None
     }
     series = _series_days(extraction)
     # a letter that collects by direct debit, is paid already or a credit note, or pays out: a payment's label or
@@ -2451,29 +2848,41 @@ def deadline_items(
     paying = any(item.kind == "payment" for item in extraction.items)
     found: dict[tuple[date, str], ExtractedItem] = {}
     for page in pages:
-        clauses = _clauses(_visible(page))
-        for at, (clause, _dated) in enumerate(clauses):
-            if _REMEDY.search(clause) or _NOT_OWED.search(clause):
+        clauses = _deadline_clauses(_visible(page))
+        for at, clause in enumerate(clauses):
+            if _REMEDY.search(clause) or _not_owed(clause):
                 continue
-            asked = clauses[at - 1][0].strip() if at > 0 else ""
+            if _ANOTHER_PARTY.search(clause) or _PAID_TO_YOU.search(clause):
+                continue  # "Der Arbeitgeber hat … einzureichen", "… an Sie zu überweisen": not the person's to meet
+            asked = clauses[at - 1].strip() if at > 0 else ""
             if _OPTION_ASKED.search(asked) and not _W_QUESTION.match(asked):
                 continue  # "Sie möchten Ihren Vertrag nicht verlängern? Dann senden Sie …": an option's request
             spans = date_spans(clause)
+            # an ambiguous slash date gives two readings at one span: neither is filed
+            readings = Counter((lo, hi) for lo, hi, _mention in spans)
+            loose_guarded: bool | None = None  # the clause's looser-words guard, read once it is needed
             for index, (lo, hi, mention) in enumerate(spans):
-                day = mention.as_date()
-                twin = sum(1 for other in spans if (other[0], other[1]) == (lo, hi)) > 1
-                if day is None or mention.year is None or mention.ambiguous or twin:
-                    continue
+                day = _mention_day(mention, start)
+                if day is None or mention.ambiguous or readings[(lo, hi)] > 1:
+                    continue  # a date without its year on a letter of no date, or more than half a year on
                 if start is not None and day <= start:
                     continue  # the letter's own date, or one before it (a reminder's old due day)
                 if (today is not None and day < today) or day in quoted:
                     continue  # past when the letter arrived or was read (never an overdue to-do from code), or read
                 previous = spans[index - 1][1] if index > 0 else 0
                 following = spans[index + 1][0] if index + 1 < len(spans) else len(clause)
-                before = clause[max(previous, lo - 160) : lo]
+                before, after = clause[max(previous, lo - 160) : lo], clause[hi:following]
                 if _PERIOD_END.search(clause[max(0, lo - 160) : lo]):
                     continue  # "für den Zeitraum bis zum 31.12.2026": what the payment is for
-                kind = _deadline_kind(before, clause[hi:following])
+                kind = _deadline_kind(before, after)
+                if kind is None:
+                    # looser words ("Die Zahlung wird bis … erwartet", "Zahlungsfrist: …"), guarded more
+                    kind = _loose_kind(before, after)
+                    if kind is not None:
+                        if loose_guarded is None:
+                            loose_guarded = _LOOSE_NOT_OWED.search(clause) is not None
+                        if loose_guarded:
+                            continue
                 if kind is None or any(abs((day - other).days) <= DEADLINE_REACH for other in taken):
                     continue
                 payment = kind == "payment"
@@ -2481,7 +2890,8 @@ def deadline_items(
                     continue  # an instalment of the reading's, a payment it doubts, the full price of its payment
                 if payment and by_label_only and not _PAY_YOU.search(before):
                     continue  # the debit's day, a paid or credited box, a payout's day
-                found.setdefault((day, kind), _deadline_item(day, kind, clause, lo, hi, previous))
+                if (day, kind) not in found:  # the first sentence that sets it is its quote
+                    found[(day, kind)] = _deadline_item(day, kind, clause, lo, hi, previous)
     # the rows of a recurring payment of the reading without a date ("jeweils zum 15.": "Fällig am 15.02.2027", …):
     # its occurrences once the letter lists two or more on its day — one alone may be the first date it left out
     for day_of_month in _undated_series(extraction):

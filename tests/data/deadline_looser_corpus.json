@@ -1,0 +1,4296 @@
+{
+ "positives": [
+  {
+   "sentence": "Die Zahlung wird bis zum 23.10.2026 erwartet.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Zahlung des Restbetrags von 412,80 € wird bis spätestens 6. November 2026 erwartet.",
+   "kind": "payment",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Ausgleich des Kontos wird bis Freitag, den 30.10.2026 erwartet.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Überweisung wird bis zum 20.10.2026 erwartet.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Rücksendung des Fragebogens wird bis zum 27.10.2026 erwartet.",
+   "kind": "declaration",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Zahlung wird bis zum 20. Oktober erwartet.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "erwartet_passive",
+   "has_year": false
+  },
+  {
+   "sentence": "Wir erwarten Ihre Zahlung bis zum 19.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir erwarten den Eingang des Betrags bis spätestens Montag, 26. Oktober 2026.",
+   "kind": "payment",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir erwarten Ihre Unterlagen bis zum 28.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Die ausgefüllte Erklärung erwarten wir bis spätestens 2. November 2026 zurück.",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Um weitere Kosten zu vermeiden, erwarten wir den Gesamtbetrag von 687,15 € bis zum 21.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Stellungnahme erwarten wir bis 30.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir erwarten Ihre Unterlagen bis 23.10.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": false
+  },
+  {
+   "sentence": "Wir erwarten den Zahlungseingang bis 4.11.",
+   "kind": "payment",
+   "date": "2026-11-04",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "wir_erwarten",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Betrag muss bis spätestens 22.10.2026 auf unserem Konto eingegangen sein.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Der offene Betrag in Höhe von 248,50 € muss bis zum 4. November 2026 bei uns eingegangen sein.",
+   "kind": "payment",
+   "date": "2026-11-04",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Gebühr muss bis Donnerstag, den 29.10.2026 auf dem Konto der Stadtkasse eingegangen sein.",
+   "kind": "payment",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Antrag muss bis zum 13.11.2026 bei der Familienkasse eingegangen sein.",
+   "kind": "declaration",
+   "date": "2026-11-13",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Nachweise müssen spätestens am 27. Oktober 2026 bei uns eingegangen sein.",
+   "kind": "declaration",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Beitrag muss spätestens am 15.10.2026 unserem Konto gutgeschrieben sein.",
+   "kind": "payment",
+   "date": "2026-10-15",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Betrag muss bis spätestens 16.10. auf unserem Konto eingegangen sein.",
+   "kind": "payment",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Erklärung muss bis zum 8. Januar beim Finanzamt eingegangen sein.",
+   "kind": "declaration",
+   "date": "2027-01-08",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muss_eingegangen_sein",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Gesamtbetrag muss bis 23.10.2026 bei uns eingehen.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "muss_eingehen",
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Unterlagen müssen spätestens am 1.12.2026 beim Finanzamt eingehen.",
+   "kind": "declaration",
+   "date": "2026-12-01",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muss_eingehen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Zahlung muss bis zum 28. Oktober 2026 bei der Kasse eingehen.",
+   "kind": "payment",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "muss_eingehen",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Zahlung bis zum 16.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Ausgleich des Rechnungsbetrags bis spätestens 30. Oktober 2026.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Überweisung des Betrags von 59,90 € bis Freitag, den 23.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Rücksendung des unterschriebenen Vertrags bis zum 26.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Zusendung der fehlenden Belege bis spätestens 09.11.2026.",
+   "kind": "declaration",
+   "date": "2026-11-09",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten Sie, den offenen Betrag bis zum 20.10.2026 zu begleichen.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten Sie höflich, uns die Lohnbescheinigungen bis zum 30. Oktober 2026 zukommen zu lassen.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bitten um Zahlung bis Freitag, den 23.10.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "wir_bitten_um",
+   "has_year": false
+  },
+  {
+   "sentence": "Um Zahlung bis zum 21.10.2026 wird gebeten.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlung erbeten bis 19.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Um Rückgabe des ausgefüllten Fragebogens bis 28. Oktober 2026 wird gebeten.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Überweisung bis spätestens 02.11.26 erbeten.",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Rückantwort erbeten bis Freitag, 23.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlung erbeten bis 20.10.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": false
+  },
+  {
+   "sentence": "Um Rückgabe des Fragebogens bis 21. Oktober wird gebeten.",
+   "kind": "declaration",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erbeten",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Unterlagen müssen uns bis zum 26.10.2026 vorliegen.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die vollständigen Antragsunterlagen müssen dem Jobcenter bis spätestens 5. November 2026 vorliegen.",
+   "kind": "declaration",
+   "date": "2026-11-05",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die unterschriebene Einverständniserklärung muss der Klassenleitung bis Freitag, den 16.10.2026 vorliegen.",
+   "kind": "declaration",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Schadenbericht sollte uns bis zum 30.10.2026 vorliegen.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Bescheinigung des Arbeitgebers muss hier bis spätestens 11.11.2026 vorliegen.",
+   "kind": "declaration",
+   "date": "2026-11-11",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Unterlagen müssen uns bis zum 2. November vorliegen.",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muessen_vorliegen",
+   "has_year": false
+  },
+  {
+   "sentence": "Zahlungseingang bis: 20.10.2026",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_zahlungseingang",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungseingang bis spätestens 28. Oktober 2026",
+   "kind": "payment",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_zahlungseingang",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungseingang bei uns bis Freitag, 23.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_zahlungseingang",
+   "has_year": true
+  },
+  {
+   "sentence": "Eingang der Unterlagen bei uns bis spätestens: 02.11.2026",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_zahlungseingang",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungseingang bis 21.10.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_zahlungseingang",
+   "has_year": false
+  },
+  {
+   "sentence": "Eine Rückmeldung erbitten wir bis zum 23.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Antwort erbitten wir bis spätestens 30. Oktober 2026.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre schriftliche Stellungnahme erbitten wir bis Freitag, den 06.11.2026.",
+   "kind": "declaration",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": true
+  },
+  {
+   "sentence": "Den ausgefüllten Rückmeldebogen erbitten wir bis 19.10.2026 zurück.",
+   "kind": "declaration",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": true
+  },
+  {
+   "sentence": "Eine Rückmeldung erbitten wir bis spätestens 19. Oktober.",
+   "kind": "declaration",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": false
+  },
+  {
+   "sentence": "Ihre Antwort erbitten wir bis Freitag, den 13. November.",
+   "kind": "declaration",
+   "date": "2026-11-13",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erbitten_wir",
+   "has_year": false
+  },
+  {
+   "sentence": "Zahlungsfrist: 21.10.2026",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Rücksendefrist: 30. Oktober 2026",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Abgabefrist: Montag, 02.11.2026",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Vorlagefrist: 26.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Frist für die Zahlung: 19.10.2026",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Unterlagen nachreichen – Frist: 29.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Offener Betrag 136,00 € – Frist: 22.10.2026",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": true
+  },
+  {
+   "sentence": "Frist: 30.10. (Eingang der Unterlagen bei uns)",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_frist",
+   "has_year": false
+  },
+  {
+   "sentence": "Abgabetermin: 30.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Abgabetermin für die Erklärung ist der 16. November 2026.",
+   "kind": "declaration",
+   "date": "2026-11-16",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Einsendeschluss: Freitag, 23.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Einsendeschluss für die Unterlagen ist der 06.11.2026.",
+   "kind": "declaration",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungstermin: 26.10.2026",
+   "kind": "payment",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Spätester Zahlungstermin: 2. November 2026",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Rückgabetermin für den Antrag: 27.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": true
+  },
+  {
+   "sentence": "Abgabetermin: Freitag, 30.10.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": false
+  },
+  {
+   "sentence": "Einsendeschluss ist der 6. November.",
+   "kind": "declaration",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_termin_schluss",
+   "has_year": false
+  },
+  {
+   "sentence": "Letzter Zahlungstag: 20.10.2026",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": true
+  },
+  {
+   "sentence": "Letzter Tag für die Zahlung ist der Freitag, 30.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungsziel: 21.10.2026",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": true
+  },
+  {
+   "sentence": "Letzter Abgabetag: 2. November 2026",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": true
+  },
+  {
+   "sentence": "Letzter Zahlungstag: 15.10.",
+   "kind": "payment",
+   "date": "2026-10-15",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": false
+  },
+  {
+   "sentence": "Zahlungsziel: 19.10.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_letzter_tag_ziel",
+   "has_year": false
+  },
+  {
+   "sentence": "Zahlung bis: Mittwoch, 21.10.2026",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Abgabe bis spätestens: 30.10.2026",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Rücksendung bis: 28. Oktober 2026",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Vorlage bis 04.11.26",
+   "kind": "declaration",
+   "date": "2026-11-04",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Einreichung der Nachweise bis: 09.11.2026",
+   "kind": "declaration",
+   "date": "2026-11-09",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Rücksendung bis spätestens Freitag, 16.10.",
+   "kind": "declaration",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "label_bis",
+   "has_year": false
+  },
+  {
+   "sentence": "Spätestens am 23.10.2026 sollte der Betrag auf unserem Konto sein.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "sollte_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Beitrag sollte bis zum 28. Oktober 2026 bei uns eingehen.",
+   "kind": "payment",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "sollte_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Bis spätestens Mittwoch, den 04.11.2026 sollten uns die Belege vorliegen.",
+   "kind": "declaration",
+   "date": "2026-11-04",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "sollte_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Das Formular sollte bis zum 26.10.2026 wieder bei uns sein.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "sollte_bis",
+   "has_year": true
+  },
+  {
+   "sentence": "Spätestens am 26. Oktober sollte der Betrag bei uns eingegangen sein.",
+   "kind": "payment",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "sollte_bis",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Betrag ist bis zum 19.10.2026 zu begleichen.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Gebühr in Höhe von 45,00 € ist bis 2. November 2026 zu entrichten.",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Rückstand ist bis spätestens 22.10.2026 auszugleichen.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Betrag ist bis zum 28.10.2026 auf das unten genannte Konto zu überweisen.",
+   "kind": "payment",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Nachweise sind bis zum 30.10.2026 vorzulegen.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Das Formular ist bis Freitag, den 23.10.2026 vollständig ausgefüllt zurückzusenden.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Erklärung ist bis spätestens 16. November 2026 abzugeben.",
+   "kind": "declaration",
+   "date": "2026-11-16",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Die fehlenden Unterlagen sind bis zum 03.11.2026 nachzureichen.",
+   "kind": "declaration",
+   "date": "2026-11-03",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Rückstand ist bis zum 27.10. auszugleichen.",
+   "kind": "payment",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Nachweise sind bis spätestens 3. November vorzulegen.",
+   "kind": "declaration",
+   "date": "2026-11-03",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Restbetrag ist bis 15.01. zu begleichen.",
+   "kind": "payment",
+   "date": "2027-01-15",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Antrag ist bis spätestens 14.10. abzugeben.",
+   "kind": "declaration",
+   "date": "2026-10-14",
+   "letter_date": "2026-09-30",
+   "lang": "de",
+   "family": "ist_zu_infinitiv",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Zahlung hat bis zum 20.10.2026 zu erfolgen.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Überweisung muss bis spätestens 29. Oktober 2026 erfolgen.",
+   "kind": "payment",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": true
+  },
+  {
+   "sentence": "Der Ausgleich der Forderung hat bis 02.11.2026 zu erfolgen.",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Rücksendung der Unterlagen muss bis zum 26.10.2026 erfolgen.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Abgabe des Antrags hat bis spätestens Freitag, 06.11.2026 zu erfolgen.",
+   "kind": "declaration",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Zahlung hat bis 22.10. zu erfolgen.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Überweisung muss bis 1. Dezember erfolgen.",
+   "kind": "payment",
+   "date": "2026-12-01",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "erfolgen",
+   "has_year": false
+  },
+  {
+   "sentence": "Wir benötigen die Unterlagen bis zum 23.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "benoetigen",
+   "has_year": true
+  },
+  {
+   "sentence": "Die fehlenden Kontoauszüge benötigen wir spätestens bis 30. Oktober 2026.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "benoetigen",
+   "has_year": true
+  },
+  {
+   "sentence": "Für die weitere Bearbeitung benötigen wir Ihre Unterschrift auf dem beiliegenden Formular bis 27.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "benoetigen",
+   "has_year": true
+  },
+  {
+   "sentence": "Den Zahlungsbetrag benötigen wir bis zum 21.10.2026 auf unserem Konto.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "benoetigen",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir benötigen die Unterlagen bis zum 28. Oktober.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "benoetigen",
+   "has_year": false
+  },
+  {
+   "sentence": "Zur Zahlung des offenen Betrags setzen wir Ihnen eine letzte Frist bis zum 19.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "frist_gesetzt",
+   "has_year": true
+  },
+  {
+   "sentence": "Für die Vorlage der Nachweise wird eine Frist bis 2. November 2026 gesetzt.",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "frist_gesetzt",
+   "has_year": true
+  },
+  {
+   "sentence": "Wir räumen Ihnen zur Begleichung der Forderung eine Frist bis zum 23.10.2026 ein.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "frist_gesetzt",
+   "has_year": true
+  },
+  {
+   "sentence": "Zur Nachreichung der Unterlagen gewähren wir eine Frist bis Freitag, den 30.10.2026.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "frist_gesetzt",
+   "has_year": true
+  },
+  {
+   "sentence": "Zur Zahlung setzen wir Ihnen eine letzte Frist bis zum 19.10.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "frist_gesetzt",
+   "has_year": false
+  },
+  {
+   "sentence": "Die Zahlungsfrist endet am 22.10.2026.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "frist_endet",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Frist zur Einreichung der Unterlagen endet am 5. November 2026.",
+   "kind": "declaration",
+   "date": "2026-11-05",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "frist_endet",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Abgabefrist für die Erklärung läuft am 13.11.2026 ab.",
+   "kind": "declaration",
+   "date": "2026-11-13",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "frist_endet",
+   "has_year": true
+  },
+  {
+   "sentence": "Die Zahlungsfrist endet am 30. Oktober.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "frist_endet",
+   "has_year": false
+  },
+  {
+   "sentence": "Sie werden gebeten, den Betrag bis zum 20.10.2026 zu überweisen.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "werden_gebeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Sie werden gebeten, die Unterlagen bis spätestens 29. Oktober 2026 nachzureichen.",
+   "kind": "declaration",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "werden_gebeten",
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte bis zum 16.10.2026 überweisen.",
+   "kind": "payment",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "bitte_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte bis spätestens 23.10.2026 unterschrieben zurücksenden.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "bitte_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Abschnitt bitte bis Freitag, 16.10.2026 ausgefüllt in der Schule abgeben.",
+   "kind": "declaration",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "family": "bitte_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Den Kostenbeitrag von 35 € bitte bis zum 20.10.2026 bar bei der Klassenleitung abgeben.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "bitte_infinitiv",
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte bis 16.10. unterschrieben zurücksenden.",
+   "kind": "declaration",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "family": "bitte_infinitiv",
+   "has_year": false
+  },
+  {
+   "sentence": "Bitte lassen Sie uns die fehlenden Belege bis zum 26.10.2026 zukommen.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "zukommen_lassen",
+   "has_year": true
+  },
+  {
+   "sentence": "Das Geld für die Klassenfahrt (120 €) muss bis zum 23. Oktober bei der Klassenleitung abgegeben werden.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "family": "muss_abgegeben_werden",
+   "has_year": false
+  },
+  {
+   "sentence": "Der Rückmeldezettel muss bis Freitag, den 16.10.2026 unterschrieben abgegeben werden.",
+   "kind": "declaration",
+   "date": "2026-10-16",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "family": "muss_abgegeben_werden",
+   "has_year": true
+  },
+  {
+   "sentence": "Payment must be received by 23 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_must_be_received",
+   "has_year": true
+  },
+  {
+   "sentence": "Your payment of £186.40 must be received no later than Friday, 30 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_must_be_received",
+   "has_year": true
+  },
+  {
+   "sentence": "The completed form must be received by November 2, 2026.",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_must_be_received",
+   "has_year": true
+  },
+  {
+   "sentence": "Payment must be received by 30 October.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_must_be_received",
+   "has_year": false
+  },
+  {
+   "sentence": "Your documents must arrive no later than 28th October 2026.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_must_be_received",
+   "has_year": true
+  },
+  {
+   "sentence": "We need your documents no later than 26 October 2026.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_need_by",
+   "has_year": true
+  },
+  {
+   "sentence": "We will need the signed agreement back by October 29, 2026.",
+   "kind": "declaration",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_need_by",
+   "has_year": true
+  },
+  {
+   "sentence": "We need your documents no later than November 13.",
+   "kind": "declaration",
+   "date": "2026-11-13",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_need_by",
+   "has_year": false
+  },
+  {
+   "sentence": "The deadline for your reply is 30 October 2026.",
+   "kind": "declaration",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_deadline_is",
+   "has_year": true
+  },
+  {
+   "sentence": "The deadline for payment is Thursday, October 22, 2026.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_deadline_is",
+   "has_year": true
+  },
+  {
+   "sentence": "The deadline for submitting the evidence is 6 November 2026.",
+   "kind": "declaration",
+   "date": "2026-11-06",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_deadline_is",
+   "has_year": true
+  },
+  {
+   "sentence": "The deadline for your reply is Friday, 23 October.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_deadline_is",
+   "has_year": false
+  },
+  {
+   "sentence": "Please ensure that your payment reaches us by 21 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_ensure_reaches",
+   "has_year": true
+  },
+  {
+   "sentence": "Please make sure the completed form reaches our office by October 28, 2026.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_ensure_reaches",
+   "has_year": true
+  },
+  {
+   "sentence": "Please ensure the balance is credited to our account by 2 November 2026.",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_ensure_reaches",
+   "has_year": true
+  },
+  {
+   "sentence": "Please ensure your payment reaches us by October 21.",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_ensure_reaches",
+   "has_year": false
+  },
+  {
+   "sentence": "Payment is expected by 20 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-20",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_expected",
+   "has_year": true
+  },
+  {
+   "sentence": "We expect to receive your documents by October 27, 2026.",
+   "kind": "declaration",
+   "date": "2026-10-27",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_expected",
+   "has_year": true
+  },
+  {
+   "sentence": "We look forward to receiving your payment by 23rd October 2026.",
+   "kind": "payment",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_expected",
+   "has_year": true
+  },
+  {
+   "sentence": "The outstanding balance of $412.00 must be settled by October 30, 2026.",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": true
+  },
+  {
+   "sentence": "The fee has to be paid by 19 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-19",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": true
+  },
+  {
+   "sentence": "Your tax return must be filed by 16 November 2026.",
+   "kind": "declaration",
+   "date": "2026-11-16",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": true
+  },
+  {
+   "sentence": "The signed contract needs to be returned to us by Monday, 26 October 2026.",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": true
+  },
+  {
+   "sentence": "The outstanding balance must be settled by 2 November.",
+   "kind": "payment",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": false
+  },
+  {
+   "sentence": "Your tax return must be filed by 31st January.",
+   "kind": "declaration",
+   "date": "2027-01-31",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": false
+  },
+  {
+   "sentence": "Your completed form should reach us no later than October 28.",
+   "kind": "declaration",
+   "date": "2026-10-28",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_must_be_settled",
+   "has_year": false
+  },
+  {
+   "sentence": "We kindly request payment on or before 22 October 2026.",
+   "kind": "payment",
+   "date": "2026-10-22",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_request",
+   "has_year": true
+  },
+  {
+   "sentence": "We ask that you return the questionnaire by October 29, 2026.",
+   "kind": "declaration",
+   "date": "2026-10-29",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_request",
+   "has_year": true
+  },
+  {
+   "sentence": "We would appreciate your reply by 23 October 2026.",
+   "kind": "declaration",
+   "date": "2026-10-23",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_request",
+   "has_year": true
+  },
+  {
+   "sentence": "Payment deadline: 21 October 2026",
+   "kind": "payment",
+   "date": "2026-10-21",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "family": "en_label",
+   "has_year": true
+  },
+  {
+   "sentence": "Deadline for return: November 2, 2026",
+   "kind": "declaration",
+   "date": "2026-11-02",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "family": "en_label",
+   "has_year": true
+  },
+  {
+   "sentence": "Last day to pay: Friday, 30 October 2026",
+   "kind": "payment",
+   "date": "2026-10-30",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_label",
+   "has_year": true
+  },
+  {
+   "sentence": "Reply by: 26 October 2026",
+   "kind": "declaration",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "family": "en_label",
+   "has_year": true
+  },
+  {
+   "sentence": "Payment deadline: 26 October",
+   "kind": "payment",
+   "date": "2026-10-26",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "family": "en_label",
+   "has_year": false
+  }
+ ],
+ "negatives": [
+  {
+   "sentence": "Falls Sie bis zum 22.10.2026 nicht zahlen, leiten wir das gerichtliche Mahnverfahren ein.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "consequence clause under 'falls ... nicht'; the date only conditions a threat",
+   "category": "condition",
+   "dates": [
+    "2026-10-22"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sollte der Betrag nicht bis 30. Oktober 2026 auf unserem Konto eingegangen sein, berechnen wir Verzugszinsen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "'Sollte ... nicht' condition, not a request",
+   "category": "condition",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wenn bis zum 26.10.2026 keine Zahlung eingeht, übergeben wir die Forderung an ein Inkassobüro.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "'Wenn ... keine Zahlung' condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Geht Ihre Zahlung nicht bis Freitag, den 23.10.2026 ein, sperren wir Ihren Anschluss.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "verb-first conditional clause",
+   "category": "condition",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sofern uns die Unterlagen nicht bis zum 02.11.2026 vorliegen, entscheiden wir nach Aktenlage.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "'Sofern ... nicht vorliegen' condition",
+   "category": "condition",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Erhalten wir bis 30. Oktober 2026 keine Antwort von Ihnen, gehen wir von Ihrem Einverständnis aus.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "verb-first condition about silence",
+   "category": "condition",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sollten Sie die Nachweise nicht bis zum 04.11.2026 einreichen, kann die Leistung versagt werden.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "condition with 'einreichen'",
+   "category": "condition",
+   "dates": [
+    "2026-11-04"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Liegt uns Ihre Erklärung bis 16.11.2026 nicht vor, müssen wir die Besteuerungsgrundlagen schätzen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "verb-first condition 'Liegt ... nicht vor'",
+   "category": "condition",
+   "dates": [
+    "2026-11-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Falls der Betrag bis zum 29.10.2026 nicht ausgeglichen ist, wird der Vertrag gekündigt.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "'Falls ... nicht' condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Falls Sie bis 20.10. nicht zahlen, wird eine Mahngebühr berechnet.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless date in a condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Ohne Ihre Rückmeldung bis zum 30.10.2026 gehen wir davon aus, dass keine Änderungen vorliegen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "'Ohne ... bis' = absent reply leads to default; no obligation",
+   "category": "condition",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If payment is not received by 23 October 2026, we will pass the matter to our collections team.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "'If ... not received' condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Should we not hear from you by October 30, 2026, we will close your file.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "'Should we not hear' condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Unless we receive your documents by 2 November 2026, your claim cannot be processed.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "'Unless' condition",
+   "category": "condition",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If the balance remains unpaid after 26 October 2026, a late fee of £12 will be added.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "'If ... after' condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If we have not received payment by 27 October, your service may be suspended.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "yearless date in an English condition",
+   "category": "condition",
+   "dates": [
+    "2026-10-27"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Ihre Zahlung vom 28.09.2026 ist bei uns eingegangen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "payment already received, past date",
+   "category": "past_done",
+   "dates": [
+    "2026-09-28"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Betrag wurde bis zum 30.09.2026 vollständig bezahlt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "'wurde ... bezahlt' done",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Beiträge sind bis zum 31.12.2026 bezahlt.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "future date, but contributions are already paid up to then",
+   "category": "past_done",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Konto ist bis einschließlich 31. Dezember 2026 ausgeglichen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "account settled through a future date; nothing owed",
+   "category": "past_done",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir haben Ihre Unterlagen am 29.09.2026 erhalten.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "documents already received",
+   "category": "past_done",
+   "dates": [
+    "2026-09-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Steuererklärung für 2025 ist am 15. September 2026 bei uns eingegangen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "declaration already received",
+   "category": "past_done",
+   "dates": [
+    "2026-09-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Leider ist bis zum 30.09.2026 keine Zahlung eingegangen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "past date describing non-payment so far",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Mit Schreiben vom 20.08.2026 hatten wir Sie gebeten, die Unterlagen bis zum 15.09.2026 einzureichen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "reports an earlier, past request",
+   "category": "past_done",
+   "dates": [
+    "2026-08-20",
+    "2026-09-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Rechnung war am 20.09.2026 fällig.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "'war fällig' past due date",
+   "category": "past_done",
+   "dates": [
+    "2026-09-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir hatten Ihnen eine Frist bis zum 25.09.2026 gesetzt.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "earlier, expired deadline",
+   "category": "past_done",
+   "dates": [
+    "2026-09-25"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Miete für Oktober wurde am 01.10.2026 gezahlt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "rent already paid",
+   "category": "past_done",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir weisen darauf hin, dass die Frist zur Zahlung am 30.09.2026 abgelaufen ist.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "expired deadline",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Ihnen gesetzte Frist bis zum 25.09.2026 ist ergebnislos verstrichen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "expired deadline",
+   "category": "past_done",
+   "dates": [
+    "2026-09-25"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Frist bis 30.09. ist verstrichen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless past date; resolving it forward to next year would be wrong",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Ihre Zahlung vom 28.09. ist eingegangen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless past date ('vom'); forward resolution would wrongly give next year",
+   "category": "past_done",
+   "dates": [
+    "2026-09-28"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Wir haben Ihre Unterlagen am 24. September erhalten.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "yearless past date, received",
+   "category": "past_done",
+   "dates": [
+    "2026-09-24"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Ihre Rate vom 1. Oktober wurde zurückgebucht.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless past date, returned debit (event in the past)",
+   "category": "past_done",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Der Mahnbescheid wurde am 28.09.2026 zugestellt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "past event",
+   "category": "past_done",
+   "dates": [
+    "2026-09-28"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "We received your payment on 29 September 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "payment received",
+   "category": "past_done",
+   "dates": [
+    "2026-09-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your account was paid in full on September 30, 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "paid in full",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your premiums are paid up to 31 December 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "future date but already paid up",
+   "category": "past_done",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The invoice was due on 21 September 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "past due date",
+   "category": "past_done",
+   "dates": [
+    "2026-09-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The deadline of 30 September 2026 has now passed.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "expired deadline",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Payment was due by 25 September 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "past tense, past date",
+   "category": "past_done",
+   "dates": [
+    "2026-09-25"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "We received your documents on 30 September 2026 and are reviewing them.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "documents received",
+   "category": "past_done",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Vielen Dank für Ihre Zahlung, die am 30.09.2026 bei uns eingegangen ist.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "thanks for a received payment",
+   "category": "payment_received",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Rate für September haben wir am 15.09.2026 dankend erhalten.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "instalment received",
+   "category": "payment_received",
+   "dates": [
+    "2026-09-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir bestätigen den Eingang Ihrer Überweisung vom 1. Oktober 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "confirms receipt",
+   "category": "payment_received",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Zahlung über 89,00 € ist am 02.10.2026 eingegangen; das Konto ist damit ausgeglichen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "received, account settled",
+   "category": "payment_received",
+   "dates": [
+    "2026-10-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Thank you for your payment, which reached us on 1 October 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "received payment",
+   "category": "payment_received",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Vorauszahlungen für 2026 sind mit der Zahlung vom 10.09.2026 vollständig geleistet.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "all advance payments made",
+   "category": "payment_received",
+   "dates": [
+    "2026-09-10"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die letzte Rate Ihres Ratenplans wurde am 30.09.2026 gebucht.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "final instalment already booked",
+   "category": "payment_received",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungen, die bis zum 30.09.2026 eingegangen sind, sind berücksichtigt.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "statement cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungseingänge bis 01.10.2026 wurden berücksichtigt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "cut-off; looks like the 'Zahlungseingang bis' label",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Buchungen bis zum 02.10.2026 sind in dieser Aufstellung enthalten.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "booking cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sollten Sie nach dem 03.10.2026 gezahlt haben, betrachten Sie diese Erinnerung bitte als gegenstandslos.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "cut-off in the standard 'already paid' clause",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-03"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungseingang berücksichtigt bis: 04.10.2026",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "label of a statement cut-off, shares the words 'Zahlungseingang bis'",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-04"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Zahlungen bis 30.09. sind berücksichtigt.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless past cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "This statement includes payments received up to 30 September 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "statement cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Payments received after October 1, 2026 are not shown on this statement.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "statement cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Payments made before October 1, 2026 have been applied to your account.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "statement cut-off",
+   "category": "payments_considered",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir erstatten Ihnen den Betrag bis zum 23.10.2026.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "the sender refunds",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Auszahlung des Guthabens erfolgt am 15.10.2026.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "payout by the sender",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir überweisen das Guthaben von 143,20 € bis spätestens 30. Oktober 2026 auf Ihr Konto.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "sender transfers credit; 'bis spätestens' present",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Gehalt für Oktober wird am 30.10.2026 überwiesen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "employer pays salary",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Rückzahlung der Kaution erfolgt bis 30.11.2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "landlord returns deposit",
+   "category": "sender_pays",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir zahlen Ihnen den Betrag bis Freitag, den 16.10.2026 aus.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "payout",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Betrag wird Ihrem Konto bis zum 20.10.2026 gutgeschrieben.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "credit to the person's account",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Erstattung wird bis spätestens 23.10.2026 auf Ihrem Konto eingehen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "refund arriving on the person's account; looks like 'eingehen'",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Kindergeld wird am 15.10.2026 ausgezahlt.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "benefit payout",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir haben Ihnen den Betrag am 02.10.2026 überwiesen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "past transfer by sender",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir erstatten den Betrag bis 30.10.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless refund date",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Die Auszahlung erfolgt am 29. Oktober.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless payout",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-29"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Der Betrag von 120 € wird mit Ihrer nächsten Abrechnung am 30.11.2026 verrechnet.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "sender offsets the amount",
+   "category": "sender_pays",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your refund will be paid into your account by 23 October 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "refund",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "We will credit the amount to your account no later than October 30, 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "credit; has 'no later than'",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your deposit will be returned by 15 November 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "deposit return",
+   "category": "sender_pays",
+   "dates": [
+    "2026-11-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The refund was issued on 1 October 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "past refund",
+   "category": "sender_pays",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir melden uns bis zum 23.10.2026 bei Ihnen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "sender will get in touch",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir werden Ihren Antrag bis spätestens 13. November 2026 bearbeiten.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "sender processes",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-11-13"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Unsere Entscheidung teilen wir Ihnen bis zum 30.10.2026 mit.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "sender decides",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sie erhalten Ihre neue Versichertenkarte bis 26.10.2026 per Post.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "person receives something",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Bescheid wird Ihnen bis Freitag, den 30.10.2026 zugestellt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "delivery by sender",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Jahresabrechnung erstellen wir bis zum 15.12.2026.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "sender prepares statement",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-12-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir senden Ihnen die Unterlagen bis spätestens 21.10.2026 zu.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "sender sends documents; 'Unterlagen bis spätestens'",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir melden uns bis 20. Oktober bei Ihnen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless sender promise",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Wir werden die Reparatur bis 30.10. abschließen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless sender promise",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "We will get back to you by 23 October 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "sender reply",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "We aim to send you our decision no later than November 6, 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "sender decision; 'no later than'",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-11-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "You will receive your new card by 20 October 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "person receives",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "We will reply by 30 October.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "yearless sender reply",
+   "category": "sender_deadline",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Der Betrag wird am 15.10.2026 von Ihrem Konto abgebucht.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "debit by sender",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir ziehen den Rechnungsbetrag zum 20.10.2026 per Lastschrift ein.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "direct debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Abbuchung erfolgt am Montag, 26.10.2026.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Beitrag wird zum 2. November 2026 per SEPA-Lastschrift eingezogen.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "SEPA debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Rechnungsbetrag wird am 23.10.2026 fällig und von Ihrem Konto eingezogen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "'fällig' but collected by debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Fälligkeit der Lastschrift: 15.10.2026",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "label with 'Fälligkeit' but a debit date",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte überweisen Sie den Betrag nicht, er wird am 21.10.2026 abgebucht.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "explicitly 'do not transfer'",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Lastschrift über 64,30 € wird frühestens am 19.10.2026 vorgenommen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "SEPA pre-notification",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-19"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Abbuchung erfolgt am 15.11.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-11-15"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Wir buchen den Betrag zum 30. Oktober von Ihrem Konto ab.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "The amount will be collected by direct debit on or after 20 October 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "debit; 'on or after'",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your direct debit of £35.00 will be taken on October 15, 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The next instalment will be taken from your account on 2 November 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "debit",
+   "category": "direct_debit",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Termin ist am 20.10.2026 um 10:00 Uhr.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "appointment",
+   "category": "appointment",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte erscheinen Sie am Donnerstag, den 22.10.2026 um 9:30 Uhr in Zimmer 204.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "imperative to appear, not to pay or send",
+   "category": "appointment",
+   "dates": [
+    "2026-10-22"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Zählerableser kommt am 27.10.2026 zwischen 8 und 12 Uhr.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "meter reading visit",
+   "category": "appointment",
+   "dates": [
+    "2026-10-27"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Untersuchung findet am 3. November 2026 um 14:15 Uhr statt.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "medical exam",
+   "category": "appointment",
+   "dates": [
+    "2026-11-03"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wir laden Sie zu einem persönlichen Gespräch am 29.10.2026 ein.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "invitation",
+   "category": "appointment",
+   "dates": [
+    "2026-10-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Elternabend der Klasse 5b findet am 21.10.2026 um 19 Uhr statt.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "parents' evening",
+   "category": "appointment",
+   "dates": [
+    "2026-10-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte halten Sie sich den 30.10.2026 für die Wohnungsübergabe frei.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "reserve a date",
+   "category": "appointment",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Beratungstermin am 29. Oktober um 11 Uhr bleibt bestehen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless appointment",
+   "category": "appointment",
+   "dates": [
+    "2026-10-29"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Elternsprechtag am Donnerstag, 12.11.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless event with weekday",
+   "category": "appointment",
+   "dates": [
+    "2026-11-12"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Your appointment is on Wednesday, 28 October 2026 at 11:00.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "appointment",
+   "category": "appointment",
+   "dates": [
+    "2026-10-28"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The engineer will visit on October 19, 2026 between 8am and 1pm.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "visit",
+   "category": "appointment",
+   "dates": [
+    "2026-10-19"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Angebot gilt bis zum 31.10.2026.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "offer validity",
+   "category": "validity",
+   "dates": [
+    "2026-10-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Gültig bis: 31.03.2027",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "validity label",
+   "category": "validity",
+   "dates": [
+    "2027-03-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Bescheinigung ist bis 31. Dezember 2026 gültig.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "certificate validity",
+   "category": "validity",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Gutschein ist bis 31.12.2026 einlösbar.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "voucher",
+   "category": "validity",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Aufenthaltstitel ist gültig bis 30.04.2027.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "permit validity",
+   "category": "validity",
+   "dates": [
+    "2027-04-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Dieses Angebot ist bis zum 30.10.2026 freibleibend.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "offer terms",
+   "category": "validity",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Preisgarantie gilt bis 30.06.2027.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "price guarantee",
+   "category": "validity",
+   "dates": [
+    "2027-06-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Ausweis läuft am 26.02.2027 ab.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "ID expiry, not a pay/send deadline",
+   "category": "validity",
+   "dates": [
+    "2027-02-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Angebot gilt bis 15. November.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless offer validity",
+   "category": "validity",
+   "dates": [
+    "2026-11-15"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Gültig bis 31.12.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless validity label",
+   "category": "validity",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Die Mahnsperre gilt bis zum 16.11.2026.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "dunning pause by sender",
+   "category": "validity",
+   "dates": [
+    "2026-11-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "This offer is valid until 31 October 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "offer validity",
+   "category": "validity",
+   "dates": [
+    "2026-10-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your card expires on January 31, 2027.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "card expiry",
+   "category": "validity",
+   "dates": [
+    "2027-01-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Prices are guaranteed until 31 March 2027.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "price guarantee",
+   "category": "validity",
+   "dates": [
+    "2027-03-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bei Zahlung bis zum 15.10.2026 gewähren wir 2 % Skonto.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "early-payment discount, optional",
+   "category": "discount",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wer bis zum 20.10.2026 zahlt, erhält einen Nachlass von 5 %.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "discount",
+   "category": "discount",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bei Zahlungseingang bis 16.10.2026 können Sie 3 % Skonto abziehen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "discount with 'Zahlungseingang bis'",
+   "category": "discount",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Frühbucherrabatt bei Anmeldung bis 30. November 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "early-bird discount",
+   "category": "discount",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "2 % Skonto bei Zahlung bis Freitag, 16.10.2026",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "discount label",
+   "category": "discount",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Skonto bei Zahlung bis 20.10.: 3 %",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless discount",
+   "category": "discount",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Bei Zahlung bis zum 30. Oktober reduziert sich der Beitrag um 10 %.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless discount",
+   "category": "discount",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "A 2% discount applies if paid by 20 October 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "discount",
+   "category": "discount",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Pay before October 31, 2026 and save 10%.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "discount",
+   "category": "discount",
+   "dates": [
+    "2026-10-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wenn Sie möchten, können Sie bis zum 30.11.2026 widersprechen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "optional objection",
+   "category": "option",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sie haben die Möglichkeit, bis zum 30.10.2026 eine Ratenzahlung zu beantragen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "optional instalment request",
+   "category": "option",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Falls Sie Interesse haben, melden Sie sich bitte bis zum 23.10.2026.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "only if interested",
+   "category": "option",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wer am Ausflug teilnehmen möchte, gibt den Abschnitt bitte bis 16.10.2026 ab.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "hand-in only for those who want to join",
+   "category": "option",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Anträge auf Zuschuss können bis 30. November 2026 gestellt werden.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "optional application",
+   "category": "option",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Eine kostenlose Stornierung ist bis zum 25.10.2026 möglich.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "free cancellation window",
+   "category": "option",
+   "dates": [
+    "2026-10-25"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte teilen Sie uns bis zum 26.10.2026 mit, falls Sie eine Ratenzahlung wünschen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "request only if a wish exists",
+   "category": "option",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sie können den Tarif bis 31.12.2026 kostenlos wechseln.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "optional switch",
+   "category": "option",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Wenn Sie lieber per Lastschrift zahlen möchten, senden Sie uns das Mandat bis 30.10.2026 zurück.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "send-back only if preferred",
+   "category": "option",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ein Antrag auf Herabsetzung der Vorauszahlungen kann bis Freitag, den 06.11.2026 gestellt werden.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "optional application",
+   "category": "option",
+   "dates": [
+    "2026-11-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Teilnahme ist freiwillig; Rückmeldungen nehmen wir bis 23.10.2026 entgegen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "voluntary; has 'Rückmeldungen ... bis'",
+   "category": "option",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Kündigung muss uns bis zum 30.11.2026 vorliegen, damit sie zum Jahresende wirksam wird.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "only matters if the person wants to cancel; shares 'muss uns bis ... vorliegen'",
+   "category": "option",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Anmeldungen für den Kurs sind bis 30.10. möglich.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless optional registration",
+   "category": "option",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Wer möchte, kann bis 13. November einen Ratenplan beantragen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless option",
+   "category": "option",
+   "dates": [
+    "2026-11-13"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Die Anmeldung für die Ganztagsbetreuung im nächsten Schuljahr ist bis 26.02.2027 möglich.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "optional registration",
+   "category": "option",
+   "dates": [
+    "2027-02-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bewerbungsschluss: 30.10.2026",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "application closing date for an optional offer",
+   "category": "option",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Den Antrag auf Kostenübernahme können Sie bis 31.12.2026 formlos stellen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "'können Sie' option",
+   "category": "option",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If you wish to opt out, please let us know by 30 October 2026.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "only if opting out",
+   "category": "option",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "You may switch to a different plan at any time before December 31, 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "optional",
+   "category": "option",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If you would like a paper copy, return the enclosed slip by 23 October 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "send-back only if wanted",
+   "category": "option",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "If you do not want the policy to renew, we must receive your instructions by November 30, 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "only if not renewing; 'we must receive ... by'",
+   "category": "option",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Leistung wird für den Zeitraum vom 01.11.2026 bis 30.04.2027 bewilligt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "grant period",
+   "category": "period_end",
+   "dates": [
+    "2026-11-01",
+    "2027-04-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Mietzeit bis 31.03.2027",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "rental period",
+   "category": "period_end",
+   "dates": [
+    "2027-03-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Abrechnungszeitraum: 01.10.2025 bis 30.09.2026",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "billing period (past)",
+   "category": "period_end",
+   "dates": [
+    "2025-10-01",
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Versicherungsschutz besteht bis 31. Dezember 2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "coverage period",
+   "category": "period_end",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bewilligungszeitraum: 01.11.2026 – 31.10.2027",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "grant period label",
+   "category": "period_end",
+   "dates": [
+    "2026-11-01",
+    "2027-10-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Beiträge für den Zeitraum bis 31.12.2026 sind festgesetzt.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "period of assessed contributions",
+   "category": "period_end",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Abrechnungszeitraum endet am 31.12.2026.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "billing period end",
+   "category": "period_end",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Kurzarbeit ist bis zum 31.12.2026 befristet.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "short-time work period",
+   "category": "period_end",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Krankschreibung gilt bis einschließlich 16.10.2026.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "sick-note period",
+   "category": "period_end",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Leistungen nach dem SGB II erhalten Sie voraussichtlich bis 31.03.2027.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "benefit period",
+   "category": "period_end",
+   "dates": [
+    "2027-03-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Sohn ist bis zum 30.11.2026 vom Sportunterricht befreit.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "exemption period",
+   "category": "period_end",
+   "dates": [
+    "2026-11-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Kurs läuft bis 18.12.2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "course period",
+   "category": "period_end",
+   "dates": [
+    "2026-12-18"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Leistungszeitraum: 01.11. bis 31.12.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless period",
+   "category": "period_end",
+   "dates": [
+    "2026-11-01",
+    "2026-12-31"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Coverage period: 1 November 2026 to 31 October 2027",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "coverage period",
+   "category": "period_end",
+   "dates": [
+    "2026-11-01",
+    "2027-10-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your tenancy runs until June 30, 2027.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "tenancy period",
+   "category": "period_end",
+   "dates": [
+    "2027-06-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your payment holiday lasts until January 29, 2027.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "deferral period granted by sender",
+   "category": "period_end",
+   "dates": [
+    "2027-01-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Laufzeit Ihres Vertrags endet am 31.01.2027.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "contract term",
+   "category": "contract_term",
+   "dates": [
+    "2027-01-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Vertrag verlängert sich automatisch um zwölf Monate, wenn er nicht bis zum 31.12.2026 gekündigt wird.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "auto-renewal condition",
+   "category": "contract_term",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Kündigungsfrist bis 31.12.2026",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "notice period",
+   "category": "contract_term",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Eine Kündigung ist erstmals zum 31. März 2027 möglich.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "earliest termination",
+   "category": "contract_term",
+   "dates": [
+    "2027-03-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Mietverhältnis endet am 31.01.2027.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "tenancy end",
+   "category": "contract_term",
+   "dates": [
+    "2027-01-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Mindestvertragslaufzeit bis 30.09.2027",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "minimum term",
+   "category": "contract_term",
+   "dates": [
+    "2027-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Arbeitsverhältnis endet mit Ablauf des 31.12.2026.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "employment end",
+   "category": "contract_term",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Kündigung zum 31.12. möglich",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless termination date",
+   "category": "contract_term",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Your contract ends on 26 February 2027.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "contract end",
+   "category": "contract_term",
+   "dates": [
+    "2027-02-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The notice period ends on December 31, 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "notice period",
+   "category": "contract_term",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihr Vermieter muss die Betriebskostenabrechnung bis zum 31.12.2026 erstellen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "landlord's duty",
+   "category": "third_party",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Arbeitgeber hat die Unterlagen bis 30.10.2026 bei der Krankenkasse einzureichen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "employer's duty; has 'einzureichen'",
+   "category": "third_party",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Krankenkasse muss bis zum 28.10.2026 über Ihren Antrag entscheiden.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "insurer's duty",
+   "category": "third_party",
+   "dates": [
+    "2026-10-28"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Gegenseite wurde aufgefordert, den Betrag bis zum 23.10.2026 zu zahlen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "opposing party must pay",
+   "category": "third_party",
+   "dates": [
+    "2026-10-23"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Herr Weber hat bis zum 30. Oktober 2026 Gelegenheit, eine Stellungnahme abzugeben.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "named third person",
+   "category": "third_party",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Schule muss die Anmeldelisten bis 13.11.2026 an das Schulamt melden.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "school's duty",
+   "category": "third_party",
+   "dates": [
+    "2026-11-13"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Schuldner hat den Betrag bis spätestens 26.10.2026 an Sie zu überweisen.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "debtor pays the person",
+   "category": "third_party",
+   "dates": [
+    "2026-10-26"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Bank wird den Betrag bis 20.10.2026 zurückbuchen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "bank's act",
+   "category": "third_party",
+   "dates": [
+    "2026-10-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Gutachter erstellt sein Gutachten bis 20. November.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "yearless, expert's act",
+   "category": "third_party",
+   "dates": [
+    "2026-11-20"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Your landlord must return the deposit by 16 November 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "landlord's duty",
+   "category": "third_party",
+   "dates": [
+    "2026-11-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The other party has been asked to pay the outstanding amount by October 30, 2026.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "opposing party",
+   "category": "third_party",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Your employer must submit the form to us by 30 October 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "employer's duty",
+   "category": "third_party",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Gegen diesen Bescheid kann bis zum 05.11.2026 Einspruch eingelegt werden.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "objection right",
+   "category": "remedy",
+   "dates": [
+    "2026-11-05"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sie können bis zum 6. November 2026 Widerspruch einlegen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "objection right",
+   "category": "remedy",
+   "dates": [
+    "2026-11-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Widerspruchsfrist: 02.11.2026",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "objection-period label",
+   "category": "remedy",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ein Einspruch muss bis 09.11.2026 beim Finanzamt eingegangen sein.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "remedy with 'muss ... eingegangen sein'",
+   "category": "remedy",
+   "dates": [
+    "2026-11-09"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Klage ist bis zum 12.11.2026 beim Sozialgericht zu erheben.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "lawsuit deadline, 'ist ... zu' form",
+   "category": "remedy",
+   "dates": [
+    "2026-11-12"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Einspruchsfrist endet am Freitag, 06.11.2026.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "remedy period end",
+   "category": "remedy",
+   "dates": [
+    "2026-11-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ein Widerspruch gegen den Mahnbescheid ist bis 21.10.2026 möglich.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "objection to court dunning order",
+   "category": "remedy",
+   "dates": [
+    "2026-10-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Fristablauf der Widerspruchsfrist: 05.11.2026",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "remedy label",
+   "category": "remedy",
+   "dates": [
+    "2026-11-05"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Widerspruch bis 5. November möglich.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless remedy",
+   "category": "remedy",
+   "dates": [
+    "2026-11-05"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Einspruchsfrist: 04.11.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless remedy label",
+   "category": "remedy",
+   "dates": [
+    "2026-11-04"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "You have until 6 November 2026 to appeal this decision.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "appeal right",
+   "category": "remedy",
+   "dates": [
+    "2026-11-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Any appeal must be received by November 2, 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "appeal with 'must be received by'",
+   "category": "remedy",
+   "dates": [
+    "2026-11-02"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Herbstfest findet am 17.10.2026 statt.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "event",
+   "category": "event",
+   "dates": [
+    "2026-10-17"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Straße ist vom 19.10.2026 bis 30.10.2026 wegen Bauarbeiten gesperrt.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "road closure",
+   "category": "event",
+   "dates": [
+    "2026-10-19",
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Wasserversorgung wird am 21. Oktober 2026 zwischen 8 und 14 Uhr unterbrochen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "outage",
+   "category": "event",
+   "dates": [
+    "2026-10-21"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Bauarbeiten im Treppenhaus dauern voraussichtlich bis 20.11.2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "works duration",
+   "category": "event",
+   "dates": [
+    "2026-11-20"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Heizungswartung ist für den 27.10.2026 geplant.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "maintenance",
+   "category": "event",
+   "dates": [
+    "2026-10-27"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Sperrmüllabfuhr erfolgt am 22.10.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "yearless collection",
+   "category": "event",
+   "dates": [
+    "2026-10-22"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Am 14. November ist Tag der offenen Tür.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless open day",
+   "category": "event",
+   "dates": [
+    "2026-11-14"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "The open day takes place on Saturday, 24 October 2026.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "event",
+   "category": "event",
+   "dates": [
+    "2026-10-24"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Sprechzeiten bis 15.10.: Montag bis Freitag 8–12 Uhr.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless office hours",
+   "category": "opening_hours",
+   "dates": [
+    "2026-10-15"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Am 3. Oktober ist geschlossen.",
+   "letter_date": "2026-09-25",
+   "lang": "de",
+   "why": "yearless closure",
+   "category": "opening_hours",
+   "dates": [
+    "2026-10-03"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Vom 24.12. bis 06.01. bleibt unser Büro geschlossen.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless holiday closure",
+   "category": "opening_hours",
+   "dates": [
+    "2026-12-24",
+    "2027-01-06"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Unser Kundencenter ist bis zum 30.10.2026 wegen Umbau geschlossen.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "closure",
+   "category": "opening_hours",
+   "dates": [
+    "2026-10-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Hotline ist bis 16.10.2026 nur eingeschränkt erreichbar.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "limited availability",
+   "category": "opening_hours",
+   "dates": [
+    "2026-10-16"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Our office will be closed from 24 December 2026 to 1 January 2027.",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "closure",
+   "category": "opening_hours",
+   "dates": [
+    "2026-12-24",
+    "2027-01-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Our helpline is closed on 25 December.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "yearless closure",
+   "category": "opening_hours",
+   "dates": [
+    "2026-12-25"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Stand: 01.10.2026",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "as-of date",
+   "category": "stand",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Kontostand zum 30.09.2026: 1.204,55 €",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "balance date",
+   "category": "stand",
+   "dates": [
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Forderungsaufstellung, Stand 6. Oktober 2026",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "as-of date equal to letter date",
+   "category": "stand",
+   "dates": [
+    "2026-10-06"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Stand: 01.10.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless past as-of date",
+   "category": "stand",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "As of 1 October 2026, your balance is £0.00.",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "as-of date",
+   "category": "stand",
+   "dates": [
+    "2026-10-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Kontoauszug vom 01.09.2026 bis 30.09.2026",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "statement period",
+   "category": "statement_period",
+   "dates": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Verbrauch im Zeitraum 01.10.2025 – 30.09.2026: 2.430 kWh",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "consumption period",
+   "category": "statement_period",
+   "dates": [
+    "2025-10-01",
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Umsätze bis 04.10.2026",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "transactions cut-off",
+   "category": "statement_period",
+   "dates": [
+    "2026-10-04"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Abrechnungszeitraum 01.07. bis 30.09.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "yearless past period",
+   "category": "statement_period",
+   "dates": [
+    "2026-07-01",
+    "2026-09-30"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Statement period: 1 September 2026 to 30 September 2026",
+   "letter_date": "2026-10-05",
+   "lang": "en",
+   "why": "statement period",
+   "category": "statement_period",
+   "dates": [
+    "2026-09-01",
+    "2026-09-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Für das Kalenderjahr 2026 gilt der Freibetrag bis zum 31.12.2026.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "allowance validity",
+   "category": "tax_year",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Einkommensteuer für den Veranlagungszeitraum 01.01.2025 bis 31.12.2025",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "assessment year",
+   "category": "tax_year",
+   "dates": [
+    "2025-01-01",
+    "2025-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Lohnsteuerbescheinigung umfasst den Zeitraum bis 31.12.2025.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "past tax period",
+   "category": "tax_year",
+   "dates": [
+    "2025-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Der Pauschbetrag wird bis zum 31. Dezember 2026 berücksichtigt.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "allowance applies through",
+   "category": "tax_year",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Tax year: 6 April 2026 to 5 April 2027",
+   "letter_date": "2026-10-02",
+   "lang": "en",
+   "why": "UK tax year",
+   "category": "tax_year",
+   "dates": [
+    "2026-04-06",
+    "2027-04-05"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das Schuljahr endet am 14.07.2027.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "school-year end",
+   "category": "school_year",
+   "dates": [
+    "2027-07-14"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Herbstferien dauern vom 12.10.2026 bis zum 24.10.2026.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "holiday",
+   "category": "school_year",
+   "dates": [
+    "2026-10-12",
+    "2026-10-24"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Das erste Halbjahr endet am 29. Januar 2027.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "term end",
+   "category": "school_year",
+   "dates": [
+    "2027-01-29"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Unterrichtsschluss vor den Weihnachtsferien ist am Dienstag, 22.12.2026.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "last school day",
+   "category": "school_year",
+   "dates": [
+    "2026-12-22"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Herbstferien vom 12.10. bis 24.10.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "yearless holiday",
+   "category": "school_year",
+   "dates": [
+    "2026-10-12",
+    "2026-10-24"
+   ],
+   "has_year": false
+  },
+  {
+   "sentence": "Die Betreuung im Hort ist bis zum 30.07.2027 gesichert.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "care secured through",
+   "category": "school_year",
+   "dates": [
+    "2027-07-30"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bitte bewahren Sie diese Belege bis zum 31.12.2032 auf.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "keep receipts; imperative but not pay/send",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2032-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Vollstreckung wird bis zum 31.12.2026 ausgesetzt.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "enforcement paused by sender",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2026-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Unterlagen werden bis zum 31.12.2027 bei uns aufbewahrt.",
+   "letter_date": "2026-10-01",
+   "lang": "de",
+   "why": "sender keeps documents",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2027-12-31"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ihre Rechnung vom 15.09.2026 über 89,90 €",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "invoice reference date",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2026-09-15"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Bezug: Ihr Schreiben vom 22.09.2026",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "reference to a letter",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2026-09-22"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die Preise gelten ab 01.01.2027.",
+   "letter_date": "2026-10-06",
+   "lang": "de",
+   "why": "price change start",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2027-01-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Ab dem 01.11.2026 beträgt Ihr monatlicher Abschlag 92 €.",
+   "letter_date": "2026-10-05",
+   "lang": "de",
+   "why": "start date of a recurring amount",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2026-11-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Die neue Miete ist ab 01.12.2026 zu zahlen.",
+   "letter_date": "2026-10-02",
+   "lang": "de",
+   "why": "start of recurring rent ('ab'), not a by-date; has 'zu zahlen'",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2026-12-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "The new rate applies from 1 January 2027.",
+   "letter_date": "2026-10-06",
+   "lang": "en",
+   "why": "start date",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2027-01-01"
+   ],
+   "has_year": true
+  },
+  {
+   "sentence": "Please keep this letter until 31 December 2027.",
+   "letter_date": "2026-10-01",
+   "lang": "en",
+   "why": "keep letter; imperative but not pay/send",
+   "category": "misc_not_pay_send",
+   "dates": [
+    "2027-12-31"
+   ],
+   "has_year": true
+  }
+ ]
+}

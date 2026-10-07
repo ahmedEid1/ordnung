@@ -502,8 +502,10 @@ def test_every_dropped_date_is_code_s_low_check() -> None:
     assert len(items) == 2 and all(is_check_slot(v.slot_key) and v.needs_check for v in items)
 
 
-def test_a_date_without_its_year_gets_no_to_do() -> None:
-    assert _dropped("Bitte überweisen Sie den Betrag bis zum 15.10.") == []
+def test_a_date_without_its_year_is_the_first_such_day_after_the_letter_s_date() -> None:
+    """Since 2026-10-07 (ADR 0015) a date without its year counts from the letter's date; on a letter whose date is
+    read nowhere it still gets no to-do (``tests/test_reading_gaps_looser.py``)."""
+    assert _dropped("Bitte überweisen Sie den Betrag bis zum 15.10.") == [("2026-10-15", "payment")]
 
 
 # --------------------------------------------------------------------------------------------------

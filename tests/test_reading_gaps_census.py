@@ -38,7 +38,8 @@ pytestmark = pytest.mark.slow
 #: The one letter whose recorded reading came back incomplete (only its required fields).
 EXPECTED = {"holdout2-adversarial-injection_visible-1"}
 #: Splits not recorded yet: their letters stay unseen until their one recording, so the app is never run on them here.
-UNRECORDED = {"holdout3"}
+#: None since holdout3's one recording (2026-10-06): every split's readings are guarded.
+UNRECORDED: set[str] = set()
 
 
 async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], set[str], int]:
