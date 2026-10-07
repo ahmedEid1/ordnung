@@ -7,9 +7,11 @@ Written policy (ADR 0007):
   it; the WAL is folded in) — then every regular file under ``files/`` (the originals),
   ``derived/`` (page images, thumbnails) and ``drafts/`` (letter PDFs), in path order, and last
   ``manifest.json``: the format, the app and schema versions, the row count of every table and the
-  size and SHA-256 of every file and of the database. Nothing else: not the lock, ``server.json``
-  or the watched folder (its files are the person's own copies; what Ordnung took from it is in
-  ``files/``). Symbolic links are never followed — and never silently: a link under the three
+  size and SHA-256 of every file and of the database. Nothing else: not the lock, ``server.json``,
+  the watched folder (its files are the person's own copies; what Ordnung took from it is in
+  ``files/``) or phone access — neither its certificates in ``phone/`` nor, in the database snapshot,
+  its record of the paired phones (:data:`_LEFT_OUT_META`, removed from the in-memory copy with
+  ``secure_delete`` on, so a backup never carries a phone's name, address or sign-in hash). Symbolic links are never followed — and never silently: a link under the three
   folders, or one of the folders itself being a link (moved to a bigger drive), is named by
   :func:`links_left_out`, which ``ordnung backup`` and Settings → Data show before the backup is made.
 * **Making a backup writes no plaintext.** The database snapshot is made in memory; the archive is
@@ -65,6 +67,10 @@ MAX_MANIFEST_BYTES = 64 * 1024 * 1024
 MAX_NAME_CHARS = 1024
 PRIVATE_FILE_MODE = 0o600
 PRIVATE_DIR_MODE = 0o700
+#: ``meta`` keys a backup leaves out of its database snapshot: phone access (``ordnung.phone.record``)
+#: belongs to this computer — its paired phones' names, addresses and sign-in hashes never travel. Sync
+#: between computers leaves the same keys out.
+_LEFT_OUT_META = ("phone_access",)
 #: SQLite header bytes 18 and 19: file format write and read versions (1 rollback journal, 2 WAL).
 _FILE_FORMAT_BYTES = (18, 19)
 _ROLLBACK_FORMAT, _WAL_FORMAT = 1, 2
@@ -154,6 +160,7 @@ def snapshot_database(db_path: Path) -> _Snapshot:
     copy = sqlite3.connect(":memory:")
     try:
         source.backup(copy)
+        _leave_out(copy)
         version = int(copy.execute("PRAGMA user_version").fetchone()[0])
         data = bytearray(copy.serialize())
         tables = table_counts(copy)
@@ -166,6 +173,16 @@ def snapshot_database(db_path: Path) -> _Snapshot:
         for offset in _FILE_FORMAT_BYTES:
             data[offset] = _ROLLBACK_FORMAT
     return _Snapshot(data=bytes(data), schema_version=version, tables=tables)
+
+
+def _leave_out(copy: sqlite3.Connection) -> None:
+    """Remove :data:`_LEFT_OUT_META` from the snapshot (overwritten, not only unlinked)."""
+    if copy.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'").fetchone() is None:
+        return
+    copy.execute("PRAGMA secure_delete=ON")
+    marks = ", ".join("?" for _ in _LEFT_OUT_META)
+    with copy:
+        copy.execute(f"DELETE FROM meta WHERE key IN ({marks})", _LEFT_OUT_META)
 
 
 # --------------------------------------------------------------------------------------------------

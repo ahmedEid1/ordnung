@@ -50,6 +50,8 @@ dependencies = [
   "cryptography>=44.0.1",
   # calendar sync keeps the app password in the OS password store, never in the database
   "keyring>=25",
+  # phone access lists the network interfaces with their names and netmasks (pure Python)
+  "ifaddr>=0.2",
 ]
 
 [project.optional-dependencies]

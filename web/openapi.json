@@ -158,7 +158,7 @@
           "profile"
         ],
         "summary": "Read Profile",
-        "description": "The person's profile (name, address, region, language, reminders …).",
+        "description": "The person's profile (name, address, region, language, reminders …); on a phone the IBAN shows\nonly its last 4 characters.",
         "operationId": "read_profile_api_profile_get",
         "responses": {
           "200": {
@@ -2400,7 +2400,7 @@
           "numbers"
         ],
         "summary": "My Numbers",
-        "description": "About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,\none call sheet per organisation and the open cases with their references.",
+        "description": "About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,\none call sheet per organisation and the open cases with their references (on a phone, your own\nnumbers show only their last 4 characters: ``masked``).",
         "operationId": "my_numbers_api_numbers_get",
         "responses": {
           "200": {

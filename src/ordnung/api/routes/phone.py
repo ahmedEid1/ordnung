@@ -19,28 +19,31 @@ On a phone, before it is paired (the only operation a phone reaches without its 
   (:func:`ordnung.phone.cookie_name`) and names the two words both screens show.
 
 A refusal answers ``{"detail": …, "code": <kind>}`` (:data:`ordnung.phone.PhoneErrorCode`). Never in
-the demo.
+the demo, and never without a session token (``--no-token``). The work is done by
+:class:`ordnung.phone.access.PhoneAccess`; the six computer routes refuse a phone's request themselves
+too (:func:`~ordnung.api.deps.require_computer`), behind the phone listener's allow-list.
 """
 
 from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung.api.deps import ApiState, CtxDep, StateDep
-from ordnung.app_context import AppContext
-from ordnung.phone import ERROR_STATUS, PhoneErrorCode
+from ordnung.api.deps import StateDep, is_phone, phone_device, require_computer
+from ordnung.api.phone_gate import sign_in_cookie
+from ordnung.phone import ERROR_STATUS, PhoneErrorCode, PhoneRefusal
+from ordnung.phone.access import DEMO_MESSAGE as DEMO_MESSAGE
+from ordnung.phone.access import PhoneAccess
+from ordnung.phone.record import DEFAULT_PORT as DEFAULT_PORT
 
 router = APIRouter(tags=["phone"])
+COMPUTER = [Depends(require_computer)]
 
-DEFAULT_PORT = 8767
-DEMO_MESSAGE = "The demo never opens itself to your network. Install Ordnung to use it from your phone."
 NOT_FOUND = "This phone isn't paired (any more)."
 NOT_PHONE_MESSAGE = "Pairing works from a phone: scan the code in Settings → Phone with your phone's camera."
-_NOT_BUILT = "Phone access isn't part of this version of Ordnung yet."
 
 _RESPONSE = ConfigDict(json_schema_serialization_defaults_required=True)
 
@@ -236,7 +239,7 @@ class PairResult(BaseModel):
 
 
 # --------------------------------------------------------------------------------------------------
-# helpers (contract stubs: the listener, pairing and devices come with phone access itself)
+# helpers
 # --------------------------------------------------------------------------------------------------
 
 
@@ -244,24 +247,8 @@ def _refusal(code: PhoneErrorCode, detail: str) -> JSONResponse:
     return JSONResponse(status_code=ERROR_STATUS[code], content={"detail": detail, "code": code})
 
 
-def _demo(state: ApiState, ctx: AppContext) -> bool:
-    return state.demo or ctx.settings.demo
-
-
-def _status(demo: bool) -> PhoneStatus:
-    return PhoneStatus(
-        available=not demo,
-        unavailable_reason=DEMO_MESSAGE if demo else None,
-        enabled=False,
-        listening=False,
-        port=DEFAULT_PORT,
-        addresses=[],
-        devices=[],
-    )
-
-
-def _not_built(demo: bool) -> JSONResponse:
-    return _refusal("unavailable", DEMO_MESSAGE if demo else _NOT_BUILT)
+async def _status(access: PhoneAccess) -> PhoneStatus:
+    return PhoneStatus.model_validate(await access.status())
 
 
 # --------------------------------------------------------------------------------------------------
@@ -269,31 +256,42 @@ def _not_built(demo: bool) -> JSONResponse:
 # --------------------------------------------------------------------------------------------------
 
 
-@router.get("/phone", response_model=PhoneStatus)
-async def phone_status(state: StateDep, ctx: CtxDep) -> PhoneStatus:
+@router.get("/phone", response_model=PhoneStatus, dependencies=COMPUTER)
+async def phone_status(state: StateDep) -> PhoneStatus:
     """Whether phone access can be used here and is on, its address, certificate, pairing progress and
     the paired phones."""
-    return _status(_demo(state, ctx))
+    return await _status(state.phone)
 
 
-@router.put("/phone", response_model=PhoneStatus, responses=CHANGE_REFUSALS)
-async def change_phone_access(
-    body: PhoneAccessChange, state: StateDep, ctx: CtxDep
-) -> PhoneStatus | JSONResponse:
+@router.put("/phone", response_model=PhoneStatus, responses=CHANGE_REFUSALS, dependencies=COMPUTER)
+async def change_phone_access(body: PhoneAccessChange, state: StateDep) -> PhoneStatus | JSONResponse:
     """Turn phone access on (at the chosen or recommended address) or off; a new address or port means
     pairing phones again."""
-    return _not_built(_demo(state, ctx))
+    try:
+        await state.phone.change(
+            enabled=body.enabled, address=body.address, port=body.port, home_network=body.home_network
+        )
+    except PhoneRefusal as refused:
+        return _refusal(refused.code, refused.detail)
+    return await _status(state.phone)
 
 
-@router.post("/phone/pairing", response_model=PhonePairing, responses=PAIRING_REFUSALS)
-async def start_pairing(state: StateDep, ctx: CtxDep) -> PhonePairing | JSONResponse:
+@router.post("/phone/pairing", response_model=PhonePairing, responses=PAIRING_REFUSALS, dependencies=COMPUTER)
+async def start_pairing(state: StateDep) -> PhonePairing | JSONResponse:
     """A new pairing code (replacing an open one): one phone, once, within minutes."""
-    return _not_built(_demo(state, ctx))
+    try:
+        url, code, expires_at = await state.phone.start_pairing()
+    except PhoneRefusal as refused:
+        return _refusal(refused.code, refused.detail)
+    return PhonePairing(url=url, code=code, expires_at=expires_at)
 
 
-@router.delete("/phone/pairing", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+@router.delete(
+    "/phone/pairing", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, dependencies=COMPUTER
+)
 async def cancel_pairing(state: StateDep) -> Response:
     """Cancel the open pairing code (the dialog closed)."""
+    state.phone.cancel_pairing()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -301,20 +299,47 @@ async def cancel_pairing(state: StateDep) -> Response:
     "/phone/devices/{device_id}",
     response_model=PhoneStatus,
     responses={404: {"description": "No such phone is paired"}},
+    dependencies=COMPUTER,
 )
-async def remove_phone(device_id: str, state: StateDep, ctx: CtxDep) -> PhoneStatus:
+async def remove_phone(device_id: str, state: StateDep) -> PhoneStatus:
     """Remove a paired phone: it is signed out at once and its live connections end."""
-    raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND)
+    if not await state.phone.remove(device_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND)
+    return await _status(state.phone)
 
 
-@router.post("/phone/reset", response_model=PhoneStatus, responses=RESET_REFUSALS)
-async def reset_phone_access(state: StateDep, ctx: CtxDep) -> PhoneStatus | JSONResponse:
+@router.post("/phone/reset", response_model=PhoneStatus, responses=RESET_REFUSALS, dependencies=COMPUTER)
+async def reset_phone_access(state: StateDep) -> PhoneStatus | JSONResponse:
     """Start over: turn phone access off, remove every phone and its certificate (a new one is made
     when it is turned on again)."""
-    return _not_built(_demo(state, ctx))
+    try:
+        await state.phone.reset()
+    except PhoneRefusal as refused:
+        return _refusal(refused.code, refused.detail)
+    return await _status(state.phone)
 
 
 @router.post("/phone/pair", response_model=PairResult, responses=PAIR_REFUSALS)
 async def pair_phone(body: PairRequest, request: Request, state: StateDep) -> PairResult | JSONResponse:
     """Pair this phone with the code shown on the computer; the answer sets its sign-in cookie."""
-    return _refusal("not_phone", NOT_PHONE_MESSAGE)
+    access = state.phone
+    if access.bound is None or not is_phone(request):
+        return _refusal("not_phone", NOT_PHONE_MESSAGE)
+    current = phone_device(request)
+    try:
+        paired = await access.pair(
+            body.code,
+            body.name,
+            client=request.client.host if request.client else "",
+            user_agent=request.headers.get("user-agent"),
+            current=current.id if current else None,
+        )
+    except PhoneRefusal as refused:
+        response = _refusal(refused.code, refused.detail)
+        if refused.retry_after is not None:
+            response.headers["Retry-After"] = str(refused.retry_after)
+        return response
+    answer = JSONResponse(PairResult(name=paired.device.name, check_words=paired.words).model_dump())
+    if paired.token is not None:
+        answer.headers.append("set-cookie", sign_in_cookie(access.bound[1], paired.token))
+    return answer

@@ -189,20 +189,91 @@ refused as ``"unknown"``."""
 PHONE_ROUTES: frozenset[Operation] = frozenset(_PHONE)
 COMPUTER_ONLY: frozenset[Operation] = frozenset(_COMPUTER)
 
+#: What a phone's change says in the privacy log (“Changed a to-do on Anna's iPhone”): every phone
+#: operation that isn't a GET, except :data:`NOT_CHANGES`.
+CHANGE_LABELS: dict[Operation, str] = {
+    ("POST", "/api/documents"): "Added letters",
+    ("PATCH", "/api/documents/{doc_id}"): "Corrected a letter",
+    ("POST", "/api/documents/{doc_id}/reprocess"): "Had a letter read again",
+    ("POST", "/api/items"): "Added a to-do",
+    ("PATCH", "/api/items/{item_id}"): "Changed a to-do",
+    ("POST", "/api/items/{item_id}/confirm"): "Confirmed a to-do's date",
+    ("POST", "/api/items/{item_id}/girocode/confirm"): "Confirmed payment details against the letter",
+    ("PATCH", "/api/contracts/{contract_id}"): "Changed a contract",
+    ("PATCH", "/api/parties/{party_id}"): "Changed a sender's details",
+    ("POST", "/api/week/done"): "Finished the weekly session",
+    ("POST", "/api/week/dismiss"): "Put off the weekly session",
+    ("PATCH", "/api/suggestions/{suggestion_id}"): "Answered an Idea",
+    ("POST", "/api/brief"): "Made the daily note",
+    ("POST", "/api/drafts"): "Started a letter",
+    ("PATCH", "/api/drafts/{draft_id}"): "Edited a letter",
+    ("POST", "/api/drafts/{draft_id}/translate"): "Translated a letter",
+    ("POST", "/api/drafts/{draft_id}/sent"): "Marked a letter as sent",
+    ("PUT", "/api/drafts/{draft_id}/tracking"): "Added a letter's tracking number",
+    ("POST", "/api/drafts/{draft_id}/proofs"): "Added proof of sending",
+    ("PATCH", "/api/drafts/{draft_id}/proofs/{proof_id}"): "Changed proof of sending",
+    ("POST", "/api/drafts/{draft_id}/answered"): "Marked a letter as answered",
+    ("DELETE", "/api/drafts/{draft_id}/answered"): "Took back “answered” on a letter",
+    ("POST", "/api/calls"): "Noted a call",
+    ("PATCH", "/api/calls/{call_id}"): "Changed a call note",
+    ("POST", "/api/calendar/exported"): "Added dates to a calendar",
+}
+#: Phone operations that change nothing of the ledger: a question to Ask (it has its own entry) and
+#: pairing itself (``phone.paired``).
+NOT_CHANGES: frozenset[Operation] = frozenset({("POST", "/api/ask"), ("POST", "/api/phone/pair")})
+#: Phone operations each phone may do only so often an hour (``ordnung.phone.access.DEVICE_LIMITS``).
+LIMITED: dict[Operation, str] = {
+    ("POST", "/api/ask"): "ask",
+    ("POST", "/api/documents/{doc_id}/reprocess"): "model",
+    ("POST", "/api/drafts/{draft_id}/translate"): "model",
+    ("POST", "/api/drafts"): "model",
+    ("POST", "/api/brief"): "model",
+    ("POST", "/api/documents"): "upload",
+    ("POST", "/api/drafts/{draft_id}/proofs"): "upload",
+}
+#: Live streams (ended at once when the phone is removed) and uploads (told the phone went away);
+#: every other request finishes.
+STREAMS: dict[Operation, str] = {("GET", "/api/events"): "events", ("POST", "/api/ask"): "ask"}
+UPLOADS: frozenset[Operation] = frozenset(
+    {("POST", "/api/documents"), ("POST", "/api/drafts/{draft_id}/proofs")}
+)
+
 _COMPILED: tuple[tuple[str, re.Pattern[str], bool], ...] = tuple(
     (method, compile_path(path)[0], (method, path) in PHONE_ROUTES)
     for method, path in sorted(PHONE_ROUTES | COMPUTER_ONLY)
 )
+# for :func:`match`: a template without an extension first (``{item_id}`` before ``{item_id}.ics``)
+_PHONE_TEMPLATES: tuple[tuple[str, re.Pattern[str], str], ...] = tuple(
+    (method, compile_path(path)[0], path)
+    for method, path in sorted(PHONE_ROUTES, key=lambda op: ("." in op[1], op))
+)
+
+
+def _wanted(method: str) -> str:
+    return "GET" if method.upper() == "HEAD" else method.upper()
 
 
 def classify(method: str, path: str) -> Classification:
     """Whether a request for ``path`` (an ``/api`` path as routed, without the query) is a phone
     operation, a computer-only one, or matches no operation at all (refused on a phone too)."""
-    wanted = "GET" if method.upper() == "HEAD" else method.upper()
+    wanted = _wanted(method)
     found = [phone for verb, pattern, phone in _COMPILED if verb == wanted and pattern.match(path)]
     if not found:
         return "unknown"
     return "phone" if all(found) else "computer"
+
+
+def match(method: str, path: str) -> tuple[Operation, dict[str, str]] | None:
+    """The phone operation a request is, with its path parameters (``None``: not a phone operation).
+    When two templates match, the one without an extension wins (``{item_id}`` over ``{item_id}.ics``)."""
+    if classify(method, path) != "phone":
+        return None
+    wanted = _wanted(method)
+    for verb, pattern, template in _PHONE_TEMPLATES:
+        found = pattern.match(path) if verb == wanted else None
+        if found:
+            return (verb, template), {key: str(value) for key, value in found.groupdict().items()}
+    return None
 
 
 def schema_operations(schema: dict[str, Any]) -> set[Operation]:

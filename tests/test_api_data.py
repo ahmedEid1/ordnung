@@ -143,3 +143,21 @@ def test_wipe_refuses_a_read_only_store(data_dir: Path) -> None:
     Store.open(Paths(data_dir)).close()
     with Store.open(Paths(data_dir), read_only=True) as store, pytest.raises(PermissionError):
         store.wipe()
+
+
+async def test_delete_everything_stops_phone_access_and_removes_its_certificates(data_dir: Path) -> None:
+    from ordnung.phone.record import META_KEY
+    from phone_support import pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _net, servers), phone_client(api) as phone:
+        await pair(api, phone)
+        (data_dir / "notes-of-mine.txt").write_text("mine", encoding="utf-8")
+        assert (data_dir / "phone" / "ca.key").is_file()
+        result = (await api.client.request("DELETE", "/api/data", json=CONFIRM)).json()
+        assert "phone" in result["removed"] and result["kept"] == ["notes-of-mine.txt"]
+        assert not (data_dir / "phone").exists()
+        assert servers.made[-1].stopped == 1
+        assert api.ctx.store.get_meta(META_KEY) is None
+        status = (await api.client.get("/api/phone")).json()
+        assert (status["enabled"], status["listening"], status["devices"]) == (False, False, [])
+        assert (await phone.get("/api/documents")).json()["code"] in ("misdirected", "phone_not_paired")

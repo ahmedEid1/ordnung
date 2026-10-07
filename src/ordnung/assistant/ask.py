@@ -202,18 +202,23 @@ def ledger_fingerprint(store: Store) -> str:
     )
 
 
-def ask_cache_key(store: Store, question: str, history: Sequence[ChatMessage], today: date) -> str:
-    """Canonical stable inputs of an Ask call: the question, today, the ledger and the conversation.
+def ask_cache_key(
+    store: Store, question: str, history: Sequence[ChatMessage], today: date, *, masked_numbers: bool = False
+) -> str:
+    """Canonical stable inputs of an Ask call: the question, today, the ledger and the conversation
+    (and, for a phone's question, that the person's own numbers were masked: never the computer's answer).
 
     No wall-clock times and nothing that depends on the order of ingestion, so the demo's recorded
     questions replay against a rebuilt demo database.
     """
-    basis = {
+    basis: dict[str, Any] = {
         "question": " ".join(question.split()),
         "today": today.isoformat(),
         "ledger": ledger_fingerprint(store),
         "history": stable_hash([[m.role, m.content] for m in history]) if history else None,
     }
+    if masked_numbers:
+        basis["masked_numbers"] = True
     return "ask:" + json.dumps(basis, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -224,9 +229,11 @@ def build_request(
     today: date,
     *,
     key_history: Sequence[ChatMessage] | None = None,
+    masked_numbers: bool = False,
 ) -> LLMRequest:
     """The ``ask`` request: read-only MCP tools only, a budget cap and a timeout. The prompt carries
-    ``history``; the cache key ``key_history`` (default: the same)."""
+    ``history``; the cache key ``key_history`` (default: the same). ``masked_numbers``: a question asked
+    on a paired phone (the tools mask the person's own numbers)."""
     profile = ctx.store.get_profile()
     system_version, system = render(
         "ask_system",
@@ -244,11 +251,17 @@ def build_request(
             "tools": [],
             "allowed_tools": ALLOWED_TOOLS,
             # Ledger tools only: Ask quotes stored receipts and never computes a date (SPEC § 21).
-            "mcp_config": server_config(ctx.paths.data_dir, today=pinned, rules_tools=False),
+            "mcp_config": server_config(
+                ctx.paths.data_dir, today=pinned, rules_tools=False, masked_numbers=masked_numbers
+            ),
             "max_budget_usd": MAX_BUDGET_USD,
             "timeout_s": TIMEOUT_S,
             "cache_key": ask_cache_key(
-                ctx.store, question, history if key_history is None else key_history, today
+                ctx.store,
+                question,
+                history if key_history is None else key_history,
+                today,
+                masked_numbers=masked_numbers,
             ),
             "prompt_version": f"{system_version}+{version}",
         }
@@ -278,9 +291,10 @@ def _no_placeholders(text: str) -> str:
 
 
 async def ask_stream(
-    ctx: AskContext, question: str, thread_id: str | None = None
+    ctx: AskContext, question: str, thread_id: str | None = None, *, masked_numbers: bool = False
 ) -> AsyncIterator[StreamEvent]:
-    """Answer ``question`` (continuing ``thread_id`` if given), streaming events for the UI.
+    """Answer ``question`` (continuing ``thread_id`` if given), streaming events for the UI
+    (``masked_numbers``: asked on a paired phone, so the tools mask the person's own numbers).
 
     Yields ``tool_use`` (``name``, ``input``, ``text`` = label) and ``tool_result`` (``name``,
     ``text`` = summary) events, one ``text`` event *without* text when the model starts writing, then
@@ -291,7 +305,7 @@ async def ask_stream(
     written) ends the stream with :data:`UNEXPECTED_STOP` instead of cutting it off without a word.
     """
     try:
-        async with contextlib.aclosing(_answer(ctx, question, thread_id)) as events:
+        async with contextlib.aclosing(_answer(ctx, question, thread_id, masked_numbers)) as events:
             async for event in events:
                 yield event
     except Exception:
@@ -299,7 +313,9 @@ async def ask_stream(
         yield StreamEvent(type="error", error=UNEXPECTED_STOP)
 
 
-async def _answer(ctx: AskContext, question: str, thread_id: str | None) -> AsyncGenerator[StreamEvent, None]:
+async def _answer(
+    ctx: AskContext, question: str, thread_id: str | None, masked_numbers: bool = False
+) -> AsyncGenerator[StreamEvent, None]:
     question = question.strip()
     if not question:
         yield StreamEvent(type="error", error=EMPTY_QUESTION)
@@ -312,7 +328,9 @@ async def _answer(ctx: AskContext, question: str, thread_id: str | None) -> Asyn
     # without the conversation (a second one replays too); a live fallback (``demo --live``) still
     # reads the conversation in its prompt
     replaying = ctx.llm.backend_name == "replay"
-    request = build_request(ctx, question, history, today, key_history=[] if replaying else None)
+    request = build_request(
+        ctx, question, history, today, key_history=[] if replaying else None, masked_numbers=masked_numbers
+    )
     turn = _Turn(store, request)
     done: StreamEvent | None = None
     failure: StreamEvent | None = None

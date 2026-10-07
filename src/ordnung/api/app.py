@@ -4,11 +4,14 @@ Security Policy, the localhost security middleware and a lifespan that runs the 
 ``create_app(ctx, token=…, demo=…)`` wires one :class:`~ordnung.app_context.AppContext` into an app:
 
 * **lifespan** — binds the event bus to the server loop, starts the ingest worker, the daily tick and
-  the watched folder (when one is set, :mod:`ordnung.ingest.watcher`), and on shutdown stops them (and
-  the API's own background tasks). The context itself stays open; whoever built it closes it.
+  the watched folder (when one is set, :mod:`ordnung.ingest.watcher`) and phone access when it was left
+  on (:mod:`ordnung.phone`), and on shutdown stops them — phone access first, so phones' requests end
+  before the worker stops (and the API's own background tasks). The context itself stays open; whoever
+  built it closes it.
 * **errors** — model failures become ``503`` with a message the person can act on (and a ``code``),
-  invalid input ``422``, unknown records ``404``, and anything unexpected a JSON ``500`` with a plain
-  sentence (``code`` ``internal_error``) and the error's name, never its message.
+  invalid input ``422``, unknown records ``404``, phone-access refusals their status with
+  ``{"detail", "code"}``, and anything unexpected a JSON ``500`` with a plain sentence (``code``
+  ``internal_error``) and the error's name, never its message.
 * **web app** — files of ``config.web_dist_dir()`` are served as they are; a missing file (under
   ``assets/`` or with an extension) is a ``404``; any other non-API path gets ``index.html``
   (client-side routing) with the CSP, whose ``script-src`` allows exactly the inline theme script of
@@ -40,6 +43,7 @@ from pydantic.json_schema import models_json_schema
 
 from ordnung import __version__, models
 from ordnung.api.deps import ApiState
+from ordnung.api.phone_gate import PhoneGate, PhoneListener
 from ordnung.api.routes import ROUTERS
 from ordnung.api.routes.ask import StreamEvent
 from ordnung.api.routes.demo import optional_demo_function
@@ -67,6 +71,7 @@ from ordnung.llm.base import (
     LLMError,
     ReplayMiss,
 )
+from ordnung.phone import PhoneRefusal
 from ordnung.phone.scope import mark_openapi
 from ordnung.tick import DailyTick
 
@@ -131,9 +136,11 @@ def _lifespan(state: ApiState) -> Callable[[FastAPI], AbstractAsyncContextManage
         await ctx.worker.start()
         tick.start()
         await state.folder.start()
+        await state.phone.start_if_enabled()  # never in the demo; a failure is a problem, never raised
         try:
             yield
         finally:
+            await state.phone.stop()  # first: phones' requests end before the worker stops
             await state.folder.stop()
             await tick.stop()
             await state.background.stop()
@@ -174,6 +181,11 @@ async def _llm_error(request: Request, exc: Exception) -> Response:
     return JSONResponse(body, status_code=503, headers=headers)
 
 
+async def _phone_refused(_request: Request, exc: Exception) -> Response:
+    assert isinstance(exc, PhoneRefusal)
+    return JSONResponse(exc.body(), status_code=exc.status, headers=exc.headers())
+
+
 async def _not_found(_request: Request, _exc: Exception) -> Response:
     return JSONResponse({"detail": "This record doesn't exist (any more)."}, status_code=404)
 
@@ -195,6 +207,7 @@ async def _unexpected(_request: Request, exc: Exception) -> Response:
 def _add_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(LLMError, _llm_error)
     app.add_exception_handler(NotFoundError, _not_found)
+    app.add_exception_handler(PhoneRefusal, _phone_refused)
     for kind in (IntakeError, DraftError, ValidationError):
         app.add_exception_handler(kind, _unprocessable)
     app.add_exception_handler(Exception, _unexpected)
@@ -223,6 +236,20 @@ def _not_built(dist: Path) -> Response:
         ],
         status_code=503,
     )
+
+
+def public_files(dist: Path) -> frozenset[str]:
+    """The built web app's files a phone may load before it is paired: its ``assets/`` and the icon
+    (never ``build-info.json`` or anything else in the folder)."""
+    assets = dist / "assets"
+    found = (
+        {f"/assets/{entry.name}" for entry in assets.iterdir() if entry.is_file()}
+        if assets.is_dir()
+        else set()
+    )
+    if (dist / "favicon.svg").is_file():
+        found.add("/favicon.svg")
+    return frozenset(found)
 
 
 def _mount_web_app(app: FastAPI, dist: Path) -> None:
@@ -354,7 +381,9 @@ def create_app(ctx: AppContext, *, token: str | None, demo: bool = False) -> Fas
         api.include_router(router)
     app.include_router(api)
     _add_error_handlers(app)
-    _mount_web_app(app, web_dist_dir())
+    dist = web_dist_dir()
+    _mount_web_app(app, dist)
+    state.phone.bind_app(PhoneListener(app), public_files(dist))
     app.openapi = _openapi(app)  # type: ignore[method-assign]
-    app.add_middleware(SecurityMiddleware, token=token)
+    app.add_middleware(SecurityMiddleware, token=token, phone=PhoneGate(state.phone))
     return app

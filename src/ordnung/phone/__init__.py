@@ -20,7 +20,19 @@ Policy
   everyday actions. The exact list is :mod:`ordnung.phone.scope`, checked before routing and published
   in the OpenAPI schema (``x-ordnung-phone``); a route nobody classified is refused on a phone.
 * **The letters stay on the computer.** The phone shows them; API answers carry ``no-store``, and on
-  a phone the numbers of *My numbers* and the profile show only their last 4 characters.
+  a phone the numbers of *My numbers* and the profile show only their last 4 characters
+  (:mod:`ordnung.phone.mask`). What a phone changes is attributed to it in the privacy log
+  (:mod:`ordnung.phone.actor`).
+* **Home network only, and only this network.** The listener answers devices in its own subnet, never
+  through a tunnel, VPN, container or virtual machine; it pauses when this computer leaves the address
+  or the router changes (:mod:`ordnung.phone.net`). Its certificate authority may vouch for that one
+  address only (:mod:`ordnung.phone.tls`).
+* **The listener never takes over the process.** It is started with ``startup()`` and stopped with
+  ``shutdown()``, never ``serve()`` or ``run()`` (they would take over Ctrl+C and SIGTERM, and
+  sse-starlette's shutdown watcher could bind to it); sse-starlette's ``AppStatus.should_exit`` is never
+  set (it would end the computer's streams); its lifespan is off. Removing a phone or turning phone
+  access off ends live streams only — a request that writes always finishes (it may hold the ledger
+  lock). See :mod:`ordnung.phone.access`.
 
 Refusals answer ``{"detail": <words for the person>, "code": <PhoneErrorCode>}`` with the status
 :data:`ERROR_STATUS` gives that code.
@@ -95,3 +107,24 @@ def cookie_name(port: int) -> str:
     folders' phone access apart on one computer.
     """
     return f"{COOKIE_PREFIX}{port}"
+
+
+class PhoneRefusal(Exception):
+    """A phone-access refusal: answered ``{"detail", "code"}`` with :data:`ERROR_STATUS`'s status (and
+    ``Retry-After`` when ``retry_after`` is given)."""
+
+    def __init__(self, code: PhoneErrorCode, detail: str, *, retry_after: int | None = None) -> None:
+        super().__init__(detail)
+        self.code: PhoneErrorCode = code
+        self.detail = detail
+        self.retry_after = retry_after
+
+    @property
+    def status(self) -> int:
+        return ERROR_STATUS[self.code]
+
+    def body(self) -> dict[str, str]:
+        return {"detail": self.detail, "code": self.code}
+
+    def headers(self) -> dict[str, str] | None:
+        return {"Retry-After": str(self.retry_after)} if self.retry_after is not None else None

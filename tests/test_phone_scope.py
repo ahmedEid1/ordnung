@@ -219,3 +219,37 @@ def test_health_says_who_asked(schema: dict[str, Any]) -> None:
     health = schema["components"]["schemas"]["Health"]
     assert sorted(health["properties"]["client"]["enum"]) == ["computer", "phone"]
     assert "client" in health["required"]
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "expected"),
+    [
+        ("PATCH", "/api/items/itm_1", (("PATCH", "/api/items/{item_id}"), {"item_id": "itm_1"})),
+        ("HEAD", "/api/items/x.ics", (("GET", "/api/items/{item_id}"), {"item_id": "x.ics"})),
+        (
+            "GET",
+            "/api/documents/doc_1/pages/2.jpg",
+            (("GET", "/api/documents/{doc_id}/pages/{page}.jpg"), {"doc_id": "doc_1", "page": "2"}),
+        ),
+        ("POST", "/api/phone/pair", (("POST", "/api/phone/pair"), {})),
+        ("DELETE", "/api/items/itm_1", None),
+        ("GET", "/api/settings", None),
+        ("GET", "/api/nothing-here", None),
+    ],
+)
+def test_a_phone_request_names_its_operation_and_parameters(
+    method: str, path: str, expected: tuple[scope.Operation, dict[str, str]] | None
+) -> None:
+    assert scope.match(method, path) == expected
+
+
+def test_a_refusal_answers_with_its_code_s_status() -> None:
+    from ordnung.phone import PhoneRefusal
+
+    refused = PhoneRefusal("too_many", "Wait a minute.", retry_after=60)
+    assert (refused.status, refused.body(), refused.headers()) == (
+        429,
+        {"detail": "Wait a minute.", "code": "too_many"},
+        {"Retry-After": "60"},
+    )
+    assert PhoneRefusal("computer_only", "x").headers() is None
