@@ -38,10 +38,9 @@ from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-from evals import conditions  # noqa: E402
+#: The Ordnung path's fingerprint on the frozen code holdout3 was recorded on (2026-10-06, commit 55bedab).
+HOLDOUT3_FROZEN_FINGERPRINT = "822d5316b68df063"
 
 NOW = "2026-09-25T10:00:00Z"
 
@@ -361,8 +360,9 @@ def test_readme_third_held_out_row_matches_its_one_recording() -> None:
         f"date ({_words(early['llm_rules_text'])} early), the model alone {exact['llm_only']} of 56 with "
         f"{_words(late['llm_only'])} late."
     ) in flat
-    # the frozen code: the recording's fingerprint is the one every later replay of the Ordnung path has
-    assert meta["fingerprints"]["ordnung"] == conditions.fingerprint("ordnung", meta["model"])
+    # recorded on the frozen code (fingerprint of the Ordnung path at 55bedab); the code changed after it (the looser
+    # dropped-date check), and a replay on the later code gives the same predictions for every letter
+    assert meta["fingerprints"]["ordnung"] == HOLDOUT3_FROZEN_FINGERPRINT
     signals = {
         signal
         for entry in run["entries"]
