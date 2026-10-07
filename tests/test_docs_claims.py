@@ -555,8 +555,8 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         "around Christmas), never late"
     ) in limitation
     assert (
-        f"Ordnung scores {test} % (test), {holdout} % (holdout) and {holdout2} % (holdout2), with no late dates"
-        in limitation
+        f"Ordnung scores {test} % (test), {holdout} % (holdout), {holdout2} % (holdout2) and {holdout3} % "
+        "(holdout3), with no late dates" in limitation
     )
     # deadline-rules.md section 5 and the benchmark page, which renders the file itself
     rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))

@@ -485,8 +485,8 @@ More in [docs/architecture.md](docs/architecture.md).
   letters from a Land authority it uses nationwide public holidays and the 3-day delivery rule at lower
   confidence, so a date can come out a few days early (1–3 on the benchmark's letters, up to 5 around
   Christmas), never late. The benchmark's Ordnung rows are given the Land printed on the letterhead.
-  Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout) and 83.9 % (holdout2), with no late dates
-  (row ⁹).
+  Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout), 83.9 % (holdout2) and 91.1 % (holdout3),
+  with no late dates (row ⁹).
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
   above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
   megapixels, are refused; take the photo at normal resolution.
