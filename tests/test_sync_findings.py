@@ -347,11 +347,9 @@ def test_finding_16_a_shared_watched_folder(tmp_path: Path) -> None:
     store = Store.open(__import__("ordnung.config").config.Paths(tmp_path / "d").ensure())
     try:
         data = b"%PDF a scan"
+        assert not watcher.was_taken(store, data)
         watcher.remember_taken(store, data)
-        assert not watcher._taken_elsewhere(store, data)  # sync off: no change in behaviour
-        (tmp_path / "d" / "sync").mkdir()
-        (tmp_path / "d" / "sync" / "state.json").write_text("{}")
-        assert watcher._taken_elsewhere(store, data)
+        assert watcher.was_taken(store, data)  # skipped while sync is connected (test_sync_agent)
         assert hashlib.sha256(data).hexdigest() in json.loads(
             store.get_meta(watcher.FOLDER_TAKEN_META_KEY) or "[]"
         )

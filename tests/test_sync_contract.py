@@ -51,6 +51,20 @@ def test_what_travels_and_what_stays_are_apart() -> None:
     assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
 
 
+def test_the_keys_other_modules_name_are_the_contract_s() -> None:
+    """The store and the watched folder can't import ``ordnung.sync`` (it imports them): their own
+    names for the person counter and the watched folder's memory are pinned here."""
+    from ordnung.db import store
+    from ordnung.ingest import watcher
+
+    assert store.PERSON_META_KEY == sync.PERSON_META_KEY
+    assert (watcher.FOLDER_TAKEN_META_KEY, watcher.FOLDER_TAKEN_MAX) == (
+        sync.FOLDER_TAKEN_META_KEY,
+        sync.FOLDER_TAKEN_MAX,
+    )
+    assert sync.INTERRUPTIONS_META_KEY == store._INTERRUPTIONS_KEY
+
+
 def test_the_key_file_takes_256_mib_of_scrypt() -> None:
     assert sync.SYNC_KDF == KdfParams(log2_n=18, r=8, p=1)
     assert sync.SYNC_KDF.memory == 256 * 1024 * 1024 == MAX_SCRYPT_BYTES
@@ -114,7 +128,10 @@ def test_the_gate_s_lists_name_real_operations(schema: dict[str, Any]) -> None:
 
 
 async def test_the_status_reads_no_secret_and_the_demo_never_syncs(data_dir: Path) -> None:
+    from sync_fake_engine import FakeEngine  # until the sync engine is part of this branch
+
     async with api_for(data_dir) as api:
+        api.app.state.ordnung.sync.engine = FakeEngine()
         api.app.dependency_overrides[sync_routes.get_secrets] = lambda: _NeverRead()
         status = (await api.client.get("/api/sync")).json()
         assert (status["available"], status["connected"], status["mode"]) == (True, False, "off")

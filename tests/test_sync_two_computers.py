@@ -374,4 +374,4 @@ def test_a_watched_folder_both_computers_share(pair: Pair) -> None:  # finding 1
     import hashlib
 
     assert hashlib.sha256(data).hexdigest() in taken
-    assert watcher._taken_elsewhere(a.db, data)
+    assert watcher.was_taken(a.db, data)

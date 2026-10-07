@@ -20,6 +20,7 @@ lower-cased, diacritic-folded copy, so "steuerbescheid" finds "Einkommensteuerbe
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import json
 import logging
 import os
@@ -119,6 +120,8 @@ _INTERRUPTIONS_KEY = INTERRUPTIONS_KEY
 PERSON_META_KEY = "sync_person"
 #: Set while a write the person made runs (sync's gate, the watched folder's intake, a CLI write):
 #: every transaction that changes something then also counts one person change (``PERSON_META_KEY``).
+#: Background work (readings, the day change, calendar sync) never sets it. Only set while sync is
+#: connected, so the counter row exists only then.
 PERSON_WRITE: ContextVar[bool] = ContextVar("ordnung_person_write", default=False)
 INTERRUPTED_JOB_ERROR = (
     "Reading this letter stopped Ordnung several times, so it won't be tried again. "
@@ -136,16 +139,30 @@ class NotFoundError(LookupError):
     """An update or lookup that requires an existing row found none."""
 
 
+# --------------------------------------------------------------------------------------------------
+# The person's writes (hand-off sync, ``ordnung.sync``)
+# --------------------------------------------------------------------------------------------------
+
+
 @contextmanager
-def person_write() -> Iterator[None]:
+def person_write(on: bool = True) -> Iterator[None]:
     """Count every transaction that changes something inside the block as a change the person made
-    (:data:`PERSON_WRITE`; the counter is bumped in the same transaction, so a snapshot of the database
-    always holds the count of exactly the person changes it contains)."""
-    token = PERSON_WRITE.set(True)
+    (``on``; :data:`PERSON_WRITE`), or as background work (``False``). The counter is bumped in the
+    same transaction, so a snapshot of the database always holds the count of exactly the person
+    changes it contains."""
+    token = PERSON_WRITE.set(on)
     try:
         yield
     finally:
         PERSON_WRITE.reset(token)
+
+
+def background_context() -> contextvars.Context:
+    """A copy of the current context for a task that does background work on its own (a reading, the
+    Ideas refresh): its writes are never the person's, even when a request of theirs started it."""
+    context = contextvars.copy_context()
+    context.run(PERSON_WRITE.set, False)
+    return context
 
 
 # --------------------------------------------------------------------------------------------------
