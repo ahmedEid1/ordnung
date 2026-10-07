@@ -11,15 +11,19 @@ The passphrase policy for *new* backups: at least :data:`MIN_PASSPHRASE_CHARS` c
 :data:`MAX_PASSPHRASE_CHARS`; nothing else is judged (a long sentence is a good passphrase).
 Ordnung never stores it: without it the backup can't be opened, by anyone.
 
-Where it goes (:func:`destination`): into a folder that exists (under the default name), or as a new
-file with an extension (``mine.ordnung-backup``). A name that doesn't exist and reads as a folder —
-written with a trailing ``/``, or without any extension (``--to /media/usb`` with the stick not
-mounted) — is refused ("is the drive connected?") instead of becoming a file of that name on the
-internal disk.
+Where a backup you make goes (:func:`destination`: ``ordnung backup --to``; the browser downloads its
+own): into a folder that exists (under the default name), or as a new file with an extension
+(``mine.ordnung-backup``) — never inside the data folder it backs up, which a lost disk takes with it. A
+name that doesn't exist and reads as a folder — written with a trailing ``/``, or without any extension
+(``--to /media/usb`` with the stick not mounted) — is refused ("is the drive connected?") instead of
+becoming a file of that name on the internal disk.
 
-Writing a backup file (:func:`write_backup_file`): never inside the data folder it backs up, never
-over an existing file; the file is written under a temporary name next to its destination, private
-to its owner (``0600``), and renamed into place only once the last chunk is sealed.
+Writing a backup file (:func:`write_backup_file`): never over an existing file; the file is written under
+a temporary name next to its destination, private to its owner (``0600``), and renamed into place only
+once the last chunk is sealed. It doesn't check where: the one backup file Ordnung writes inside the data
+folder is hand-off sync's *kept copy* (:mod:`ordnung.sync.kept`, ADR 0018) — this computer's data saved
+in ``<data>/sync/kept/`` with the sync passphrase before it is replaced. A kept copy undoes a replacement
+on this computer; it is never synced, and it is lost with this computer's disk and with Delete everything.
 """
 
 from __future__ import annotations

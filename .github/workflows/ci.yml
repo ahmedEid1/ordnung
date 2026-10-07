@@ -202,8 +202,10 @@ jobs:
         run: cd web && npm run build
       - name: Playwright (the demo; then the real app reading with a fake Claude)
         # playwright.config.ts starts `ordnung demo --reset` and `ordnung serve` with tests/fake_claude.py from
-        # .venv and logs in to both with their tokens; its projects run in order: tour, pages, sweep, layout,
-        # girocode, high-stakes, add-date (the demo), then real-app (e2e/real-app-*.spec.ts)
+        # .venv, plus a second `ordnung serve` (hand-off sync's other computer; both real apps keep secrets in the
+        # file keyring of tests/e2e_support), and logs in to all three with their tokens; its projects run in
+        # order: tour, pages, sweep, layout, girocode, high-stakes, add-date (the demo), then real-app
+        # (e2e/real-app-*.spec.ts)
         run: cd web && npm run e2e
       - uses: actions/upload-artifact@v5
         if: failure()
