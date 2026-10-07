@@ -626,7 +626,8 @@ def test_demo_ignores_ordnung_home(demo_env: Path, data_dir: Path, monkeypatch: 
 def test_demo_never_overwrites_real_data(demo_env: Path, data_dir: Path) -> None:
     Store.open(Paths(data_dir)).close()
     result = invoke("demo", "--no-serve", "--reset", "--data-dir", str(data_dir))
-    assert result.exit_code == 1 and "refusing to overwrite" in result.output
+    # the message names the folder, so a long temporary path wraps it at any line width
+    assert result.exit_code == 1 and "refusing to overwrite" in " ".join(result.output.split())
 
 
 def test_recording_needs_explicit_consent(demo_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:

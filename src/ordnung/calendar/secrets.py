@@ -36,10 +36,20 @@ SOURCE = "git+https://github.com/ahmedEid1/ordnung"
 #: the priority of a real password store (the OS ones are 4.9–5; plain-text files 0.5, null -1)
 MIN_PRIORITY = 1.0
 _REFUSED_MODULES = ("keyring.backends.null", "keyring.backends.fail", "keyrings.alt")
-NO_STORE = (
-    "This computer has no password store Ordnung can use (on Linux: GNOME Keyring or KWallet, "
-    "unlocked), so it can't keep the app password safely."
-)
+#: what calendar sync keeps there, in its messages (hand-off sync passes its own: ``KeyringSecrets(…)``)
+FEATURE = "Calendar sync"
+SECRET = "the app password"
+
+
+def no_store(secret: str = SECRET) -> str:
+    """The message when this computer has no password store Ordnung can use for ``secret``."""
+    return (
+        "This computer has no password store Ordnung can use (on Linux: GNOME Keyring or KWallet, "
+        f"unlocked), so it can't keep {secret} safely."
+    )
+
+
+NO_STORE = no_store()
 
 
 class SecretsUnavailable(RuntimeError):
@@ -49,6 +59,11 @@ class SecretsUnavailable(RuntimeError):
     def __init__(self, message: str, *, install: str | None = None) -> None:
         super().__init__(message)
         self.install = install
+
+
+class SecretsLocked(SecretsUnavailable):
+    """The password store is there but locked (it may unlock later, e.g. after the person logs in);
+    raised only by a :class:`KeyringSecrets` given a ``locked`` message."""
 
 
 class SecretStore(Protocol):
@@ -83,12 +98,12 @@ def install_command(prefix: str | None = None, executable: str | None = None) ->
     return f"{shlex.quote(python)} -m pip install '{KEYRING_REQUIREMENT}'"
 
 
-def backend_problem(backend: Any) -> str | None:
-    """Why the ``keyring`` backend ``backend`` can't keep the app password (``None``: it can)."""
+def backend_problem(backend: Any, secret: str = SECRET) -> str | None:
+    """Why the ``keyring`` backend ``backend`` can't keep ``secret`` (``None``: it can)."""
     chained = getattr(backend, "backends", None)
     if type(backend).__name__ == "ChainerBackend" and isinstance(chained, list):
         # a chain stores into its first backend that takes passwords
-        return backend_problem(chained[0]) if chained else NO_STORE
+        return backend_problem(chained[0], secret) if chained else no_store(secret)
     module = type(backend).__module__
     name = f"{module}.{type(backend).__name__}"
     try:
@@ -96,25 +111,45 @@ def backend_problem(backend: Any) -> str | None:
     except Exception:  # a backend that can't say is not one to trust with a password
         priority = -1.0
     if module.startswith("keyring.backends.fail"):  # keyring found no password store at all
-        return NO_STORE
+        return no_store(secret)
     if module.startswith(_REFUSED_MODULES) or priority < MIN_PRIORITY:
         return (
             f"Python's keyring package is set to use {name}, which doesn't keep passwords safely, so "
-            "Ordnung won't store the app password with it. Use the system's password store (unset "
+            f"Ordnung won't store {secret} with it. Use the system's password store (unset "
             "PYTHON_KEYRING_BACKEND, or change keyring's configuration)."
         )
     return None
 
 
 class KeyringSecrets:
-    """:class:`SecretStore` backed by the :mod:`keyring` package (module policy)."""
+    """:class:`SecretStore` backed by the :mod:`keyring` package (module policy).
+
+    ``service`` names the entries in the password store; ``feature`` and ``secret`` word the messages
+    (calendar sync's by default: ``KeyringSecrets()`` behaves and speaks as it always did). With a
+    ``locked`` message, a store that reports itself locked raises :class:`SecretsLocked` with it
+    instead of "no password store".
+    """
+
+    def __init__(
+        self,
+        service: str = SERVICE,
+        feature: str = FEATURE,
+        secret: str = SECRET,
+        *,
+        locked: str | None = None,
+    ) -> None:
+        self.service = service
+        self.feature = feature
+        self.secret = secret
+        self.locked = locked
 
     def _module(self) -> Any:
         try:
             return importlib.import_module("keyring")
         except ImportError:
+            your = self.secret.replace("the ", "your ", 1) if self.secret.startswith("the ") else self.secret
             raise SecretsUnavailable(
-                "Calendar sync keeps your app password in this computer's password store, and this "
+                f"{self.feature} keeps {your} in this computer's password store, and this "
                 "installation of Ordnung is missing the package for that.",
                 install=install_command(),
             ) from None
@@ -125,8 +160,8 @@ class KeyringSecrets:
         try:
             backend = keyring.get_keyring()
         except errors.KeyringError:
-            raise SecretsUnavailable(NO_STORE) from None
-        problem = backend_problem(backend)
+            raise SecretsUnavailable(no_store(self.secret)) from None
+        problem = backend_problem(backend, self.secret)
         if problem is not None:
             raise SecretsUnavailable(problem)
         return backend
@@ -138,8 +173,12 @@ class KeyringSecrets:
             return getattr(backend, name)(*args)
         except errors.PasswordDeleteError:
             return None
+        except errors.KeyringLocked:
+            if self.locked is not None:
+                raise SecretsLocked(self.locked) from None
+            raise SecretsUnavailable(no_store(self.secret)) from None
         except errors.KeyringError:
-            raise SecretsUnavailable(NO_STORE) from None
+            raise SecretsUnavailable(no_store(self.secret)) from None
 
     def problem(self) -> SecretsUnavailable | None:
         try:
@@ -149,11 +188,11 @@ class KeyringSecrets:
         return None
 
     def get(self, account: str) -> str | None:
-        value = self._call("get_password", SERVICE, account)
+        value = self._call("get_password", self.service, account)
         return value if isinstance(value, str) and value else None
 
     def set(self, account: str, password: str) -> None:
-        self._call("set_password", SERVICE, account, password)
+        self._call("set_password", self.service, account, password)
 
     def delete(self, account: str) -> None:
-        self._call("delete_password", SERVICE, account)
+        self._call("delete_password", self.service, account)

@@ -3,8 +3,9 @@
 Ordnung is a single Python package (`ordnung`) that serves a React single-page app on
 `127.0.0.1`, keeps everything in one SQLite file, and talks to Claude only through the user's own
 `claude` CLI. Optionally, the same process serves the same app to phones the person paired, on a
-second listener on the home network (HTTPS, off until turned on). This page explains how the pieces fit
-together and why.
+second listener on the home network (HTTPS, off until turned on), and hands Ordnung over between the
+person's computers through an encrypted copy in a folder their own sync tool keeps in step (off until set
+up; one computer in use at a time). This page explains how the pieces fit together and why.
 
 ## Components and trust boundaries
 
@@ -27,6 +28,7 @@ flowchart LR
       ASK["Ask (agent loop)"]
       DRF["Letters<br/>templates · checks · DIN 5008 PDF"]
       ICS["Calendar (.ics)"]
+      SYN["Hand-off sync<br/>agent · gate · engine"]
     end
     DB[("SQLite<br/>WAL · FTS5 · trigram")]
     FS[("files/ · derived/")]
@@ -39,6 +41,10 @@ flowchart LR
 
   subgraph home["Your home network (optional)"]
     PH["Paired phone's browser<br/>HTTPS · device cookie"]
+  end
+
+  subgraph synced["Your sync tool's folder (optional)"]
+    SF["Sync folder<br/>(Nextcloud · Syncthing · Dropbox · …)<br/>ciphertext only · keyed names"]
   end
 
   L --> API
@@ -59,6 +65,8 @@ flowchart LR
   ASK -->|"question · only mcp__ordnung__* tools"| CC
   CC -->|tool calls| MCP
   MCP -->|"query_only"| DB
+  SYN <--> DB & FS
+  SYN <-->|"sealed objects, one head per computer<br/>passphrase only in the OS keyring"| SF
 ```
 
 **Trust boundaries**
@@ -77,9 +85,11 @@ flowchart LR
 | Upload → machine | Checked before anything decodes it: PDF stream expansion (an encrypted PDF's measured decrypted), image pixels and text pages are capped; a refused upload leaves no file behind; the text layer is read on a pdfminer document that gives up after 1000 lookups answering with another reference, so a PDF whose objects refer to themselves can't hang a reading (its pages are transcribed instead); the data folder is private to the account (`0700`, files `0600`) |
 | Browser → server | Loopback (`127.0.0.1`; the Host must be `localhost`, `127.0.0.1` or `[::1]`, so another `--host` answers no request addressed to another name or address), session token cookie (the browser is opened through a private local page, never with the token on a command line), `X-Ordnung-Client` header on writes, Fetch-Metadata/Origin checks, strict CSP, side-effect-free GETs (three bounded exceptions: `health?probe=1`, "Run check", makes one tiny live model call, at most once a minute; `health` itself, when its Claude status is stale, checks Claude again (no model call), uses a `claude` found on PATH from then on and, once Claude is ready, lets the letters waiting for it be read; and downloading a drafted letter's PDF — or a sent letter's Nachweis — records its SHA-256 among the last 200, so the watched folder never takes the download for a letter received — the fingerprint must be of the exact bytes handed out, which depend on the profile at download time). Any unexpected server error is a JSON `500`: `{detail: a plain sentence, code: "internal_error", error: the exception's class name}`. The error's message is never sent, because it may quote a letter |
 | Process → OS | Documents and user prompts never on argv (stdin only; argv carries flags and the fixed system prompt), own process group killed on timeout, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`. The desktop notification's texts (letters' titles in *full* mode) reach `notify-send` / `osascript` / PowerShell as separate arguments of a fixed script or in environment variables — never a shell line; markup is escaped, control and bidi characters removed. The start-at-login entry is a file Ordnung writes (quoted per format, a line break refused) and discards the server's standard output, so the session token never reaches a journal |
-| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` (or `http://` to this computer's loopback address), TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring (a backend that doesn't keep passwords safely — `null`, `keyrings.alt`, priority below 1 — is refused), never in `ordnung.db`, a log or an answer, and the keyring is read only to connect, send a change, check once a day that Ordnung's events are still there, or disconnect (never to show Settings); the keyring account is bound to the data folder's connection, so a restored copy of the data never reads or deletes the original's password and starts with syncing paused; "Delete everything" removes Ordnung's events and the password first; a server's XML is size-capped and read without a DTD |
+| Ordnung → your calendar provider (opt-in) | Nothing is sent until a calendar is connected; `https://` (or `http://` to this computer's loopback address), TLS verified, no redirects followed to another host; discreet by default (dates, times and alarms — no titles, names or amounts); only resources Ordnung created are replaced or deleted; the app password lives in the OS keyring (a backend that doesn't keep passwords safely — `null`, `keyrings.alt`, priority below 1 — is refused), never in `ordnung.db`, a log or an answer, and the keyring is read only to connect, send a change, check once a day that Ordnung's events are still there, or disconnect (never to show Settings); the keyring account is bound to the data folder's connection, so a restored copy of the data never reads or deletes the original's password and starts with syncing paused; "Delete everything" removes Ordnung's events (unless another computer of hand-off sync sends to the same calendar) and the password first; a server's XML is size-capped and read without a DTD |
 | Phone → Ordnung (home network, opt-in) | A second uvicorn server in the same process (`phone/access.py`), bound to one home-network IPv4 address of the computer, never `0.0.0.0`; its requests are tagged by the listener (an ASGI scope key no client can set) and go to `api/phone_gate.py` instead of the computer's checks, which stay as they are. HTTPS with a server certificate from a local authority name-constrained to that one address (`IPAddress(<address>/32)` and the reserved DNS name `invalid`), keys in `<data>/phone/`, never in the database or a backup; exact `https://<address>:<port>` Host; clients only from the bound address's subnet (interfaces from `ifaddr`, tunnels, VPNs, containers and virtual machines never offered); paused when the router's fingerprint changes. A device cookie per phone (`__Host-ordnung_phone_<port>`: Secure, HttpOnly, SameSite=Strict; only its SHA-256 stored, rotated at most hourly with reuse detection); the session token, a bearer header and `?token=` mean nothing there, and the device cookie means nothing on the computer's listener. An allow-list of operations (`phone/scope.py`, published as `x-ordnung-phone` in OpenAPI) is checked before routing — an unclassified route is refused — and computer-only handlers check the tag again (`require_computer`); `Origin` required on every change, Fetch-Metadata and `X-Ordnung-Client` as on the computer, `no-store` on every API answer, CORP and a Permissions-Policy on every answer; hourly limits per phone for Ask, the other model actions and the letters it adds; what a phone changes is attributed to it in the privacy log (`phone/actor.py`), and its own numbers are masked (`phone/mask.py`) ([ADR 0017](decisions/0017-phone-access-over-the-home-network.md)) |
 | Wi-Fi neighbours → phone listener | Before pairing only the pairing page (`/pair`), the build's own files (`assets/`, the icon — never `build-info.json`) and `POST /api/phone/pair` pass; the pairing request must state a length of at most 1 KiB, a GET or HEAD may carry no body, a body without a length (`Transfer-Encoding`) is refused on every request and every body is counted as it arrives, so nothing large is read before sign-in; paths with `.`/`..` segments, `//` or `\` get 400. Pairing: a 50-bit code in the URL fragment, once, for 10 minutes, kept in memory as a hash; the same answer for a wrong, expired or missing code; 5 wrong tries per device, 100 in all, then the code is cancelled; at most 10 pairing requests a minute per address and 60 in all; a code that comes back after it paired removes that phone too. At most 128 connections at once; refusals logged as counts per minute, never a code, token, cookie or fragment |
+| Ordnung → sync folder (opt-in) | Only ciphertext is written: AES-256-GCM STREAM chunks under HKDF subkeys of a random vault key that scrypt of the passphrase wraps (N = 2^18, r = 8: 256 MiB) in a 92-byte key file with no plaintext field; every name is a keyed hash (no dates, ids, file types or computer names), every size padded (Padmé); a computer writes only its own head, its own temporary files and write-once objects named by their content (whose bytes are the same whoever writes them, so a sync tool never makes a conflict copy of one); names that aren't Ordnung's are ignored and never deleted. The passphrase lives in the OS keyring (the same refusals as calendar sync) and is never in the folder, the database, `sync/state.json`, a log, an answer or a backup. What reaches the provider: how many files, roughly how large, how many computers, when things change, and from bursts of new objects roughly how many letters and pages are added ([ADR 0018](decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md)) |
+| Sync folder → data folder | Untrusted until authenticated: an object counts only after it authenticated against its name, kind and vault and matched its expected SHA-256 — a short, placeholder (dataless, online-only) or unreadable file is "not arrived yet", never applied and never called damage; a replayed or rolled-back head is ignored by its `written` counter; a head may claim another computer's person changes only up to that computer's published number; manifests and buckets are capped and every path goes through the backup's name policy; a newer format or schema is refused before anything changes; a database carrying the demo's keys is refused. A version is staged and verified outside the live data, then applied all or nothing under a journal with writes fenced; the person's data is replaced only when the incoming version contains every person change it has, or the person chose (a kept copy first) |
 | Backup file → data folder | Authenticated encryption end to end (header MAC, AES-256-GCM chunks bound to the header, their order and the last one), a newer format refused before any key is derived, scrypt costs capped when read (at most 256 MiB of memory, p ≤ 2); the archive extracted under a name policy (regular files in three folders only) into a staging folder, read to its authenticated end and checked against its manifest before it replaces anything; a folder with data is moved aside, never deleted ([ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md)) |
 
 ## Reading a letter
@@ -381,11 +391,57 @@ flowchart LR
   (`calendar/secrets.py`), under an account bound to this data folder's connection: a restored
   backup starts detached (`backup/restore.py` → `caldav.detached`). While a calendar is connected the "import the calendar file" Idea stays
   quiet, and "Delete everything" (`api/routes/data.py`) clears the calendar and the keyring first,
-  holding calendar sync's lock so no running sync writes its record back.
+  holding calendar sync's lock so no running sync writes its record back (the events stay when another
+  computer of hand-off sync sends to the same calendar). With hand-off sync, what was sent travels with
+  the data under a hashed target, so a computer taking over doesn't send an event twice.
 - **The backup** (`backup/`) is a pull-based stream (`BackupStream`, one step per file): the CLI
   writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
   all or nothing (`backup/restore.py`). The format and its policies are in
   [ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md).
+
+## Moving between computers: hand-off sync
+
+People with a laptop and a desktop want one Ordnung on both, and most already run a file-sync tool. Such a
+tool delivers late, out of order and in pieces, keeps conflict copies, and sees everything it carries.
+So Ordnung is **in use on one computer at a time**, writes only ciphertext into the synced folder, never
+merges records, and never replaces the person's data unless the incoming copy provably holds every change
+of theirs — or they chose, and a kept copy was written first
+([ADR 0018](decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md); policy in
+`ordnung/sync/__init__.py`).
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant L as Laptop (in use)
+  participant F as Sync folder (both copies, kept in step by the sync tool)
+  participant D as Desktop (standing by)
+
+  Note over L: a person's change bumps the person counter in its own transaction
+  L->>L: snapshot in memory → scrub what stays on this computer → digest
+  L->>F: objects the folder lacks (sealed, content-named, fsynced)
+  L->>F: manifest, then its head (the rename is the commit point)
+  F-->>D: delivered late, in any order, maybe in pieces
+  D->>F: scan: decrypt every head; verify each new object as it arrives
+  D->>D: "Use Ordnung here": decide (pure) → wait until everything has arrived
+  D->>D: stage + verify outside the live data (writes still allowed)
+  D->>D: fence writes · drain background work · decide again
+  D->>D: kept copy (only if the person's data would be lost) → journal
+  D->>D: place files → replace the database in one transaction → prune
+  D->>F: claim: epoch + 1 in its own head (nothing else uploaded)
+  F-->>L: the laptop sees the higher epoch and stands by
+```
+
+| | What decides it |
+|---|---|
+| **Who is in use** (the lease) | The head with the highest `(epoch, computer id)`. "Use Ordnung here" claims epoch + 1. Silence never ends a lease, and taking over is always allowed: content decisions never depend on it |
+| **Whose content is newer** (lineage) | Each version records the ranges of person numbers it contains, per computer, and the ranges a choice dropped. `behind` = the other version covers this one; `ahead` = this one covers the other; otherwise **diverged** — a person change on each side: the person is asked once which computer's Ordnung to keep. Background work never makes a version newer, so it never causes a question |
+| **A change that arrives late** | Brought in quietly when the incoming version contains everything the local data has; asked about otherwise; never dropped |
+| **Clocks** | Never compared between computers. Timers are each computer's monotonic clock; wall-clock times are only shown, labelled with whose clock |
+| **A local database that went back in time** | Counters raised to what the folder shows at start; a database older than this computer's last save is a rollback: a kept copy, then that save brought back |
+
+The engine (`sync/engine.py`) is blocking and shared by the server's agent and the CLI; `sync/decide.py`
+is pure. Every file-system call into the folder and the data folder goes through an injectable `FsOps`,
+which is how the crash, power-cut and sync-tool tests reach every byte and every rename.
 
 ## Data model (simplified)
 
@@ -495,6 +551,20 @@ build from before a renumbering) is refused with the reason, never migrated on a
   (transcribe, extract, review) — each bounded by a semaphore.
 - **CLI + server:** if a server is running for the data directory, the CLI talks to its API;
   otherwise it takes an exclusive data-dir lock and runs in-process.
+- **In use or standing by** (hand-off sync, opt-in). The sync agent (`sync/agent.py`, an `ApiState` field)
+  serialises every sync operation under one lock and runs the folder's blocking work in one thread of its
+  own, with a timeout on every folder operation, so a hung network share never holds up the event loop. On
+  a standing-by computer the worker, the tick, the folder watcher and calendar sync are stopped, and the
+  gate (`sync/gate.py`, a pure ASGI middleware inside `SecurityMiddleware`, so both listeners pass it)
+  refuses every write before a handler runs. Replacing the data is two-phase: the version is staged with
+  writes allowed; then the gate fences writes and waits for the requests already admitted on both listeners,
+  background work stops and its threads (readings, triggers, calendar runs, renders — one drainable
+  executor) drain, the decision is taken again, and only then the database is replaced through SQLite's
+  backup API in one transaction under the ledger lock, while open read-only readers (`--with-ledger`
+  MCP clients) keep their old snapshot. `ordnung sync` without a server holds the data-dir lock for an
+  in-process take-over. Every person write bumps the person counter in its own transaction (`PERSON_WRITE`,
+  a context variable set by the gate, the watched folder and the CLI), so a save counts exactly what its
+  snapshot holds.
 
 ## Testing strategy
 
@@ -515,4 +585,5 @@ build from before a renumbering) is refused with the reason, never migrated on a
 | Backup and restore | Byte-for-byte round trips with equal row counts (a seeded ledger and the whole demo life), every byte flipped, chunks cut, swapped, appended or taken from another backup, hostile header parameters, a Hypothesis round-trip-and-flip property, hostile archives inside validly encrypted files (`..`, absolute names, links, duplicates, extras, a damaged or newer database), and the restore policy (free folder, `--force` moves aside, a held lock, a failed swap); a write only in the WAL; every file written through a binary descriptor, and a restored file whose size on disk differs refused; links named, not silently skipped |
 | Reminders outside the browser | Notification text in both modes from seeded agendas (discreet never names a title, party or amount), argv/env per system with hostile titles, the once-a-day policy and the tick; autostart entries per system written into temporary home folders, quoting of awkward paths, status and removal |
 | Phone access | The allow-list against the app's OpenAPI operations (every operation classified, `NEVER_ON_PHONE` kept apart, the `x-ordnung-phone` marks); the gate over ASGI with a phone's client address and Host (home network, exact Host, Fetch-Metadata and `Origin`, dot segments, body limits before and after sign-in — a chunked or oversized pairing request refused after reading at most 1 KiB —, the session token meaning nothing there, every computer-only operation refused, per-phone limits, attribution, and removal during a write inside the ledger lock letting no second writer in); the certificates with the `cryptography` verifier and OpenSSL (the authority accepts its one address and refuses the router's, another network's and any name); pairing (one answer for every wrong code, tries per device and in all, a reused code, check words, platform labels); interface choice without tunnels and the client check; masking; and the real listener on a loopback address next to the computer's, with real TLS and sockets (one lifespan, signal handlers and sse-starlette untouched, removal ending a stream at once, turning off within the graceful stop, a busy port and a missing address as problems) — not marked slow, so the lowest-versions job runs it on uvicorn's floor. Playwright pairs an emulated phone (Chromium with a phone's viewport and touch, HTTPS with the certificate warning accepted) with the real app, uses it, checks its refusals, removes it and turns phone access off (`web/e2e/real-app-phone.spec.ts`); no test runs on a physical phone |
+| Hand-off sync | Pure units for the format (sealing and opening at every chunk boundary, `sealed_size` and Padmé golden values, every byte tampered, names keyed per folder), the lineage algebra and every decision row, with generated histories; a crash at every byte and every file operation of save, pull and claim, and a power cut that drops every unsynced write (`CrashingFs`, `PowerCutFs`), each followed by a restart that must find both sides usable; a sync-tool simulator delivering late, out of order, in pieces, rolled back, with conflict copies and online-only placeholders; a Hypothesis model of two computers (person and background edits, saves, take-overs, choices, crashes, clock jumps) in which no person change is ever lost; a subprocess killed during the database apply (`slow`); the gate over every API route on a standing-by server, phone listener included; the status reading no secret. Playwright runs the story with two real `ordnung serve` processes on one machine, a file-backed test keyring and a played sync tool (`web/e2e/real-app-sync.spec.ts`: set up, join, stand by, take over, a choice, a kept copy, no readable byte in either copy of the folder). Not yet run against a real Nextcloud, Syncthing or iCloud Drive folder on two physical computers |
 | Calendar sync | A small fake CalDAV server (in-process and on a loopback socket) that checks the password, one event per resource and UID conflicts: discreet events never carry a title, name or amount; only changed events are sent, only Ordnung's own removed; discovery (well-known, principal, calendar home, another https host); every refusal (password, not a calendar, tasks only, redirects, DTDs, oversized answers, TLS, the network); the pause after a refused password; the password never in the data folder; the keyring adapter with an in-memory backend; events deleted from the calendar put back by the daily check; a backup restored next to the original, or on a new computer after the old one was wiped; addresses in a server's answer that can't be read |

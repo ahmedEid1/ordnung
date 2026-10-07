@@ -71,6 +71,15 @@ export class ApiError extends Error {
   get isDemoLimit(): boolean {
     return this.code === "static_demo" || this.code === "demo_replay";
   }
+
+  /**
+   * True for hand-off sync's refusal of a write while another computer is in use (or while changes are being
+   * brought over): 409 `standby`, said in the server's sentence ("Ordnung is in use on desktop. Use it here
+   * first …"). Nothing was changed.
+   */
+  get isStandby(): boolean {
+    return this.code === "standby";
+  }
 }
 
 export type QueryValue = string | number | boolean | null | undefined;

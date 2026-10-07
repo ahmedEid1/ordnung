@@ -121,3 +121,27 @@ describe("seedFromQueue (on connecting: a reload, a new tab)", () => {
     expect(result.current.paused).toBeNull();
   });
 });
+
+describe("sync.updated (hand-off sync)", () => {
+  it("asks for the sync status again", () => {
+    const qc = new QueryClient();
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    handleServerEvent(qc, { type: "sync.updated", data: { replaced: false } });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["sync"] });
+  });
+
+  it("this computer's data was replaced: every page loads again — health and the sync status stay meanwhile", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(["health"], { ok: 1 });
+    qc.setQueryData(["sync"], { mode: "in_use" });
+    qc.setQueryData(["documents", "list", {}], []);
+    qc.setQueryData(["profile"], { name: "Sam" });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    handleServerEvent(qc, { type: "sync.updated", data: { replaced: true } });
+    expect(qc.getQueryData(["documents", "list", {}])).toBeUndefined();
+    expect(qc.getQueryData(["profile"])).toBeUndefined();
+    expect(qc.getQueryData(["health"])).toEqual({ ok: 1 });
+    expect(qc.getQueryData(["sync"])).toEqual({ mode: "in_use" });
+    expect(invalidate).toHaveBeenCalledWith();
+  });
+});

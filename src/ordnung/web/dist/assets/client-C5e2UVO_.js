@@ -1,0 +1,1 @@
+import{Qn as e}from"./scale-AVUnxs3H.js";function t(){return e().data?.client===`phone`}export{t};

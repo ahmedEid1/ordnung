@@ -55,7 +55,7 @@ def test_every_operation_is_classified(schema: dict[str, Any]) -> None:
     gone = sorted((PHONE_ROUTES | COMPUTER_ONLY) - operations)
     assert not gone, f"classified operations that don't exist: {gone}"
     assert not PHONE_ROUTES & COMPUTER_ONLY
-    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (102, 57, 45)
+    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (115, 57, 58)
 
 
 def test_never_on_phone_stays_on_the_computer() -> None:

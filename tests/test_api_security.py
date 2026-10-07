@@ -3,10 +3,12 @@ app with its CSP, the server discovery file and the cached Claude status."""
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import os
 import stat
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -267,6 +269,26 @@ async def test_lifespan_starts_and_stops_background_work(data_dir: Path) -> None
             assert api.ctx.worker.running
             assert api.ctx.bus._loop is not None
         assert not api.ctx.worker.running
+
+
+async def test_shutdown_waits_for_a_server_thread_still_running(data_dir: Path) -> None:
+    """Integration finding: a cancelled tick's calendar sync thread could still read the Store after
+    the lifespan ended (the Store closes then), and sqlite crashed once at a test's teardown."""
+    order: list[str] = []
+    release = threading.Event()
+
+    def lingering() -> None:  # a cancelled task's thread, still running
+        release.wait(5)
+        order.append("thread done")
+
+    async with api_for(data_dir) as api:
+        loop = asyncio.get_running_loop()
+        async with lifespan(api.app):
+            thread = loop.run_in_executor(api.ctx.executor, lingering)
+            loop.call_later(0.3, release.set)
+        order.append("stopped")
+        await thread
+    assert order == ["thread done", "stopped"]
 
 
 # --------------------------------------------------------------------------------------------------

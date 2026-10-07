@@ -39,6 +39,7 @@ from ordnung.config import PACKAGE_DIR, Paths
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import Store
 from ordnung.locking import LOCK_NAME, DataDirLock
+from ordnung.sync import crypto as sync_crypto
 
 FAST = KdfParams(log2_n=10)
 PASS = "a long enough passphrase"
@@ -53,6 +54,7 @@ def fast_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(archive, "DEFAULT_KDF", FAST)
     monkeypatch.setattr(archive.write_backup, "__kwdefaults__", {"kdf": FAST, "created_at": None})
     monkeypatch.setattr(backups.write_backup_file, "__kwdefaults__", {"kdf": FAST})
+    monkeypatch.setattr(sync_crypto, "SYNC_KDF", FAST)  # a kept copy's sync key file, should one be made
 
 
 @pytest.fixture

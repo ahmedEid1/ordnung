@@ -104,7 +104,7 @@ read a large body before it is signed in. Policy: `ordnung/api/phone_gate.py`.
 
 **A restored copy doesn't take over phones.** Backups leave phone access out (the record is removed from
 the database snapshot, and `phone/` was never in a backup); a restore detaches it; Delete everything
-removes the certificates. Sync between computers, when it comes, leaves the same record out.
+removes the certificates. Hand-off sync between computers (ADR 0018) leaves the same record out.
 
 Chosen over: the session link on the phone (one full-admin secret, no scope, no revocation);
 `serve --host 0.0.0.0` (the whole API on every interface); plain HTTP (sniffable letters and sign-ins); a
@@ -140,4 +140,5 @@ network; unreliable on Android); a separate process (two writers on one data fol
   is logged as written on that phone.
 - Why a phone was signed out is kept in memory: after a restart, a phone removed before it came back is
   told only that it was removed.
-- No IPv6, no mDNS, no app-store app, no sync between computers.
+- No IPv6, no mDNS, no app-store app. A phone reaches only its own computer: it can't take Ordnung over
+  from another one (hand-off sync between computers, ADR 0018, is the computers' own).

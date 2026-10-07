@@ -2217,6 +2217,13 @@ class FolderUpdatedEvent(_Event):
     held: bool | None = None
 
 
+class SyncUpdatedEvent(_Event):
+    """``sync.updated``: hand-off sync's status changed (``GET /api/sync``); ``replaced``: this computer's
+    data was just replaced (a take-over, a choice, a change brought in), so every page loads again."""
+
+    replaced: bool = False
+
+
 class DemoMailEvent(_Event):
     """``demo.mail``: a letter of the demo's New-mail tray was opened."""
 
@@ -2250,6 +2257,7 @@ class ServerEvents(BaseModel):
     draft_sent: DraftSentEvent = Field(alias="draft.sent")
     demo_mail: DemoMailEvent = Field(alias="demo.mail")
     folder_updated: FolderUpdatedEvent = Field(alias="folder.updated")
+    sync_updated: SyncUpdatedEvent = Field(alias="sync.updated")
 
 
 SERVER_EVENTS: dict[str, type[BaseModel]] = {

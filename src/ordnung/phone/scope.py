@@ -131,6 +131,19 @@ NEVER_ON_PHONE: dict[Operation, str] = {
     ("POST", "/api/documents/held/read"): "held-letter decisions",
     ("POST", "/api/documents/held/keep-private"): "held-letter decisions",
     ("POST", "/api/documents/held/wait"): "held-letter decisions",
+    ("GET", "/api/sync"): "hand-off sync",
+    ("PUT", "/api/sync"): "hand-off sync",
+    ("PATCH", "/api/sync"): "hand-off sync",
+    ("DELETE", "/api/sync"): "hand-off sync",
+    ("POST", "/api/sync/inspect"): "hand-off sync",
+    ("POST", "/api/sync/use-here"): "hand-off sync",
+    ("POST", "/api/sync/choose"): "hand-off sync",
+    ("POST", "/api/sync/save"): "hand-off sync",
+    ("POST", "/api/sync/passphrase"): "hand-off sync",
+    ("POST", "/api/sync/refill"): "hand-off sync",
+    ("DELETE", "/api/sync/computers/{key}"): "hand-off sync",
+    ("GET", "/api/sync/kept/{name}"): "hand-off sync",
+    ("DELETE", "/api/sync/kept/{name}"): "hand-off sync",
 }
 
 _COMPUTER = _operations(
@@ -180,6 +193,19 @@ _COMPUTER = _operations(
     GET /api/demo/questions
     GET /api/demo/mail
     POST /api/demo/mail
+    GET /api/sync
+    PUT /api/sync
+    PATCH /api/sync
+    DELETE /api/sync
+    POST /api/sync/inspect
+    POST /api/sync/use-here
+    POST /api/sync/choose
+    POST /api/sync/save
+    POST /api/sync/passphrase
+    POST /api/sync/refill
+    DELETE /api/sync/computers/{key}
+    GET /api/sync/kept/{name}
+    DELETE /api/sync/kept/{name}
     """
 )
 """Admin settings and profile edits, phone access and its devices, backups, deleting data, files and
@@ -187,8 +213,9 @@ records that would leave the computer (originals, generated PDFs, the calendar f
 they were downloaded, traces), the watched folder and held
 letters (privacy decisions), calendar sync (its password is in the computer's keyring), desktop
 notifications (they appear on the computer), the privacy log and usage, the Ideas review (background
-model work no phone waits for) and the demo. ``/api/openapi.json`` and any unknown ``/api`` path are
-refused as ``"unknown"``."""
+model work no phone waits for), the demo, and hand-off sync between computers (the passphrase lives in
+this computer's keyring, and taking over replaces the data). ``/api/openapi.json`` and any unknown
+``/api`` path are refused as ``"unknown"``."""
 
 PHONE_ROUTES: frozenset[Operation] = frozenset(_PHONE)
 COMPUTER_ONLY: frozenset[Operation] = frozenset(_COMPUTER)

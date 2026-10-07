@@ -17,7 +17,7 @@ import { classifyPhoneRequest, phoneScopeFromOpenApi } from "@/mocks/phone";
 import { SchemaChecker, type OpenApiDoc, type Operation, type Schema } from "@/test/jsonSchema";
 import { ApiError } from "./client";
 import { api, type Api } from "./endpoints";
-import { PHONE_ERROR_CODES, type StreamEvent } from "./types";
+import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type StreamEvent } from "./types";
 
 const doc = JSON.parse(openapiText) as OpenApiDoc;
 const strict = new SchemaChecker(doc, true);
@@ -290,6 +290,23 @@ const CASES = {
   // pairing is the phone's: the computer's own listener answers 404 not_phone (the phone listener: below)
   pairPhone: { run: () => api.pairPhone({ code: "K7QM2-XD9PA", name: "Sam's iPhone" }), status: 404 },
 
+  // hand-off sync, in this order: off, a new folder looked at and set up, renamed, saved, the passphrase typed
+  // again, an emptied folder filled again, a lost computer forgotten, kept copies downloaded and deleted; near the
+  // end (the other computer takes over, then both changed): use it here, choose, disconnect
+  sync: { run: () => api.sync() },
+  inspectSyncFolder: { run: () => api.inspectSyncFolder("/home/sam/Dropbox/Ordnung") },
+  connectSync: { run: () => api.connectSync({ folder: "/home/sam/Dropbox/Ordnung", name: "sam-laptop", passphrase: "kirun-bodaf-sumel-tavok-perin", keep: null }) },
+  updateSync: { run: () => api.updateSync({ name: "Sam's laptop", dismiss_notice: null }) },
+  saveSync: { run: () => api.saveSync({ hand_over: false }) },
+  syncPassphrase: { run: () => (srv.sync.setProblem("passphrase_needed"), api.syncPassphrase("kirun-bodaf-sumel-tavok-perin")) },
+  refillSync: { run: () => (srv.sync.setProblem("folder_empty"), api.refillSync()) },
+  forgetComputer: { run: () => api.forgetComputer(srv.sync.addComputer({ name: "old-laptop" }).key) },
+  downloadKept: { run: () => api.downloadKept(srv.sync.addKept().name) },
+  deleteKept: { run: () => api.deleteKept(srv.sync.addKept().name) },
+  takeOver: { run: () => (srv.sync.addComputer({ name: "sam-desktop" }), srv.sync.otherTakesOver("sam-desktop"), api.takeOver({ older_copy: false })) },
+  chooseSync: { run: () => (srv.sync.bothChanged(), api.chooseSync(srv.sync.choice!.sides.find((s) => !s.this)!.key)) },
+  disconnectSync: { run: () => api.disconnectSync({ forget_passphrase: true, unreceived_ok: true }) },
+
   activity: { run: () => api.activity(50) },
   usage: { run: () => api.usage() },
   rules: { run: () => api.rules() },
@@ -325,6 +342,9 @@ const ORDER: (keyof Api)[] = [
         "deleteEverything",
         "removeProof",
         "deleteCall",
+        "takeOver",
+        "chooseSync",
+        "disconnectSync",
       ].includes(name),
   ),
   "removeProof",
@@ -332,6 +352,10 @@ const ORDER: (keyof Api)[] = [
   "deleteDraft",
   "deleteItem",
   "deleteDocument",
+  // hand-off sync: the other computer takes over (every write but sync's is refused meanwhile), then both changed
+  "takeOver",
+  "chooseSync",
+  "disconnectSync",
   "deleteEverything",
 ];
 
@@ -452,6 +476,27 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     expect(done.type).toBe("done");
     expect(done).toMatchObject({ text: expect.any(String), message_id: expect.any(String), thread_id: expect.any(String) });
     expect(done.citations?.every((c) => typeof c.label === "string")).toBe(true);
+  });
+
+  it("knows every refusal code of hand-off sync (`ordnung.sync.ERROR_STATUS`; error bodies aren't in the schema)", () => {
+    const policy = readFileSync(resolve(__dirname, "../../../src/ordnung/sync/__init__.py"), "utf8");
+    const table = /^ERROR_STATUS[^{]*\{([^}]*)\}/m.exec(policy)?.[1] ?? "";
+    const codes = [...table.matchAll(/"(\w+)":\s*(\d{3})/g)].map((m) => m[1]);
+    expect(codes.length).toBeGreaterThan(10);
+    expect([...SYNC_ERROR_CODES].sort()).toEqual(codes.sort());
+  });
+
+  it("a computer standing by refuses every write but sync's own, a backup and phone access (409 standby), like the API's gate", async () => {
+    srv.sync.setUp().otherTakesOver("sam-desktop");
+    const refused = async (run: () => Promise<unknown>) => run().then(() => null, (err: unknown) => (err instanceof ApiError ? { status: err.status, code: err.code } : err));
+    expect(await refused(() => api.updateProfile({ name: "Sam" }))).toEqual({ status: 409, code: "standby" });
+    expect(await refused(() => api.uploadDocuments([pdf()]))).toEqual({ status: 409, code: "standby" });
+    expect(await refused(() => api.profile())).toBeNull(); // looking is fine
+    expect(await refused(() => api.downloadBackup("correct horse battery staple"))).toBeNull();
+    expect(await refused(() => api.updatePhone({ enabled: true }))).toBeNull();
+    expect(await refused(() => api.saveSync())).toEqual({ status: 409, code: "standby" }); // the route's own refusal
+    expect(await refused(() => api.takeOver())).toBeNull();
+    expect(await refused(() => api.updateProfile({ name: "Sam" }))).toBeNull(); // in use here again
   });
 
   it("the schema checker catches drift (sanity check of the checker itself)", () => {

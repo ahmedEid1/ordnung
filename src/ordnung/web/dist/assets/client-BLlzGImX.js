@@ -1,1 +1,0 @@
-import{nn as e}from"./scale-BNqciX0e.js";function t(){return e().data?.client===`phone`}export{t};

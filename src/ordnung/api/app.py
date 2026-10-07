@@ -3,14 +3,21 @@ Security Policy, the localhost security middleware and a lifespan that runs the 
 
 ``create_app(ctx, token=…, demo=…)`` wires one :class:`~ordnung.app_context.AppContext` into an app:
 
-* **lifespan** — binds the event bus to the server loop, starts the ingest worker, the daily tick and
-  the watched folder (when one is set, :mod:`ordnung.ingest.watcher`) and phone access when it was left
-  on (:mod:`ordnung.phone`), and on shutdown stops them — phone access first, so phones' requests end
-  before the worker stops (and the API's own background tasks). The context itself stays open; whoever
-  built it closes it.
+* **lifespan** — binds the event bus to the server loop and makes the context's thread pool the loop's
+  default executor (hand-off sync waits for its threads before it replaces the data), starts hand-off
+  sync (:mod:`ordnung.sync.agent`; it takes this computer's last known mode at once), then — unless
+  another computer is in use — the ingest worker, the daily tick and the watched folder (when one is
+  set, :mod:`ordnung.ingest.watcher`), and phone access when it was left on (:mod:`ordnung.phone`). On
+  shutdown phone access stops first, so phones' requests end before the worker stops; sync saves the
+  person's changes before readings get their grace period, background work stops (and the API's own
+  background tasks), and sync saves once more and says this computer was closed. The context itself
+  stays open; whoever built it closes it.
+* **the standby gate** — :class:`~ordnung.sync.gate.SyncGate` sits inside the security middleware, so
+  every authenticated write — from this computer or a paired phone — passes it: 409 ``standby`` while
+  another computer is in use, and the person's writes are counted for hand-off sync.
 * **errors** — model failures become ``503`` with a message the person can act on (and a ``code``),
-  invalid input ``422``, unknown records ``404``, phone-access refusals their status with
-  ``{"detail", "code"}``, and anything unexpected a JSON ``500`` with a plain sentence (``code``
+  invalid input ``422``, unknown records ``404``, phone-access and hand-off sync refusals their status
+  with ``{"detail", "code"}``, and anything unexpected a JSON ``500`` with a plain sentence (``code``
   ``internal_error``) and the error's name, never its message.
 * **web app** — files of ``config.web_dist_dir()`` are served as they are; a missing file (under
   ``assets/`` or with an extension) is a ``404``; any other non-API path gets ``index.html``
@@ -42,7 +49,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic.json_schema import models_json_schema
 
 from ordnung import __version__, models
-from ordnung.api.deps import ApiState
+from ordnung.api.deps import SHUTDOWN_GRACE_S, ApiState
 from ordnung.api.phone_gate import PhoneGate, PhoneListener
 from ordnung.api.routes import ROUTERS
 from ordnung.api.routes.ask import StreamEvent
@@ -55,7 +62,6 @@ from ordnung.api.security import (
     inline_script_hashes,
 )
 from ordnung.app_context import AppContext
-from ordnung.calendar import caldav
 from ordnung.config import web_dist_dir
 from ordnung.db.store import NotFoundError
 from ordnung.doctor import web_app_fix
@@ -73,7 +79,8 @@ from ordnung.llm.base import (
 )
 from ordnung.phone import PhoneRefusal
 from ordnung.phone.scope import mark_openapi
-from ordnung.tick import DailyTick
+from ordnung.sync import SyncError
+from ordnung.sync.gate import SyncGate
 
 log = logging.getLogger(__name__)
 
@@ -131,20 +138,24 @@ def _lifespan(state: ApiState) -> Callable[[FastAPI], AbstractAsyncContextManage
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         ctx = state.ctx
-        ctx.bus.bind_loop(asyncio.get_running_loop())
-        tick = DailyTick(ctx, calendar_sync=caldav.scheduled_sync)
-        await ctx.worker.start()
-        tick.start()
-        await state.folder.start()
+        loop = asyncio.get_running_loop()
+        ctx.bus.bind_loop(loop)
+        loop.set_default_executor(ctx.executor)  # every to_thread call counts (ApiState.drain)
+        await state.sync.start()  # never raises; at most START_DECIDE_S
+        if state.sync.allows_background:  # sync off, the demo, or this computer is the one in use
+            await state.start_background()
         await state.phone.start_if_enabled()  # never in the demo; a failure is a problem, never raised
         try:
             yield
         finally:
             await state.phone.stop()  # first: phones' requests end before the worker stops
-            await state.folder.stop()
-            await tick.stop()
-            await state.background.stop()
-            await ctx.worker.stop()
+            await state.sync.save_before_stop()  # the person's changes, before readings' grace period
+            await state.stop_background(final=True)
+            # a cancelled task's thread (calendar sync, a reading) may still be using the Store, which
+            # closes after this: wait for it (bounded)
+            if not await state.drain(SHUTDOWN_GRACE_S):
+                log.warning("a background thread was still running when Ordnung stopped")
+            await state.sync.close()  # the last save, the head says "closed"; the Store is still open
 
     return lifespan
 
@@ -186,6 +197,11 @@ async def _phone_refused(_request: Request, exc: Exception) -> Response:
     return JSONResponse(exc.body(), status_code=exc.status, headers=exc.headers())
 
 
+async def _sync_refused(_request: Request, exc: Exception) -> Response:
+    assert isinstance(exc, SyncError)
+    return JSONResponse(exc.body(), status_code=exc.status)
+
+
 async def _not_found(_request: Request, _exc: Exception) -> Response:
     return JSONResponse({"detail": "This record doesn't exist (any more)."}, status_code=404)
 
@@ -208,6 +224,7 @@ def _add_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(LLMError, _llm_error)
     app.add_exception_handler(NotFoundError, _not_found)
     app.add_exception_handler(PhoneRefusal, _phone_refused)
+    app.add_exception_handler(SyncError, _sync_refused)
     for kind in (IntakeError, DraftError, ValidationError):
         app.add_exception_handler(kind, _unprocessable)
     app.add_exception_handler(Exception, _unexpected)
@@ -385,5 +402,7 @@ def create_app(ctx: AppContext, *, token: str | None, demo: bool = False) -> Fas
     _mount_web_app(app, dist)
     state.phone.bind_app(PhoneListener(app), public_files(dist))
     app.openapi = _openapi(app)  # type: ignore[method-assign]
+    # the last added is the outermost: the security checks (or the phone's gate) first, then sync's gate
+    app.add_middleware(SyncGate, agent=state.sync)
     app.add_middleware(SecurityMiddleware, token=token, phone=PhoneGate(state.phone))
     return app

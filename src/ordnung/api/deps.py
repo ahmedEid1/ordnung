@@ -19,6 +19,14 @@ The state also owns phone access (:class:`~ordnung.phone.access.PhoneAccess`: th
 paired phones, pairing). A route tells a paired phone's request from the computer's with
 :func:`is_phone` (and :func:`phone_device`); :func:`require_computer` refuses phones on the routes
 that must never run for one, independently of the phone listener's allow-list.
+
+The background work — the ingest worker, the daily tick and the watched folder — starts and stops as
+one (:meth:`ApiState.start_background`, :meth:`ApiState.stop_background`): hand-off sync
+(:class:`~ordnung.sync.agent.SyncAgent`, ``ApiState.sync``) runs it only while sync is off or this
+computer is the one in use, and stops it — then waits for its threads (:meth:`ApiState.drain`) —
+before the data is replaced. A letter the watched folder adds while sync is connected is the person's
+change, remembered across computers. Letters waiting for Claude are never released on a computer
+standing by (the status check would write there).
 """
 
 from __future__ import annotations
@@ -37,7 +45,8 @@ from fastapi import Depends, Request
 
 from ordnung.api.security import DEVICE_KEY, LISTENER_KEY, PHONE_LISTENER
 from ordnung.app_context import AppContext
-from ordnung.db.store import Store
+from ordnung.calendar import caldav
+from ordnung.db.store import Store, background_context
 from ordnung.doctor import CLAUDE_CODE_URL, DoctorReport, run_doctor
 from ordnung.ingest.watcher import FolderWatcher
 from ordnung.llm import claude_cli
@@ -46,10 +55,16 @@ from ordnung.models import ClaudeStatus
 from ordnung.phone import PhoneRefusal
 from ordnung.phone.access import PhoneAccess
 from ordnung.phone.actor import DeviceRef
-from ordnung.tick import local_today
+from ordnung.sync.agent import SyncAgent
+from ordnung.tick import DailyTick, local_today
 
 log = logging.getLogger(__name__)
 
+#: How long a reading may finish when background work stops for hand-off sync (then it is queued again).
+WORKER_GRACE_S = 2.0
+#: How long a reading may finish when Ordnung stops.
+SHUTDOWN_GRACE_S = 10.0
+DRAIN_POLL_S = 0.02
 CLAUDE_STATUS_TTL_S = 10 * 60.0
 #: How long "not found" or "not signed in" is kept: the person may be installing Claude right now.
 CLAUDE_MISSING_TTL_S = 15.0
@@ -216,7 +231,8 @@ class BackgroundTasks:
         if self.running(name):
             coro.close()
             return False
-        task = asyncio.create_task(coro, name=f"ordnung-api-{name}")
+        # background work: what it writes is never the person's change, even if their request started it
+        task = asyncio.create_task(coro, name=f"ordnung-api-{name}", context=background_context())
         task.add_done_callback(self._finished)
         self._tasks[name] = task
         return True
@@ -260,19 +276,58 @@ class ApiState:
     probe_limit: RateLimit = field(default_factory=lambda: RateLimit(PROBE_INTERVAL_S))
     folder: FolderWatcher = field(init=False)
     phone: PhoneAccess = field(init=False)
+    tick: DailyTick = field(init=False)
+    sync: SyncAgent = field(init=False)
+    background_on: bool = field(default=False, init=False)
 
     def __post_init__(self) -> None:
         self.folder = FolderWatcher(self.ctx, can_read=self.reads_letters)
         self.phone = PhoneAccess(self.ctx, demo=self.demo, token_on=self.token is not None)
+        self.tick = DailyTick(self.ctx, calendar_sync=caldav.scheduled_sync)
+        self.sync = SyncAgent(self.ctx, host=self, demo=self.demo)
+        self.folder.sync_on = lambda: self.sync.connected
+        self.folder.on_added = self.sync.person_wrote
         self.claude.listener = self._claude_seen
         self.ctx.worker.claude_check = self._claude_ready_now
         self.ctx.worker.claude_failed = self.claude.forget
 
+    async def start_background(self) -> None:
+        """Start the background work: the ingest worker (recovering a replaced database's jobs), the
+        daily tick and the watched folder. Idempotent."""
+        await self.ctx.worker.start()
+        self.tick.start()
+        await self.folder.start()
+        self.background_on = True
+
+    async def stop_background(self, *, final: bool = False) -> None:
+        """Stop the background work (``final``: Ordnung stops — the watched folder for good, readings
+        get :data:`SHUTDOWN_GRACE_S`; otherwise :data:`WORKER_GRACE_S`, then they are queued again)."""
+        if final:
+            await self.folder.stop()
+        else:
+            await self.folder.pause()
+        await self.tick.stop()
+        await self.background.stop()
+        await self.ctx.worker.stop(grace=SHUTDOWN_GRACE_S if final else WORKER_GRACE_S)
+        self.background_on = False
+
+    async def drain(self, within: float) -> bool:
+        """Wait until no thread of the server's pool runs any more (a cancelled reading's, calendar
+        sync's): ``False`` when one still does after ``within`` seconds."""
+        executor = self.ctx.executor
+        deadline = time.monotonic() + within
+        while executor.busy:
+            if time.monotonic() >= deadline:
+                return False
+            await asyncio.sleep(DRAIN_POLL_S)
+        return True
+
     def _claude_seen(self, status: ClaudeStatus) -> None:
         """A fresh Claude status: the backend runs the ``claude`` found, and once Claude is ready the
-        letters waiting for it are read."""
+        letters waiting for it are read — never on a computer standing by, nor while hand-off sync
+        replaces the data (the health check would write job rows there)."""
         use_claude_found(self.ctx, status)
-        if claude_ready(status):
+        if claude_ready(status) and self.sync.allows_background and not self.sync.fenced:
             self.ctx.worker.claude_ready()
 
     async def _claude_ready_now(self) -> bool:

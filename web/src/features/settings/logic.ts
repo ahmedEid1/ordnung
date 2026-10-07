@@ -7,7 +7,7 @@ import { LLM_PURPOSE_LABELS, humanize } from "@/lib/copy";
 // Sections
 // ------------------------------------------------------------------------------------------------
 
-export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "data"] as const;
+export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "computers", "data"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
 export function parseSection(v: string | null | undefined): SectionId {
@@ -26,6 +26,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   claude: "Claude connection",
   privacy: "Privacy & AI usage",
   rules: "How dates are computed",
+  computers: "Your computers",
   data: "Data",
 };
 
@@ -155,13 +156,15 @@ export function sentSummary(c: Pick<LLMCallRecord, "doc_ids" | "pages_sent" | "b
 
 /**
  * Where an activity entry leads: its letter, its draft, Ask for the checks of an answer — or, for phone access
- * (pairing, removing, turning it on; a phone's change that names nothing), Settings → Phone.
+ * (pairing, removing, turning it on; a phone's change that names nothing), Settings → Phone, and for hand-off sync
+ * (connecting, taking over, a choice, a kept copy), Settings → Your computers.
  */
 export function activityHref(a: Pick<Activity, "ref_type" | "ref_id"> & { kind?: string }): string | null {
   if (a.ref_type === "chat") return "/ask";
   if (a.ref_id && a.ref_type === "document") return `/documents/${a.ref_id}`;
   if (a.ref_id && a.ref_type === "draft") return `/letters/${a.ref_id}`;
   if (a.kind?.startsWith("phone.")) return "/settings?section=phone";
+  if (a.kind?.startsWith("sync.")) return "/settings?section=computers";
   return null;
 }
 

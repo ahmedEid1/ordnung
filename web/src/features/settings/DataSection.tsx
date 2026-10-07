@@ -1,14 +1,14 @@
 import { Fragment, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Check, Copy, Download, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
-import { useCalendarSync, useDeleteEverything, usePhone } from "@/api/hooks";
+import { useCalendarSync, useDeleteEverything, usePhone, useSync } from "@/api/hooks";
 import type { Health } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field, Input } from "@/components/ui/Field";
+import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { isStaticDemo } from "@/mocks/mode";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
@@ -20,6 +20,7 @@ import { BackupCard } from "./BackupCard";
 import { deleteCalendarNote, hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
 import { REMOVE_STEPS } from "./phoneAccess";
+import { otherComputers, unreceivedLine } from "./sync";
 import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
 
@@ -63,16 +64,26 @@ export const PHONE_CERTIFICATE_GONE = "Phone access was removed: if a phone trus
 const DELETE_WORD = "DELETE";
 const CONFIRM_ID = "delete-everything-confirm";
 const ERROR_ID = "delete-everything-error";
+const UNRECEIVED_ID = "delete-everything-unreceived";
+
+/** After "Delete everything" on a computer that synced: what became of hand-off sync. */
+export const SYNC_STOPPED = "This computer stopped syncing: the sync folder and your other computers keep everything.";
+
+/** What "Delete everything" does to hand-off sync (design §15.8): this computer leaves; the folder and the others stay. */
+export function deleteSyncNote(folder: string | null): string {
+  const copy = folder ? `the encrypted copy in ${folder}` : "the encrypted copy in the sync folder";
+  return `This computer also stops syncing. Your other computers and ${copy} keep everything. Delete it there too if you want it gone everywhere.`;
+}
 
 /**
  * The refusal of "Delete everything", once it shows: focused, and scrolled to its top. On a short phone
  * the reason is taller than the room under the dialog's header, and bringing only its end (or the
  * field below it) into view would cut off "Nothing was deleted".
  */
-function revealRefusal(ms = 5000) {
+function revealRefusal(ms = 5000, id = ERROR_ID) {
   const until = performance.now() + ms;
   const tick = () => {
-    const el = document.getElementById(ERROR_ID);
+    const el = document.getElementById(id);
     if (!el) {
       if (performance.now() < until) requestAnimationFrame(tick);
       return;
@@ -104,18 +115,30 @@ function DeleteEverythingDialog({
   const navigate = useNavigate();
   const remove = useDeleteEverything();
   const sync = useCalendarSync(open); // asked only when the dialog opens
+  // hand-off sync: this computer stops syncing; the folder and the other computers keep everything
+  const handOff = useSync(open);
+  const syncing = handOff.data?.connected ? handOff.data : null;
+  // another computer sends to the same calendar: Ordnung's events stay there (finding 27)
+  const sharedCalendar = syncing ? otherComputers(syncing).find((c) => c.state !== "left" && c.calendar === "same")?.name : undefined;
   const calendar = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
   // phone access goes too: its phones are signed out and its certificate deleted (phones that trusted it keep it)
   const phone = usePhone({ enabled: open });
   const phones = phone.data?.fingerprint || phone.data?.devices.length ? phone.data : null;
   const [typed, setTyped] = useState("");
+  const [anyway, setAnyway] = useState(false);
+  const [unreceivedRefusal, setUnreceivedRefusal] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // the word in any case: "delete" typed on a keyboard means the same (the API gets "DELETE")
-  const confirmed = typed.trim().toUpperCase() === DELETE_WORD;
+  const typedWord = typed.trim().toUpperCase() === DELETE_WORD;
+  // no other computer has this one's latest changes: a second confirmation (finding 2)
+  const unreceived = (syncing?.mode === "in_use" ? unreceivedLine(syncing) : null) ?? unreceivedRefusal;
+  const confirmed = typedWord && (!unreceived || anyway);
 
   const close = () => {
     if (remove.isPending) return;
     setTyped("");
+    setAnyway(false);
+    setUnreceivedRefusal(null);
     remove.reset();
     onClose();
   };
@@ -129,29 +152,46 @@ function DeleteEverythingDialog({
   const submit = (e?: FormEvent) => {
     e?.preventDefault();
     if (!confirmed || remove.isPending) return;
-    remove.mutate(undefined, {
+    remove.mutate(Boolean(unreceived) && anyway, {
       onSuccess: (result) => {
         setTyped("");
+        setAnyway(false);
+        setUnreceivedRefusal(null);
         onClose();
         const kept = result?.kept ?? [];
         const events = result?.calendar_events_removed;
-        const fromCalendar =
-          events == null ? "" : ` Ordnung's ${events === 1 ? "event was" : `${events} events were`} removed from your calendar, and its app password from this computer.`;
+        const fromCalendar = result?.calendar_shared_with
+          ? ` Ordnung's events stay in your calendar: ${result.calendar_shared_with} still sends to it. Only this computer's connection was removed.`
+          : events == null
+            ? ""
+            : ` Ordnung's ${events === 1 ? "event was" : `${events} events were`} removed from your calendar, and its app password from this computer.`;
         const fromPhones = result?.removed.includes("phone") ? ` ${PHONE_CERTIFICATE_GONE}` : "";
+        const fromSync = result?.removed.includes("sync") ? ` ${SYNC_STOPPED}` : "";
         toast.success("Everything was deleted", {
           description:
             (kept.length
               ? `Ordnung started over. It left ${kept.length === 1 ? "one file" : `${kept.length} files`} it didn't create: ${kept.join(", ")}.`
               : "Ordnung started over with an empty folder.") +
             fromCalendar +
-            fromPhones,
+            fromPhones +
+            fromSync,
           duration: 8000,
         });
         navigate("/welcome", { replace: true });
       },
-      // the busy button lost focus: to the reason, as a failed backup does — read out and shown from its
-      // heading; the typed word (still right) is the next Tab
-      onError: () => revealRefusal(),
+      onError: (err) => {
+        // the server's own second question: no other computer has this one's latest changes (yet)
+        if (err instanceof ApiError && err.code === "not_received") {
+          setUnreceivedRefusal(err.message);
+          setAnyway(false);
+          remove.reset();
+          revealRefusal(5000, UNRECEIVED_ID);
+          return;
+        }
+        // the busy button lost focus: to the reason, as a failed backup does — read out and shown from its
+        // heading; the typed word (still right) is the next Tab
+        revealRefusal();
+      },
     });
   };
 
@@ -189,7 +229,7 @@ function DeleteEverythingDialog({
           </Button>
           . Backups you made before stay where you saved them.
         </p>
-        {calendar ? (
+        {calendar && !sharedCalendar ? (
           <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
             {deleteCalendarNote(calendar, sync.data?.synced ?? 0)}
           </p>
@@ -199,6 +239,21 @@ function DeleteEverythingDialog({
             Phone access goes too: {phones.devices.length ? `${plural(phones.devices.length, "paired phone")} ${phones.devices.length === 1 ? "is" : "are"} signed out and ` : ""}
             its certificate is deleted. A phone that trusted that certificate keeps it — remove it there. iPhone: {REMOVE_STEPS.ios} Android: {REMOVE_STEPS.android}
           </p>
+        ) : null}
+        {syncing ? (
+          <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
+            {deleteSyncNote(syncing.folder)}
+            {syncing.kept.length ? " The kept copies on this computer are deleted too." : ""}
+            {sharedCalendar ? ` ${sharedCalendar} sends to the same calendar, so Ordnung's events stay there; only this computer's connection is removed.` : ""}
+          </p>
+        ) : null}
+        {unreceived ? (
+          <div id={UNRECEIVED_ID} tabIndex={-1} className="scroll-my-4 space-y-3 rounded-xl">
+            <Callout tone="warn" title="Your latest changes haven't reached another computer">
+              <span className="[overflow-wrap:anywhere]">{unreceived}</span>
+            </Callout>
+            <Checkbox checked={anyway} onChange={(e) => setAnyway(e.target.checked)} label="Delete anyway" description="This computer's latest changes are then gone for good." />
+          </div>
         ) : null}
         {/* the server's reason (the calendar couldn't be reached …) is the dialog's, not the typed word's:
             the word is right, so the field never says it is invalid */}
@@ -280,9 +335,17 @@ export function DataSection({ health }: { health: Health }) {
             </Button>
           </div>
           <p className="mt-3 text-sm leading-5 text-muted">
-            {staticDemo
-              ? "In Ordnung on your computer, an encrypted backup takes everything to another drive or computer."
-              : "To take everything to another drive or computer, download an encrypted backup below."}
+            {staticDemo ? (
+              "In Ordnung on your computer, an encrypted backup takes everything to another drive or computer."
+            ) : (
+              <>
+                To take everything to another drive or computer, download an encrypted backup below, or keep your computers in step under{" "}
+                <Link to="/settings?section=computers" className="font-medium text-accent underline underline-offset-2 hover:no-underline">
+                  Your computers
+                </Link>
+                .
+              </>
+            )}
           </p>
         </SettingsCard>
 
@@ -334,8 +397,9 @@ export function DataSection({ health }: { health: Health }) {
               <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-ink/85">
                 Deletes every letter and its original file, all dates, contracts, drafts and chats, and your settings — Ordnung starts over empty. Files in
                 Ordnung's own inbox folder go too, even ones it couldn't add; a watched folder of your own is never touched. Ordnung has no account and
-                keeps no copy anywhere else; a calendar connected for calendar sync loses Ordnung's events first. Backups you made stay where you saved
-                them. Letters Claude already read were processed through your Claude account under Anthropic's terms.
+                keeps no copy anywhere else — only hand-off sync, if you set it up, leaves your other computers and the encrypted copy in your sync folder
+                as they are. A calendar connected for calendar sync loses Ordnung's events first. Backups you made stay where you saved them. Letters
+                Claude already read were processed through your Claude account under Anthropic's terms.
               </p>
             </div>
             {/* the action where the other cards on this page have theirs: in the footer, on the right */}

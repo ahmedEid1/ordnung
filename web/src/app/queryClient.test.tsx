@@ -169,6 +169,29 @@ describe("a failed change", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
+  it("a write refused while another computer is in use (409 standby): one toast with the server's sentence, and the sync status asked again", async () => {
+    const standby = () => new ApiError(409, "Ordnung is in use on sam-desktop. Use it here first (Settings → Your computers).", null, "standby");
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { errorTitle: "Couldn't save your profile" } });
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { errorTitle: "Couldn't add the to-do" } });
+    // not a failure of the action: no "Couldn't …" title, nothing to try again — and one toast however many writes
+    expect(screen.queryByText("Couldn't save your profile")).toBeNull();
+    expect(screen.queryByText("Couldn't add the to-do")).toBeNull();
+    expect(screen.getAllByText("Ordnung is in use on sam-desktop. Use it here first (Settings → Your computers).")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["sync"] });
+    // a form that shows its own errors says it there; the status is asked again all the same
+    act(() => __clearToasts());
+    await waitFor(() => expect(screen.queryByText(/Ordnung is in use on sam-desktop/)).toBeNull());
+    invalidate.mockClear();
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { silent: true } });
+    await act(() => new Promise((r) => setTimeout(r, 20)));
+    expect(screen.queryByText(/Ordnung is in use on sam-desktop/)).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["sync"] });
+    expect(new ApiError(409, "x", null, "standby").isStandby).toBe(true);
+    expect(new ApiError(409, "x", null, "conflict").isStandby).toBe(false);
+  });
+
   it("every mutation hook names what failed (or handles its errors itself)", () => {
     const blocks = hooksSource.split("useMutation(").slice(1).map((b) => b.split(/\nexport function /)[0]!);
     expect(blocks.length).toBeGreaterThan(20);

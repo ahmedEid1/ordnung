@@ -12,6 +12,7 @@ import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { AiSection } from "@/features/settings/AiSection";
 import { CalendarSection } from "@/features/settings/CalendarSection";
 import { ClaudeSection } from "@/features/settings/ClaudeSection";
+import { ComputersSection } from "@/features/settings/ComputersSection";
 import { DataSection } from "@/features/settings/DataSection";
 import { FolderSection } from "@/features/settings/FolderSection";
 import { leavesSection, parseSection, SECTION_LABELS, type SectionId } from "@/features/settings/logic";
@@ -31,7 +32,8 @@ const WIDE_SECTIONS = new Set<SectionId>(["privacy"]);
 
 /**
  * `/settings?section=…` — profile, region, reminders, calendar, watched folder, phone, AI, Claude, privacy, rules,
- * data. On a paired phone: that settings are on the computer (asking for none of them — the phone may not).
+ * your computers (hand-off sync), data. On a paired phone: that settings are on the computer (asking for none of
+ * them — the phone may not).
  */
 export default function SettingsPage() {
   return usePhoneCompanion() ? <PhoneSettings /> : <ComputerSettings />;
@@ -205,6 +207,8 @@ function ComputerSettings() {
                 <PrivacySection />
               ) : section === "rules" ? (
                 <RulesSection />
+              ) : section === "computers" ? (
+                <ComputersSection />
               ) : (
                 <DataSection health={health.data} />
               )}

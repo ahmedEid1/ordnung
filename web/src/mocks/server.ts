@@ -44,6 +44,10 @@ import type {
   Suggestion,
   TimelineEntry,
   SuggestionRef,
+  SyncChange,
+  SyncConnect,
+  SyncDisconnect,
+  SyncUseHere,
   TemplateDraftKind,
   TransferValues,
   UploadResult,
@@ -103,6 +107,7 @@ import { deliveredBefore, proofRoutes, resolveProofAsset, sentFollowup } from ".
 import { addReading, compareReadings, defaultReadings, documentTrace, exportTraces, type TraceLedger } from "./data/traces";
 import { MockPhoneAccess, PhoneRefusal, maskNumbers, maskProfile, phoneGate, phoneHealth, type PhoneScope } from "./phone";
 import { NOT_PHONE_MESSAGE } from "./data/phone";
+import { MockSync, SyncRefusal } from "./data/sync";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -128,6 +133,8 @@ interface Ctx {
   opts: MockOptions;
   /** Phone access (Settings → Phone) and pairing. */
   phone: MockPhoneAccess;
+  /** Hand-off sync (Settings → Your computers, the standing-by screen). */
+  sync: MockSync;
 }
 
 /** Explicit status + body (default: 200 with the returned value as JSON). */
@@ -183,6 +190,16 @@ function phoneRefusals<T>(work: () => T): T {
     return work();
   } catch (err) {
     if (err instanceof PhoneRefusal) throw new HttpError(err.status, err.message, err.code ?? undefined);
+    throw err;
+  }
+}
+
+/** A hand-off sync refusal as the API answers it (`{detail, code}`). */
+function syncRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof SyncRefusal) throw new HttpError(err.status, err.message, err.code);
     throw err;
   }
 }
@@ -1249,19 +1266,34 @@ const routes: [string, string, Handler][] = [
   [
     "DELETE",
     "/data",
-    ({ db, body, opts, phone }) => {
-      if ((body as { confirm?: unknown } | null)?.confirm !== "DELETE") throw new HttpError(422, "Type DELETE to confirm.");
+    ({ db, body, opts, phone, sync }) => {
+      const confirm = (body ?? {}) as { confirm?: unknown; unreceived_ok?: unknown };
+      if (confirm.confirm !== "DELETE") throw new HttpError(422, "Type DELETE to confirm.");
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
+      // hand-off sync: while no other computer has this one's latest changes, the person confirms twice
+      const syncing = sync.status();
+      if (syncing.connected && syncing.mode === "in_use" && !syncing.others_have_latest && confirm.unreceived_ok !== true)
+        throw new HttpError(409, "No other computer has this computer's latest changes yet. Delete anyway?", "not_received");
+      // another computer sends to the same calendar: Ordnung's events stay there, only this connection goes
+      const calendarSharedWith = sync.calendarSharedWith();
       const st = db.state;
       // a connected calendar loses Ordnung's events (and the app password) first, as the API does
-      const calendarEventsRemoved = mockForgetCalendar(db);
+      const calendarEventsRemoved = calendarSharedWith ? (mockDisconnectCalendar(db, false), null) : mockForgetCalendar(db);
+      const syncFolder = syncing.connected || syncing.kept.length ? ["sync"] : [];
+      if (syncing.connected) sync.leave();
+      sync.kept = [];
       // phone access goes with the data folder: off, no phones, and its `phone/` folder (the certificate) removed
       const phoneFolder = phone.certificate ? ["phone"] : [];
       phone.forget();
       Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [], readings: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db", ...phoneFolder], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
+      return {
+        removed: ["derived", "drafts", "files", "ordnung.db", ...phoneFolder, ...syncFolder],
+        kept: [],
+        calendar_events_removed: calendarEventsRemoved,
+        calendar_shared_with: calendarSharedWith,
+      } satisfies DataDeleted;
     },
   ],
 
@@ -1936,6 +1968,37 @@ const routes: [string, string, Handler][] = [
       return { name: device.name, check_words: device.check_words };
     },
   ],
+  // hand-off sync: `?mock=1` pretends a sync folder and a password store; the static demo has nothing to hand over
+  ["GET", "/sync", ({ sync }) => sync.status()],
+  ["POST", "/sync/inspect", ({ sync, body }) => syncRefusals(() => sync.inspect((body ?? {}) as { folder?: unknown }))],
+  ["PUT", "/sync", ({ sync, body }) => syncRefusals(() => sync.connect(body as SyncConnect))],
+  ["PATCH", "/sync", ({ sync, body }) => syncRefusals(() => sync.change((body ?? {}) as SyncChange))],
+  ["DELETE", "/sync", ({ sync, body }) => syncRefusals(() => sync.disconnect((body ?? {}) as SyncDisconnect))],
+  ["POST", "/sync/use-here", ({ sync, body }) => syncRefusals(() => sync.useHere((body ?? {}) as SyncUseHere))],
+  ["POST", "/sync/choose", ({ sync, body }) => syncRefusals(() => sync.choose((body ?? {}) as { keep?: unknown }))],
+  ["POST", "/sync/save", ({ sync, body }) => syncRefusals(() => sync.save((body ?? {}) as { hand_over?: boolean }))],
+  ["POST", "/sync/passphrase", ({ sync, body }) => syncRefusals(() => sync.passphrase((body ?? {}) as { passphrase?: unknown }))],
+  ["POST", "/sync/refill", ({ sync }) => syncRefusals(() => sync.refill())],
+  ["DELETE", "/sync/computers/:key", ({ sync, params }) => syncRefusals(() => sync.forget(Number(params.key)))],
+  [
+    "GET",
+    "/sync/kept/:name",
+    ({ sync, params }) => {
+      const kept = syncRefusals(() => sync.keptFile(params.name!));
+      return new Response(mockBackupFile(), {
+        status: 200,
+        headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${kept.name}"`, "Cache-Control": "no-store" },
+      });
+    },
+  ],
+  [
+    "DELETE",
+    "/sync/kept/:name",
+    ({ sync, params }) => {
+      syncRefusals(() => sync.deleteKept(params.name!));
+      return new Reply(204);
+    },
+  ],
   ["GET", "/usage", () => USAGE],
   ["GET", "/rules", () => RULES],
   ["GET", "/jobs", () => [...activeJobs.values()]],
@@ -2021,6 +2084,8 @@ export interface MockServer {
    * unless the server was made with `phoneScope`.
    */
   refused: string[];
+  /** Hand-off sync as this computer has it (tests drive the other computer; see `./data/sync`). */
+  sync: MockSync;
 }
 
 export function createMockServer(opts: MockOptions): MockServer {
@@ -2028,12 +2093,16 @@ export function createMockServer(opts: MockOptions): MockServer {
   const latency = opts.latency ?? 1;
   const phone = new MockPhoneAccess(db, { staticDemo: opts.staticDemo, listener: opts.phoneScope ? "phone" : "computer" });
   const refused: string[] = [];
+  const sync = new MockSync(db, { staticDemo: opts.staticDemo });
 
   async function handle(method: string, path: string, query: URLSearchParams, body: unknown, signal?: AbortSignal | null): Promise<Response> {
     const m = method.toUpperCase();
     // the phone listener's gate answers first: pairing only until paired, then the phone's allow-list
     const refusal = opts.phoneScope ? phoneGate(phone, opts.phoneScope, m, path, query, refused) : null;
     if (refusal) return json(refusal.status, { detail: refusal.message, code: refusal.code ?? undefined });
+    // then hand-off sync's gate, on either listener: a computer standing by changes nothing
+    const standby = sync.gate(m, path);
+    if (standby) return json(standby.status, { detail: standby.message, code: standby.code });
     for (const r of compiled) {
       if (r.method !== m) continue;
       const match = r.re.exec(path);
@@ -2042,7 +2111,7 @@ export function createMockServer(opts: MockOptions): MockServer {
       r.keys.forEach((k, i) => (params[k] = decodeURIComponent(match[i + 1]!)));
       if (latency > 0) await sleep((m === "GET" ? 90 + Math.random() * 110 : 160 + Math.random() * 140) * latency);
       try {
-        const out = await r.handler({ db, params, query, body, signal, opts, phone });
+        const out = await r.handler({ db, params, query, body, signal, opts, phone, sync });
         if (out instanceof Response) return out;
         if (out instanceof Reply) return json(out.status, out.body);
         return json(200, out ?? null);
@@ -2109,5 +2178,5 @@ export function createMockServer(opts: MockOptions): MockServer {
     }
   }
 
-  return { db, handle, resolveAsset, openAllMail, phone, refused };
+  return { db, handle, resolveAsset, openAllMail, phone, refused, sync };
 }
