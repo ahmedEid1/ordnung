@@ -5,6 +5,7 @@ still describes what the app does. Replay only: no model call, nothing written t
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -45,7 +46,14 @@ def test_holdout3_s_recording_gives_the_same_predictions_on_the_current_code(tmp
     assert code == 0
     replayed = json.loads(next(out.glob("*-holdout3.json")).read_text(encoding="utf-8"))
     recorded = json.loads(RECORDING.read_text(encoding="utf-8"))
-    assert replayed["metrics"]["ordnung"] == recorded["metrics"]["ordnung"]
+    after_metrics, before_metrics = dict(replayed["metrics"]["ordnung"]), dict(recorded["metrics"]["ordnung"])
+    # the cost is a sum of floats in the order the letters finished (concurrent): equal up to rounding
+    after_cost, before_cost = after_metrics.pop("cost_usd"), before_metrics.pop("cost_usd")
+    assert after_cost.keys() == before_cost.keys()
+    assert all(math.isclose(after_cost[key], before_cost[key], rel_tol=1e-12) for key in before_cost)
+    # how long the calls took describes the run, not the answers
+    after_metrics.pop("latency_ms"), before_metrics.pop("latency_ms")
+    assert after_metrics == before_metrics
     before, after = _ordnung_predictions(recorded), _ordnung_predictions(replayed)
     assert after.keys() == before.keys()
     changed = sorted(entry_id for entry_id in before if after[entry_id] != before[entry_id])
