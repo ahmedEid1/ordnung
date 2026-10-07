@@ -257,8 +257,11 @@ def test_simultaneous_claims_pick_the_higher_epoch_then_id() -> None:  # F22
 
 def test_joining() -> None:
     folder = head(A, 2, OTHER, epoch=2, state="in_use")
-    decision = use(local(None, mode="standing_by", data=True), view(folder))
+    decision = use(local(None, mode="standing_by", data=True, digest="e" * 64), view(folder))
     assert isinstance(decision, Choice) and decision.joining
+    # the folder holds exactly this computer's data already (it joins again after leaving): nothing to ask
+    again = use(local(None, mode="standing_by", data=True, digest=DIGEST), view(folder))
+    assert isinstance(again, Pull) and not again.keep
     empty = use(local(None, mode="standing_by", data=False), view(folder))
     assert isinstance(empty, Pull) and not empty.keep
     assert isinstance(use(local(None, mode="standing_by", data=False), view()), NotYet)

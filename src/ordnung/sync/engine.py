@@ -7,7 +7,10 @@ scanner's caches.
 
 * :func:`connect` sets up a new folder or joins one; :func:`disconnect` leaves it.
 * :meth:`Session.start` runs at every start, once the Store is open: the copied-folder check (F32), the
-  counters raised to what the folder shows, and the local-rollback check (review finding 4, F10).
+  counters raised to what the folder shows, and the local-rollback check (review finding 4, F10). It
+  completes only once the folder showed this computer's own head; until then nothing is saved and no head
+  is written (a data folder put back from an OS backup, started while the folder isn't there, would
+  otherwise go on from the old counters and the old ``sync/heads.json``).
 * :meth:`Session.round` is one periodic step (push, bring in, stand by, acknowledge what arrived);
   :meth:`Session.use_here`, :meth:`Session.choose`, :meth:`Session.forget`, :meth:`Session.refill`,
   :meth:`Session.leave` and :meth:`Session.close` are the person's actions and shutdown.
@@ -54,6 +57,8 @@ from ordnung.sync import (
     GC_GRACE_S,
     MAX_COMPUTERS,
     NOT_CONNECTED_MESSAGE,
+    ROLLBACK_NOTICE,
+    ROLLBACK_WHY,
     SELF_HEAL_EVERY_S,
     SUPERSEDED_SLICE_GRACE_S,
     SYNC_MARK_KEY,
@@ -86,10 +91,11 @@ from ordnung.sync.decide import (
     Standby,
     Wait,
     decide,
+    held_by,
     others_have,
 )
 from ordnung.sync.folder import FolderInfo, FsOps, RealFs, SyncFolder, TimedFs, folder_problem, inspect
-from ordnung.sync.kept import keep_local, keep_staged
+from ordnung.sync.kept import keep_local, keep_staged, write_index
 from ordnung.sync.local import (
     Local,
     clean_name,
@@ -151,6 +157,11 @@ NOT_RECEIVED_MESSAGE = (
     "only in the sync folder until another computer brings them in."
 )
 FULL_MESSAGE = f"This folder already serves {MAX_COMPUTERS} computers. Forget one first."
+NOT_STARTED_MESSAGE = (
+    "Ordnung hasn't been able to read the sync folder since it started, so it doesn't save into it yet. "
+    "This computer's changes wait here."
+)
+STOPPED_MESSAGE = "This computer has to be sorted out first (Settings → Your computers)."
 
 
 def now_iso() -> str:
@@ -377,7 +388,7 @@ class Session:
             written=written,
             state=state.head_state,
             epoch=state.epoch,
-            version=version if version is not None else (state.base.ref if state.base is not None else None),
+            version=version if version is not None else self._head_version(),
             has=state.has,
             pnum=state.pnum,
             wants=list(state.wants)[:64],
@@ -387,6 +398,16 @@ class Session:
             calendar_target=cal_target,
             calendar_mode=cal_mode,
         )
+
+    def _head_version(self) -> VersionRef | None:
+        """The version this computer's head names: its base — but while its data went back in time,
+        the last saved state it still has to put back (never the older base the data folder came back
+        with: the others would lose the newer one)."""
+        if self.problem is not None and self.problem.code == "local_rollback":
+            own = self._own_version()
+            if own is not None:
+                return own
+        return self.state.base.ref if self.state.base is not None else None
 
     def _calendar(self) -> CalendarSyncState | None:
         """This computer's calendar connection (its head names the target, never the address)."""
@@ -401,9 +422,14 @@ class Session:
             conn.close()
 
     def write_head(self, *, version: VersionRef | None = None, state: str | None = None) -> None:
-        """Rewrite this computer's head (``written`` reserved in ``state.json`` first)."""
+        """Rewrite this computer's head (``written`` reserved in ``state.json`` first) — only once
+        :meth:`start` knows the counters (:data:`NOT_STARTED_MESSAGE`)."""
+        if not self.started:
+            raise SyncError("folder_problem", NOT_STARTED_MESSAGE)
         if state is not None:
             self.state.head_state = state  # type: ignore[assignment]
+        if version is None:
+            version = self._head_version()  # before ``written`` moves (it picks the head by it)
         self.state.written += 1
         self.save()
         head = self.own_head(self.state.written, version=version)
@@ -569,7 +595,13 @@ class Session:
     # ---- start ------------------------------------------------------------------------------------
 
     def start(self, store: Store) -> Problem | None:
-        """At every start, with the Store open: F32, the counters, F3 and the local-rollback check."""
+        """At every start, with the Store open: F32, the counters, F3 and the local-rollback check.
+
+        The counters and the rollback check need this computer's own head as the folder has it now: a data
+        folder put back from an OS backup holds an old ``sync/heads.json`` and old counters, which look
+        consistent with its old database. So while the folder can't be read (not mounted yet, a share
+        that hangs, its files online only) the start waits: it returns the folder's problem, ``started``
+        stays ``False`` — nothing is saved and no head is written — and the next look starts again."""
         state = self.state
         if state.data_dir != str(self.paths.data_dir.resolve()) or state.machine != self.machine():
             self.problem = Problem("copied_folder")
@@ -579,8 +611,15 @@ class Session:
             self.problem = Problem("pull_unfinished", journal.failed or "")
             return self.problem
         view = self.scan()
+        emptied = view.problem is not None and view.problem.code == "folder_empty"  # nothing more to learn
+        if not view.own_read and not emptied:
+            return view.problem or Problem("folder_unreachable")
+        own = view.own()
+        # ``written`` is reserved in state.json before a head is written: a head the folder shows with a
+        # higher one means state.json went back too (a data folder put back from an OS backup)
+        trusted = own is None or not own.readable or own.head.written <= state.written
         self._raise_counters(view)
-        self.problem = self._check_mark(store, view)
+        self.problem = self._check_mark(store, view, trusted=trusted)
         self.started = True
         self.save()
         return self.problem
@@ -617,7 +656,7 @@ class Session:
             return head.version
         return self.state.base.ref if self.state.base is not None else None
 
-    def _check_mark(self, store: Store, view: FolderView) -> Problem | None:
+    def _check_mark(self, store: Store, view: FolderView, *, trusted: bool = False) -> Problem | None:
         state = self.state
         if state.base is None:
             return None
@@ -644,30 +683,50 @@ class Session:
                 )
                 state.recent = [*[r for r in state.recent if r.id != own.id], own][-16:]
             return None
+        if trusted and mark == state.base.ref.id.key() and lin.covers(state.base.ref.lineage, own.lineage):
+            # the database holds this computer's base, which came after what its head names: the head
+            # only lags behind (a crash after a version was brought in, before the head said so)
+            return None
         return Problem("local_rollback")
+
+    def rollback_target(self) -> HeadView | None:
+        """This computer's own last saved version, to put back after a local rollback (F10, finding 4)
+        — ``None`` when there is none, or it isn't whole in the folder (the person is asked then)."""
+        if self.problem is None or self.problem.code != "local_rollback":
+            return None
+        own = self._own_version()
+        if own is None:
+            return None
+        head = self.own_head(self.state.written, version=own)
+        try:
+            completeness = self.scanner.completeness(own, self.files)
+        except (OSError, SyncError):
+            return None
+        if not completeness.ready:
+            return None
+        return HeadView(file=self.head_file, head=head, key=self.key, this=True, completeness=completeness)
+
+    def rolled_back(self, kept: str | None) -> Notice:
+        """The local rollback is repaired (the own version applied): say so."""
+        self.problem = None
+        return self.notice("rolled_back", ROLLBACK_NOTICE, kept)
 
     def repair_rollback(self, store: Store) -> Outcome:
         """F10 / finding 4: the local database went back in time. Keep a copy of what is here, then
-        bring this computer's own last saved version back (it is still its head)."""
-        own = self._own_version()
-        if own is None:
-            raise SyncError("not_needed", "There is nothing to put back.")
-        head = self.own_head(self.state.written, version=own)
-        view = HeadView(file=self.head_file, head=head, key=self.key, this=True)
-        completeness = self.scanner.completeness(own, self.files)
-        if not completeness.ready:
+        bring this computer's own last saved version back (it is still its head). The person-change
+        counter is read before the copy is taken: a person's write after it gives the pull up
+        (``PullAborted``) instead of being in neither. The server does this in the agent's two phases
+        instead (writes fenced, background work drained, :meth:`rollback_target`)."""
+        view = self.rollback_target()
+        if view is None:
+            if self._own_version() is None:
+                raise SyncError("not_needed", "There is nothing to put back.")
             raise NotArrived()
-        view = dataclasses.replace(view, completeness=completeness)
-        kept = keep_local(self, "before this computer's last saved state was put back", digest=None)
+        expect = _counter(store)
+        kept = keep_local(self, ROLLBACK_WHY, digest=None)
         staged = self.stage(view, keep=True)
-        applied = apply(self, staged, store, kept=kept.name, expect_person=_counter(store))
-        self.problem = None
-        notice = self.notice(
-            "rolled_back",
-            "This computer's data went back in time (a power cut?). Its last saved state was put back; "
-            "what was found is kept as a copy.",
-            kept.name,
-        )
+        applied = apply(self, staged, store, kept=kept.name, expect_person=expect)
+        notice = self.rolled_back(kept.name)
         return Outcome(Pull(view, keep=True), applied=applied, kept=kept, replaced=True, notice=notice)
 
     def keep_as_is(self, store: Store) -> None:
@@ -701,7 +760,13 @@ class Session:
     # ---- pushing ----------------------------------------------------------------------------------
 
     def push(self, store: Store | None, **options: object) -> PushResult:
-        """:func:`ordnung.sync.push.push` (the folder must be usable)."""
+        """:func:`ordnung.sync.push.push` (the folder must be usable) — never before :meth:`start` knows
+        the counters, nor while the local data went back in time or was copied (its old data would go
+        out under the new lineage: review blocker 4)."""
+        if not self.started:
+            raise SyncError("folder_problem", NOT_STARTED_MESSAGE)
+        if self.problem is not None and self.problem.code in ("copied_folder", "local_rollback"):
+            raise SyncError("folder_problem", STOPPED_MESSAGE)
         with _bookkeeping():
             return push(self, store, **options)  # type: ignore[arg-type]
 
@@ -774,6 +839,10 @@ class Session:
 
     def round(self, store: Store, *, demo: bool = False) -> Outcome:
         """One periodic step (module doc): what :func:`~ordnung.sync.decide.decide` says, done."""
+        if not self.started:
+            found = self.start(store)
+            if not self.started:
+                return Outcome(Paused(found or Problem("folder_unreachable")))
         if self.problem is not None and self.problem.code in (
             "copied_folder",
             "local_rollback",
@@ -867,10 +936,18 @@ class Session:
     def use_here(self, store: Store, *, older_copy: bool = False, demo: bool = False) -> Outcome:
         """ "Use Ordnung here" (the U rows)."""
         self._refuse_demo(store, demo)
-        if self.problem is not None and self.problem.code in ("copied_folder", "pull_unfinished"):
+        if not self.started:
+            self.start(store)
+            if not self.started and self.problem is None:
+                raise SyncError("folder_problem", NOT_STARTED_MESSAGE)
+        if self.problem is not None and self.problem.code in (
+            "copied_folder",
+            "pull_unfinished",
+            "local_rollback",
+        ):
             raise SyncError(
-                "folder_problem" if self.problem.code == "copied_folder" else "pull_unfinished",
-                "This computer has to be sorted out first (Settings → Your computers).",
+                "pull_unfinished" if self.problem.code == "pull_unfinished" else "folder_problem",
+                STOPPED_MESSAGE,
             )
         for _attempt in range(3):
             view = self.scan()
@@ -1005,6 +1082,19 @@ class Session:
             kept.name if kept else None,
         )
         return Outcome(decision, pushed=pushed, applied=applied, kept=kept, replaced=True, notice=notice)
+
+    def forget_former(self, former: list[HeadView]) -> None:
+        """Forget this computer's former selves (left heads of the data it joined with) that the version
+        it now holds covers: listed twice under one name otherwise, and nothing of them is lost."""
+        base = self.state.base.ref.lineage if self.state.base is not None else None
+        gone = [
+            h.computer
+            for h in former
+            if base is not None and h.head.version is not None and lin.covers(base, h.head.version.lineage)
+        ]
+        if gone:
+            self.state.forgotten = sorted({*self.state.forgotten, *gone})
+            self.save()
 
     def forget(self, key: int) -> KeptInfo | None:
         """Forget a lost computer (§13.5): its changes found nowhere else are kept here first."""
@@ -1206,7 +1296,13 @@ class Session:
     ) -> None:
         """Stop syncing here (blocker 2): push what isn't saved, then write ``left`` with the version
         kept — it still counts for the others' content decisions. Refused (``not_received``) while no
-        other computer has this one's latest, unless ``unreceived_ok``."""
+        other computer has this one's latest, unless ``unreceived_ok``. Its start runs first (the
+        command line opens a fresh session): nothing is saved or written from counters it doesn't know,
+        nor from data that went back in time."""
+        if not self.started:
+            self.start(store)
+            if not self.started:
+                raise SyncError("folder_problem", NOT_STARTED_MESSAGE)
         view = self.scan()
         needs_push = False
         if self.state.mode == "in_use" or self.pending(store):
@@ -1223,7 +1319,7 @@ class Session:
         if self.state.mode == "in_use":
             self.log(store, "sync.disconnected", "This computer stopped syncing.")
             needs_push = True
-        if needs_push:
+        if needs_push and (self.problem is None or self.problem.code != "local_rollback"):
             with contextlib.suppress(SyncError):
                 self.push(store, demo=demo)
         self.write_head(state="left")
@@ -1245,8 +1341,9 @@ class Session:
         return pushed
 
     def close(self, store: Store, *, demo: bool = False) -> PushResult | None:
-        """At shutdown: the computer in use saves and says it was closed."""
-        if self.state.mode != "in_use":
+        """At shutdown: the computer in use saves and says it was closed (not before :meth:`start` knew
+        the counters)."""
+        if self.state.mode != "in_use" or not self.started:
             return None
         pushed = None
         with contextlib.suppress(SyncError):
@@ -1490,8 +1587,15 @@ def _join_inner(
     live = [h for h in view.heads if not h.left and not h.forgotten]
     if len(live) >= MAX_COMPUTERS:
         raise SyncError("full", FULL_MESSAGE)
-    state.name = unique_name(name, {h.head.name for h in view.heads if not h.forgotten})
     snap = session.snapshot()
+    # this computer's own former self (it left; its version holds exactly this data): its name is free
+    # again, it is no side of a choice, and once the version brought in covers it, it is forgotten
+    former = [
+        h
+        for h in view.heads
+        if h.left and not h.forgotten and h.head.version is not None and h.head.version.digest == snap.digest
+    ]
+    state.name = unique_name(name, {h.head.name for h in view.heads if not h.forgotten and h not in former})
     local_view = LocalView(
         computer=state.computer,
         mode="standing_by",
@@ -1578,14 +1682,17 @@ def _join_inner(
         )
     session.write_head(state="standing_by")
     if isinstance(decision, Pull):
+        held = bool(held_by(local_view, [h for h in view.heads if not h.forgotten]))
         applied, kept = session.bring_over(
             store,
             decision.target,
-            keep=decision.keep or snap.person_data,
+            # this data is in the folder already (a version holds exactly it): nothing to keep
+            keep=decision.keep or (snap.person_data and not held),
             why=f"before you joined {decision.target.head.name}'s Ordnung",
             digest=snap.digest,
             expect_person=_counter(store),
         )
+        session.forget_former(former)
         session.claim(store)
         session.log(
             store,
@@ -1663,6 +1770,9 @@ def disconnect(
         if state is not None:
             with contextlib.suppress(SecretsUnavailable):
                 secrets.delete(keyring_account(state.computer))
+    known = session.state if session is not None else local.load()
+    if known is not None and known.kept and not remove_kept:
+        write_index(local.kept_dir, known.kept)  # state.json goes: the kept copies stay listed
     for entry in sorted(local.dir.iterdir()):
         if entry.name == "kept" and not remove_kept:
             continue
@@ -1679,13 +1789,26 @@ def disconnect(
 
 
 def push_once(paths: Paths, secrets: SecretStore, store: Store) -> str:
-    """After an in-process CLI write: save now, best effort (one line for the person)."""
+    """After an in-process CLI write: save now, best effort (one line for the person). The start runs
+    first, as at every start of the server: the counters raised to what the folder shows, and nothing
+    saved while the local data went back in time (a data folder put back from an OS backup — the
+    server puts the last saved state back when it next starts, keeping this data as a copy)."""
     if not Local(paths).connected():
         return ""
     try:
         session = Session.open(paths, secrets)
         if session.state.mode != "in_use":
             return "Not saved to the sync folder: Ordnung is in use on another computer."
+        found = session.start(store)
+        if found is not None and found.code == "local_rollback":
+            return (
+                "Not saved to the sync folder: this computer's data went back in time. Start Ordnung to "
+                "put its last saved state back (this data is kept as a copy)."
+            )
+        if found is not None and found.code in ("copied_folder", "pull_unfinished"):
+            return f"Not saved to the sync folder: {STOPPED_MESSAGE}"
+        if not session.started:
+            return f"Not saved to the sync folder: {NOT_STARTED_MESSAGE}"
         result = session.push(store)
     except SyncError as exc:
         return f"Not saved to the sync folder: {exc}"

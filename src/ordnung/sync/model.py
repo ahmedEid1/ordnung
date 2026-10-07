@@ -138,9 +138,29 @@ class SummaryLetter(_Strict):
     added_on: str = Field(max_length=10)
 
 
+#: What a change in a summary was made to (a person's record).
+ChangeKind = Literal["letter", "date", "to-do", "note", "contract"]
+
+
+class SummaryChange(_Strict):
+    """One of a version's latest changes: what it was made to, its title, the calendar date."""
+
+    kind: ChangeKind
+    label: str = Field(max_length=500)
+    on: str = Field(max_length=10)
+
+
 class Summary(_Strict):
+    """What a version holds, for a choice between versions: its letters, the open and done dates and
+    to-dos, the notes, and the latest changes (a choice whose sides differ in to-dos, done marks or
+    edits is told apart by them — review)."""
+
     letters: Count = 0
     newest: list[SummaryLetter] = Field(default_factory=list, max_length=3)
+    items: Count = 0
+    done: Count = 0
+    notes: Count = 0
+    latest: list[SummaryChange] = Field(default_factory=list, max_length=3)
 
 
 class CalendarHandover(_Strict):

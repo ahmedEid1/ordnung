@@ -41,6 +41,16 @@ class SyncLetter(BaseModel):
     added_on: str
 
 
+class SyncSideChange(BaseModel):
+    """One of a side's latest changes: what it was made to, its title and the calendar date."""
+
+    model_config = _RESPONSE
+
+    kind: Literal["letter", "date", "to-do", "note", "contract"]
+    label: str
+    on: str = Field(description="The calendar date of the change (no clock time)")
+
+
 class SyncProgress(BaseModel):
     """How far a first save, or bringing a version over, has got."""
 
@@ -123,6 +133,17 @@ class SyncSide(BaseModel):
     letters: int = Field(description="Letters in that Ordnung")
     added: int = Field(description="Letters added there since the two last agreed")
     newest: list[SyncLetter] = Field(description="Up to three letters, newest added first")
+    items: int = Field(default=0, description="Dates and to-dos still open in that Ordnung")
+    done: int = Field(default=0, description="Dates and to-dos marked done there")
+    notes: int = Field(default=0, description="Notes there")
+    latest: list[SyncSideChange] = Field(
+        default_factory=list,
+        description="Its three latest changes (letters, dates, to-dos, notes, contracts), newest first: what tells "
+        "two sides apart when their counts are alike",
+    )
+    saved_at: str | None = Field(
+        default=None, description="That computer's clock: when it saved this version"
+    )
     arrived_at: str | None = Field(default=None, description="This computer's clock: when it arrived here")
     complete: bool = Field(description="It has fully arrived here (choosing one that hasn't waits for it)")
     arriving: SyncArriving | None = Field(default=None, description="What is still arriving of it")

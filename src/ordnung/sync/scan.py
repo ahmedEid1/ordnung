@@ -123,6 +123,10 @@ class FolderView:
     wants: frozenset[str] = frozenset()
     #: another key file sits next to this folder's (F28)
     other_key_file: str | None = None
+    #: ``h/`` was listed now, and this computer's own head in it was read now (or isn't there, or is an
+    #: older copy than one already seen): what the folder says of this computer is known — the start
+    #: waits for it (a data folder put back from an OS backup has only an old ``sync/heads.json``)
+    own_read: bool = False
 
     @property
     def others(self) -> tuple[HeadView, ...]:
@@ -232,6 +236,7 @@ class Scanner:
         views: list[HeadView] = []
         uncertain = False
         own_stale = True
+        own_read = True
         newer_seen = False
         own_file = self.vault.head_name(state.computer)
         now = self.monotonic()
@@ -240,6 +245,7 @@ class Scanner:
             head: Head | None = None
             readable = False
             newer = False
+            replayed = False
             if info is not None and not info.online_only:
                 raw = folder.read_head(file)
                 opened = self._open_head(file, raw) if raw is not None else None
@@ -255,7 +261,12 @@ class Scanner:
             seen = state.seen.get(file)
             if head is not None and seen is not None and head.written < seen.written:
                 head, readable = None, False  # a replayed or rolled-back copy (F15)
-                uncertain = True
+                uncertain = replayed = True
+            if file == own_file and info is not None and not (readable or replayed or newer):
+                failing = self.head_failing.get(file)
+                # listed but not readable now (online only, cut short, being written): not known yet —
+                # unless it stays damaged (then the last good copy is all there is)
+                own_read = failing is not None and now - failing.since >= DAMAGED_AFTER_S
             if head is None:
                 head = cache.get(file)
                 if head is None:
@@ -326,6 +337,7 @@ class Scanner:
                 uncertain=uncertain,
                 wants=frozenset(wants),
                 other_key_file=others[0] if others else None,
+                own_read=own_read,
             ),
             updated,
         )

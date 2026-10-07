@@ -28,6 +28,8 @@ import {
   calendarElsewhereNote,
   calendarLine,
   choiceSideLine,
+  sideContentsLine,
+  sideLatestLine,
   chosenMessage,
   computerBadge,
   computerLine,
@@ -44,6 +46,8 @@ import {
   nameProblem,
   newPassphraseProblem,
   passphraseBits,
+  COMMON_WORDS_TEXT,
+  KEYBOARD_ROWS,
   passphraseTokens,
   PASSPHRASE_WORDING,
   PROBLEM_TITLES,
@@ -113,18 +117,28 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
     ["correct horse battery staple orbit", ["correct", "horse", "battery", "staple", "orbit"], 70],
     ["CorrectHorseBatteryStapleOrbit", ["Correct", "Horse", "Battery", "Staple", "Orbit"], 70],
     ["k7qmx-3vxdp-9tawr-2emnb", ["k", "7", "qmx", "3", "vxdp", "9", "tawr", "2", "emnb"], 73.988152],
-    ["aaaaaaaaaaaaaaaaaaaa", ["aaaaaaaaaaaaaaaaaaaa"], 14],
+    ["aaaaaaaaaaaaaaaaaaaa", ["aaaaaaaaaaaaaaaaaaaa"], 5.70044],
     ["cat cat cat cat cat cat", ["cat", "cat", "cat", "cat", "cat", "cat"], 14],
     ["Straße STRASSE strasse", ["Straße", "STRASSE", "strasse"], 14],
-    ["1234567890 0987654321", ["1234567890", "0987654321"], 28],
-    ["ab cd ef gh ij kl mn op", ["ab", "cd", "ef", "gh", "ij", "kl", "mn", "op"], 75.207035],
+    ["1234567890 0987654321", ["1234567890", "0987654321"], 8.643856],
+    ["ab cd ef gh ij kl mn op", ["ab", "cd", "ef", "gh", "ij", "kl", "mn", "op"], 5.70044],
     ["kirun-bodaf-sumel-tavok-perin", ["kirun", "bodaf", "sumel", "tavok", "perin"], 70],
     ["Über Äpfel Öfen Zürich Genève", ["Über", "Äpfel", "Öfen", "Zürich", "Genève"], 70],
     ["a1b2c3", ["a", "1", "b", "2", "c", "3"], 24.067103],
     ["ﬁsh fish FISH", ["ﬁsh", "fish", "FISH"], 14],
     ["", [], 0],
     ["ΣΊΣΥΦΟΣ σίσυφος", ["ΣΊΣΥΦΟΣ", "σίσυφος"], 14],
-    ["x\u0301yz abc", ["x", "yz", "abc"], 28.101319],
+    ["x\u0301yz abc", ["x", "yz", "abc"], 19.801759],
+    // the review's patterns: a character again and again, runs in order, keyboard walks, common words
+    ["aaa bbb ccc ddd eee", ["aaa", "bbb", "ccc", "ddd", "eee"], 28.502199],
+    ["abc def ghi jkl mno", ["abc", "def", "ghi", "jkl", "mno"], 5.70044],
+    ["12345 23456 34567 45678 56789", ["12345", "23456", "34567", "45678", "56789"], 21.60964],
+    ["one two three four five", ["one", "two", "three", "four", "five"], 35],
+    ["january february march april may", ["january", "february", "march", "april", "may"], 35],
+    ["qwerty asdfgh zxcvbn password letmein", ["qwerty", "asdfgh", "zxcvbn", "password", "letmein"], 31.101319],
+    ["a b c d e f g h i j k l m n o", ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"], 5.70044],
+    ["the cat sat on the mat today", ["the", "cat", "sat", "on", "the", "mat", "today"], 63],
+    ["Sommer 2025 Urlaub Sommer", ["Sommer", "2025", "Urlaub", "Sommer"], 34.287712],
   ];
 
   it.each(VECTORS)("%j", (passphrase, tokens, bits) => {
@@ -143,10 +157,15 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
     expect(KEPT_WARN_BYTES).toBe(2 * 1024 ** 3);
     const weak = /^WEAK_PASSPHRASE_MESSAGE = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(POLICY)?.[1] ?? "";
     expect([...weak.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(WEAK_PASSPHRASE_MESSAGE);
+    const common = /^COMMON_WORDS_TEXT = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(POLICY)?.[1] ?? "";
+    expect([...common.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(COMMON_WORDS_TEXT);
+    const rows = /^KEYBOARD_ROWS: tuple\[str, \.\.\.\] = \(([^)]*)\)/m.exec(POLICY)?.[1] ?? "";
+    expect([...rows.matchAll(/"([^"]*)"/g)].map((m) => m[1])).toEqual(KEYBOARD_ROWS);
+    expect(Number(constant("COMMON_WORD_BITS"))).toBe(7);
   });
 
   it("refuses a new passphrase that is short, weak or typed differently twice — before asking the server", () => {
-    expect(newPassphraseProblem("short")).toEqual({ field: "passphrase", message: "Use a passphrase of at least 12 characters — a short sentence works well." });
+    expect(newPassphraseProblem("short")).toEqual({ field: "passphrase", message: "Use a passphrase of at least 12 characters — five or more words that don't belong together work well." });
     expect(newPassphraseProblem("correct horse battery staple")).toEqual({ field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE });
     expect(newPassphraseProblem("correct horse battery staple orbit", "correct horse battery staple")).toEqual({ field: "repeat", message: "The two passphrases differ." });
     expect(newPassphraseProblem("correct horse battery staple orbit", "correct horse battery staple orbit")).toBeNull();
@@ -294,6 +313,17 @@ describe("hand-off sync helpers", () => {
       "Still arriving: 5 of 9 files",
     );
     expect(sideArrivingLine({ complete: true, arriving: null })).toBeNull();
+    expect(sideContentsLine({ items: 2, done: 1, notes: 0 })).toBe("2 open dates and to-dos · 1 done");
+    expect(sideContentsLine({ items: 1, done: 0, notes: 1 })).toBe("1 open date or to-do · 0 done · 1 note");
+    expect(sideLatestLine({ latest: [] })).toBeNull();
+    expect(
+      sideLatestLine({
+        latest: [
+          { kind: "to-do", label: "Renew the passport", on: "2026-10-07" },
+          { kind: "note", label: "Called the landlord", on: "2026-10-05" },
+        ],
+      }),
+    ).toBe("Latest: to-do “Renew the passport” (7 Oct), note “Called the landlord” (5 Oct)");
     const sides = [
       { this: true, computer: "desktop" },
       { this: false, computer: "anna-thinkpad" },

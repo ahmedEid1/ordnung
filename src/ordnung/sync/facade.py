@@ -15,7 +15,11 @@ steps do around the same pieces:
 * standing by after another computer took over writes ``standing_by`` (``closed`` for "save and hand
   over"), shutting down writes ``closed``;
 * the person-change counter read with the last local view guards the apply (``expect_person``: a
-  person's write in between gives the pull up, :class:`~ordnung.sync.pull.PullAborted`).
+  person's write in between gives the pull up, :class:`~ordnung.sync.pull.PullAborted`);
+* the core's start runs at the first look and again at every look until it completes (it waits while
+  the folder can't be read, and nothing is saved meanwhile: a ``paused`` decision); a local rollback it
+  finds is repaired by the agent like any other replacement — the version to put back is the local
+  view's ``repair``, and the decision ``repair`` (review: the repair is fenced like the rest).
 
 The privacy-log rows of these pieces are the agent's; :func:`connect` and :func:`disconnect` are the
 core's whole steps and write their own.
@@ -52,6 +56,7 @@ from ordnung.sync import (
     KEPT_DIR,
     KEPT_RE,
     NOT_CONNECTED_MESSAGE,
+    ROLLBACK_WHY,
     SyncError,
     SyncNoticeCode,
     WrongSyncPassphrase,
@@ -83,6 +88,7 @@ from ordnung.sync.decide import (
 )
 from ordnung.sync.folder import data_folder_synced
 from ordnung.sync.kept import delete_kept as delete_kept_copy
+from ordnung.sync.kept import kept_copies, write_index
 from ordnung.sync.local import Local, clean_name, in_use_on, keyring_account, load_state, machine_id
 from ordnung.sync.model import Lineage, Notice, Summary
 from ordnung.sync.pull import Staged, abandon, removed_letters, resume_interrupted, unfinished
@@ -96,6 +102,7 @@ from ordnung.sync.status import (
     SyncLetter,
     SyncNotice,
     SyncSide,
+    SyncSideChange,
 )
 
 #: Problems found at a session's start that stop saving and bringing over until the person answers.
@@ -171,6 +178,8 @@ class RealView:
     computers: list[SyncComputer]
     #: computer id → the summary of its head's version (letters, newest), when it could be read
     summaries: dict[str, Summary] = field(default_factory=dict)
+    #: computer id → when it saved its head's version (its own clock), when the manifest could be read
+    saved: dict[str, str] = field(default_factory=dict)
 
     @property
     def problem(self) -> FoundProblem | None:
@@ -190,8 +199,11 @@ class RealLocal:
     here: Summary
     #: what its base held (letters "added" since the two last agreed)
     base: Summary
-    #: a problem found at the session's start that stops sync until the person answers
+    #: a problem found at the session's start that stops sync until the person answers (or the folder's
+    #: problem while the start waits for the folder)
     problem: Problem | None = None
+    #: this computer's own last saved version, whole in the folder, to put back (a local rollback)
+    repair: Target | None = None
 
 
 @dataclass(frozen=True)
@@ -259,6 +271,18 @@ def _letters(found: Summary) -> list[SyncLetter]:
     return [SyncLetter(label=letter.label, added_on=letter.added_on) for letter in found.newest]
 
 
+def _contents(found: Summary) -> dict[str, Any]:
+    """A side's counts and latest changes (what tells two sides apart besides their letters)."""
+    return {
+        "items": found.items,
+        "done": found.done,
+        "notes": found.notes,
+        "latest": [
+            SyncSideChange(kind=change.kind, label=change.label, on=change.on) for change in found.latest
+        ],
+    }
+
+
 def _choice(choice: Choice, local: RealLocal, view: RealView) -> SyncChoice:
     sides: list[SyncSide] = []
     joining = choice.joining or local.inner.base is None
@@ -275,6 +299,7 @@ def _choice(choice: Choice, local: RealLocal, view: RealView) -> SyncChoice:
                     added=added,
                     newest=_letters(here),
                     complete=True,
+                    **_contents(here),
                 )
             )
             continue
@@ -289,6 +314,8 @@ def _choice(choice: Choice, local: RealLocal, view: RealView) -> SyncChoice:
                 letters=theirs.letters,
                 added=added,
                 newest=_letters(theirs),
+                **_contents(theirs),
+                saved_at=view.saved.get(head.computer),
                 arrived_at=head.arrived_at,
                 complete=head.complete,
                 arriving=None if head.complete else _arriving(head),
@@ -331,6 +358,8 @@ def map_decision(found: Any, local: RealLocal, view: RealView) -> AgentDecision:
     if isinstance(found, Idle):
         return AgentDecision("idle")
     if isinstance(found, Standby):
+        if found.late_push:  # the person's change made before this computer stood by (F21)
+            return AgentDecision("late_push", late_push=True, from_name=holder_name)
         if found.problem is not None:
             return _paused(found.problem)
         if found.choice is not None:
@@ -342,7 +371,7 @@ def map_decision(found: Any, local: RealLocal, view: RealView) -> AgentDecision:
                 arriving=_arriving(found.arriving),
                 from_name=found.arriving.head.name,
             )
-        # pending changes while standing by are saved by "Use Ordnung here" (U1): not up to date
+        # a digest that differs while standing by is background work: replaced at the next take-over
         return AgentDecision("up_to_date" if found.up_to_date else "idle", from_name=holder_name)
     if isinstance(found, AlreadyInUse):
         return AgentDecision("nothing")
@@ -401,7 +430,9 @@ def _computers(view: FolderView, session: core.Session) -> list[SyncComputer]:
                 key=head.key,
                 name=head.head.name if not head.this else state.name,
                 this=head.this,
-                in_use=head.computer == view.holder,
+                # this computer standing by is never the one in use — also when it is the last live head
+                # (the computer in use left): then no computer is in use until it uses Ordnung here
+                in_use=head.computer == view.holder and not (head.this and state.mode == "standing_by"),
                 state=head.head.state if head.readable else "unknown",
                 arrived_at=head.arrived_at,
                 has_latest=has_latest,
@@ -416,7 +447,7 @@ def _computers(view: FolderView, session: core.Session) -> list[SyncComputer]:
                 key=session.key,
                 name=state.name,
                 this=True,
-                in_use=view.holder == state.computer,
+                in_use=view.holder == state.computer and state.mode == "in_use",
                 state=state.head_state,
                 app_version=__version__,
                 calendar="none",
@@ -465,22 +496,22 @@ class RealSession:
 
     # ---- looking -------------------------------------------------------------------------------
 
-    def _start(self, store: Store) -> None:
-        """The core's start, once per session (F32, the counters, F3, the local rollback)."""
+    def _start(self, store: Store) -> Problem | None:
+        """The core's start, until it completes (F32, the counters, F3, the local rollback): the folder's
+        problem while it waits for the folder. A local rollback isn't repaired here — the agent does it,
+        behind the fence (:attr:`RealLocal.repair`)."""
         inner = self.inner
         if inner.started:
-            return
+            return None
         found = inner.start(store)
-        if found is not None and found.code == "local_rollback":
-            # F10: put this computer's own last saved version back (keeping what is here); when it
-            # isn't whole in the folder any more, the person is asked (keep the data as it is)
-            with contextlib.suppress(SyncError, OSError), caldav.exclusive():
-                inner.repair_rollback(store)
-                self._stamp = None
+        if inner.started:
+            return None
+        return found or Problem("folder_unreachable")
 
     def scan(self) -> RealView:
         view = self.inner.scan()
         summaries: dict[str, Summary] = {}
+        saved: dict[str, str] = {}
         for head in view.heads:
             version = head.head.version
             if head.this or version is None or head.newer:
@@ -491,11 +522,12 @@ class RealSession:
                     manifest = self.inner.scanner.manifest(version)
             if manifest is not None:
                 summaries[head.computer] = manifest.summary
-        return RealView(view, _computers(view, self.inner), summaries)
+                saved[head.computer] = manifest.created_at
+        return RealView(view, _computers(view, self.inner), summaries, saved)
 
     def local_view(self, store: Store) -> RealLocal:
         inner = self.inner
-        self._start(store)
+        waiting = self._start(store)
         stamp = _db_stamp(self.paths)
         if stamp is None or stamp != self._stamp or self._digest is None:
             try:
@@ -513,13 +545,22 @@ class RealSession:
         problem = inner.problem
         if problem is not None and problem.code == "pull_unfinished" and unfinished(self.paths) is None:
             inner.problem = problem = None  # given up meanwhile
+        if problem is None or problem.code not in _START_PROBLEMS:
+            problem = waiting  # the start waits for the folder: nothing is saved meanwhile
+        repair: Target | None = None
+        if problem is not None and problem.code == "local_rollback":
+            with contextlib.suppress(SyncError, OSError):
+                own = inner.rollback_target()
+                if own is not None:
+                    repair = Target(own, keep=True)
         return RealLocal(
             inner=found,
             pending=bool(found.pending or (base is not None and differs) or inner._heal_push),
             name=inner.state.name,
             here=live_summary(store._conn()),
             base=base.summary if base is not None else Summary(),
-            problem=problem if problem is not None and problem.code in _START_PROBLEMS else None,
+            problem=problem,
+            repair=repair,
         )
 
     # ---- saving --------------------------------------------------------------------------------
@@ -531,6 +572,8 @@ class RealSession:
     def push(self, store: Store, *, reason: str, hand_over: bool = False) -> core.PushResult | None:
         inner = self.inner
         state = inner.state
+        if not inner.started and reason != "shutdown":
+            self._start(store)  # a save before the first look starts the session first (it may refuse)
         if reason == "choice":
             chosen, self._choice = self._choice, None
             pushed = inner.push(store, lineage=chosen, claim=True, head_state="in_use", force=True)
@@ -596,6 +639,12 @@ class RealSession:
         finally:
             self._kept = None
         self._stamp = None
+        if (
+            inner.problem is not None
+            and inner.problem.code == "local_rollback"
+            and staged.target.id.computer == inner.state.computer
+        ):
+            inner.problem = None  # its own last saved state is back (the agent says so)
         if inner.state.mode == "in_use":
             inner.write_head(state="in_use")  # brought in while in use: the head names the new version
         return Applied(kept=made)
@@ -684,21 +733,7 @@ class RealEngine:
         state = load_state(paths)  # the session saves it after every step; others may have since
         if state is None or not state.complete:
             return None
-        kept_dir = paths.sync / KEPT_DIR
-        kept: list[SyncKept] = []
-        for info in state.kept:
-            path = kept_dir / info.name
-            with contextlib.suppress(OSError):
-                if path.is_file() and not path.is_symlink():
-                    kept.append(
-                        SyncKept(
-                            name=info.name,
-                            path=str(path),
-                            size=path.stat().st_size,
-                            created_at=info.created_at,
-                            why=info.why,
-                        )
-                    )
+        kept = self.kept_copies(paths)
         return StateSummary(
             folder=state.folder,
             name=state.name,
@@ -712,6 +747,16 @@ class RealEngine:
             data_folder_synced=data_folder_synced(paths.data_dir),
             journal=unfinished(paths) is not None,
         )
+
+    def kept_copies(self, paths: Paths) -> list[SyncKept]:
+        """Every kept copy on this computer — connected or not (they outlive Disconnect)."""
+        state = load_state(paths)
+        return [
+            SyncKept(name=info.name, path=str(path), size=size, created_at=info.created_at, why=info.why)
+            for info, path, size in kept_copies(
+                paths.sync / KEPT_DIR, state.kept if state is not None else ()
+            )
+        ]
 
     def writes_refused(self, paths: Paths) -> str | None:
         return core.writes_refused(paths)
@@ -748,11 +793,13 @@ class RealEngine:
                 base=Summary(),
             )
             summaries: dict[str, Summary] = {}
+            saved: dict[str, str] = {}
             for side in result.choice.sides:
                 manifest = side.head.completeness.manifest if side.head and side.head.completeness else None
                 if side.head is not None and manifest is not None:
                     summaries[side.head.computer] = manifest.summary
-            view = RealView(FolderView(), [], summaries)
+                    saved[side.head.computer] = manifest.created_at
+            view = RealView(FolderView(), [], summaries, saved)
             return Connected(created=False, choice=_choice(result.choice, local, view))
         if result.session is not None:
             with self._lock:
@@ -782,6 +829,8 @@ class RealEngine:
 
     def decide(self, local: RealLocal, view: RealView, action: Any) -> AgentDecision:
         if local.problem is not None:
+            if local.repair is not None:  # F10 / finding 4: put the last saved state back (fenced)
+                return AgentDecision("repair", target=local.repair, keep=True, why=ROLLBACK_WHY)
             return _paused(local.problem)
         wanted = Action("use_here", older_copy=bool(action.older_copy)) if action is not None else None
         return map_decision(decide(local.inner, view.inner, wanted), local, view)
@@ -875,6 +924,7 @@ class RealEngine:
         if not path.is_file() or path.is_symlink():
             return False
         path.unlink()
+        write_index(path.parent, (), gone=[name])
         local = Local(paths)
         state = local.load()
         if state is not None:

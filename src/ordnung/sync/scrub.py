@@ -47,7 +47,7 @@ from ordnung.sync import (
     PERSON_META_KEY,
     SYNC_MARK_KEY,
 )
-from ordnung.sync.model import CalendarHandover, Summary, SummaryLetter, VersionId
+from ordnung.sync.model import CalendarHandover, Summary, SummaryChange, SummaryLetter, VersionId
 
 #: Tables derived from others (the search indexes and their shadow tables): never digested.
 DERIVED_TABLE_PREFIXES = ("documents_fts", "documents_trigram")
@@ -230,19 +230,48 @@ def state_digest(
 # --------------------------------------------------------------------------------------------------
 
 
+_LATEST_SQL = {
+    "documents": "SELECT 'letter', coalesce(title, filename), updated_at FROM documents WHERE deleted_at IS NULL",
+    "items": "SELECT CASE kind WHEN 'task' THEN 'to-do' ELSE 'date' END, title, updated_at FROM items",
+    "notes": "SELECT 'note', text, created_at FROM notes",
+    "contracts": "SELECT 'contract', coalesce(name, 'contract'), updated_at FROM contracts",
+}
+
+
+def _count(conn: sqlite3.Connection, table: str, where: str = "") -> int:
+    if not _has_table(conn, table):
+        return 0
+    return int(conn.execute(f'SELECT count(*) FROM "{table}" {where}').fetchone()[0])
+
+
 def summary(conn: sqlite3.Connection) -> Summary:
-    """Letters in all and the three newest by date added (titles; calendar dates only)."""
-    if not _has_table(conn, "documents"):
-        return Summary()
-    letters = int(conn.execute("SELECT count(*) FROM documents WHERE deleted_at IS NULL").fetchone()[0])
-    newest = [
-        SummaryLetter(label=str(title or filename)[:500], added_on=str(created)[:10])
-        for title, filename, created in conn.execute(
-            "SELECT title, filename, created_at FROM documents WHERE deleted_at IS NULL "
-            "ORDER BY created_at DESC, id DESC LIMIT 3"
-        )
-    ]
-    return Summary(letters=letters, newest=newest)
+    """Letters in all and the three newest by date added (titles; calendar dates only); the open and
+    done dates and to-dos, the notes, and the three latest changes of the person's records."""
+    newest: list[SummaryLetter] = []
+    if _has_table(conn, "documents"):
+        newest = [
+            SummaryLetter(label=str(title or filename)[:500], added_on=str(created)[:10])
+            for title, filename, created in conn.execute(
+                "SELECT title, filename, created_at FROM documents WHERE deleted_at IS NULL "
+                "ORDER BY created_at DESC, id DESC LIMIT 3"
+            )
+        ]
+    latest: list[tuple[str, str, str]] = []
+    for table, sql in _LATEST_SQL.items():
+        if not _has_table(conn, table):
+            continue
+        with contextlib.suppress(sqlite3.Error):  # an older schema without a column: no changes from it
+            for kind, label, at in conn.execute(f"{sql} ORDER BY 3 DESC LIMIT 3"):
+                latest.append((str(at or ""), str(kind), " ".join(str(label or "").split())))
+    latest.sort(reverse=True)
+    return Summary(
+        letters=_count(conn, "documents", "WHERE deleted_at IS NULL"),
+        newest=newest,
+        items=_count(conn, "items", "WHERE status IN ('open', 'snoozed')"),
+        done=_count(conn, "items", "WHERE status = 'done'"),
+        notes=_count(conn, "notes"),
+        latest=[SummaryChange(kind=kind, label=label[:500], on=at[:10]) for at, kind, label in latest[:3]],
+    )
 
 
 def has_person_data(conn: sqlite3.Connection) -> bool:

@@ -39,8 +39,11 @@ are keyed hashes; sizes are padded (Padmé, at most 12 %, at least 4 KiB); the 9
 plaintext byte, so the folder holds none at all. Objects named by their content get their salt and nonce
 prefix from a keyed hash of the name, so two computers writing the same object write the same bytes and
 the sync tool never makes a conflict copy of it. A new folder's passphrase must reach about 70 bits by a
-simple, documented estimator (distinct words and digit runs, each at most 14 bits), and setup suggests
-five random words: the key file sits at the provider indefinitely, open to offline guessing. Chosen over
+simple, documented estimator (distinct words and digit runs, each at most 14 bits; one character again and
+again, a run in order, a keyboard walk or one of a few hundred very common words counts little), and setup
+— in the web app and the CLI — suggests five random made-up words: the key file sits at the provider
+indefinitely, open to offline guessing. Ordnung suggests a neutral name for the folder ("Vault"): the
+provider sees the folder's name. Chosen over
 one encrypted backup file per push (every push would re-send every letter, and the backup header names
 the app) and over plain content hashes as names (they would let anyone confirm that a known PDF is
 there).
@@ -65,7 +68,10 @@ computer published, so a bug or a stale head can't claim everything.
 is in use; timers are each computer's own monotonic clock. At start a computer raises its counters to what
 the folder shows, so a data folder put back from an OS backup (Time Machine, File History, rsync) never
 reuses a number; if its database is older than what it last saved, it is a rollback, not a change: a kept
-copy, then its own last save is brought back, with a notice.
+copy, then its own last save is brought back, with a notice — fenced like any replacement, so a write that
+lands meanwhile is in the kept copy. That start waits until the folder shows this computer's own head
+(a share not mounted yet, files online only): until then nothing is saved and no head is written, and a
+command-line write saves only after the same start.
 
 **Wait, verify, keep, then apply in one transaction.** A take-over waits until every object of the
 version has arrived and authenticated with its expected SHA-256 — a short file, an online-only placeholder
@@ -81,8 +87,10 @@ database open. While sync is on the database is written with `synchronous=FULL`.
 
 **Leaving keeps the last version for the others.** Disconnect and Delete everything save what isn't
 saved, then mark the computer's head as having left with its version kept, so another computer's next
-take-over still brings that version over; while no other computer has received it, both ask a second
-time. When another computer sends to the same calendar, Delete everything leaves Ordnung's events in it.
+take-over still brings that version over; while no other computer has received it — worked out against
+the version just saved, again after that last save — both ask a second time. A computer that sets sync up
+again with exactly the data it left with is asked nothing, keeps its name, and its former self is no
+longer listed. When another computer sends to the same calendar, Delete everything leaves Ordnung's events in it.
 
 **What describes a computer stays on it.** The calendar connection (its "already sent" record travels and
 is merged), the watched folder and what it already picked up, phone access, the Claude pause, the desktop
@@ -98,7 +106,8 @@ keyring sync is unavailable on that computer; there is no file fallback.
 passphrase) in `<data>/sync/kept/`, opened with `ordnung restore`. It is the one backup file Ordnung writes
 inside the data folder it backs up — it exists to undo a replacement on this computer, not to survive the
 disk — so it is never synced, never pruned by itself, and lost with this computer's disk and with Delete
-everything.
+everything. Why and when each was kept is written next to them, so they stay listed — downloadable and
+deletable — after Disconnect and after sync is set up again.
 
 ## Consequences and known limits
 - Nothing is merged: changes made on two computers that couldn't see each other mean a choice, asked once.
@@ -106,8 +115,9 @@ everything.
 - "In use" is only as fresh as the sync tool. A folder that withholds files can delay a switch or make a
   computer take over an older copy (the person chooses that); it can never get a forged, partial or
   older-than-seen state applied.
-- The folder's provider sees how many encrypted files there are, their approximate sizes, how many
-  computers take part, and when things change — and from bursts of new objects roughly how many letters and
+- The folder's provider sees the folder's own name (and someone who knows the open format recognises its
+  layout), how many encrypted files there are, their approximate sizes, how many computers take part, and
+  when things change — and from bursts of new objects roughly how many letters and
   pages are added; never their names, dates, senders, content or the computers' names. Its version history
   and trash may keep old ciphertext.
 - A computer standing by sends no reminders, reads no letters and updates no calendar. A take-over re-reads
@@ -117,6 +127,18 @@ everything.
 - Forgetting a lost computer removes it from the folder's list but does not lock it out: it still knows the
   passphrase. To lock it out, set up a new sync folder with a new passphrase — changing the passphrase is
   not in this version (the format is ready for it). At most 8 computers share one folder.
+- The passphrase estimator is simple: it knows a few hundred very common words, runs and keyboard rows,
+  not a dictionary, so a passphrase of ordinary words that belong together (a line of a song) can still
+  pass. The suggested five made-up words are the safe choice.
+- A folder of the layout (`h/`, `o/`, a shard) that turns into a link stops saving — shown as "the sync
+  folder doesn't answer" — until the link is removed; the check and the write are separate steps, so a
+  link swapped in between them isn't caught (someone with that timing could delete the folder anyway).
+- Setting sync up again after Disconnect asks nothing only while the data is exactly what it left with;
+  once this computer's own work changed something (the day changed, a reading finished), joining asks which
+  Ordnung to keep, as for any computer that joins with letters of its own. If what it left with hasn't
+  arrived yet when it joins, its former self stays listed (as having left) until it is forgotten by hand.
+- A computer standing by whose computer in use left shows "No computer is using Ordnung now" until it
+  uses Ordnung here; nothing is brought over or saved before that.
 - Tested with a simulated sync tool — late, out of order, in pieces, with conflict copies and dataless
   files — through crash and power-cut harnesses, a two-computer model, and two data folders served by two
   real `ordnung serve` processes on one machine in the browser tests. A pass with a real Nextcloud,

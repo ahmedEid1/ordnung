@@ -20,7 +20,9 @@ arriving, a choice), and the holder's version is acknowledged in ``has`` once it
 behind or the same → pull a same-content version whose background work differs, else claim at the
 local base; U3 one head ahead of this one and of every other → pull it; U4 one head decided against
 this one and covers every other → keep a copy, pull it; U5 otherwise → a choice. Joining (no base):
-with letters of its own, a choice; else pull the newest (a choice when the others diverge, finding 31).
+with letters of its own, a choice — unless a version in the folder holds exactly this computer's data (it
+joins again after leaving): then, as without letters, pull the newest (a choice when the others diverge,
+finding 31).
 """
 
 from __future__ import annotations
@@ -409,10 +411,18 @@ def _use_here(local: LocalView, view: FolderView, *, older_copy: bool) -> Decisi
     return _choice(local, heads)  # U5
 
 
+def held_by(local: LocalView, heads: Sequence[HeadView]) -> list[HeadView]:
+    """The heads whose version holds exactly this computer's data (the same digest): typically its own
+    former self, left when it disconnected, when it joins again — its data is in the folder already."""
+    if local.digest is None:
+        return []
+    return [h for h in heads if h.head.version is not None and h.head.version.digest == local.digest]
+
+
 def _joining(local: LocalView, heads: Sequence[HeadView], view: FolderView) -> Decision:
     if not heads:
         return NotYet()  # a key file but no computer yet: its head is still on its way
-    if local.has_person_data:
+    if local.has_person_data and not held_by(local, heads):
         return _choice(local, heads, joining=True)
     best = _maximal(heads)
     if len(best) != 1:

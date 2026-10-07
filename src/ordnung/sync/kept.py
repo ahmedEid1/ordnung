@@ -13,14 +13,24 @@ digest) is reused, not written again.
 
 A forgotten computer's version that holds changes found nowhere else is kept the same way, from what
 was staged (:func:`keep_staged`, ``BackupStream.from_parts``).
+
+Why and when each copy was kept is also written next to them (:data:`KEPT_INDEX`): ``state.json`` goes
+with Disconnect, the copies stay — they stay listed (and can be downloaded and deleted) while this
+computer doesn't sync, and after it is set up again (:func:`kept_copies`).
 """
 
 from __future__ import annotations
 
 import contextlib
+import json
 import os
+import stat
+from collections.abc import Iterable, Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from pydantic import ValidationError
 
 from ordnung.backup import write_backup_file
 from ordnung.backup.archive import BackupStream
@@ -32,6 +42,76 @@ from ordnung.sync.model import KeptInfo
 if TYPE_CHECKING:
     from ordnung.sync.engine import Session
     from ordnung.sync.pull import Staged
+
+
+#: The kept copies' own record, next to them in ``sync/kept/`` (module doc).
+KEPT_INDEX = "index.json"
+#: Why a kept copy was written, when no record says (one older than :data:`KEPT_INDEX`).
+KEPT_WHY_UNKNOWN = "this computer's data before hand-off sync replaced it"
+
+
+def read_index(folder: Path) -> dict[str, KeptInfo]:
+    """The record of ``folder``'s kept copies (empty when there is none, or it can't be read)."""
+    try:
+        raw = json.loads((folder / KEPT_INDEX).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    found: dict[str, KeptInfo] = {}
+    for entry in raw if isinstance(raw, list) else ():
+        with contextlib.suppress(ValidationError, TypeError):
+            info = KeptInfo.model_validate(entry)
+            if KEPT_RE.match(info.name):
+                found[info.name] = info
+    return found
+
+
+def write_index(folder: Path, infos: Iterable[KeptInfo], *, gone: Iterable[str] = ()) -> None:
+    """Merge ``infos`` into the record (``gone``: names deleted), written atomically (best effort)."""
+    record = read_index(folder)
+    record.update({info.name: info for info in infos})
+    for name in gone:
+        record.pop(name, None)
+    if not record and not (folder / KEPT_INDEX).exists():
+        return
+    with contextlib.suppress(OSError):
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / KEPT_INDEX
+        partial = folder / f".{KEPT_INDEX}.{os.getpid()}.part"
+        body = json.dumps([info.model_dump() for info in record.values()], indent=1)
+        fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, PRIVATE_FILE_MODE)
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            out.write(body)
+            out.flush()
+            os.fsync(out.fileno())
+        partial.replace(target)
+
+
+def kept_copies(folder: Path, infos: Sequence[KeptInfo] = ()) -> list[tuple[KeptInfo, Path, int]]:
+    """Every kept copy in ``folder`` (regular files of :data:`~ordnung.sync.KEPT_RE`, never a link):
+    why and when from ``infos`` (``state.json``) or the record, else from the file — oldest first."""
+    known = {**read_index(folder), **{info.name: info for info in infos}}
+    found: list[tuple[KeptInfo, Path, int]] = []
+    try:
+        paths = sorted(folder.iterdir())
+    except OSError:
+        return []
+    for path in paths:
+        name = path.name
+        if not KEPT_RE.match(name):
+            continue
+        try:
+            info_stat = path.lstat()
+        except OSError:
+            continue
+        if not stat.S_ISREG(info_stat.st_mode):
+            continue
+        info = known.get(name) or KeptInfo(
+            name=name,
+            why=KEPT_WHY_UNKNOWN,
+            created_at=datetime.fromtimestamp(info_stat.st_mtime).astimezone().isoformat(timespec="seconds"),
+        )
+        found.append((info, path, info_stat.st_size))
+    return sorted(found, key=lambda entry: (entry[0].created_at, entry[0].name))
 
 
 def kept_name(folder: Path, stamp: str) -> str:
@@ -75,6 +155,7 @@ def keep_local(session: Session, why: str, *, digest: str | None = None) -> Kept
     info = KeptInfo(name=name, why=why, digest=digest, created_at=session.clock.iso())
     state.kept = [*state.kept, info]
     session.save()
+    write_index(folder, [info])
     return info
 
 
@@ -113,6 +194,7 @@ def keep_staged(session: Session, staged: Staged, why: str) -> KeptInfo:
     info = KeptInfo(name=name, why=why, digest=staged.target.digest, created_at=session.clock.iso())
     session.state.kept = [*session.state.kept, info]
     session.save()
+    write_index(folder, [info])
     return info
 
 
@@ -144,4 +226,5 @@ def delete_kept(session: Session, name: str) -> bool:
     session.data_fs.fsync_dir(path.parent)
     session.state.kept = [info for info in session.state.kept if info.name != name]
     session.save()
+    write_index(path.parent, (), gone=[name])
     return True

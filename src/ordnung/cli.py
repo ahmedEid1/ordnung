@@ -1842,13 +1842,25 @@ def _print_sync_choice(choice: Any) -> None:
         added = f", {side.added} added since you last switched" + (f": {newest}" if newest else "")
         waiting = "" if side.complete else " (still arriving)"
         console.print(f"  {who}: {side.letters} letters{added}{waiting}", soft_wrap=True)
+        console.print(f"    {escape(_side_contents(side))}", soft_wrap=True)
         console.print(f"    ordnung sync choose {'this' if side.this else side.key}", soft_wrap=True)
+
+
+def _side_contents(side: Any) -> str:
+    """ "2 open dates and to-dos, 1 done, 1 note — latest: to-do “Renew the passport” (2026-10-07)"."""
+    counts = (
+        f"{side.items} open date{'' if side.items == 1 else 's'} and to-dos, {side.done} done, "
+        f"{side.notes} note{'' if side.notes == 1 else 's'}"
+    )
+    latest = "; ".join(f"{change.kind} “{change.label}” ({change.on})" for change in side.latest)
+    return f"{counts} — latest: {latest}" if latest else counts
 
 
 def _sync_passphrase(*, new: bool) -> str:
     """The sync passphrase: ``ORDNUNG_SYNC_PASSPHRASE`` or a hidden prompt (twice for a new folder,
-    which must pass :func:`ordnung.sync.passphrase_problem`)."""
-    from ordnung.sync import PASSPHRASE_ENV, passphrase_problem
+    which must pass :func:`ordnung.sync.passphrase_problem` — a strong one is suggested first, as the
+    web app's setup does)."""
+    from ordnung.sync import PASSPHRASE_ENV, passphrase_problem, suggested_passphrase
 
     def problem(value: str) -> str | None:
         if not value:
@@ -1861,6 +1873,12 @@ def _sync_passphrase(*, new: bool) -> str:
         if wrong:
             raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
         return given
+    if new:
+        err_console.print(
+            "A strong passphrase, made up just now — type it below (or one of your own: five or more words "
+            "that don't belong together), and save it in your password manager:"
+        )
+        err_console.print(f"  [bold]{suggested_passphrase()}[/]", soft_wrap=True)
     for _ in range(PASSPHRASE_TRIES):
         value = str(typer.prompt("Passphrase of the sync folder", hide_input=True))
         wrong = problem(value)

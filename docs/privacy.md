@@ -408,8 +408,11 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   the key file is 92 bytes with nothing readable in it. Not one byte in the folder is plain text: no name,
   date, sender, file type, the word "Ordnung" or a computer's name.
 - **What your sync provider can see** — anyone with the folder but not the passphrase: that it is an
-  encrypted store; how many files there are and roughly how large; how many computers take part (one file
-  each); when things change; and from bursts of new files, roughly how many letters and pages you add. Never
+  encrypted store, and the name you gave its folder (Ordnung suggests a neutral one, "Vault": a folder
+  called "Ordnung" would tell them which app wrote it — and someone who knows Ordnung's open format can
+  recognise its layout anyway: a 92-byte key file, `h/` and `o/`); how many files there are and roughly
+  how large; how many computers take part (one file each); when things change; and from bursts of new
+  files, roughly how many letters and pages you add. Never
   your letters' content, their names, senders or dates, or which file is which, and a file it already
   knows can't be recognised in the folder (the names are keyed). Its version history and trash may keep
   old encrypted files after Ordnung has removed them.

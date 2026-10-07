@@ -292,7 +292,7 @@ export class MockSync {
     const folder = typeof body.folder === "string" ? body.folder.trim().replace(/\/+$/, "") : "";
     const base: SyncFolderInfo = { kind: "refused", folder, problem: null, examples: [], data_folder_synced: this.dataFolderSynced, links_left_out: [] };
     const dataDir = this.db.state.health.data_dir.replace(/\/+$/, "");
-    if (!folder || !/^(\/|~\/)/.test(folder)) return { ...base, problem: "Enter the whole path, starting at the top: /home/you/Nextcloud/Ordnung." };
+    if (!folder || !/^(\/|~\/)/.test(folder)) return { ...base, problem: "Enter the whole path, starting at the top: /home/you/Nextcloud/Vault." };
     if (folder === dataDir || folder.startsWith(`${dataDir}/`) || dataDir.startsWith(`${folder}/`))
       return { ...base, problem: "That is Ordnung's data folder (or holds it). Choose a folder of its own that your sync tool keeps in step." };
     if (folder === "/home/sam" || folder === "~") return { ...base, problem: "That is your home folder. Choose a folder of its own inside the folder your sync tool keeps in step." };
@@ -352,7 +352,7 @@ export class MockSync {
       joining: true,
       chosen: null,
       sides: [
-        { key: 1, computer: name, this: true, letters, added: letters, newest, arrived_at: null, complete: true, arriving: null },
+        { key: 1, computer: name, this: true, letters, added: letters, newest, items: 0, done: 0, notes: 0, latest: [], saved_at: null, arrived_at: null, complete: true, arriving: null },
         {
           key: 2,
           computer: SYNC_OTHER_NAME,
@@ -360,6 +360,11 @@ export class MockSync {
           letters: 340,
           added: 0,
           newest: [{ label: "Vodafone Rechnung Oktober", added_on: "2026-10-06" }],
+          items: 23,
+          done: 41,
+          notes: 3,
+          latest: [{ kind: "letter", label: "Vodafone Rechnung Oktober", on: "2026-10-06" }],
+          saved_at: minutesAgo(12),
           arrived_at: minutesAgo(10),
           complete: true,
           arriving: null,
@@ -604,6 +609,16 @@ export class MockSync {
     return this;
   }
 
+  /** The computer in use left sync (Disconnect, Delete everything): this one stands by, no computer is in use. */
+  otherLeft(name = SYNC_OTHER_NAME): this {
+    this.otherTakesOver(name);
+    for (const c of this.computers) {
+      c.in_use = false;
+      if (c.name === name) c.state = "left";
+    }
+    return this;
+  }
+
   /** The computer in use saved changes that are still arriving here (`have` of `need` files). */
   arriving(have: number, need: number, { stalled = false, onlyOnline = 0 }: { stalled?: boolean; onlyOnline?: number } = {}): this {
     this.arrivingNow = {
@@ -651,6 +666,14 @@ export class MockSync {
             { label: "Stadtwerke Abschlag 2027", added_on: "2026-10-06" },
             { label: "Allianz Beitragsanpassung", added_on: "2026-10-05" },
           ],
+          items: 24,
+          done: 40,
+          notes: 3,
+          latest: [
+            { kind: "to-do", label: "Pay the Stadtwerke instalment", on: "2026-10-07" },
+            { kind: "letter", label: "Stadtwerke Abschlag 2027", on: "2026-10-06" },
+          ],
+          saved_at: null,
           arrived_at: null,
           complete: true,
           arriving: null,
@@ -662,6 +685,14 @@ export class MockSync {
           letters: 341,
           added: 1,
           newest: [{ label: "Vodafone Rechnung Oktober", added_on: "2026-10-06" }],
+          items: 23,
+          done: 41,
+          notes: 3,
+          latest: [
+            { kind: "date", label: "Vodafone payment", on: "2026-10-06" },
+            { kind: "letter", label: "Vodafone Rechnung Oktober", on: "2026-10-06" },
+          ],
+          saved_at: minutesAgo(12),
           arrived_at: minutesAgo(10),
           complete: !arriving,
           arriving: arriving ? { from_computer: other.name, have: 5, need: 9, have_bytes: 600_000, need_bytes: 1_080_000, since: minutesAgo(3), stalled: false, online_only: 0 } : null,

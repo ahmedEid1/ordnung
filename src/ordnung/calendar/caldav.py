@@ -431,15 +431,19 @@ def _preview(event: Event, today: date) -> CalendarEventPreview:
     )
 
 
-def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
-    """Every event calendar sync sends in ``mode``, in the calendar file's order (module policy)."""
+def build_events(store: Store, mode: CalendarSyncMode, *, keep_key: bool = True) -> list[SyncEvent]:
+    """Every event calendar sync sends in ``mode``, in the calendar file's order (module policy).
+    ``keep_key=False`` (the preview) never writes: without a :func:`uid_key` yet, discreet UIDs are
+    made with a key of the moment — the same form; the first sync makes the one that stays."""
     parsed = Calendar.from_ical(ics.build_ics(store))
     timezones: dict[str, Component] = {str(tz.get("tzid")): tz for tz in parsed.timezones}
     incoming = {ics.item_uid(item.id) for item in store.list_items(kind="payment") if item.direction == "in"}
     events: list[SyncEvent] = []
     seen: set[str] = set()
     today = clock.today()
-    key = uid_key(store) if mode == "discreet" else ""
+    key = ""
+    if mode == "discreet":
+        key = uid_key(store) if keep_key else (store.get_meta(UID_KEY_META) or tokens.token_hex(16))
     for original in parsed.events:
         stable = str(original.get("uid"))
         if mode == "discreet":
@@ -466,8 +470,9 @@ def build_events(store: Store, mode: CalendarSyncMode) -> list[SyncEvent]:
 
 
 def preview(store: Store, mode: CalendarSyncMode) -> list[CalendarEventPreview]:
-    """Exactly what each event would contain in ``mode`` (Settings → Calendar)."""
-    return [event.preview for event in build_events(store, mode)]
+    """Exactly what each event would contain in ``mode`` (Settings → Calendar). Only reads: on a
+    computer standing by (hand-off sync) a write here would be a change of the synced data."""
+    return [event.preview for event in build_events(store, mode, keep_key=False)]
 
 
 # --------------------------------------------------------------------------------------------------
