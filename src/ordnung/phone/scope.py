@@ -57,7 +57,6 @@ _PHONE = _operations(
     POST /api/items
     GET /api/items/{item_id}
     PATCH /api/items/{item_id}
-    GET /api/items/{item_id}.ics
     POST /api/items/{item_id}/confirm
     POST /api/items/{item_id}/girocode/confirm
     GET /api/contracts
@@ -96,16 +95,15 @@ _PHONE = _operations(
     GET /api/calls
     POST /api/calls
     PATCH /api/calls/{call_id}
-    GET /api/calendar.ics
-    POST /api/calendar/exported
     POST /api/phone/pair
     """
 )
 """System and live updates, reading the profile, letters received (upload, correct, read again, page
 images), to-dos, records, the overview, Ideas and the daily note, Ask, letters you write (including
-"answered" and its undo, which deletes no data), waiting and calls, the calendar file, and pairing
-itself — the only operation a phone reaches before it is paired. ``GET /api/health`` with ``probe``
-is refused by the gate."""
+"answered" and its undo, which deletes no data), waiting and calls, and pairing itself — the only
+operation a phone reaches before it is paired. ``GET /api/health`` with ``probe`` is refused by the
+gate. The calendar files (``.ics``) are computer-only: they are a copy of the records (to-dos, amounts,
+what to do) that a phone would keep in its Downloads."""
 
 #: Operations that stay on the computer, and why. Every one is in :data:`COMPUTER_ONLY`.
 NEVER_ON_PHONE: dict[Operation, str] = {
@@ -128,6 +126,8 @@ NEVER_ON_PHONE: dict[Operation, str] = {
     ("DELETE", "/api/drafts/{draft_id}/proofs/{proof_id}"): "deleting",
     ("DELETE", "/api/calls/{call_id}"): "deleting",
     ("GET", "/api/documents/{doc_id}/file"): "originals leave the computer",
+    ("GET", "/api/calendar.ics"): "records leave the computer",
+    ("GET", "/api/items/{item_id}.ics"): "records leave the computer",
     ("POST", "/api/documents/held/read"): "held-letter decisions",
     ("POST", "/api/documents/held/keep-private"): "held-letter decisions",
     ("POST", "/api/documents/held/wait"): "held-letter decisions",
@@ -156,6 +156,9 @@ _COMPUTER = _operations(
     GET /api/documents/{doc_id}/file
     GET /api/drafts/{draft_id}/pdf
     GET /api/drafts/{draft_id}/proof.pdf
+    GET /api/calendar.ics
+    GET /api/items/{item_id}.ics
+    POST /api/calendar/exported
     GET /api/traces
     GET /api/folder
     POST /api/documents/held/read
@@ -180,7 +183,8 @@ _COMPUTER = _operations(
     """
 )
 """Admin settings and profile edits, phone access and its devices, backups, deleting data, files and
-records that would leave the computer (originals, generated PDFs, traces), the watched folder and held
+records that would leave the computer (originals, generated PDFs, the calendar files and the note that
+they were downloaded, traces), the watched folder and held
 letters (privacy decisions), calendar sync (its password is in the computer's keyring), desktop
 notifications (they appear on the computer), the privacy log and usage, the Ideas review (background
 model work no phone waits for) and the demo. ``/api/openapi.json`` and any unknown ``/api`` path are
@@ -216,7 +220,6 @@ CHANGE_LABELS: dict[Operation, str] = {
     ("DELETE", "/api/drafts/{draft_id}/answered"): "Took back “answered” on a letter",
     ("POST", "/api/calls"): "Noted a call",
     ("PATCH", "/api/calls/{call_id}"): "Changed a call note",
-    ("POST", "/api/calendar/exported"): "Added dates to a calendar",
 }
 #: Phone operations that change nothing of the ledger: a question to Ask (it has its own entry) and
 #: pairing itself (``phone.paired``).
@@ -233,7 +236,10 @@ LIMITED: dict[Operation, str] = {
 }
 #: Live streams (ended at once when the phone is removed) and uploads (told the phone went away);
 #: every other request finishes.
-STREAMS: dict[Operation, str] = {("GET", "/api/events"): "events", ("POST", "/api/ask"): "ask"}
+STREAMS: dict[Operation, Literal["events", "ask"]] = {
+    ("GET", "/api/events"): "events",
+    ("POST", "/api/ask"): "ask",
+}
 UPLOADS: frozenset[Operation] = frozenset(
     {("POST", "/api/documents"), ("POST", "/api/drafts/{draft_id}/proofs")}
 )

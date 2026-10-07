@@ -102,6 +102,14 @@ describe("client", () => {
     expect([missing.status, missing.message, missing.technical]).toEqual([404, UNREADABLE_ANSWER, "Not Found"]);
   });
 
+  it("keeps why the phone listener signed a phone out (its 401's `removed`)", async () => {
+    mockFetch(401, { detail: "This phone isn't paired with Ordnung any more.", code: "phone_not_paired", removed: "token_reuse" });
+    const err = (await request("/items").catch((e: unknown) => e)) as ApiError;
+    expect([err.status, err.code, err.removed]).toEqual([401, "phone_not_paired", "token_reuse"]);
+    mockFetch(401, { detail: "This phone isn't paired with Ordnung any more.", code: "phone_not_paired" });
+    expect(((await request("/items").catch((e: unknown) => e)) as ApiError).removed).toBeNull();
+  });
+
   it("returns undefined for 204 and reports network failures as status 0", async () => {
     mockFetch(204, undefined);
     await expect(api.deleteItem("itm_1")).resolves.toBeUndefined();

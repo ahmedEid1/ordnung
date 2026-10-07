@@ -291,7 +291,12 @@ async def test_a_code_used_twice_pairs_nobody(data_dir: Path) -> None:
             async with phone_client(api) as mine:
                 used = await mine.post("/api/phone/pair", json={"code": code, "name": "iPhone"})
             assert (used.status_code, used.json()["code"]) == (409, "code_used")
-            assert (await stranger.get("/api/documents")).status_code == 401
+            refused = await stranger.get("/api/documents")
+            assert (refused.status_code, refused.json()["removed"]) == (401, "code_reused")
+            # the 401 told the browser to forget the cookie: a page load that still carries it
+            sign_in = {"Cookie": f"{COOKIE}={first.cookies[COOKIE]}", "Sec-Fetch-Dest": "document"}
+            page = await stranger.get("/today", headers=sign_in)
+            assert page.headers["location"] == "/pair?removed=code_reused"
         status = (await api.client.get("/api/phone")).json()
         assert status["devices"] == []
         assert status["notice"]["code"] == "code_reused"
@@ -336,6 +341,25 @@ async def test_only_the_token_s_hash_is_in_the_database(data_dir: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 # removing, starting over, a new address
 # --------------------------------------------------------------------------------------------------
+
+
+async def test_a_removed_phone_is_told_it_was_removed(data_dir: Path) -> None:
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        await pair(api, phone)
+        device = phone_of(api).devices[0].id
+        assert (await api.client.delete(f"/api/phone/devices/{device}")).status_code == 200
+        refused = await phone.get("/api/items")
+        assert refused.json() == {
+            "detail": (
+                "This phone isn't paired with Ordnung any more. Pair it again from Settings → Phone on "
+                "your computer."
+            ),
+            "code": "phone_not_paired",
+            "removed": "1",
+        }
+        # never paired here (no cookie): nothing was removed
+        async with phone_client(api, OTHER_PHONE_IP) as stranger:
+            assert "removed" not in (await stranger.get("/api/items")).json()
 
 
 async def test_removing_a_phone_signs_it_out_and_is_saved_first(data_dir: Path) -> None:
@@ -437,6 +461,47 @@ async def test_phones_unused_for_thirty_days_are_forgotten(data_dir: Path) -> No
         assert _kinds(api, "phone.removed")[0].data["by"] == "unused"
 
 
+async def test_a_phone_unused_for_thirty_days_is_refused_when_it_comes_back(data_dir: Path) -> None:
+    """Lifecycle review: only the watcher's daily round forgot unused phones, so after a restart (or
+    with phone access turned on again) a phone unused for 45 days got in during the first 30 s — and
+    that visit counted as a use, so it was never forgotten. It is refused and forgotten at once."""
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        token = (await pair(api, phone))["token"]
+        access = phone_of(api)
+        idle = datetime.now(UTC) - timedelta(days=45)
+        access.devices[0].last_seen_at = idle.strftime("%Y-%m-%dT%H:%M:%SZ")
+        refused = await phone.get("/api/documents")
+        assert (refused.status_code, refused.json()["code"]) == (401, "phone_not_paired")
+        assert refused.json()["removed"] == "unused"
+        assert access.devices == [] and load_record(api.ctx.store).devices == []
+        assert _kinds(api, "phone.removed")[0].data["by"] == "unused"
+        sign_in = {"Cookie": f"{COOKIE}={token}", "Sec-Fetch-Dest": "document"}
+        page = await phone.get("/today", headers=sign_in)
+        assert page.headers["location"] == "/pair?removed=unused"
+
+
+async def test_starting_or_turning_on_phone_access_forgets_unused_phones(data_dir: Path) -> None:
+    """Lifecycle review: the sweep of unused phones runs when phone access starts (a restart) and when
+    it is turned on again, not only a day later — Settings never lists a phone it would refuse."""
+    idle = (datetime.now(UTC) - timedelta(days=DEVICE_IDLE_DAYS + 15)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    async with phone_app(data_dir) as (api, _net, _servers):
+        access = phone_of(api)
+        async with phone_client(api) as phone, phone_client(api, OTHER_PHONE_IP) as other:
+            await pair(api, phone)
+            await pair(api, other, "Other phone")
+        access.devices[0].last_seen_at = idle
+        await access._save()
+        await access.stop()
+        await access.start_if_enabled()  # as at the next start
+        assert [d.name for d in access.devices] == ["Other phone"]
+        assert load_record(api.ctx.store).devices[0].name == "Other phone"
+        assert (await api.client.put("/api/phone", json={"enabled": False})).status_code == 200
+        access.devices[0].last_seen_at = idle
+        status = (await api.client.put("/api/phone", json={"enabled": True})).json()
+        assert status["listening"] is True and status["devices"] == []
+        assert [e.data["by"] for e in _kinds(api, "phone.removed")] == ["unused", "unused"]
+
+
 async def test_a_flush_of_when_phones_were_seen_never_brings_one_back(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -493,8 +558,12 @@ async def test_the_sign_in_changes_hourly_and_an_old_one_coming_back_signs_the_p
         assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={first}"})).status_code == 200
         now[0] += 20
         reused = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={first}"})
-        assert reused.status_code == 401
-        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 401
+        assert (reused.status_code, reused.json()["removed"]) == (401, "token_reuse")
+        # the phone's own sign-in is told why too (UX and lifecycle review: it said "removed")
+        own = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})
+        assert (own.status_code, own.json()["removed"]) == (401, "token_reuse")
+        page = await phone.get("/today", headers={"Cookie": f"{COOKIE}={second}"})
+        assert (page.status_code, page.headers["location"]) == (303, "/pair?removed=token_reuse")
         status = (await api.client.get("/api/phone")).json()
         assert status["devices"] == [] and status["notice"]["code"] == "token_reuse"
         assert "signed out because its sign-in was used from two places" in status["notice"]["detail"]
@@ -558,6 +627,43 @@ async def test_uploads_from_a_phone_are_filed_as_the_phone_s(data_dir: Path) -> 
         assert (
             added.message.endswith("from your phone") and added.data["device"] == phone_of(api).devices[0].id
         )
+
+
+def _letters(n: int, start: int = 0) -> list[tuple[str, tuple[str, bytes]]]:
+    return [
+        ("files", (f"letter-{i}.txt", f"Letter {i}: please pay 10 EUR by 1 November 2026.".encode()))
+        for i in range(start, start + n)
+    ]
+
+
+async def test_an_upload_counts_each_letter_against_the_phone_s_hour(data_dir: Path) -> None:
+    """Scope review: the hourly upload limit counted requests, so one request of 60 files queued 60
+    readings ("upload slots used: 1 of 30"). Each letter counts; photos combined into one letter count
+    once; a refused upload files nothing and counts for nothing."""
+    pages = [(SAMPLES / f"23_steuerbescheid_2025_p{n}.jpg").read_bytes() for n in (1, 2)]
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        await pair(api, phone)
+        access = phone_of(api)
+        access._device_limits["upload"] = pairing_module.SlidingLimit(3, 3600)
+
+        async def send(files: Any, combine: bool = False) -> Any:
+            return await phone.post("/api/documents", files=files, data={"combine": str(combine).lower()})
+
+        too_many = await send(_letters(4))
+        assert (too_many.status_code, too_many.json()["code"]) == (429, "too_many")
+        assert "up to 3 letters an hour" in too_many.json()["detail"]
+        assert api.ctx.store.list_documents() == []
+        assert (await send(_letters(2))).status_code == 201
+        over = await send(_letters(2, start=2))
+        assert (over.status_code, over.json()["code"]) == (429, "too_many")
+        assert int(over.headers["retry-after"]) > 0
+        assert len(api.ctx.store.list_documents()) == 2
+        photos = [("files", (f"photo-p{n}.jpg", data)) for n, data in enumerate(pages, start=1)]
+        assert len((await send(photos, combine=True)).json()["documents"]) == 1  # two pages, one letter
+        assert (await send(_letters(1, start=5))).status_code == 429  # 3 of 3 used
+        computer = await api.client.post("/api/documents", files=_letters(4, start=10))
+        assert computer.status_code == 201  # the computer has no such limit
+        assert access.over_limit("phn_other", "upload") == 0  # each phone its own
 
 
 async def test_a_phone_can_t_let_claude_read_a_private_letter(data_dir: Path) -> None:

@@ -8,8 +8,12 @@
  * words the computer shows too — the person compares them before opening Ordnung (a full page load, signed in).
  *
  * Health first: a phone that is paired already goes on to Today; the computer's own tab is told pairing is for
- * phones. `?removed=1` (the computer removed this phone) and `?removed=token_reuse` (its sign-in was used from two
- * places) say why it is here again.
+ * phones. `?removed=…` says why it is here again — `1` (the computer removed this phone), `token_reuse` (its sign-in
+ * was used from two places), `code_reused` (another device used its pairing code) or `unused` (not used for 30 days)
+ * — as the phone listener said it (its redirect, or the `removed` of its 401 that `leaveIfUnpaired` follows).
+ *
+ * The typed code keeps at most {@link CODE_LENGTH} characters: an extra one typed at the end is dropped, so the field
+ * never shows a right code that the form then refuses.
  */
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
@@ -44,6 +48,11 @@ export const REMOVED_NOTE = "This phone was removed on your computer. Pair it ag
 /** `?removed=token_reuse`: the computer signed it out because its sign-in turned up in two places. */
 export const TOKEN_REUSE_NOTE =
   "This phone was signed out because its sign-in was used from two places. If that wasn't you, someone may have copied it: pair again, and check the phones listed on your computer.";
+/** `?removed=code_reused`: another device used the code this phone paired with, so neither stays paired. */
+export const CODE_REUSED_NOTE =
+  "This phone was signed out because another device used the same pairing code. Someone may have seen the code: make a new one on your computer, pair again, and check the phones listed there.";
+/** `?removed=unused`: the computer forgot a phone unused for 30 days. */
+export const UNUSED_NOTE = "This phone wasn't used with Ordnung for 30 days, so your computer forgot it. Pair it again to keep using Ordnung here.";
 /** The computer's own tab on `/pair`. */
 export const COMPUTER_NOTE = "Pairing is for phones. On this computer, open Settings → Phone and scan the code there with your phone's camera.";
 
@@ -73,11 +82,14 @@ export function codeFromHash(hash: string): string | null {
   return code.length === CODE_LENGTH && /^[0-9A-Za-z\s\-‑]+$/.test(raw) ? code : null;
 }
 
-/** Why this phone is here again (`?removed=…`), if it says. */
-function removedNote(params: URLSearchParams): { tone: "warn" | "danger"; text: string } | null {
+/** Why this phone is here again (`?removed=…`), if it says: a copied sign-in or a code two devices used in the danger tone. */
+export function removedNote(params: URLSearchParams): { tone: "warn" | "danger"; text: string } | null {
   const removed = params.get("removed");
   if (!removed) return null;
-  return removed === "token_reuse" ? { tone: "danger", text: TOKEN_REUSE_NOTE } : { tone: "warn", text: REMOVED_NOTE };
+  if (removed === "token_reuse") return { tone: "danger", text: TOKEN_REUSE_NOTE };
+  if (removed === "code_reused") return { tone: "danger", text: CODE_REUSED_NOTE };
+  if (removed === "unused") return { tone: "warn", text: UNUSED_NOTE };
+  return { tone: "warn", text: REMOVED_NOTE };
 }
 
 /** The phone's answer to "who am I": paired (Health), not paired (the form), or an error to show. */
@@ -319,7 +331,8 @@ function PairForm({
             <Input
               ref={codeRef}
               value={formatCode(typed)}
-              onChange={(e) => setTyped(e.target.value)}
+              // at most the code's characters: an 11th one typed at the end is dropped, never shown and refused
+              onChange={(e) => setTyped(compactCode(e.target.value).slice(0, CODE_LENGTH))}
               autoCapitalize="characters"
               autoComplete="one-time-code"
               autoCorrect="off"

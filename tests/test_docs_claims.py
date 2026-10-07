@@ -922,8 +922,8 @@ _PHONE_CLAIMS: list[tuple[str, str]] = [
     ("docs/privacy.md", "At most {phones} phones can be paired"),
     (
         "docs/privacy.md",
-        "Each phone may ask {asks} questions, start {model_actions} other things that ask Claude and send "
-        "{uploads} uploads an hour",
+        "Each phone may ask {asks} questions, start {model_actions} other things that ask Claude and add "
+        "{uploads} letters an hour",
     ),
     ("docs/privacy.md", "the Remove dialog counts a phone's changes of the last {recent_days} days"),
     ("docs/privacy.md", "a pairing request of at most {pair_kib} KiB"),
@@ -941,7 +941,7 @@ _PHONE_CLAIMS: list[tuple[str, str]] = [
     (
         _ADR_PHONE.name,
         "Each phone may ask Ask {asks} questions, start {model_actions} other things that ask Claude and "
-        "send {uploads} uploads an hour",
+        "add {uploads} letters an hour",
     ),
     (_ADR_PHONE.name, "the Remove dialog counts the changes of the last {recent_days} days"),
     (_ADR_PHONE.name, "a pairing request of at most {pair_kib} KiB"),
@@ -986,7 +986,7 @@ _PHONE_CLAIMS: list[tuple[str, str]] = [
     (
         "docs/SPEC.md",
         "Per phone and hour: {asks} Ask questions, {model_actions} other model actions (read again, "
-        "translate, a new letter, the daily note) and {uploads} uploads",
+        "translate, a new letter, the daily note) and {uploads} letters added",
     ),
     ("docs/SPEC.md", "`PhoneDevice.recent_changes` counts the last {recent_days} days"),
     ("docs/SPEC.md", "last use is saved at most every {seen_minutes} minutes"),
@@ -1021,6 +1021,24 @@ def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence:
 def _example_path(template: str) -> str:
     """An ``/api`` path the template matches (each parameter as ``x1``)."""
     return re.sub(r"{\w+}", "x1", template)
+
+
+def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
+    """Scope review: README and privacy.md said the profile's IBAN shows only its last characters on a
+    phone, while a deposit-return letter written there carries it in full (code writes it into the
+    letter). A letter has to print it, so the docs say so, and ADR 0017 lists it as a known limit with why
+    it isn't masked there."""
+    template = (ROOT / "src" / "ordnung" / "drafts" / "template_letters.py").read_text(encoding="utf-8")
+    assert "auf mein Konto mit der IBAN {iban}." in template  # the letter carries it in full
+    assert "a letter shows what is printed on it, also one you write there that carries your IBAN" in (
+        _flat(_readme())
+    )
+    privacy = _doc("docs/privacy.md")
+    assert "also a letter you write: one that asks for money back on your account" in privacy
+    assert "carries your IBAN in full, on the phone too" in privacy
+    limits = _flat(_ADR_PHONE.read_text(encoding="utf-8").split("## Consequences and known limits", 1)[1])
+    assert "carries the profile's IBAN in full" in limits
+    assert "would make the phone's editor save the mask into the letter" in limits
 
 
 def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:

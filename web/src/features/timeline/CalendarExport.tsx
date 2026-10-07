@@ -84,6 +84,8 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
   };
   const guide = CALENDAR_GUIDES.find((g) => g.app === app) ?? CALENDAR_GUIDES[0]!;
   const reminders = reminderDays(profile.data?.reminder_days?.deadline);
+  // the calendar file is a copy of the records: it stays on the computer, which the phone's API refuses anyway
+  if (phone) return null;
 
   return (
     <>

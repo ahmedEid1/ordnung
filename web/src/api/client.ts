@@ -42,14 +42,20 @@ export class ApiError extends Error {
    * "database is locked", an unexpected error's name) — shown under "Technical details", never as the sentence.
    */
   readonly technical: string | null;
+  /**
+   * `phone_not_paired` from the phone listener: why the computer signed this phone out (`token_reuse`, `code_reused`,
+   * `unused`, or `1` for removed), when it still knows — the pairing page's `?removed=`.
+   */
+  readonly removed: string | null;
 
-  constructor(status: number, message: string, detail?: unknown, code?: string | null, technical?: string | null) {
+  constructor(status: number, message: string, detail?: unknown, code?: string | null, technical?: string | null, removed?: string | null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
     this.code = code ?? null;
     this.technical = technical ?? null;
+    this.removed = removed ?? null;
   }
 
   /** True for the zero-install hosted demo's "needs Claude" refusal. */
@@ -138,17 +144,20 @@ export async function toApiError(res: Response): Promise<ApiError> {
   let detail: unknown = undefined;
   let code: string | null = null;
   let technical: string | null = null;
+  let removed: string | null = null;
   let json = false;
   try {
     const text = await res.text();
     if (text) {
       try {
-        const body = JSON.parse(text) as { detail?: unknown; code?: unknown; error?: unknown };
+        const body = JSON.parse(text) as { detail?: unknown; code?: unknown; error?: unknown; removed?: unknown };
         json = true;
         detail = body?.detail ?? body;
         if (typeof body?.code === "string") code = body.code;
         // an unexpected error's name (`app.py`), for "Technical details"
         if (typeof body?.error === "string") technical = body.error;
+        // why the computer signed this phone out (the phone listener's `phone_not_paired`)
+        if (typeof body?.removed === "string") removed = body.removed;
       } catch {
         detail = text;
       }
@@ -161,7 +170,7 @@ export async function toApiError(res: Response): Promise<ApiError> {
   // Ordnung's own words for the person (a refusal, Claude signed out, the sentence for an unexpected error) — unless
   // a server error says no more than its status ("Internal Server Error")
   if (json && !(res.status >= 500 && (!words || words === res.statusText || REASON_PHRASE.test(words)))) {
-    return new ApiError(res.status, words || fallback, detail, code, technical);
+    return new ApiError(res.status, words || fallback, detail, code, technical, removed);
   }
   // a server error without words for the person, or an answer that isn't Ordnung's JSON: a plain sentence, the raw words kept
   const raw = clip(typeof detail === "string" ? detail : words);

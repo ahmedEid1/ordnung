@@ -18,7 +18,7 @@ import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { PHONE_OFFLINE_DETAIL, PHONE_OFFLINE_TITLE } from "@/features/phone/copy";
 import { pageLoad } from "@/features/phone/platform";
 import { TEST_HEALTH } from "@/test/render";
-import { REMOVED_PHONE_PATH, __resetOfflineForTests, createQueryClient, leaveIfUnpaired } from "./queryClient";
+import { REMOVED_PHONE_PATH, __resetOfflineForTests, createQueryClient, leaveIfUnpaired, removedPhonePath } from "./queryClient";
 
 let client: QueryClient;
 beforeEach(() => {
@@ -192,6 +192,18 @@ describe("on a paired phone", () => {
     expect(REMOVED_PHONE_PATH).toBe("/pair?removed=1");
     // no toast for it: the page is going
     expect(screen.queryByText("Couldn't save")).toBeNull();
+  });
+
+  it("told the reason the phone listener gave: a copied sign-in, a code two devices used, 30 days unused (review)", () => {
+    const signedOut = (removed: string | null) => new ApiError(401, "This phone isn't paired with Ordnung any more.", null, "phone_not_paired", null, removed);
+    expect(removedPhonePath("token_reuse")).toBe("/pair?removed=token_reuse");
+    expect(removedPhonePath("code_reused")).toBe("/pair?removed=code_reused");
+    expect(removedPhonePath("unused")).toBe("/pair?removed=unused");
+    expect(removedPhonePath("1")).toBe(REMOVED_PHONE_PATH);
+    expect(removedPhonePath(null)).toBe(REMOVED_PHONE_PATH);
+    expect(removedPhonePath("//evil.example")).toBe(REMOVED_PHONE_PATH); // never a path of the answer's own
+    expect(leaveIfUnpaired(signedOut("token_reuse"))).toBe(true);
+    expect(assign.mock.calls).toEqual([["/pair?removed=token_reuse"]]);
   });
 
   it("never from the pairing page, which expects the refusal before pairing", () => {

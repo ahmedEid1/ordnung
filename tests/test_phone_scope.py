@@ -55,7 +55,7 @@ def test_every_operation_is_classified(schema: dict[str, Any]) -> None:
     gone = sorted((PHONE_ROUTES | COMPUTER_ONLY) - operations)
     assert not gone, f"classified operations that don't exist: {gone}"
     assert not PHONE_ROUTES & COMPUTER_ONLY
-    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (102, 60, 42)
+    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (102, 57, 45)
 
 
 def test_never_on_phone_stays_on_the_computer() -> None:
@@ -75,6 +75,22 @@ def test_never_on_phone_stays_on_the_computer() -> None:
         ("POST", "/api/phone/pairing"),
     ):
         assert operation in NEVER_ON_PHONE, operation
+
+
+def test_calendar_files_stay_on_the_computer() -> None:
+    """Review finding: a phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) although a
+    phone keeps no copy and downloads no records. The files and the note that they were downloaded are
+    computer-only."""
+    for operation in (
+        ("GET", "/api/calendar.ics"),
+        ("GET", "/api/items/{item_id}.ics"),
+        ("POST", "/api/calendar/exported"),
+    ):
+        assert operation in COMPUTER_ONLY and operation not in PHONE_ROUTES, operation
+        assert operation not in scope.CHANGE_LABELS
+    assert NEVER_ON_PHONE[("GET", "/api/calendar.ics")] == "records leave the computer"
+    assert scope.match("GET", "/api/calendar.ics") is None
+    assert scope.match("GET", "/api/items/itm_1.ics") is None
 
 
 def test_the_only_delete_on_a_phone_is_the_undo_of_answered(schema: dict[str, Any]) -> None:
@@ -112,7 +128,9 @@ def test_every_operation_classifies_as_its_list(schema: dict[str, Any]) -> None:
         ("GET", "/api/documents/doc_ab/pages/1.jpg", "phone"),
         ("HEAD", "/api/documents/doc_x/thumbnail.jpg", "phone"),
         ("get", "/api/items/itm_x", "phone"),
-        ("GET", "/api/items/itm_x.ics", "phone"),  # matches {item_id} and {item_id}.ics: both phone
+        ("GET", "/api/items/itm_x", "phone"),
+        ("GET", "/api/items/itm_x.ics", "computer"),  # matches {item_id} (phone) and {item_id}.ics (not)
+        ("HEAD", "/api/calendar.ics", "computer"),
         ("DELETE", "/api/drafts/drf_1/answered", "phone"),
         ("POST", "/api/phone/pair", "phone"),
         ("GET", "/api/health", "phone"),
@@ -225,7 +243,8 @@ def test_health_says_who_asked(schema: dict[str, Any]) -> None:
     ("method", "path", "expected"),
     [
         ("PATCH", "/api/items/itm_1", (("PATCH", "/api/items/{item_id}"), {"item_id": "itm_1"})),
-        ("HEAD", "/api/items/x.ics", (("GET", "/api/items/{item_id}"), {"item_id": "x.ics"})),
+        ("HEAD", "/api/items/x", (("GET", "/api/items/{item_id}"), {"item_id": "x"})),
+        ("HEAD", "/api/items/x.ics", None),  # the calendar file of a to-do stays on the computer
         (
             "GET",
             "/api/documents/doc_1/pages/2.jpg",

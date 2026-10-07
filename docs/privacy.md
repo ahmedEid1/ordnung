@@ -118,7 +118,7 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   database rows are overwritten rather than left behind. Originals and page images are never kept in the
   browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
   its cache. A paired phone keeps no copy either: every answer it gets is marked not to be stored, it
-  can't download originals or letter PDFs, and a phone you removed is told to empty its cache and storage
+  can't download originals, letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage
   the next time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
@@ -301,13 +301,15 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
 
 - **What a phone can do.** Look at everything the everyday pages show, add letters (photos or files)
   and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists. It can't delete
-  anything, download originals, letter PDFs or your records, change settings, your profile, phone
+  anything, download originals, letter PDFs, the calendar file or your records, change settings, your profile, phone
   access, calendar sync, the watched folder or backups, decide about letters waiting from your watched
   folder, let Claude read a letter you kept private, or start the weekly Ideas. The exact list is checked
   before a request reaches the rest of Ordnung, and anything not on it is refused.
 - **Your letters stay on the computer.** Photos taken on the phone go straight to the computer, every
   answer the phone gets is marked not to be stored, and the phone keeps no copy. On the phone, *My
-  numbers* and your profile's IBAN show only their last 4 characters ([above](#my-numbers)). A single
+  numbers* and your profile's IBAN show only their last 4 characters ([above](#my-numbers)). A letter
+  shows what is printed on it, though — also a letter you write: one that asks for money back on your
+  account (such as the deposit return) carries your IBAN in full, on the phone too. A single
   photo is kept on the computer as the phone sent it, with what the camera wrote into it (the time, and
   the place if the camera records it); Claude only ever sees the page image Ordnung makes from it.
 - **Home network only.** Phone access listens on one address of your computer on your home network and
@@ -348,13 +350,17 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   authority to that one address is still to be checked on real devices.
 - **Signed in.** A paired phone gets a sign-in of its own in a cookie only its browser holds; Ordnung
   keeps only a hash of it. It works only on your home network, and changes by itself at most once an
-  hour: an old one used again means it was copied, so that phone is signed out and Settings says why.
-  *Remove* in Settings → Phone signs a phone out at once (what it was sending when you removed it, other
-  than an upload, still arrives). A phone not used for 30 days is forgotten; pairing again is one scan. At
-  most 10 phones can be paired.
+  hour: an old one used again means it was copied, so that phone is signed out, and Settings and the
+  phone say why. *Remove* in Settings → Phone signs a phone out at once: what it was sending still
+  arrives, except an upload still on its way (one that had arrived is filed, and the phone is told so).
+  Turning phone access off does the same, and the phone is told phone access stopped, not that it was
+  removed. A phone not used for 30 days is forgotten; pairing again is one scan. It is refused when it
+  comes back after that, even right after Ordnung or phone access starts again. At most 10 phones can be
+  paired.
 - **Claude from the phone.** A phone uses Claude as your computer does — reading a letter it
   photographed, *Ask*, writing a letter — through your account on the computer, and the usage log shows
-  it. Each phone may ask 30 questions, start 20 other things that ask Claude and send 30 uploads an hour.
+  it. Each phone may ask 30 questions, start 20 other things that ask Claude and add 30 letters an hour
+  (each letter of an upload counts; photos of one letter count once).
 - **What is logged.** The privacy log notes turning phone access on and off, pausing and resuming it,
   pairing and removing a phone (and why: by you, unused, a new address, starting over, a code or sign-in
   used twice), cancelled codes and new certificates. Everything a phone changes says so ("Changed a

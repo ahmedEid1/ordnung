@@ -19,25 +19,37 @@ in a thread. A busy port, a missing address or anything else that keeps it from 
 *problem* shown in Settings, never an exit.
 
 **Turning it off, removing a phone** never cuts a request that writes: only live streams
-(``/api/events``, Ask) are cancelled and an upload still arriving is told the phone went away; every
-other request finishes, and the next one is refused. Cancelling a request that waits inside the ledger
-lock would let a second writer in while the first one's thread is still writing. A stop waits for the
-requests in flight (at most :data:`DRAIN_S` seconds) before the listener closes.
+(``/api/events``, Ask) are cancelled and an upload whose body is still arriving is stopped (told the
+phone was removed, or that phone access stopped); an upload that arrived in full is filed and answered,
+every other request that was running finishes, and the next one is refused — so is one the gate had
+admitted but not yet handed on. Cancelling a request that waits inside the ledger lock would let a
+second writer in while the first one's thread is still writing. Requests count as in flight from the
+moment the gate admits them (:meth:`PhoneAccess.admit`), so a stop waits for each of them (at most
+:data:`DRAIN_S` seconds) before the listener closes; one that runs longer is never cut by the
+listener's own stop either (the gate shields it), it just can't answer any more.
 
 **The watcher** runs while phone access is on. Every :data:`WATCH_INTERVAL_S` seconds it checks that
 this computer still has the address and is still behind the same router: if not, phone access pauses
 (``address_gone``, ``other_network``) and resumes when both are back — it never moves to another address
 by itself, it can't tell a café's network from home. Once a day it renews the certificate when due and
 forgets phones unused for :data:`DEVICE_IDLE_DAYS` days; every :data:`SEEN_WRITE_EVERY_S` seconds it
-saves when phones were last used.
+saves when phones were last used. A phone unused for that long is also refused (and forgotten) when it
+comes back — after a restart, or with phone access turned on again, before the watcher's first round —
+and the paired phones are swept when phone access starts.
 
 **A phone's sign-in** (a 256-bit token in its cookie; only its SHA-256 is saved) changes at most once an
 hour, on a page load. The previous one stays valid for :data:`PREVIOUS_GRACE_S` seconds after the phone
 first uses the new one (a phone that never got the new one keeps the previous); one of its earlier
 sign-ins coming back means it was copied, and the phone is signed out with a notice on the computer.
 
-**Limits per phone**: :data:`DEVICE_LIMITS` (Ask, the everyday actions that ask Claude, uploads) per
-hour; more gets 429 with ``Retry-After``. At most :data:`MAX_PHONES` phones are paired.
+**Limits per phone**: :data:`DEVICE_LIMITS` (Ask, the everyday actions that ask Claude, letters added)
+per hour; more gets 429 with ``Retry-After``. An upload counts each letter it adds (photos combined into
+one letter count once), so one request can't queue more readings than the hour allows. At most
+:data:`MAX_PHONES` phones are paired.
+
+**Why a phone was signed out** is kept in memory for each of its sign-ins (:data:`RemovedBy`), so its
+next request — the copy's or the phone's own — can say so (``?removed=token_reuse`` on the pairing
+page); after a restart a phone the computer doesn't know is just "removed".
 
 Record writes go through one writer: each takes its snapshot on the event loop and a newer snapshot
 always wins, so a write of when a phone was last seen can never bring back a phone removed meanwhile;
@@ -53,7 +65,7 @@ import logging
 import secrets
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -104,7 +116,8 @@ PREVIOUS_GRACE_S = 120.0
 RECENT_DAYS = 30
 PORTS = range(DEFAULT_PORT, DEFAULT_PORT + 9)
 #: Per phone and hour: ``(limit, window seconds)`` for Ask, the everyday actions that ask Claude
-#: (read again, translate, write a letter, the daily note) and uploads.
+#: (read again, translate, write a letter, the daily note) and uploads (each letter an upload adds, each
+#: proof of sending).
 DEVICE_LIMITS: dict[str, tuple[int, float]] = {
     "ask": (30, 3600.0),
     "model": (20, 3600.0),
@@ -122,6 +135,10 @@ INVALID_ADDRESS_MESSAGE = (
 )
 NOT_LISTENING_MESSAGE = "Phone access is off or paused, so no phone can pair now."
 PHONE_OFF_MESSAGE = "Phone access is turned off on your computer."
+PHONE_STOPPED_MESSAGE = (
+    "Phone access stopped on your computer while this was on its way, so it didn't arrive. "
+    "Try again when phone access is back."
+)
 TOO_MANY_PHONES_MESSAGE = (
     f"Ordnung already has {MAX_PHONES} phones paired. Remove one in Settings → Phone on your computer."
 )
@@ -138,11 +155,18 @@ LIMIT_MESSAGES = {
     "model": "This phone asked Claude for a lot in the last hour. Try again later, or on your computer.",
     "upload": "This phone added a lot of letters in the last hour. Try again later, or on your computer.",
 }
+UPLOAD_TOO_MANY_MESSAGE = (
+    "A phone can add up to {limit} letters an hour. Add fewer at once, or add these on your computer."
+)
 
 ProblemCode = Literal["no_network", "address_gone", "other_network", "port_busy", "failed"]
 NoticeCode = Literal["pairing_stopped", "code_reused", "token_reuse"]
 RemovedBy = Literal["computer", "unused", "address_changed", "reset", "code_reused", "token_reuse"]
 LiveKind = Literal["events", "ask", "upload", "other"]
+#: Why a request in flight was revoked: the phone was removed (:data:`RemovedBy`) or the listener stops.
+RevokedBy = RemovedBy | Literal["stopped"]
+#: How many sign-ins of removed phones keep their reason (see the module docstring).
+SIGNED_OUT_KEPT = 256
 
 _REMOVED_WHY: dict[RemovedBy, str] = {
     "computer": "",
@@ -193,6 +217,12 @@ def _seconds(iso: str | None) -> float | None:
         return datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC).timestamp()
     except ValueError:
         return None
+
+
+def _unused(device: PhoneDeviceRecord, now: float) -> bool:
+    """Not used for :data:`DEVICE_IDLE_DAYS` days (since it was last seen, or paired)."""
+    used = _seconds(device.last_seen_at) or _seconds(device.paired_at) or now
+    return used < now - DEVICE_IDLE_DAYS * 86400
 
 
 def token_hash(token: str) -> str:
@@ -263,18 +293,36 @@ def listener_config(app: ASGIApp, address: str, port: int, certs: tls.Certificat
 
 @dataclass(eq=False)
 class Live:
-    """A request the phone listener admitted (and runs now)."""
+    """A request the phone listener admitted: from the gate's first check until its answer (or, for one
+    the listener's stop cut off, until what it started has finished)."""
 
-    device_id: str | None
-    kind: LiveKind
+    device_id: str | None = None
+    kind: LiveKind = "other"
     scope: anyio.CancelScope = field(default_factory=anyio.CancelScope)
     revoked: asyncio.Event = field(default_factory=asyncio.Event)
+    #: Why it was revoked (the first reason wins).
+    reason: RevokedBy | None = None
+    #: The app's run of a request that isn't a stream (shielded from the listener's stop).
+    running: asyncio.Future[None] | None = None
 
-    def revoke(self) -> None:
-        """The phone was removed: a stream ends now, an upload is told the phone went away; anything
-        else finishes (its answer still goes out)."""
+    @property
+    def stream(self) -> bool:
+        return self.kind in ("events", "ask")
+
+    def revoke(self, reason: RevokedBy) -> None:
+        """The phone was removed or the listener stops: a stream ends now, an upload whose body is still
+        arriving is stopped; anything else that is running finishes (its answer still goes out). A request
+        not yet handed to the app is refused."""
+        if self.reason is None:
+            self.reason = reason
         self.revoked.set()
-        if self.kind in ("events", "ask"):
+        if self.stream:
+            self.scope.cancel()
+
+    def become(self, device_id: str | None, kind: LiveKind) -> None:
+        """What the gate found out about the request (whose it is, what it does)."""
+        self.device_id, self.kind = device_id, kind
+        if self.revoked.is_set() and self.stream:
             self.scope.cancel()
 
 
@@ -288,11 +336,13 @@ class Notice:
 
 @dataclass(frozen=True)
 class Auth:
-    """What a request's cookie turned out to be."""
+    """What a request's cookie turned out to be (``removed``: why a sign-in this computer no longer knows
+    was signed out, when it still remembers)."""
 
     device: PhoneDeviceRecord | None = None
     via: Literal["current", "previous"] | None = None
     unknown: bool = False
+    removed: RemovedBy | None = None
 
 
 @dataclass(frozen=True)
@@ -336,6 +386,7 @@ class PhoneAccess:
         self._watcher: asyncio.Task[None] | None = None
         self._lock: asyncio.Lock | None = None
         self._live: set[Live] = set()
+        self._signed_out: dict[str, RemovedBy] = {}
         self._idle = asyncio.Event()  # set while no request is in flight
         self._idle.set()
         self._seen_dirty = False
@@ -545,6 +596,7 @@ class PhoneAccess:
                 self._load(force=True)
                 if not self.record.enabled:
                     return
+                await self._forget_unused(self.clock())
                 await self._bind()
                 if self.problem in ("address_gone", "no_network", "other_network"):
                     await self._paused_now()
@@ -572,6 +624,7 @@ class PhoneAccess:
             self.record = PhoneRecord()
             self._loaded = True
             self._reindex()
+            self._signed_out.clear()
             self.desk.clear()
             self.problem = None
             self.notice = None
@@ -641,6 +694,8 @@ class PhoneAccess:
         record.enabled = True
         if not was_on or moved:
             record.enabled_at = _iso(self.clock())
+        if not was_on:
+            await self._forget_unused(self.clock())
         if not self.listening:
             await self._bind()
         await self._save()
@@ -711,7 +766,7 @@ class PhoneAccess:
         try:
             server = self.server_factory(listener_config(self.listener_app, address, port, certs))
             await server.startup()
-        except SystemExit:  # uvicorn exits on a bind error (1 in 0.30, 3 later)
+        except SystemExit:  # uvicorn exits on a bind error (with 3 since 0.31; older ones with 1)
             self.problem = "port_busy"
             return False
         except Exception:
@@ -735,13 +790,13 @@ class PhoneAccess:
         )
 
     async def _unbind(self) -> None:
-        """Stop listening: streams end, uploads are told the phone went away, other requests finish."""
+        """Stop listening: streams end, uploads still arriving are stopped, other requests that run
+        finish, and admitted ones that don't run yet are refused."""
         server, self._server, self.bound = self._server, None, None
         if server is None:
             return
         for live in list(self._live):
-            if live.kind != "other":
-                live.revoke()
+            live.revoke("stopped")
         # shielded: a caller that is cancelled meanwhile (the watcher) never leaves the socket open
         await asyncio.shield(self._close(server))
 
@@ -841,10 +896,11 @@ class PhoneAccess:
                 self._reload_certificate(certs)
                 self.certificates = certs
                 await self._save()
-        idle = now - DEVICE_IDLE_DAYS * 86400
+        await self._forget_unused(now)
+
+    async def _forget_unused(self, now: float) -> None:
         for device in list(self.record.devices):
-            used = _seconds(device.last_seen_at) or _seconds(device.paired_at) or now
-            if used < idle:
+            if _unused(device, now):
                 await self.remove(device.id, by="unused")
 
     def _reload_certificate(self, certs: tls.Certificates) -> None:
@@ -861,22 +917,28 @@ class PhoneAccess:
         device = self.device(device_id)
         if device is None:
             return False
-        self._drop_now(device)
+        self._drop_now(device, by)
         await self._save()
         await self._log_removed(device, by)
         return True
 
-    def _drop_now(self, device: PhoneDeviceRecord) -> None:
+    def _drop_now(self, device: PhoneDeviceRecord, by: RemovedBy) -> None:
         self.record.devices = [d for d in self.record.devices if d.id != device.id]
         self._reindex()
         self.desk.used_by(device.id)
+        for digest in (*device.retired, device.previous_sha256, device.token_sha256):
+            if digest:
+                self._signed_out.pop(digest, None)
+                self._signed_out[digest] = by
+        while len(self._signed_out) > SIGNED_OUT_KEPT:
+            del self._signed_out[next(iter(self._signed_out))]
         for live in list(self._live):
             if live.device_id == device.id:
-                live.revoke()
+                live.revoke(by)
 
     async def _drop_all(self, by: RemovedBy) -> None:
         for device in list(self.record.devices):
-            self._drop_now(device)
+            self._drop_now(device, by)
             await self._log_removed(device, by)
         await self._save()
 
@@ -895,12 +957,15 @@ class PhoneAccess:
         self._load()
         found = self._index.get(token_hash(token))
         if found is None:
-            return Auth(unknown=True)
+            return Auth(unknown=True, removed=self.why_signed_out(token))
         device_id, which = found
         device = self.device(device_id)
         if device is None:
             return Auth(unknown=True)
         now = self.clock()
+        if _unused(device, now):  # the watcher may not have run yet (a restart, phone access just on)
+            await self.remove(device.id, by="unused")
+            return Auth(unknown=True, removed="unused")
         if which == "current":
             if device.confirmed_at is None:
                 device.confirmed_at = _iso(now)
@@ -910,11 +975,15 @@ class PhoneAccess:
         if which == "previous" and (confirmed is None or now - confirmed <= PREVIOUS_GRACE_S):
             return Auth(device, "previous")
         # a sign-in the phone had before came back: it was copied, and both copies are signed out
-        self._drop_now(device)
+        self._drop_now(device, "token_reuse")
         self._notify("token_reuse", [device.last_address or "", client], device.name)
         await self._save()
         await self._log_removed(device, "token_reuse")
-        return Auth(unknown=True)
+        return Auth(unknown=True, removed="token_reuse")
+
+    def why_signed_out(self, token: str | None) -> RemovedBy | None:
+        """Why the phone whose sign-in ``token`` was is signed out, when this computer still knows."""
+        return self._signed_out.get(token_hash(token)) if token else None
 
     async def renew_sign_in(
         self, device: PhoneDeviceRecord, via: Literal["current", "previous"]
@@ -948,18 +1017,35 @@ class PhoneAccess:
         limit = self._device_limits.get(kind)
         return limit.take(device_id) if limit is not None else 0
 
-    @contextlib.contextmanager
-    def tracked(self, device_id: str | None, kind: LiveKind) -> Iterator[Live]:
-        """Keep track of an admitted request while it runs (so removal and stopping can end it)."""
-        live = Live(device_id, kind)
+    @property
+    def upload_limit(self) -> int:
+        """How many letters a phone may add an hour."""
+        return self._device_limits["upload"].limit
+
+    def more_letters(self, device_id: str, letters: int) -> int:
+        """An upload from ``device_id`` adds ``letters`` letters, and the gate counted it as one. ``0``
+        when they fit in the phone's hour (and count), else the seconds until they would (``-1``: more
+        than an hour allows, never); a refused upload counts for nothing (the gate's one is given back)."""
+        limit = self._device_limits["upload"]
+        if letters <= 1:
+            return 0
+        wait = -1 if letters > limit.limit else limit.take(device_id, count=letters - 1)
+        if wait:
+            limit.give_back(device_id)
+        return wait
+
+    def admit(self) -> Live:
+        """A request the gate starts to check: tracked until :meth:`release` (removal and stopping can
+        end it, and a stop waits for it)."""
+        live = Live()
         self._live.add(live)
         self._idle.clear()
-        try:
-            yield live
-        finally:
-            self._live.discard(live)
-            if not self._live:
-                self._idle.set()
+        return live
+
+    def release(self, live: Live) -> None:
+        self._live.discard(live)
+        if not self._live:
+            self._idle.set()
 
     # ------------------------------------------------------------------------------ pairing
 
@@ -1000,7 +1086,7 @@ class PhoneAccess:
             self.desk.forget_used(redeemed.digest)
             self._notify("code_reused", [(first.last_address or "") if first else "", client])
             if first is not None:
-                self._drop_now(first)
+                self._drop_now(first, "code_reused")
                 await self._save()
                 await self._log_removed(first, "code_reused")
             raise PhoneRefusal("code_used", CODE_USED_MESSAGE)

@@ -230,7 +230,9 @@ export function TodayView() {
   const listed = new Set(reviewDocs.slice(0, PLEASE_CHECK_SHOWN).map((d) => d.id));
   const ideas = [...derived.ideas.shown, ...derived.ideas.more].filter((s) => !repeatsPleaseCheck(s, listed));
   const shownIdeas = derived.ideas.shown.length;
-  const side = reviewDocs.length > 0 || Boolean(derived.calendar) || calendarDone;
+  // the calendar file stays on the computer: a phone shows the dates, never the download (ADR 0017)
+  const calendar = phone ? null : derived.calendar;
+  const side = reviewDocs.length > 0 || Boolean(calendar) || (calendarDone && !phone);
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="@container flex flex-col gap-8 sm:gap-10">
@@ -252,7 +254,7 @@ export function TodayView() {
         {side ? (
           <div className={SIDE}>
             <PleaseCheckCard docs={reviewDocs} />
-            <CalendarCard idea={derived.calendar} done={calendarDone} onDone={() => setCalendarDone(true)} />
+            {phone ? null : <CalendarCard idea={calendar} done={calendarDone} onDone={() => setCalendarDone(true)} />}
           </div>
         ) : null}
       </div>

@@ -28,7 +28,8 @@ In order, the gate:
    :data:`~ordnung.phone.pairing.PAIR_MAX_BYTES` (411/413) and is limited per address and in all (429).
    Anything else gets 401 ``phone_not_paired`` (pages: a redirect to ``/pair``); a cookie this computer
    doesn't know (any more) is also told to clear the browser's cache and storage (not its cookies:
-   another Ordnung on the same address keeps its own);
+   another Ordnung on the same address keeps its own) and why it was signed out, when the computer
+   still knows (:func:`removed_param`: ``?removed=…`` on the redirect, ``removed`` in the answer);
 7. serves ``/ordnung-certificate.crt`` (the authority, for a phone that chooses to trust it) to a paired
    phone;
 8. lets ``/api`` through only for the phone's operations (:mod:`ordnung.phone.scope`, before routing;
@@ -38,6 +39,13 @@ In order, the gate:
    log attributes what it writes (:mod:`ordnung.phone.actor`), and each change the phone made is logged
    as ``phone.changed``. Request bodies are counted as they arrive and stopped at the allowed size (413).
    A page load refreshes the sign-in cookie (and changes the sign-in at most once an hour).
+
+Each request counts as in flight from its first check (:meth:`~ordnung.phone.access.PhoneAccess.admit`):
+removing its phone or stopping the listener then refuses it if it hasn't reached the app yet, ends a
+stream, stops an upload whose body is still arriving (401 when the phone was removed, 409 ``unavailable``
+when phone access stopped) and lets anything else finish — an upload that arrived in full is filed and
+answered. A request that isn't a stream runs shielded from the listener's own stop, so a write inside
+the ledger lock is never cancelled half-way.
 
 Every answer on the phone listener carries ``Cross-Origin-Resource-Policy: same-origin`` and a
 ``Permissions-Policy``; API answers that set no caching get ``no-store``. Refusals are logged to the
@@ -72,7 +80,15 @@ from ordnung.api.security import (
 )
 from ordnung.phone import COOKIE_MAX_AGE_S, ERROR_STATUS, PhoneErrorCode, cookie_name, net, tls
 from ordnung.phone import scope as phone_scope
-from ordnung.phone.access import LIMIT_MESSAGES, TOO_MANY_PAIRING_MESSAGE, PhoneAccess
+from ordnung.phone.access import (
+    LIMIT_MESSAGES,
+    PHONE_STOPPED_MESSAGE,
+    TOO_MANY_PAIRING_MESSAGE,
+    Live,
+    LiveKind,
+    PhoneAccess,
+    RemovedBy,
+)
 from ordnung.phone.actor import DeviceRef, acting
 from ordnung.phone.pairing import PAIR_MAX_BYTES
 
@@ -102,6 +118,15 @@ MESSAGES: dict[PhoneErrorCode, str] = {
 MISSING_CLIENT = "This request must come from the Ordnung app (missing X-Ordnung-Client)."
 PAIR_BODY_TOO_LARGE = "A pairing request is only a code and a name."
 UPLOAD_TOO_LARGE = "Please add at most 200 MB at once."
+
+
+#: Why a phone was signed out, as the pairing page's ``?removed=`` says it (anything else: ``1``).
+REMOVED_PARAMS: frozenset[str] = frozenset({"token_reuse", "code_reused", "unused"})
+
+
+def removed_param(removed: RemovedBy | None) -> str:
+    """``?removed=`` of the pairing page for a phone signed out because of ``removed``."""
+    return removed if removed in REMOVED_PARAMS else "1"
 
 
 def _is_api(path: str) -> bool:
@@ -206,6 +231,10 @@ class _BodyLimit:
         self.limit = limit
         self.read = 0
         self.exceeded = False
+        #: The whole body arrived.
+        self.complete = False
+        #: The app was told the client left while the body was still arriving (the phone went away).
+        self.stopped = False
 
     def count(self, message: Message) -> Message:
         if message["type"] == "http.request":
@@ -213,6 +242,8 @@ class _BodyLimit:
             if self.read > self.limit:
                 self.exceeded = True
                 return {"type": "http.disconnect"}
+            if not message.get("more_body", False):
+                self.complete = True
         return message
 
 
@@ -248,17 +279,26 @@ class PhoneGate:
         await response(scope, receive, send)
 
     async def _not_paired(
-        self, scope: Scope, receive: Receive, send: Send, *, unknown: bool, port: int
+        self,
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        *,
+        unknown: bool,
+        port: int,
+        removed: RemovedBy | None = None,
     ) -> None:
         path = scope["path"]
+        why = removed_param(removed)
         response: Response
         if not _is_api(path) and scope["method"] in SAFE_METHODS:
-            response = RedirectResponse(f"{PAIR_PATH}?removed=1" if unknown else PAIR_PATH, status_code=303)
+            response = RedirectResponse(
+                f"{PAIR_PATH}?removed={why}" if unknown else PAIR_PATH, status_code=303
+            )
         else:
             self.refusals.note("phone_not_paired", str((scope.get("client") or ("?", 0))[0]))
-            response = JSONResponse(
-                {"detail": MESSAGES["phone_not_paired"], "code": "phone_not_paired"}, status_code=401
-            )
+            body = {"detail": MESSAGES["phone_not_paired"], "code": "phone_not_paired"}
+            response = JSONResponse({**body, "removed": why} if unknown else body, status_code=401)
         if unknown:  # a removed phone empties what it kept; "cookies" would sign out another Ordnung too
             response.headers["Clear-Site-Data"] = '"cache", "storage"'
             response.delete_cookie(cookie_name(port), path="/", secure=True, httponly=True, samesite="strict")
@@ -267,6 +307,27 @@ class PhoneGate:
     # ------------------------------------------------------------------------------ the gate
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send, app: ASGIApp) -> None:
+        access = self.access
+        # in flight from here: a stop waits for it, a removal or a stop before it runs refuses it
+        live = access.admit()
+        try:
+            await self._admitted(scope, receive, send, app, live)
+        finally:
+            running = live.running
+            if running is None or running.done():
+                access.release(live)
+            else:  # the listener's stop cut the answer off: the request is in flight until it is done
+
+                def finished(done: asyncio.Future[None]) -> None:
+                    access.release(live)
+                    if not done.cancelled() and done.exception() is not None:
+                        log.error(
+                            "phone access: a request the stop cut off failed", exc_info=done.exception()
+                        )
+
+                running.add_done_callback(finished)
+
+    async def _admitted(self, scope: Scope, receive: Receive, send: Send, app: ASGIApp, live: Live) -> None:
         access = self.access
         path: str = scope["path"]
         method: str = scope["method"].upper()
@@ -314,9 +375,16 @@ class PhoneGate:
         cookies = _cookies(headers)
         auth = await access.authenticate(cookies.get(cookie_name(port)), client)
         device = auth.device
+        unknown, removed = auth.unknown, auth.removed
+        if device is not None and access.device(device.id) is None:
+            # removed while its sign-in was being saved: from here on a removal would revoke it
+            device, unknown, removed = None, True, access.why_signed_out(cookies.get(cookie_name(port)))
         if device is None:
-            await self._before_sign_in(scope, receive, send, app, headers, client, length, auth.unknown, port)
+            await self._before_sign_in(
+                scope, receive, send, app, headers, client, length, unknown, port, removed, live
+            )
             return
+        live.become(device.id, "other")
         if path == CERTIFICATE_PATH and safe:
             await self._certificate(scope, receive, send)
             return
@@ -352,14 +420,14 @@ class PhoneGate:
         if safe and page_load(path, headers):
             refresh = await access.renew_sign_in(device, auth.via or "current") or token
         access.seen(device, client)
+        kind: LiveKind = "upload" if operation in phone_scope.UPLOADS else "other"
         if operation in phone_scope.STREAMS:
             kind = phone_scope.STREAMS[operation]
-        else:
-            kind = "upload" if operation in phone_scope.UPLOADS else "other"
         ref = scope[DEVICE_KEY] = DeviceRef(device.id, device.name)
         sign_in = (port, refresh) if refresh else None
+        live.become(device.id, kind)
         answer = await self._run(
-            scope, receive, send, app, device=ref, limit=MAX_REQUEST_BYTES, kind=kind, cookie=sign_in
+            scope, receive, send, app, live, device=ref, limit=MAX_REQUEST_BYTES, cookie=sign_in
         )
         changed = operation is not None and not safe and operation not in phone_scope.NOT_CHANGES
         if changed and operation is not None and answer.status < 400:
@@ -376,6 +444,8 @@ class PhoneGate:
         length: int | None,
         unknown: bool,
         port: int,
+        removed: RemovedBy | None,
+        live: Live,
     ) -> None:
         access = self.access
         path, method = scope["path"], scope["method"].upper()
@@ -401,17 +471,17 @@ class PhoneGate:
                     headers={"Retry-After": str(wait)},
                 )
                 return
-            await self._run(scope, receive, send, app, device=None, limit=PAIR_MAX_BYTES, kind="other")
+            await self._run(scope, receive, send, app, live, device=None, limit=PAIR_MAX_BYTES)
             return
         if safe and path == PAIR_PATH:
             if headers.get("sec-fetch-dest", "").lower() == "document":
                 access.opened(client)
-            await self._run(scope, receive, send, app, device=None, limit=0, kind="other")
+            await self._run(scope, receive, send, app, live, device=None, limit=0)
             return
         if safe and path in access.public_files:
-            await self._run(scope, receive, send, app, device=None, limit=0, kind="other")
+            await self._run(scope, receive, send, app, live, device=None, limit=0)
             return
-        await self._not_paired(scope, receive, send, unknown=unknown, port=port)
+        await self._not_paired(scope, receive, send, unknown=unknown, port=port, removed=removed)
 
     async def _certificate(self, scope: Scope, receive: Receive, send: Send) -> None:
         der = await asyncio.to_thread(tls.authority_der, self.access.folder)
@@ -452,63 +522,77 @@ class PhoneGate:
         receive: Receive,
         send: Send,
         app: ASGIApp,
+        live: Live,
         *,
         device: DeviceRef | None,
         limit: int,
-        kind: Any,
         cookie: tuple[int, str] | None = None,
     ) -> _Response:
-        access = self.access
         scope.setdefault("state", {})[AUTH_STATE_KEY] = device is not None
         answer = _Response()
         body = _BodyLimit(limit)
-        with access.tracked(device.id if device else None, kind) as live:
-            guard_receive = kind != "other"
+        if live.revoked.is_set():  # removed or stopped before it reached the app: refused like the next one
+            await self._revoked(scope, receive, send, live, answer)
+            return answer
+        kind = live.kind
+        guard_receive = kind != "other"
 
-            async def receive_counted() -> Message:
-                if not guard_receive:
-                    return body.count(await receive())
-                if live.revoked.is_set():
-                    return {"type": "http.disconnect"}
-                arrived = asyncio.ensure_future(receive())
-                stopped = asyncio.ensure_future(live.revoked.wait())
-                done, pending = await asyncio.wait({arrived, stopped}, return_when=asyncio.FIRST_COMPLETED)
-                for task in pending:
-                    task.cancel()
-                if arrived in done:
-                    return body.count(arrived.result())
+        async def receive_counted() -> Message:
+            # an upload that arrived in full is the app's to finish: only one still arriving is stopped
+            if not guard_receive or (kind == "upload" and body.complete):
+                return body.count(await receive())
+            if live.revoked.is_set():
+                body.stopped = not body.complete
                 return {"type": "http.disconnect"}
+            arrived = asyncio.ensure_future(receive())
+            stopped = asyncio.ensure_future(live.revoked.wait())
+            done, pending = await asyncio.wait({arrived, stopped}, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            if arrived in done:
+                return body.count(arrived.result())
+            body.stopped = not body.complete
+            return {"type": "http.disconnect"}
 
-            def cut() -> bool:
-                return body.exceeded or (live.revoked.is_set() and kind != "other")
+        def cut() -> bool:
+            return body.exceeded or body.stopped or (live.revoked.is_set() and live.stream)
 
-            async def send_tracked(message: Message) -> None:
-                if message["type"] == "http.response.start":
-                    if cut():
-                        answer.held = True
-                        return
-                    answer.started, answer.status = True, int(message["status"])
-                    if cookie is not None and _is_html(message):
-                        message = {
-                            **message,
-                            "headers": [
-                                *message.get("headers", []),
-                                (b"set-cookie", sign_in_cookie(*cookie).encode("latin-1")),
-                            ],
-                        }
-                elif message["type"] == "http.response.body":
-                    if answer.held or not answer.started:
-                        return
-                    if not message.get("more_body", False):
-                        answer.finished = True
-                await send(message)
+        async def send_tracked(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                if cut():
+                    answer.held = True
+                    return
+                answer.started, answer.status = True, int(message["status"])
+                if cookie is not None and _is_html(message):
+                    message = {
+                        **message,
+                        "headers": [
+                            *message.get("headers", []),
+                            (b"set-cookie", sign_in_cookie(*cookie).encode("latin-1")),
+                        ],
+                    }
+            elif message["type"] == "http.response.body":
+                if answer.held or not answer.started:
+                    return
+                if not message.get("more_body", False):
+                    answer.finished = True
+            await send(message)
 
+        async def run_app() -> None:
             try:
                 with live.scope, _acting(device):
                     await app(scope, receive_counted, send_tracked)
             except Exception:
                 if not cut():
                     raise
+
+        if live.stream:
+            await run_app()
+        else:
+            # shielded: the listener's stop (uvicorn cancels what outlasts its graceful stop) must never
+            # cancel a write inside the ledger lock while its thread still writes; it finishes unanswered
+            live.running = asyncio.ensure_future(run_app())
+            await asyncio.shield(live.running)
         if answer.started and not answer.finished:
             # a stream the phone's removal ended: close it cleanly (the client sees the end, not an error)
             with contextlib.suppress(Exception):
@@ -520,13 +604,31 @@ class PhoneGate:
                 too_large = PAIR_BODY_TOO_LARGE if limit == PAIR_MAX_BYTES else UPLOAD_TOO_LARGE
                 await self._refuse("too_large", scope, receive, send, detail=too_large)
             elif live.revoked.is_set():
-                answer.status = 401
-                response = JSONResponse(
-                    {"detail": MESSAGES["phone_not_paired"], "code": "phone_not_paired"}, status_code=401
-                )
-                with contextlib.suppress(Exception):
-                    await response(scope, receive, send)
+                await self._revoked(scope, receive, send, live, answer)
         return answer
+
+    async def _revoked(
+        self, scope: Scope, receive: Receive, send: Send, live: Live, answer: _Response
+    ) -> None:
+        """The answer to a request its phone's removal or the listener's stop ended before it answered:
+        what the phone's next request would get when it was removed (401 ``phone_not_paired`` with why, a
+        page load sent to pair again), 409 ``unavailable`` when phone access stopped — the phone is still
+        paired then, and keeps what it was sending."""
+        reason = live.reason
+        with contextlib.suppress(Exception):
+            if reason is not None and reason != "stopped":
+                answer.status = 401
+                port = int(tuple(scope.get("server") or ("", 0))[1])
+                await self._not_paired(scope, receive, send, unknown=True, port=port, removed=reason)
+                return
+            answer.status = 409
+            response: Response
+            if _is_api(scope["path"]) or scope["method"] not in SAFE_METHODS:
+                content = {"detail": PHONE_STOPPED_MESSAGE, "code": "unavailable"}
+                response = JSONResponse(content, status_code=409)
+            else:
+                response = html_page("Phone access stopped", [PHONE_STOPPED_MESSAGE], status_code=409)
+            await response(scope, receive, send)
 
 
 def _is_html(message: Message) -> bool:

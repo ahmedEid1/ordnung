@@ -1282,7 +1282,8 @@ detached.
   gateway's address and hardware address, read best effort — differs from the saved one
   (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
   resumes when both are back; it never moves to another address by itself. Once a day it renews the
-  server certificate when due and forgets phones unused for 30 days (`by: "unused"`). `POST
+  server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
+  on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
   /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.
 - **Certificates** (`phone/tls.py`). An authority (EC P-256, 10 years) with `NameConstraints(permitted:
   IPAddress(<address>/32), DNSName("invalid"))`, critical, and a neutral name ("Home network certificate
@@ -1311,14 +1312,20 @@ detached.
   retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
   for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
   "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
-  401 `phone_not_paired` (a page load: 303 to `/pair?removed=1`) with `Clear-Site-Data: "cache",
-  "storage"` and an expired cookie. Removing a phone (`DELETE /api/phone/devices/{id}`, saved before its
-  answer) cancels its live streams (`/api/events`, Ask), tells an upload still arriving that the client
-  went away and lets every other request finish.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (60 operations) and `COMPUTER_ONLY` (42)
+  401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
+  `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
+  else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from
+  the gate's first check. Removing a phone (`DELETE /api/phone/devices/{id}`, saved before its answer) or
+  stopping the listener refuses its requests that haven't reached the app yet, cancels its live streams
+  (`/api/events`, Ask), tells an upload still arriving that the client went away (answered 401
+  `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
+  — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
+  listener's own stop, which waits up to 30 s for what is in flight.
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (45)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
   profile edits, phone access, backups, deleting, originals and held-letter decisions stay on the
-  computer. `classify` runs before routing (HEAD counts as GET; a path several templates match is a
+  computer, and the calendar files (`calendar.ics`, `items/{id}.ics`, `calendar/exported`) are computer-only
+  too. `classify` runs before routing (HEAD counts as GET; a path several templates match is a
   phone's only when every match is; no match is refused); `mark_openapi` adds `x-ordnung-phone: true`.
   Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
   `/api/backup`, `DELETE /api/data`), and `PATCH /api/documents/{id}` refuses `ai_private: false` from a
@@ -1327,8 +1334,9 @@ detached.
 - **The letters stay on the computer.** `no-store` on every API answer; on a phone, *My numbers*
   (`masked: true`), Ask's `get_my_numbers` (`ORDNUNG_MASKED_NUMBERS`) and the profile's IBAN show the
   person's own numbers as `•••• 1234` (`phone/mask.py`). Per phone and hour: 30 Ask questions, 20 other
-  model actions (read again, translate, a new letter, the daily note) and 30 uploads, then 429 `too_many`
-  with `Retry-After`.
+  model actions (read again, translate, a new letter, the daily note) and 30 letters added (each letter of
+  an upload counts — the gate counts the request, the route the rest; photos of one letter once), then 429
+  `too_many` with `Retry-After`.
 - **Attribution** (`phone/actor.py`). While a phone's request runs, every activity entry it writes says
   "(on <phone>)" and carries `device` in its data; the gate logs `phone.changed` ("Changed a to-do on
   Anna's iPhone") for each admitted change; a phone's upload is `source: "phone"` ("… from your phone").
@@ -1611,11 +1619,12 @@ Pages:
 12. **On a paired phone** (`Health.client == "phone"`, §12b): `/pair` (outside the shell) reads the code
    from the link's fragment and clears it, or takes it typed (`XXXXX-XXXXX`), names the phone and pairs
    it, then shows the two check words; every page the phone may use works as on the computer, without
-   Delete, downloads of originals and PDFs, held-letter decisions or admin requests; Settings says
+   Delete, downloads of originals, PDFs and the calendar file, held-letter decisions or admin requests; Settings says
    "Settings are on your computer" and offers the optional trust step where it is safe; Plus offers
    *Photograph a letter* (the camera, page after page, one letter, with upload progress and Cancel) and
    *Choose files*; the GiroCode block offers to save the code as a picture; a phone removed on the
-   computer lands on `/pair?removed=1`; offline it says the computer can't be reached.
+   computer lands on `/pair?removed=1` (`token_reuse`, `code_reused` or `unused` with their own words, the
+   first two in the danger tone); offline it says the computer can't be reached.
 
 Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
 dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.

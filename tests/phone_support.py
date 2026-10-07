@@ -195,9 +195,11 @@ async def drive(
     query: str = "",
     exchange: Exchange | None = None,
     scope_type: str = "http",
+    stall: asyncio.Event | None = None,
 ) -> Exchange:
     """Run one request through ``app`` with a body made of ``chunks`` (read lazily; ``read`` counts the
-    bytes the app took). After the body the client waits until ``exchange.left`` is set."""
+    bytes the app took). After the body the client waits until ``exchange.left`` is set. With ``stall``
+    the body isn't over after ``chunks``: the client sends nothing more and leaves once it is set."""
     found = exchange or Exchange()
     pending = iter(chunks)
     upcoming = next(pending, None)
@@ -211,7 +213,11 @@ async def drive(
         if upcoming is not None:
             chunk, upcoming = upcoming, next(pending, None)
             found.read += len(chunk)
-            return {"type": "http.request", "body": chunk, "more_body": upcoming is not None}
+            more = upcoming is not None or stall is not None
+            return {"type": "http.request", "body": chunk, "more_body": more}
+        if stall is not None:
+            await stall.wait()
+            return {"type": "http.disconnect"}
         if found.received == 1:
             return {"type": "http.request", "body": b"", "more_body": False}
         await found.left.wait()

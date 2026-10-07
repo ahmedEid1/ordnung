@@ -505,8 +505,10 @@ describe("API contract on a phone (the mock as the phone listener, its allow-lis
     expect(scope.operations.filter((op) => op.phone).map((op) => `${op.method} ${op.template}`)).toEqual(marked);
     expect(marked).toContain("POST /api/phone/pair");
     expect(marked).not.toContain("GET /api/phone");
-    // both templates match and both are a phone's: `{item_id}.ics` and `{item_id}`
-    expect(classifyPhoneRequest(scope, "GET", "/api/items/itm_1.ics")).toBe("phone");
+    // both templates match, and the calendar file is the computer's: `{item_id}.ics` (not a phone's) and `{item_id}`
+    expect(classifyPhoneRequest(scope, "GET", "/api/items/itm_1.ics")).toBe("computer");
+    expect(classifyPhoneRequest(scope, "GET", "/api/items/itm_1")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "GET", "/api/calendar.ics")).toBe("computer");
     expect(classifyPhoneRequest(scope, "HEAD", "/api/documents")).toBe("phone");
     expect(classifyPhoneRequest(scope, "DELETE", "/api/drafts/drf_1/answered")).toBe("phone");
     expect(classifyPhoneRequest(scope, "DELETE", "/api/drafts/drf_1")).toBe("computer");

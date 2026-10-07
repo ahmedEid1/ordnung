@@ -374,7 +374,8 @@ The web server listens on `127.0.0.1` and answers only requests addressed to thi
 per-session token and same-origin checks. Phone access, off until you turn it on, adds a second listener
 on your home network: HTTPS with a certificate Ordnung makes on your computer, answering only phones you
 paired with a one-time code, and never their requests for settings, backups or deletion; on a phone,
-*My numbers* and your profile's IBAN show only their last 4 characters. Settings show what each feature
+*My numbers* and your profile's IBAN show only their last 4 characters (a letter shows what is printed on
+it, also one you write there that carries your IBAN). Settings show what each feature
 sends and a usage log per document; the address and IBAN in your profile are never put into a prompt.
 Files from a watched folder are sent to Claude only after you say so. Calendar sync, off until you
 connect a calendar, is the only feature that sends anything to another third party (your calendar

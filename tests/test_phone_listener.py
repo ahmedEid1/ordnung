@@ -3,7 +3,7 @@ listener, in one loop and one process — one lifespan, no signal handlers, sse-
 removal ending a phone's stream at once, turning off within the graceful stop, a busy port and a
 missing address as problems, and the computer's listener answering throughout.
 
-Not marked slow: the ``lowest`` CI job runs it on uvicorn's floor (0.30)."""
+Not marked slow: the ``lowest`` CI job runs it on uvicorn's floor (0.31.1, the lowest mcp allows)."""
 
 from __future__ import annotations
 

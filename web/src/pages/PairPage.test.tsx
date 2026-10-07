@@ -18,7 +18,7 @@ import { useMockApi } from "@/test/mockFetch";
 import { CODE_USED_MESSAGE, MAX_PHONES, PHONE_OFF_MESSAGE, THIS_PHONE_ADDRESS, TOO_MANY_PHONES_MESSAGE, TOO_MANY_TRIES_MESSAGE, WRONG_CODE_MESSAGE } from "@/mocks/data/phone";
 import type { MockServer } from "@/mocks/server";
 import { pageLoad } from "@/features/phone/platform";
-import { COMPUTER_NOTE, PAIR_TITLE, REMOVED_NOTE, TOKEN_REUSE_NOTE, codeFromHash, compactCode, formatCode } from "./PairPage";
+import { CODE_REUSED_NOTE, COMPUTER_NOTE, PAIR_TITLE, REMOVED_NOTE, TOKEN_REUSE_NOTE, UNUSED_NOTE, codeFromHash, compactCode, formatCode, removedNote } from "./PairPage";
 
 const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
 
@@ -157,6 +157,26 @@ describe("pairing", () => {
     expect(replace).toHaveBeenCalledWith("/");
   });
 
+  it("an 11th character typed at the end is dropped: the code it shows is the code it sends (UX review)", async () => {
+    const { srv, code } = useUnpairedPhone();
+    const { user } = openPair("/pair");
+    const input = await screen.findByRole("textbox", { name: "Code from your computer" });
+    await user.type(input, `${code}Z`);
+    expect(input).toHaveValue(formatCode(code));
+    await user.click(screen.getByRole("button", { name: "Pair this phone" }));
+    await screen.findByRole("heading", { level: 1, name: "Paired" });
+    expect(screen.queryByText(/The code has 10 characters/)).toBeNull();
+    expect(srv.phone.status().devices).toHaveLength(1);
+  });
+
+  it("a backspace after an extra character removes the code's last character: the extra one was never kept", async () => {
+    useUnpairedPhone();
+    const { user } = openPair("/pair");
+    const input = await screen.findByRole("textbox", { name: "Code from your computer" });
+    await user.type(input, "K7QM2XD9PAZ{Backspace}");
+    expect(input).toHaveValue("K7QM2‑XD9P");
+  });
+
   it("pairs with a typed code", async () => {
     const { srv, code } = useUnpairedPhone();
     const { user } = openPair("/pair");
@@ -259,6 +279,29 @@ describe("why the phone is here again", () => {
     openPair("/pair?removed=token_reuse");
     const note = await screen.findByText(TOKEN_REUSE_NOTE);
     expect(note.closest("div.rounded-xl")).toHaveClass("bg-danger-soft");
+  });
+
+  it("?removed=code_reused: another device used its pairing code (UX review: it said only 'removed')", async () => {
+    useUnpairedPhone();
+    openPair("/pair?removed=code_reused");
+    const note = await screen.findByText(CODE_REUSED_NOTE);
+    expect(note.closest("div.rounded-xl")).toHaveClass("bg-danger-soft");
+  });
+
+  it("?removed=unused: forgotten after 30 days", async () => {
+    useUnpairedPhone();
+    openPair("/pair?removed=unused");
+    expect(await screen.findByText(UNUSED_NOTE)).toBeInTheDocument();
+  });
+
+  it("each reason the phone listener gives has its words; anything else is 'removed'", () => {
+    const note = (removed: string) => removedNote(new URLSearchParams({ removed }));
+    expect(note("token_reuse")).toEqual({ tone: "danger", text: TOKEN_REUSE_NOTE });
+    expect(note("code_reused")).toEqual({ tone: "danger", text: CODE_REUSED_NOTE });
+    expect(note("unused")).toEqual({ tone: "warn", text: UNUSED_NOTE });
+    expect(note("1")).toEqual({ tone: "warn", text: REMOVED_NOTE });
+    expect(note("<script>")).toEqual({ tone: "warn", text: REMOVED_NOTE });
+    expect(removedNote(new URLSearchParams())).toBeNull();
   });
 
   it("no note on a first pairing", async () => {

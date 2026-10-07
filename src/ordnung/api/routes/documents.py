@@ -11,7 +11,9 @@ Originals, page images and thumbnails are sent with ``no-store``, and deleting f
 browser to empty its cache (``Clear-Site-Data``), so no copy of a deleted letter stays in the browser.
 
 From a paired phone (:mod:`ordnung.phone`) an upload is filed as ``source="phone"`` ("… from your
-phone"), and a letter kept private can't be given to Claude: that is decided on the computer.
+phone"), each letter it adds counts against the phone's hourly upload limit (the gate counted the
+request; photos combined into one letter count once), and a letter kept private can't be given to
+Claude: that is decided on the computer.
 """
 
 from __future__ import annotations
@@ -28,7 +30,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Respon
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, phone_device
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
@@ -67,6 +69,7 @@ from ordnung.models import (
     Suggestion,
 )
 from ordnung.phone import PhoneRefusal
+from ordnung.phone.access import LIMIT_MESSAGES, UPLOAD_TOO_MANY_MESSAGE
 from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import (
@@ -461,7 +464,17 @@ async def upload_documents(
             )
     result = UploadResult()
     source = "phone" if is_phone(request) else "upload"
-    for group in _groups(entries, combine):
+    groups = _groups(entries, combine)
+    device = phone_device(request)
+    if device is not None:
+        # each letter is a reading: the phone's hourly limit counts letters, not requests
+        wait = state.phone.more_letters(device.id, len(groups))
+        if wait < 0:
+            limit = state.phone.upload_limit
+            raise PhoneRefusal("too_many", UPLOAD_TOO_MANY_MESSAGE.format(limit=limit), retry_after=3600)
+        if wait:
+            raise PhoneRefusal("too_many", LIMIT_MESSAGES["upload"], retry_after=wait)
+    for group in groups:
         await _add_group(ctx, group, private, result, source)
     if result.errors and not (result.documents or result.duplicates):
         detail = "; ".join(f"{error.filename}: {error.detail}" for error in result.errors)

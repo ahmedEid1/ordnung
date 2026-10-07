@@ -180,16 +180,24 @@ class SlidingLimit:
         self.window_s = window_s
         self._events: dict[str, deque[float]] = {}
 
-    def take(self, key: str, now: float | None = None) -> int:
-        """``0`` when one more event is allowed now (and counts), else the seconds until it would be."""
+    def take(self, key: str, now: float | None = None, *, count: int = 1) -> int:
+        """``0`` when ``count`` more events are allowed now (and count), else the seconds until they
+        would be (then none of them counts). ``count`` must be at most ``limit``."""
         moment = time.monotonic() if now is None else now
         events = self._events.setdefault(key, deque())
         while events and moment - events[0] >= self.window_s:
             events.popleft()
-        if len(events) >= self.limit:
-            return max(1, int(self.window_s - (moment - events[0])) + 1)
-        events.append(moment)
+        over = len(events) + count - self.limit
+        if over > 0:
+            return max(1, int(self.window_s - (moment - events[over - 1])) + 1)
+        events.extend([moment] * count)
         return 0
+
+    def give_back(self, key: str) -> None:
+        """Undo the latest event of ``key`` (one that turned out not to happen)."""
+        events = self._events.get(key)
+        if events:
+            events.pop()
 
     def clear(self) -> None:
         self._events.clear()

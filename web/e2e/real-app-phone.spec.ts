@@ -51,6 +51,8 @@ const CODE_FIELD = 'input[autocomplete="one-time-code"]';
 const ONWARD = /^(Open Ordnung|Continue)$/;
 /** `/pair?removed=1`: what a phone sees once the computer no longer knows its sign-in. */
 const REMOVED = /This phone was removed on your computer/;
+/** `/pair?removed=code_reused`: what the phone that paired first sees once another device used its code. */
+const CODE_REUSED = /signed out because another device used the same pairing code/;
 /** Settings on a paired phone (they live on the computer). */
 const PHONE_SETTINGS_HEADING = "Settings are on your computer";
 /** Where a paired phone downloads the certificate authority to trust (design §6.4, served by the listener's gate). */
@@ -187,18 +189,19 @@ async function goOn(page: Page): Promise<void> {
 }
 
 /**
- * A phone the computer no longer knows, on its next page load: the pairing page, saying it was removed, and its
- * sign-in forgotten. The phone's open page may already be on its way there by itself (its live connection was cut,
- * and the next request was refused), so a navigation of ours that this one interrupts is fine.
+ * A phone the computer no longer knows, on its next page load: the pairing page, saying why (`removed`: the
+ * `?removed=` the phone listener gives), and its sign-in forgotten. The phone's open page may already be on its way
+ * there by itself (its live connection was cut, and the next request was refused), so a navigation of ours that
+ * this one interrupts is fine.
  */
-async function expectRemoved(target: Phone): Promise<void> {
+async function expectRemoved(target: Phone, removed: "1" | "code_reused" = "1"): Promise<void> {
   try {
     await target.page.goto("/inbox");
   } catch (err) {
     if (!/interrupted by another navigation|net::ERR_ABORTED/.test(String(err))) throw err;
   }
-  await expect(target.page).toHaveURL(`${PHONE_BASE_URL}/pair?removed=1`);
-  await expect(target.page.getByText(REMOVED).first()).toBeVisible();
+  await expect(target.page).toHaveURL(`${PHONE_BASE_URL}/pair?removed=${removed}`);
+  await expect(target.page.getByText(removed === "1" ? REMOVED : CODE_REUSED).first()).toBeVisible();
   // the server told the browser to forget the sign-in
   expect((await target.context.cookies()).map((c) => c.name)).not.toContain(phoneCookie());
 }
@@ -554,8 +557,8 @@ test("wrong codes lock one phone out with one answer for every wrong code; a cod
     expect(status.devices.map((d) => d.name), "the phone that used the code first is removed too").toEqual([PHONE_NAME]);
     expect((await activityOf(page, spareId)).map((a) => [a.kind, a.data.by])).toContainEqual(["phone.removed", "code_reused"]);
 
-    // the spare phone is signed out at once; the first phone, paired with another code, is not
-    await expectRemoved(spare);
+    // the spare phone is signed out at once, and told why; the first phone, paired with another code, is not
+    await expectRemoved(spare, "code_reused");
     await open(phone.page, "/inbox", "Inbox");
 
     await code.dialog.getByRole("button", { name: "Done", exact: true }).click();

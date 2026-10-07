@@ -73,7 +73,14 @@ export function showBackOnline(): void {
 
 /** Where a phone the computer no longer knows goes: pairing again, told why. */
 export const REMOVED_PHONE_PATH = "/pair?removed=1";
+/** Why the computer signed a phone out, beyond "removed" (`?removed=…` of the pairing page; the gate's `removed`). */
+export const REMOVED_REASONS = ["token_reuse", "code_reused", "unused"] as const;
 let leaving = false;
+
+/** The pairing page for a phone signed out because of `removed` (the 401's `removed`; anything else: removed). */
+export function removedPhonePath(removed: string | null): string {
+  return removed && (REMOVED_REASONS as readonly string[]).includes(removed) ? `/pair?removed=${removed}` : REMOVED_PHONE_PATH;
+}
 
 /**
  * A refusal only the phone listener gives, `phone_not_paired`: the computer removed this phone (or forgot it), so
@@ -84,7 +91,7 @@ export function leaveIfUnpaired(err: unknown): boolean {
   if (!(err instanceof ApiError) || err.code !== "phone_not_paired") return false;
   if (leaving || window.location.pathname === "/pair") return true;
   leaving = true;
-  pageLoad.assign(REMOVED_PHONE_PATH);
+  pageLoad.assign(removedPhonePath(err.removed));
   return true;
 }
 

@@ -5,6 +5,7 @@ body limits before and after sign-in, per-phone limits, attribution and lock-saf
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import threading
 from collections.abc import Iterator
@@ -17,9 +18,10 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 
 from ordnung.api import app as app_module
-from ordnung.api.phone_gate import PERMISSIONS_POLICY, PhoneListener, bad_path, page_load
+from ordnung.api.phone_gate import MESSAGES, PERMISSIONS_POLICY, PhoneListener, bad_path, page_load
 from ordnung.api.routes import documents as documents_route
 from ordnung.api.security import MAX_REQUEST_BYTES
+from ordnung.phone import access as access_module
 from ordnung.phone import scope as phone_scope
 from ordnung.phone.pairing import PAIR_MAX_BYTES, SlidingLimit
 from ordnung.phone.scope import COMPUTER_ONLY
@@ -317,6 +319,28 @@ async def test_every_computer_only_operation_is_refused_to_a_phone(
         assert response.json() == {"detail": "This works on your computer only.", "code": "computer_only"}
 
 
+async def test_a_phone_downloads_no_calendar_file(data_dir: Path) -> None:
+    """UX review: a paired phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) while
+    the docs say a phone keeps no copy and downloads no records. The calendar files stay on the
+    computer, which still gets them."""
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        await pair(api, phone)
+        for method, path in (
+            ("GET", "/api/calendar.ics"),
+            ("HEAD", "/api/calendar.ics"),
+            ("GET", "/api/items/itm_000000000000.ics"),
+            ("POST", "/api/calendar/exported"),
+        ):
+            refused = await phone.request(method, path)
+            assert refused.status_code == 403, (method, path)
+            assert "text/calendar" not in refused.headers.get("content-type", "")
+            if method != "HEAD":
+                assert refused.json()["code"] == "computer_only"
+        assert (await phone.get("/api/items")).status_code == 200  # the dates themselves it shows
+        computer = await api.client.get("/api/calendar.ics")
+        assert computer.status_code == 200 and computer.headers["content-type"].startswith("text/calendar")
+
+
 async def test_unknown_api_paths_and_the_schema_are_refused(data_dir: Path) -> None:
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
         await pair(api, phone)
@@ -556,6 +580,256 @@ async def test_removing_a_phone_mid_write_lets_the_write_finish_alone(
         assert state["overlap"] is False
         assert api.ctx.store.get_document(doc_id).title == "From the computer"  # type: ignore[union-attr]
         assert (await phone.get("/api/documents")).status_code == 401
+
+
+# --------------------------------------------------------------------------------------------------
+# stopping and removing mid-request (lifecycle review): in flight from the gate's first check
+# --------------------------------------------------------------------------------------------------
+
+
+class _HeldSave:
+    """The next save of the phone record waits in its thread until released — a slow disk, or another
+    writer holding the database's write lock — as the phone's first request after pairing does while
+    it saves when the phone first used its sign-in."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        loop = asyncio.get_running_loop()
+        self.started = asyncio.Event()
+        self.release = threading.Event()
+        armed = [True]
+        original = access_module.save_record
+
+        def held(store: Any, record: Any) -> None:
+            if armed[0]:
+                armed[0] = False
+                loop.call_soon_threadsafe(self.started.set)
+                self.release.wait(5)
+            original(store, record)
+
+        monkeypatch.setattr(access_module, "save_record", held)
+
+
+def _slow_patch(monkeypatch: pytest.MonkeyPatch) -> tuple[threading.Event, threading.Event, dict[str, Any]]:
+    """``PATCH /api/documents/{id}``'s write waits inside the ledger lock until released; ``state``
+    says whether two writers were ever in it at once."""
+    original = documents_route._patch
+    guard = threading.Lock()
+    inside, release = threading.Event(), threading.Event()
+    state: dict[str, Any] = {"active": 0, "overlap": False, "calls": 0}
+
+    def slow_patch(*args: Any) -> Any:
+        with guard:
+            state["active"] += 1
+            state["calls"] += 1
+            state["overlap"] = state["overlap"] or state["active"] > 1
+        if state["calls"] == 1:
+            inside.set()
+            release.wait(5)
+        try:
+            return original(*args)
+        finally:
+            with guard:
+                state["active"] -= 1
+
+    monkeypatch.setattr(documents_route, "_patch", slow_patch)
+    return inside, release, state
+
+
+async def test_turning_off_waits_for_a_request_still_signing_in_and_refuses_it(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lifecycle review: a request waiting for its sign-in to be saved wasn't counted yet, so turning
+    phone access off closed the listener at once and uvicorn cancelled the write 2 s later, inside the
+    ledger lock. It is counted from the gate's first check: the stop waits for it, and it is refused
+    (phone access stopped — the phone stays paired) instead of writing."""
+    async with phone_app(data_dir) as (api, _net, servers), phone_client(api) as phone:
+        await pair(api, phone)
+        doc_id = (await api.upload(("fine.pdf", FINE_LETTER.pdf())))["documents"][0]["id"]
+        title = api.ctx.store.get_document(doc_id).title  # type: ignore[union-attr]
+        held = _HeldSave(monkeypatch)
+        write = asyncio.create_task(phone.patch(f"/api/documents/{doc_id}", json={"title": "From the phone"}))
+        await asyncio.wait_for(held.started.wait(), 5)
+        off = asyncio.create_task(api.client.put("/api/phone", json={"enabled": False}))
+        await asyncio.sleep(0.2)
+        server = servers.made[-1]
+        assert server.stopped == 0 and not off.done()  # the stop waits for the request in flight
+        held.release.set()
+        answer = await asyncio.wait_for(write, 5)
+        assert (answer.status_code, answer.json()["code"]) == (409, "unavailable")
+        assert "stopped on your computer" in answer.json()["detail"]
+        assert (await asyncio.wait_for(off, 5)).status_code == 200 and server.stopped == 1
+        assert api.ctx.store.get_document(doc_id).title == title  # type: ignore[union-attr]
+        assert [d.name for d in phone_of(api).devices] == ["Sam's iPhone"]
+        assert api.ctx.store.list_activity(kinds=["phone.changed"]) == []
+
+
+async def test_a_write_the_listener_s_stop_cuts_off_still_finishes_alone(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lifecycle review: what outlasts the stop's wait is cancelled by uvicorn (its graceful stop). A
+    phone's write inside the ledger lock is shielded from that: it finishes, unanswered, before the
+    computer's write gets the lock."""
+    monkeypatch.setattr(access_module, "DRAIN_S", 0.2)
+    async with phone_app(data_dir) as (api, _net, servers), phone_client(api) as phone:
+        await pair(api, phone)
+        doc_id = (await api.upload(("fine.pdf", FINE_LETTER.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        assert (await phone.get("/api/documents")).status_code == 200  # signed in and saved
+        inside, release, state = _slow_patch(monkeypatch)
+        phone_write = asyncio.create_task(
+            phone.patch(f"/api/documents/{doc_id}", json={"title": "From the phone"})
+        )
+        assert await asyncio.to_thread(inside.wait, 5)
+        server = servers.made[-1]
+
+        async def shutdown_like_uvicorn() -> None:
+            server.stopped += 1
+            phone_write.cancel()  # "Cancel 1 running task(s), timeout graceful shutdown exceeded"
+
+        server.shutdown = shutdown_like_uvicorn  # type: ignore[method-assign]
+        assert (await api.client.put("/api/phone", json={"enabled": False})).status_code == 200
+        with pytest.raises(asyncio.CancelledError):
+            await phone_write
+        computer_write = asyncio.create_task(
+            api.client.patch(f"/api/documents/{doc_id}", json={"title": "From the computer"})
+        )
+        await asyncio.sleep(0.2)
+        assert state["calls"] == 1  # the computer waits for the lock the phone's write still holds
+        release.set()
+        assert (await asyncio.wait_for(computer_write, 5)).status_code == 200
+        assert state["overlap"] is False
+        assert api.ctx.store.get_document(doc_id).title == "From the computer"  # type: ignore[union-attr]
+        for _ in range(50):
+            if not phone_of(api)._live:
+                break
+            await asyncio.sleep(0.02)
+        assert not phone_of(api)._live  # done, so no longer in flight
+
+
+async def test_a_phone_removed_while_its_first_request_signs_in_gets_no_stream(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lifecycle review: a request between its sign-in and the gate's tracking missed the phone's
+    removal, so the removed phone's live stream kept running. It is checked again once the sign-in is
+    saved: the removed phone is refused (and told why)."""
+    async with phone_app(data_dir) as (api, _net, _servers):
+        async with phone_client(api) as phone:
+            signed = await pair(api, phone)
+        device = phone_of(api).devices[0].id
+        held = _HeldSave(monkeypatch)
+        headers = {**PHONE_HEADERS, "cookie": f"{COOKIE}={signed['token']}", "accept": "text/event-stream"}
+        from phone_support import Exchange
+
+        exchange = Exchange()
+        stream = asyncio.create_task(
+            drive(PhoneListener(api.app), "GET", "/api/events", headers=headers, exchange=exchange)
+        )
+        await asyncio.wait_for(held.started.wait(), 5)
+        removal = asyncio.create_task(api.client.delete(f"/api/phone/devices/{device}"))
+        await asyncio.sleep(0.1)
+        held.release.set()
+        assert (await asyncio.wait_for(removal, 5)).status_code == 200
+        await asyncio.wait_for(stream, 5)
+        assert exchange.status == 401
+        assert json.loads(exchange.body) == {
+            "detail": MESSAGES["phone_not_paired"],
+            "code": "phone_not_paired",
+            "removed": "1",
+        }
+        assert exchange.headers["clear-site-data"] == '"cache", "storage"'
+        assert not phone_of(api)._live and phone_of(api).devices == []
+
+
+async def _upload_with(api: Any, token: str, monkeypatch: pytest.MonkeyPatch, how: str) -> httpx.Response:
+    """A phone's upload whose body has arrived and is being filed when phone access is turned off
+    (``how="off"``) or the phone is removed."""
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = documents_route._add_group
+
+    async def waiting(*args: Any, **kwargs: Any) -> None:
+        entered.set()
+        await release.wait()
+        await original(*args, **kwargs)
+
+    monkeypatch.setattr(documents_route, "_add_group", waiting)
+    async with phone_client(api) as phone:
+        phone.cookies.set(COOKIE, token, domain=ADDRESS)
+        upload = asyncio.create_task(
+            phone.post("/api/documents", files=[("files", ("fine.pdf", FINE_LETTER.pdf()))])
+        )
+        await asyncio.wait_for(entered.wait(), 5)
+        if how == "off":
+            done = asyncio.create_task(api.client.put("/api/phone", json={"enabled": False}))
+        else:
+            device = phone_of(api).devices[0].id
+            done = asyncio.create_task(api.client.delete(f"/api/phone/devices/{device}"))
+        await asyncio.sleep(0.1)
+        release.set()
+        answer = await asyncio.wait_for(upload, 5)
+        assert (await asyncio.wait_for(done, 5)).status_code == 200
+    return answer
+
+
+@pytest.mark.parametrize("how", ["off", "removed"])
+async def test_an_upload_that_arrived_in_full_is_filed_and_answered(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, how: str
+) -> None:
+    """Lifecycle review: turning phone access off or removing the phone while an upload that had
+    arrived was being filed answered 401 ``phone_not_paired`` — the phone left for the pairing page and
+    dropped its photos while the letter was filed. It is answered as filed."""
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        signed = await pair(api, phone)
+        answer = await _upload_with(api, signed["token"], monkeypatch, how)
+        assert answer.status_code == 201, answer.text
+        (document,) = answer.json()["documents"]
+        filed = api.ctx.store.get_document(document["id"])
+        assert filed is not None and filed.source == "phone"
+
+
+@pytest.mark.parametrize(
+    ("how", "status", "code"), [("off", 409, "unavailable"), ("removed", 401, "phone_not_paired")]
+)
+async def test_an_upload_still_arriving_is_told_why_it_stopped(
+    data_dir: Path, how: str, status: int, code: str
+) -> None:
+    """Lifecycle review: an upload still arriving when phone access was turned off was told
+    ``phone_not_paired`` (the phone then left for "This phone was removed"). Turned off, it is told phone
+    access stopped (the phone stays paired and keeps its photos); removed, that it isn't paired."""
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        signed = await pair(api, phone)
+        assert (await phone.get("/api/documents")).status_code == 200
+        device = phone_of(api).devices[0].id
+        start = (
+            b'--x\r\nContent-Disposition: form-data; name="files"; filename="a.pdf"\r\n'
+            b"Content-Type: application/pdf\r\n\r\n%PDF-1.4 "
+        )
+        headers = {
+            **PHONE_HEADERS,
+            "content-length": str(MB),
+            "content-type": "multipart/form-data; boundary=x",
+            "cookie": f"{COOKIE}={signed['token']}",
+        }
+        left = asyncio.Event()
+        exchange_task = asyncio.create_task(
+            drive(
+                PhoneListener(api.app), "POST", "/api/documents", headers=headers, chunks=[start], stall=left
+            )
+        )
+        for _ in range(100):
+            if any(live.kind == "upload" for live in phone_of(api)._live):
+                break
+            await asyncio.sleep(0.01)
+        if how == "off":
+            assert (await api.client.put("/api/phone", json={"enabled": False})).status_code == 200
+        else:
+            assert (await api.client.delete(f"/api/phone/devices/{device}")).status_code == 200
+        exchange = await asyncio.wait_for(exchange_task, 5)
+        left.set()
+        assert exchange.status == status
+        body = json.loads(exchange.body)
+        assert body["code"] == code
+        assert api.ctx.store.list_documents() == []
+        assert len(phone_of(api).devices) == (1 if how == "off" else 0)
 
 
 def test_a_page_load_is_a_navigation() -> None:

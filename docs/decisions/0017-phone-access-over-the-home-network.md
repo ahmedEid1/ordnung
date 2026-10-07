@@ -73,18 +73,25 @@ most once an hour on a page load, and the previous one stays valid for 2 minutes
 uses the new one; a sign-in it replaced that comes back later means it was copied, and the phone is
 signed out with a notice on the computer — so a cookie taken while someone clicked through a warning
 stops working soon after. Removing a phone signs it out at once, ends its live streams and stops an upload
-still arriving; a request that writes always finishes (it may hold the ledger lock), and the next one is
-refused. A phone unused for 30 days is forgotten; pairing again is one scan. The session token is ignored
-on the phone listener and the phone cookie on the computer listener.
+still arriving; turning phone access off does the same. A request counts as in flight from the gate's
+first check, so a stop waits for it; one that writes always finishes — the listener's own stop never
+cancels it (it may hold the ledger lock) — an upload that arrived is filed and answered, and the next
+request is refused. The phone is told why: removed, its sign-in used from two places, its code used by
+another device, unused (the pairing page says which), or that phone access stopped (it stays paired and
+keeps what it was sending). A phone unused for 30 days is forgotten; pairing again is one scan. It is
+refused when it comes back, not only by the daily round, so a restart doesn't let it in. The session
+token is ignored on the phone listener and the phone cookie on the computer listener.
 
 **What a phone may do is an allow-list checked before routing.** Look, add, write and tick off; settings,
-the profile, phone access, backups, deleting, held-letter decisions and downloads of files or records stay
-on the computer. A route that isn't on the list is refused, and a test makes every new route a decision.
-The list is published in the OpenAPI schema (`x-ordnung-phone`). On a phone the person's own numbers in
+the profile, phone access, backups, deleting, held-letter decisions and downloads of files or records
+(originals, letter PDFs, the calendar files) stay on the computer — the phone shows the dates, and
+calendar sync can put them in the phone's calendar. A route that isn't on the list is refused, and a test
+makes every new route a decision. The list is published in the OpenAPI schema (`x-ordnung-phone`). On a phone the person's own numbers in
 *My numbers* and in Ask's numbers tool, and the profile's IBAN, show only their last 4 characters:
 whoever holds an unlocked phone shouldn't read a tax ID off a list (a letter still shows what it prints).
-Each phone may ask Ask 30 questions, start 20 other things that ask Claude and send 30 uploads an hour,
-so a lost phone can't use up the Claude account. Everything a phone changes says so in the privacy log
+Each phone may ask Ask 30 questions, start 20 other things that ask Claude and add 30 letters an hour
+(each letter of an upload counts, photos of one letter once), so a lost phone can't use up the Claude
+account. Everything a phone changes says so in the privacy log
 ("on Anna's iPhone"), and the Remove dialog counts the changes of the last 30 days. Policy:
 `ordnung/phone/scope.py`, `ordnung/phone/mask.py`, `ordnung/phone/actor.py`.
 
@@ -126,4 +133,11 @@ network; unreliable on Android); a separate process (two writers on one data fol
   check what it is refused and remove it), not yet on physical phones. How each phone's browser words the
   warning, keeps the authority's constraint, opens the camera and keeps the sign-in still has to be
   checked on real iPhones and Android phones before the docs' steps can be called confirmed.
+- A letter shows what is printed on it, also one written on the phone: a template letter that asks for
+  money back on the person's account (the deposit return) carries the profile's IBAN in full, while the
+  profile and *My numbers* show only its last 4 characters. Masking it there would make the phone's editor
+  save the mask into the letter, and the print preview shows the letter as it will be printed; the letter
+  is logged as written on that phone.
+- Why a phone was signed out is kept in memory: after a restart, a phone removed before it came back is
+  told only that it was removed.
 - No IPv6, no mDNS, no app-store app, no sync between computers.

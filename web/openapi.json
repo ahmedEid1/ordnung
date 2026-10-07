@@ -1671,8 +1671,7 @@
               }
             }
           }
-        },
-        "x-ordnung-phone": true
+        }
       }
     },
     "/api/items/{item_id}": {
@@ -3824,8 +3823,7 @@
               "text/calendar; charset=utf-8": {}
             }
           }
-        },
-        "x-ordnung-phone": true
+        }
       }
     },
     "/api/calendar/exported": {
@@ -3847,8 +3845,7 @@
               }
             }
           }
-        },
-        "x-ordnung-phone": true
+        }
       }
     },
     "/api/calendar/sync": {

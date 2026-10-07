@@ -14,7 +14,7 @@ Policy
 * **On your phone you can look, add, write and tick off; settings, backups, phone access and deleting
   stay on your computer.** A phone may look at everything the everyday pages show, add letters
   (photos or files) and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists.
-  It may not delete anything, download files or records (originals, generated PDFs, exports), change
+  It may not delete anything, download files or records (originals, generated PDFs, the calendar files), change
   settings, the profile, phone access, calendar sync, the watched folder or backups, decide about held
   letters or let Claude read a letter kept private, or start background model work beyond those
   everyday actions. The exact list is :mod:`ordnung.phone.scope`, checked before routing and published
@@ -31,8 +31,12 @@ Policy
   ``shutdown()``, never ``serve()`` or ``run()`` (they would take over Ctrl+C and SIGTERM, and
   sse-starlette's shutdown watcher could bind to it); sse-starlette's ``AppStatus.should_exit`` is never
   set (it would end the computer's streams); its lifespan is off. Removing a phone or turning phone
-  access off ends live streams only — a request that writes always finishes (it may hold the ledger
-  lock). See :mod:`ordnung.phone.access`.
+  access off ends live streams and stops an upload still arriving — a request that writes always
+  finishes, even when the listener's own stop runs out of patience (it may hold the ledger lock). See
+  :mod:`ordnung.phone.access`.
+* **A phone is told why it was signed out** (removed, a copied sign-in, a code two devices used, unused
+  for 30 days), on its next request, while the computer remembers; a phone unused for 30 days is
+  refused when it comes back, not only by the daily round.
 
 Refusals answer ``{"detail": <words for the person>, "code": <PhoneErrorCode>}`` with the status
 :data:`ERROR_STATUS` gives that code.
