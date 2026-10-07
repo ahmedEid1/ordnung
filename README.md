@@ -517,8 +517,9 @@ More in [docs/architecture.md](docs/architecture.md).
   date a reading left out only when the letter states it with its year in strict words ("Zahlbar bis", "Bitte
   überweisen Sie … bis zum …") or in a few looser words that ask you directly ("Wir bitten Sie um Zahlung bis …",
   "Zahlungsfrist: …" under a request to pay), as a "Check this date in the letter" to-do; most looser wording, a
-  date without its year or a period is missed. For a letter served with a yellow envelope (*Postzustellungsurkunde*) it counts from the date you
-  enter for the envelope: a pickup day entered instead can make the date up to 14 days late. Some layouts an
+  date without its year or a period is missed. For a letter served with a yellow envelope
+  (*Postzustellungsurkunde*) it counts from the date you enter for the envelope: a pickup day entered instead can
+  make the date up to 14 days late. Some layouts an
   attacker plants can still mislead it
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
