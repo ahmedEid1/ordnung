@@ -1,15 +1,17 @@
 /**
- * What works while nobody looks — the watched folder, calendar sync, the morning notification, phone access — and
- * has stopped working: said once on Today ("Needs your attention") and as a dot on Settings, not only inside
- * Settings, where nobody goes to look. Each problem links to its own Settings section. Phone access also raises
- * what the person must know at once (a pairing code used twice, a phone's sign-in used from two places).
+ * What works while nobody looks — the watched folder, calendar sync, the morning notification, phone access, hand-off
+ * sync — and has stopped working: said once on Today ("Needs your attention") and as a dot on Settings, not only
+ * inside Settings, where nobody goes to look. Each problem links to its own Settings section. Phone access also
+ * raises what the person must know at once (a pairing code used twice, a phone's sign-in used from two places), and
+ * hand-off sync a choice to make (both computers changed something).
  */
-import { useCalendarSync, useDesktopReminders, useFolder, usePhone, useSettings } from "@/api/hooks";
-import type { AppSettings, CalendarSyncStatus, DesktopReminders, FolderStatus, PhoneStatus } from "@/api/types";
+import { useCalendarSync, useDesktopReminders, useFolder, usePhone, useSettings, useSync } from "@/api/hooks";
+import type { AppSettings, CalendarSyncStatus, DesktopReminders, FolderStatus, PhoneStatus, SyncStatus } from "@/api/types";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { failureLine } from "./desktop";
 import type { SectionId } from "./logic";
 import { NOTICE_TITLES } from "./phoneAccess";
+import { problemTitle } from "./sync";
 
 export interface BackgroundProblem {
   section: SectionId;
@@ -26,9 +28,10 @@ export function backgroundProblems(state: {
   desktop?: Pick<DesktopReminders, "last_failure" | "last_failure_on" | "last_shown_on"> | null;
   settings?: Pick<AppSettings, "desktop_notifications"> | null;
   phone?: Pick<PhoneStatus, "enabled" | "problem" | "notice"> | null;
+  sync?: Pick<SyncStatus, "connected" | "choice" | "problem"> | null;
 }): BackgroundProblem[] {
   const found: BackgroundProblem[] = [];
-  const { folder, calendar, desktop, settings, phone } = state;
+  const { folder, calendar, desktop, settings, phone, sync } = state;
   if (folder?.folder && folder.state === "problem" && folder.problem) {
     found.push({ section: "folder", title: "Not watching your folder", detail: `New scans don't arrive: ${folder.problem}` });
   }
@@ -48,6 +51,14 @@ export function backgroundProblems(state: {
   } else if (phone?.enabled && phone.problem) {
     found.push({ section: "phone", title: "Phones can't reach Ordnung", detail: phone.problem.detail });
   }
+  // hand-off sync: a choice to make, then what stopped it (the server raises "not received" and "still waiting"
+  // only after 30 minutes)
+  if (sync?.connected && sync.choice) {
+    found.push({ section: "computers", title: "Choose which Ordnung to keep", detail: "Your two computers both have changes. Nothing is lost: choose which to keep." });
+  }
+  if (sync?.connected && sync.problem) {
+    found.push({ section: "computers", title: problemTitle(sync.problem), detail: sync.problem.message });
+  }
   return found;
 }
 
@@ -62,6 +73,7 @@ export function useBackgroundProblems(): BackgroundProblem[] {
   const desktop = useDesktopReminders({ preview: false, enabled: onComputer });
   const settings = useSettings({ enabled: onComputer });
   const phone = usePhone({ enabled: onComputer });
+  const sync = useSync(onComputer);
   if (!onComputer) return [];
-  return backgroundProblems({ folder: folder.data, calendar: calendar.data, desktop: desktop.data, settings: settings.data, phone: phone.data });
+  return backgroundProblems({ folder: folder.data, calendar: calendar.data, desktop: desktop.data, settings: settings.data, phone: phone.data, sync: sync.data });
 }

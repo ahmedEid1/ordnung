@@ -876,4 +876,7 @@ export function staticRemindersBackupStates(add) {
   add("settings-data-backup", "/settings?section=data", "Static demo: the encrypted backup card (nothing to back up in the online demo).", async (c) => {
     await c.centre(await c.visible(backupCard(c)));
   });
+  add("settings-sync", "/settings?section=computers", "Static demo: hand-off sync (Your computers: the online demo keeps nothing on your computer, so there's nothing to hand over).", async (c) => {
+    await c.centre(await c.visible(card(c, "Use Ordnung on more than one computer")));
+  });
 }

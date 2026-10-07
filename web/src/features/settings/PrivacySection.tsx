@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   HardDrive,
+  Laptop,
   Lock,
   MessagesSquare,
   Send,
@@ -69,6 +70,7 @@ function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: Re
 
 const ACTIVITY_ICONS: [RegExp, LucideIcon][] = [
   [/^phone/, Smartphone],
+  [/^sync/, Laptop],
   [/^document/, FileText],
   [/^draft/, Send],
   [/^calendar/, CalendarPlus],

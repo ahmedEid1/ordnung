@@ -17,7 +17,7 @@ import { OnboardingWizard } from "./OnboardingWizard";
 import { CLAUDE_INSTALL_CMD } from "./options";
 import { ProgressDots } from "./ProgressDots";
 import { StepAddress, StepClaude } from "./Steps";
-import { WIZARD_STEPS, initialDraft } from "./wizard";
+import { JOIN_LINK, JOIN_PATH, WIZARD_STEPS, initialDraft } from "./wizard";
 
 const mode = vi.hoisted(() => ({ staticDemo: false }));
 vi.mock("@/mocks/mode", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/mocks/mode")>()), isStaticDemo: () => mode.staticDemo }));
@@ -284,6 +284,24 @@ describe("someone who is set up already", () => {
     await user.click(links[1]!);
     expect(router.state.location.pathname).toBe("/");
     expect(router.state.historyAction).toBe("REPLACE");
+    // joining another computer's Ordnung is for a first run (set up already: Settings → Your computers)
+    expect(screen.queryByRole("link", { name: JOIN_LINK })).toBeNull();
+  });
+});
+
+describe("someone who uses Ordnung on another computer already (hand-off sync)", () => {
+  it("finds “I already use Ordnung on another computer” on the first step, leading to /join", async () => {
+    const { user, router } = firstRun(useMockApi());
+    await h1("Welcome to Ordnung");
+    const join = screen.getByRole("link", { name: JOIN_LINK });
+    expect(join).toHaveAttribute("href", JOIN_PATH);
+    await user.click(join);
+    expect(router.state.location.pathname).toBe("/join");
+    // only the first step offers it
+    await act(() => router.navigate("/welcome"));
+    await user.click(await screen.findByRole("button", { name: "Get started" }));
+    await h1("Where do you live?");
+    expect(screen.queryByRole("link", { name: JOIN_LINK })).toBeNull();
   });
 });
 

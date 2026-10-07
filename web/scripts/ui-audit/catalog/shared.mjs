@@ -16,6 +16,7 @@ export const SETTINGS_SECTIONS = {
   claude: "Claude connection",
   privacy: "Privacy & AI usage",
   rules: "How dates are computed",
+  computers: "Your computers",
   data: "Data",
 };
 

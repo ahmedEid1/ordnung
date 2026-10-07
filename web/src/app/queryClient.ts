@@ -88,6 +88,22 @@ export function leaveIfUnpaired(err: unknown): boolean {
   return true;
 }
 
+/** Id of the one toast a write refused on a standing-by computer shows (more refusals replace it). */
+export const STANDBY_TOAST_ID = "sync-standby";
+
+/**
+ * A write refused because another computer is in use (hand-off sync's 409 `standby`): the status is asked again,
+ * so the standing-by screen appears by itself, and one toast says the server's sentence — not as a failure of the
+ * action ("Couldn't save your profile"): nothing was changed, and nothing is wrong. A mutation that shows its
+ * errors itself (`silent`) says it in place; the status is asked again all the same.
+ */
+export function standbyRefusal(client: QueryClient, err: unknown, silent: boolean): boolean {
+  if (!(err instanceof ApiError) || !err.isStandby) return false;
+  void client.invalidateQueries({ queryKey: ["sync"] });
+  if (!silent) toast({ id: STANDBY_TOAST_ID, tone: "info", title: err.message });
+  return true;
+}
+
 /** Test helper. */
 export function __resetOfflineForTests(): void {
   offline = false;
@@ -109,6 +125,7 @@ export function createQueryClient(): QueryClient {
     mutationCache: new MutationCache({
       onError: (err, variables, _ctx, mutation) => {
         if (leaveIfUnpaired(err)) return;
+        if (standbyRefusal(client, err, Boolean(mutation.meta?.silent))) return;
         if (mutation.meta?.silent) return;
         const { title, description } = describe(err);
         // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note
