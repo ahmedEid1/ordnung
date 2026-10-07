@@ -199,6 +199,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         assert {entry["source"] for entry in waiting} >= {"letter", "call"}
         await _get(api, contract, "/api/calls", party_id=ids["party"])
         await _get(api, contract, "/api/activity", limit=50)
+        assert await _get(api, contract, "/api/activity", device="phn_000000000000") == []
         usage = await _get(api, contract, "/api/usage")
         assert usage["by_purpose"], "the fake reading is accounted per purpose"
         await _get(api, contract, "/api/rules")
@@ -210,6 +211,8 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         )  # not the real keyring
         await _get(api, contract, "/api/calendar/sync")
         await _get(api, contract, "/api/calendar/sync/preview", mode="full")
+        phone = await _get(api, contract, "/api/phone")
+        assert phone["available"] is False and phone["devices"] == []  # never in the demo
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")

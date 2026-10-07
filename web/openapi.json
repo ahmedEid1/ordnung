@@ -60,7 +60,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/rules": {
@@ -86,7 +87,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/jobs": {
@@ -146,7 +148,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/profile": {
@@ -168,7 +171,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "put": {
         "tags": [
@@ -366,7 +370,7 @@
           "privacy"
         ],
         "summary": "Activity",
-        "description": "What Ordnung did, newest first.",
+        "description": "What Ordnung did, newest first (``device``: what one paired phone did).",
         "operationId": "activity_api_activity_get",
         "parameters": [
           {
@@ -380,6 +384,25 @@
               "default": 100,
               "title": "Limit"
             }
+          },
+          {
+            "name": "device",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only what this paired phone did (its id)",
+              "title": "Device"
+            },
+            "description": "Only what this paired phone did (its id)"
           }
         ],
         "responses": {
@@ -656,7 +679,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "post": {
         "tags": [
@@ -695,7 +719,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/documents/{doc_id}": {
@@ -738,7 +763,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "patch": {
         "tags": [
@@ -789,7 +815,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -885,7 +912,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/documents/{doc_id}/file": {
@@ -966,7 +994,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/documents/{doc_id}/thumbnail.jpg": {
@@ -1002,7 +1031,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/folder": {
@@ -1213,7 +1243,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/documents/{doc_id}/trace/compare": {
@@ -1299,7 +1330,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/traces": {
@@ -1561,7 +1593,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "post": {
         "tags": [
@@ -1601,7 +1634,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/items/{item_id}.ics": {
@@ -1637,7 +1671,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/items/{item_id}": {
@@ -1680,7 +1715,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "patch": {
         "tags": [
@@ -1731,7 +1767,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -1808,7 +1845,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/items/{item_id}/girocode/confirm": {
@@ -1882,7 +1920,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/contracts": {
@@ -1957,7 +1996,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/contracts/{contract_id}": {
@@ -2010,7 +2050,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/parties": {
@@ -2036,7 +2077,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/parties/{party_id}": {
@@ -2079,7 +2121,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "patch": {
         "tags": [
@@ -2130,7 +2173,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/cases/{case_id}": {
@@ -2173,7 +2217,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/dashboard": {
@@ -2195,7 +2240,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/timeline": {
@@ -2269,7 +2315,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/lanes": {
@@ -2343,7 +2390,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/numbers": {
@@ -2365,7 +2413,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/week": {
@@ -2387,7 +2436,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/week/done": {
@@ -2409,7 +2459,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/week/dismiss": {
@@ -2431,7 +2482,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/suggestions": {
@@ -2511,7 +2563,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/suggestions/{suggestion_id}": {
@@ -2564,7 +2617,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/suggestions/review": {
@@ -2608,7 +2662,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "post": {
         "tags": [
@@ -2650,7 +2705,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/ask": {
@@ -2692,7 +2748,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/chat/{thread_id}": {
@@ -2739,7 +2796,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts": {
@@ -2765,7 +2823,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "post": {
         "tags": [
@@ -2805,7 +2864,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}": {
@@ -2848,7 +2908,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "patch": {
         "tags": [
@@ -2902,7 +2963,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -2992,7 +3054,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/pdf": {
@@ -3064,7 +3127,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/sent": {
@@ -3117,7 +3181,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/proof": {
@@ -3160,7 +3225,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/tracking": {
@@ -3213,7 +3279,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/proofs": {
@@ -3266,7 +3333,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/proofs/{proof_id}": {
@@ -3328,7 +3396,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -3431,7 +3500,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -3472,7 +3542,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/drafts/{draft_id}/proof.pdf": {
@@ -3534,7 +3605,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/calls": {
@@ -3604,7 +3676,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "post": {
         "tags": [
@@ -3644,7 +3717,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/calls/{call_id}": {
@@ -3697,7 +3771,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       },
       "delete": {
         "tags": [
@@ -3749,7 +3824,8 @@
               "text/calendar; charset=utf-8": {}
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/calendar/exported": {
@@ -3771,7 +3847,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/calendar/sync": {
@@ -4135,6 +4212,218 @@
         }
       }
     },
+    "/api/phone": {
+      "get": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Phone Status",
+        "description": "Whether phone access can be used here and is on, its address, certificate, pairing progress and\nthe paired phones.",
+        "operationId": "phone_status_api_phone_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneStatus"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Change Phone Access",
+        "description": "Turn phone access on (at the chosen or recommended address) or off; a new address or port means\npairing phones again.",
+        "operationId": "change_phone_access_api_phone_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneAccessChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The demo or no session token (``unavailable``), Ordnung isn't set up yet (``not_set_up``), no home network (``no_network``) or the port is in use (``port_busy``)"
+          },
+          "422": {
+            "description": "The address isn't one of this computer's, or the port is out of range (``invalid``)"
+          }
+        }
+      }
+    },
+    "/api/phone/pairing": {
+      "post": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Start Pairing",
+        "description": "A new pairing code (replacing an open one): one phone, once, within minutes.",
+        "operationId": "start_pairing_api_phone_pairing_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhonePairing"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The demo or no session token (``unavailable``), phone access isn't listening (``not_listening``) or the most phones are paired (``too_many_phones``)"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Cancel Pairing",
+        "description": "Cancel the open pairing code (the dialog closed).",
+        "operationId": "cancel_pairing_api_phone_pairing_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/api/phone/devices/{device_id}": {
+      "delete": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Remove Phone",
+        "description": "Remove a paired phone: it is signed out at once and its live connections end.",
+        "operationId": "remove_phone_api_phone_devices__device_id__delete",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such phone is paired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/phone/reset": {
+      "post": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Reset Phone Access",
+        "description": "Start over: turn phone access off, remove every phone and its certificate (a new one is made\nwhen it is turned on again).",
+        "operationId": "reset_phone_access_api_phone_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneStatus"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The demo (``unavailable``)"
+          }
+        }
+      }
+    },
+    "/api/phone/pair": {
+      "post": {
+        "tags": [
+          "phone"
+        ],
+        "summary": "Pair Phone",
+        "description": "Pair this phone with the code shown on the computer; the answer sets its sign-in cookie.",
+        "operationId": "pair_phone_api_phone_pair_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sent to the computer's own listener, not a phone's (``not_phone``)"
+          },
+          "409": {
+            "description": "The code paired a phone already, so neither stays paired (``code_used``), the most phones are paired (``too_many_phones``) or phone access is off (``unavailable``)"
+          },
+          "422": {
+            "description": "The code didn't match, or it expired, or there is none (``wrong_code``)"
+          },
+          "429": {
+            "description": "Too many tries from this device or the network (``too_many``, see ``Retry-After``)"
+          }
+        },
+        "x-ordnung-phone": true
+      }
+    },
     "/api/events": {
       "get": {
         "tags": [
@@ -4154,7 +4443,8 @@
               }
             }
           }
-        }
+        },
+        "x-ordnung-phone": true
       }
     },
     "/api/demo/tour": {
@@ -4371,6 +4661,39 @@
           "data"
         ],
         "title": "Activity"
+      },
+      "AddressChoice": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address",
+            "description": "The IPv4 address (“192.168.178.23”)"
+          },
+          "interface": {
+            "type": "string",
+            "title": "Interface",
+            "description": "The network interface it belongs to (“en0”, “Wi-Fi”)"
+          },
+          "subnet": {
+            "type": "string",
+            "title": "Subnet",
+            "description": "Its network (“192.168.178.0/24”): only devices in it are answered"
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended",
+            "description": "The address this computer reaches the internet from (never a VPN)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address",
+          "interface",
+          "subnet",
+          "recommended"
+        ],
+        "title": "AddressChoice",
+        "description": "An address of this computer on a home network that phone access could use."
       },
       "AdviceFact": {
         "properties": {
@@ -9408,6 +9731,16 @@
             "type": "array",
             "title": "Checks",
             "description": "The doctor's checks — only with ``?probe=1`` (“Run check”)"
+          },
+          "client": {
+            "type": "string",
+            "enum": [
+              "computer",
+              "phone"
+            ],
+            "title": "Client",
+            "description": "Who asked: this computer's browser, or a paired phone (which gets no data folder, Claude path or checks)",
+            "default": "computer"
           }
         },
         "type": "object",
@@ -9421,7 +9754,8 @@
           "claude",
           "model_pinned",
           "rules_last_checked",
-          "checks"
+          "checks",
+          "client"
         ],
         "title": "Health"
       },
@@ -12181,6 +12515,12 @@
             },
             "type": "array",
             "title": "Open Cases"
+          },
+          "masked": {
+            "type": "boolean",
+            "title": "Masked",
+            "description": "The numbers show only their last 4 characters (on a phone): the full ones are on your computer",
+            "default": false
           }
         },
         "type": "object",
@@ -12189,7 +12529,8 @@
           "about_you",
           "documents",
           "organisations",
-          "open_cases"
+          "open_cases",
+          "masked"
         ],
         "title": "MyNumbers",
         "description": "The *My numbers* page."
@@ -12355,6 +12696,52 @@
           "text_source"
         ],
         "title": "PageInfo"
+      },
+      "PairRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "title": "Code",
+            "description": "As shown or typed; spaces, dashes and case don't matter"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name",
+            "description": "This phone's name (“Anna's iPhone”)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "PairRequest",
+        "description": "The code from the computer and the name this phone gets."
+      },
+      "PairResult": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name it got (“iPhone (2)” when the name was taken)"
+          },
+          "check_words": {
+            "type": "string",
+            "title": "Check Words",
+            "description": "Two words the computer shows next to this phone (“amber tulip”)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "check_words"
+        ],
+        "title": "PairResult",
+        "description": "The phone is paired: its sign-in cookie comes with this answer."
       },
       "Party": {
         "properties": {
@@ -12637,6 +13024,474 @@
           "reference"
         ],
         "title": "PaymentDetails"
+      },
+      "PhoneAccessChange": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 15
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address",
+            "description": "One of ``addresses`` (none: the saved or recommended one)"
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 65535.0,
+                "minimum": 1024.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          },
+          "home_network": {
+            "type": "boolean",
+            "title": "Home Network",
+            "description": "“This is my home network”: the network this computer is on now is home (after ``other_network``)",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "title": "PhoneAccessChange",
+        "description": "Turn phone access on or off; choose the address or port; confirm the home network."
+      },
+      "PhoneDevice": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "The name given when it was paired (“Anna's iPhone”)"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform",
+            "description": "A summary of its browser (“iPhone · Safari”), never the User-Agent"
+          },
+          "check_words": {
+            "type": "string",
+            "title": "Check Words",
+            "description": "Two words the phone showed when it was paired (“amber tulip”): a phone that shows other words isn't this one"
+          },
+          "paired_at": {
+            "type": "string",
+            "title": "Paired At"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "last_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Address",
+            "description": "The address it was last used from"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "description": "It has Ordnung open now (a live connection)"
+          },
+          "recent_changes": {
+            "type": "integer",
+            "title": "Recent Changes",
+            "description": "Changes it made in the last 30 days (the privacy log, filtered by ``device``)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "platform",
+          "check_words",
+          "paired_at",
+          "last_seen_at",
+          "last_address",
+          "active",
+          "recent_changes"
+        ],
+        "title": "PhoneDevice",
+        "description": "A paired phone (never its sign-in)."
+      },
+      "PhoneNotice": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "pairing_stopped",
+              "code_reused",
+              "token_reuse"
+            ],
+            "title": "Code",
+            "description": "``pairing_stopped``: so many wrong codes were typed that the code was cancelled; ``code_reused``: two devices used the same code, so neither is paired; ``token_reuse``: a phone's sign-in was used from two places, so it was signed out"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "addresses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Addresses",
+            "description": "The addresses involved"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "detail",
+          "at",
+          "addresses"
+        ],
+        "title": "PhoneNotice",
+        "description": "Something the person should know about at once (shown in the danger tone)."
+      },
+      "PhonePairing": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "What the QR code opens: ``https://<address>:<port>/pair#<code>``"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "The code to type instead (“K7QM2XD9PA”)"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "code",
+          "expires_at"
+        ],
+        "title": "PhonePairing",
+        "description": "A new pairing code: shown on the computer, valid once for a few minutes."
+      },
+      "PhonePairingState": {
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened At",
+            "description": "When a phone that isn't paired yet opened the pairing page"
+          },
+          "opened_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened From",
+            "description": "The address that phone opened it from"
+          },
+          "wrong_tries": {
+            "type": "integer",
+            "title": "Wrong Tries",
+            "description": "Wrong codes typed on the network since this code was made"
+          },
+          "wrong_from": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wrong From",
+            "description": "The addresses the wrong codes came from"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expires_at",
+          "opened_at",
+          "opened_from",
+          "wrong_tries",
+          "wrong_from"
+        ],
+        "title": "PhonePairingState",
+        "description": "The pairing code's progress (never the code)."
+      },
+      "PhoneProblem": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "no_network",
+              "address_gone",
+              "other_network",
+              "port_busy",
+              "failed"
+            ],
+            "title": "Code",
+            "description": "``no_network``: no home network; ``address_gone``: this computer isn't on the saved address any more; ``other_network``: the same address on another network (the router differs); ``port_busy``: another program uses the port; ``failed``: anything else"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "PhoneProblem",
+        "description": "Why phone access is on but not listening, in words for the person (technical text only in logs)."
+      },
+      "PhoneStatus": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "Phone access can be turned on here (never in the demo)"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason",
+            "description": "Why not, in words"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Phone access is turned on (the saved choice)"
+          },
+          "listening": {
+            "type": "boolean",
+            "title": "Listening",
+            "description": "Phones can reach it now"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url",
+            "description": "“https://192.168.178.23:8767” while listening"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address",
+            "description": "The address phone access uses"
+          },
+          "subnet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subnet",
+            "description": "The home network it answers (“192.168.178.0/24”)"
+          },
+          "port": {
+            "type": "integer",
+            "title": "Port"
+          },
+          "addresses": {
+            "items": {
+              "$ref": "#/components/schemas/AddressChoice"
+            },
+            "type": "array",
+            "title": "Addresses",
+            "description": "This computer's addresses on home networks now"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhoneProblem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhoneNotice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fingerprint",
+            "description": "The certificate's SHA-256 as upper-case byte pairs (“F2 08 81 E8 …”)"
+          },
+          "ca_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Fingerprint",
+            "description": "The SHA-256 of the authority that issues it (what a phone may trust)"
+          },
+          "ca_made_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Made At",
+            "description": "When that authority was made: a new address makes a new one, and phones that trusted the old one should remove it"
+          },
+          "certificate_until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificate Until",
+            "description": "The certificate's last day"
+          },
+          "certificate_changed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificate Changed At",
+            "description": "When the certificate last changed (phones that don't trust it warn again)"
+          },
+          "pairing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhonePairingState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The open pairing code's progress"
+          },
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/PhoneDevice"
+            },
+            "type": "array",
+            "title": "Devices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "available",
+          "unavailable_reason",
+          "enabled",
+          "listening",
+          "url",
+          "address",
+          "subnet",
+          "port",
+          "addresses",
+          "problem",
+          "notice",
+          "fingerprint",
+          "ca_fingerprint",
+          "ca_made_at",
+          "certificate_until",
+          "certificate_changed_at",
+          "pairing",
+          "devices"
+        ],
+        "title": "PhoneStatus",
+        "description": "What Settings → Phone shows."
       },
       "Profile": {
         "properties": {

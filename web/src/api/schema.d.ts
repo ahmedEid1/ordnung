@@ -169,7 +169,7 @@ export interface paths {
         };
         /**
          * Activity
-         * @description What Ordnung did, newest first.
+         * @description What Ordnung did, newest first (``device``: what one paired phone did).
          */
         get: operations["activity_api_activity_get"];
         put?: never;
@@ -1506,6 +1506,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/phone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Phone Status
+         * @description Whether phone access can be used here and is on, its address, certificate, pairing progress and
+         *     the paired phones.
+         */
+        get: operations["phone_status_api_phone_get"];
+        /**
+         * Change Phone Access
+         * @description Turn phone access on (at the chosen or recommended address) or off; a new address or port means
+         *     pairing phones again.
+         */
+        put: operations["change_phone_access_api_phone_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/pairing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Pairing
+         * @description A new pairing code (replacing an open one): one phone, once, within minutes.
+         */
+        post: operations["start_pairing_api_phone_pairing_post"];
+        /**
+         * Cancel Pairing
+         * @description Cancel the open pairing code (the dialog closed).
+         */
+        delete: operations["cancel_pairing_api_phone_pairing_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Phone
+         * @description Remove a paired phone: it is signed out at once and its live connections end.
+         */
+        delete: operations["remove_phone_api_phone_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Phone Access
+         * @description Start over: turn phone access off, remove every phone and its certificate (a new one is made
+         *     when it is turned on again).
+         */
+        post: operations["reset_phone_access_api_phone_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pair Phone
+         * @description Pair this phone with the code shown on the computer; the answer sets its sign-in cookie.
+         */
+        post: operations["pair_phone_api_phone_pair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -1617,6 +1728,32 @@ export interface components {
             data: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * AddressChoice
+         * @description An address of this computer on a home network that phone access could use.
+         */
+        AddressChoice: {
+            /**
+             * Address
+             * @description The IPv4 address (“192.168.178.23”)
+             */
+            address: string;
+            /**
+             * Interface
+             * @description The network interface it belongs to (“en0”, “Wi-Fi”)
+             */
+            interface: string;
+            /**
+             * Subnet
+             * @description Its network (“192.168.178.0/24”): only devices in it are answered
+             */
+            subnet: string;
+            /**
+             * Recommended
+             * @description The address this computer reaches the internet from (never a VPN)
+             */
+            recommended: boolean;
         };
         /**
          * AdviceFact
@@ -3366,6 +3503,13 @@ export interface components {
              * @description The doctor's checks — only with ``?probe=1`` (“Run check”)
              */
             checks: components["schemas"]["DoctorCheck"][];
+            /**
+             * Client
+             * @description Who asked: this computer's browser, or a paired phone (which gets no data folder, Claude path or checks)
+             * @default computer
+             * @enum {string}
+             */
+            client: "computer" | "phone";
         };
         /**
          * HeldRequest
@@ -4291,6 +4435,12 @@ export interface components {
             organisations: components["schemas"]["CallSheet"][];
             /** Open Cases */
             open_cases: components["schemas"]["OpenCase"][];
+            /**
+             * Masked
+             * @description The numbers show only their last 4 characters (on a phone): the full ones are on your computer
+             * @default false
+             */
+            masked: boolean;
         };
         /**
          * NotificationText
@@ -4355,6 +4505,38 @@ export interface components {
              * @enum {string}
              */
             text_source: "text" | "transcript" | "none";
+        };
+        /**
+         * PairRequest
+         * @description The code from the computer and the name this phone gets.
+         */
+        PairRequest: {
+            /**
+             * Code
+             * @description As shown or typed; spaces, dashes and case don't matter
+             */
+            code: string;
+            /**
+             * Name
+             * @description This phone's name (“Anna's iPhone”)
+             */
+            name: string;
+        };
+        /**
+         * PairResult
+         * @description The phone is paired: its sign-in cookie comes with this answer.
+         */
+        PairResult: {
+            /**
+             * Name
+             * @description The name it got (“iPhone (2)” when the name was taken)
+             */
+            name: string;
+            /**
+             * Check Words
+             * @description Two words the computer shows next to this phone (“amber tulip”)
+             */
+            check_words: string;
         };
         /** Party */
         Party: {
@@ -4426,6 +4608,229 @@ export interface components {
             iban_valid: boolean | null;
             /** Reference */
             reference: string | null;
+        };
+        /**
+         * PhoneAccessChange
+         * @description Turn phone access on or off; choose the address or port; confirm the home network.
+         */
+        PhoneAccessChange: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Address
+             * @description One of ``addresses`` (none: the saved or recommended one)
+             */
+            address?: string | null;
+            /** Port */
+            port?: number | null;
+            /**
+             * Home Network
+             * @description “This is my home network”: the network this computer is on now is home (after ``other_network``)
+             * @default false
+             */
+            home_network?: boolean;
+        };
+        /**
+         * PhoneDevice
+         * @description A paired phone (never its sign-in).
+         */
+        PhoneDevice: {
+            /** Id */
+            id: string;
+            /**
+             * Name
+             * @description The name given when it was paired (“Anna's iPhone”)
+             */
+            name: string;
+            /**
+             * Platform
+             * @description A summary of its browser (“iPhone · Safari”), never the User-Agent
+             */
+            platform: string;
+            /**
+             * Check Words
+             * @description Two words the phone showed when it was paired (“amber tulip”): a phone that shows other words isn't this one
+             */
+            check_words: string;
+            /** Paired At */
+            paired_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /**
+             * Last Address
+             * @description The address it was last used from
+             */
+            last_address: string | null;
+            /**
+             * Active
+             * @description It has Ordnung open now (a live connection)
+             */
+            active: boolean;
+            /**
+             * Recent Changes
+             * @description Changes it made in the last 30 days (the privacy log, filtered by ``device``)
+             */
+            recent_changes: number;
+        };
+        /**
+         * PhoneNotice
+         * @description Something the person should know about at once (shown in the danger tone).
+         */
+        PhoneNotice: {
+            /**
+             * Code
+             * @description ``pairing_stopped``: so many wrong codes were typed that the code was cancelled; ``code_reused``: two devices used the same code, so neither is paired; ``token_reuse``: a phone's sign-in was used from two places, so it was signed out
+             * @enum {string}
+             */
+            code: "pairing_stopped" | "code_reused" | "token_reuse";
+            /** Detail */
+            detail: string;
+            /** At */
+            at: string;
+            /**
+             * Addresses
+             * @description The addresses involved
+             */
+            addresses: string[];
+        };
+        /**
+         * PhonePairing
+         * @description A new pairing code: shown on the computer, valid once for a few minutes.
+         */
+        PhonePairing: {
+            /**
+             * Url
+             * @description What the QR code opens: ``https://<address>:<port>/pair#<code>``
+             */
+            url: string;
+            /**
+             * Code
+             * @description The code to type instead (“K7QM2XD9PA”)
+             */
+            code: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /**
+         * PhonePairingState
+         * @description The pairing code's progress (never the code).
+         */
+        PhonePairingState: {
+            /** Expires At */
+            expires_at: string;
+            /**
+             * Opened At
+             * @description When a phone that isn't paired yet opened the pairing page
+             */
+            opened_at: string | null;
+            /**
+             * Opened From
+             * @description The address that phone opened it from
+             */
+            opened_from: string | null;
+            /**
+             * Wrong Tries
+             * @description Wrong codes typed on the network since this code was made
+             */
+            wrong_tries: number;
+            /**
+             * Wrong From
+             * @description The addresses the wrong codes came from
+             */
+            wrong_from: string[];
+        };
+        /**
+         * PhoneProblem
+         * @description Why phone access is on but not listening, in words for the person (technical text only in logs).
+         */
+        PhoneProblem: {
+            /**
+             * Code
+             * @description ``no_network``: no home network; ``address_gone``: this computer isn't on the saved address any more; ``other_network``: the same address on another network (the router differs); ``port_busy``: another program uses the port; ``failed``: anything else
+             * @enum {string}
+             */
+            code: "no_network" | "address_gone" | "other_network" | "port_busy" | "failed";
+            /** Detail */
+            detail: string;
+        };
+        /**
+         * PhoneStatus
+         * @description What Settings → Phone shows.
+         */
+        PhoneStatus: {
+            /**
+             * Available
+             * @description Phone access can be turned on here (never in the demo)
+             */
+            available: boolean;
+            /**
+             * Unavailable Reason
+             * @description Why not, in words
+             */
+            unavailable_reason: string | null;
+            /**
+             * Enabled
+             * @description Phone access is turned on (the saved choice)
+             */
+            enabled: boolean;
+            /**
+             * Listening
+             * @description Phones can reach it now
+             */
+            listening: boolean;
+            /**
+             * Url
+             * @description “https://192.168.178.23:8767” while listening
+             */
+            url: string | null;
+            /**
+             * Address
+             * @description The address phone access uses
+             */
+            address: string | null;
+            /**
+             * Subnet
+             * @description The home network it answers (“192.168.178.0/24”)
+             */
+            subnet: string | null;
+            /** Port */
+            port: number;
+            /**
+             * Addresses
+             * @description This computer's addresses on home networks now
+             */
+            addresses: components["schemas"]["AddressChoice"][];
+            problem: components["schemas"]["PhoneProblem"] | null;
+            notice: components["schemas"]["PhoneNotice"] | null;
+            /**
+             * Fingerprint
+             * @description The certificate's SHA-256 as upper-case byte pairs (“F2 08 81 E8 …”)
+             */
+            fingerprint: string | null;
+            /**
+             * Ca Fingerprint
+             * @description The SHA-256 of the authority that issues it (what a phone may trust)
+             */
+            ca_fingerprint: string | null;
+            /**
+             * Ca Made At
+             * @description When that authority was made: a new address makes a new one, and phones that trusted the old one should remove it
+             */
+            ca_made_at: string | null;
+            /**
+             * Certificate Until
+             * @description The certificate's last day
+             */
+            certificate_until: string | null;
+            /**
+             * Certificate Changed At
+             * @description When the certificate last changed (phones that don't trust it warn again)
+             */
+            certificate_changed_at: string | null;
+            /** @description The open pairing code's progress */
+            pairing: components["schemas"]["PhonePairingState"] | null;
+            /** Devices */
+            devices: components["schemas"]["PhoneDevice"][];
         };
         /** Profile */
         Profile: {
@@ -6281,6 +6686,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description Only what this paired phone did (its id) */
+                device?: string | null;
             };
             header?: never;
             path?: never;
@@ -8744,6 +9151,226 @@ export interface operations {
             };
             /** @description The passphrase is too short or too long (the rule, never the value) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    phone_status_api_phone_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+        };
+    };
+    change_phone_access_api_phone_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneAccessChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description The demo or no session token (``unavailable``), Ordnung isn't set up yet (``not_set_up``), no home network (``no_network``) or the port is in use (``port_busy``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address isn't one of this computer's, or the port is out of range (``invalid``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    start_pairing_api_phone_pairing_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhonePairing"];
+                };
+            };
+            /** @description The demo or no session token (``unavailable``), phone access isn't listening (``not_listening``) or the most phones are paired (``too_many_phones``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancel_pairing_api_phone_pairing_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_phone_api_phone_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description No such phone is paired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_phone_access_api_phone_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description The demo (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    pair_phone_api_phone_pair_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairResult"];
+                };
+            };
+            /** @description Sent to the computer's own listener, not a phone's (``not_phone``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code paired a phone already, so neither stays paired (``code_used``), the most phones are paired (``too_many_phones``) or phone access is off (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code didn't match, or it expired, or there is none (``wrong_code``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many tries from this device or the network (``too_many``, see ``Retry-After``) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

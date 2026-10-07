@@ -67,6 +67,7 @@ from ordnung.llm.base import (
     LLMError,
     ReplayMiss,
 )
+from ordnung.phone.scope import mark_openapi
 from ordnung.tick import DailyTick
 
 log = logging.getLogger(__name__)
@@ -301,6 +302,7 @@ def _openapi(app: FastAPI) -> Callable[[], dict[str, Any]]:
             )
             _add_view_models(schema)
             _tidy_event_streams(schema)
+            mark_openapi(schema)
             app.openapi_schema = schema
         return app.openapi_schema
 

@@ -13,9 +13,15 @@ router = APIRouter(tags=["privacy"])
 
 
 @router.get("/activity", response_model=list[Activity])
-def activity(store: StoreDep, limit: Annotated[int, Query(ge=1, le=1000)] = 100) -> list[Activity]:
-    """What Ordnung did, newest first."""
-    return store.list_activity(limit=limit)
+def activity(
+    store: StoreDep,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    device: Annotated[
+        str | None, Query(max_length=40, description="Only what this paired phone did (its id)")
+    ] = None,
+) -> list[Activity]:
+    """What Ordnung did, newest first (``device``: what one paired phone did)."""
+    return store.list_activity(limit=limit, data={"device": device} if device else None)
 
 
 @router.get("/usage", response_model=UsageStats)

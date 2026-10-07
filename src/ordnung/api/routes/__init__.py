@@ -23,6 +23,7 @@ from ordnung.api.routes import (
     numbers,
     overview,
     parties,
+    phone,
     privacy,
     profile,
     proofs,
@@ -60,6 +61,7 @@ ROUTERS: tuple[APIRouter, ...] = (
     calendar_sync.router,
     reminders.router,
     backup.router,
+    phone.router,
     events.router,
     demo.router,
 )

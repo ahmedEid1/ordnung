@@ -1022,7 +1022,8 @@ export const MOCK_NUMBERS: MyNumbers = {
         "kind": "residence_permit"
       }
     }
-  ]
+  ],
+  "masked": false
 };
 
 /** `GET /api/week` for the mock demo's letters on its today, before any session. */
