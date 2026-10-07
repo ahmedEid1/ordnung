@@ -31,6 +31,7 @@ PREFIXES = {
     "thr",
     "prf",
     "cal",
+    "phn",
 }
 
 

@@ -8,6 +8,9 @@
  * The toast and the focus move run from the request's own promise (the group is gone by then), and
  * "Keep private" can be undone from its toast. More letters than one request may name are answered
  * in several (the hooks do that).
+ *
+ * On a paired phone the group is listed, but answered on the computer: a phone may not decide whether Claude reads
+ * a letter, nor ask about the watched folder (both are computer-only).
  */
 import { Link } from "react-router";
 import { FolderInput, Lock, Sparkles } from "lucide-react";
@@ -19,17 +22,21 @@ import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { toast } from "@/components/ui/Toast";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { OnYourComputer } from "@/features/phone/ComputerOnly";
+import { DECIDE_ON_COMPUTER } from "@/features/phone/copy";
 import { AnswerButton } from "./AnswerButton";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
 
 export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Document[]; onAnswered?: () => void }) {
   const rows = waitingRows(docs);
+  const phone = usePhoneCompanion();
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
   const wait = useWaitAgain();
   // the demo that only replays its recordings can't read new letters: say so before "Read these" is tried
-  const canRead = useFolder().data?.can_read ?? true;
+  const canRead = useFolder({ enabled: !phone }).data?.can_read ?? true;
   if (!rows.length) return null;
   const ids = rows.map((r) => r.doc.id);
   const n = ids.length;
@@ -87,7 +94,7 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
             <span className="sr-only">{`From your folder — not read yet, ${plural(n, "letter")}`}</span>
           </>
         }
-        description="Stored on this computer and not read yet — nothing has been sent to Claude."
+        description={`Stored on ${phone ? "your" : "this"} computer and not read yet — nothing has been sent to Claude.`}
       />
       <div className="card overflow-hidden">
         <ul className="divide-y divide-line" aria-label="Letters not read yet">
@@ -95,29 +102,35 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
             <WaitingItem key={row.doc.id} row={row} />
           ))}
         </ul>
-        <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3 border-t border-line bg-surface-2/40 px-4 py-3 sm:px-5">
-          <p className="mr-auto min-w-0 basis-full text-sm leading-5 text-muted sm:basis-auto sm:flex-1">
-            {!canRead
-              ? "This demo can't read new letters — it only replays the answers recorded for Sam's letters."
-              : n === 1
-                ? "Claude reads it like a letter you add."
-                : "Claude reads them like letters you add."}{" "}
-            <Link to="/settings?section=folder" className="font-medium text-accent underline-offset-2 hover:underline">
-              Watched folder settings
-            </Link>
-          </p>
-          {/* phones: the two answers share the row */}
-          <div className="flex w-full gap-2 sm:w-auto">
-            <AnswerButton size="sm" icon={Lock} onClick={keepThem} busy={keep.isPending} blocked={busy} className="max-sm:flex-1">
-              Keep private
-            </AnswerButton>
-            <AnswerButton size="sm" variant="primary" icon={Sparkles} onClick={readThem} busy={read.isPending} blocked={busy} className="max-sm:flex-1">
-              {readLabel(n)}
-              {" "}
-              <span className="sr-only">with Claude</span>
-            </AnswerButton>
+        {phone ? (
+          <div className="border-t border-line bg-surface-2/40 px-4 py-3 sm:px-5">
+            <OnYourComputer className="text-sm">{DECIDE_ON_COMPUTER}</OnYourComputer>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3 border-t border-line bg-surface-2/40 px-4 py-3 sm:px-5">
+            <p className="mr-auto min-w-0 basis-full text-sm leading-5 text-muted sm:basis-auto sm:flex-1">
+              {!canRead
+                ? "This demo can't read new letters — it only replays the answers recorded for Sam's letters."
+                : n === 1
+                  ? "Claude reads it like a letter you add."
+                  : "Claude reads them like letters you add."}{" "}
+              <Link to="/settings?section=folder" className="font-medium text-accent underline-offset-2 hover:underline">
+                Watched folder settings
+              </Link>
+            </p>
+            {/* phones: the two answers share the row */}
+            <div className="flex w-full gap-2 sm:w-auto">
+              <AnswerButton size="sm" icon={Lock} onClick={keepThem} busy={keep.isPending} blocked={busy} className="max-sm:flex-1">
+                Keep private
+              </AnswerButton>
+              <AnswerButton size="sm" variant="primary" icon={Sparkles} onClick={readThem} busy={read.isPending} blocked={busy} className="max-sm:flex-1">
+                {readLabel(n)}
+                {" "}
+                <span className="sr-only">with Claude</span>
+              </AnswerButton>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

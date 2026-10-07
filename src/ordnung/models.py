@@ -1699,6 +1699,10 @@ class DoctorCheck(_Model):
     fix: str | None = None
 
 
+#: Who is asking: the browser on this computer, or a paired phone over the home network.
+ClientKind = Literal["computer", "phone"]
+
+
 class Health(_Model):
     version: str
     data_dir: str
@@ -1718,6 +1722,11 @@ class Health(_Model):
     )
     checks: list[DoctorCheck] = Field(
         default_factory=list, description="The doctor's checks — only with ``?probe=1`` (“Run check”)"
+    )
+    client: ClientKind = Field(
+        default="computer",
+        description="Who asked: this computer's browser, or a paired phone (which gets no data folder, "
+        "Claude path or checks)",
     )
 
 
@@ -1942,6 +1951,11 @@ class MyNumbers(_Model):
     documents: list[IdentityDocument] = Field(default_factory=list)
     organisations: list[CallSheet] = Field(default_factory=list)
     open_cases: list[OpenCase] = Field(default_factory=list)
+    masked: bool = Field(
+        default=False,
+        description="The numbers show only their last 4 characters (on a phone): the full ones are on "
+        "your computer",
+    )
 
 
 # --------------------------------------------------------------------------------------------------

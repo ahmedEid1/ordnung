@@ -19,6 +19,7 @@ import { ModelText } from "@/components/ui/ModelText";
 import { Money } from "@/components/ui/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { AddDateButton, type DateLetter } from "@/features/items/AddDateDialog";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { EvidenceChip } from "./EvidenceChip";
 import { useEvidence } from "./EvidenceContext";
 import { GlossaryText } from "./Explained";
@@ -248,6 +249,8 @@ function ItemRow({
 }) {
   const { markDone, reopen, dismiss, changeDate, pending } = useItemActions();
   const { hover } = useEvidence();
+  // a to-do's calendar file stays on the computer (ADR 0017): a phone shows the date, never the download
+  const phone = usePhoneCompanion();
   const [editing, setEditing] = useState(false);
   const [date, setDate] = useState(item.due_date ?? "");
   const open = isOpenItem(item);
@@ -391,7 +394,7 @@ function ItemRow({
         label={`Actions for ${item.title}`}
         heading={item.title}
         items={[
-          ...(item.due_date ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
+          ...(item.due_date && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
           { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
           open ? { label: "Mark done", icon: Check, onSelect: () => markDone(item) } : { label: "Reopen", icon: RotateCcw, onSelect: () => reopen(item) },
           "separator" as const,

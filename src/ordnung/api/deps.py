@@ -14,6 +14,11 @@ waiting for it are read (:meth:`~ordnung.ingest.worker.IngestWorker.claude_ready
 wait, the worker asks for a fresh status itself (``IngestWorker.claude_check``). A reading that finds
 Claude not installed or not signed in drops the cached status (``IngestWorker.claude_failed``), so
 Settings, the upload dialog and the next check never go on saying "ready" from the cache.
+
+The state also owns phone access (:class:`~ordnung.phone.access.PhoneAccess`: the phone listener, the
+paired phones, pairing). A route tells a paired phone's request from the computer's with
+:func:`is_phone` (and :func:`phone_device`); :func:`require_computer` refuses phones on the routes
+that must never run for one, independently of the phone listener's allow-list.
 """
 
 from __future__ import annotations
@@ -30,6 +35,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, Request
 
+from ordnung.api.security import DEVICE_KEY, LISTENER_KEY, PHONE_LISTENER
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.doctor import CLAUDE_CODE_URL, DoctorReport, run_doctor
@@ -37,6 +43,9 @@ from ordnung.ingest.watcher import FolderWatcher
 from ordnung.llm import claude_cli
 from ordnung.llm.replay import ReplayBackend
 from ordnung.models import ClaudeStatus
+from ordnung.phone import PhoneRefusal
+from ordnung.phone.access import PhoneAccess
+from ordnung.phone.actor import DeviceRef
 from ordnung.tick import local_today
 
 log = logging.getLogger(__name__)
@@ -250,9 +259,11 @@ class ApiState:
     doctor: DoctorRunner = run_doctor
     probe_limit: RateLimit = field(default_factory=lambda: RateLimit(PROBE_INTERVAL_S))
     folder: FolderWatcher = field(init=False)
+    phone: PhoneAccess = field(init=False)
 
     def __post_init__(self) -> None:
         self.folder = FolderWatcher(self.ctx, can_read=self.reads_letters)
+        self.phone = PhoneAccess(self.ctx, demo=self.demo, token_on=self.token is not None)
         self.claude.listener = self._claude_seen
         self.ctx.worker.claude_check = self._claude_ready_now
         self.ctx.worker.claude_failed = self.claude.forget
@@ -295,6 +306,27 @@ def get_store(ctx: Annotated[AppContext, Depends(get_ctx)]) -> Store:
 def get_today(store: Annotated[Store, Depends(get_store)]) -> date:
     """The app's today: the person's local date (profile time zone) or the pinned demo date."""
     return local_today(store)
+
+
+def is_phone(request: Request) -> bool:
+    """The request came in on the phone listener (a paired phone's, or one pairing)."""
+    return request.scope.get(LISTENER_KEY) == PHONE_LISTENER
+
+
+def phone_device(request: Request) -> DeviceRef | None:
+    """The paired phone a request came from (``None``: the computer, or a phone not signed in)."""
+    device = request.scope.get(DEVICE_KEY) if is_phone(request) else None
+    return device if isinstance(device, DeviceRef) else None
+
+
+COMPUTER_ONLY_MESSAGE = "This works on your computer only."
+
+
+def require_computer(request: Request) -> None:
+    """Refuse a phone's request (403 ``computer_only``) — a second check behind the phone listener's
+    allow-list, on the routes that must never run for a phone."""
+    if is_phone(request):
+        raise PhoneRefusal("computer_only", COMPUTER_ONLY_MESSAGE)
 
 
 StateDep = Annotated[ApiState, Depends(get_state)]

@@ -75,6 +75,7 @@ from ordnung.models import (
     TraceSpanRecord,
     UsageStats,
 )
+from ordnung.phone.actor import attribute
 
 log = logging.getLogger(__name__)
 
@@ -1821,8 +1822,9 @@ class Store:
         ref_id: str | None = None,
         data: Mapping[str, Any] | None = None,
     ) -> Activity:
-        """Append an entry to the activity log ("Privacy & AI usage")."""
-        payload = dict(data or {})
+        """Append an entry to the activity log ("Privacy & AI usage"); while a paired phone's request
+        runs, the entry says so and carries the phone as ``device`` (:mod:`ordnung.phone.actor`)."""
+        message, payload = attribute(message, data)
         ts = now_iso()
         with self.tx() as conn:
             cursor = conn.execute(
@@ -1858,6 +1860,18 @@ class Store:
         return self._many(
             _ACTIVITY, f"{where.sql()} ORDER BY id DESC{paging}", [*where.params, *paging_params]
         )
+
+    def count_activity(self, kind: str, key: str, *, since: str) -> dict[str, int]:
+        """How many ``kind`` entries since ``since`` (an ISO timestamp) there are per value of
+        ``data.<key>`` (``key`` a plain name)."""
+        if not key.isidentifier():
+            raise ValueError(f"not a data key: {key!r}")
+        rows = self._conn().execute(
+            f"SELECT json_extract(data, '$.{key}') AS value, COUNT(*) AS n FROM activity "
+            "WHERE kind = ? AND ts >= ? GROUP BY value",
+            (kind, since),
+        )
+        return {str(row["value"]): int(row["n"]) for row in rows if row["value"] is not None}
 
     def activity_about(self, ref_type: str, ref_id: str, kinds: Sequence[str]) -> list[Activity]:
         """The activity entries of one of ``kinds`` about a row, newest first."""

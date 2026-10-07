@@ -7,6 +7,7 @@ uv tool install from git) and started ``ordnung demo``.
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import re
 import shutil
@@ -16,6 +17,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 from packaging.version import Version
 from typer.testing import CliRunner
 
@@ -155,6 +157,31 @@ def test_dependency_floors_install_a_working_app() -> None:
     )
     for name, needed in {"typer": "0.19", "fpdf2": "2.8.5", "icalendar": "6.1", "holidays": "0.66"}.items():
         assert Version(floors[name]) >= Version(needed), name
+
+
+def test_the_server_floors_are_ones_the_lowest_job_can_install() -> None:
+    """Lifecycle review: pyproject said uvicorn>=0.30 and sse-starlette>=2.1, but mcp needs uvicorn
+    0.31.1 and sse-starlette 3.0, so CI's lowest-direct job installed those and the phone listener's test
+    that claimed to run on uvicorn 0.30 never did. The floors are at least what mcp requires, and the
+    test names the floor it runs on."""
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    floors = dict(
+        re.findall(r"^([\w.-]+)(?:\[[\w,]+\])?>=([\d.]+)", "\n".join(project["dependencies"]), re.M)
+    )
+    needed: dict[str, Version] = {}
+    for line in importlib.metadata.requires("mcp") or []:
+        requirement = Requirement(line)
+        if requirement.name in ("uvicorn", "sse-starlette") and (
+            requirement.marker is None or requirement.marker.evaluate()
+        ):
+            needed[requirement.name] = max(
+                Version(spec.version) for spec in requirement.specifier if spec.operator == ">="
+            )
+    assert set(needed) == {"uvicorn", "sse-starlette"}
+    for name, version in needed.items():
+        assert Version(floors[name]) >= version, (name, floors[name], version)
+    listener = (ROOT / "tests" / "test_phone_listener.py").read_text(encoding="utf-8")
+    assert f"uvicorn's floor ({floors['uvicorn']}," in listener
 
 
 def test_ci_installs_the_samples_library_versions() -> None:

@@ -27,6 +27,9 @@ import { stagger } from "./motion";
 import { agendaSentence, toPayTotals } from "./selection";
 import { useTodayData } from "./useTodayData";
 import { WeeklyLink, WeeklyPrompt } from "@/features/week/WeeklyPrompt";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { ComputerOnly } from "@/features/phone/ComputerOnly";
+import { filesStay } from "@/features/phone/copy";
 import { useStickyError } from "@/lib/hooks";
 
 /**
@@ -112,12 +115,13 @@ function TodaySkeleton({ name, today, hour }: { name: string; today: string; hou
   );
 }
 
-/** Why the day didn't load, in words that fit the cause. */
-export function dayErrorDescription(error: unknown): string {
+/** Why the day didn't load, in words that fit the cause (and where it runs: on a phone, "your computer"). */
+export function dayErrorDescription(error: unknown, phone = false): string {
   if (error instanceof ApiError && error.status >= 500) {
     return "Ordnung ran into a problem while putting your day together. Your letters and dates are safe — try again, and restart Ordnung if it keeps happening.";
   }
   if (error instanceof ApiError && error.status > 0) return "Ordnung couldn't put your day together. Your letters and dates are safe — try again in a moment.";
+  if (phone) return "Your computer didn't answer. Your letters and dates are safe there — is it on, with Ordnung running, and is this phone on the same Wi‑Fi?";
   return "Ordnung didn't answer. Your letters and dates are safe — is it still running on this computer?";
 }
 
@@ -129,6 +133,7 @@ const CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] 
 /** A fresh install with no letters yet: one clear first step instead of a page of zeros and "All clear". */
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
+  const phone = usePhoneCompanion();
   return (
     <EmptyState
       illustration="inbox"
@@ -156,15 +161,18 @@ function FirstRun() {
         ))}
       </ul>
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
-        <Lock className="size-3.5 shrink-0" aria-hidden /> Your files stay on this computer.
+        <Lock className="size-3.5 shrink-0" aria-hidden /> {filesStay(phone)}
       </p>
-      <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
-        Or let Ordnung pick up what your scanner saves:{" "}
-        <Link to="/settings?section=folder" className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
-          choose a watched folder
-        </Link>
-        . Moving from another computer? Run <code className={CODE}>ordnung restore</code> in a terminal to bring back your encrypted backup.
-      </p>
+      {/* the watched folder and a restore are set up on the computer, in Settings and a terminal there */}
+      <ComputerOnly what="Choose a watched folder · ordnung restore">
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+          Or let Ordnung pick up what your scanner saves:{" "}
+          <Link to="/settings?section=folder" className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+            choose a watched folder
+          </Link>
+          . Moving from another computer? Run <code className={CODE}>ordnung restore</code> in a terminal to bring back your encrypted backup.
+        </p>
+      </ComputerOnly>
     </EmptyState>
   );
 }
@@ -177,6 +185,7 @@ function FirstRun() {
 export function TodayView() {
   const data = useTodayData();
   const profile = useProfile();
+  const phone = usePhoneCompanion();
   const hour = useGreetingHour();
   const todayISO = useTodayISO();
   // the calendar card stays after its download (with what to do next) — its Idea is gone by then
@@ -195,7 +204,7 @@ export function TodayView() {
         <Greeting name={profileName} today={todayISO} hour={hour} />
         <LoadError
           what="your day"
-          description={dayErrorDescription(error ?? lastError)}
+          description={dayErrorDescription(error ?? lastError, phone)}
           error={error ?? lastError}
           onRetry={() => void data.dashboard.refetch()}
           retrying={data.dashboard.isFetching}
@@ -221,7 +230,9 @@ export function TodayView() {
   const listed = new Set(reviewDocs.slice(0, PLEASE_CHECK_SHOWN).map((d) => d.id));
   const ideas = [...derived.ideas.shown, ...derived.ideas.more].filter((s) => !repeatsPleaseCheck(s, listed));
   const shownIdeas = derived.ideas.shown.length;
-  const side = reviewDocs.length > 0 || Boolean(derived.calendar) || calendarDone;
+  // the calendar file stays on the computer: a phone shows the dates, never the download (ADR 0017)
+  const calendar = phone ? null : derived.calendar;
+  const side = reviewDocs.length > 0 || Boolean(calendar) || (calendarDone && !phone);
 
   return (
     <motion.div variants={stagger} initial="hidden" animate="show" className="@container flex flex-col gap-8 sm:gap-10">
@@ -243,7 +254,7 @@ export function TodayView() {
         {side ? (
           <div className={SIDE}>
             <PleaseCheckCard docs={reviewDocs} />
-            <CalendarCard idea={derived.calendar} done={calendarDone} onDone={() => setCalendarDone(true)} />
+            {phone ? null : <CalendarCard idea={calendar} done={calendarDone} onDone={() => setCalendarDone(true)} />}
           </div>
         ) : null}
       </div>

@@ -1,13 +1,19 @@
 /**
  * Test helpers: render with a QueryClient (pre-seeded `/api/health` so `useToday()` is the demo
  * date) and a memory router.
+ *
+ * Phone mode: after `useMockApi({ client: "phone" })` (or `setClientKind("phone")`), a new test QueryClient is
+ * seeded with {@link PHONE_TEST_HEALTH}, so `usePhoneCompanion()` is true; `makeTestQueryClient({ client })` says
+ * so explicitly. `src/test/setup.ts` puts the tab back on "computer" after each test.
  */
 import type { ReactElement, ReactNode } from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import type { Health } from "@/api/types";
+import type { ClientKind, Health } from "@/api/types";
 import { qk } from "@/api/hooks";
+import { clientKind, setClientKind } from "@/api/clientKind";
+import { phoneHealth } from "@/mocks/phone";
 
 export const TEST_TODAY = "2026-09-28";
 
@@ -22,11 +28,21 @@ export const TEST_HEALTH: Health = {
   model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],
+  client: "computer",
 };
 
-export function makeTestQueryClient(): QueryClient {
+/** Health as a paired phone gets it: `client: "phone"`, no data folder, never the demo (as the API trims it). */
+export const PHONE_TEST_HEALTH: Health = phoneHealth(TEST_HEALTH);
+
+/**
+ * A QueryClient for one test, with health seeded: the computer's ({@link TEST_HEALTH}), or a phone's
+ * ({@link PHONE_TEST_HEALTH}) when `client` is "phone" — by default whatever the tab is now (`clientKind()`,
+ * which `useMockApi({ client })` sets).
+ */
+export function makeTestQueryClient({ client = clientKind() }: { client?: ClientKind } = {}): QueryClient {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
-  qc.setQueryData(qk.health, TEST_HEALTH);
+  setClientKind(client);
+  qc.setQueryData(qk.health, client === "phone" ? PHONE_TEST_HEALTH : TEST_HEALTH);
   return qc;
 }
 

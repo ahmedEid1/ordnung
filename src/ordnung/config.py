@@ -9,6 +9,7 @@ Layout::
       derived/<doc_id>/   page renders + thumbnail
       drafts/             generated letter PDFs
       inbox/              optional watched folder (default location)
+      phone/              phone access's certificates (once it was turned on)
 
 The data directory and its folders are private to the person (``0700`` on POSIX, tightened on every
 start); files in it are written ``0600``.
@@ -67,6 +68,12 @@ class Paths:
     @property
     def inbox(self) -> Path:
         return self.data_dir / "inbox"
+
+    @property
+    def phone(self) -> Path:
+        """Phone access's certificates (made at its first turn-on, never by :meth:`ensure`; never in a
+        backup or the database)."""
+        return self.data_dir / "phone"
 
     def ensure(self) -> Paths:
         """Create the layout; the data directory and its folders are private to the owner."""

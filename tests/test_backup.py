@@ -910,3 +910,73 @@ def test_restore_check_refuses_a_wrong_passphrase(life: Path, tmp_path: Path) ->
     backup = make_backup(life, tmp_path / "b.ordnung-backup")
     result = invoke("restore", str(backup), "--check", passphrase="not the passphrase")
     assert result.exit_code == 1 and "Wrong passphrase" in result.output
+
+
+# --------------------------------------------------------------------------------------------------
+# phone access stays on this computer (ordnung.phone)
+# --------------------------------------------------------------------------------------------------
+
+PHONE_MARKER = "phn_markerphone1"
+
+
+def _with_phone_access(folder: Path) -> None:
+    from ordnung.phone.record import META_KEY, PhoneDeviceRecord, PhoneRecord
+
+    record = PhoneRecord(
+        enabled=True,
+        address="192.168.178.23",
+        devices=[
+            PhoneDeviceRecord(
+                id=PHONE_MARKER, name="Sam's iPhone", token_sha256="f" * 64, paired_at="2026-09-28T07:00:00Z"
+            )
+        ],
+    )
+    store = Store.open(Paths(folder))
+    try:
+        store.set_meta(META_KEY, record.model_dump_json())
+    finally:
+        store.close()
+
+
+def test_a_backup_never_carries_phone_access(life: Path, tmp_path: Path) -> None:
+    from ordnung.phone.record import META_KEY
+
+    assert META_KEY in archive._LEFT_OUT_META
+    _with_phone_access(life)
+    (life / "phone").mkdir()
+    (life / "phone" / "ca.key").write_text("private key", encoding="utf-8")
+    snapshot = archive.snapshot_database(life / DB_NAME)
+    assert PHONE_MARKER.encode() not in snapshot.data and b"f" * 64 not in snapshot.data
+    result = restore_backup(make_backup(life, tmp_path / "b.ordnung-backup"), PASS, tmp_path / "copy")
+    assert not (result.target / "phone").exists()
+    copy = Store.open(Paths(result.target))
+    try:
+        assert copy.get_meta(META_KEY) is None and copy.get_meta("written_last") == "yes"
+    finally:
+        copy.close()
+    original = Store.open(Paths(life))
+    try:
+        assert original.get_meta(META_KEY) is not None  # the original keeps its phones
+    finally:
+        original.close()
+
+
+def test_a_restored_copy_starts_without_phone_access(tmp_path: Path) -> None:
+    from ordnung.phone.record import META_KEY
+
+    source = tmp_path / "crafted"
+    store = Store.open(Paths(source))
+    store.close()
+    _with_phone_access(source)
+    conn = sqlite3.connect(source / DB_NAME)
+    conn.execute("PRAGMA journal_mode=DELETE")
+    conn.close()
+    db = (source / DB_NAME).read_bytes()
+    assert PHONE_MARKER.encode() in db  # a backup crafted to carry phone access
+    members = [_member(DB_NAME, db), _member(MANIFEST_NAME, _manifest(db, {}))]
+    result = restore_backup(craft(tmp_path / "phone.ordnung-backup", members), PASS, tmp_path / "copy")
+    copy = Store.open(Paths(result.target))
+    try:
+        assert copy.get_meta(META_KEY) is None
+    finally:
+        copy.close()

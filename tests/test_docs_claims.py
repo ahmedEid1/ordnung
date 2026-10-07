@@ -7,6 +7,7 @@ that makes the docs untrue fails here.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -14,7 +15,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,7 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
 
@@ -829,3 +831,257 @@ async def test_weekly_review_can_be_switched_off(store: Store) -> None:
     finally:
         clock.set_today(None)
     assert not result.review_started
+
+
+# --------------------------------------------------------------------------------------------------
+# Phone access — README, docs/privacy.md, ADR 0017, docs/architecture.md and SPEC § 12b
+# --------------------------------------------------------------------------------------------------
+
+_ADR_PHONE = ROOT / "docs" / "decisions" / "0017-phone-access-over-the-home-network.md"
+
+
+def _code(name: str) -> Any:
+    """A constant of Ordnung by its dotted name, imported when a test asks for it."""
+    module, _, attribute = name.rpartition(".")
+    return getattr(importlib.import_module(module), attribute)
+
+
+def _whole(value: float, unit: float = 1) -> int:
+    """``value / unit`` when that is a whole number (a constant the docs give in another unit)."""
+    whole, rest = divmod(value, unit)
+    assert rest == 0, (value, unit)
+    return int(whole)
+
+
+def _per_hour(kind: str) -> int:
+    """How many ``kind`` requests (``ask``, ``model``, ``upload``) one phone may make an hour."""
+    limit, window = _code("ordnung.phone.access.DEVICE_LIMITS")[kind]
+    assert window == 3600
+    return int(limit)
+
+
+def _shown_characters() -> int:
+    """How many characters of a number of the person's a phone shows (``•••• 3000``)."""
+    masked = _code("ordnung.phone.mask.mask_value")("DE89 3704 0044 0532 0130 00")
+    mark, shown = masked.split()
+    assert set(mark) == {"•"} and "DE89370400440532013000".endswith(shown)
+    return len(shown)
+
+
+#: Every number the phone-access docs state, by the name the claims below use, from the constant it
+#: names (P1's modules ``ordnung.phone.{access,pairing,tls,record,mask}``; the rest from the contract).
+_PHONE_NUMBERS: dict[str, Callable[[], object]] = {
+    "port": lambda: _code("ordnung.phone.record.DEFAULT_PORT"),
+    "last_port": lambda: _code("ordnung.phone.access.PORTS")[-1],
+    "connections": lambda: _code("ordnung.phone.access.LIMIT_CONCURRENCY"),
+    "keep_alive_s": lambda: _code("ordnung.phone.access.KEEP_ALIVE_S"),
+    "graceful_s": lambda: _code("ordnung.phone.access.GRACEFUL_STOP_S"),
+    "watch_s": lambda: _whole(_code("ordnung.phone.access.WATCH_INTERVAL_S")),
+    "seen_minutes": lambda: _whole(_code("ordnung.phone.access.SEEN_WRITE_EVERY_S"), 60),
+    "code_length": lambda: _code("ordnung.phone.pairing.CODE_LENGTH"),
+    "code_bits": lambda: (
+        _code("ordnung.phone.pairing.CODE_LENGTH")
+        * (len(_code("ordnung.phone.pairing.CODE_ALPHABET")).bit_length() - 1)
+    ),
+    "code_minutes": lambda: _whole(_code("ordnung.phone.pairing.PAIRING_TTL_S"), 60),
+    "tries_per_device": lambda: _code("ordnung.phone.pairing.PAIRING_TRIES_PER_CLIENT"),
+    "tries_in_all": lambda: _code("ordnung.phone.pairing.PAIRING_TRIES_TOTAL"),
+    "pairs_per_address": lambda: _code("ordnung.phone.pairing.PAIR_POSTS_PER_CLIENT_PER_MINUTE"),
+    "pairs_in_all": lambda: _code("ordnung.phone.pairing.PAIR_POSTS_PER_MINUTE"),
+    "pair_kib": lambda: _whole(_code("ordnung.phone.pairing.PAIR_MAX_BYTES"), 1024),
+    "phones": lambda: _code("ordnung.phone.access.MAX_PHONES"),
+    "idle_days": lambda: _code("ordnung.phone.access.DEVICE_IDLE_DAYS"),
+    "recent_days": lambda: _code("ordnung.phone.access.RECENT_DAYS"),
+    "hourly": lambda: {3600: "an hour"}[_whole(_code("ordnung.phone.access.ROTATE_EVERY_S"))],
+    "grace_s": lambda: _whole(_code("ordnung.phone.access.PREVIOUS_GRACE_S")),
+    "grace_minutes": lambda: _whole(_code("ordnung.phone.access.PREVIOUS_GRACE_S"), 60),
+    "retired": lambda: _code("ordnung.phone.record.RETIRED_KEPT"),
+    "asks": lambda: _per_hour("ask"),
+    "model_actions": lambda: _per_hour("model"),
+    "uploads": lambda: _per_hour("upload"),
+    "leaf_days": lambda: _code("ordnung.phone.tls.LEAF_DAYS"),
+    "renew_days": lambda: _code("ordnung.phone.tls.RENEW_BEFORE_DAYS"),
+    "ca_years": lambda: _whole(_code("ordnung.phone.tls.CA_DAYS"), 365),
+    "shown": _shown_characters,
+    "cookie_max_age": lambda: _code("ordnung.phone.COOKIE_MAX_AGE_S"),
+    "phone_operations": lambda: len(_code("ordnung.phone.scope.PHONE_ROUTES")),
+    "computer_operations": lambda: len(_code("ordnung.phone.scope.COMPUTER_ONLY")),
+}
+
+#: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_PHONE_NUMBERS`, and the sentence
+#: must be in the document (line breaks and indents read as one space).
+_PHONE_CLAIMS: list[tuple[str, str]] = [
+    ("README.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
+    ("docs/privacy.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
+    ("docs/privacy.md", "The code has {code_length} characters, works once, for {code_minutes} minutes"),
+    ("docs/privacy.md", "One device gets {tries_per_device} wrong tries for a code"),
+    ("docs/privacy.md", "{tries_in_all} wrong tries from your network cancel the code"),
+    ("docs/privacy.md", "It lasts {leaf_days} days and is renewed by itself"),
+    ("docs/privacy.md", "changes by itself at most once {hourly}"),
+    ("docs/privacy.md", "A phone not used for {idle_days} days is forgotten"),
+    ("docs/privacy.md", "At most {phones} phones can be paired"),
+    (
+        "docs/privacy.md",
+        "Each phone may ask {asks} questions, start {model_actions} other things that ask Claude and add "
+        "{uploads} letters an hour",
+    ),
+    ("docs/privacy.md", "the Remove dialog counts a phone's changes of the last {recent_days} days"),
+    ("docs/privacy.md", "a pairing request of at most {pair_kib} KiB"),
+    ("docs/privacy.md", "It takes at most {connections} connections at once"),
+    (_ADR_PHONE.name, "a saved port ({port}, or the next free one)"),
+    (_ADR_PHONE.name, "it is limited to {connections} connections"),
+    (_ADR_PHONE.name, "issues a {leaf_days}-day server certificate"),
+    (_ADR_PHONE.name, "a {code_length}-character code ({code_bits} bits)"),
+    (_ADR_PHONE.name, "it works once, for {code_minutes} minutes"),
+    (_ADR_PHONE.name, "One device gets {tries_per_device} wrong tries for a code"),
+    (_ADR_PHONE.name, "{tries_in_all} wrong tries from the whole network cancel the code"),
+    (_ADR_PHONE.name, "It changes at most once {hourly} on a page load"),
+    (_ADR_PHONE.name, "the previous one stays valid for {grace_minutes} minutes"),
+    (_ADR_PHONE.name, "A phone unused for {idle_days} days is forgotten"),
+    (
+        _ADR_PHONE.name,
+        "Each phone may ask Ask {asks} questions, start {model_actions} other things that ask Claude and "
+        "add {uploads} letters an hour",
+    ),
+    (_ADR_PHONE.name, "the Remove dialog counts the changes of the last {recent_days} days"),
+    (_ADR_PHONE.name, "a pairing request of at most {pair_kib} KiB"),
+    (_ADR_PHONE.name, "show only their last {shown} characters"),
+    ("docs/architecture.md", "at most {connections} connections"),
+    ("docs/architecture.md", "a {code_bits}-bit code in the URL fragment, once, for {code_minutes} minutes"),
+    ("docs/architecture.md", "{tries_per_device} wrong tries per device, {tries_in_all} in all"),
+    (
+        "docs/architecture.md",
+        "at most {pairs_per_address} pairing requests a minute per address and {pairs_in_all} in all",
+    ),
+    ("docs/architecture.md", "the pairing request must state a length of at most {pair_kib} KiB"),
+    ("docs/SPEC.md", "a port ({port}, or the first free one up to {last_port}"),
+    (
+        "docs/SPEC.md",
+        "`limit_concurrency` {connections}, keep-alive {keep_alive_s} s, graceful stop {graceful_s} s",
+    ),
+    ("docs/SPEC.md", "A watcher (every {watch_s} s while on)"),
+    ("docs/SPEC.md", "forgets phones unused for {idle_days} days"),
+    ("docs/SPEC.md", "An authority (EC P-256, {ca_years} years)"),
+    ("docs/SPEC.md", "a server certificate for the address ({leaf_days} days"),
+    ("docs/SPEC.md", "renewed {renew_days} days before its end"),
+    (
+        "docs/SPEC.md",
+        "{code_length} characters of Crockford's base 32 ({code_bits} bits), valid {code_minutes} minutes",
+    ),
+    ("docs/SPEC.md", "after {tries_per_device} wrong tries one address is locked out of the code"),
+    ("docs/SPEC.md", "{tries_in_all} wrong tries in all cancel it"),
+    ("docs/SPEC.md", "`too_many_phones` at {phones} phones"),
+    (
+        "docs/SPEC.md",
+        "The gate allows {pairs_per_address} pairing requests a minute per address and {pairs_in_all} in all",
+    ),
+    ("docs/SPEC.md", "Max-Age={cookie_max_age};"),
+    ("docs/SPEC.md", "the previous one and the last {retired} retired ones"),
+    ("docs/SPEC.md", "The gate changes it at most once {hourly}, on a page load"),
+    ("docs/SPEC.md", "stays valid for {grace_s} s after the phone first uses the new one"),
+    (
+        "docs/SPEC.md",
+        "`PHONE_ROUTES` ({phone_operations} operations) and `COMPUTER_ONLY` ({computer_operations})",
+    ),
+    (
+        "docs/SPEC.md",
+        "Per phone and hour: {asks} Ask questions, {model_actions} other model actions (read again, "
+        "translate, a new letter, the daily note) and {uploads} letters added",
+    ),
+    ("docs/SPEC.md", "`PhoneDevice.recent_changes` counts the last {recent_days} days"),
+    ("docs/SPEC.md", "last use is saved at most every {seen_minutes} minutes"),
+    ("docs/SPEC.md", "a pairing POST of at most {pair_kib} KiB"),
+]
+
+_FIELD = re.compile(r"{(\w+)}")
+
+
+def _doc(name: str) -> str:
+    """A document of the claims above, flattened (the ADR by its file name)."""
+    path = _ADR_PHONE if name == _ADR_PHONE.name else ROOT / name
+    return _flat(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("document", "sentence"),
+    _PHONE_CLAIMS,
+    ids=[
+        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence))}"
+        for document, sentence in _PHONE_CLAIMS
+    ],
+)
+def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+    """Every number the phone-access docs state is the constant it names, as the code has it: the
+    pairing code's length, life and tries, the phones, idle and sign-in times, the hourly limits, the
+    certificates' lives, the port and the listener's limits (design § 18.6, with the amendments)."""
+    stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+    assert stated in _doc(document)
+
+
+def _example_path(template: str) -> str:
+    """An ``/api`` path the template matches (each parameter as ``x1``)."""
+    return re.sub(r"{\w+}", "x1", template)
+
+
+def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
+    """Scope review: README and privacy.md said the profile's IBAN shows only its last characters on a
+    phone, while a deposit-return letter written there carries it in full (code writes it into the
+    letter). A letter has to print it, so the docs say so, and ADR 0017 lists it as a known limit with why
+    it isn't masked there."""
+    template = (ROOT / "src" / "ordnung" / "drafts" / "template_letters.py").read_text(encoding="utf-8")
+    assert "auf mein Konto mit der IBAN {iban}." in template  # the letter carries it in full
+    assert "a letter shows what is printed on it, also one you write there that carries your IBAN" in (
+        _flat(_readme())
+    )
+    privacy = _doc("docs/privacy.md")
+    assert "also a letter you write: one that asks for money back on your account" in privacy
+    assert "carries your IBAN in full, on the phone too" in privacy
+    limits = _flat(_ADR_PHONE.read_text(encoding="utf-8").split("## Consequences and known limits", 1)[1])
+    assert "carries the profile's IBAN in full" in limits
+    assert "would make the phone's editor save the mask into the letter" in limits
+
+
+def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
+    """README Limitations: a paired phone "can't change settings, back up or delete" — no settings or
+    backup operation, ``DELETE /api/data`` or any other ``DELETE`` (except taking back "answered",
+    which deletes no data) is a phone's (design § 16.5)."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert "it can't change settings, back up or delete" in limitation
+    assert "It can't delete anything" in _doc("docs/privacy.md")
+    operations = phone_scope.PHONE_ROUTES | phone_scope.COMPUTER_ONLY
+    answered = ("DELETE", "/api/drafts/{draft_id}/answered")
+    refused = {
+        ("GET", "/api/settings"),
+        ("PUT", "/api/settings"),
+        ("GET", "/api/backup"),
+        ("POST", "/api/backup"),
+    } | {operation for operation in operations if operation[0] == "DELETE" and operation != answered}
+    assert ("DELETE", "/api/data") in refused and refused <= operations
+    for method, path in sorted(refused):
+        assert phone_scope.classify(method, _example_path(path)) != "phone", (method, path)
+    assert phone_scope.classify("DELETE", _example_path(answered[1])) == "phone"
+    assert {"settings", "backups", "deleting"} <= set(phone_scope.NEVER_ON_PHONE.values())
+
+
+def test_phone_access_answers_only_on_the_home_network() -> None:
+    """README: the phone uses Ordnung "over your home Wi-Fi"; privacy.md: phone access answers "only
+    devices on that network — never through a VPN, a tunnel, a container or a virtual machine". The
+    address must be a home-network one (no public, shared-carrier, link-local or loopback address), a
+    client must be in its subnet, and a tunnel's interface is never offered (design § 16.5, amendment M2)."""
+    net = importlib.import_module("ordnung.phone.net")
+    assert "over your home Wi-Fi" in _flat(_readme())
+    assert (
+        "answers only devices on that network — never through a VPN, a tunnel, a container or a virtual "
+        "machine"
+    ) in _doc("docs/privacy.md")
+    for address in ("8.8.8.8", "100.64.0.1", "169.254.1.1", "127.0.0.1", "::1"):
+        assert not net.usable(address), address
+    assert net.usable("192.168.1.5") and net.usable("10.0.0.2") and net.usable("172.16.4.9")
+    bound, subnet = "192.168.178.23", "192.168.178.0/24"
+    for client in ("172.17.0.2", "10.8.0.6", "192.168.1.5", "8.8.8.8"):
+        assert not net.client_allowed(client, bound, subnet), client
+    assert net.client_allowed("192.168.178.31", bound, subnet)
+    for interface in ("utun3", "wg0", "tailscale0", "docker0", "vboxnet0", "vEthernet (WSL)"):
+        assert net.is_tunnel(interface), interface
+    for interface in ("en0", "wlan0", "Wi-Fi", "eth0"):
+        assert not net.is_tunnel(interface), interface

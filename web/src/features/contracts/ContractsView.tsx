@@ -37,6 +37,8 @@ import {
   sortContracts,
   type StatusFilter,
 } from "./model";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { filesStay } from "@/features/phone/copy";
 import { useStickyError } from "@/lib/hooks";
 
 const STATUSES: StatusFilter[] = ["active", "cancelled", "ended", "all"];
@@ -52,6 +54,7 @@ const CARD_GRID = "grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))
 /** First run: no contract known yet — ask for the letter that has one. */
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
+  const phone = usePhoneCompanion();
   return (
     <EmptyState
       illustration="contract"
@@ -65,7 +68,7 @@ function FirstRun() {
       }
     >
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
-        <Lock className="size-3.5 shrink-0" aria-hidden /> Your files stay on this computer.
+        <Lock className="size-3.5 shrink-0" aria-hidden /> {filesStay(phone)}
       </p>
     </EmptyState>
   );

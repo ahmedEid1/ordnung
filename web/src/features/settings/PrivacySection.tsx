@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   Activity as ActivityIcon,
   Ban,
@@ -11,13 +11,16 @@ import {
   MessagesSquare,
   Send,
   ShieldCheck,
+  Smartphone,
   Sparkles,
+  X,
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useActivity, useDocuments, useUsage } from "@/api/hooks";
+import { useActivity, useDocuments, usePhone, useUsage } from "@/api/hooks";
 import type { LLMCallRecord } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
@@ -65,6 +68,7 @@ function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: Re
 }
 
 const ACTIVITY_ICONS: [RegExp, LucideIcon][] = [
+  [/^phone/, Smartphone],
   [/^document/, FileText],
   [/^draft/, Send],
   [/^calendar/, CalendarPlus],
@@ -279,10 +283,26 @@ function CallItem({ c, docTitle }: { c: LLMCallRecord; docTitle: (id: string) =>
   );
 }
 
-/** "Privacy & AI usage": the honest privacy statement, what was sent per call, totals, activity. */
+/**
+ * "Privacy & AI usage": the honest privacy statement, what was sent per call, totals, activity. `?device=<id>`
+ * (from Settings → Phone, "N changes from this phone") narrows the activity to what that paired phone did.
+ */
 export function PrivacySection() {
+  const [params, setParams] = useSearchParams();
+  const device = params.get("device") || null;
   const usage = useUsage();
-  const activity = useActivity(60);
+  const activity = useActivity(60, device);
+  const phones = usePhone({ enabled: device !== null });
+  const deviceName = device ? (phones.data?.devices.find((d) => d.id === device)?.name ?? (phones.isPending ? "this phone" : "a phone that isn't paired any more")) : null;
+  const showEverything = () =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("device");
+        return next;
+      },
+      { preventScrollReset: true },
+    );
   const docs = useDocuments();
   const roomForChart = useMediaQuery("(min-width: 640px)");
   const [allActivity, setAllActivity] = useState(false);
@@ -425,7 +445,23 @@ export function PrivacySection() {
           </section>
         ) : null}
 
-        <SettingsCard title="Activity" id="set-activity" className="@container" description="Everything Ordnung did on its own — reading letters, reviews, exports.">
+        <SettingsCard
+          title="Activity"
+          id="set-activity"
+          className="@container"
+          description={device ? "What one paired phone did — the changes made on it, and its pairing." : "Everything Ordnung did on its own — reading letters, reviews, exports."}
+        >
+          {device ? (
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-accent-soft/60 px-3 py-2 text-[13.5px] leading-5 text-ink">
+              <Smartphone className="size-4 shrink-0 text-accent" aria-hidden />
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                Only what <strong className="font-semibold">{deviceName}</strong> did
+              </span>
+              <Button size="sm" variant="ghost" icon={X} onClick={showEverything}>
+                Show everything
+              </Button>
+            </div>
+          ) : null}
           {activity.isPending ? (
             <SkeletonText lines={6} />
           ) : activity.isError ? (
@@ -486,7 +522,14 @@ export function PrivacySection() {
               ) : null}
             </>
           ) : (
-            <EmptyState size="sm" variant="plain" headingLevel={4} illustration="clear" title="Nothing yet" description="Letters Ordnung reads, reviews and exports will show up here." />
+            <EmptyState
+              size="sm"
+              variant="plain"
+              headingLevel={4}
+              illustration="clear"
+              title="Nothing yet"
+              description={device ? "Nothing from this phone in the privacy log." : "Letters Ordnung reads, reviews and exports will show up here."}
+            />
           )}
         </SettingsCard>
       </div>

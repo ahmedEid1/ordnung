@@ -10,7 +10,8 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { ApiError } from "@/api/client";
 import { renderWithProviders } from "@/test/render";
-import { BOOT_SLOW_MS, BOOT_STUCK_MS, BootScreen, NotFound, RouteError, UnreachableScreen } from "./screens";
+import { setClientKind } from "@/api/clientKind";
+import { BOOT_SLOW_MS, BOOT_STUCK_MS, BootScreen, NotFound, PHONE_CHECKS, RouteError, UnreachableScreen } from "./screens";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -63,6 +64,49 @@ describe("'isn't running' and 'open from its link'", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Please open Ordnung from its link");
     expect(screen.getByRole("button", { name: "I opened the link — check again" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});
+
+describe("on a paired phone", () => {
+  it("the splash that waits asks about the computer and the Wi‑Fi, never for a command", () => {
+    vi.useFakeTimers();
+    const onRetry = vi.fn();
+    render(<BootScreen phone onRetry={onRetry} />);
+    act(() => vi.advanceTimersByTime(BOOT_STUCK_MS));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Still waiting — is your computer on?");
+    expect(screen.getByRole("main")).toHaveTextContent(/this phone is on the same Wi‑Fi/);
+    expect(screen.getByRole("main")).not.toHaveTextContent(/ordnung serve/);
+    screen.getByRole("button", { name: "Try again" }).click();
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("a computer that doesn't answer: what to check, Try again, and a failed retry said out loud", async () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(<UnreachableScreen phone status={0} onRetry={onRetry} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Can't reach your computer");
+    expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual([...PHONE_CHECKS]);
+    expect(screen.queryByText(/ordnung serve|terminal/)).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    rerender(<UnreachableScreen phone status={0} onRetry={onRetry} stillFailing />);
+    expect(screen.getByRole("status")).toHaveTextContent("Still can't reach your computer.");
+  });
+
+  it("a phone the computer doesn't know any more: pair it again (a fresh page load)", () => {
+    render(<UnreachableScreen phone status={401} onRetry={() => {}} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("This phone isn't paired any more");
+    expect(screen.getByRole("link", { name: "Pair this phone" })).toHaveAttribute("href", "/pair");
+    expect(screen.queryByRole("button", { name: /I opened the link/ })).toBeNull();
+  });
+
+  it("knows it is a phone from what the server said (health, or a refusal only a phone gets)", () => {
+    setClientKind("phone");
+    const { unmount } = render(<UnreachableScreen status={0} onRetry={() => {}} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Can't reach your computer");
+    unmount();
+    setClientKind("computer");
+    render(<UnreachableScreen status={0} onRetry={() => {}} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ordnung isn't running");
   });
 });
 

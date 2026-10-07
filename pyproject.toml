@@ -26,7 +26,8 @@ dependencies = [
   "fastapi>=0.115",
   "starlette>=1.3.1",
   "h11>=0.16",
-  "uvicorn[standard]>=0.30",
+  # mcp needs uvicorn 0.31.1 and sse-starlette 3.0: lower floors could never be installed together
+  "uvicorn[standard]>=0.31.1",
   "pydantic>=2.8",
   "typer>=0.19",  # older ones can't build the CLI's `Path | None` and `Literal` options
   "rich>=13.7",
@@ -42,7 +43,7 @@ dependencies = [
   "rapidfuzz>=3.9",
   "platformdirs>=4.2",
   "watchfiles>=0.24",
-  "sse-starlette>=2.1",
+  "sse-starlette>=3.0",
   "python-multipart>=0.0.31",
   "httpx>=0.27",
   "mcp>=2.0",
@@ -50,6 +51,8 @@ dependencies = [
   "cryptography>=44.0.1",
   # calendar sync keeps the app password in the OS password store, never in the database
   "keyring>=25",
+  # phone access lists the network interfaces with their names and netmasks (pure Python)
+  "ifaddr>=0.2",
 ]
 
 [project.optional-dependencies]

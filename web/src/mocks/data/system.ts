@@ -13,6 +13,8 @@ export const HEALTH: Health = {
   model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],
+  // the computer's own browser (a phone listener's mock answers `client: "phone"`, see mocks/phone.ts)
+  client: "computer",
 };
 
 /** What `GET /api/health?probe=1` ("Run check") lists: the `ordnung doctor` checks. */

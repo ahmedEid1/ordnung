@@ -9,6 +9,11 @@ from it for good).
 
 Originals, page images and thumbnails are sent with ``no-store``, and deleting for good also tells the
 browser to empty its cache (``Clear-Site-Data``), so no copy of a deleted letter stays in the browser.
+
+From a paired phone (:mod:`ordnung.phone`) an upload is filed as ``source="phone"`` ("… from your
+phone"), each letter it adds counts against the phone's hourly upload limit (the gate counted the
+request; photos combined into one letter count once), and a letter kept private can't be given to
+Claude: that is decided on the computer.
 """
 
 from __future__ import annotations
@@ -21,11 +26,11 @@ from functools import partial
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, phone_device
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
@@ -63,6 +68,8 @@ from ordnung.models import (
     ProofLink,
     Suggestion,
 )
+from ordnung.phone import PhoneRefusal
+from ordnung.phone.access import LIMIT_MESSAGES, UPLOAD_TOO_MANY_MESSAGE
 from ordnung.rules.advice import letter_advice, settles
 from ordnung.rules.deadlines import parse_date
 from ordnung.rules.routing import (
@@ -364,14 +371,18 @@ def _groups(files: Sequence[tuple[str, bytes]], combine: bool) -> list[list[tupl
 
 
 async def _add_group(
-    ctx: AppContext, group: list[tuple[str, bytes]], private: bool, result: UploadResult
+    ctx: AppContext,
+    group: list[tuple[str, bytes]],
+    private: bool,
+    result: UploadResult,
+    source: str = "upload",
 ) -> None:
     (filename, data), rest = group[0], [entry[1] for entry in group[1:]]
     store = ctx.store
     try:
         body, name = await asyncio.to_thread(_normalised, data, filename, rest)
         existing = store.get_document_by_sha(hashlib.sha256(body).hexdigest())
-        document = await add_file(ctx, body, name, private=private, answer_held=True)
+        document = await add_file(ctx, body, name, private=private, answer_held=True, source=source)
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
         return
@@ -423,6 +434,7 @@ def _replay_only(ctx: AppContext) -> bool:
 
 @router.post("/documents", response_model=UploadResult, status_code=status.HTTP_201_CREATED)
 async def upload_documents(
+    request: Request,
     state: StateDep,
     ctx: CtxDep,
     files: Annotated[
@@ -451,8 +463,19 @@ async def upload_documents(
                 f"Please add at most {MAX_UPLOAD_BYTES // (1024 * 1024)} MB at once.",
             )
     result = UploadResult()
-    for group in _groups(entries, combine):
-        await _add_group(ctx, group, private, result)
+    source = "phone" if is_phone(request) else "upload"
+    groups = _groups(entries, combine)
+    device = phone_device(request)
+    if device is not None:
+        # each letter is a reading: the phone's hourly limit counts letters, not requests
+        wait = state.phone.more_letters(device.id, len(groups))
+        if wait < 0:
+            limit = state.phone.upload_limit
+            raise PhoneRefusal("too_many", UPLOAD_TOO_MANY_MESSAGE.format(limit=limit), retry_after=3600)
+        if wait:
+            raise PhoneRefusal("too_many", LIMIT_MESSAGES["upload"], retry_after=wait)
+    for group in groups:
+        await _add_group(ctx, group, private, result, source)
     if result.errors and not (result.documents or result.duplicates):
         detail = "; ".join(f"{error.filename}: {error.detail}" for error in result.errors)
         return JSONResponse({"detail": detail, "errors": [e.model_dump() for e in result.errors]}, 422)
@@ -471,6 +494,8 @@ def _check_links(store: Store, changes: dict[str, object]) -> None:
     if isinstance(case_id, str):
         require(store.get_case(case_id), "Unknown thread.")
 
+
+PRIVATE_ON_COMPUTER = "Let Claude read a private letter from your computer."
 
 HELD_MESSAGE = (
     "This letter isn't read yet: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
@@ -533,10 +558,16 @@ def _patch(
 
 
 @router.patch("/documents/{doc_id}", response_model=Document)
-async def update_document(doc_id: str, patch: DocumentPatch, ctx: CtxDep, today: TodayDep) -> Document:
+async def update_document(
+    doc_id: str, patch: DocumentPatch, request: Request, ctx: CtxDep, today: TodayDep
+) -> Document:
     """Correct a letter's facts; a confirmed arrival date or corrected letter date recomputes its to-dos."""
     changes = patch.model_dump(exclude_unset=True)
     confirmed = changes.pop("received_confirmed", None)
+    if changes.get("ai_private") is False and is_phone(request):
+        document = require(ctx.store.get_document(doc_id), NOT_FOUND)
+        if document.ai_private:  # who may read a private letter is decided on the computer
+            raise PhoneRefusal("computer_only", PRIVATE_ON_COMPUTER)
     async with ledger_lock():
         document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
     if changed is None:

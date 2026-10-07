@@ -80,6 +80,7 @@ import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations, NB_HYPHEN, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
+import { usePhoneCompanion } from "@/features/phone/client";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -198,8 +199,11 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
  * this card's place, so focus moves to its heading (`onAnswered`: the page moves it once that card is
  * rendered); a failed undo leaves focus on the button.
  */
-function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
+function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
   const wait = useWaitAgain();
+  // whether Claude may read it is decided on the computer: a paired phone doesn't offer it
+  const phone = usePhoneCompanion();
+  const canWaitAgain = canWait && !phone;
   return (
     <>
       <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">
@@ -841,6 +845,8 @@ function Actions({
   const doc = detail.document;
   const actions = useItemActions();
   const draft = useStartDraft();
+  // the calendar file stays on the computer (ADR 0017): a phone offers no "Add to calendar"
+  const phone = usePhoneCompanion();
 
   const mainEl: ReactNode = (() => {
     switch (main.type) {
@@ -913,7 +919,7 @@ function Actions({
           </Popover>
         );
       case "calendar":
-        return <CalendarButton item={main.item} primary />;
+        return phone ? null : <CalendarButton item={main.item} primary />;
       case "done":
         return (
           <Button variant="primary" icon={Check} onClick={() => actions.markDone(main.item)}>
@@ -939,7 +945,7 @@ function Actions({
     }
   })();
 
-  const showCalendar = primary?.due_date && main.type !== "calendar" && main.type !== "scam" && main.type !== "decide";
+  const showCalendar = !phone && primary?.due_date && main.type !== "calendar" && main.type !== "scam" && main.type !== "decide";
   const showDone = primary && main.type !== "done" && main.type !== "scam" && main.type !== "decide";
   const buttons = Boolean(mainEl || showCalendar || showDone);
   if (!buttons && !footer) return null;

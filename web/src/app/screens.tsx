@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useRouteError } from "react-router";
-import { Check, ChevronRight, Copy, Inbox, RotateCw } from "lucide-react";
+import { Check, ChevronRight, Copy, Inbox, RotateCw, Smartphone } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { LogoMark } from "@/components/shell/Logo";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import { EmptyState, EmptyArt } from "@/components/ui/EmptyState";
 import { technicalDetails } from "@/components/ui/LoadError";
 import { Page } from "@/components/shell/Page";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
+import { servedToPhone } from "@/features/phone/platform";
 import { useClipboard } from "@/features/today/clipboard";
 import { cn } from "@/lib/utils";
 
@@ -17,12 +18,20 @@ export const BOOT_SLOW_MS = 1500;
 /** …and asks whether Ordnung is running, with "Try again", after this long. */
 export const BOOT_STUCK_MS = 10_000;
 
+/** What a phone checks when the computer doesn't answer (the computer's own tab gets the commands instead). */
+export const PHONE_CHECKS = [
+  "Your computer is on and awake.",
+  "Ordnung is running on it.",
+  "This phone is on the same Wi‑Fi — not a guest network or mobile data.",
+] as const;
+
 /**
  * Full-screen splash while the app boots (fonts, health, lazy route): the logo, then
  * "Starting Ordnung…" when it takes a moment, then "Still waiting — is Ordnung running?" with a
- * way to try again (a reload) when it takes too long.
+ * way to try again (a reload) when it takes too long. On a phone it asks about the computer, never with a
+ * command for a terminal the phone doesn't have.
  */
-export function BootScreen({ onRetry = () => window.location.reload() }: { onRetry?: () => void }) {
+export function BootScreen({ onRetry = () => window.location.reload(), phone = servedToPhone() }: { onRetry?: () => void; phone?: boolean }) {
   const [phase, setPhase] = useState<"quiet" | "slow" | "stuck">("quiet");
   useEffect(() => {
     const slow = setTimeout(() => setPhase("slow"), BOOT_SLOW_MS);
@@ -33,7 +42,7 @@ export function BootScreen({ onRetry = () => window.location.reload() }: { onRet
     };
   }, []);
   const stuck = phase === "stuck";
-  const heading = stuck ? "Still waiting — is Ordnung running?" : "Starting Ordnung…";
+  const heading = stuck ? (phone ? "Still waiting — is your computer on?" : "Still waiting — is Ordnung running?") : "Starting Ordnung…";
   return (
     <main className="grid min-h-dvh place-items-center bg-canvas px-4" aria-busy={!stuck}>
       <div className="flex max-w-sm flex-col items-center text-center">
@@ -41,10 +50,17 @@ export function BootScreen({ onRetry = () => window.location.reload() }: { onRet
         <h1 className={cn(phase === "quiet" ? "sr-only" : "display mt-5 text-balance text-xl font-semibold text-ink")}>{heading}</h1>
         {stuck ? (
           <>
-            <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
-              Ordnung usually starts in a second or two. If you closed the terminal where it ran, start it again with{" "}
-              <code className="whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink">ordnung serve</code>.
-            </p>
+            {phone ? (
+              <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
+                This phone opens Ordnung on your computer over your home Wi‑Fi. Check that your computer is on and awake with Ordnung running, and that this
+                phone is on the same Wi‑Fi.
+              </p>
+            ) : (
+              <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
+                Ordnung usually starts in a second or two. If you closed the terminal where it ran, start it again with{" "}
+                <code className="whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink">ordnung serve</code>.
+              </p>
+            )}
             <Button variant="primary" icon={RotateCw} className="mt-5" onClick={onRetry}>
               Try again
             </Button>
@@ -71,20 +87,27 @@ const START_COMMANDS = [
  *
  * "Try again" stays put while it runs (a spinner, focus kept on it — it is `aria-disabled`, not
  * `disabled`, which would drop focus to the page), and a failed retry is said out loud.
+ *
+ * On a paired phone ({@link PhoneUnreachableScreen}): the computer didn't answer, or doesn't know this phone any
+ * more — never a terminal command.
  */
 export function UnreachableScreen({
   onRetry,
   retrying,
   status,
   stillFailing,
+  phone = servedToPhone(),
 }: {
   onRetry: () => void;
   retrying?: boolean;
   status?: number;
   /** A retry failed too: "Still can't reach Ordnung." */
   stillFailing?: boolean;
+  /** This tab is a phone's (by default: as far as it knows, {@link servedToPhone}). */
+  phone?: boolean;
 }) {
   const noSession = status === 401 || status === 403;
+  if (phone) return <PhoneUnreachableScreen onRetry={onRetry} retrying={retrying} notPaired={noSession} stillFailing={stillFailing} />;
   return (
     <main className="grid min-h-dvh place-items-center bg-canvas px-4 py-8">
       <div className="card flex w-full max-w-md flex-col items-center px-5 py-10 text-center sm:px-10">
@@ -120,6 +143,72 @@ export function UnreachableScreen({
         <p role="status" className="mt-3 min-h-5 text-sm text-muted">
           {retrying ? "Trying again…" : stillFailing ? (noSession ? "Still no access from this tab." : "Still can't reach Ordnung.") : ""}
         </p>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * A phone that can't use Ordnung: the computer didn't answer (off, asleep, Ordnung stopped, another network) —
+ * what to check and "Try again" — or it doesn't know this phone (removed there, or phone access started over) —
+ * "Pair this phone", a fresh page load of the pairing page.
+ */
+export function PhoneUnreachableScreen({
+  onRetry,
+  retrying,
+  notPaired,
+  stillFailing,
+}: {
+  onRetry: () => void;
+  retrying?: boolean;
+  notPaired?: boolean;
+  stillFailing?: boolean;
+}) {
+  return (
+    <main className="grid min-h-dvh place-items-center bg-canvas px-4 py-8">
+      <div className="card flex w-full max-w-md flex-col items-center px-5 py-10 text-center sm:px-10">
+        <EmptyArt kind="error" />
+        <h1 className="display mt-5 text-balance text-2xl font-semibold text-ink">{notPaired ? "This phone isn't paired any more" : "Can't reach your computer"}</h1>
+        {notPaired ? (
+          <>
+            <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
+              Your computer doesn't know this phone any more: it was removed there, or phone access started over. Pair it again — on your computer, open
+              Settings → Phone and choose Pair a phone.
+            </p>
+            <a href="/pair" className={buttonVariants({ variant: "primary", className: "mt-6" })}>
+              <Smartphone aria-hidden />
+              Pair this phone
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-pretty text-base leading-relaxed text-muted">This phone opens Ordnung on your computer over your home Wi‑Fi, and the computer didn't answer.</p>
+            <ul className="mt-4 w-full space-y-2 text-left text-[15px] leading-6 text-ink/85">
+              {PHONE_CHECKS.map((line) => (
+                <li key={line} className="flex gap-2.5">
+                  <Check className="mt-1 size-4 shrink-0 text-muted" aria-hidden />
+                  {line}
+                </li>
+              ))}
+            </ul>
+            <Button
+              variant="primary"
+              icon={retrying ? undefined : RotateCw}
+              className="mt-6"
+              aria-disabled={retrying || undefined}
+              aria-busy={retrying || undefined}
+              onClick={() => {
+                if (!retrying) onRetry();
+              }}
+            >
+              {retrying ? <Spinner className="size-4" /> : null}
+              <span>Try again</span>
+            </Button>
+            <p role="status" className="mt-3 min-h-5 text-sm text-muted">
+              {retrying ? "Trying again…" : stillFailing ? "Still can't reach your computer." : ""}
+            </p>
+          </>
+        )}
       </div>
     </main>
   );

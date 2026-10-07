@@ -4,11 +4,12 @@
  */
 import { Fragment, useState } from "react";
 import { Link } from "react-router";
-import { Check, CircleCheck, Copy, Eye, EyeOff, TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, Copy, Eye, EyeOff, Laptop, TriangleAlert } from "lucide-react";
 import type { MyNumber } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { isGermanText } from "@/features/document/fact-text";
+import { FULL_NUMBER_ON_COMPUTER } from "@/features/phone/copy";
 import { useClipboard } from "@/features/today/clipboard";
 import { glueText } from "@/lib/format";
 import { NBSP } from "@/lib/glue";
@@ -94,7 +95,17 @@ export interface NumberRowProps {
   className?: string;
 }
 
-export function NumberRow({ number, masked = number.group !== "case", showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
+/**
+ * A number a paired phone got with only its last characters ("•••• 1234", `MyNumbers.masked`): there is nothing to
+ * show or copy — the full number is on the computer.
+ */
+export function maskedOnPhone(number: Pick<MyNumber, "copy_value">): boolean {
+  return /[•…]/.test(number.copy_value);
+}
+
+export function NumberRow({ number, masked: hideable = number.group !== "case", showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
+  const onPhone = maskedOnPhone(number);
+  const masked = hideable && !onPhone;
   const [shown, setShown] = useState(!masked);
   const { copy, copied } = useClipboard();
   const formatDate = useFormatDate();
@@ -141,19 +152,28 @@ export function NumberRow({ number, masked = number.group !== "case", showParty 
             {shown ? "Hide" : "Show"}
           </Button>
         ) : null}
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={done ? Check : Copy}
-          aria-label={done ? `${title} copied` : `Copy ${title}`}
-          onClick={() => void copy(number.copy_value, number.key)}
-          className="text-accent"
-        >
-          {done ? "Copied" : "Copy"}
-        </Button>
-        <span className="sr-only" aria-live="polite">
-          {done ? `${title} copied` : ""}
-        </span>
+        {onPhone ? (
+          <span data-full-number="" className="inline-flex items-center gap-1 text-[12.5px] leading-5 text-muted">
+            <Laptop className="size-3.5 shrink-0" aria-hidden />
+            {FULL_NUMBER_ON_COMPUTER}
+          </span>
+        ) : (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={done ? Check : Copy}
+              aria-label={done ? `${title} copied` : `Copy ${title}`}
+              onClick={() => void copy(number.copy_value, number.key)}
+              className="text-accent"
+            >
+              {done ? "Copied" : "Copy"}
+            </Button>
+            <span className="sr-only" aria-live="polite">
+              {done ? `${title} copied` : ""}
+            </span>
+          </>
+        )}
       </div>
       {number.check !== "none" || (showLetter && letter) ? (
         <div className="flex basis-full flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-5 text-muted">

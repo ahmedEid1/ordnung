@@ -14,6 +14,7 @@ import { useNoteCallRequest } from "@/lib/party-drawer";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { focusWhenReady } from "@/features/today/focus";
+import { ComputerOnly } from "@/features/phone/ComputerOnly";
 import { CALL_FIELDS, callNoteProblems, clearCallDraft, draftHasText, keepCallDraft, loadCallDraft, promisedAmount, type CallNoteDraft as Draft } from "./calls";
 
 const SUMMARY_MAX = 2000;
@@ -262,14 +263,17 @@ function NoteRow({ note, headingId }: { note: CallNote; headingId: string }) {
           <DateText date={note.called_on} style="short" className="font-medium text-ink" />
           {note.contact ? <span className="[overflow-wrap:anywhere]"> · {note.contact}</span> : null}
         </p>
-        <IconButton
-          ref={trashRef}
-          icon={Trash2}
-          label={`Delete the note of the call on ${fmt(note.called_on)}`}
-          size="sm"
-          className="-mr-1.5 -mt-1"
-          onClick={() => setConfirming(true)}
-        />
+        {/* notes are deleted on the computer (a paired phone adds and corrects them) */}
+        <ComputerOnly what="Delete this note">
+          <IconButton
+            ref={trashRef}
+            icon={Trash2}
+            label={`Delete the note of the call on ${fmt(note.called_on)}`}
+            size="sm"
+            className="-mr-1.5 -mt-1"
+            onClick={() => setConfirming(true)}
+          />
+        </ComputerOnly>
       </div>
       {/* right under the header row, so it comes next after the trash button in the Tab order */}
       {confirming ? (

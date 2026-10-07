@@ -5,6 +5,8 @@ import {
   FAKE_CLAUDE_SCENARIO,
   ORDNUNG_BIN,
   OUTPUT_DIR,
+  PHONE_ADDRESS,
+  PHONE_TEST_ADDRESS_ENV,
   PORT,
   REAL_BASE_URL,
   REAL_CLAUDE,
@@ -19,7 +21,9 @@ import {
  * Claude answers), then against the real app (`ordnung serve` on its own data folder, with the fake
  * `claude` of tests/fake_claude.py). One fresh demo server (`--reset`) per run, and the real app's data
  * deleted at the start of each run (e2e/global-setup.ts); the tests share them, so they run in one
- * worker, in order — the demo's New-mail letters and tour are shared state.
+ * worker, in order — the demo's New-mail letters and tour are shared state. The real app's phone access
+ * (e2e/real-app-phone.spec.ts) listens on loopback only (`ORDNUNG_PHONE_TEST_ADDRESS`, e2e/env.ts), on the
+ * port after the real app's, while that spec turns it on.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers).
@@ -97,7 +101,8 @@ export default defineConfig({
     {
       command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_PORT} --data-dir "${REAL_DATA_DIR}"`,
       url: `${REAL_BASE_URL}/api/health`,
-      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO },
+      // phone access may listen on loopback only (the one address it is then offered), never on a network
+      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, [PHONE_TEST_ADDRESS_ENV]: PHONE_ADDRESS },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",

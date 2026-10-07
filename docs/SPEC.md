@@ -33,7 +33,8 @@ has no server, no telemetry and never sees your credentials.*
 
 ### 1.2 Principles
 Local app & data · grounded or flagged · humble automation (suggest, never act) · works without AI
-(manual entry, demo replays) · not legal advice (citations + disclaimer, conservative dates).
+(manual entry, demo replays) · not legal advice (citations + disclaimer, conservative dates) · phone access
+at home, opt-in (a paired phone's browser is a window onto the computer, never a copy: §12b).
 
 ### 1.3 Persona for the demo
 **Sam Rivera**, 26, international master's student at the fictional *Hochschule Musterstadt* in
@@ -80,6 +81,7 @@ tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut
                             │   │                                                    │  schema-checked  │  JSON schema)│
  browser SPA ◄── REST+SSE ──┤   ├─ secretary (triggers, review, brief, daily tick)   │                  └─────────────┘
  CLI (Typer)  ─────────────►│   ├─ drafts (compose → checks → DIN 5008 PDF)         │
+ paired phone ◄── HTTPS ───►│   │  (opt-in: home network, own gate, allow-list §12b) │
                             │   └─ assistant (Ask) ── claude -p ── MCP (read-only) ──┼──► SQLite (query_only)
                             │  SQLite (WAL, FTS5) · files/ · derived/                │
                             └───────────────────────────────────────────────────────┘
@@ -87,7 +89,10 @@ tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut
 
 Trust boundaries: documents are **untrusted**; the extraction model has **no tools** and its output
 is schema-validated, verified against the page text and fed to deterministic code; the Ask agent can
-only call Ordnung's **read-only** MCP tools; the UI never renders model output as HTML.
+only call Ordnung's **read-only** MCP tools; the UI never renders model output as HTML. The network is
+a boundary only when the person turns on phone access (§12b): a second listener in the same process
+answers phones paired with a one-time code, on one home-network address, over HTTPS, through its own
+gate and an allow-list checked before routing; the computer's listener (§13) doesn't change.
 
 ### 3.1 Repository layout
 ```
@@ -105,8 +110,9 @@ src/ordnung/            (the main modules; the package itself is the complete li
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
   notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py)
+  phone/ (scope.py, net.py, tls.py, pairing.py, record.py, access.py, actor.py, mask.py)
   demo/ (loader.py, tour.py, samples/, fixtures/, demo_db/)   # samples + fixtures ship in the wheel
-  api/ (app.py, security.py, deps.py, routes/*.py)
+  api/ (app.py, security.py, deps.py, phone_gate.py, routes/*.py)
   web/dist/                                                     # built SPA (generated)
 web/            React + TS + Vite + Tailwind v4 source
 scripts/        make_sample_life.py (+ scan simulation), capture.sh (README assets; web/scripts/capture.mjs), gen_mock_*.py
@@ -119,7 +125,8 @@ tests/          pytest (+ tests/fake_claude.py, the fake claude CLI)
 Python ≥ 3.11: FastAPI, uvicorn, Pydantic v2, Typer, Rich, sqlite3 (WAL, FTS5), pdfplumber,
 pypdfium2, Pillow + pillow-heif, holidays, python-dateutil, icalendar, fpdf2, rapidfuzz, platformdirs,
 sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`), cryptography
-(backups), keyring (calendar sync's password store), hypothesis (dev).
+(backups, phone access certificates), keyring (calendar sync's password store), ifaddr (phone access:
+the network interfaces with their netmasks), hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
 date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
@@ -1246,6 +1253,106 @@ their docstrings):
   verified, Basic auth, no redirects (same-host redirects only while discovering), 20 s timeout,
   answers ≤ 1 MiB and never with a DTD. Settings previews every event in either mode first.
 
+## 12b. Phone access (optional) — `phone/`
+
+A paired phone uses Ordnung in its browser over the home Wi-Fi, while the computer runs it; the letters
+stay on the computer. The policy is in `ordnung/phone/__init__.py`, each module's docstring holds its part,
+and ADR 0017 records the decision. It follows calendar sync's pattern: opt-in from Settings, unavailable
+in the demo, one meta key, secrets outside the database, Delete everything first, a restored copy
+detached.
+
+- **On and off** (`phone/access.py`). Settings → Phone (`PUT /api/phone {enabled, address?, port?,
+  home_network}`) turns it on: an address from `phone/net.py` (the network interfaces with their netmasks,
+  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never an interface whose name
+  starts with `utun`, `tun`, `tap`, `wg`, `ppp`, `ipsec`, `tailscale`, `zt`, `docker`, `br-`, `veth`,
+  `virbr`, `vboxnet`, `vmnet`, `vEthernet`, `awdl` or `llw`; the default route's address recommended),
+  a port (8767, or the first free one up to 8775; `PUT {port}` takes 1024–65535), the certificates, then
+  the listener. Refusals: 409 `unavailable` in the demo (`ordnung demo`, `serve --demo`, a demo folder)
+  and without a session token (`--no-token`; the tests' hook may still enable it), `not_set_up` before
+  onboarding, `no_network`, `port_busy`; 422 `invalid` for an address that isn't a candidate. Off stops
+  the listener and cancels the code; paired phones stay. A new address or port forgets every phone
+  (`by: "address_changed"`), and a new address makes a new certificate authority. At start the lifespan
+  starts it when the record says on; a failure is a `problem` in Settings, never an exit.
+- **The listener.** A second `uvicorn.Server` for the same app object on the same loop, bound to the
+  saved address and port, never `0.0.0.0`: lifespan off, no proxy headers, no log config or access log,
+  no `server` header, no websockets, `limit_concurrency` 128, keep-alive 5 s, graceful stop 2 s, TLS 1.2
+  or newer. Only `startup()` and `shutdown()`, never `serve()` or `run()`; sse-starlette's
+  `AppStatus.should_exit` is never set. A watcher (every 30 s while on) pauses it when the address is
+  gone (`problem.code = "address_gone"`, or `no_network`) or when the router's fingerprint — the default
+  gateway's address and hardware address, read best effort — differs from the saved one
+  (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
+  resumes when both are back; it never moves to another address by itself. Once a day it renews the
+  server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
+  on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
+  /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.
+- **Certificates** (`phone/tls.py`). An authority (EC P-256, 10 years) with `NameConstraints(permitted:
+  IPAddress(<address>/32), DNSName("invalid"))`, critical, and a neutral name ("Home network certificate
+  7K3M"); a server certificate for the address (397 days, a new key each time, a common name that doesn't
+  look like a host), renewed 30 days before its end or when it doesn't fit (unreadable, another key,
+  another address, another issuer). `<data>/phone/` (0700): `ca.pem`, `ca.key`, `server.pem` (with the
+  chain), `server.key`, 0600, written atomically; never in the database or a backup. Fingerprints are
+  SHA-256 as upper-case byte pairs. No HSTS. `GET /ordnung-certificate.crt` serves the authority (DER)
+  to a paired phone for the optional trust step, which the phone's Settings offers on iOS and iPadOS and
+  in Chrome on Android only.
+- **Pairing** (`phone/pairing.py`). `POST /api/phone/pairing` → `PhonePairing{url, code, expires_at}`
+  with `url = https://<address>:<port>/pair#<CODE>`: 10 characters of Crockford's base 32 (50 bits),
+  valid 10 minutes, once, one at a time, only its SHA-256 kept, in memory; `DELETE /api/phone/pairing`
+  cancels it. `POST /api/phone/pair {code (≤ 32), name (1–40)}` is answered on the phone listener only
+  (404 `not_phone` on the computer's): 422 `wrong_code` "That code didn't match, or it has expired." for a
+  wrong, expired or missing code; after 5 wrong tries one address is locked out of the code (429
+  `too_many`); 100 wrong tries in all cancel it (`phone.pairing_stopped`, notice `pairing_stopped` with the
+  addresses); a code that already paired a phone, coming again, answers 409 `code_used` and removes that
+  phone (`by: "code_reused"`, notice `code_reused`); 409 `too_many_phones` at 10 phones. The gate allows
+  10 pairing requests a minute per address and 60 in all. Success: `PairResult{name, check_words}` and
+  `Set-Cookie: __Host-ordnung_phone_<port>=<token>; HttpOnly; Max-Age=34560000; Path=/; SameSite=strict;
+  Secure`. Names lose control and invisible formatting characters and get " (2)" when taken; the check
+  words are an HMAC of the phone's id with the record's `check_key`. `pairing.opened_at` (with
+  `opened_from`) is set by a `GET /pair` page load (`Sec-Fetch-Dest: document`) while a code is open.
+- **Sign-in.** A 256-bit token per phone; the record keeps its SHA-256, the previous one and the last 8
+  retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
+  for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
+  "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
+  401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
+  `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
+  else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from
+  the gate's first check. Removing a phone (`DELETE /api/phone/devices/{id}`, saved before its answer) or
+  stopping the listener refuses its requests that haven't reached the app yet, cancels its live streams
+  (`/api/events`, Ask), tells an upload still arriving that the client went away (answered 401
+  `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
+  — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
+  listener's own stop, which waits up to 30 s for what is in flight.
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (45)
+  cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
+  profile edits, phone access, backups, deleting, originals and held-letter decisions stay on the
+  computer, and the calendar files (`calendar.ics`, `items/{id}.ics`, `calendar/exported`) are computer-only
+  too. `classify` runs before routing (HEAD counts as GET; a path several templates match is a
+  phone's only when every match is; no match is refused); `mark_openapi` adds `x-ordnung-phone: true`.
+  Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
+  `/api/backup`, `DELETE /api/data`), and `PATCH /api/documents/{id}` refuses `ai_private: false` from a
+  phone. `/api/health` on a phone: `client: "phone"`, no data folder, no Claude path, no checks, `probe`
+  refused.
+- **The letters stay on the computer.** `no-store` on every API answer; on a phone, *My numbers*
+  (`masked: true`), Ask's `get_my_numbers` (`ORDNUNG_MASKED_NUMBERS`) and the profile's IBAN show the
+  person's own numbers as `•••• 1234` (`phone/mask.py`). Per phone and hour: 30 Ask questions, 20 other
+  model actions (read again, translate, a new letter, the daily note) and 30 letters added (each letter of
+  an upload counts — the gate counts the request, the route the rest; photos of one letter once), then 429
+  `too_many` with `Retry-After`.
+- **Attribution** (`phone/actor.py`). While a phone's request runs, every activity entry it writes says
+  "(on <phone>)" and carries `device` in its data; the gate logs `phone.changed` ("Changed a to-do on
+  Anna's iPhone") for each admitted change; a phone's upload is `source: "phone"` ("… from your phone").
+  `GET /api/activity?device=` filters by phone, and `PhoneDevice.recent_changes` counts the last 30 days.
+- **Record** (`phone/record.py`). Meta `phone_access` (`PhoneRecord`: enabled, address, interface,
+  subnet, port, enabled_at, certificate_changed_at, gateway, check_key, devices — `PhoneDeviceRecord`: id
+  `phn_…`, name, platform, token_sha256, previous_sha256, rotated_at, confirmed_at, retired, paired_at,
+  last_seen_at, last_address). One serialised writer; last use is saved at most every 10 minutes. The
+  code, notices, problems and live requests are memory only. Backups leave the key out of the database
+  snapshot (`_LEFT_OUT_META`, `secure_delete` on); a restore drops it (`detach_phone_access`); Delete
+  everything calls `phone.forget()` first and removes `phone/`; sync between computers must leave it out
+  too.
+- **Privacy log kinds**: `phone.enabled`, `phone.disabled`, `phone.paired`, `phone.removed` (`by`:
+  `computer`, `unused`, `address_changed`, `reset`, `code_reused`, `token_reuse`), `phone.paused`,
+  `phone.resumed`, `phone.certificate`, `phone.pairing_stopped`, `phone.changed`.
+
 ## 13. HTTP API — `api/`
 
 Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
@@ -1257,7 +1364,18 @@ when its Claude status is stale, checks Claude again (no model call), uses a `cl
 then on and, once Claude is ready, lets the letters waiting for it be read (§8); and downloading a
 drafted letter's PDF (or a sent letter's Nachweis) records its SHA-256 among the last 200, so the watched
 folder never takes it for a letter received; originals served with `nosniff` and `attachment` unless
-PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
+PDF/JPEG/PNG/WEBP; `--no-token` for tests only. The phone listener (§12b) never reaches these checks: its
+requests are tagged by the listener (an ASGI scope key no client can set) and go to its own gate
+(`api/phone_gate.py`), in order: the listener itself (421), the home network's subnet (403
+`not_home_network`), the exact `<address>:<port>` Host (400 `wrong_host`), no `.`/`..` segment, `//` or
+`\` (400 `bad_path`), no body without a length (411 `length_required`), Fetch-Metadata, `Origin` on
+every change and `X-Ordnung-Client` (403 `cross_site`); then the device cookie — before pairing only
+`/pair`, the build's assets and icon and a pairing POST of at most 1 KiB pass (a GET with a body: 400
+`unexpected_body`), everything else is 401 `phone_not_paired` —, the allow-list (403 `computer_only`),
+`MAX_REQUEST_BYTES` and the per-phone limits, with bodies counted as they arrive (413 `too_large`). Every
+answer there carries `Cross-Origin-Resource-Policy: same-origin` and a `Permissions-Policy`. The
+session token, a bearer header and `?token=` are never accepted on the phone listener, and the device
+cookie never on the computer's. Refusals answer `{detail, code}` with the status `ERROR_STATUS` gives.
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
@@ -1287,8 +1405,13 @@ replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tr
 (PATCH kind/day/note — `null` removes the day or the note —, DELETE), `drafts/{id}/proof.pdf` (the Nachweis), `drafts/{id}/answered` (POST
 `{doc_id}` / DELETE), `waiting` (GET), `calls`
 (GET `?party_id&case_id` / POST), `calls/{id}` (PATCH `{kept}` / DELETE),
-`calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
-`events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — a connected
+`calendar.ics`, `calendar/exported` (POST), `activity` (`?device=`: a paired phone's entries), `usage`,
+`rules`, `jobs`,
+`events` (SSE), `phone` (GET: phone access's state — never the code or a sign-in; PUT `{enabled,
+address?, port?, home_network}`), `phone/pairing` (POST: the pairing code and its link, the only answer
+that holds the code; DELETE: cancel it), `phone/devices/{id}` (DELETE: remove a phone), `phone/reset`
+(POST: start over), `phone/pair` (POST `{code, name}`, answered on the phone listener only; §12b),
+`data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — a connected
 calendar's events and app password go first (`calendar_events_removed`; 409 and nothing deleted
 when that can't be done), then empties the database in place and removes Ordnung's files, keeping
 the lock and `server.json`; 409 in the demo),
@@ -1327,14 +1450,18 @@ View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,ba
 `FolderStatus`, `FolderPickup`, `DocumentTrace`,
 `TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`. Live event `folder.updated` {state, doc_id?, held?}.
 
-Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
+Contract details: list endpoints answer plain JSON arrays. `health` carries `client` (`computer` or
+`phone`) and `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
 adds the doctor's `checks` plus one tiny live call, at most once a minute (else `429` +
 `Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`: the tool trace,
 one `text` event without text while the answer is written (its words are never sent before the
 check), then `done` with the checked answer `text`, the check's `note`, `citations[{type,id,label}]`,
 `message_id`, `thread_id` — or `error`. `events` payloads are
-declared per event name in `models.ServerEvents`. `web/openapi.json` (`ordnung openapi`) and the
+declared per event name in `models.ServerEvents`. Every operation a paired phone may call is marked
+`"x-ordnung-phone": true` in the schema, so the web app's tests and mocks use the same allow-list;
+`MyNumbers.masked` says the numbers show only their last 4 characters (on a phone). `web/openapi.json`
+(`ordnung openapi`) and the
 generated `web/src/api/schema.d.ts` are the web app's source of API types (`make openapi`); tests fail
 when they are stale, when a mock route or response differs from the schema, or when a GET endpoint's
 JSON doesn't validate against it.
@@ -1471,6 +1598,15 @@ Pages:
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
    restarts the guided tour.
+   **Phone** (§12b): turn on (the address it will use, a choice when there are several, the one-time
+   certificate warning and the firewall said first), the address to copy, problems with their way out
+   (*Use … instead*, *Keep waiting*, *This is my home network*, the next port), *Pair a phone* (a QR code
+   of the pairing link, the code to type, a countdown, steps for iPhone and Android with the
+   certificate's fingerprint, "Your phone reached this computer", the new phone with its address, its
+   check words and *Not you? Remove*, and *Phone can't connect?* after 60 s with the narrowest firewall
+   rule per system), paired phones (last used, from where, active now, Remove with the changes of the
+   last 30 days linked to the privacy log), the certificate (both fingerprints, why a phone warns, how to
+   stop and remove the warning, *Start over*); disabled in the demo and the static demo, with the reason.
 10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
    "Explore the demo instead".
@@ -1480,13 +1616,23 @@ Pages:
    that never covers the page's end or the focused control. Its ring goes around the step's
    element — on phones, and when that is taller than the screen, around a marked part of it (the
    first envelope, the first Idea).
+12. **On a paired phone** (`Health.client == "phone"`, §12b): `/pair` (outside the shell) reads the code
+   from the link's fragment and clears it, or takes it typed (`XXXXX-XXXXX`), names the phone and pairs
+   it, then shows the two check words; every page the phone may use works as on the computer, without
+   Delete, downloads of originals, PDFs and the calendar file, held-letter decisions or admin requests; Settings says
+   "Settings are on your computer" and offers the optional trust step where it is safe; Plus offers
+   *Photograph a letter* (the camera, page after page, one letter, with upload progress and Cancel) and
+   *Choose files*; the GiroCode block offers to save the code as a picture; a phone removed on the
+   computer lands on `/pair?removed=1` (`token_reuse`, `code_reused` or `unused` with their own words, the
+   first two in the danger tone); offline it says the computer can't be reached.
 
 Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
 dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.
 
 ## 15. CLI
-`serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
-`brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
+`serve [--data-dir D] [--host 127.0.0.1] [--port 8765] [--no-browser] [--no-token] [--demo]` · `add
+FILES… [--combine] [--private]` · `brief` · `ask "…"` · `demo [--data-dir D] [--serve/--no-serve]
+[--reset] [--check] [--live] [--rebuild] [--no-browser] [--host 127.0.0.1] [--port 8765]` · `doctor
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
@@ -1936,7 +2082,9 @@ never overrides a scam sign and never makes an IBAN "known" for the scam checks.
 why in plain words ("No code: this IBAN is not the one Beitragsservice Musterstadt used before …"),
 refused comparisons and a failed reading in the block itself (scrolled clear of the panel's footer,
 focus kept on the button); the copy-by-hand fields stay. On a phone or tablet, which can't scan its own
-screen, the block says to open the letter on a computer or copy the details. The static demo's codes are generated by the same code
+screen, the block says to open the letter on a computer or copy the details; on a phone paired with the
+computer (§12b) it offers to save the code as a picture many banking apps can read (drawn on the phone,
+shared or downloaded, only in the `ready` state) or to copy the details. The static demo's codes are generated by the same code
 (`scripts/gen_mock_girocodes.py`) and point to the sample life's fictional accounts.
 
 **Review scope.** The LLM review may only produce `saving`, `hygiene`, `followup`, `opportunity`

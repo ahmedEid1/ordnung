@@ -8,12 +8,16 @@
  * schema — strictly, so a mock that adds or drops a field fails). Every mock route must exist in
  * the API, and every API operation must be used by the web app (or be listed as not needed).
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import openapiText from "../../openapi.json?raw";
 import { createMockServer, MOCK_ROUTES, type MockServer } from "@/mocks/server";
+import { classifyPhoneRequest, phoneScopeFromOpenApi } from "@/mocks/phone";
 import { SchemaChecker, type OpenApiDoc, type Operation, type Schema } from "@/test/jsonSchema";
+import { ApiError } from "./client";
 import { api, type Api } from "./endpoints";
-import type { StreamEvent } from "./types";
+import { PHONE_ERROR_CODES, type StreamEvent } from "./types";
 
 const doc = JSON.parse(openapiText) as OpenApiDoc;
 const strict = new SchemaChecker(doc, true);
@@ -276,6 +280,16 @@ const CASES = {
   backupInfo: { run: () => api.backupInfo() },
   downloadBackup: { run: () => api.downloadBackup("correct horse battery staple") },
 
+  // phone access, in this order: on, a code, closed, a phone paired earlier removed, start over
+  phone: { run: () => api.phone() },
+  updatePhone: { run: () => api.updatePhone({ enabled: true, address: "192.168.178.23", port: 8767, home_network: false }) },
+  createPhonePairing: { run: () => api.createPhonePairing() },
+  cancelPhonePairing: { run: () => api.cancelPhonePairing() },
+  removePhone: { run: () => api.removePhone(srv.phone.addPhone({ name: "Anna's iPhone" }).id) },
+  resetPhone: { run: () => api.resetPhone() },
+  // pairing is the phone's: the computer's own listener answers 404 not_phone (the phone listener: below)
+  pairPhone: { run: () => api.pairPhone({ code: "K7QM2-XD9PA", name: "Sam's iPhone" }), status: 404 },
+
   activity: { run: () => api.activity(50) },
   usage: { run: () => api.usage() },
   rules: { run: () => api.rules() },
@@ -446,5 +460,116 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     const detail = srv.db.liveDocuments()[0]!;
     expect(strict.check({ ...detail, invented: 1 }, docSchema)).toEqual(["$.invented: not declared by the API"]);
     expect(strict.check({ ...detail, status: "archived" }, docSchema).length).toBeGreaterThan(0);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// The phone listener: the same mock with the phone's allow-list, read from openapi.json
+// ------------------------------------------------------------------------------------------------
+
+describe("API contract on a phone (the mock as the phone listener, its allow-list from openapi.json)", () => {
+  const scope = phoneScopeFromOpenApi(doc);
+
+  /** Problems of the one request `run` makes, checked against its operation (status `expected`, default a success). */
+  async function checked(name: string, run: () => Promise<unknown>, expected?: number): Promise<string[]> {
+    const before = exchanges.length;
+    await run().catch(() => undefined); // a refusal: its status is checked below
+    const mine = exchanges.slice(before);
+    if (mine.length !== 1) return [`${name}: made ${mine.length} requests`];
+    const { method, url, body, response } = mine[0]!;
+    const match = operationFor(method, url.pathname);
+    if (!match) return [`${name}: ${method} ${url.pathname} is not an API route`];
+    const problems = [...requestProblems(match.op, url, body), ...(await responseProblems(match.op, response))].map((p) => `${name} (${match.key}): ${p}`);
+    if (expected !== undefined && response.status !== expected) problems.push(`${name}: expected ${expected}, the mock answered ${response.status}`);
+    if (expected === undefined && !response.ok) problems.push(`${name}: the mock answered ${response.status} (${await response.clone().text()})`);
+    return problems;
+  }
+
+  /** The refusal a call ends with (`null`: it succeeded). */
+  async function refusal(run: () => Promise<unknown>): Promise<{ status: number; code: string | null } | null> {
+    try {
+      await run();
+      return null;
+    } catch (err) {
+      if (err instanceof ApiError) return { status: err.status, code: err.code };
+      throw err;
+    }
+  }
+
+  it("reads the operations the API marks for a phone, and sorts a request like the API's gate", () => {
+    const marked = Object.entries(doc.paths).flatMap(([template, ops]) =>
+      Object.entries(ops)
+        .filter(([, op]) => (op as unknown as Record<string, unknown>)["x-ordnung-phone"] === true)
+        .map(([method]) => `${method.toUpperCase()} ${template}`),
+    );
+    expect(scope.operations.filter((op) => op.phone).map((op) => `${op.method} ${op.template}`)).toEqual(marked);
+    expect(marked).toContain("POST /api/phone/pair");
+    expect(marked).not.toContain("GET /api/phone");
+    // both templates match, and the calendar file is the computer's: `{item_id}.ics` (not a phone's) and `{item_id}`
+    expect(classifyPhoneRequest(scope, "GET", "/api/items/itm_1.ics")).toBe("computer");
+    expect(classifyPhoneRequest(scope, "GET", "/api/items/itm_1")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "GET", "/api/calendar.ics")).toBe("computer");
+    expect(classifyPhoneRequest(scope, "HEAD", "/api/documents")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "DELETE", "/api/drafts/drf_1/answered")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "DELETE", "/api/drafts/drf_1")).toBe("computer");
+    expect(classifyPhoneRequest(scope, "GET", "/api/documents/doc_1/file")).toBe("computer");
+    expect(classifyPhoneRequest(scope, "GET", "/api/openapi.json")).toBe("unknown");
+  });
+
+  it("answers a paired phone like the API: its health and masked numbers; what only the computer may do is refused", async () => {
+    srv = createMockServer({ staticDemo: false, latency: 0, phoneScope: scope });
+    const problems = [...(await checked("health", () => api.health())), ...(await checked("numbers", () => api.numbers()))];
+    expect(problems).toEqual([]);
+    expect(await api.health()).toMatchObject({ client: "phone", data_dir: "", demo: false, checks: [] });
+    expect((await api.numbers()).masked).toBe(true);
+
+    expect(await refusal(() => api.settings())).toEqual({ status: 403, code: "computer_only" });
+    expect(await refusal(() => api.probeHealth())).toEqual({ status: 403, code: "computer_only" });
+    expect(await refusal(() => api.deleteDocument("doc_1"))).toEqual({ status: 403, code: "computer_only" });
+    expect(await refusal(() => api.phone())).toEqual({ status: 403, code: "computer_only" });
+    expect(srv.refused).toEqual(["GET /api/settings", "GET /api/health?probe=true", "DELETE /api/documents/doc_1", "GET /api/phone"]);
+  });
+
+  it("pairs a phone like the API, and refuses a wrong, reused or locked-out code with the declared statuses", async () => {
+    srv = createMockServer({ staticDemo: false, latency: 0, phoneScope: scope });
+    srv.phone.removeThisPhone(); // a phone that isn't paired: only pairing answers
+    expect(await refusal(() => api.dashboard())).toEqual({ status: 401, code: "phone_not_paired" });
+    expect(await refusal(() => api.health())).toEqual({ status: 401, code: "phone_not_paired" });
+
+    const problems = await checked("pairPhone (wrong code)", () => api.pairPhone({ code: "0000000000", name: "Anna's iPhone" }), 422);
+    const code = srv.phone.startPairing().code; // made on the computer, typed here as shown ("K7QM2‑XD9PA")
+    const typed = `${code.slice(0, 5)}\u2011${code.slice(5).toLowerCase()}`;
+    problems.push(...(await checked("pairPhone", () => api.pairPhone({ code: typed, name: " Anna's\u200b iPhone " }))));
+    expect(problems).toEqual([]);
+    expect(srv.phone.status().devices.map((d) => d.name)).toContain("Anna's iPhone");
+    expect(await refusal(() => api.dashboard())).toBeNull(); // signed in
+
+    // the same code again: neither phone stays paired, and the computer is told
+    problems.push(...(await checked("pairPhone (code used)", () => api.pairPhone({ code, name: "Someone" }), 409)));
+    expect(await refusal(() => api.dashboard())).toEqual({ status: 401, code: "phone_not_paired" });
+    expect(srv.phone.status().notice?.code).toBe("code_reused");
+
+    // five wrong codes from one device lock it out of the open code, even the right one
+    const next = srv.phone.startPairing().code;
+    for (let i = 0; i < 5; i++) expect(await refusal(() => api.pairPhone({ code: "WRONGWRONG", name: "x" }))).toEqual({ status: 422, code: "wrong_code" });
+    problems.push(...(await checked("pairPhone (locked out)", () => api.pairPhone({ code: next, name: "Anna's iPhone" }), 429)));
+    expect(problems).toEqual([]);
+    expect(srv.refused).toEqual([]);
+  });
+
+  it("knows every refusal code of phone access (`ordnung.phone.ERROR_STATUS`; error bodies aren't in the schema)", () => {
+    const policy = readFileSync(resolve(__dirname, "../../../src/ordnung/phone/__init__.py"), "utf8");
+    const table = /^ERROR_STATUS[^{]*\{([^}]*)\}/m.exec(policy)?.[1] ?? "";
+    const codes = [...table.matchAll(/"(\w+)":\s*(\d{3})/g)].map((m) => m[1]);
+    expect(codes.length).toBeGreaterThan(10);
+    expect([...PHONE_ERROR_CODES].sort()).toEqual(codes.sort());
+  });
+
+  it("filters the privacy log by phone on the computer", async () => {
+    const anna = srv.phone.addPhone({ name: "Anna's iPhone" });
+    srv.db.log("item.done", "Marked “Pay the rent” done on Anna's iPhone", "item", "itm_x", { device: anna.id });
+    expect(await checked("activity (one phone)", () => api.activity(20, anna.id))).toEqual([]);
+    expect((await api.activity(20, anna.id)).map((a) => a.kind)).toEqual(["item.done"]);
+    expect((await api.phone()).devices.find((d) => d.id === anna.id)?.recent_changes).toBe(1);
   });
 });

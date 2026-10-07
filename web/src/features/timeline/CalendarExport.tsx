@@ -11,6 +11,8 @@ import { useMarkCalendarExported, useProfile } from "@/api/hooks";
 import { Button, type ButtonProps } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { theComputer } from "@/features/phone/copy";
 import { CALENDAR_GUIDES, downloadCalendarFile, reminderDays, type CalendarApp, type CalendarGuide, type GuideStep } from "./calendar";
 
 function StepText({ step }: { step: GuideStep }) {
@@ -73,6 +75,7 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
   const [app, setApp] = useState<CalendarApp>("google");
   const exported = useMarkCalendarExported();
   const profile = useProfile();
+  const phone = usePhoneCompanion();
 
   const download = () => {
     downloadCalendarFile();
@@ -81,6 +84,8 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
   };
   const guide = CALENDAR_GUIDES.find((g) => g.app === app) ?? CALENDAR_GUIDES[0]!;
   const reminders = reminderDays(profile.data?.reminder_days?.deadline);
+  // the calendar file is a copy of the records: it stays on the computer, which the phone's API refuses anyway
+  if (phone) return null;
 
   return (
     <>
@@ -144,7 +149,7 @@ export function CalendarExport({ variant = "secondary", size = "md", className }
             </li>
             <li className="flex gap-2">
               <HardDrive className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              The file is made on this computer — nothing is uploaded anywhere.
+              The file is made on {theComputer(phone)} — nothing is uploaded anywhere.
             </li>
           </ul>
         </div>

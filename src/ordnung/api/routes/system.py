@@ -4,6 +4,9 @@
 zero tokens). ``?probe=1`` is Settings' "Run check": every ``ordnung doctor`` check plus one tiny
 live call to Claude — allowed once a minute (``429`` with ``Retry-After`` otherwise). Backends that
 never run the ``claude`` CLI (the recorded demo, the test fake) get the local checks only.
+
+A paired phone gets ``client: "phone"`` and no data folder, Claude path or checks (its gate refuses
+``probe``, and answers before sign-in with 401, never this route's minimal answer).
 """
 
 from __future__ import annotations
@@ -16,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 
 from ordnung import __version__
-from ordnung.api.deps import ApiState, StateDep, StoreDep, backend_uses_cli
+from ordnung.api.deps import ApiState, StateDep, StoreDep, backend_uses_cli, is_phone
 from ordnung.api.security import request_authenticated
 from ordnung.doctor import DoctorReport, local_checks
 from ordnung.models import DoctorCheck, Health, Job, RuleInfo
@@ -72,21 +75,23 @@ async def health(
         return PublicHealth(version=__version__)
     ctx = state.ctx
     store = ctx.store
+    phone = is_phone(request)
     uses_cli = backend_uses_cli(ctx)
-    checks = await _probe(state, uses_cli) if probe else []
+    checks = await _probe(state, uses_cli) if probe and not phone else []
     pinned = simulated_day(store)
     claude = await state.claude.get(ctx.backend_name, uses_cli=uses_cli)
     return Health(
         version=__version__,
-        data_dir=str(ctx.paths.data_dir),
+        data_dir="" if phone else str(ctx.paths.data_dir),
         demo=state.demo or ctx.settings.demo,
         simulated_today=pinned.isoformat() if pinned else None,
         today=local_today(store).isoformat(),
         backend=ctx.backend_name,
-        claude=claude,
+        claude=claude.model_copy(update={"path": None}) if phone else claude,
         model_pinned=os.environ.get("ORDNUNG_CLAUDE_MODEL") or None,
         rules_last_checked=LAST_CHECKED,
         checks=checks,
+        client="phone" if phone else "computer",
     )
 
 
