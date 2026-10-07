@@ -1,0 +1,3296 @@
+[
+ {
+  "id": "w01",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir erwarten die Zahlung Ihrer Lebensversicherung bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w02",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir erwarten die Überweisung Ihrer Rechtsschutzversicherung bis zum 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w03",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Stellungnahme der Ausländerbehörde zu Ihrem Antrag muss bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w04",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir erwarten die Antwort des Herstellers zu Ihrer Reklamation bis zum 28.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w05",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Rückmeldung der Werkstatt zu Ihrem Schaden erwarten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w06",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect your solicitor's reply by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w07",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect the GP's certificate for your claim by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w08",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben die Unterlagen bei Ihrer Hausbank angefordert; diese müssen bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w09",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben den Arztbericht bei Ihrer Hausärztin angefordert; er sollte uns bis zum 23.10.2026 vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w11",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben Ihre Schadensmeldung an den Unfallgegner weitergeleitet; wir erwarten seine Stellungnahme bis zum 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w12",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir erwarten die Zahlung des Unfallverursachers für Ihren Schaden bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w13",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Den Bescheid Ihrer Pflegeversicherung erwarten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w14",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect the school's attendance certificate for your son by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w15",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect the Home Office's documents on your visa by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w16",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Unterlagen der Grundschule Ihrer Tochter erwarten wir bis zum 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w17",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben den Befundbericht direkt bei Ihrem Arzt angefordert; er muss bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w18",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben die Lohnunterlagen bei Ihrer Personalabteilung angefordert, die uns bis zum 23.10.2026 vorliegen sollten."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w19",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We have contacted your previous provider, whose documents must reach us by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w20",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Beitragsbescheinigung Ihres Rentenversicherungsträgers erwarten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w22",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect the hospital's discharge documents for your claim by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w23",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bis zum 30.10.2026 erwarten wir die Unterlagen des Reiseveranstalters zu Ihrer Buchung."
+  ],
+  "expected": []
+ },
+ {
+  "id": "w25",
+  "finding": "the sender waits for a third party (a possessive taken as the person, a third party no list names)",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We expect your airline's confirmation documents by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t01",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your interest payment should be credited by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t02",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your new certificate should arrive by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t03",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your replacement documents should be received by 28 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t04",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Gehalt für Oktober muss bis zum 30.10.2026 gezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t05",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Altersrente muss bis zum 30.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t06",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Honorar für den Vortrag muss bis zum 30.10.2026 bezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t07",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Abfindung muss bis zum 30.11.2026 gezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t08",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your compensation must be paid by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t09",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your salary for October must be paid by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t10",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Entschädigung für Ihren Flugausfall muss bis zum 30.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t11",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Provision für Ihre Vermittlung muss bis zum 30.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t13",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr neuer Bescheid sollte bis zum 23.10.2026 vorliegen; wir freuen uns auf die weitere Zusammenarbeit."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t14",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your new policy documents must be sent out by our team by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t15",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Mietzuschuss muss bis zum 30.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t16",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Kaufpreis für Ihr Fahrzeug muss bis zum 30.10.2026 vom Käufer überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t17",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Kaution muss Ihnen bis zum 30.11.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t18",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Insolvenzgeld muss bis zum 30.10.2026 gezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t19",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Unterhalt für November muss bis zum 03.11.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t20",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your deposit must be returned by 30 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t21",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Originalunterlagen müssen Ihnen bis zum 23.10.2026 zurückgesandt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t22",
+  "finding": "money or papers coming to the person",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your original documents must be returned to your address by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t23",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Witwenrente muss bis zum 30.10.2026 gezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "t25",
+  "finding": "money or papers coming to the person",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Schmerzensgeld muss bis zum 30.10.2026 vom Schädiger gezahlt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p02",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Betrag muss von Ihrer Rechtsschutzversicherung bis zum 23.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p03",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zahlung Ihrer Haftpflichtversicherung muss bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p04",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zahlung Ihres Schuldners muss bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p07",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The signed agreement must be returned by your former partner by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p09",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The balance must be paid by your guarantor by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p10",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Schlussrechnung Ihres Bauunternehmers muss bis zum 30.10.2026 bei uns eingereicht werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p11",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Nachweis der Ausländerbehörde zu Ihrem Aufenthalt muss bis zum 30.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p12",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zahlung Ihres Kostenanteils wird von der Beihilfestelle bis zum 30.10.2026 bei uns erwartet."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p13",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your ex-husband's maintenance payment must reach us by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p14",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Unterhaltszahlung Ihres früheren Ehemanns muss bis zum 03.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p17",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The repair invoice must be submitted by your contractor by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p18",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Kaution muss von Ihrem Nachmieter bis zum 30.11.2026 an uns überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p19",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your co-signer's documents must be received by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p20",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Rechnung Ihres Hausarztes muss uns bis zum 30.10.2026 von der Abrechnungsstelle übermittelt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p21",
+  "finding": "a third party acts or pays",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The outstanding fee must be paid by your sponsor by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p22",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Stellungnahme Ihres Unfallgegners muss bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p23",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Restbetrag Ihrer Reise ist vom Reisebüro bis zum 30.10.2026 an uns zu leisten."
+  ],
+  "expected": []
+ },
+ {
+  "id": "p25",
+  "finding": "a third party acts or pays",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Erbschein-Unterlagen Ihrer Miterben müssen bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o01",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Unterlagen müssen bis zum 23.10.2026 beim Bundeszentralamt für Steuern eingereicht werden. Das übernehmen wir für Sie."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o02",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Einkommensteuererklärung muss bis zum 30.04.2027 eingereicht werden; die Abgabe erfolgt durch unsere Kanzlei."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o03",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Unser Prüfbericht zu Ihrem Fahrzeug muss bis zum 23.10.2026 eingereicht werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o04",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Our report on your claim must be submitted by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o05",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your file must be sent to the ombudsman by 23 October 2026. We will take care of this."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o06",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We need a little more time and will send your documents by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o08",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Steuererklärung 2025 muss bis zum 30.04.2027 abgegeben werden; dies erfolgt durch unser Büro."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o09",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your annual return must be filed by 23 October 2026; our accountants will handle it."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o11",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Unterlagen zu Ihrem Bauantrag müssen bis zum 30.10.2026 bei der Stadt eingereicht werden; unser Architekturbüro übernimmt das."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o12",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bis zum 23.10.2026 benötigen wir intern noch die Freigabe für Ihren Vertrag."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o13",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen bis zum 23.10.2026 noch die Unterschrift unseres Vorstands unter Ihren Vertrag."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o14",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We need our underwriter's approval of your application by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o15",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Gemäß Ihrem Auftrag muss der Betrag bis zum 30.10.2026 an die Stadtwerke überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o18",
+  "finding": "the sender's own act or filing",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your tax return, which must be filed by 31 January 2027, will be prepared by our office."
+  ],
+  "expected": []
+ },
+ {
+  "id": "o20",
+  "finding": "the sender's own act or filing",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Wechselunterlagen für Ihren Stromvertrag müssen bis zum 30.10.2026 beim Netzbetreiber eingereicht werden; das übernimmt unser Wechselservice."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f01",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zahlungsfrist Ihres Schuldners endet am 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f03",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Abgabefrist für die Erklärung Ihres Ehemanns endet am 30.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f04",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Frist zur Stellungnahme für Ihre Nachbarn endet am 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f05",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir setzen Ihrem Schuldner, wie mit Ihnen besprochen, zur Zahlung des Betrags eine Frist bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f06",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir setzen Herrn Müller, wie mit Ihnen vereinbart, für die Zahlung der ausstehenden 1.200 € eine Frist bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f07",
+  "finding": "another party's Frist",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The payment deadline for your buyer is 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f08",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Rücksendefrist für Ihren Käufer endet am 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f11",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zahlungsfrist Ihres Auftraggebers endet am 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f12",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wie mit Ihnen besprochen, räumen wir Ihrem Kunden zur Zahlung der Rechnung eine Frist bis zum 30.10.2026 ein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f13",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Einreichungsfrist für die Unterlagen Ihrer Mitbewerber endet am 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f16",
+  "finding": "another party's Frist",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir haben Ihre Forderung angemahnt. Die Zahlungsfrist Ihres Kunden endet am 30.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c01",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Änderungen Ihrer Anschrift müssen uns die neuen Angaben bis zum 23.10.2026 vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c02",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Sobald Sie umziehen, müssen Ihre neuen Angaben bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c03",
+  "finding": "a condition or group no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "When moving out, you must return the keys and the handover form by 30 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c04",
+  "finding": "a condition or group no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Where you have moved house, you must return the enclosed form by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c05",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Nichtgefallen muss Ihre Ware bis zum 23.10.2026 an uns zurückgesandt werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c06",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Verlust Ihrer Karte muss die Verlustbescheinigung bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c07",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Für Versicherte mit Kindern müssen die Nachweise Ihrer Kinder bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c08",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Als Grenzgänger muss Ihre Ansässigkeitsbescheinigung bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c09",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Vorausgesetzt, Ihr Antrag wird bewilligt, muss Ihr Eigenanteil bis zum 30.10.2026 überwiesen werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c10",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Inanspruchnahme der Ratenzahlung muss Ihre erste Rate bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c12",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Nur auf Anforderung müssen Ihre Belege bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c13",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Auf Verlangen müssen Ihre Originalbelege bis zum 23.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c14",
+  "finding": "a condition or group no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Wahl des Tarifs Plus muss Ihr Antrag bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c16",
+  "finding": "a condition or group no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Where your circumstances change, your new details must be received by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c17",
+  "finding": "a condition or group no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "After a move, your proof of address must reach us by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "c22",
+  "finding": "a condition or group no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "For self-employed members, your profit and loss statement must be received by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x01",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihren ausgefüllten Fragebogen zur Zufriedenheit erbitten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x02",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Antwort zum Preisrätsel muss bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x03",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Wahlunterlagen für die Sozialwahl müssen bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x04",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Rückmeldung zum Elternabend erbitten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x05",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We look forward to receiving your feedback form by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x06",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your application form for the photography competition must be received by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x07",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihren Bewertungsbogen zu unserem Service erwarten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x08",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Antrag auf Aufnahme in das Förderprogramm muss bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x09",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Bestellformular für die Sammelbestellung muss bis zum 30.10.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x10",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your voting form must be received by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x11",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Stimmabgabe muss bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x12",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Antrag auf das Tarif-Upgrade muss bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x13",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your feedback questionnaire must be returned by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x14",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Meinung ist uns wichtig: Ihren Fragebogen erwarten wir bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x15",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Abstimmungsbogen zur Satzungsänderung muss bis zum 23.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x16",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your application for the community grant must be received by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x17",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Förderantrag für das Stadtteilprojekt muss bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x23",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Customer satisfaction poll",
+   "We look forward to receiving your reply form by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x24",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Vorschlagsformular für den Ehrenamtspreis muss bis zum 30.10.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "x25",
+  "finding": "a survey, contest, election, event or optional form no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your trial extension request form must be received by 30 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h01",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wegen Inventur ist unsere Kasse vom 27.12. bis 31.12. nicht besetzt. Zahlbar bis 23.12. in bar."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h03",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Zwischen den Jahren: Ihre Überweisung muss bis 28.12. bei uns eingegangen sein, damit sie noch zugeordnet werden kann."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h04",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Inventur am 31.12.: Ihre Leihgeräte müssen bis 29.12. zurückgegeben werden."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h05",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Our offices close for the festive period from 23 December. Your payment must reach us by 22 December."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h06",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Hinweis zu Allerheiligen (01.11.): Ihre Überweisung muss bis 30.10. bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h07",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Kassenzeiten im Dezember: Ihre Barzahlung muss bis 18.12. bei uns erfolgen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h08",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Due to system maintenance, your payment must reach us by 30 October."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h11",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Betriebsruhe vom 21.12. bis 04.01.",
+   "Ihre Ablesebelege müssen uns bis 18.12. vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h12",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wegen der Umstellung unseres Kassensystems: Zahlbar bis 30.10. nur in bar."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h13",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Schließzeit der Filiale: 02.11. bis 06.11. Zahlbar bis 30.10. am Schalter."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h14",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Thanksgiving notice: your payment must be received by 25 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "h15",
+  "finding": "a holiday or opening-hours notice no list names",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Am Reformationstag sind unsere Schalter zu; Ihre Überweisung muss bis 30.10. hier sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "s02",
+  "finding": "a statement's cut-off",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Umsatzübersicht Oktober",
+   "Ihre Zahlung muss bis zum 30.10.2026 bei uns eingegangen sein, damit sie in dieser Übersicht erscheint."
+  ],
+  "expected": []
+ },
+ {
+  "id": "s03",
+  "finding": "a statement's cut-off",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your quarterly overview",
+   "Your payment must reach us by 30 October 2026 to be listed in this overview."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d01",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Unterlagen, die bis zum 23.10.2026 bei uns vorliegen müssen, haben wir dankend erhalten."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d02",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Überweisung, die bis zum 23.10.2026 bei uns eingehen sollte, ist heute angekommen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d03",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your payment, which must reach us by 23 October 2026, arrived today. Thank you."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d04",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your documents, which must be received by 23 October 2026, have arrived safely."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d05",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Nachweise, die bis zum 30.10.2026 vorgelegt werden müssen, sind vollständig."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d06",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Mit Ihrer Überweisung vom 01.10.2026 ist der Betrag, der bis zum 30.10.2026 bei uns eingehen sollte, ausgeglichen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d07",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Unterlagen für Ihren Antrag, die bis zum 30.10.2026 bei uns eingereicht werden sollten, liegen nun vollständig vor."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d08",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Antrag, der bis zum 30.10.2026 bei uns eingereicht werden muss, ist komplett."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d09",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your tax return, which must be filed by 31 January 2027, has been submitted on your behalf."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d10",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Rate, die bis zum 30.10.2026 bezahlt werden muss, haben wir gestern erhalten."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d11",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your premium, which must be paid by 30 October 2026, has now arrived in full."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d12",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Danke! Ihre Zahlung, die bis zum 30.10.2026 auf unserem Konto sein sollte, ist vollständig angekommen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "d13",
+  "finding": "a deadline its own sentence says was met",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Belege, die uns bis zum 30.10.2026 vorliegen sollten, haben Sie uns vollständig zugeschickt."
+  ],
+  "expected": []
+ },
+ {
+  "id": "r01",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag.",
+   "Zahlungsfrist: 01.11.2026 bis spätestens 15.11.2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r02",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag.",
+   "Zahlungsfrist: 01.11.2026 bis einschl. 15.11.2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r03",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie die Unterlagen ein.",
+   "Abgabefrist: 01.11.2026 bis inkl. 15.11.2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r04",
+  "finding": "a window's first day",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the invoice.",
+   "Payment deadline: 1 November 2026 up to 15 November 2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r05",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag.",
+   "Zahlungsfrist: 01.11. bis spätestens 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "r06",
+  "finding": "a window's first day",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the invoice.",
+   "Payment deadline: 1 November 2026 – no later than 15 November 2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r07",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag.",
+   "Zahlungsfrist: 01.11.2026 bis Monatsende"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r08",
+  "finding": "a window's first day",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the invoice.",
+   "Payment deadline: 1 November 2026 until the end of the month"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r09",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie die Unterlagen ein.",
+   "Abgabefrist: 01.11.2026 – Ende November"
+  ],
+  "expected": []
+ },
+ {
+  "id": "r10",
+  "finding": "a window's first day",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag.",
+   "Zahlungsfrist: 01.11.2026 zzgl. 14 Tage"
+  ],
+  "expected": []
+ },
+ {
+  "id": "y01",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Mitgliedschaft endet zum 31.01.2027; den letzten Beitrag überweisen Sie bitte bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y02",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Tarif ist bis 31.12.2027 garantiert. Bitte überweisen Sie den Abschlag bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y03",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Rechnung Nr. 2027-0045: Bitte überweisen Sie den Betrag bis zum 30.10."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y04",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie 2045 Euro bis zum 30.10."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y05",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Az. 2028/118 – Bitte reichen Sie die Unterlagen bis zum 30.10. ein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y06",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Vertrag 2031: Bitte zahlen Sie die Rate bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y07",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Kundennummer 2029 · Zahlbar bis 30.10."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y08",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Invoice 2027-118: please pay the balance by 30 October."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y09",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your policy runs until 31 December 2027; please pay the premium by 30 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y10",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir bestätigen Ihre Bestellung mit Lieferung im Januar 2027. Bitte überweisen Sie die Anzahlung bis zum 30.10."
+  ],
+  "expected": []
+ },
+ {
+  "id": "y11",
+  "finding": "a year-shaped number or another year in the sentence or line",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Zinsbindung läuft am 31.12.2030 aus. Bitte zahlen Sie die Sondertilgung bis zum 30.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k01",
+  "finding": "a document request read as a payment",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen Ihre Steuer-ID bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k02",
+  "finding": "a document request read as a payment",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen die Originalrechnungen Ihrer Behandlung bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k03",
+  "finding": "a document request read as a payment",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir erwarten Ihre Rechnung über die erbrachten Leistungen bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k04",
+  "finding": "a document request read as a payment",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We need your invoice for the completed work by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k05",
+  "finding": "a document request read as a payment",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We need copies of your medical bills by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k06",
+  "finding": "a document request read as a payment",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen Ihre Gebühren-Übersicht bis zum 23.10.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "k08",
+  "finding": "a document request read as a payment",
+  "lang": "en",
+  "head": "en",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "We need your bill of sale by 23 October 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "n01",
+  "finding": "'Bitte bis … abwarten und erst danach überweisen'",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte bis zum 23.10.2026 abwarten und erst danach überweisen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v01",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Mieter hat die Nachzahlung bis zum 20.11. zu zahlen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v02",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Rente ist am 30.11. zur Zahlung fällig."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v03",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Zinsen für Ihr Sparkonto sind am 31.12. fällig."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v04",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Arbeitgeber hat die Unterlagen bis zum 30.11. bei uns einzureichen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v05",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Versicherung hat den Schaden bis zum 30.11. zu zahlen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v06",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bei Nichtgefallen senden Sie die Ware bis zum 23.10. an uns zurück."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v08",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Käufer hat den Kaufpreis bis zum 30.11. auf Ihr Konto zu überweisen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v09",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Kindergeld für Dezember ist am 05.12. fällig."
+  ],
+  "expected": []
+ },
+ {
+  "id": "v10",
+  "finding": "strict wording without its year beside a third party, money to the person or a condition",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Unterhalt ist von Ihrem früheren Ehemann bis zum 03.11. zu zahlen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-0",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie 2050 € bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-1",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Betrag zur Kundennummer 2045 bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-2",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Rechnungsnummer 2033 · Zahlbar bis: 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-3",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Kundennummer: 2031",
+   "Rechnungsnummer: 4711",
+   "Zahlbar bis: 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-4",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Betrag bis zum 15.11.; Fragen beantworten wir unter Tel. 030 2041 5566."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-5",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Zahlung von 2050 € muss bis zum 15.11. bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-6",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte zahlen Sie 2030 € bis zum 31.01. des Folgejahres."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-7",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay invoice 2031 by 15 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-8",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay by 15 November or call us on 0800 2045 678."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-9",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Betrag bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-10",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Zahlbar bis: 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f1-11",
+  "finding": "a number shaped like a year taken as a date's year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay by 15 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-0",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie die erste Rate bis zum 15.12. und die zweite Rate bis zum 15.01.2027."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-1",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie den Antrag bis zum 15.12. ein und zahlen Sie die Gebühr bis zum 15.01.2027."
+  ],
+  "expected": [
+   [
+    "2027-01-15",
+    "payment"
+   ]
+  ]
+ },
+ {
+  "id": "f2-2",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie den Antrag bis zum 15.12. ein; Ihr Vertrag läuft bis 31.12.2027."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-3",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte geben Sie das Anmeldeformular bis zum 15.12. ab. Der Platz steht Ihnen ab dem 01.01.2027 zur Verfügung."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-4",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte geben Sie das Anmeldeformular bis zum 15.12. ab.",
+   "Der Platz steht Ihnen ab dem 01.01.2027 zur Verfügung."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-5",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie den Kita-Antrag für 2027 bis zum 15.12. ein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-6",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay your 2027 membership fee by 15 December."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-7",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte zahlen Sie die Rate für Januar 2027 bis zum 15.12."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-8",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie die erste Rate bis zum 15.12."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f2-9",
+  "finding": "another year in the sentence or line taken as a date's year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-20",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie den Antrag bis zum 15.12. ein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-0",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte reichen Sie den Antrag bis zum 20.11. ein, damit die Förderung im kommenden Jahr weiterläuft."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-1",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag bis zum 15.11. Ab dem kommenden Jahr bleibt der Beitrag gleich."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-2",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag bis zum 15.11.",
+   "Ab dem kommenden Jahr bleibt der Beitrag gleich."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-3",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag bis zum 15.11., da sich der Beitrag im nächsten Jahr erhöht."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-4",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the fee by 15 November; the fee rises next year."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-5",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please submit your form by 20 November so that your cover continues next year."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-6",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Beitrag bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f3-7",
+  "finding": "'next year' anywhere moving a date into next year",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the fee by 15 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-0",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnungsdatum: 10.03.",
+   "Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-1",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnung vom: 10.03.",
+   "Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-2",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnung 4711 vom 10.03.",
+   "Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-4",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Leistungsdatum 05.03. · Zahlungsziel: 19.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-5",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-15",
+  "today": "2026-11-15",
+  "body": [
+   "Zahlungserinnerung",
+   "Rechnung 4711 | Rechnungsdatum: 27.01. | Fälligkeit: 10.02. | 120,00 €"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-6",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-15",
+  "today": "2026-11-15",
+  "body": [
+   "Zahlungserinnerung",
+   "Rechnung 4711 vom 27.01.",
+   "Fälligkeit: 10.02.",
+   "Betrag: 120,00 €"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-7",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-02-10",
+  "today": "2026-02-10",
+  "body": [
+   "Zahlungserinnerung",
+   "Rechnung 4711 · Fällig am: 30.07. · 120,00 €"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-8",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4-9",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-11-15",
+  "today": "2026-11-15",
+  "body": [
+   "Zahlungserinnerung",
+   "Fälligkeit: 10.02.",
+   "Betrag: 120,00 €"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-0",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnungsdatum: 10.03. · Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-1",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnungsdatum 10.03., zahlbar bis 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-5",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnung vom 10.03.",
+   "Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-6",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Rechnung vom 10.03. Zahlbar bis: 24.03."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-7",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Mahnung",
+   "Rechnungsdatum: 01.12. · Zahlbar bis: 15.01."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f4b-8",
+  "finding": "an old invoice line read as an upcoming date",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-12-28",
+  "today": "2026-12-28",
+  "body": [
+   "Zahlungserinnerung",
+   "Rechnungsdatum: 15.12. · Fälligkeit: 05.01."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-0",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Bestätigung der Überweisung muss bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-1",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Zustimmung zur Ratenzahlung muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-2",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Einverständnis zur Ratenzahlung muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-3",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Schreiben zur Zahlung muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-4",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your payment confirmation must be received by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-5",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your consent to the payment plan must be received by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-6",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Quittung über die Zahlung muss bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f5-7",
+  "finding": "an unlisted head noun: the payment noun it governs sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your proof of payment must be received by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f56-1",
+  "finding": "a payment kind from a governed or hyphenated noun",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Kurabgabe muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f56-2",
+  "finding": "a payment kind from a governed or hyphenated noun",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please send your payment by 15 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f56-6",
+  "finding": "a payment kind from a governed or hyphenated noun",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen Ihre Zustimmung zur Ratenzahlung bis zum 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f56-7",
+  "finding": "a payment kind from a governed or hyphenated noun",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Wir benötigen Ihre Steuer-ID bis zum 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-0",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Ausgleichsabgabe muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-1",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihr Beitrag gemäß Beitragsbescheid muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-2",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Senden Sie uns den ausstehenden Betrag bis zum 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-3",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte senden Sie uns Ihre Zahlung bis zum 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-4",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Betrag wird per SEPA-Lastschrift von Ihrem Konto eingezogen.",
+   "Ihre Kurabgabe muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-5",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Betrag wird per SEPA-Lastschrift von Ihrem Konto eingezogen.",
+   "Senden Sie uns den ausstehenden Betrag bis zum 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-7",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte übersenden Sie uns den Betrag bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-8",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please send your payment of £120 by 15 November."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f6-12",
+  "finding": "a levy or money sent filed as a declaration",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Der Betrag wird per SEPA-Lastschrift von Ihrem Konto eingezogen.",
+   "Bitte übersenden Sie uns den Betrag bis zum 15.11."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-0",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Betrag umgehend.",
+   "Frist für den Zahlungsnachweis: 20.11.2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-1",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte überweisen Sie den Betrag umgehend.",
+   "Frist für Ihren Überweisungsbeleg: 20.11.2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-2",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Die Frist für Ihren Zahlungsnachweis endet am 20.11.2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-3",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please pay the outstanding amount.",
+   "Deadline for proof of payment: 20 November 2026"
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-4",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "The deadline for your proof of payment is 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f7-5",
+  "finding": "'zahlungs…' in a label sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your proof of payment must be received by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-0",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Steuer-ID muss bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-1",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Steuer-Identifikationsnummer muss bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-2",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Inserate müssen bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-3",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Please ensure that your accurate meter readings reach us by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-4",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "en",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Your separate answers must be received by 20 November 2026."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-5",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Unterlagen müssen bis zum 20.11.2026 bei uns vorliegen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "f8-7",
+  "finding": "a hyphenated first part or a word ending in 'rate' sets the kind",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Ihre Rate muss bis zum 20.11.2026 bei uns eingegangen sein."
+  ],
+  "expected": []
+ },
+ {
+  "id": "n-extra-1",
+  "finding": "'Bitte bis … abwarten und erst danach überweisen'",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte bis zum 23.10.2026 nichts überweisen."
+  ],
+  "expected": []
+ },
+ {
+  "id": "n-extra-2",
+  "finding": "'Bitte bis … abwarten und erst danach überweisen'",
+  "lang": "de",
+  "head": "de",
+  "written": "2026-10-05",
+  "today": "2026-10-07",
+  "body": [
+   "Bitte bis zum 23.10.2026 warten und dann überweisen."
+  ],
+  "expected": []
+ }
+]

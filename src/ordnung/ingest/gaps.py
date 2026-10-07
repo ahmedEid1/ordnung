@@ -75,7 +75,6 @@ from ordnung.ingest.verify import (
     DEADLINE_LEFT_OUT,
     PERIOD_NOT_IN_QUOTE,
     READING_INCOMPLETE,
-    DateMention,
     PageInput,
     date_spans,
     parse_periods,
@@ -117,7 +116,6 @@ __all__ = [
     "reading_gap",
     "remedy_notices",
     "start_variants",
-    "yearless_date",
 ]
 
 #: Slot of the to-do code files for an incomplete reading (one per letter).
@@ -2280,21 +2278,11 @@ def _collected_by_debit(pages: Sequence[PageInput]) -> bool:
     )
 
 
-#: A sentence that sets a deadline itself ("Bis spätestens … muss Ihre Zahlung bei uns eingegangen sein", "Your
-#: balance must be paid in full by …"): its "eingegangen" or "paid in full" says nothing is paid yet.
-_OBLIGES = re.compile(
-    r"\b(?:muss|müssen|sollte|sollten|must|has\s+to|have\s+to|needs?\s+to)\b", re.IGNORECASE
-)
-_BY_WORD = re.compile(r"\b(?:bis|by|spätestens|no\s+later\s+than)\b", re.IGNORECASE)
-
-
-def _not_owed_by_label(pages: Sequence[PageInput], *, deadlines: bool = True) -> bool:
+def _not_owed_by_label(pages: Sequence[PageInput]) -> bool:
     """A payment's label ("Fällig am:", "Zahlungsziel:") or "fällig" on the letter sets no payment of the person's:
     it collects by direct debit (:func:`_collected_by_debit`), says its whole amount is paid or is a credit note
     (:data:`_SETTLED`), or pays money out (:data:`_PAID_OUT`) — the last two only when nothing on it is still owed or
-    asked for (:data:`_STILL_OWED`). A "Bitte überweisen Sie … bis" is never waved off so. Without ``deadlines`` (the
-    looser path's, :func:`_looser_dates`), a sentence that sets a deadline itself never says the letter is paid
-    (:data:`_OBLIGES`: "Bis spätestens … muss Ihre Zahlung bei uns eingegangen sein")."""
+    asked for (:data:`_STILL_OWED`). A "Bitte überweisen Sie … bis" is never waved off so."""
     if _collected_by_debit(pages):
         return True
     said = [sentence for page in pages for sentence in sentences(_visible(page))]
@@ -2303,7 +2291,6 @@ def _not_owed_by_label(pages: Sequence[PageInput], *, deadlines: bool = True) ->
     return any(
         (_affirmed(_SETTLED, sentence) or _affirmed(_PAID_OUT, sentence))
         and not _CONDITION_WORDS.search(sentence)
-        and (deadlines or not (_OBLIGES.search(sentence) and _BY_WORD.search(sentence)))
         for sentence in said
     )
 
@@ -2325,40 +2312,8 @@ def _affirmed(pattern: re.Pattern[str], sentence: str) -> bool:
     return False
 
 
-#: Where a condition's verb stands: a clause's start, after a comma, a colon, a bracket or a dash, or after "und",
-#: "oder", "aber", "doch" ("Sollten Sie …", "…, sollten Sie …", "… und sollten Sie Einwände haben, …") — never after
-#: a subject or a date ("Bis spätestens …, den 04.11.2026 sollten uns Ihre Belege vorliegen", "Ihre Belege sollten
-#: …": a request). A capital "Sollten" opens its sentence wherever it stands.
-_CLAUSE_OPENS = re.compile(r"(?:^|[,;:(–—-]|\b(?:und|oder|aber|doch|sowie|bzw\.?))\s*$", re.IGNORECASE)
-#: A deadline of the person's that "läuft … ab" ("Die Abgabefrist für Ihre Erklärung läuft am … ab"): no validity.
+#: A deadline's own label word ("Zahlungsfrist", "Abgabefrist", "Rücksendefrist").
 _DUE_FRIST = r"(?:zahlungs|überweisungs|abgabe|rücksende|rücksendungs|rückgabe|vorlage|einreichungs|einsende|nachreichungs)frist"
-_FRIST_RUNS = re.compile(
-    rf"(?:{_DUE_FRIST}|\bfrist\s+(?:für|zur|zum)\b)(?:\s+[\w-]+){{0,5}}\s*$", re.IGNORECASE
-)
-#: "We will need …", "We will expect …": a request, not the sender's own act.
-_WE_ASK = re.compile(r"\s+(?:need|require|expect)\b", re.IGNORECASE)
-
-
-def _loose_not_owed(clause: str) -> bool:
-    """Whether :data:`_NOT_OWED`'s words keep a sentence's date from being the person's on the looser path — but for
-    "sollten" after a subject or a date (:data:`_CLAUSE_OPENS`), "läuft … ab" of a deadline (:data:`_FRIST_RUNS`) and
-    "we will need" (:data:`_WE_ASK`), which are no condition, validity or act of the sender's there. The strict path
-    keeps :data:`_NOT_OWED` whole, as before 2026-10-07."""
-    for found in _NOT_OWED.finditer(clause):
-        word = found.group().casefold()
-        # (a window before the word: the clause's whitespace runs are single, and the patterns need a few words)
-        if (
-            word == "sollten"
-            and not found.group()[0].isupper()
-            and not _CLAUSE_OPENS.search(clause, max(0, found.start() - 10), found.start())
-        ):
-            continue
-        if word == "läuft" and _FRIST_RUNS.search(clause, max(0, found.start() - 240), found.start()):
-            continue
-        if re.fullmatch(r"we\s+(?:will|shall)", word) and _WE_ASK.match(clause, found.end()):
-            continue
-        return True
-    return False
 
 
 _Kind = Literal["payment", "declaration"]
@@ -2494,13 +2449,6 @@ _LOOSE_CONDITION = re.compile(
     r"|\bif\s+(?:applicable|necessary|relevant|required|needed)\b",
     re.IGNORECASE,
 )
-#: A rule of every year ("jeweils zum 01.12.", "jährlich bis zum 31.01.", "laut Satzung", "each year"): a date without
-#: its year in it is no deadline of this letter's.
-_EVERY_YEAR = re.compile(
-    r"\bjeweils\b|\b(?:all)?jährlich\b|\bjedes\s+jahr\w{0,2}|\blaut\s+satzung\b|\beach\s+year\b|\bevery\s+year\b"
-    r"|\bannually\b|\bper\s+year\b",
-    re.IGNORECASE,
-)
 #: A sentence that opens with a condition's verb ("Ändert sich Ihr Einkommen, müssen …") or names a group the person
 #: may not belong to ("Für Selbstständige …").
 _VERB_FIRST = re.compile(
@@ -2525,16 +2473,11 @@ _TO_YOU = re.compile(
     r"|\bcredited\s+to\s+your\b|\brefund\w{0,3}|\bbenefits?\b|\bpension\b|\bpayouts?\b|\breimburs\w{0,6}|\ballowance\b"
     r"|\b(?:kinder|wohn|eltern|bürger|arbeitslosen|kranken|pflege)geld\w{0,2}|\brenten?\b|\bguthaben\w{0,2})"
 )
-#: The person in an actor's or owner's role ("Sie", "Ihr/Ihre/Ihren/Ihrem/Ihrer/Ihres", "von Ihnen", "you", "your") —
-#: never only in a receiver's ("an Sie", "für Sie", "bei Ihnen", "to you", "for you"): a looser sentence is the
-#: person's only when it names her so.
-_YOU = re.compile(
-    r"(?<!\ban\s)(?<!\bfür\s)(?<!\bbei\s)(?<!\büber\s)(?<!\bgegen\s)(?<!\bohne\s)\bSie\b"
-    r"|\bIhr(?:e|en|em|er|es)?\b|\bvon\s+Ihnen\b"
-    r"|(?i:(?<!\bto\s)(?<!\bfor\s)(?<!\bwith\s)(?<!\bsend\s)(?<!\bpay\s)(?<!\bgive\s)(?<!\bthank\s)\byou\b|\byour\b)"
-)
-#: "Ihnen" for a Frist set ("setzen wir Ihnen eine letzte Frist bis …").
-_YOU_DATIVE = re.compile(r"(?<!\bbei\s)\bIhnen\b")
+#: The person as the one asked to act, in the looser wording's own words ("Senden Sie", "Bitte gleichen Sie …
+#: aus", "Bitte lassen Sie uns …", "Wir bitten Sie um …"), read as written: a capital "Sie" is the person, "sie" is
+#: others ("… senden sie uns bis …": they). A possessive alone ("Ihre Zahlung", "Ihrer Versicherung", "your") never
+#: names her as the one to act (2026-10-07 re-review).
+_YOU_ACT = re.compile(r"\bSie\b")
 #: Where the obligation goes: to the sender (money: a payment verb, "an uns", "bei uns", "auf unser Konto", "Ihre
 #: Zahlung"; a
 #: document: "uns", "zurück", "einreichen", "vorlegen", "abgeben"; English "to us", "reach us", "our account",
@@ -2559,7 +2502,7 @@ _TOWARD: dict[_Kind, re.Pattern[str]] = {
     ),
 }
 #: A letter that says nothing needs doing ("Sie müssen nichts weiter tun", "kein Handlungsbedarf", "You do not need to
-#: do anything"): no date on its page is filed in looser words or without its year.
+#: do anything"): no date on its page is filed in looser words.
 _NOTHING_TO_DO = re.compile(
     r"\bsie\s+müssen\s+nichts\b|\bnichts\s+(?:weiter\s+)?(?:zu\s+)?(?:tun|unternehmen|veranlassen)\b"
     r"|\bkein(?:en)?\s+handlungsbedarf\b|\byou\s+(?:do\s+not|don't)\s+need\s+to\s+do\s+anything\b"
@@ -2605,7 +2548,6 @@ _BY_EN = (
 #: The words of a sentence between a request and its date (as in :data:`_PAY_YOU`); within one clause, past no comma
 #: but an amount's ("687,15 €").
 _GAP = r"(?:[^.;:!?]|\.(?=\d)){0,120}?"
-_CLAUSE_GAP = r"(?:[^.;:!?,]|[.,](?=\d)){0,120}?"
 #: What is asked for, as a noun ("Zahlung", "Rücksendung", "Rückantwort", "Stellungnahme").
 _ACT = (
     r"\w{0,30}(?:zahlung|überweisung|ausgleich|begleichung|rücksendung|zusendung|übersendung|einsendung|rückgabe"
@@ -2613,54 +2555,52 @@ _ACT = (
 )
 #: A field's start: a line's, or after a separator ("… · Zahlung bis: …", "Offener Betrag … – Frist: …").
 _FIELD = r"(?:^|\n|[·|]|\s[–—-]\s)\s*"
-#: Up to six words of the date's own clause after it, then what sets the date.
-_AFTER_WORDS = r"^\s*(?:[^\s.;:!?,]+\s+){0,6}?"
 _PAY_INFINITIVE = r"(?:(?:be|ein)?zahlen|überweisen|begleichen|entrichten|ausgleichen)"
 _SEND_INFINITIVE = (
     r"(?:zurück(?:senden|schicken|geben)|einreichen|einsenden|vorlegen|nachreichen|zusenden|senden|schicken"
     r"|übersenden|übermitteln|mitteilen)"
 )
-_ZU_INFINITIVE = (
-    r"(?:zu\s+(?:zahlen|überweisen|begleichen|entrichten|leisten|erfolgen|senden|schicken|übersenden|übermitteln)"
-    r"|auszugleichen|einzuzahlen|einzureichen|einzusenden|vorzulegen|zurückzusenden|zurückzuschicken|zurückzugeben"
-    r"|abzugeben|nachzureichen|zuzusenden|mitzuteilen|zukommen\s+zu\s+lassen)"
-)
-#: How the date's own clause ends when it is a deadline someone must meet ("… muss bis … bei uns eingegangen sein",
-#: "… müssen uns bis … vorliegen", "… muss bis … erfolgen", "… sollte bis … auf unserem Konto sein", "… muss bis …
-#: bezahlt werden").
-_ARRIVES = (
-    r"(?:eingegangen\s+sein|eingehen|vorliegen|gutgeschrieben\s+sein|erfolgen"
-    r"|(?:abgegeben|eingereicht|vorgelegt|zurückgegeben|zurückgesandt|zurückgesendet|zurückgeschickt|eingesandt"
-    r"|eingesendet|übersandt|übermittelt|nachgereicht|bezahlt|gezahlt|überwiesen|beglichen|ausgeglichen|entrichtet"
-    r"|geleistet)\s+(?:werden|sein)"
-    r"|(?:auf\s+unserem\s+konto|(?:wieder\s+)?bei\s+uns|hier)\s+sein)\b"
-)
-_MODAL = re.compile(r"\b(?:muss|müssen|sollte|sollten)\b", re.IGNORECASE)
+#: A word between "Bitte bis …" and its infinitive that makes the date another act's than the infinitive's: a wait, a
+#: later step or a negation ("Bitte bis zum … abwarten und erst danach überweisen", "… warten und dann überweisen",
+#: "Bitte bis zum … nichts überweisen": 2026-10-07 re-review) — never a second act of the person's ("Bitte bis … ausgefüllt
+#: und unterschrieben zurücksenden").
+_NOT_THE_ACT = r"(?:\w*warten|dann|danach|anschließend|erst|nicht|nichts|kein\w*|nie)"
 _LATEST = re.compile(_BY_LATEST, re.IGNORECASE)
+#: What may stand before a sentence-shaped or imperative wording in its own sentence: nothing but "Bitte", "Please"
+#: or "Kindly" (and a list's bullet). Anything else may be a condition or a group no list names ("Bei Nichtgefallen
+#: …", "Sobald Sie umziehen, …", "When moving out, …", "For self-employed members, …": 2026-10-07 re-review), so such
+#: a sentence files nothing.
+_OPENS = re.compile(r"\s*(?:[•·*–—-]\s*)?(?:(?:bitte|please|kindly)\b[\s,]*)?", re.IGNORECASE)
 
-#: How a looser wording makes its date the person's (:func:`_looser_dates`): ``"sentence"`` when its sentence names
-#: her as the one to act or the owner ("Sie", "Ihre", "you", "your": :data:`_YOU`) and the obligation goes to the
-#: sender (:data:`_TOWARD`); ``"asker"`` when the sender asks for it ("Wir erwarten Ihre Zahlung …", "Ihre Unterlagen
-#: werden … benötigt", "We need your documents …") and the sentence names her; ``"imperative"`` when it asks her
-#: ("Bitte bis … überweisen", "Kindly pay …", "Please ensure …") and the obligation goes to the sender; ``"label"`` for
-#: a label line ("Zahlungsfrist: …", "Zahlungseingang bis: …", "Einsendeschluss: …") when the page asks her for that
+#: How a looser wording makes its date the person's (:func:`_looser_dates`). Since the re-review of 2026-10-07 only
+#: when its own words ask her, never by a possessive alone ("Ihre", "your") nor beside a word a list must name:
+#: ``"sentence"`` when they name her as the one to act ("Senden Sie …", "Bitte gleichen Sie … aus", "Bitte lassen Sie
+#: uns … zukommen": :data:`_YOU_ACT`) and the obligation goes to the sender (:data:`_TOWARD`); ``"asker"`` when the
+#: sender asks her by name ("Wir bitten Sie um Zahlung …"); ``"imperative"`` when they ask her by their mood ("Bitte
+#: bis … überweisen", "Kindly pay …", "Please ensure …") and the obligation goes to the sender — these three only at
+#: their sentence's start (:data:`_OPENS`); ``"label"`` for a label line ("Zahlungsfrist: …", "Zahlungseingang bis:
+#: …", "Einsendeschluss: …") with nothing after its date on its line but a field's separator, and ``"labelled"`` for
+#: a labelled sentence ("Zahlung erbeten bis …", "Abgabetermin ist der …"), both only when the page asks her for that
 #: kind elsewhere (:data:`_PAGE_ASKS`, or a strict date) and is no holiday, opening hours, offer, event, statement or
-#: status letter; ``"labelled"`` for a labelled sentence ("Ihre Zahlungsfrist endet am …", "Abgabetermin ist der …",
-#: "Zahlung erbeten bis …", "The deadline for your reply is …") the same way, or when its own line names her;
-#: ``"frist_set"`` for a Frist the sender sets her ("setzen wir Ihnen eine Frist bis …").
-_Shape = Literal["sentence", "asker", "imperative", "label", "labelled", "frist_set"]
+#: status letter.
+_Shape = Literal["sentence", "asker", "imperative", "label", "labelled"]
+#: The shapes that ask the person in their own words, and so must open their sentence (:data:`_OPENS`).
+_ASKING: frozenset[_Shape] = frozenset({"sentence", "asker", "imperative"})
+#: What may follow a label's date on its line: nothing, a full stop, or a field's separator ("Zahlungseingang bis:
+#: 15.11.2026 | 120,00 €", "Frist: 30.10.2026 (Eingang bei uns)") — never more words, which may make the date a
+#: window's first day ("Zahlungsfrist: 01.11.2026 bis spätestens 15.11.2026", "… bis Monatsende", "… zzgl. 14 Tage",
+#: "1 November 2026 up to 15 November 2026": 2026-10-07 re-review).
+_LABEL_ENDS = re.compile(r"[^\S\n]*[.;,]?[^\S\n]*(?:\n|$|[(|·])")
 
 
 class _Family(NamedTuple):
-    """A looser wording: ``before`` must end right before the date, ``after`` (when given) match the words after it,
-    and — with ``modal`` — "muss" or "sollte" stand around it; ``kind`` when the wording itself tells what is asked
-    ("Bitte gleichen Sie … aus": a payment)."""
+    """A looser wording: ``before`` must end right before the date, ``after`` (when given) match the words after it;
+    ``kind`` when the wording itself tells what is asked ("Bitte gleichen Sie … aus": a payment)."""
 
     name: str
     shape: _Shape
     before: re.Pattern[str]
     after: re.Pattern[str] | None = None
-    modal: bool = False
     kind: _Kind | None = None
 
 
@@ -2678,21 +2618,20 @@ _TERMIN = (
 )
 
 
+#: The looser wordings kept after the re-review of 2026-10-07. Dropped there, each for a confirmed false alarm or a
+#: wrong date of its own (ADR 0015): "Wir erwarten / benötigen / erbitten …", "Bis … erwarten wir …", "Wir bitten um
+#: … Ihres …" (a possessive alone), "… wird bis … erwartet", "… muss bis … bei uns eingegangen sein / vorliegen /
+#: bezahlt werden", "… ist bis … auszugleichen", "Ihre Zahlungsfrist endet am …", "setzen wir Ihnen eine Frist bis …",
+#: "… wird eine Frist bis … gesetzt", "must be received / paid by", "you must pay … by", "we need / expect / must
+#: receive …", "we look forward to receiving …", "we kindly request …", "… is expected by …", "The deadline for … is
+#: …"; and every date without its year.
 _LOOSE: tuple[_Family, ...] = (
-    # "Wir erwarten Ihre Zahlung bis zum", "Ihre Stellungnahme erwarten wir bis", "Wir benötigen Ihre Unterlagen bis"
-    _Family(
-        "wir_erwarten",
-        "asker",
-        _rx(
-            rf"\b(?:wir\s+(?:erwarten|benötigen|erbitten)|(?:erwarten|benötigen|erbitten)\s+wir)\b{_CLAUSE_GAP}{_BY_LATEST}"
-        ),
-    ),
-    # "Wir bitten Sie um Zahlung bis zum", "Wir bitten um Rücksendung Ihres Vertrags bis"
+    # "Wir bitten Sie um Zahlung bis zum", "Wir bitten Sie höflich um Ausgleich des Rechnungsbetrags bis"
     _Family(
         "wir_bitten_um",
         "asker",
         _rx(
-            rf"\b(?:wir\s+bitten|bitten\s+wir)\s+(?:sie\s+)?(?:\w+\s+)?um\s+(?:[\w-]+\s+){{0,2}}?{_ACT}\b{_GAP}{_BY_LATEST}"
+            rf"\b(?:wir\s+bitten|bitten\s+wir)\s+sie\s+(?:\w+\s+)?um\s+(?:[\w-]+\s+){{0,2}}?{_ACT}\b{_GAP}{_BY_LATEST}"
         ),
     ),
     # "Zahlung erbeten bis", "Rückantwort erbeten bis Freitag,"
@@ -2708,21 +2647,6 @@ _LOOSE: tuple[_Family, ...] = (
             rf"{_WEEKDAY_WORD}$"
         ),
     ),
-    # "Ihre Zahlungsfrist endet am", "Die Frist zur Einreichung Ihrer Unterlagen endet am", "… läuft am … ab"
-    _Family(
-        "frist_endet",
-        "labelled",
-        _rx(
-            rf"(?:{_DUE_FRIST}|\bfrist\s+(?:für|zur|zum)\b)(?:\s+[\w-]+){{0,5}}?\s+(?:endet|läuft)\s+"
-            rf"(?:(?:am|zum|bis(?:\s+zum)?)\s+)?{_WEEKDAY_WORD}(?:den\s+)?$"
-        ),
-    ),
-    # "setzen wir Ihnen eine letzte Frist bis zum", "Wir räumen Ihnen … eine Frist bis zum … ein"
-    _Family(
-        "frist_gesetzt",
-        "frist_set",
-        _rx(rf"\b(?:setz\w{{0,3}}|räum\w{{0,3}}|gewähr\w{{0,3}})\b{_GAP}\bfrist\s+{_BY}"),
-    ),
     # "Abgabetermin:", "Letzter Zahlungstag:"; "Einsendeschluss ist der", "Letzter Tag für die Zahlung ist der"
     _Family("termin_label", "label", _rx(rf"{_TERMIN}\s*:\s*{_WEEKDAY_WORD}(?:den\s+)?$")),
     _Family("termin_ist", "labelled", _rx(rf"{_TERMIN}\s+ist\s+(?:der|am)\s*{_WEEKDAY_WORD}(?:den\s+)?$")),
@@ -2737,24 +2661,7 @@ _LOOSE: tuple[_Family, ...] = (
             rf"\s+bis(?:\s+(?:zum|spätestens))?\s*:?\s*{_WEEKDAY_WORD}(?:den\s+)?$"
         ),
     ),
-    # English: "Your payment must be received by", "Your documents must arrive no later than"
-    _Family(
-        "en_must_be",
-        "sentence",
-        _rx(
-            r"\b(?:must|has\s+to|have\s+to|needs?\s+to|should)\s+(?:be\s+(?:received|paid|settled|filed|submitted"
-            r"|returned|sent|credited|made|lodged)|arrive|reach\s+(?:us|our\s+\w+))\b"
-            rf"{_GAP}{_BY_EN}"
-        ),
-    ),
-    _Family(
-        "en_you_must",
-        "sentence",
-        _rx(
-            r"\byou\s+(?:must|have\s+to|need\s+to|should|are\s+(?:required|asked|requested)\s+to)\s+"
-            rf"(?:pay|settle|submit|return|send|file|provide)\b{_GAP}{_BY_EN}"
-        ),
-    ),
+    # English: "Kindly pay the outstanding amount by", "Please make payment by"
     _Family(
         "en_kindly",
         "imperative",
@@ -2763,27 +2670,9 @@ _LOOSE: tuple[_Family, ...] = (
             rf"{_GAP}{_BY_EN}"
         ),
     ),
-    _Family("en_we_must", "asker", _rx(rf"\bwe\s+must\s+(?:receive|have)\b{_GAP}{_BY_EN}")),
-    # "We need your documents no later than", "We expect to receive your …", "Your payment is expected by"
-    _Family(
-        "en_we_need", "asker", _rx(rf"\bwe\s+(?:will\s+|shall\s+)?(?:need|require|expect)\b{_GAP}{_BY_EN}")
-    ),
-    _Family("en_expected", "sentence", _rx(rf"\b(?:is|are)\s+(?:expected|required)\b{_GAP}{_BY_EN}")),
-    _Family("en_look_forward", "asker", _rx(rf"\blook\s+forward\s+to\s+receiving\b{_GAP}{_BY_EN}")),
     # "Please ensure that your payment reaches us by"
     _Family("en_ensure", "imperative", _rx(rf"\bplease\s+(?:ensure|make\s+sure)\b{_GAP}{_BY_EN}")),
-    # "We kindly request your payment on or before", "We would appreciate your reply by"
-    _Family(
-        "en_request",
-        "asker",
-        _rx(rf"\bwe\s+(?:kindly\s+)?(?:request|ask\s+(?:that\s+)?you|would\s+appreciate)\b{_GAP}{_BY_EN}"),
-    ),
-    # "The deadline for your reply is", "Payment deadline:", "Last day to pay:", "Reply by:"
-    _Family(
-        "en_deadline_is",
-        "labelled",
-        _rx(rf"\bdeadline\s+for\s+(?:[\w-]+\s+){{1,4}}?is\s+(?:the\s+)?{_WEEKDAY_WORD}$"),
-    ),
+    # "Payment deadline:", "Last day to pay:", "Reply by:"
     _Family(
         "en_label",
         "label",
@@ -2793,38 +2682,18 @@ _LOOSE: tuple[_Family, ...] = (
         ),
     ),
     # the words after the date complete these:
-    # "Ihre Zahlung wird bis zum … erwartet.", "Ihre Unterlagen werden bis zum … bei uns benötigt."
-    _Family(
-        "erwartet_passive",
-        "sentence",
-        _rx(rf"\b(?:wird|werden)\b{_GAP}{_BY_LATEST}"),
-        _rx(r"^\s*(?:[^\s.;:!?,]+\s+){0,4}?(?:erwartet|benötigt)\b"),
-    ),
-    # "Bis zum … erwarten wir Ihre Rückmeldung.", "Bis spätestens … bitten wir Sie um Zahlung."
-    _Family(
-        "bis_erwarten_wir",
-        "asker",
-        _LATEST,
-        _rx(
-            rf"^\s*(?:(?:erwarten|benötigen|erbitten)\s+wir|bitten\s+wir\s+(?:sie\s+)?(?:\w+\s+)?um\s+"
-            rf"(?:[\w-]+\s+){{0,2}}?{_ACT})\b"
-        ),
-    ),
     # "Um Zahlung bis zum … wird gebeten.", "Überweisung bis spätestens … erbeten."
     _Family(
         "wird_gebeten", "labelled", _LATEST, _rx(r"^\s*(?:[^\s.;:!?,]+\s+){0,3}?(?:erbeten|wird\s+gebeten)\b")
     ),
-    # "Ihr Beitrag muss bis spätestens … auf unserem Konto eingegangen sein.", "Spätestens am … sollte Ihre Zahlung
-    # bei uns eingegangen sein.", "Ihre Rechnung muss bis … bezahlt werden."
-    _Family("muss_bis", "sentence", _LATEST, _rx(rf"{_AFTER_WORDS}{_ARRIVES}"), modal=True),
-    # "Ihr Rückstand ist bis … auszugleichen.", "…, uns die Lohnbescheinigungen bis zum … zukommen zu lassen."
-    _Family("ist_zu", "sentence", _LATEST, _rx(rf"{_AFTER_WORDS}{_ZU_INFINITIVE}\b")),
-    # "Bitte bis zum … überweisen.", "Abschnitt bitte bis Freitag, … ausgefüllt in der Schule abgeben."
+    # "Bitte bis zum … überweisen.", "Bitte bis 23.10.2026 unterschrieben zurücksenden."
     _Family(
         "bitte_infinitiv",
         "imperative",
         _rx(rf"\bbitte\s+{_BY}"),
-        _rx(rf"^\s*(?:[^\s.;:!?,]+\s+){{0,5}}?(?:{_PAY_INFINITIVE}|{_SEND_INFINITIVE}|abgeben)\b"),
+        _rx(
+            rf"^\s*(?:(?!{_NOT_THE_ACT}\b)[^\s.;:!?,]+\s+){{0,5}}?(?:{_PAY_INFINITIVE}|{_SEND_INFINITIVE}|abgeben)\b"
+        ),
     ),
     # "Bitte gleichen Sie den offenen Betrag bis zum … aus."
     _Family(
@@ -2841,19 +2710,13 @@ _LOOSE: tuple[_Family, ...] = (
         _rx(rf"\blassen\s+sie\b{_GAP}{_BY}"),
         _rx(r"^\s*(?:[^\s.;:!?,]+\s+){0,3}?zukommen\b"),
     ),
-    # "Ihnen wird für die Vorlage der Nachweise eine Frist bis … gesetzt."
-    _Family(
-        "frist_bis_gesetzt",
-        "frist_set",
-        _rx(rf"\bfrist\s+{_BY}"),
-        _rx(r"^\s*(?:[^\s.;:!?,]+\s+){0,2}?(?:gesetzt|eingeräumt|gewährt)\b"),
-    ),
 )
 
 
 class _Matched(NamedTuple):
     family: _Family
     words: str  # the words that set the date, before and after it
+    start: int  # where they start in the words before the date
 
 
 def _loose_family(before: str, after: str) -> _Matched | None:
@@ -2863,13 +2726,11 @@ def _loose_family(before: str, after: str) -> _Matched | None:
         if found is None:
             continue
         if family.after is None:
-            return _Matched(family, found.group())
+            return _Matched(family, found.group(), found.start())
         completed = family.after.match(after)
         if completed is None:
             continue
-        if family.modal and not (_MODAL.search(before) or _MODAL.search(after)):
-            continue  # "…, dass Ihre Zahlung bis zum … bei uns eingegangen sein muss": the modal after it
-        return _Matched(family, f"{found.group()} {completed.group()}")
+        return _Matched(family, f"{found.group()} {completed.group()}", found.start())
     return None
 
 
@@ -2903,6 +2764,13 @@ def _verb_kind(words: str) -> _Kind | None:
 #: A label's own word ("Zahlungsfrist", "Letzter Zahlungstag", "Payment deadline": a payment; "Abgabefrist",
 #: "Rücksendung bis", "Einsendeschluss", "Reply by": a declaration).
 _LABEL_PAYS = re.compile(r"\b(?:zahlungs?|überweisungs?)\w*|\bpay\w*", re.IGNORECASE)
+#: A label's word that names a payment whole ("Zahlungsfrist", "Letzter Zahlungstag", "Zahlungseingang", "Payment
+#: deadline", "Last day to pay") — never a compound whose last word names something else ("Zahlungsbestätigung",
+#: "Zahlungsnachweis", "payment confirmation": 2026-10-07 re-review).
+_LABEL_PAYS_WHOLE = re.compile(
+    r"\b(?:zahlungs?|überweisungs?)(?:frist|termin|tag|ziel|eingang)?\b|\bpay\b|\bpayment\b(?!\s+(?!deadline\b)\w)",
+    re.IGNORECASE,
+)
 _LABEL_SENDS = re.compile(
     r"\b(?:abgabe|rücksend|rückgabe|vorlage|einreich|einsend|nachreich|rückantwort|antwort|rückmeld)\w*"
     r"|\b(?:return|reply|submission|response|respond)\w*",
@@ -2965,7 +2833,10 @@ _WORDS: dict[str, tuple[_Kind, bool]] = {
     **dict.fromkeys(_PAY_WORDS, ("payment", False)),
     **dict.fromkeys(_SEND_WORDS, ("declaration", False)),
 }
-_TOKEN = re.compile(r"[€£$]|\w+")
+#: A word, a hyphenated compound ("Steuer-ID", "Kfz-Steuer") or a money sign.
+_TOKEN = re.compile(r"[€£$]|\w+(?:-\w+)*")
+#: Heads that name money only as whole words: "Inserate", "accurate", "separate" end in "rate" but name no Rate.
+_WHOLE_ONLY = frozenset({"rate", "raten"})
 #: An amount beside "Beitrag" ("35 €", "120,00 EUR").
 _AMOUNTISH = re.compile(r"[€£$]|\d,\d{2}\b|\b(?:eur|euro)\b", re.IGNORECASE)
 #: "X über / für / zu / of Y": X is what is asked ("Nachweis über die Zahlung", "Gebühr für den Antrag", "proof of
@@ -2979,8 +2850,8 @@ _HEAD_OF = re.compile(
 
 def _noun_kind(word: str) -> tuple[_Kind, bool] | None:
     """What a word names (:data:`_PAY_HEADS`, :data:`_SEND_HEADS`, :data:`_PAY_WORDS`, :data:`_SEND_WORDS`) — a
-    compound by its last word, the longest that is one ("Nebenkostenabrechnung": an Abrechnung, not a Rechnung) —,
-    and whether only weakly ("Beitrag")."""
+    compound by its last word, the longest that is one ("Nebenkostenabrechnung": an Abrechnung, not a Rechnung; never
+    "rate" inside a word, :data:`_WHOLE_ONLY`) —, and whether only weakly ("Beitrag")."""
     folded = word.casefold()
     known = _WORDS.get(folded)
     if known is not None:
@@ -2988,19 +2859,27 @@ def _noun_kind(word: str) -> tuple[_Kind, bool] | None:
     for cut in range(3, len(folded) - 2):
         head = _NOUNS.get(folded[cut:])
         if head is not None:
-            return head
+            return None if folded[cut:] in _WHOLE_ONLY else head
     return None
 
 
 def _nouns_kind(text: str) -> _Kind | None:
     """What the nouns of ``text`` ask for: their one kind, or — both named — the first's when the other only says
-    what it is about (:data:`_HEAD_OF`); else ``None`` (unclear: no to-do)."""
+    what it is about (:data:`_HEAD_OF`); else ``None`` (unclear: no to-do). A hyphenated compound counts by its last
+    part; one whose earlier part names a kind its last part does not ("Steuer-ID", "Gebühren-Übersicht") leaves the
+    text unclear."""
     strong = _AMOUNTISH.search(text) is not None or _PAYS_VERB.search(text) is not None
-    nouns = [
-        (found.start(), found.end(), named[0])
-        for found in _TOKEN.finditer(text)
-        if (named := _noun_kind(found.group())) is not None and (strong or not named[1])
-    ]
+    nouns: list[tuple[int, int, _Kind]] = []
+    for found in _TOKEN.finditer(text):
+        *parts, last = found.group().split("-")
+        named = _noun_kind(last)
+        if any(
+            (part_named := _noun_kind(part)) is not None and (named is None or part_named[0] != named[0])
+            for part in parts
+        ):
+            return None
+        if named is not None and (strong or not named[1]):
+            nouns.append((found.start(), found.end(), named[0]))
     kinds = {kind for _start, _end, kind in nouns}
     if len(kinds) == 1:
         return kinds.pop()
@@ -3013,121 +2892,20 @@ def _nouns_kind(text: str) -> _Kind | None:
 
 def _label_kind(words: str, line: str) -> _Kind | None:
     """What a label asks for: the verb on its line ("Unterlagen nachreichen – Frist:"), its own word ("Zahlungsfrist",
-    "Rücksendung bis"), else the nouns on its line before the date ("Offener Betrag 136,00 € – Frist:")."""
+    "Rücksendung bis") unless its own nouns name the other kind ("Frist für den Zahlungsnachweis", "Deadline for proof
+    of payment": unclear) or a payment's word is only a compound's first part ("Frist für die Zahlungsbestätigung":
+    unclear), else the nouns on its line before the date ("Offener Betrag 136,00 € – Frist:")."""
     told = _verb_kind(line)
     if told is not None:
         return told
     pays, sends = _LABEL_PAYS.search(words) is not None, _LABEL_SENDS.search(words) is not None
     if pays != sends:
-        return "payment" if pays else "declaration"
+        kind: _Kind = "payment" if pays else "declaration"
+        named = _nouns_kind(words)
+        if named not in (None, kind) or (pays and named is None and not _LABEL_PAYS_WHOLE.search(words)):
+            return None
+        return kind
     return _nouns_kind(line)
-
-
-# -- dates without their year ---------------------------------------------------------------------------------------
-
-#: How far after the letter's own date a date written without its year may fall in the letter's year (half a year).
-YEARLESS_REACH = 182
-#: How far after the letter's date such a date may fall in the next year, when the day in the letter's year is on or
-#: before the letter's date (a letter of December naming 15.01.): a quarter of a year. A day-month further back is an
-#: old line ("Rechnung vom 02.03., fällig am 16.03." on a letter of October) and never next year's date.
-YEARLESS_ROLL = 92
-
-
-def yearless_date(day: int, month: int, written: date) -> date | None:
-    """The day a date written without its year names ("bis 15.01.", "bis zum 30. Oktober"), when its sentence names
-    no year (:func:`_yearless_day`): that day in the letter's year when it falls after ``written`` (the letter's own
-    date) and within :data:`YEARLESS_REACH` days; when it falls on or before it, that day in the next year if within
-    :data:`YEARLESS_ROLL` days of ``written``; else ``None`` (an old line, or too far on)."""
-    try:
-        candidate: date | None = date(written.year, month, day)
-    except ValueError:
-        candidate = None  # 29.02. outside a leap year
-    if candidate is not None and candidate > written:
-        return candidate if (candidate - written).days <= YEARLESS_REACH else None
-    if candidate is None and (month, day) > (written.month, written.day):
-        return None
-    try:
-        following = date(written.year + 1, month, day)
-    except ValueError:
-        return None
-    return following if (following - written).days <= YEARLESS_ROLL else None
-
-
-#: A year written right after a date without one ("31.12. des Jahres 2027", "31.03. des Folgejahres", "… des
-#: kommenden Jahres", "… next year", "… dieses Jahres").
-_YEAR_AFTER = re.compile(
-    r"^\s*(?:des\s+jahres\s+(?P<year>(?:19|20)\d{2})\b|(?P<folge>des\s+folgejahres|des\s+folgenden\s+jahres|of\s+the"
-    r"\s+following\s+year)|(?P<next>des\s+(?:nächsten|kommenden)\s+jahres|(?:of\s+)?next\s+year)"
-    r"|(?P<this>(?:dieses|des\s+laufenden)\s+jahres|(?:of\s+)?this\s+year))",
-    re.IGNORECASE,
-)
-#: A year named elsewhere in the sentence or the line ("Zahlungsplan 2027", "für das Jahr 2028"), never an amount's
-#: digits ("2.026,00 €").
-_YEAR = re.compile(r"(?<![\d.,/])(?:19|20)\d{2}(?!\d|[.,]\d)")
-_RELATIVE_YEAR = re.compile(
-    r"(?P<folge>\bfolgejahr\w{0,2}|\bfolgenden\s+jahr\w{0,2}|\bfollowing\s+year\b)"
-    r"|(?P<next>\b(?:nächste[nm]?|kommende[nm]?)\s+jahr\w{0,2}|\bnext\s+year\b)"
-    r"|(?P<this>\b(?:dieses|diesem|laufenden)\s+jahr\w{0,2}|\bthis\s+year\b)",
-    re.IGNORECASE,
-)
-
-
-class _Years(NamedTuple):
-    named: frozenset[int]
-    relative: frozenset[str]
-
-
-def _years_in(text: str, start: date | None) -> _Years:
-    """The years ``text`` names — in dates (but the letter's own) or alone — and its relative ones ("im kommenden
-    Jahr", "des Folgejahres")."""
-    spans = date_spans(text)
-    named = {
-        mention.year for _lo, _hi, mention in spans if mention.year is not None and mention.as_date() != start
-    }
-    masked = list(text)
-    for lo, hi, _mention in spans:
-        masked[lo:hi] = " " * (hi - lo)
-    named |= {int(found.group()) for found in _YEAR.finditer("".join(masked))}
-    relative = {
-        name for found in _RELATIVE_YEAR.finditer(text) for name, value in found.groupdict().items() if value
-    }
-    return _Years(frozenset(named), frozenset(relative))
-
-
-def _yearless_day(mention: DateMention, after: str, years: _Years, start: date) -> date | None:
-    """The day a date without its year names: in the year written right after it ("des Jahres 2027", "des
-    Folgejahres" of the one year its sentence names, "des kommenden Jahres"), else in the one year its sentence or line
-    names ("Zahlungsplan 2027: … fällig am 15.11.", "im kommenden Jahr"), else as :func:`yearless_date` counts it;
-    ``None`` when two years are named, or "Folgejahr" follows none or two."""
-    attached = _YEAR_AFTER.match(after)
-    chosen: set[int]
-    if attached is not None:
-        if attached["year"]:
-            chosen = {int(attached["year"])}
-        elif attached["folge"]:
-            if len(years.named) != 1:
-                return None
-            chosen = {next(iter(years.named)) + 1}
-        else:
-            chosen = {start.year + 1} if attached["next"] else {start.year}
-    else:
-        chosen = set(years.named)
-        if "next" in years.relative:
-            chosen.add(start.year + 1)
-        if "this" in years.relative:
-            chosen.add(start.year)
-        if "folge" in years.relative:
-            if len(years.named) != 1:
-                return None
-            chosen.add(next(iter(years.named)) + 1)
-        if not chosen:
-            return yearless_date(mention.day, mention.month, start)
-    if len(chosen) != 1:
-        return None
-    try:
-        return date(chosen.pop(), mention.month, mention.day)
-    except ValueError:
-        return None
 
 
 #: A window's first date ("vom 01.11. bis 15.11.", "Zahlungsfrist: 01.11.2026 – 15.11.2026", "1 November to 15
@@ -3137,47 +2915,30 @@ _RANGE_START = re.compile(
     rf"{_WEEKDAY_WORD}(?:den\s+)?$",
     re.IGNORECASE,
 )
-#: An issue date ("Rechnung vom 10.10."): one after the letter's date says its sentence's dates are of another year.
-_ISSUED_ON = re.compile(r"\bvom\s+$", re.IGNORECASE)
-
-
-def _joined(clauses: Sequence[str]) -> list[str]:
-    """The letter's sentences (``sentences``), never cut inside a date without its year ("Die Zahlung wird bis zum 30.
-    Oktober erwartet.": the full stop after "30" ends no sentence) nor at its own full stop before a bracket ("Frist:
-    30.10. (Eingang der Unterlagen bei uns)"). Their text is the sentences', end to end."""
-    yearless = [(lo, hi) for lo, hi, mention in date_spans("".join(clauses)) if mention.year is None]
-    inside = {at for lo, hi in yearless for at in range(lo + 1, hi)}
-    ends = {hi for _lo, hi in yearless}
-    joined: list[str] = []
-    cut = 0
-    for clause in clauses:
-        if joined and (cut in inside or (cut in ends and clause.lstrip().startswith("("))):
-            joined[-1] += clause
-        else:
-            joined.append(clause)
-        cut += len(clause)
-    return joined
-
-
 #: A greeting's line ("Sehr geehrte Frau Probe,", "Dear Ms Probe,"): the letterhead and the address before it are no
 #: words of the sentence after it.
 _SALUTATION_LINE = re.compile(rf"^[^\S\n]*{_SALUTATION.pattern}[^\n]*", re.IGNORECASE | re.MULTILINE)
+
+
+def _offers_option(asked: str) -> bool:
+    """Whether the sentence before a request offers an option (:data:`_OPTION_ASKED`, never a W-question): the strict
+    path's reading, done on the words after its last but one question mark — the only ones a match can stand in — so
+    it stays linear on long untrusted text."""
+    asked = asked.strip()
+    if not asked.endswith("?"):
+        return False
+    question = asked[asked.rfind("?", 0, len(asked) - 1) + 1 :]
+    return _OPTION_ASKED.search(question) is not None and not _W_QUESTION.match(asked)
 
 
 class _Region:
     """A date's own sentence on the looser path — its clause, cut at a greeting's line (the header above "Sehr geehrte
     …" is a sentence of its own) — and what its words say, each read once."""
 
-    def __init__(self, text: str, sender: frozenset[str], start: date | None) -> None:
+    def __init__(self, text: str, sender: frozenset[str]) -> None:
         self.text = text
         self._sender = sender
-        self._start = start
-        self._cache: dict[str, Any] = {}
-
-    def _once(self, key: str, compute: Any) -> Any:
-        if key not in self._cache:
-            self._cache[key] = compute()
-        return self._cache[key]
+        self._cache: dict[str, bool] = {}
 
     def _third_party(self) -> bool:
         for found in _THIRD_PARTY.finditer(self.text):
@@ -3189,71 +2950,29 @@ class _Region:
     @property
     def guarded(self) -> bool:
         """Its words keep its dates from being the person's on the looser path."""
-        text = self.text
-        return bool(
-            self._once(
-                "guarded",
-                lambda: (
-                    _loose_not_owed(text)
-                    or _LOOSE_NOT_OWED.search(text)
-                    or _LOOSE_CONDITION.search(text)
-                    or _VERB_FIRST.match(text)
-                    or _GROUP_ONLY.match(text)
-                    or _SENDER_ACTS.search(_PURPOSE.sub(" ", text))
-                    or _SENDER_DID.search(text)
-                    or _DONE.search(text)
-                    or _NOT_A_DEMAND.search(text)
-                    or _CLOSED.search(text)
-                    or _TO_YOU.search(text)
-                    or self._third_party()
-                ),
+        if "guarded" not in self._cache:
+            text = self.text
+            self._cache["guarded"] = bool(
+                _NOT_OWED.search(text)
+                or _LOOSE_NOT_OWED.search(text)
+                or _LOOSE_CONDITION.search(text)
+                or _VERB_FIRST.match(text)
+                or _GROUP_ONLY.match(text)
+                or _SENDER_ACTS.search(_PURPOSE.sub(" ", text))
+                or _SENDER_DID.search(text)
+                or _DONE.search(text)
+                or _NOT_A_DEMAND.search(text)
+                or _CLOSED.search(text)
+                or _TO_YOU.search(text)
+                or self._third_party()
             )
-        )
-
-    @property
-    def yearless_guarded(self) -> bool:
-        """Its words keep a date without its year from being read on either path: a holiday, opening hours, an offer
-        or event, something done or past, a condition, a rule of every year (:data:`_EVERY_YEAR`), or an issue date
-        after the letter's (:data:`_ISSUED_ON`)."""
-        text, start = self.text, self._start
-        return bool(
-            self._once(
-                "yearless",
-                lambda: (
-                    _CLOSED.search(text)
-                    or _NOT_A_DEMAND.search(text)
-                    or _DONE.search(text)
-                    or _LOOSE_CONDITION.search(text)
-                    or _EVERY_YEAR.search(text)
-                    or (
-                        start is not None
-                        and any(
-                            mention.year is None
-                            and _ISSUED_ON.search(text, max(0, lo - 8), lo)
-                            and (issued := yearless_date(mention.day, mention.month, start)) is not None
-                            and issued > start
-                            for lo, _hi, mention in date_spans(text)
-                        )
-                    )
-                ),
-            )
-        )
-
-    @property
-    def names_you(self) -> bool:
-        return bool(self._once("you", lambda: _YOU.search(self.text)))
-
-    @property
-    def names_you_dative(self) -> bool:
-        return bool(self._once("dative", lambda: _YOU_DATIVE.search(self.text)))
+        return self._cache["guarded"]
 
     def toward(self, kind: _Kind) -> bool:
-        return bool(self._once(f"toward-{kind}", lambda: _TOWARD[kind].search(self.text)))
-
-    @property
-    def years(self) -> _Years:
-        years: _Years = self._once("years", lambda: _years_in(self.text, self._start))
-        return years
+        key = f"toward-{kind}"
+        if key not in self._cache:
+            self._cache[key] = _TOWARD[kind].search(self.text) is not None
+        return self._cache[key]
 
 
 class _Found(NamedTuple):
@@ -3277,8 +2996,8 @@ def _sets_loosely(before: str, after: str) -> bool:
 
 
 def _reading_kinds(extraction: DocumentExtraction) -> set[_Kind]:
-    """The kinds of the reading's dated to-dos (a payment's; a declaration's): a date without its year or in looser
-    words of that kind is likelier the same obligation's second date than one the reading left out."""
+    """The kinds of the reading's dated to-dos (a payment's; a declaration's): a date in looser words of that kind is
+    likelier the same obligation's second date than one the reading left out."""
     kinds: set[_Kind] = set()
     for item in extraction.items:
         if item.date.type == "none":
@@ -3315,24 +3034,28 @@ def _looser_dates(
     taken: Sequence[date],
     series: set[date],
     paying: bool,
+    by_label_only: bool,
 ) -> list[_Found]:
-    """The dates the looser path files (ADR 0015, 2026-10-07): a date without its year in strict words, or any date in
-    looser words (:data:`_LOOSE`) — at most one per kind, the earliest, and only for a kind that neither a dated to-do
-    of the reading (:func:`_reading_kinds`) nor a strict date of the letter still to come covers (two dates for one
-    obligation: the reading's or the strict one stands).
+    """The dates the looser path files (ADR 0015, 2026-10-07, narrowed by its re-review): a date with its year in a
+    looser wording (:data:`_LOOSE`) — at most one per kind, the earliest, and only for a kind that neither a dated
+    to-do of the reading (:func:`_reading_kinds`) nor a strict date of the letter still to come covers (two dates for
+    one obligation: the reading's or the strict one stands). A date without its year files nothing, here as on the
+    strict path.
 
     None on a page that says nothing needs doing (:data:`_NOTHING_TO_DO`), nor as a window's first date
-    (:data:`_RANGE_START`). A date without its year is read by :func:`_yearless_day` (never without the letter's date),
-    never in a sentence of a holiday, opening hours, an offer or event, something done or past, a condition or a rule
-    of every year (:attr:`_Region.yearless_guarded`), nor on a page that speaks of holidays or opening hours. A looser
-    wording's date files only when its sentence is the person's (:data:`_Shape`) and none of its words guards it
+    (:data:`_RANGE_START`). A wording that asks the person in its own words (:data:`_ASKING`: "Senden Sie uns …",
+    "Bitte gleichen Sie … aus", "Wir bitten Sie um Zahlung …", "Bitte bis … überweisen", "Kindly pay …") files only at
+    its sentence's start (:data:`_OPENS`), with the obligation going to the sender where its shape needs it
+    (:data:`_TOWARD`); a label ("Zahlungsfrist: …") or a labelled sentence ("Zahlung erbeten bis …") only on a page
+    that asks her for its kind and is no holiday, opening hours, offer, event, statement or status letter, a label
+    only with nothing but a separator after its date (:data:`_LABEL_ENDS`). Never when a word of the sentence guards it
     (:attr:`_Region.guarded`: a negation, a condition, an option, a third party, the sender's own act, money or papers
     that come to her, something done or stated, an offer, survey, contest, tender or event, a holiday or opening
-    hours), and its kind is clear — the verb's, else the nouns' (:func:`_nouns_kind`); a label's only on a page that
-    asks her for its kind and is no holiday, offer, event, statement or status letter. None when a reading's warning
-    doubts the letter's money (:data:`_PAY_DOUBT`); every payment goes through the gates of the strict path (a debit,
-    a paid letter, a payout: :func:`_not_owed_by_label`, which here never counts the deadline's own sentence as paid;
-    an instalment of the reading's; a full price)."""
+    hours), nor when its kind is unclear — the verb's, else the nouns' (:func:`_nouns_kind`), never when the two
+    disagree ("Senden Sie uns den Betrag"). None when a reading's warning doubts the letter's money
+    (:data:`_PAY_DOUBT`); every payment goes through the gates of the strict path (``by_label_only``: a debit, a paid
+    letter, a payout, :func:`_not_owed_by_label`, read once for both paths; an instalment of the reading's; a full
+    price)."""
     if any(_PAY_DOUBT.search(warning) for warning in extraction.warnings):
         return []
     covered = _reading_kinds(extraction)
@@ -3340,16 +3063,8 @@ def _looser_dates(
         day
         for item in extraction.items
         for _start, _end, mention in date_spans(fold_punctuation(item.quote or ""))
-        if (
-            day := mention.as_date()
-            if mention.year is not None
-            else yearless_date(mention.day, mention.month, start)
-            if start is not None
-            else None
-        )
-        is not None
+        if (day := mention.as_date()) is not None
     }
-    by_label_only = _not_owed_by_label(pages, deadlines=False)
     sender = frozenset(
         word.casefold() for word in re.findall(r"\w+", extraction.sender.name if extraction.sender else "")
     )
@@ -3360,30 +3075,27 @@ def _looser_dates(
             earliest[found.kind] = found
 
     for page in pages:
-        clauses = _joined(sentences(_visible(page)))
+        clauses = sentences(_visible(page))
         flat = "".join(clauses)
-        breaks = [found.start() for found in re.finditer("\n", flat)]
-        line_years: dict[int, _Years] = {}
         # the page says nothing needs doing: no date on it is the looser path's; it speaks of holidays or opening hours:
-        # no date without its year, nor a label, on it
+        # no label on it
         nothing = _NOTHING_TO_DO.search(flat) is not None
         closed = _CLOSED.search(flat) is not None
         hits: set[_Kind] = set()  # the kinds the page sets in strict words, in a sentence of no guard
-        # labels' dates, and whether their own line names her: the person's when it does or the page asks her
-        labels: list[tuple[_Found, bool]] = []
-        offset = 0
+        labels: list[_Found] = []  # labels' dates: the person's when the page asks her for their kind
         for at, clause in enumerate(clauses):
-            here, offset = offset, offset + len(clause)
-            if _REMEDY.search(clause):
-                continue
-            asked = clauses[at - 1].strip() if at > 0 else ""
-            if _OPTION_ASKED.search(asked) and not _W_QUESTION.match(asked):
-                continue  # "Sie möchten Ihren Vertrag nicht verlängern? Dann senden Sie …": an option's request
             spans = date_spans(clause)
-            if not spans:
+            if not spans or _REMEDY.search(clause):
                 continue
+            if at > 0 and _offers_option(clauses[at - 1]):
+                continue  # "Sie möchten Ihren Vertrag nicht verlängern? Dann senden Sie …": an option's request
             readings = Counter((lo, hi) for lo, hi, _mention in spans)  # an ambiguous slash date reads twice
-            greetings = [(found.start(), found.end()) for found in _SALUTATION_LINE.finditer(clause)]
+            # greetings' lines, found once per sentence; each date's own region is read between them by bisection
+            greeting_starts: list[int] = []
+            greeting_ends: list[int] = []
+            for greeting in _SALUTATION_LINE.finditer(clause):
+                greeting_starts.append(greeting.start())
+                greeting_ends.append(greeting.end())
             regions: dict[tuple[int, int], _Region] = {}
             strict_guarded: bool | None = None
             for index, (lo, hi, mention) in enumerate(spans):
@@ -3396,44 +3108,23 @@ def _looser_dates(
                 if strict is not None:
                     if strict_guarded is None:
                         strict_guarded = _NOT_OWED.search(clause) is not None
-                    if strict_guarded:
-                        continue  # as the strict path reads it: no date of the person's
-                    hits.add(strict)
-                    if (
-                        mention.year is not None
-                    ):  # the strict path's (deadline_items); one still to come covers
-                        day = (
-                            mention.as_date()
-                        )  # its kind here (two dates for one obligation: the strict one's)
+                    if not strict_guarded:
+                        hits.add(strict)
+                        # a strict date still to come covers its kind here (two dates for one obligation)
+                        day = mention.as_date()
                         if (
                             day is not None
                             and (start is None or day > start)
                             and (today is None or day >= today)
                         ):
                             covered.add(strict)
-                        continue
-                if nothing or _PERIOD_END.search(clause[max(0, lo - 160) : lo]) or _RANGE_START.match(after):
-                    continue  # nothing to do; what the payment is for; a window's first date
-                cut = max((end for _lo, end in greetings if end <= lo), default=0)
-                stop = min((begin for begin, _hi in greetings if begin >= hi), default=len(clause))
-                region = regions.get((cut, stop))
-                if region is None:
-                    region = regions[(cut, stop)] = _Region(clause[cut:stop], sender, start)
-                if mention.year is None:
-                    if start is None or closed or region.yearless_guarded:
-                        continue
-                    line = bisect.bisect_right(breaks, here + lo)
-                    if line not in line_years:
-                        low = breaks[line - 1] + 1 if line > 0 else 0
-                        high = breaks[line] if line < len(breaks) else len(flat)
-                        line_years[line] = _years_in(flat[low:high], start)
-                    years = _Years(
-                        region.years.named | line_years[line].named,
-                        region.years.relative | line_years[line].relative,
-                    )
-                    day = _yearless_day(mention, after, years, start)
-                else:
-                    day = mention.as_date()
+                    continue  # the strict path's (deadline_items); without its year, nobody's
+                if nothing:
+                    continue  # a page that says nothing needs doing
+                if _PERIOD_END.search(clause[max(0, lo - 160) : lo]) or _RANGE_START.match(after):
+                    continue  # what the payment is for; a window's first date
+                # none without its year: such a date files nothing (2026-10-07 re-review)
+                day = mention.as_date()
                 if day is None or (start is not None and day <= start) or (today is not None and day < today):
                     continue  # no day, the letter's own date or one before it, or past when the letter was read
                 if (
@@ -3442,51 +3133,60 @@ def _looser_dates(
                     or any(abs((day - other).days) <= DEADLINE_REACH for other in taken)
                 ):
                     continue  # read by the reading, an instalment of its, or within 3 days of a to-do of its
-                kind: _Kind | None
-                if strict is not None:  # a date without its year in strict words
-                    kind = strict
-                    if kind == "payment" and by_label_only and not _PAY_YOU.search(before):
-                        continue  # the debit's day, a paid or credited box, a payout's day
-                    if kind == "payment" and paying and _FULL_PRICE.search(clause):
-                        continue
-                    consider(_Found(day, kind, clause, lo, hi, previous, True))
-                    continue
-                own = clause[max(previous, lo - 160, cut) : lo]
+                ended = bisect.bisect_right(greeting_ends, lo)
+                cut = greeting_ends[ended - 1] if ended else 0
+                following_greeting = bisect.bisect_left(greeting_starts, hi)
+                stop = (
+                    greeting_starts[following_greeting]
+                    if following_greeting < len(greeting_starts)
+                    else len(clause)
+                )
+                own_start = max(previous, lo - 160, cut)
+                own = clause[own_start:lo]
                 tail = after[: min(len(after), stop - hi, 120)]
                 matched = _loose_family(own, tail)
-                if matched is None or region.guarded:
+                if matched is None:
                     continue
                 family = matched.family
+                if family.shape in _ASKING and not _OPENS.fullmatch(clause, cut, own_start + matched.start):
+                    continue  # words before it in its sentence: perhaps a condition or a group no list names
+                if family.shape == "label" and not _LABEL_ENDS.match(tail):
+                    continue  # more words after a label's date: perhaps a window's first day
+                region = regions.get((cut, stop))
+                if region is None:
+                    region = regions[(cut, stop)] = _Region(clause[cut:stop], sender)
+                if region.guarded:
+                    continue
+                kind: _Kind | None
                 if family.shape in ("label", "labelled"):
                     line_before = own[own.rfind("\n") + 1 :]
                     newline = tail.find("\n")
                     kind = _label_kind(matched.words, line_before + (tail if newline < 0 else tail[:newline]))
                 else:
-                    kind = family.kind or _verb_kind(matched.words) or _nouns_kind(f"{own} {tail}")
+                    told = family.kind or _verb_kind(matched.words)
+                    named = _nouns_kind(f"{own} {tail}")
+                    if told is not None and named is not None and named != told:
+                        continue  # "Senden Sie uns den Betrag": money sent — unclear what is asked
+                    kind = told or named
                 if kind is None:
                     continue  # unclear what is asked: no to-do
-                if family.shape == "sentence" and not (region.names_you and region.toward(kind)):
-                    continue
-                if family.shape == "asker" and not region.names_you:
-                    continue
-                if family.shape == "imperative" and not region.toward(kind):
-                    continue
-                if family.shape == "frist_set" and not region.names_you_dative:
+                if family.shape in ("sentence", "asker") and not _YOU_ACT.search(matched.words):
+                    continue  # "… senden sie uns …": they, not the person
+                if family.shape in ("sentence", "imperative") and not region.toward(kind):
                     continue
                 if kind == "payment" and (by_label_only or (paying and _FULL_PRICE.search(clause))):
                     continue  # a debit's, a paid letter's or a payout's day; the full price of the reading's payment
                 found = _Found(day, kind, clause, lo, hi, previous, False)
                 if family.shape in ("label", "labelled"):
-                    own_line = own[own.rfind("\n") + 1 :] + tail.split("\n", 1)[0]
-                    labels.append((found, family.shape == "labelled" and _YOU.search(own_line) is not None))
+                    labels.append(found)
                 else:
                     consider(found)
         # a label is the person's when the page asks her for its kind (in words, or a strict date) — never on a page of
         # a holiday, opening hours, an offer or event, a statement or a status letter
         if labels and not (closed or _NOT_A_DEMAND.search(flat) or _STATUS.search(flat)):
             asks = hits | _page_asks(clauses)
-            for found, named in labels:
-                if named or found.kind in asks:
+            for found in labels:
+                if found.kind in asks:
                     consider(found)
     return [found for kind, found in earliest.items() if kind not in covered]
 
@@ -3612,9 +3312,10 @@ def deadline_items(
     (:func:`_not_owed_by_label`), nor does the full price beside a reading's payment dated by its discount
     (:data:`_FULL_PRICE`); and no payment comes back that a reading's warning doubts (:data:`_PAY_DOUBT`).
 
-    Since 2026-10-07 (ADR 0015), beside them and guarded more (:func:`_looser_dates`): a date without its year in
-    strict words, and a date in looser words — at most one of each kind, only for a kind neither the reading's dated
-    to-dos nor a strict date of the letter still to come covers.
+    Since 2026-10-07 (ADR 0015), beside them and guarded more (:func:`_looser_dates`): a date with its year in a
+    looser wording that asks the person in its own words at its sentence's start, or in a label on a page that asks her
+    for its kind — at most one of each kind, only for a kind neither the reading's dated to-dos nor a strict date of the
+    letter still to come covers. A date without its year files nothing, as before.
 
     At most :data:`DEADLINE_MAX`, the strict ones first, the earliest. Each is ``low`` and "Please check"
     (:data:`~ordnung.ingest.verify.DEADLINE_LEFT_OUT`), worded as a cross-check of the letter, its quote the letter's
@@ -3705,9 +3406,16 @@ def deadline_items(
             for rival in find_rivals(other, [*extraction.items, *kept], pages)
             if rival.spec.type == "fixed"
         }
-    # a date without its year, or in looser words (ADR 0015, 2026-10-07): after the strict ones, within the cap
+    # a date in looser words (ADR 0015, 2026-10-07): after the strict ones, within the cap
     looser = _looser_dates(
-        extraction, pages, start=start, today=today, taken=taken, series=series, paying=paying
+        extraction,
+        pages,
+        start=start,
+        today=today,
+        taken=taken,
+        series=series,
+        paying=paying,
+        by_label_only=by_label_only,
     )
     for candidate in sorted(looser, key=lambda found: found.day):
         if len(kept) >= DEADLINE_MAX:

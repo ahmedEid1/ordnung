@@ -93,10 +93,10 @@ Since added on top of this check, which stays the last line of defence: the comp
 
 ## Consequences
 A reading that drops a deadline other than the objection, but keeps its sender, is caught only for a fixed date
-the letter sets in strict words, or in common looser words that name the person, with its year, in a year its
-sentence names, or soon after the letter's date (below, and 2026-10-07 at the end); one that moves the objection's
-start later by up to 7 days is not
-caught, nor one on a letter whose first page names no date of its own.
+the letter sets with its year in strict words, or in a few looser words that ask the person herself at the start of
+their sentence, or in a label on a page that asks her for its kind (below, and 2026-10-07 at the end); one that moves
+the objection's start later by up to 7 days is not caught, nor one on a letter whose first page names no date of its
+own.
 Remedy notices are only recognised in German and English wording; a period the parser can't read, or one
 longer than a month, leaves the to-do without a date. A notice that refers to an earlier decision whose
 period has already run can still file a to-do (dated no later than the letter allows).
@@ -134,8 +134,8 @@ tightened the limits round 4 left (every earlier round's probes re-run, replay o
   they give names a town of the page. More own-date forms are read: a date alone on the first line when the
   header gives no other, "Ort, Datum: …", a place and date beside "Ihr Zeichen:", "Leistungsabteilung   Datum …";
   "Stand: …" is a weak one.
-- **A fixed date the letter sets that the reading left out** (pay by, send by, in strict words only; looser words
-  and dates without their year since 2026-10-07, guarded more: at the end) gets a
+- **A fixed date the letter sets that the reading left out** (pay by, send by, in strict words; since 2026-10-07 also
+  in a few looser words, guarded more, with its year only: at the end) gets a
   "Please check" to-do of its own (`check:deadline`), dated as the letter writes it, never moved; never in a
   sentence of a remedy, a condition, the past, the sender's own act or a direct debit, an appointment, a
   discount or a validity, never a date past when the letter arrived, never when the reading has a to-do within
@@ -226,7 +226,8 @@ own dates more than 14 days apart; it can only lower a reading's date. Every to-
   ("Check this date in the letter", low, "Please check").
 - When two dates the first page names as its own lie more than 14 days apart, the guard counts the
   letter's notice from the later one; it can only lower a reading's date, so a later start only weakens it.
-- A dropped date in words the check does not read (a period, rarer looser wordings: 2026-10-07 below) gets no
+- A dropped date in words the check does not read (a period, a date without its year, most looser wordings:
+  2026-10-07 below) gets no
   to-do; a second payment date beside a reading's payment is named in that to-do's receipt, never filed apart. An
   optional request a strict verb carries can still file a cross-check (an RSVP, "Bitte teilen Sie uns bis … mit, ob
   Sie … teilnehmen"; a voucher or a form for a benefit to hand in by a date), and a real request right after a
@@ -234,123 +235,114 @@ own dates more than 14 days apart; it can only lower a reading's date. Every to-
   of a dropped date covers it, whatever it is for; a reading's payment without a date gets the letter's dated one
   beside it.
 
-## 2026-10-07: looser words and dates without their year
-The dropped-date check (`check:deadline`, `gaps.deadline_items`) now also reads looser wordings and dates written
-without their year (`gaps._looser_dates`). It was reviewed the same day. Five lenses found 23 confirmed findings, and
-the reviewers built 246 synthetic probes. This section describes the code after that review's fixes. The to-do is
-low and "Please check", so the rule is precision first. A false alarm costs a needless check. A miss costs nothing
-compared with before. A wrong or late date is bad.
+## 2026-10-07: looser words, narrowed after a re-review
+The dropped-date check (`check:deadline`, `gaps.deadline_items`) now also reads a few looser wordings
+(`gaps._looser_dates`). It was reviewed twice that day. The first review (five lenses, 23 confirmed findings) led to
+one round of fixes. The re-review of that code (4ba895f) confirmed 29 findings: 4 blockers, 11 majors and 14 minors.
+There was no second redesign. Every wording and mechanism that a blocker or a major belongs to was removed, and the
+minors in what stayed were fixed. The to-do is low and "Please check", so the rule is precision first. A false alarm
+costs a needless check. A miss costs nothing compared with before. A wrong or late date is bad.
 
-- **The strict path is unchanged.** Every date with its year in strict words ("Zahlbar bis", "Bitte überweisen Sie …
-  bis", "… zu zahlen", "please pay … by") is read as on base 0ff51e3. The looser path's new guards (third party, money
-  to the person) do not touch it. The relaxed "sollten" and "läuft … ab" do not touch it either. So the base's two
-  strict false alarms in the corpus ("Der Arbeitgeber hat … einzureichen", "Der Schuldner hat … an Sie zu
-  überweisen") still file. They are documented limits and are pinned as `strict_as_base`. Measured: on 844 inputs
-  (the corpus's positives and negatives and the review's 246 probes) every to-do base 0ff51e3 files, quote included,
-  is in the new output. A quote is now read within 300 characters of its date, never the whole line once per date.
-  `conflicts.find_rivals` normalises the to-do's quote once, not once per statement. Both changes keep their results
-  and remove a quadratic cost. Before, one line of 1,600 distinct "Zahlung bis:" dates (41.6k characters) took 66 s
-  on the looser path, and 800 "Zahlbar bis:" dates (20.8k characters) took 45 s on the strict path, on base too. Now
-  1,600 dates take about 1 s on either path. On 30 adversarial 200k-character pages (repeated words, dates,
-  labels, greetings, years), each run took under 6 s, faster than base on the heaviest ones.
-- **Dates without their year.** Strict wording files such a date too. A year written right after the date wins
-  ("31.12. des Jahres 2027"). "des Folgejahres" means the one year the sentence names, plus one; with no year named, or
-  with two, nothing is filed. "des kommenden / nächsten Jahres" means the letter's year plus one. After that comes the
-  one year the date's sentence or line names ("Zahlungsplan 2027: … fällig am 15.11." files 15.11.2027); two years
-  named file nothing. With no year named, the date is read in the letter's year when that falls after the letter's
-  date and within 182 days. A day on or before the letter's date is read in the next year only when that is within 92
-  days of the letter's date (a December letter naming 15.01.). Any other day-month is an old line ("Rechnung vom
-  02.03., fällig am 16.03." on a letter of October) and is never moved into the next year. Nothing is filed without the
-  letter's date. A window's first date files nothing ("vom 01.11. bis 15.11.", "Zahlungsfrist: 01.11.2026 – 15.11.2026").
-  An issue date that would fall after the letter's date stops the sentence's other dates ("Rechnung vom 10.10.", on a
-  letter of 05.10.). So does a past or counterfactual sentence ("hätten … vorliegen müssen", "ursprünglich", "Offene
-  Posten"). So do a rule of every year ("jeweils", "jährlich", "laut Satzung"), a condition ("nur für Kunden mit …"), a
-  holiday, opening hours, an offer, an event, and a page that speaks of holidays or opening hours.
-- **Looser words file only for the person.** The sentence must name her as the one to act or as the owner: "Sie",
-  "Ihr/Ihre/Ihren/Ihrem/Ihrer/Ihres" or "von Ihnen", read with capitals as written, or "you" or "your". A receiver's
-  role alone never counts ("bei Ihnen", "Ihnen … vorliegen", "an Sie", "auf Ihr Konto", "to you"). The obligation must
-  also go to the sender. For money that means a payment verb, "an uns", "bei uns", "auf unser Konto" or "Ihre
-  Zahlung". For papers it means "uns", "zurück", "einreichen", "vorlegen" or "abgeben". Families: "Wir erwarten /
-  benötigen / erbitten Ihre … bis", "Bis … erwarten wir Ihre …", "Wir bitten Sie um Zahlung bis", "Ihre Zahlung wird
-  bis … erwartet", "Ihr Betrag muss bis … bei uns eingegangen sein / bezahlt werden", "Ihre Unterlagen müssen uns bis
-  … vorliegen", "Ihr Rückstand ist bis … auszugleichen", "Bitte gleichen Sie … aus", "Senden Sie uns … bis", "Bitte
-  lassen Sie uns … zukommen", "setzen wir Ihnen eine Frist bis" ("Ihnen" required), "Your payment must be received
-  by", "you must pay … by", "we need your … by", "we look forward to receiving your … by". An imperative addresses
-  her by its mood ("Bitte bis … überweisen", "Kindly pay …", "Please ensure … reaches us"), but it still needs the
-  direction. A label line ("Zahlungsfrist:", "Zahlungseingang bis:", "Einsendeschluss:", "Letzter Zahlungstag:",
-  "Abgabefrist:", "Payment deadline:", "Reply by:") counts only on a page that asks her elsewhere for its kind. That
-  ask is a request in words ("Bitte überweisen Sie …", "Senden Sie uns …", "please pay") or a strict date. A labelled
-  sentence ("Ihre Zahlungsfrist endet am …", "Zahlung erbeten bis …", "Abgabetermin für Ihre Erklärung ist der …",
-  "The deadline for your reply is …") counts the same way, or when its own line names her. A label never counts on a
-  page of a holiday, opening hours, an offer or event, a statement ("Kontoauszug", "Stand:"), a status letter
-  ("Sachstand", "liegen uns vollständig vor") or one that says nothing needs doing.
-- **Guards, anywhere in the date's own sentence** (cut at the greeting's line, so the letterhead is not part of it):
-  - every earlier guard;
-  - a third party in any position, such as an employer, landlord, tenant, Gegenseite, Beklagte, court, authority,
-    Finanzamt, Jobcenter, a Kasse, a bank, an insurer, "der Versicherung" or a Gutachter. A word of the sender's own
-    name does not count;
-  - the sender's own act or decision ("Entscheidung", "Prüfung", "Bearbeitung", "melden uns", "von uns",
-    "Unsere Stellungnahme", "voraussichtlich", "etwa zwei Wochen", "Die Rückmeldung zu Ihrem Antrag", "We expect to
-    make a decision", "to be issued", "processed", "We are required to"). A purpose of the sender's is struck out
-    first ("Damit wir Ihren Antrag bearbeiten können, benötigen wir …"). So is the sender's past act ("Wir haben …
-    eine Frist … gesetzt");
-  - money that comes to the person ("Erstattung", a benefit, a pension, "Kindergeld", "Guthaben");
-  - conditions ("falls", "wenn", "sofern", "soweit", "sollten Sie" at a clause's start or after "und"/"oder", "Bei
-    Bedarf", "ggf.", "etwaig", "Im Falle", "Nur bei/für", a sentence opened by a condition's verb ("Ändert sich …,"),
-    "Für Selbstständige", "in case", "in the event", "where applicable", "if", "unless", "should you");
-  - something done, paid or only stated ("erledigt", "inzwischen", "liegen uns … vor", "ist … eingegangen",
-    "bezahlte", "gebucht", "berücksichtigt", "per Dauerauftrag", "Kontoauszug", "Saldo", "Stand", "to appear on your
-    next statement", "in credit");
-  - offers, surveys, contests, raffles, tenders, registrations, agendas and events, compounds included
-    ("Kundenumfrage", "Fotowettbewerb", "Sommerfest", "teilnehmen", "chance of winning", "nomination");
-  - holidays, opening and office hours ("Feiertage", "Jahreswechsel", "geschlossen", "Öffnungszeiten", "Sprechzeiten",
-    "Betriebsferien", "Urlaub", "im alten Jahr");
-  - a reading's warning that doubts the letter's money (nothing is filed on the looser path then).
-
-  A payment goes through the debit, paid and payout gates as on the strict path. A deadline's own sentence never
-  counts as "paid" there ("Bis spätestens … muss Ihre Zahlung bei uns eingegangen sein", "must be paid in full by").
-- **The kind** comes from the verb when it says one. That covers participles too: "bezahlt / überwiesen / beglichen
-  werden" is a payment and "eingereicht werden" is a declaration. Otherwise it comes from a curated list of whole
-  nouns, where a compound counts by its last word: "Nebenkostenabrechnung" and "Steuerbescheid" are documents,
-  "Antragsgebühr" and "Kaltmiete" are payments, "Vermieter" names no rent. "Beitrag" counts as money only beside an
-  amount or a payment verb. When both kinds are named, the first noun decides only if the other is what it is about
-  ("Nachweis über die Zahlung", "Gebühr für Ihren Antrag", "proof of payment"). Otherwise, and when no noun names a
-  kind, nothing is filed.
-- **One obligation, one to-do.** A date without its year or in looser words is filed only for a kind (payment or
-  declaration) that no dated to-do of the reading covers and no strict date still to come covers. Of each kind, only
-  the earliest is filed. Such dates come after the strict ones, within the cap of 3.
-- **Measured (replay and synthetic only).**
-  - Census (`tests/test_reading_gaps_census.py`, all 280 recorded readings with holdout3): unchanged. The reading
-    check fires on the one empty reading, no notice is set beside a reading's date, and no `check:deadline` to-do is
-    filed.
-  - Ablation (`scripts/deadline_check_ablation.py`, run once after the review, the readings' to-dos removed): 26
-    filed, all on a labelled due date. By split: dev 4, test 7, holdout 5, holdout2 4, holdout3 6. The base's 21 (4,
-    3, 4, 4, 6) are all kept. The pre-review run filed 27; one test letter's payment date is no longer filed, and none
-    is new.
-  - Synthetic probes: the reviewers' 246 invented letters and sentences (false-alarm shapes) gave 150 new filings
-    before the fixes, against none on base. They give 7 now. Two are real requests on their right date ("Laut Ihrem
-    Antrag vom 20.09. benötigen wir die Unterlagen bis zum 15.10.", "Please pay the balance by 23 October"). One has
-    its year written after the date ("bis zum 31.12. des Jahres 2027"). Four take a year named for a period as the
-    date's year ("Der Beitrag für das Jahr 2027 wird zum 15.11. fällig" files 15.11.2027, and so do "Für das Jahr
-    2028 …", "Zahlungsplan 2027: …" and "Die Jahresabrechnung 2027 …"). That reading follows the rule above. If the
-    letter meant this year's date, the to-do comes a year late.
-  - Corpus (`tests/data/deadline_looser_corpus.json`, written from general knowledge, not the benchmark): 157
-    positives each file exactly one to-do of their kind on their date, and 441 negatives file none. The 441 include
-    the review's shapes and 118 sentences that were positives before the review. Those 118 moved with their reason: 61
-    name no one, 48 are a label with no request on the page, 6 name a third party, and 3 are a date without its year
-    more than 92 days into the next year. 2 negatives file on the strict path as on base (`strict_as_base`).
-  - `tests/test_reading_gaps_looser_review.py` turns each finding's repro into a regression test.
+- **The strict path is base 0ff51e3's.** Every date with its year in strict words ("Zahlbar bis", "Bitte überweisen
+  Sie … bis", "… zu zahlen", "please pay … by") is read as on base, with base's guards. Base's documented strict false
+  alarms ("Der Arbeitgeber hat … einzureichen", "Der Schuldner hat … an Sie zu überweisen") still file, pinned as
+  `strict_as_base`. Two changes keep their results and remove a quadratic cost: a quote is read within 300 characters
+  of its date, and `conflicts.find_rivals` normalises the to-do's quote once.
+- **Removed by the re-review (missed again, as before 2026-10-07):**
+  - *Dates without their year, on both paths* (the 4 blockers and 2 majors). The year read from the sentence or line
+    took any year-shaped number for the date's year: an amount ("2050 €"), a customer, invoice or phone number, or
+    another date's year. "Next year" anywhere moved a date a year on. Real requests were filed one to twenty-four
+    years late. In strict wording a date without its year skipped the looser guards, so a third party's, a pension's
+    or a condition's date filed. An old invoice line ("Rechnungsdatum 10.03. · Zahlbar bis: 24.03." on a December
+    letter) became next year's date. A date without its year files nothing again.
+  - *Wordings that took a possessive for the person, or filed what the sender waits for, does itself, or pays out*
+    (the majors on third parties, money coming to the person, the sender's own act, unlisted conditions and groups,
+    surveys and contests, and done-words): "Wir erwarten / benötigen / erbitten …", "Bis … erwarten wir …", "Wir
+    bitten um … Ihres …", "… wird bis … erwartet", "… muss bis … bei uns eingegangen sein / vorliegen / bezahlt
+    werden", "… ist bis … auszugleichen", "we need / expect / must receive …", "we look forward to receiving …", "we
+    kindly request …", "must be received / paid by", "… is expected by", and "you must pay … by" (its repros opened
+    with a condition no list names: "When moving out, …", "Where you have moved house, …").
+  - *Another party's Frist* (a major): "Ihre Zahlungsfrist endet am …", "The deadline for your … is …", "setzen wir
+    Ihnen eine Frist bis …", "… wird eine Frist bis … gesetzt", and a labelled sentence that counted because its own
+    line said "Ihr…".
+  - *The looser path's own reading of a paid letter* (a deadline's own sentence never counted as "paid"): the strict
+    path's reading, done once, now gates both paths.
+- **What stays (dates with their year only):**
+  - A request that asks the person in its own words, at the very start of its sentence: "Senden Sie uns … bis …",
+    "Bitte gleichen Sie … bis … aus", "Bitte lassen Sie uns … bis … zukommen", "Wir bitten Sie um Zahlung bis …" (a
+    capital "Sie" as the one asked), "Bitte bis … überweisen / zurücksenden / abgeben", "Kindly pay … by …", "Please
+    make payment by …", "Please ensure … by …". Only "Bitte", "Please", "Kindly" or a list's bullet may stand before
+    it in its sentence. Any other words there make it file nothing, because an unlisted condition or group can only
+    stand there ("Bei Nichtgefallen …", "Sobald Sie umziehen, …", "For self-employed members, …"). "Bitte bis …" files
+    nothing with a wait, a later step or a negation before its verb ("abwarten und erst danach überweisen", "nichts
+    überweisen"). Where the wording itself does not say so, the obligation must go to the sender ("uns", "zurück", a
+    payment verb).
+  - A label line ("Zahlungsfrist:", "Abgabetermin:", "Einsendeschluss:", "Letzter Zahlungstag:", "Zahlung bis:",
+    "Zahlungseingang bis:", "Payment deadline:", "Reply by:") with nothing after its date on its line but a full stop
+    or a field's separator ("|", "·", "("). More words there ("bis spätestens 15.11.2026", "bis Monatsende", "zzgl. 14
+    Tage", "up to …") may make the date a window's first day, so it files nothing. A labelled sentence ("Zahlung
+    erbeten bis …", "Um Zahlung bis … wird gebeten", "Abgabetermin für … ist der …"). Both count only on a page that
+    asks the person for that kind elsewhere, outside a condition or a negation (a request in words, or a strict date),
+    and that names no holiday, opening or office hours, offer, event, statement or status.
+  - The first review's guards, each read in the date's own sentence (cut at the greeting's line): a condition, a
+    negation, an option, a third party (a word of the sender's own name does not count), the sender's own act or past
+    act (with its purpose struck out first), money or papers coming to the person, something done or stated, an offer,
+    survey, contest or event, a holiday or a closing. A reading's warning that doubts the letter's money stops the
+    path. A payment goes through the strict path's debit, paid and payout gates.
+  - The kind comes from the verb, else from a curated list of whole nouns, where a compound counts by its last word.
+    When the verb and the nouns disagree ("Senden Sie uns den Betrag"), nothing is filed. A label's own word counts
+    only whole ("Zahlungsfrist" is a payment; "Frist für die Zahlungsbestätigung" names no kind), and never against
+    its own nouns ("Frist für den Zahlungsnachweis", "Deadline for proof of payment": nothing). A hyphenated compound
+    counts by its last part ("Kfz-Steuer" is money; "Steuer-ID" and "Gebühren-Übersicht" are unclear). "Rate" counts
+    only as a whole word ("Inserate", "accurate", "separate" name no rate).
+  - One to-do per kind, the earliest, only for a kind that no dated to-do of the reading and no strict date still to
+    come covers. These come after the strict ones, within the cap of 3.
+- **Measured (replay and synthetic only):**
+  - Census (`tests/test_reading_gaps_census.py`, all 280 recorded readings): passes, unchanged. The reading check
+    fires on the one empty reading, no notice is set beside a reading's date, and no `check:deadline` to-do is filed
+    on any of the 280.
+  - Ablation (`scripts/deadline_check_ablation.py`, run once after the narrowing, the readings' to-dos removed): 21
+    filed, all on a labelled due date (dev 4, test 3, holdout 4, holdout2 4, holdout3 6). These are exactly base
+    0ff51e3's 21, letter for letter. The reviewed code's 5 more (four dunning letters' payment dates and one English
+    letter's send-by date) are lost with the removed wordings and dates without their year. On the benchmark the
+    narrowed looser path recovers no date that base does not.
+  - Re-review probes (`tests/data/deadline_looser_rereview.json`): the 271 confirmed false alarms and wrong dates each
+    file exactly what base 0ff51e3 files. That is nothing for 270 of them; for one, base's own strict date with its
+    year.
+  - Probe parity: 2,341 inputs (the corpus, both reviews' probe sets and the date reviewers' cases). Every filing of
+    base 0ff51e3 is kept, quote included, and every filing is one the reviewed code (4ba895f) also made. The narrowing
+    only removed filings: 712 remain of the reviewed code's 1,278. 672 of them are base's own, and 40 come from the
+    looser path: the corpus's 30 looser positives, 7 requests in the date reviewers' cases (each on the date and of
+    the kind that reviewer expected), and 3 label lines on overview pages under an explicit "Bitte überweisen Sie …" /
+    "Please pay …". The re-review did not count those 3 as false alarms.
+  - Corpus (`tests/data/deadline_looser_corpus.json`, written from general knowledge, not the benchmark): 42 positives
+    file exactly one to-do of their kind on their date (12 of them in strict words), and 556 negatives file none. The
+    negatives include 118 sentences moved by the first review and 115 moved by the re-review, each with its reason: 38
+    dates without their year, 69 in dropped wordings, 2 with words before the request, 2 that name the person only by
+    a possessive, and 4 labelled sentences on a page that asks for nothing.
+  - Every check that stays is pinned. Deleting any one of 56 (each guard, gate and kind rule of the looser path) fails
+    at least one test of `tests/test_reading_gaps_looser*.py`.
+  - Speed: 26 adversarial pages of about 200,000 characters each (the re-review's 19, plus 7 more for the wordings
+    that stay, greetings between dates and long questions). `deadline_items` took at most 1.4 times base's time on the
+    same page (1.44 s against 1.02 s). The slowest page took 9.4 s against base's 8.4 s. That is base's own quadratic
+    paid-letter check, which the looser path no longer runs a second time (the reviewed code took 16.3 s there). These
+    times come from one run on a shared machine.
+  - `tests/test_reading_gaps_looser_review.py` keeps the first review's repros (those of dropped wordings now file
+    nothing); `tests/test_reading_gaps_looser_rereview.py` holds the re-review's.
 
   None of this measures false alarms on real letters beyond the 280 recorded readings. No "zero false alarms" is
-  claimed beyond them.
-- **Still missed, by design.** A looser sentence that names no one ("Die Zahlung wird bis … erwartet", "Der Betrag muss
-  bis … bei uns eingegangen sein", "Wir bitten um Zahlung bis …", "Payment must be received by …"). A label on a page
-  that asks for nothing. Any looser sentence beside a third party, even a real request ("Bitte lassen Sie uns die
-  Bescheinigung Ihres Vermieters … zukommen"). A sentence that names both kinds without one being the other's topic.
-  A looser date of a kind the reading or a strict date already covers. A period ("innerhalb von 14 Tagen nach
-  Zugang"). A date without its year more than half a year on, or more than 92 days into the next year. Anything on a
-  page that names holidays or opening hours (a footer's "Öffnungszeiten" included). A looser payment on a letter that
-  collects by direct debit or is paid.
+  claimed beyond what is listed here.
+- **Still missed, by design.** Every removed wording above, real requests in them included ("Wir benötigen Ihre
+  Unterlagen bis …", "Ihre Zahlung muss bis … bei uns eingegangen sein", "Your payment must be received by …"). A date
+  without its year. A request with any other words before it in its sentence ("Den Betrag bitte bis … überweisen",
+  "Daher bitten wir Sie um Zahlung …"), or after a heading line in the same sentence. A request that names both kinds,
+  or none. A label with more words after its date, or on a page that asks for nothing. Any looser request beside a
+  third party. A looser date of a kind the reading or a strict date already covers. A period.
 - **Left as false alarms (low, "Please check").** The strict path's own, as on base: a third party's strict request,
-  and an RSVP or an optional form in strict words. A year named for a period, as above. A looser request whose third
-  party or condition uses a word none of the lists name.
+  and an RSVP or an optional form in strict words. A request in the person's own words for an optional form or a
+  contest entry whose word no list names ("Senden Sie uns Ihren Bewertungsbogen bis …"), as the strict path does for
+  the same request. A page whose holiday or opening hours are named only in a request's own sentence by a word no list
+  names. An English label whose payment word only describes the noun after it ("Deadline for payment confirmation:"
+  files a payment on a page that asks for one). A page that names holidays or opening hours stops only its labels and
+  labelled sentences: a request in the person's own words on it still files, and a holiday or closing word in that
+  request's own sentence stops it.
