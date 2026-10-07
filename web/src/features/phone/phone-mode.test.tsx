@@ -69,6 +69,7 @@ describe("a paired phone asks only for what it may", () => {
     ["Waiting for", "/letters/waiting", undefined],
     ["Weekly review", "/week", undefined],
     ["Ask", "/ask", undefined],
+    ["Settings", "/settings", undefined],
   ];
   it.each(pages)("%s", async (_name, path, heading) => {
     const { srv, calls } = useMockApi({ client: "phone" });
