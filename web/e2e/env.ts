@@ -4,9 +4,10 @@
  * `playwright.config.ts`, the global setup and the tests.
  *
  * - `ORDNUNG_E2E_PORT` (default 8799) and `ORDNUNG_E2E_DATA` (default `<tmp>/ordnung-e2e`); the real app
- *   uses the next port and `<data>-real`
+ *   uses the next port and `<data>-real`, and its phone access (e2e/real-app-phone.spec.ts) the port after that
  * - `ORDNUNG_BIN`: the `ordnung` executable (default: the repo's `.venv/bin/ordnung`, else `ordnung` on PATH)
- * - `ORDNUNG_E2E_REUSE=1`: reuse servers that are already running on the ports (local debugging)
+ * - `ORDNUNG_E2E_REUSE=1`: reuse servers that are already running on the ports (local debugging); a real app
+ *   started by hand needs `ORDNUNG_PHONE_TEST_ADDRESS=127.0.0.1` for the phone tests (see {@link PHONE_ADDRESS})
  * - `PW_CHROMIUM_PATH`: a Chromium executable to use instead of Playwright's download
  */
 import { existsSync } from "node:fs";
@@ -64,3 +65,24 @@ export const REAL_LETTER = join(REPO_DIR, "src", "ordnung", "demo", "samples", "
 export const REAL_READINGS = join(REPO_DIR, "src", "ordnung", "demo", "fixtures", "extract");
 /** The session cookie: the server names it after its port. */
 export const tokenCookie = (baseUrl: string): string => `ordnung_token_${new URL(baseUrl).port}`;
+
+// ------------------------------------------------------------------------------------------------
+// Phone access of the real app (e2e/real-app-phone.spec.ts): its second listener, HTTPS on loopback
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * The address the real app's phone access listens on. A real computer offers only its home-network addresses
+ * (10/8, 172.16/12, 192.168/16); `ORDNUNG_PHONE_TEST_ADDRESS` (set for the real app's server in
+ * playwright.config.ts) makes this loopback address the only one, so the tests never open a listener to a
+ * network — a server without it refuses this address (422), and the phone tests fail instead of listening on the
+ * LAN.
+ */
+export const PHONE_ADDRESS = "127.0.0.1";
+/** The environment variable that lets the real app's phone access listen on {@link PHONE_ADDRESS} (tests only). */
+export const PHONE_TEST_ADDRESS_ENV = "ORDNUNG_PHONE_TEST_ADDRESS";
+/** Phone access's port: the one after the real app's. */
+export const PHONE_PORT = PORT + 2;
+/** Where a paired phone opens Ordnung (its own certificate: phone contexts ignore HTTPS errors, as a phone clicks through once). */
+export const PHONE_BASE_URL = `https://${PHONE_ADDRESS}:${PHONE_PORT}`;
+/** A phone's sign-in cookie: `__Host-` (Secure, `Path=/`, no Domain), named after the phone listener's port. */
+export const phoneCookie = (baseUrl: string = PHONE_BASE_URL): string => `__Host-ordnung_phone_${new URL(baseUrl).port}`;

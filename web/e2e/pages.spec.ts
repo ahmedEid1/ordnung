@@ -3,6 +3,8 @@
  * anywhere (§14 copy table), axe-core in light and dark mode, and a phone-sized smoke test.
  */
 import type { Page } from "@playwright/test";
+import type { PhoneStatus } from "@/api/types";
+import { PHONE_DEMO_MESSAGE } from "@/mocks/data/phone";
 import { apiGet, contractOf, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
 
 // The tour card floats over every page; these tests are about the pages themselves.
@@ -134,6 +136,23 @@ test.describe("pages", () => {
     await expect(byPurpose.getByRole("rowheader", { name: "Understanding letters" })).toBeVisible();
     await expect(page.getByRole("region", { name: "What was sent, call by call" })).toBeVisible();
   });
+
+  test("Settings → Phone: the demo never opens itself to the network", async ({ page }) => {
+    await open(page, "/settings?section=folder", "Settings");
+    await page.getByRole("navigation", { name: "Settings sections" }).getByRole("link", { name: "Phone", exact: true }).click();
+    await expect(page).toHaveURL(/section=phone/);
+    const card = page.getByRole("region", { name: "Use Ordnung on your phone" });
+    const toggle = card.getByRole("switch", { name: "Phone access" });
+    await expect(toggle).toBeDisabled();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(card.getByRole("note")).toHaveText(PHONE_DEMO_MESSAGE);
+    // no code to show: the demo can't pair a phone
+    await expect(page.getByRole("button", { name: "Pair a phone" })).toHaveCount(0);
+    expect(await apiGet<PhoneStatus>(page, "/api/phone")).toMatchObject({ available: false, enabled: false, listening: false, unavailable_reason: PHONE_DEMO_MESSAGE });
+    const on = await page.request.put("/api/phone", { data: { enabled: true }, headers: { "X-Ordnung-Client": "web" } });
+    expect(on.status()).toBe(409);
+    expect(await on.json()).toEqual({ code: "unavailable", detail: PHONE_DEMO_MESSAGE });
+  });
 });
 
 // ------------------------------------------------------------------------------------------------
@@ -163,6 +182,7 @@ const MAIN_PAGES: MainPage[] = [
   { name: "Letters", path: async () => "/letters", h1: "Letters" },
   { name: "Ask", path: async () => "/ask", h1: "Ask about your letters" },
   { name: "Settings", path: async () => "/settings", h1: "Settings" },
+  { name: "Settings → Phone", path: async () => "/settings?section=phone", h1: "Settings" },
   { name: "Privacy & AI usage", path: async () => "/settings?section=privacy", h1: "Settings" },
   { name: "How dates are computed", path: async () => "/settings?section=rules", h1: "Settings" },
 ];
