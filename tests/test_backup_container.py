@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import gc
+import hashlib
 import io
 import struct
 import sys
@@ -70,6 +71,33 @@ def test_round_trip_at_every_chunk_boundary(size: int) -> None:
     expected_chunks = max(1, -(-size // CHUNK))
     assert len(chunks_of(sealed)) == expected_chunks
     assert len(sealed) == HEADER_BYTES + size + TAG_BYTES * expected_chunks
+
+
+GOLDEN = {  # format v1 bytes as written before the STREAM refactor (hand-off sync P1), byte for byte
+    0: "0b56f588422545dee657ad0fe205f8e35e23a293600a5438352ad96f682f8635",
+    1: "99c2f659c95b03190da67306abb8bc5822ed68556ddc0f72181af28e91dd7382",
+    CHUNK - 1: "28128d917083af1a3f35c5e2926ffbbf5cdf180073abd555e0184f6b17fcf2a1",
+    CHUNK: "78ee94e62362c4d4993b4188f5dda890c0e51da1f4e89ab3712dcc5de8d2c29c",
+    CHUNK + 1: "2d1fea4eb998cb6f47a5e4963f2d38662bae32694eb73463d64767854676c0a3",
+    3 * CHUNK + 5: "cb8efb1bc459a661cc3577a86934c6f16a2df34595650e5c02aa180614657da0",
+}
+
+
+@pytest.mark.parametrize("size", sorted(GOLDEN))
+def test_format_v1_bytes_are_unchanged(size: int) -> None:
+    out = io.BytesIO()
+    writer = EncryptedWriter(
+        out,
+        "golden passphrase",
+        kdf=KdfParams(log2_n=10, r=8, p=1),
+        chunk_size=CHUNK,
+        random_bytes=lambda n: bytes(range(n)),
+    )
+    data = bytes((i * 7 + 3) % 251 for i in range(size))
+    writer.write(data)
+    writer.close()
+    assert hashlib.sha256(out.getvalue()).hexdigest() == GOLDEN[size]
+    assert open_all(out.getvalue(), "golden passphrase") == data
 
 
 def test_small_reads_return_the_same_bytes() -> None:

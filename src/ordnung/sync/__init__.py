@@ -44,7 +44,8 @@ Written policy (ADR 0007 style)
   :data:`MERGED_META` is synced as a union and is left out of the state digest.
 * **Ordnung deletes only what it named.** In the folder it removes its own temp files, and objects that
   stayed unreferenced for :data:`GC_GRACE_S` of its own clock *and* :data:`GC_GRACE_RUNTIME_S` of its
-  own running time. It never touches a name that doesn't match :data:`KEY_FILE_RE`, :data:`HEAD_RE`,
+  own running time (the database slices of a version every live head has moved past: after
+  :data:`SUPERSEDED_SLICE_GRACE_S`, finding 21). It never touches a name that doesn't match :data:`KEY_FILE_RE`, :data:`HEAD_RE`,
   :data:`SHARD_RE`, :data:`OBJECT_RE` or :data:`TEMP_RE`.
 * **Kept copies** are ordinary encrypted backups (format v1, the sync passphrase) in
   ``<data>/sync/kept/`` (:data:`KEPT_RE`): never synced, never pruned by themselves, and lost with this
@@ -206,8 +207,9 @@ SELF_HEAL_EVERY_S = 600.0
 GC_EVERY_S = float(_DAY_S)
 GC_GRACE_S = float(7 * _DAY_S)
 GC_GRACE_RUNTIME_S = float(7 * _DAY_S)
-#: Only if the measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save: superseded
-#: database slices go after this long, once every live head is newer.
+#: Finding 21: the measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save (one
+#: reading rewrote 29 of 80 slices of a 1,500-letter library, :mod:`ordnung.sync.push`), so superseded
+#: database slices go after this long of wall clock *and* running time, once every live head is newer.
 SLICE_CHURN_LIMIT_BYTES = 5 * _MIB
 SUPERSEDED_SLICE_GRACE_S = float(_DAY_S)
 

@@ -84,6 +84,14 @@ TICK_MS = 500
 STOP_GRACE_S = 5.0
 SEEN_META_KEY = "inbox_seen"
 BASELINE_META_KEY = "inbox_baseline"
+#: The SHA-256 of every file brought in from a watched folder (the newest :data:`FOLDER_TAKEN_MAX`):
+#: hand-off sync merges it between computers, and while sync is on a file whose content is in it is
+#: skipped quietly — a folder both computers watch doesn't bring a deleted letter back (review finding
+#: 16). Pinned equal to :data:`ordnung.sync.FOLDER_TAKEN_META_KEY` by a test.
+FOLDER_TAKEN_META_KEY = "folder_taken"
+FOLDER_TAKEN_MAX = 5000
+#: ``<data>/sync/state.json``: hand-off sync is on for this data folder
+_SYNC_STATE = ("sync", "state.json")
 MAX_FILES = 5000
 RECENT = 6
 #: Activity kinds of files the folder brought in (``document.added`` with ``data.source == "folder"``).
@@ -239,6 +247,30 @@ def read_file(path: Path, expected: Signature) -> bytes | None:
 # --------------------------------------------------------------------------------------------------
 # What the folder brought in (from the activity log)
 # --------------------------------------------------------------------------------------------------
+
+
+def _taken(store: Store) -> list[str]:
+    try:
+        stored = json.loads(store.get_meta(FOLDER_TAKEN_META_KEY) or "[]")
+    except ValueError:
+        return []
+    return [digest for digest in stored if isinstance(digest, str)] if isinstance(stored, list) else []
+
+
+def remember_taken(store: Store, data: bytes) -> None:
+    """Remember that a file with this content was brought in from a watched folder (one transaction)."""
+    digest = hashlib.sha256(data).hexdigest()
+    with store.tx():
+        known = [entry for entry in _taken(store) if entry != digest]
+        store.set_meta(FOLDER_TAKEN_META_KEY, json.dumps([*known, digest][-FOLDER_TAKEN_MAX:]))
+
+
+def _taken_elsewhere(store: Store, data: bytes) -> bool:
+    """Hand-off sync is on here and a file with this content was taken from a watched folder already
+    (on this computer or another one): skip it quietly (:data:`FOLDER_TAKEN_META_KEY`)."""
+    if not store.data_dir.joinpath(*_SYNC_STATE).is_file():
+        return False
+    return hashlib.sha256(data).hexdigest() in _taken(store)
 
 
 def recent_pickups(store: Store, limit: int = RECENT) -> list[FolderPickup]:
@@ -487,6 +519,8 @@ class FolderWatcher:
         if await asyncio.to_thread(is_own_file, store, data):
             self._refused(name, OWN_LETTER)
             return
+        if await asyncio.to_thread(_taken_elsewhere, store, data):
+            return  # another computer of this sync took it already (and the person may have deleted it)
         hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
             added = await add_file_result(
@@ -509,6 +543,8 @@ class FolderWatcher:
                 ref_id=added.document.id,
                 data={"source": SOURCE, "filename": name},
             )
+        else:
+            await asyncio.to_thread(remember_taken, store, data)
         self.ctx.bus.publish(
             "folder.updated", state=self.state, doc_id=added.document.id, held=added.document.status == "held"
         )

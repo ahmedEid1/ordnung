@@ -36,6 +36,14 @@ key), header parameters outside the ranges above (:class:`DamagedBackup`, so a c
 make scrypt use more than 256 MiB of memory, or more than four times the work of a written backup), a
 wrong passphrase (:class:`WrongPassphrase`), and any chunk that fails authentication or a missing
 last chunk (:class:`DamagedBackup`).
+
+The STREAM core is shared: :class:`_Sealer` and :class:`_Opener` seal and open the chunks under a
+given AEAD key, nonce prefix and associated data. :class:`EncryptedWriter` / :class:`EncryptedReader`
+wrap them after deriving their keys from the v1 header (a v1 file's bytes are exactly what they were
+before the split — ``tests/test_backup_container.py`` pins one byte for byte); :class:`KeyedWriter` /
+:class:`KeyedReader` are the same streams without a header, for callers that derive their keys
+themselves (hand-off sync, :mod:`ordnung.sync.crypto`). Key derivation is :func:`derive_master`
+(scrypt) followed by :func:`expand` (HKDF-SHA256).
 """
 
 from __future__ import annotations
@@ -165,15 +173,21 @@ def normalize_passphrase(passphrase: str) -> bytes:
     return unicodedata.normalize("NFC", passphrase).encode("utf-8")
 
 
-def _derive(passphrase: str, salt: bytes, kdf: KdfParams) -> _Keys:
-    master = Scrypt(salt=salt, length=KEY_BYTES, n=2**kdf.log2_n, r=kdf.r, p=kdf.p).derive(
+def derive_master(passphrase: str, salt: bytes, kdf: KdfParams) -> bytes:
+    """scrypt of the passphrase (:func:`normalize_passphrase`) under ``salt``: the 32-byte master key."""
+    return Scrypt(salt=salt, length=KEY_BYTES, n=2**kdf.log2_n, r=kdf.r, p=kdf.p).derive(
         normalize_passphrase(passphrase)
     )
 
-    def expand(info: bytes) -> bytes:
-        return HKDF(algorithm=hashes.SHA256(), length=KEY_BYTES, salt=None, info=info).derive(master)
 
-    return _Keys(data=expand(_DATA_INFO), header=expand(_HEADER_INFO))
+def expand(master: bytes, info: bytes, salt: bytes | None = None) -> bytes:
+    """A 32-byte key for ``info`` from ``master`` (HKDF-SHA256, optionally salted)."""
+    return HKDF(algorithm=hashes.SHA256(), length=KEY_BYTES, salt=salt, info=info).derive(master)
+
+
+def _derive(passphrase: str, salt: bytes, kdf: KdfParams) -> _Keys:
+    master = derive_master(passphrase, salt, kdf)
+    return _Keys(data=expand(master, _DATA_INFO), header=expand(master, _HEADER_INFO))
 
 
 def _mac(key: bytes, signed: bytes) -> bytes:
@@ -238,7 +252,143 @@ def read_header(src: BinaryIO) -> Header:
     )
 
 
-class EncryptedWriter(io.RawIOBase):
+class _Sealer:
+    """Seals what is written to it into STREAM chunks of ``chunk_size`` plaintext bytes (module doc):
+    nonce ``prefix ‖ counter ‖ last``, associated data ``aad``. Up to a whole chunk is kept back,
+    because only :meth:`close` knows which chunk is the last (a full last chunk is sealed as last)."""
+
+    def __init__(self, aead: AESGCM, prefix: bytes, aad: bytes, chunk_size: int, out: Sink) -> None:
+        self._aead = aead
+        self._prefix = prefix
+        self._aad = aad
+        self._chunk_size = chunk_size
+        self._out = out
+        self._buffer = bytearray()
+        self._counter = 0
+
+    def _seal(self, plaintext: bytes, *, last: bool) -> None:
+        nonce = _nonce(self._prefix, self._counter, last)
+        self._out.write(self._aead.encrypt(nonce, plaintext, self._aad))
+        self._counter += 1
+
+    def write(self, data: bytes | bytearray | memoryview) -> int:
+        self._buffer += data
+        # keep up to a whole chunk back: the last chunk may be full, and only close() knows it is last
+        while len(self._buffer) > self._chunk_size:
+            self._seal(bytes(self._buffer[: self._chunk_size]), last=False)
+            del self._buffer[: self._chunk_size]
+        return len(data)
+
+    def close(self) -> None:
+        self._seal(bytes(self._buffer), last=True)
+        self._buffer.clear()
+        self._out.flush()
+
+    def drop(self) -> None:
+        self._buffer.clear()
+
+
+class _Opener:
+    """Opens the chunks :class:`_Sealer` wrote, one at a time, authenticating each before any of its
+    bytes are returned; :attr:`done` only after the last chunk authenticated."""
+
+    def __init__(self, aead: AESGCM, prefix: bytes, aad: bytes, chunk_size: int, src: BinaryIO) -> None:
+        self._aead = aead
+        self._prefix = prefix
+        self._aad = aad
+        self._src = src
+        self._sealed_size = chunk_size + TAG_BYTES
+        self._pending = b""  # one byte read ahead to learn whether a chunk is the last one
+        self._counter = 0
+        self.done = False
+
+    def next_chunk(self) -> bytes:
+        """The next chunk's plaintext (:class:`DamagedBackup` when it fails authentication)."""
+        sealed = self._pending + _read_exactly(self._src, self._sealed_size - len(self._pending))
+        self._pending = b""
+        last = len(sealed) < self._sealed_size
+        if not last:
+            self._pending = _read_exactly(self._src, 1)
+            last = not self._pending
+        if len(sealed) < TAG_BYTES:
+            raise DamagedBackup("This backup is cut short: its end is missing.")
+        try:
+            plain = self._aead.decrypt(_nonce(self._prefix, self._counter, last), sealed, self._aad)
+        except InvalidTag:
+            raise DamagedBackup(
+                "This backup was changed or damaged after it was made (or it is cut short), so it can't be trusted."
+            ) from None
+        self._counter += 1
+        self.done = last
+        return plain
+
+
+class _ChunkWriter(io.RawIOBase):
+    """A write-only stream into a :class:`_Sealer`: :meth:`close` seals the last chunk (``out`` itself
+    is not closed); :meth:`abort` stops without it, so what was written reads as incomplete."""
+
+    _sealer: _Sealer | None = None
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._sealed = True  # nothing to seal until set up: a refused writer closes quietly
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, data: bytes | bytearray | memoryview) -> int:  # type: ignore[override]
+        if self._sealed or self._sealer is None:
+            raise ValueError("write to a closed backup")
+        return self._sealer.write(data)
+
+    def close(self) -> None:
+        if not self._sealed and not self.closed and self._sealer is not None:
+            self._sealer.close()
+            self._sealed = True
+        super().close()
+
+    def abort(self) -> None:
+        """Stop without sealing the last chunk: what was written reads as incomplete, never as whole."""
+        self._sealed = True
+        if self._sealer is not None:
+            self._sealer.drop()
+        super().close()
+
+
+class _ChunkReader(io.RawIOBase):
+    """A read-only stream of an :class:`_Opener`'s plaintext."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._opener: _Opener | None = None
+        self._plain = memoryview(b"")
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: bytearray | memoryview) -> int:  # type: ignore[override]
+        assert self._opener is not None
+        target = memoryview(buffer).cast("B")
+        while not self._plain:
+            if self._opener.done:
+                return 0
+            self._plain = memoryview(self._opener.next_chunk())
+        size = min(len(target), len(self._plain))
+        target[:size] = self._plain[:size]
+        self._plain = self._plain[size:]
+        return size
+
+    def read_to_end(self) -> int:
+        """Read (and authenticate) whatever is left; returns how many plaintext bytes that was."""
+        total = 0
+        while True:
+            data = self.read(CHUNK_SIZE)
+            if not data:
+                return total
+            total += len(data)
+
+
+class EncryptedWriter(_ChunkWriter):
     """A write-only stream that encrypts everything written to it into ``out`` (see the module doc).
 
     The header is written at once; :meth:`close` seals the last chunk — a file whose writer was not
@@ -255,60 +405,23 @@ class EncryptedWriter(io.RawIOBase):
         random_bytes: Callable[[int], bytes] = os.urandom,
     ) -> None:
         super().__init__()
-        self._sealed = True  # nothing to seal until the header is written: a refused writer closes quietly
         if not passphrase:
             raise BackupError("A backup needs a passphrase.")
         if not MIN_CHUNK_SIZE <= chunk_size <= MAX_CHUNK_SIZE:
             raise ValueError("chunk_size out of range")
         kdf.check()
-        self._out = out
-        self._chunk_size = chunk_size
         salt, prefix = random_bytes(SALT_BYTES), random_bytes(PREFIX_BYTES)
         keys = _derive(passphrase, salt, kdf)
         unsigned = Header(FORMAT_VERSION, kdf, salt, prefix, chunk_size, b"")
         self._header = Header(
             FORMAT_VERSION, kdf, salt, prefix, chunk_size, _mac(keys.header, unsigned.signed)
         )
-        self._aead = AESGCM(keys.data)
-        self._buffer = bytearray()
-        self._counter = 0
+        self._sealer = _Sealer(AESGCM(keys.data), prefix, self._header.raw, chunk_size, out)
         out.write(self._header.raw)
         self._sealed = False
 
-    def writable(self) -> bool:
-        return True
 
-    def _seal(self, plaintext: bytes, *, last: bool) -> None:
-        nonce = _nonce(self._header.nonce_prefix, self._counter, last)
-        self._out.write(self._aead.encrypt(nonce, plaintext, self._header.raw))
-        self._counter += 1
-
-    def write(self, data: bytes | bytearray | memoryview) -> int:  # type: ignore[override]
-        if self._sealed:
-            raise ValueError("write to a closed backup")
-        self._buffer += data
-        # keep up to a whole chunk back: the last chunk may be full, and only close() knows it is last
-        while len(self._buffer) > self._chunk_size:
-            self._seal(bytes(self._buffer[: self._chunk_size]), last=False)
-            del self._buffer[: self._chunk_size]
-        return len(data)
-
-    def close(self) -> None:
-        if not self._sealed and not self.closed:
-            self._seal(bytes(self._buffer), last=True)
-            self._buffer.clear()
-            self._sealed = True
-            self._out.flush()
-        super().close()
-
-    def abort(self) -> None:
-        """Stop without sealing the last chunk: what was written reads as incomplete, never as whole."""
-        self._sealed = True
-        self._buffer.clear()
-        super().close()
-
-
-class EncryptedReader(io.RawIOBase):
+class EncryptedReader(_ChunkReader):
     """A read-only stream of the decrypted content of the backup in ``src``.
 
     Opening checks the header and the passphrase (see :func:`read_header`, :class:`WrongPassphrase`).
@@ -324,57 +437,43 @@ class EncryptedReader(io.RawIOBase):
         keys = _derive(passphrase, self._header.salt, self._header.kdf)
         if not hmac.compare_digest(_mac(keys.header, self._header.signed), self._header.mac):
             raise WrongPassphrase("Wrong passphrase — or this backup's first bytes were changed.")
-        self._aead = AESGCM(keys.data)
-        self._sealed_size = self._header.chunk_size + TAG_BYTES
-        self._pending = b""  # one byte read ahead to learn whether a chunk is the last one
-        self._plain = memoryview(b"")
-        self._counter = 0
-        self._done = False
+        self._opener = _Opener(
+            AESGCM(keys.data), self._header.nonce_prefix, self._header.raw, self._header.chunk_size, src
+        )
 
     @property
     def header(self) -> Header:
         return self._header
 
-    def readable(self) -> bool:
-        return True
 
-    def _next_chunk(self) -> None:
-        sealed = self._pending + _read_exactly(self._src, self._sealed_size - len(self._pending))
-        self._pending = b""
-        last = len(sealed) < self._sealed_size
-        if not last:
-            self._pending = _read_exactly(self._src, 1)
-            last = not self._pending
-        if len(sealed) < TAG_BYTES:
-            raise DamagedBackup("This backup is cut short: its end is missing.")
-        try:
-            plain = self._aead.decrypt(
-                _nonce(self._header.nonce_prefix, self._counter, last), sealed, self._header.raw
-            )
-        except InvalidTag:
-            raise DamagedBackup(
-                "This backup was changed or damaged after it was made (or it is cut short), so it can't be trusted."
-            ) from None
-        self._counter += 1
-        self._done = last
-        self._plain = memoryview(plain)
+def _check_keyed(key: bytes, prefix: bytes, chunk_size: int) -> None:
+    if len(key) != KEY_BYTES or len(prefix) != PREFIX_BYTES:
+        raise ValueError("a keyed stream takes a 32-byte key and a 7-byte nonce prefix")
+    if not MIN_CHUNK_SIZE <= chunk_size <= MAX_CHUNK_SIZE:
+        raise ValueError("chunk_size out of range")
 
-    def readinto(self, buffer: bytearray | memoryview) -> int:  # type: ignore[override]
-        target = memoryview(buffer).cast("B")
-        while not self._plain:
-            if self._done:
-                return 0
-            self._next_chunk()
-        size = min(len(target), len(self._plain))
-        target[:size] = self._plain[:size]
-        self._plain = self._plain[size:]
-        return size
 
-    def read_to_end(self) -> int:
-        """Read (and authenticate) whatever is left; returns how many plaintext bytes that was."""
-        total = 0
-        while True:
-            data = self.read(CHUNK_SIZE)
-            if not data:
-                return total
-            total += len(data)
+class KeyedWriter(_ChunkWriter):
+    """:class:`EncryptedWriter` without a header: the caller gives the AES-256-GCM ``key``, the 7-byte
+    nonce ``prefix`` and the associated data (and keeps what it needs to open the stream again)."""
+
+    def __init__(
+        self, out: Sink, key: bytes, *, prefix: bytes, aad: bytes, chunk_size: int = CHUNK_SIZE
+    ) -> None:
+        super().__init__()
+        _check_keyed(key, prefix, chunk_size)
+        self._sealer = _Sealer(AESGCM(key), prefix, aad, chunk_size, out)
+        self._sealed = False
+
+
+class KeyedReader(_ChunkReader):
+    """:class:`EncryptedReader` without a header (see :class:`KeyedWriter`): every chunk is
+    authenticated before its bytes are returned, and a changed byte, a missing last chunk or a chunk
+    cut short raises :class:`DamagedBackup`."""
+
+    def __init__(
+        self, src: BinaryIO, key: bytes, *, prefix: bytes, aad: bytes, chunk_size: int = CHUNK_SIZE
+    ) -> None:
+        super().__init__()
+        _check_keyed(key, prefix, chunk_size)
+        self._opener = _Opener(AESGCM(key), prefix, aad, chunk_size, src)
