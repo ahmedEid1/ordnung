@@ -17,7 +17,7 @@
  */
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { invalidateLedger, qk } from "./hooks";
+import { invalidateLedger, qk, resetAfterReplace } from "./hooks";
 import { apiPath } from "./client";
 import { api } from "./endpoints";
 import type { Job, JobProgressEvent, JobStatus, LlmPausedEvent, ServerEvent, ServerEventType } from "./types";
@@ -233,6 +233,12 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
       void qc.invalidateQueries({ queryKey: qk.folder });
       if (ev.data.doc_id) void invalidateLedger(qc);
       break;
+    case "sync.updated":
+      // hand-off sync's status changed; `replaced`: this computer's data was just replaced (a take-over, a
+      // choice, a late change brought in), so every page loads again — health and the status itself stay
+      if (ev.data.replaced) resetAfterReplace(qc);
+      else void qc.invalidateQueries({ queryKey: qk.sync });
+      break;
     case "llm.paused":
       setState((s) => ({ ...s, paused: ev.data }));
       void qc.invalidateQueries({ queryKey: qk.health }); // Claude's status (Settings, the upload dialog)
@@ -282,6 +288,7 @@ function open(qc: QueryClient) {
       // we may have missed events while offline; a successful refetch also says "Back online"
       void invalidateLedger(qc);
       void qc.invalidateQueries({ queryKey: qk.health });
+      void qc.invalidateQueries({ queryKey: qk.sync }); // another computer may have taken over meanwhile
     }
     everConnected = true;
     setState((s) => ({ ...s, connected: true }));

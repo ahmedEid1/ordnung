@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Laptop } from "lucide-react";
 import { useCompleteOnboarding, useHealth, useProfile } from "@/api/hooks";
 import { BootScreen } from "@/app/screens";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
@@ -14,6 +14,8 @@ import { StepDone } from "./StepDone";
 import { StepAddress, StepClaude, StepRegion, StepWelcome } from "./Steps";
 import {
   DONE_STEP,
+  JOIN_LINK,
+  JOIN_PATH,
   WIZARD_STEPS,
   addressEmpty,
   buildOnboardingRequest,
@@ -143,7 +145,13 @@ export function OnboardingWizard() {
         <ArrowLeft aria-hidden />
         Back to Ordnung
       </Link>
-    ) : null;
+    ) : (
+      // hand-off sync: bring the Ordnung of another computer here instead of setting up a new one
+      <Link to={JOIN_PATH} className={buttonVariants({ variant: "ghost", className: "text-accent" })}>
+        <Laptop aria-hidden />
+        {JOIN_LINK}
+      </Link>
+    );
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-x-hidden bg-canvas">

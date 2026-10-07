@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Bell, CalendarDays, Cpu, Database, FolderInput, MapPin, Plug, Scale, ShieldCheck, Smartphone, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, Cpu, Database, FolderInput, Laptop, MapPin, Plug, Scale, ShieldCheck, Smartphone, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AttentionDot } from "@/components/shell/Sidebar";
 import { SECTION_IDS, SECTION_LABELS, type SectionId } from "./logic";
@@ -16,6 +16,7 @@ const ICONS: Record<SectionId, LucideIcon> = {
   claude: Plug,
   privacy: ShieldCheck,
   rules: Scale,
+  computers: Laptop,
   data: Database,
 };
 const SECTIONS = SECTION_IDS.map((id) => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] }));

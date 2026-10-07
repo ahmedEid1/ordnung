@@ -1,6 +1,6 @@
 /**
- * Settings' sections: their order (Phone right after the watched folder), their names, and where the privacy log
- * sends phone access's entries.
+ * Settings' sections: their order (Phone right after the watched folder, Your computers right before Data), their
+ * names, and where the privacy log sends phone access's and hand-off sync's entries.
  */
 import { describe, expect, it } from "vitest";
 import type { Activity } from "@/api/types";
@@ -9,9 +9,11 @@ import { activityHref, deviceActivityHref, leavesSection, parseSection, SECTION_
 const entry = (kind: string, ref_type: string | null = null, ref_id: string | null = null): Pick<Activity, "kind" | "ref_type" | "ref_id"> => ({ kind, ref_type, ref_id });
 
 describe("Settings sections", () => {
-  it("come in this order, Phone right after the watched folder", () => {
-    expect(SECTION_IDS).toEqual(["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "data"]);
+  it("come in this order, Phone right after the watched folder, Your computers right before Data", () => {
+    expect(SECTION_IDS).toEqual(["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "computers", "data"]);
     expect(SECTION_LABELS.phone).toBe("Phone");
+    expect(SECTION_LABELS.computers).toBe("Your computers");
+    expect(parseSection("computers")).toBe("computers");
     expect(parseSection("phone")).toBe("phone");
     expect(parseSection("phones")).toBe("profile");
   });
@@ -32,6 +34,12 @@ describe("the privacy log's links for phone access", () => {
     expect(activityHref(entry("phone.changed", "item", "itm_1"))).toBe("/settings?section=phone");
     // entries of other kinds without a letter lead nowhere, as before
     expect(activityHref(entry("review"))).toBeNull();
+  });
+
+  it("lead hand-off sync's entries to Settings → Your computers", () => {
+    expect(activityHref(entry("sync.taken_over"))).toBe("/settings?section=computers");
+    expect(activityHref(entry("sync.chosen"))).toBe("/settings?section=computers");
+    expect(activityHref(entry("syncing"))).toBeNull();
   });
 
   it("filter the privacy log to one phone", () => {

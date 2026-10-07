@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { BUNDESLAENDER, LANGUAGES, PRIVACY_STATEMENT } from "./options";
 import {
   DONE_STEP,
+  JOIN_LINK,
+  JOIN_PATH,
   WIZARD_STEPS,
   addressEmpty,
   buildOnboardingRequest,
@@ -37,6 +39,11 @@ describe("onboarding options", () => {
 });
 
 describe("wizard", () => {
+  it("offers another way in on its first step: bringing over the Ordnung of another computer (hand-off sync)", () => {
+    expect(JOIN_LINK).toBe("I already use Ordnung on another computer");
+    expect(JOIN_PATH).toBe("/join");
+  });
+
   it("requires a state before leaving the region step", () => {
     expect(canContinue(1, draft())).toBe(false);
     expect(canContinue(1, draft({ region: "XX" }))).toBe(false);
