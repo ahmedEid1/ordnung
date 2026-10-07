@@ -32,6 +32,7 @@ import unicodedata
 import weakref
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -94,11 +95,31 @@ _PRAGMAS: tuple[str, ...] = (
     "PRAGMA secure_delete=ON",  # deleted rows are overwritten, not left in free pages ("Delete means delete")
 )
 _READ_ONLY_PRAGMAS: tuple[str, ...] = ("PRAGMA busy_timeout=5000", "PRAGMA query_only=ON")
+#: While hand-off sync is on, every commit reaches the disk before the next push can carry it (on
+#: macOS through to the drive itself: ``fullfsync``); otherwise ``NORMAL`` (WAL's safe default).
+_DURABLE_PRAGMAS: tuple[str, ...] = (
+    "PRAGMA synchronous=FULL",
+    "PRAGMA fullfsync=ON",
+    "PRAGMA checkpoint_fullfsync=ON",
+)
+_NORMAL_PRAGMAS: tuple[str, ...] = (
+    "PRAGMA synchronous=NORMAL",
+    "PRAGMA fullfsync=OFF",
+    "PRAGMA checkpoint_fullfsync=OFF",
+)
 _READ_ONLY = frozenset({"id", "created_at", "updated_at"})
 _ACTIVE_JOB_STATUSES = ("queued", "running", "waiting")
 #: A job interrupted this often (the process died while reading it) is failed, not queued again.
 MAX_JOB_ATTEMPTS = 3
-_INTERRUPTIONS_KEY = "job_interruptions"  # meta: job id → how often the process died while reading it
+#: meta: job id → how often the process died while reading it (this computer's; never synced)
+INTERRUPTIONS_KEY = "job_interruptions"
+_INTERRUPTIONS_KEY = INTERRUPTIONS_KEY
+#: meta: the person-change counter (hand-off sync, :data:`ordnung.sync.PERSON_META_KEY`): moved inside
+#: the transaction of every write that runs under :func:`person_write`.
+PERSON_META_KEY = "sync_person"
+#: Set while a write the person made runs (sync's gate, the watched folder's intake, a CLI write):
+#: every transaction that changes something then also counts one person change (``PERSON_META_KEY``).
+PERSON_WRITE: ContextVar[bool] = ContextVar("ordnung_person_write", default=False)
 INTERRUPTED_JOB_ERROR = (
     "Reading this letter stopped Ordnung several times, so it won't be tried again. "
     "If it is a genuine letter, print it to a new PDF or take photos of it and add those."
@@ -113,6 +134,18 @@ SETTINGS_META_KEY = _SETTINGS_KEY
 
 class NotFoundError(LookupError):
     """An update or lookup that requires an existing row found none."""
+
+
+@contextmanager
+def person_write() -> Iterator[None]:
+    """Count every transaction that changes something inside the block as a change the person made
+    (:data:`PERSON_WRITE`; the counter is bumped in the same transaction, so a snapshot of the database
+    always holds the count of exactly the person changes it contains)."""
+    token = PERSON_WRITE.set(True)
+    try:
+        yield
+    finally:
+        PERSON_WRITE.reset(token)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -455,6 +488,8 @@ class _ThreadState(threading.local):
     def __init__(self) -> None:
         self.conn: sqlite3.Connection | None = None
         self.depth = 0
+        #: the store's durability generation this thread's connection was last set to
+        self.durable_gen = 0
         self.after_commit: list[Callable[[], None]] = []
         # Held only here: dropped with the thread's state when the thread ends, which closes ``conn``.
         self.closer: _ConnectionToken | None = None
@@ -491,7 +526,12 @@ class Store:
     """All reads and writes of one Ordnung database. Safe to share between threads."""
 
     def __init__(
-        self, db_path: str | Path, *, data_dir: str | Path | None = None, read_only: bool = False
+        self,
+        db_path: str | Path,
+        *,
+        data_dir: str | Path | None = None,
+        read_only: bool = False,
+        durable: bool = False,
     ) -> None:
         """Open (creating and migrating if needed) the database at ``db_path``.
 
@@ -499,10 +539,16 @@ class Store:
         is used to resolve relative file paths and to purge files in :meth:`delete_document`.
         ``read_only`` opens an existing, up-to-date database with ``mode=ro`` and
         ``PRAGMA query_only=ON`` (the MCP server's view); every write then raises ``PermissionError``.
+        ``durable`` commits with ``synchronous=FULL`` (hand-off sync is on: :meth:`set_durable`).
         """
         self.db_path = Path(db_path)
         self.paths = Paths(Path(data_dir) if data_dir is not None else self.db_path.parent)
         self.read_only = read_only
+        self.durable = False
+        # bumped by set_durable: each thread's connection applies the new setting at its next transaction
+        self._durable_gen = 1
+        if durable:
+            self.set_durable(True)
         self._local = _ThreadState()
         self._connections: list[sqlite3.Connection] = []
         # re-entrant: a thread's state may be dropped (closing its connection) wherever it is freed
@@ -515,11 +561,28 @@ class Store:
             raise
 
     @classmethod
-    def open(cls, paths: Paths, *, read_only: bool = False) -> Store:
+    def open(cls, paths: Paths, *, read_only: bool = False, durable: bool = False) -> Store:
         """Open the database of a data directory (creating the directory layout unless read-only)."""
         if not read_only:
             paths.ensure()
-        return cls(paths.db, data_dir=paths.data_dir, read_only=read_only)
+        return cls(paths.db, data_dir=paths.data_dir, read_only=read_only, durable=durable)
+
+    def set_durable(self, on: bool) -> None:
+        """Commit with ``synchronous=FULL`` (``on``) or ``NORMAL`` from now on, in every thread: each
+        thread's connection takes the setting at its next transaction. Also turns on (or off) the
+        flushing of the files Ordnung writes (:func:`ordnung.durable.set_durable`, process-wide)."""
+        from ordnung import durable
+
+        self.durable = on
+        self._durable_gen += 1
+        durable.set_durable(on)
+
+    def _apply_durability(self, conn: sqlite3.Connection, state: _ThreadState) -> None:
+        if state.durable_gen == self._durable_gen or self.read_only:
+            return
+        for pragma in _DURABLE_PRAGMAS if self.durable else _NORMAL_PRAGMAS:
+            conn.execute(pragma)
+        state.durable_gen = self._durable_gen
 
     def _migrate(self) -> int:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -599,6 +662,46 @@ class Store:
             conn.execute("VACUUM")
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
 
+    def replace_with(
+        self,
+        staged: Path,
+        merge: Callable[[sqlite3.Connection, sqlite3.Connection], None],
+        *,
+        pages: int = -1,
+        progress: Callable[[int, int, int], object] | None = None,
+    ) -> None:
+        """Replace the whole database with the one in the file ``staged``, in place (hand-off sync).
+
+        Under the process-wide write lock: ``merge(staged, live)`` first carries what must stay from the
+        live database into the staged one (it may raise to give up — nothing changed then); then
+        SQLite's online backup copies the staged database into the live file as **one** write
+        transaction (``synchronous=FULL``): a crash or kill leaves the old database or the new one,
+        never a mix, readers in other connections and processes keep their snapshot until their next
+        transaction, and the file stays in WAL mode. The WAL is truncated, a ``quick_check`` must
+        pass, and the files are made private again. The staged file must be a rollback-journal
+        database with the live database's page size and schema (sync stages it so). ``pages`` and
+        ``progress`` are passed to the backup (tests interrupt it there).
+        """
+        if self.read_only:
+            raise PermissionError(f"{self.db_path} is opened read-only")
+        with _WRITE_LOCK:
+            source = sqlite3.connect(staged, isolation_level=None)
+            live = sqlite3.connect(self.db_path, isolation_level=None, timeout=5.0)
+            try:
+                for pragma in ("PRAGMA journal_mode=WAL", "PRAGMA busy_timeout=5000", *_DURABLE_PRAGMAS):
+                    live.execute(pragma)
+                merge(source, live)
+                source.backup(live, pages=pages, progress=progress)
+                live.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # busy while a reader is open: fine
+                check = live.execute("PRAGMA quick_check").fetchall()
+                if check != [("ok",)]:
+                    raise sqlite3.DatabaseError(f"the replaced database fails its check: {check[:3]}")
+                self.schema_version = current_version(live)
+            finally:
+                source.close()
+                live.close()
+            self._make_private()
+
     def __enter__(self) -> Store:
         return self
 
@@ -625,6 +728,10 @@ class Store:
         conn.row_factory = sqlite3.Row
         for pragma in pragmas:
             conn.execute(pragma)
+        if self.durable and not self.read_only:
+            for pragma in _DURABLE_PRAGMAS:
+                conn.execute(pragma)
+        self._local.durable_gen = self._durable_gen
         with self._connections_lock:
             if self._closed:
                 conn.close()
@@ -658,11 +765,20 @@ class Store:
 
     @contextmanager
     def _transaction(self, conn: sqlite3.Connection, state: _ThreadState) -> Iterator[None]:
+        self._apply_durability(conn, state)
         with _WRITE_LOCK:
             conn.execute("BEGIN IMMEDIATE")
             state.depth = 1
+            changes = conn.total_changes
             try:
                 yield
+                if PERSON_WRITE.get() and conn.total_changes != changes:
+                    # in the same transaction: a snapshot holds exactly the person changes it contains
+                    conn.execute(
+                        "INSERT INTO meta (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE "
+                        "SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)",
+                        (PERSON_META_KEY,),
+                    )
                 conn.execute("COMMIT")
             except BaseException:
                 if conn.in_transaction:

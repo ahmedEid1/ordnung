@@ -38,7 +38,7 @@ import sqlite3
 import stat
 import tarfile
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import IO, Any, BinaryIO
@@ -152,27 +152,48 @@ def table_counts(conn: sqlite3.Connection) -> dict[str, int]:
     }
 
 
-def snapshot_database(db_path: Path) -> _Snapshot:
-    """A consistent copy of the database, in memory (opened read-only; the WAL is folded in)."""
+def database_copy(db_path: Path) -> sqlite3.Connection:
+    """A consistent copy of the database at ``db_path``, as an in-memory connection: SQLite's online
+    backup through a read-only (``mode=ro``) connection, one read transaction, the WAL folded in. The
+    caller closes it. Nothing on disk is written (hand-off sync scrubs this copy before it pushes)."""
     if not db_path.is_file():
         raise BackupError(f"There is no Ordnung database in {db_path.parent}.")
     source = sqlite3.connect(f"{db_path.resolve().as_uri()}?mode=ro", uri=True)
     copy = sqlite3.connect(":memory:")
     try:
         source.backup(copy)
-        _leave_out(copy)
-        version = int(copy.execute("PRAGMA user_version").fetchone()[0])
-        data = bytearray(copy.serialize())
-        tables = table_counts(copy)
-    finally:
+    except BaseException:
         copy.close()
+        raise
+    finally:
         source.close()
-    # a self-contained file: marked as a rollback-journal database, as `journal_mode=DELETE` would
-    # leave it (the copy has no WAL); Ordnung switches it back to WAL when it opens it
+    return copy
+
+
+def serialized(conn: sqlite3.Connection) -> bytes:
+    """The database file of the in-memory ``conn``, self-contained: marked as a rollback-journal
+    database, as ``journal_mode=DELETE`` would leave it (the copy has no WAL); Ordnung switches it
+    back to WAL when it opens it."""
+    data = bytearray(conn.serialize())
     if len(data) > _FILE_FORMAT_BYTES[1] and data[_FILE_FORMAT_BYTES[0]] == _WAL_FORMAT:
         for offset in _FILE_FORMAT_BYTES:
             data[offset] = _ROLLBACK_FORMAT
-    return _Snapshot(data=bytes(data), schema_version=version, tables=tables)
+    return bytes(data)
+
+
+def _snapshot_of(copy: sqlite3.Connection) -> _Snapshot:
+    _leave_out(copy)
+    version = int(copy.execute("PRAGMA user_version").fetchone()[0])
+    return _Snapshot(data=serialized(copy), schema_version=version, tables=table_counts(copy))
+
+
+def snapshot_database(db_path: Path) -> _Snapshot:
+    """A consistent copy of the database, in memory (opened read-only; the WAL is folded in)."""
+    copy = database_copy(db_path)
+    try:
+        return _snapshot_of(copy)
+    finally:
+        copy.close()
 
 
 def _leave_out(copy: sqlite3.Connection) -> None:
@@ -193,7 +214,9 @@ def _leave_out(copy: sqlite3.Connection) -> None:
 def iter_data_files(data_dir: Path) -> Iterator[tuple[str, Path]]:
     """``(archive name, path)`` of every regular file under the backed-up folders, in name order.
 
-    Symbolic links (to files or folders) are skipped, never followed.
+    Symbolic links (to files or folders) are skipped, never followed. So are files whose name starts
+    with a dot: Ordnung writes none, but an atomic write cut short leaves one behind
+    (``.<name>.<pid>.<thread>.part``), and it is no file of the person's.
     """
     for folder in FOLDERS:
         root = data_dir / folder
@@ -203,6 +226,8 @@ def iter_data_files(data_dir: Path) -> Iterator[tuple[str, Path]]:
         for current, dirs, names in os.walk(root, followlinks=False):
             dirs[:] = [name for name in dirs if not (Path(current) / name).is_symlink()]
             for name in names:
+                if name.startswith("."):
+                    continue
                 path = Path(current) / name
                 with contextlib.suppress(OSError):
                     if stat.S_ISREG(path.lstat().st_mode):
@@ -279,23 +304,52 @@ class BackupStream:
         *,
         kdf: KdfParams = DEFAULT_KDF,
         created_at: str | None = None,
+        _snapshot: _Snapshot | None = None,
+        _files: Sequence[tuple[str, Path]] | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.contents: BackupContents | None = None
         # a missing database fails here, before any byte is sent
-        self._snapshot = snapshot_database(data_dir / DB_NAME)
+        self._snapshot = _snapshot if _snapshot is not None else snapshot_database(data_dir / DB_NAME)
+        self._files = _files
         self._stamp = created_at or real_now_iso()
         self._drain = _Drain()
         self._writer = EncryptedWriter(self._drain, passphrase, kdf=kdf)
 
+    @classmethod
+    def from_parts(
+        cls,
+        database: Path,
+        files: Sequence[tuple[str, Path]],
+        passphrase: str,
+        *,
+        kdf: KdfParams = DEFAULT_KDF,
+        created_at: str | None = None,
+    ) -> BackupStream:
+        """The backup of a data folder that exists only in parts: the database file ``database`` and the
+        ``(archive name, path)`` of every data file — hand-off sync keeps a forgotten computer's
+        version this way, from what it staged (the same contents and checks as any backup)."""
+        for name, _path in files:
+            checked_name(name)
+        copy = database_copy(database)
+        try:
+            snapshot = _snapshot_of(copy)
+        finally:
+            copy.close()
+        ordered = sorted(files)
+        return cls(
+            database.parent, passphrase, kdf=kdf, created_at=created_at, _snapshot=snapshot, _files=ordered
+        )
+
     def __iter__(self) -> Iterator[bytes]:
         drain, writer, snapshot = self._drain, self._writer, self._snapshot
+        files = self._files if self._files is not None else iter_data_files(self.data_dir)
         try:
             with tarfile.open(fileobj=writer, mode="w|", format=tarfile.PAX_FORMAT) as tar:
                 database = _add(tar, DB_NAME, snapshot.data, time.time())
                 yield drain.take()
                 entries: list[ManifestFile] = []
-                for name, path in iter_data_files(self.data_dir):
+                for name, path in files:
                     try:
                         data, mtime = path.read_bytes(), path.stat().st_mtime
                     except FileNotFoundError:
