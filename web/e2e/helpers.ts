@@ -1,12 +1,13 @@
 /**
  * Shared steps for the e2e suite: talking to the demo API with the page's session, finding demo letters
  * by their sample's file name and demo contracts by their category, the New-mail tray, waiting for a page to
- * settle, the raw-enum guard and the axe scan.
+ * settle, the raw-enum guard, the axe scan, and a phone's browser for the real app's phone access.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { test as base, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { test as base, devices, expect, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from "@playwright/test";
 import type { Contract, ContractCategory } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
+import { PHONE_BASE_URL } from "./env";
 
 /** `test` that also fails when the app throws an uncaught error in the browser. */
 export const test = base.extend<{ pageErrors: void }>({
@@ -38,6 +39,13 @@ export async function apiPatch<T>(page: Page, path: string, data: unknown): Prom
   const res = await page.request.patch(path, { data, headers: CLIENT });
   expect(res.ok(), `PATCH ${path} → ${res.status()}`).toBe(true);
   return (await res.json()) as T;
+}
+
+/** A change (`POST`, `PUT`, `DELETE`…) with the page's session; the answer's JSON (`null` for 204). */
+export async function apiSend<T>(page: Page, method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, data?: unknown): Promise<T> {
+  const res = await page.request.fetch(path, { method, data, headers: CLIENT });
+  expect(res.ok(), `${method} ${path} → ${res.status()} ${res.ok() ? "" : await res.text()}`).toBe(true);
+  return (res.status() === 204 ? null : await res.json()) as T;
 }
 
 export interface TourState {
@@ -276,4 +284,26 @@ export async function expectAccessible(page: Page, testInfo: TestInfo, name: str
     (v) => `${v.id} (${v.impact}): ${v.help}\n${v.nodes.map((n) => `    ${n.target.join(" ")} — ${n.failureSummary?.split("\n").slice(1).join(" ").trim()}`).join("\n")}`,
   );
   expect(summary, `${name}: serious/critical axe violations`).toEqual([]);
+}
+
+// ------------------------------------------------------------------------------------------------
+// A phone (the real app's phone access, e2e/real-app-phone.spec.ts)
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * A phone's browser on the home network: a Pixel 7 (412 px wide, touch, Chrome on Android) that opens the real
+ * app's phone listener ({@link PHONE_BASE_URL}). It starts with no cookies at all — not the computer's session
+ * the project's tests start from (a context made in a test inherits the project's `storageState` unless told
+ * otherwise, and cookies ignore ports) — and clicks through the certificate warning, as a phone does once:
+ * Ordnung made the certificate itself. `options` add to (or replace) these.
+ */
+export function phoneContext(browser: Browser, options: BrowserContextOptions = {}): Promise<BrowserContext> {
+  return browser.newContext({
+    ...devices["Pixel 7"],
+    ignoreHTTPSErrors: true,
+    locale: "en-GB",
+    baseURL: PHONE_BASE_URL,
+    storageState: { cookies: [], origins: [] },
+    ...options,
+  });
 }

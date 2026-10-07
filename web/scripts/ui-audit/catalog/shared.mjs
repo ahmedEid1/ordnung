@@ -11,6 +11,7 @@ export const SETTINGS_SECTIONS = {
   reminders: "Reminders",
   calendar: "Calendar",
   folder: "Watched folder",
+  phone: "Phone",
   ai: "AI & models",
   claude: "Claude connection",
   privacy: "Privacy & AI usage",
