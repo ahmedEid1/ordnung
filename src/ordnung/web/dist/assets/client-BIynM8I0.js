@@ -1,0 +1,1 @@
+import{Qn as e}from"./scale-DDvPmNGE.js";function t(){return e().data?.client===`phone`}export{t};
