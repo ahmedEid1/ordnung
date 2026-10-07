@@ -696,7 +696,8 @@ class SyncAgent:
             if summary
             else []
         )
-        pending = bool(self.local.pending) if self.local is not None else self._dirty_since is not None
+        # a commit seen since the last save, or what the last look found unsaved
+        pending = self._dirty_since is not None or bool(self.local is not None and self.local.pending)
         others = [computer for computer in computers if not computer.this and computer.state != "left"]
         return SyncStatus(
             available=available,

@@ -192,8 +192,9 @@ test("the laptop starts syncing with a suggested passphrase, and its letter is s
   await test.step("set up: the folder is looked at, a five-word passphrase is suggested", async () => {
     await open(page, COMPUTERS, "Settings");
     const card = page.getByRole("region", { name: SETUP_TITLE });
-    await card.getByLabel(FOLDER_FIELD).fill(A.folder);
+    // the name first: leaving the folder field looks at the folder by itself (and "Next" becomes the next step)
     await card.getByLabel(NAME_FIELD).fill(A.name);
+    await card.getByLabel(FOLDER_FIELD).fill(A.folder);
     await card.getByRole("button", { name: NEXT }).click();
     await expect(card.getByText(NEW_FOLDER)).toBeVisible();
     await card.getByRole("button", { name: SUGGEST }).click();
@@ -210,7 +211,8 @@ test("the laptop starts syncing with a suggested passphrase, and its letter is s
     await open(page, "/inbox", "Inbox");
     await page.locator("input[type=file][multiple]").first().setInputFiles(REAL_LETTER);
     const dialog = page.getByRole("dialog", { name: "Add this letter?" });
-    await dialog.getByRole("button", { name: "Add letter" }).click();
+    // "Store now, read later" until the app has checked that Claude is there (the spec run on its own)
+    await dialog.getByRole("button", { name: /^(Add letter|Store now, read later)$/ }).click();
     await expect(dialog).toBeHidden();
     await expect
       .poll(
@@ -241,7 +243,8 @@ test("the desktop joins from its welcome page, waits for what hasn't arrived, an
   expect((await syncOf(b.page)).available, "hand-off sync can be used on the desktop").toBe(true);
 
   await test.step("the sync tool brings the key file and the laptop's head first, the letter's files not yet", async () => {
-    const first = await tool.deliver("a", { only: (path) => !ORDNUNG_NAMES.object.test(path) });
+    // with a Dropbox-style conflicted copy next to the head: the desktop joins past it, and never removes it
+    const first = await tool.deliver("a", { only: (path) => !ORDNUNG_NAMES.object.test(path), conflictCopies: true });
     expect(first.filter((d) => ORDNUNG_NAMES.head.test(d.path))).toHaveLength(1);
     expect(tool.pending("a").length, "objects still on their way").toBeGreaterThan(3);
   });
@@ -253,8 +256,9 @@ test("the desktop joins from its welcome page, waits for what hasn't arrived, an
     await b.page.waitForURL(/\/join$/);
     await expect(b.page.getByRole("heading", { level: 1, name: JOIN_LINK })).toBeVisible();
     const card = b.page.getByRole("region", { name: JOIN_TITLE });
-    await card.getByLabel(FOLDER_FIELD).fill(B.folder);
+    // the name first: leaving the folder field looks at the folder by itself (and "Next" becomes the next step)
     await card.getByLabel(NAME_FIELD).fill(B.name);
+    await card.getByLabel(FOLDER_FIELD).fill(B.folder);
     await card.getByRole("button", { name: NEXT }).click();
     await expect(card.getByText(EXISTING_FOLDER)).toBeVisible();
     await card.getByLabel(JOIN_PASSPHRASE_FIELD, { exact: true }).fill(passphrase);
