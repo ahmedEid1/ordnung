@@ -263,7 +263,8 @@ export function BackupCard({
             size="sm"
           />
         ) : (
-          <p className="flex min-h-5 items-start gap-2 text-sm leading-5 text-muted">
+          // a div, not a p: the loading line is a block (a <div> inside a <p> is invalid HTML)
+          <div className="flex min-h-5 items-start gap-2 text-sm leading-5 text-muted">
             <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
             {info.isPending && !staticDemo ? (
               <Skeleton className="h-4 w-64 max-w-full" />
@@ -276,7 +277,7 @@ export function BackupCard({
               // the online demo has nothing of the visitor's to count
               <span>AES-256 encryption, checked in full when it is restored.</span>
             )}
-          </p>
+          </div>
         )}
         {staticDemo ? (
           <p className="rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">

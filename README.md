@@ -275,8 +275,9 @@ Land (rows ⁴, ⁶ and ⁸), and 91.1 % on the holdout3 split, against 100 % wi
 agent that read neither the reading code, the rules engine, the prompts nor any result. Two more agents each
 derived every deadline from the letters and the law before seeing the labels, and both matched all of them;
 one letter was redrawn before the recording so that it tells the old and the new delivery rule apart (its
-date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them and
-no code changed since.
+date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them.
+The code has changed since (the looser dropped-date check, the phone companion and hand-off sync); replayed on
+the current code, the same recording gives the same prediction for every letter (`tests/test_holdout3_replay.py`).
 
 What the numbers say:
 
@@ -517,7 +518,7 @@ More in [docs/architecture.md](docs/architecture.md).
 
 | | |
 |---|---|
-| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
+| Tests | 9,300+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,800+ Vitest tests; 400+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI; hand-off sync's standing-by screen, which only two real computers show, is checked at 320 px in their story ([`web/e2e/real-app-sync.spec.ts`](web/e2e/real-app-sync.spec.ts)) |
 | CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
