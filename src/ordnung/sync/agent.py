@@ -619,7 +619,9 @@ class SyncAgent:
 
     @property
     def in_use_on(self) -> str | None:
-        """The name of the computer in use (as last seen)."""
+        """The name of the computer in use (as last seen; this one's own the moment it claims)."""
+        if self.mode == "in_use" and self.summary is not None:
+            return self.summary.name
         for computer in self.view.computers if self.view is not None else ():
             if getattr(computer, "in_use", False):
                 return str(computer.name)

@@ -335,8 +335,9 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
               sync never follows links. Move {info.links_left_out.length === 1 ? "it" : "them"} into the data folder to bring {info.links_left_out.length === 1 ? "it" : "them"} along.
             </Callout>
           ) : null}
+          {/* typed in while the folder is looked at (leaving the folder field looks at it): only connecting locks it */}
           <Field id="sync-name" label="This computer's name" hint="How your other computers name this one. A name already taken gets “ (2)”." error={errors.name}>
-            <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" maxLength={80} readOnly={busy} className="sm:max-w-sm" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" maxLength={80} readOnly={connect.isPending} className="sm:max-w-sm" />
           </Field>
           {kind ? (
             <div className={cn("space-y-4 border-t border-line pt-4")}>

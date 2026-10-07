@@ -49,7 +49,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic.json_schema import models_json_schema
 
 from ordnung import __version__, models
-from ordnung.api.deps import ApiState
+from ordnung.api.deps import SHUTDOWN_GRACE_S, ApiState
 from ordnung.api.phone_gate import PhoneGate, PhoneListener
 from ordnung.api.routes import ROUTERS
 from ordnung.api.routes.ask import StreamEvent
@@ -151,6 +151,10 @@ def _lifespan(state: ApiState) -> Callable[[FastAPI], AbstractAsyncContextManage
             await state.phone.stop()  # first: phones' requests end before the worker stops
             await state.sync.save_before_stop()  # the person's changes, before readings' grace period
             await state.stop_background(final=True)
+            # a cancelled task's thread (calendar sync, a reading) may still be using the Store, which
+            # closes after this: wait for it (bounded)
+            if not await state.drain(SHUTDOWN_GRACE_S):
+                log.warning("a background thread was still running when Ordnung stopped")
             await state.sync.close()  # the last save, the head says "closed"; the Store is still open
 
     return lifespan

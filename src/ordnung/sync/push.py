@@ -106,6 +106,9 @@ CHANGED_MESSAGE = "Files changed while Ordnung was saving; it tries again in a m
 class LocalDamaged(SyncError):
     """A local original whose content no longer matches its name (finding 11c)."""
 
+    #: the problem the sync agent shows (:data:`ordnung.sync.SyncProblemCode`)
+    problem = "local_damaged"
+
     def __init__(self, path: str) -> None:
         super().__init__("folder_problem", LOCAL_DAMAGED_MESSAGE)
         self.path = path
@@ -114,6 +117,9 @@ class LocalDamaged(SyncError):
 class TryAgain(SyncError):
     """The data changed while the push ran (a letter deleted between the snapshot and the walk, a file
     re-rendered while it was sealed): nothing was committed; the next push picks it up."""
+
+    #: shown only when saving keeps failing (the agent tries again soon)
+    problem = "save_failing"
 
     def __init__(self, message: str = CHANGED_MESSAGE) -> None:
         super().__init__("folder_problem", message)

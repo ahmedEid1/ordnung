@@ -439,6 +439,34 @@ describe("Settings → Your computers: setting up", () => {
     await waitFor(() => expect(passphrase).toHaveFocus());
   });
 
+  it("takes the computer's name typed while the folder is looked at (leaving the folder field looks at it)", async () => {
+    useMockApi();
+    const mocked = globalThis.fetch;
+    let asked = false;
+    let release!: () => void;
+    const held = new Promise<void>((done) => (release = done));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/sync/inspect")) {
+        asked = true;
+        await held;
+      }
+      return mocked(input, init);
+    });
+    const user = userEvent.setup();
+    openSection();
+    const card = await screen.findByRole("region", { name: "Use Ordnung on more than one computer" }, WAIT);
+    await user.type(within(card).getByLabelText("Sync folder"), "/home/sam/Nextcloud/Ordnung-new");
+    const name = within(card).getByLabelText("This computer's name");
+    await user.click(name);
+    await waitFor(() => expect(asked).toBe(true), WAIT);
+    await user.clear(name);
+    await user.type(name, "desk");
+    expect(name).toHaveValue("desk");
+    release();
+    expect(await within(card).findByRole("button", { name: "Start syncing" }, WAIT)).toBeEnabled();
+    expect(name).toHaveValue("desk");
+  });
+
   it("warns when Ordnung's data folder itself is inside a synced folder", async () => {
     const { srv } = useMockApi();
     srv.sync.dataFolderSynced = true;
