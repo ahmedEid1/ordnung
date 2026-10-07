@@ -6,14 +6,17 @@ are removed from it and its app password from the OS keyring before anything els
 knows which events are its own, and the database that says so is about to go); if that can't be
 done — the server can't be reached, the password isn't there — nothing is deleted and the answer
 (409) says how to go on: try again, or disconnect the calendar first and leave its events there.
-Then the database is emptied in place (dropped, re-created and vacuumed, so nothing deleted stays in
-the file) and Ordnung's files — originals, page images, letter PDFs, the inbox folder — are removed.
+Phone access stops first and forgets its phones (the database holds them; phone access's certificates
+in ``phone/`` go with Ordnung's files). Then the database is emptied in place (dropped, re-created and
+vacuumed, so nothing deleted stays in the file) and Ordnung's files — originals, page images, letter
+PDFs, the inbox folder, phone access's certificates — are removed.
 No calendar sync runs meanwhile (it would write its record back into the emptied database). The
 data-folder lock and ``server.json`` stay, so the running server keeps working and the command line
 still finds it. Entries Ordnung did not create (for
 example when the data folder was pointed at a folder with other files) are never touched; they are
 listed in the answer, which also tells the browser to empty its cache (``Clear-Site-Data``). The
-zero-token demo refuses (409): ``ordnung demo --reset``, once the demo is stopped, starts it over.
+zero-token demo refuses (409): ``ordnung demo --reset``, once the demo is stopped, starts it over. A
+paired phone can never ask for it (403).
 """
 
 from __future__ import annotations
@@ -25,11 +28,11 @@ import shutil
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import clock
-from ordnung.api.deps import StateDep
+from ordnung.api.deps import StateDep, require_computer
 from ordnung.api.routes.calendar_sync import SecretsDep, TransportDep
 from ordnung.api.routes.documents import CLEAR_CACHE
 from ordnung.app_context import SIMULATED_TODAY_KEY, AppContext
@@ -82,7 +85,7 @@ class CalendarNotCleared(RuntimeError):
 def _ordnung_entries(ctx: AppContext) -> frozenset[str]:
     """Names in the data folder that Ordnung itself creates (besides the lock and ``server.json``)."""
     paths = ctx.paths
-    folders = {paths.files.name, paths.derived.name, paths.drafts.name, paths.inbox.name}
+    folders = {paths.files.name, paths.derived.name, paths.drafts.name, paths.inbox.name, paths.phone.name}
     return frozenset(folders | {paths.db.name + suffix for suffix in _DB_SUFFIXES})
 
 
@@ -152,6 +155,7 @@ def wipe_data_dir(ctx: AppContext, secrets: SecretStore | None = None, transport
             "connected calendar's events couldn't be removed (nothing was deleted)."
         }
     },
+    dependencies=[Depends(require_computer)],
 )
 async def delete_everything(
     body: DeleteEverything,
@@ -171,6 +175,7 @@ async def delete_everything(
     worker_was_running = ctx.worker.running
     await state.background.stop()
     await state.folder.pause()  # nothing may be added while the data goes; the setting goes with it
+    await state.phone.forget()  # no phone may reach what is going; its record and certificates go too
     await ctx.worker.stop(grace=WORKER_GRACE_S)
     try:
         result = await asyncio.to_thread(wipe_data_dir, ctx, secrets, transport)
@@ -178,6 +183,8 @@ async def delete_everything(
         with contextlib.suppress(Exception):  # what stays is watched again, as its settings say
             ctx.reload_settings()
             await state.folder.reconfigure()
+        with contextlib.suppress(Exception):  # and phones reach it again, if phone access was on
+            await state.phone.start_if_enabled()
         if isinstance(exc, CalendarNotCleared):  # nothing was deleted
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
         raise

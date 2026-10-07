@@ -474,6 +474,8 @@ def _added_message(store: Store, filename: str, source: str, hold: bool) -> str:
     parent = store.get_document(parent_id) if parent_id else None
     if source == "folder":
         origin = " from your watched folder"
+    elif source == "phone":
+        origin = " from your phone"
     elif parent is not None:
         origin = f" from the e-mail “{parent.title or parent.filename}”"
     else:

@@ -7,7 +7,8 @@ while it is made (:class:`~ordnung.backup.archive.BackupStream`, one step per fi
 on disk, the database snapshot is consistent even while Ordnung keeps working, and a browser that
 goes away stops it — what it received then has no sealed end and is refused on restore.
 
-The passphrase travels only over the loopback connection, in the request body. It is used to derive
+The passphrase travels only over the loopback connection, in the request body (a paired phone can't
+ask for a backup: 403, also behind the phone listener's allow-list). It is used to derive
 the key and is never stored, logged or echoed: a passphrase against the policy (at least 12
 characters, at most 1024) is refused with the rule, not the value, and request-validation errors
 never reach this field because it accepts any string. The same backup as ``ordnung backup``.
@@ -18,13 +19,13 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Iterator
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import backup as backups
 from ordnung import clock
-from ordnung.api.deps import CtxDep
+from ordnung.api.deps import CtxDep, require_computer
 from ordnung.app_context import AppContext
 from ordnung.backup.archive import BackupStream
 from ordnung.backup.container import FORMAT_VERSION
@@ -73,7 +74,7 @@ def _info(ctx: AppContext) -> BackupInfo:
     )
 
 
-@router.get("/backup", response_model=BackupInfo)
+@router.get("/backup", response_model=BackupInfo, dependencies=[Depends(require_computer)])
 async def backup_info(ctx: CtxDep) -> BackupInfo:
     """What an encrypted backup would hold now, and how long its passphrase must be."""
     return await asyncio.to_thread(_info, ctx)
@@ -96,6 +97,7 @@ def _stream(ctx: AppContext, backup: BackupStream) -> Iterator[bytes]:
         200: {"content": {BACKUP_TYPE: {}}, "description": "The encrypted backup file"},
         422: {"description": "The passphrase is too short or too long (the rule, never the value)"},
     },
+    dependencies=[Depends(require_computer)],
 )
 async def create_backup(body: BackupRequest, ctx: CtxDep) -> StreamingResponse:
     """An encrypted backup of everything (database, letters, page images, letter PDFs) as a download."""

@@ -5,7 +5,8 @@
 one ``text`` event without text when the answer is being written (its words are never sent before
 the check, ADR 0008), then ``done`` (the checked answer's text, the check's note, validated
 citations, message and thread ids) or ``error``. Closing the connection stops the answer and the
-``claude`` process behind it.
+``claude`` process behind it. Asked on a paired phone, the tools mask the person's own numbers
+(:mod:`ordnung.phone.mask`), as the phone's *My numbers* does.
 """
 
 from __future__ import annotations
@@ -13,10 +14,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung.api.deps import ApiState, StateDep, StoreDep
+from ordnung.api.deps import ApiState, StateDep, StoreDep, is_phone
 from ordnung.api.routes.demo import optional_demo_function
 from ordnung.api.sse import EventStreamResponse, close_iterator, model_stream_response
 from ordnung.assistant.ask import ask_stream, checked_by_claims, stored_answer, stored_note_label
@@ -68,11 +69,13 @@ class StreamEvent(BaseModel):
     thread_id: str | None = None
 
 
-def _service_stream(state: ApiState, question: str, thread_id: str | None) -> AsyncIterator[LLMStreamEvent]:
+def _service_stream(
+    state: ApiState, question: str, thread_id: str | None, masked_numbers: bool = False
+) -> AsyncIterator[LLMStreamEvent]:
     """The Ask service's events; in the demo a missing recording becomes one friendly event (which says
     so when a suggested question misses because the person changed the demo, and points to the suggested
     questions only while the demo offers them)."""
-    events = ask_stream(state.ctx, question, thread_id)
+    events = ask_stream(state.ctx, question, thread_id, masked_numbers=masked_numbers)
     friendly = optional_demo_function("demo_safe_stream") if state.demo else None
     if friendly is None:
         return events
@@ -82,9 +85,11 @@ def _service_stream(state: ApiState, question: str, thread_id: str | None) -> As
     return paced(safe) if paced is not None else safe
 
 
-async def answer_events(state: ApiState, question: str, thread_id: str | None) -> AsyncIterator[StreamEvent]:
+async def answer_events(
+    state: ApiState, question: str, thread_id: str | None, masked_numbers: bool = False
+) -> AsyncIterator[StreamEvent]:
     """The Ask service's events in the API's shape (model usage and raw responses left out)."""
-    stream = _service_stream(state, question, thread_id)
+    stream = _service_stream(state, question, thread_id, masked_numbers)
     try:
         async for event in stream:
             yield StreamEvent.model_validate(event.model_dump(exclude={"response"}))
@@ -97,9 +102,9 @@ async def answer_events(state: ApiState, question: str, thread_id: str | None) -
     response_class=EventStreamResponse,
     responses={200: {"model": StreamEvent, "description": "A stream of StreamEvent messages (SSE)."}},
 )
-async def ask(body: AskRequest, state: StateDep) -> EventStreamResponse:
+async def ask(body: AskRequest, state: StateDep, request: Request) -> EventStreamResponse:
     """Answer a question about the person's records, streamed."""
-    return model_stream_response(answer_events(state, body.question, body.thread_id))
+    return model_stream_response(answer_events(state, body.question, body.thread_id, is_phone(request)))
 
 
 class ThreadMessage(ChatMessage):

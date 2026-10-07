@@ -14,11 +14,16 @@ receipts); ``<untrusted_document>`` holds, by record id, everything that comes f
 (titles, summaries, names, quotes, warnings, payment details, page text, and amounts or contract
 terms that could not be verified). Each row builder below says which field goes where.
 
+For a question asked on a paired phone the server masks the person's own numbers in
+``get_my_numbers`` to their last 4 characters (:data:`MASKED_NUMBERS_ENV`, :mod:`ordnung.phone.mask`),
+as the phone's *My numbers* page shows them.
+
 Heavy modules (views, triggers, rules) are imported on first use so the server starts quickly.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from collections import deque
@@ -57,6 +62,9 @@ if TYPE_CHECKING:
     from ordnung.secretary.triggers import Ledger, PriceIncreaseWindow
 
 SERVER_NAME = "ordnung"
+#: Set to "1" in the server's environment for a question asked on a paired phone: the person's own
+#: numbers come out masked (Ask's server only).
+MASKED_NUMBERS_ENV = "ORDNUNG_MASKED_NUMBERS"
 PAGE_TEXT_LIMIT = 6000
 MAX_SEARCH_HITS = 25
 MAX_LIST = 200
@@ -92,20 +100,26 @@ class ToolInputError(ValueError):
 
 
 def server_config(
-    data_dir: str | Path, *, today: str | None = None, rules_tools: bool = True
+    data_dir: str | Path, *, today: str | None = None, rules_tools: bool = True, masked_numbers: bool = False
 ) -> dict[str, Any]:
     """The ``--mcp-config`` JSON that makes ``claude`` spawn this server for ``data_dir``.
 
     ``today`` pins the server's date (``ORDNUNG_TODAY``) when the app runs on a simulated day;
-    ``rules_tools=False`` leaves the rules tools out (``--ledger-only``, Ask's server).
+    ``rules_tools=False`` leaves the rules tools out (``--ledger-only``, Ask's server);
+    ``masked_numbers`` masks the person's own numbers (a question asked on a paired phone).
     """
     args = ["-m", "ordnung", "mcp", "--data-dir", str(Path(data_dir).resolve())]
     server: dict[str, Any] = {
         "command": sys.executable,
         "args": [*args, *([] if rules_tools else ["--ledger-only"])],
     }
+    env: dict[str, str] = {}
     if today is not None:
-        server["env"] = {"ORDNUNG_TODAY": today}
+        env["ORDNUNG_TODAY"] = today
+    if masked_numbers:
+        env[MASKED_NUMBERS_ENV] = "1"
+    if env:
+        server["env"] = env
     return {"mcpServers": {SERVER_NAME: server}}
 
 
@@ -121,10 +135,12 @@ def open_read_only(data_dir: str | Path) -> Store:
 
 
 def run(data_dir: str | Path, *, rules_tools: bool = True) -> None:
-    """Serve the tools over stdio until the client disconnects (``python -m ordnung mcp``)."""
+    """Serve the tools over stdio until the client disconnects (``python -m ordnung mcp``); the person's
+    own numbers come out masked when :data:`MASKED_NUMBERS_ENV` is ``1``."""
     store = open_read_only(data_dir)
+    masked = os.environ.get(MASKED_NUMBERS_ENV) == "1"
     try:
-        build_server(store, rules_tools=rules_tools).run("stdio")
+        build_server(store, rules_tools=rules_tools, masked_numbers=masked).run("stdio")
     finally:
         store.close()
 
@@ -137,10 +153,12 @@ def run(data_dir: str | Path, *, rules_tools: bool = True) -> None:
 class LedgerTools:
     """The read-only answers behind every MCP tool; each method returns a :class:`ToolAnswer`."""
 
-    def __init__(self, store: Store, *, today: date | None = None) -> None:
-        """``today`` pins the date (tests); by default the person's local, possibly simulated, day."""
+    def __init__(self, store: Store, *, today: date | None = None, masked_numbers: bool = False) -> None:
+        """``today`` pins the date (tests); by default the person's local, possibly simulated, day.
+        ``masked_numbers``: the person's own numbers show only their last 4 characters (a phone's question)."""
         self.store = store
         self._today = today
+        self.masked_numbers = masked_numbers
         self._replay_server: MCPServer | None = None  # answer_again's server, built on first use
 
     def current_day(self) -> date:
@@ -638,6 +656,10 @@ class LedgerTools:
             if not wanted:
                 raise ToolInputError("about_you holds the person's own numbers: ask without organisation")
         page = my_numbers(self.store, self.current_day(), shareable_only=True)
+        if self.masked_numbers:
+            from ordnung.phone.mask import mask_numbers
+
+            page = mask_numbers(page)
         sheets = [s for s in page.organisations if parties is None or s.party_id in parties]
         sheets.sort(key=lambda s: (s.last_letter.date or "") if s.last_letter else "", reverse=True)
         cases = [c for c in page.open_cases if parties is None or c.party_id in parties]
@@ -1537,7 +1559,9 @@ def answer_again(tools: LedgerTools, name: str, args: Mapping[str, Any]) -> str:
     if tool not in TOOL_NAMES:
         return f"unknown tool {name}"
     if tools._replay_server is None:
-        tools._replay_server = build_server(tools.store, today=tools._today, rules_tools=False)
+        tools._replay_server = build_server(
+            tools.store, today=tools._today, rules_tools=False, masked_numbers=tools.masked_numbers
+        )
     return _apart(_served_text(tools._replay_server, tool, dict(args)))
 
 
@@ -1635,7 +1659,9 @@ DateArg = Annotated[str, Field(description="A date written YYYY-MM-DD")]
 OptionalDateArg = Annotated[str | None, Field(description="A date written YYYY-MM-DD, or null")]
 
 
-def build_server(store: Store, *, today: date | None = None, rules_tools: bool = True) -> MCPServer:
+def build_server(
+    store: Store, *, today: date | None = None, rules_tools: bool = True, masked_numbers: bool = False
+) -> MCPServer:
     """An ``MCPServer('ordnung')`` whose read-only tools answer from ``store``.
 
     ``rules_tools`` adds the ledger-free rules tools of :mod:`ordnung.assistant.rules_tools` (for
@@ -1644,7 +1670,7 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
     stored receipts and never computes a new date (SPEC § 21). A rules tool's date is computed from a
     ``DateSpec`` the model passed — possibly read from an injected letter — and has no record to cite,
     so its results are never record support: they have no ``<ordnung_record>`` part, and Ask's check
-    reads only the results of :data:`TOOL_NAMES`.
+    reads only the results of :data:`TOOL_NAMES`. ``masked_numbers``: see :class:`LedgerTools`.
     """
     from mcp.server.mcpserver import MCPServer
     from mcp.server.mcpserver.exceptions import ToolError
@@ -1653,7 +1679,7 @@ def build_server(store: Store, *, today: date | None = None, rules_tools: bool =
     from ordnung.assistant.rules_tools import WITH_LEDGER_INSTRUCTIONS
     from ordnung.assistant.rules_tools import rules_tools as rules_tools_for
 
-    tools = LedgerTools(store, today=today)
+    tools = LedgerTools(store, today=today, masked_numbers=masked_numbers)
     # The ledger-free rules tools (compute_deadline, german_holidays, …), counting from the ledger's day;
     # for a letter in the ledger the stored date wins (WITH_LEDGER_INSTRUCTIONS).
     extra = rules_tools_for(today=tools.current_day, with_ledger=True) if rules_tools else None

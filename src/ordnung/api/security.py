@@ -22,6 +22,12 @@ Ordnung listens on 127.0.0.1 only, but any web page the person visits can try to
 
 It also adds ``X-Content-Type-Options: nosniff`` and ``Referrer-Policy: no-referrer`` to every
 response. HTML pages carry the strict Content Security Policy built by :func:`content_security_policy`.
+
+Phone access (:mod:`ordnung.phone`) adds a second listener on the home network. Its requests carry
+:data:`LISTENER_KEY` in their ASGI scope — set by that listener's own app, never by a client — and go to
+the phone listener's gate (``phone=``, :mod:`ordnung.api.phone_gate`) instead of the checks above; without
+a gate they get 421. Nothing above changes for the computer: a request without the key that came from
+the network fails the ``Host`` check.
 """
 
 from __future__ import annotations
@@ -32,6 +38,7 @@ import html
 import re
 import secrets
 from collections.abc import Iterable, Sequence
+from typing import Protocol
 from urllib.parse import urlencode, urlsplit
 
 from starlette.requests import Request
@@ -42,6 +49,11 @@ TOKEN_COOKIE = "ordnung_token"
 TOKEN_QUERY = "token"
 CLIENT_HEADER = "x-ordnung-client"
 AUTH_STATE_KEY = "ordnung_authenticated"
+#: Set in the ASGI scope by the phone listener's app (``phone_gate.PhoneListener``); no client can set it.
+LISTENER_KEY = "ordnung.listener"
+PHONE_LISTENER = "phone"
+#: The paired phone a phone request comes from (``ordnung.phone.actor.DeviceRef``), set by its gate.
+DEVICE_KEY = "ordnung.device"
 COOKIE_MAX_AGE_S = 30 * 24 * 3600
 #: Largest request body: 200 MB of letters at once plus the form around them. A larger one is refused
 #: by its ``Content-Length``, before the form parser writes it to the temp folder.
@@ -298,12 +310,20 @@ def unauthenticated_response(request: Request) -> Response:
 # --------------------------------------------------------------------------------------------------
 
 
-class SecurityMiddleware:
-    """ASGI middleware applying the checks above to every HTTP request."""
+class PhoneGateLike(Protocol):
+    """The phone listener's gate (``ordnung.api.phone_gate.PhoneGate``)."""
 
-    def __init__(self, app: ASGIApp, *, token: str | None) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send, app: ASGIApp) -> None: ...
+
+
+class SecurityMiddleware:
+    """ASGI middleware applying the checks above to every HTTP request (and handing the phone
+    listener's requests to its gate)."""
+
+    def __init__(self, app: ASGIApp, *, token: str | None, phone: PhoneGateLike | None = None) -> None:
         self.app = app
         self.token = token
+        self.phone = phone
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":  # Ordnung has none: never let one past the checks
@@ -312,6 +332,13 @@ class SecurityMiddleware:
             return
         if scope["type"] != "http":
             await self.app(scope, receive, send)
+            return
+        if scope.get(LISTENER_KEY) == PHONE_LISTENER:  # never reaches the computer's checks
+            if self.phone is None:
+                misdirected = JSONResponse({"detail": "Misdirected request.", "code": "misdirected"}, 421)
+                await misdirected(scope, receive, _with_headers(send))
+                return
+            await self.phone(scope, receive, _with_headers(send), self.app)
             return
         request = Request(scope)
         response = self._gate(request)

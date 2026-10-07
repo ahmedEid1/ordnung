@@ -76,7 +76,8 @@ export interface paths {
         };
         /**
          * Read Profile
-         * @description The person's profile (name, address, region, language, reminders …).
+         * @description The person's profile (name, address, region, language, reminders …); on a phone the IBAN shows
+         *     only its last 4 characters.
          */
         get: operations["read_profile_api_profile_get"];
         /**
@@ -764,7 +765,8 @@ export interface paths {
         /**
          * My Numbers
          * @description About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,
-         *     one call sheet per organisation and the open cases with their references.
+         *     one call sheet per organisation and the open cases with their references (on a phone, your own
+         *     numbers show only their last 4 characters: ``masked``).
          */
         get: operations["my_numbers_api_numbers_get"];
         put?: never;
