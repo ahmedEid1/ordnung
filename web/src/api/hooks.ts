@@ -1146,12 +1146,28 @@ export function useUpdatePhone() {
   });
 }
 
-/** A new pairing code: the answer is the only place it appears (keep it in the dialog's state, not in a cache). */
+/**
+ * {@link useUpdatePhone} for the dialog that turns phone access on or moves it to another address: it shows a
+ * refusal in place (no toast, which would wait behind it).
+ */
+export function useChangePhoneAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (change: PhoneAccessChange) => api.updatePhone(change),
+    meta: { silent: true },
+    onSuccess: (status) => phoneChanged(qc, status),
+  });
+}
+
+/**
+ * A new pairing code: the answer is the only place it appears (keep it in the dialog's state, not in a cache). The
+ * pairing dialog shows a refusal itself ("Couldn't make a pairing code"), so no toast.
+ */
 export function useCreatePhonePairing() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.createPhonePairing(),
-    meta: { errorTitle: "Couldn't make a pairing code" },
+    meta: { silent: true },
     onSuccess: () => void qc.invalidateQueries({ queryKey: qk.phone }),
   });
 }
@@ -1166,22 +1182,25 @@ export function useCancelPhonePairing() {
   });
 }
 
-/** Remove a paired phone: it is signed out at once. */
+/** Remove a paired phone: it is signed out at once (the dialog asking first shows a refusal itself, so no toast). */
 export function useRemovePhone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.removePhone(id),
-    meta: { errorTitle: "Couldn't remove the phone" },
+    meta: { silent: true },
     onSuccess: (status) => phoneChanged(qc, status),
   });
 }
 
-/** "Start over": phone access off, every phone removed, a new certificate when it is turned on again. */
+/**
+ * "Start over": phone access off, every phone removed, a new certificate when it is turned on again (its
+ * confirmation dialog shows a refusal itself, so no toast).
+ */
 export function useResetPhone() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.resetPhone(),
-    meta: { errorTitle: "Couldn't start over" },
+    meta: { silent: true },
     onSuccess: (status) => phoneChanged(qc, status),
   });
 }

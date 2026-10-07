@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { Check, Copy, Download, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
-import { useCalendarSync, useDeleteEverything } from "@/api/hooks";
+import { useCalendarSync, useDeleteEverything, usePhone } from "@/api/hooks";
 import type { Health } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -15,9 +15,11 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
 import { useClipboard } from "@/features/today/clipboard";
 import { useTodayISO } from "@/lib/today";
+import { plural } from "@/lib/utils";
 import { BackupCard } from "./BackupCard";
 import { deleteCalendarNote, hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
+import { REMOVE_STEPS } from "./phoneAccess";
 import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
 
@@ -53,6 +55,9 @@ export function BreakablePath({ path }: { path: string }) {
     </>
   );
 }
+
+/** After "Delete everything" removed phone access: what to do on a phone that trusted its certificate. */
+export const PHONE_CERTIFICATE_GONE = "Phone access was removed: if a phone trusted Ordnung's certificate, remove it there (in its settings, under profiles or certificates).";
 
 /** The word to type in the "Delete everything" dialog. */
 const DELETE_WORD = "DELETE";
@@ -100,6 +105,9 @@ function DeleteEverythingDialog({
   const remove = useDeleteEverything();
   const sync = useCalendarSync(open); // asked only when the dialog opens
   const calendar = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
+  // phone access goes too: its phones are signed out and its certificate deleted (phones that trusted it keep it)
+  const phone = usePhone({ enabled: open });
+  const phones = phone.data?.fingerprint || phone.data?.devices.length ? phone.data : null;
   const [typed, setTyped] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   // the word in any case: "delete" typed on a keyboard means the same (the API gets "DELETE")
@@ -129,11 +137,14 @@ function DeleteEverythingDialog({
         const events = result?.calendar_events_removed;
         const fromCalendar =
           events == null ? "" : ` Ordnung's ${events === 1 ? "event was" : `${events} events were`} removed from your calendar, and its app password from this computer.`;
+        const fromPhones = result?.removed.includes("phone") ? ` ${PHONE_CERTIFICATE_GONE}` : "";
         toast.success("Everything was deleted", {
           description:
             (kept.length
               ? `Ordnung started over. It left ${kept.length === 1 ? "one file" : `${kept.length} files`} it didn't create: ${kept.join(", ")}.`
-              : "Ordnung started over with an empty folder.") + fromCalendar,
+              : "Ordnung started over with an empty folder.") +
+            fromCalendar +
+            fromPhones,
           duration: 8000,
         });
         navigate("/welcome", { replace: true });
@@ -181,6 +192,12 @@ function DeleteEverythingDialog({
         {calendar ? (
           <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
             {deleteCalendarNote(calendar, sync.data?.synced ?? 0)}
+          </p>
+        ) : null}
+        {phones ? (
+          <p className="text-[13.5px] leading-relaxed text-ink/85">
+            Phone access goes too: {phones.devices.length ? `${plural(phones.devices.length, "paired phone")} ${phones.devices.length === 1 ? "is" : "are"} signed out and ` : ""}
+            its certificate is deleted. A phone that trusted that certificate keeps it — remove it there. iPhone: {REMOVE_STEPS.ios} Android: {REMOVE_STEPS.android}
           </p>
         ) : null}
         {/* the server's reason (the calendar couldn't be reached …) is the dialog's, not the typed word's:

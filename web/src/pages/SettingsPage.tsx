@@ -15,7 +15,10 @@ import { ClaudeSection } from "@/features/settings/ClaudeSection";
 import { DataSection } from "@/features/settings/DataSection";
 import { FolderSection } from "@/features/settings/FolderSection";
 import { leavesSection, parseSection, SECTION_LABELS, type SectionId } from "@/features/settings/logic";
+import { PhoneSection } from "@/features/settings/PhoneSection";
+import { PhoneSettingsNotice } from "@/features/settings/PhoneSettingsNotice";
 import { PrivacySection } from "@/features/settings/PrivacySection";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { ProfileSection } from "@/features/settings/ProfileSection";
 import { RegionSection } from "@/features/settings/RegionSection";
 import { RemindersSection } from "@/features/settings/RemindersSection";
@@ -26,8 +29,24 @@ import { SettingsNav } from "@/features/settings/SettingsNav";
 /** Sections that fill the page column (tables); the others are forms at a readable width. */
 const WIDE_SECTIONS = new Set<SectionId>(["privacy"]);
 
-/** `/settings?section=…` — profile, region, reminders, calendar, watched folder, AI, Claude, privacy, rules, data. */
+/**
+ * `/settings?section=…` — profile, region, reminders, calendar, watched folder, phone, AI, Claude, privacy, rules,
+ * data. On a paired phone: that settings are on the computer (asking for none of them — the phone may not).
+ */
 export default function SettingsPage() {
+  return usePhoneCompanion() ? <PhoneSettings /> : <ComputerSettings />;
+}
+
+/** Settings on a paired phone: no section, no settings query (the API refuses them there). */
+function PhoneSettings() {
+  return (
+    <Page title="Settings">
+      <PhoneSettingsNotice />
+    </Page>
+  );
+}
+
+function ComputerSettings() {
   const [params, setParams] = useSearchParams();
   const section = parseSection(params.get("section"));
   const profile = useProfile();
@@ -92,6 +111,8 @@ export default function SettingsPage() {
         (prev) => {
           const next = new URLSearchParams(prev);
           next.set("section", id);
+          // the privacy log's "one phone only" belongs to that section
+          next.delete("device");
           return next;
         },
         { preventScrollReset: true },
@@ -174,6 +195,8 @@ export default function SettingsPage() {
                 <CalendarSection />
               ) : section === "folder" ? (
                 <FolderSection settings={settings.data} />
+              ) : section === "phone" ? (
+                <PhoneSection />
               ) : section === "ai" ? (
                 <AiSection settings={settings.data} profile={profile.data} />
               ) : section === "claude" ? (

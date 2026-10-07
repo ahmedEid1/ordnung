@@ -53,6 +53,15 @@ describe("the QR matrix", () => {
     }
   });
 
+  it("draws a phone's pairing link too: small, and read back exactly (code after the #)", () => {
+    // the longest the pairing dialog shows: an address with every octet three digits, a five-digit port
+    for (const url of ["https://192.168.178.23:8767/pair#K7QM2XD9PA", "https://192.168.178.123:65535/pair#ZZZZZZZZZZ"]) {
+      const qr = qrMatrix(url);
+      expect(qr.version).toBeLessThanOrEqual(4);
+      expect(decodeQR(picture(qr, 3))).toBe(url);
+    }
+  });
+
   it("refuses what doesn't fit version 13 rather than drawing a bigger code", () => {
     expect(() => qrMatrix("x".repeat(400))).toThrow();
   });

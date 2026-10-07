@@ -45,9 +45,17 @@ export function ibanFailsCheck(ibanValid: boolean | null | undefined, code: Giro
   return ibanValid === false || (code?.status === "blocked" && code.reason === "invalid_iban");
 }
 
-/** A module's side in CSS pixels: whole, at least 3, about 152 px for the whole code. */
+/** How wide a QR code is drawn unless asked otherwise (a GiroCode), in CSS pixels. */
+export const QR_SIDE = 152;
+
+/** A module's side in CSS pixels for a code about `side` px wide: whole, at least 3. */
+export function modulePixelsFor(modules: number, side: number): number {
+  return Math.max(3, Math.floor(side / modules));
+}
+
+/** A module's side in CSS pixels: whole, at least 3, about {@link QR_SIDE} px for the whole code. */
 export function modulePixels(modules: number): number {
-  return Math.max(3, Math.floor(152 / modules));
+  return modulePixelsFor(modules, QR_SIDE);
 }
 
 /** "They don't match" may offer to read the letter again: not a private letter, not one being read,
@@ -68,8 +76,11 @@ export function giroCodeLabel(payload: string): string {
   return `GiroCode: transfer ${amount}to ${t.name}${t.reference ? `, reference ${t.reference}` : ""}`;
 }
 
-/** The QR code itself: SVG, crisp modules, dark on white with the quiet zone. */
-export function QrCode({ payload, label, className }: { payload: string; label: string; className?: string }) {
+/**
+ * The QR code itself: SVG, crisp modules, dark on white with the quiet zone. `size`: about how wide it is drawn
+ * (default {@link QR_SIDE}; Settings → Phone draws its pairing code larger, for a phone camera across a desk).
+ */
+export function QrCode({ payload, label, className, size = QR_SIDE }: { payload: string; label: string; className?: string; size?: number }) {
   const qr = useMemo(() => {
     try {
       return qrMatrix(payload);
@@ -80,7 +91,7 @@ export function QrCode({ payload, label, className }: { payload: string; label: 
   if (!qr) {
     return <p className="text-sm text-danger-ink">This code is too long to draw. Copy the details by hand.</p>;
   }
-  const side = qr.size * modulePixels(qr.size);
+  const side = qr.size * modulePixelsFor(qr.size, size);
   return (
     <svg
       role="img"
