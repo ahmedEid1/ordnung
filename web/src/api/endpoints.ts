@@ -34,8 +34,10 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PairRequest,
   PartyPatch,
   PathsWith,
+  PhoneAccessChange,
   ProfilePatch,
   ProofKind,
   ProofPatch,
@@ -309,8 +311,27 @@ export const api = {
   runCalendarSync: () => call("post", "/api/calendar/sync/run"),
   disconnectCalendarSync: (removeEvents: boolean) => call("post", "/api/calendar/sync/disconnect", { body: { remove_events: removeEvents } }),
 
+  // -- phone access ------------------------------------------------------------------------------
+  // On the computer (computer only): Settings → Phone.
+  /** Whether phone access can be used here and is on, its address, certificate, pairing progress and phones. */
+  phone: () => call("get", "/api/phone"),
+  /** Turn phone access on or off, choose its address or port, or say "This is my home network". */
+  updatePhone: (change: PhoneAccessChange) => call("put", "/api/phone", { body: change }),
+  /** A new pairing code (replacing an open one): the only answer that contains it. */
+  createPhonePairing: () => call("post", "/api/phone/pairing"),
+  /** Cancel the open pairing code (the dialog closed); 204. */
+  cancelPhonePairing: () => call("delete", "/api/phone/pairing"),
+  /** Remove a paired phone: it is signed out at once. */
+  removePhone: (id: string) => call("delete", "/api/phone/devices/{device_id}", { params: { device_id: id } }),
+  /** "Start over": off, every phone removed, a new certificate when it is turned on again. */
+  resetPhone: () => call("post", "/api/phone/reset"),
+  // On a phone that isn't paired yet (the only call it may make): the answer sets its sign-in cookie.
+  /** Pair this phone with the code shown on the computer (404 `not_phone` on the computer itself). */
+  pairPhone: (body: PairRequest) => call("post", "/api/phone/pair", { body }),
+
   // -- privacy & AI usage ------------------------------------------------------------------------
-  activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),
+  /** What Ordnung did, newest first; `device`: only what one paired phone did (its id). */
+  activity: (limit = 100, device?: string | null) => call("get", "/api/activity", { query: { limit, device: device ?? undefined } }),
   usage: () => call("get", "/api/usage"),
   rules: () => call("get", "/api/rules"),
   jobs: (activeOnly = false) => call("get", "/api/jobs", { query: { active_only: activeOnly || undefined } }),

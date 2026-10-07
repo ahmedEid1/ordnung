@@ -348,6 +348,48 @@ export type DueDateSource = Schemas["Item"]["due_date_source"];
 export type TextSource = Schemas["PageInfo"]["text_source"];
 export type RefType = Schemas["SuggestionRef"]["type"];
 
+/** Who is asking (`Health.client`): the browser on the computer Ordnung runs on, or a phone paired over the home network. */
+export const CLIENT_KINDS = ["computer", "phone"] as const;
+export type ClientKind = (typeof CLIENT_KINDS)[number];
+
+/** Why phone access is on but no phone can reach it (`PhoneStatus.problem.code`). */
+export const PHONE_PROBLEM_CODES = ["no_network", "address_gone", "other_network", "port_busy", "failed"] as const;
+export type PhoneProblemCode = (typeof PHONE_PROBLEM_CODES)[number];
+
+/** What the computer must know at once about phone access (`PhoneStatus.notice.code`, shown in the danger tone). */
+export const PHONE_NOTICE_CODES = ["pairing_stopped", "code_reused", "token_reuse"] as const;
+export type PhoneNoticeCode = (typeof PHONE_NOTICE_CODES)[number];
+
+/**
+ * The `code` of every phone-access refusal (`{detail, code}`, `ApiError.code`): the phone listener's gate before
+ * routing and the phone routes after it. Error bodies aren't in the schema, so this mirrors
+ * `ordnung.phone.PhoneErrorCode` by hand (`ERROR_STATUS` there gives each one's status).
+ */
+export const PHONE_ERROR_CODES = [
+  "misdirected",
+  "wrong_host",
+  "bad_path",
+  "unexpected_body",
+  "length_required",
+  "too_large",
+  "not_home_network",
+  "cross_site",
+  "phone_not_paired",
+  "computer_only",
+  "too_many",
+  "unavailable",
+  "not_set_up",
+  "no_network",
+  "port_busy",
+  "not_listening",
+  "too_many_phones",
+  "code_used",
+  "wrong_code",
+  "invalid",
+  "not_phone",
+] as const;
+export type PhoneErrorCode = (typeof PHONE_ERROR_CODES)[number];
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Same<A, B> = Equal<A, B> extends true ? true : ["enum differs from the API", A, B];
 
@@ -393,6 +435,9 @@ export type EnumContract = [
   Same<JobKind, Schemas["Job"]["kind"]>,
   Same<JobStatus, Schemas["Job"]["status"]>,
   Same<JobStage, Schemas["JobProgressEvent"]["stage"]>,
+  Same<ClientKind, Schemas["Health"]["client"]>,
+  Same<PhoneProblemCode, Schemas["PhoneProblem"]["code"]>,
+  Same<PhoneNoticeCode, Schemas["PhoneNotice"]["code"]>,
 ];
 // Referencing the tuple makes every entry resolve (an entry that isn't `true` is a compile error).
 const enumContract: EnumContract extends true[] ? true : never = true;
@@ -508,7 +553,9 @@ export type ClaudeStatus = Schemas["ClaudeStatus"];
 export type DoctorCheck = Schemas["DoctorCheck"];
 /**
  * `GET /api/health` for the signed-in app. `today` is the app's "today" (ISO date) — always use
- * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date.
+ * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date. `client` says who asked:
+ * this computer's browser, or a paired phone (which gets no data folder, Claude path or checks) —
+ * `usePhoneCompanion()` in `features/phone/client.ts`.
  */
 export type Health = Schemas["Health"];
 /** `GET /api/health` without the session token (the endpoint client turns it into a 401 error). */
@@ -618,6 +665,31 @@ export type CalendarSyncFind = Schemas["CalendarSyncFind"];
 export type CalendarChoice = Schemas["CalendarChoice"];
 
 // ------------------------------------------------------------------------------------------------
+// Phone access (Settings → Phone on the computer; pairing on the phone)
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * `GET /api/phone` (computer only): whether phone access can be used here (`available`, never in the demo), is on
+ * (`enabled`) and reachable (`listening`, at `url`), why not (`problem`), what to know at once (`notice`), the
+ * certificate's fingerprints, the open pairing code's progress (never the code) and the paired phones.
+ */
+export type PhoneStatus = Schemas["PhoneStatus"];
+/** Why phone access is on but not listening, in words for the person. */
+export type PhoneProblem = Schemas["PhoneProblem"];
+/** A danger-tone notice: wrong codes stopped a pairing, a code was used twice, a phone's sign-in was used twice. */
+export type PhoneNotice = Schemas["PhoneNotice"];
+/** An address of this computer on a home network (`recommended`: the one it reaches the internet from). */
+export type AddressChoice = Schemas["AddressChoice"];
+/** A paired phone (never its sign-in): name, platform, its two check words, when and where it was last used. */
+export type PhoneDevice = Schemas["PhoneDevice"];
+/** The open pairing code's progress: when it ends, whether a phone opened the page, wrong codes and from where. */
+export type PhonePairingState = Schemas["PhonePairingState"];
+/** `POST /api/phone/pairing`: the QR code's `url` (`https://<address>:<port>/pair#<code>`), the code, its end. */
+export type PhonePairing = Schemas["PhonePairing"];
+/** `POST /api/phone/pair` on the phone: the name it got and the two words both screens show. */
+export type PairResult = Schemas["PairResult"];
+
+// ------------------------------------------------------------------------------------------------
 // Requests
 // ------------------------------------------------------------------------------------------------
 
@@ -641,6 +713,10 @@ export type CallNotePatch = Schemas["CallNotePatch"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
 export type HeldRequest = Schemas["HeldRequest"];
+/** `PUT /api/phone`: on or off, the address or port (none: the saved or recommended one), "This is my home network". */
+export type PhoneAccessChange = Schemas["PhoneAccessChange"];
+/** `POST /api/phone/pair`: the code as shown or typed (spaces, dashes and case don't matter) and this phone's name. */
+export type PairRequest = Schemas["PairRequest"];
 
 export type DocumentListParams = ApiQuery<"/api/documents", "get">;
 export type ItemListParams = ApiQuery<"/api/items", "get">;

@@ -5,6 +5,7 @@
  */
 import { useCalendarSync, useDesktopReminders, useFolder, useSettings } from "@/api/hooks";
 import type { AppSettings, CalendarSyncStatus, DesktopReminders, FolderStatus } from "@/api/types";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { failureLine } from "./desktop";
 import type { SectionId } from "./logic";
 
@@ -41,11 +42,16 @@ export function backgroundProblems(state: {
   return found;
 }
 
-/** The background problems now (shares the Settings cards' queries; the notification's without its texts). */
+/**
+ * The background problems now (shares the Settings cards' queries; the notification's without its texts). None
+ * on a phone: they are fixed in Settings on the computer, and a phone may not ask for them (`computer_only`).
+ */
 export function useBackgroundProblems(): BackgroundProblem[] {
-  const folder = useFolder();
-  const calendar = useCalendarSync();
-  const desktop = useDesktopReminders({ preview: false });
-  const settings = useSettings();
+  const onComputer = !usePhoneCompanion();
+  const folder = useFolder({ enabled: onComputer });
+  const calendar = useCalendarSync(onComputer);
+  const desktop = useDesktopReminders({ preview: false, enabled: onComputer });
+  const settings = useSettings({ enabled: onComputer });
+  if (!onComputer) return [];
   return backgroundProblems({ folder: folder.data, calendar: calendar.data, desktop: desktop.data, settings: settings.data });
 }

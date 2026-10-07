@@ -90,4 +90,20 @@ describe("Needs your attention", () => {
     expect(screen.queryByRole("region", { name: "Needs your attention" })).toBeNull();
     expect(screen.queryByTestId("attention-dot")).toBeNull();
   });
+
+  it("asks nothing on a phone: what stopped is fixed in Settings on the computer, which a phone may not read", async () => {
+    const { srv, calls } = useMockApi({ client: "phone" });
+    const folder = vi.spyOn(api, "folder");
+    renderWithProviders(
+      <>
+        <AttentionCard />
+        <Sidebar />
+      </>,
+    );
+    expect(await screen.findByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    expect(screen.queryByRole("region", { name: "Needs your attention" })).toBeNull();
+    expect(folder).not.toHaveBeenCalled();
+    expect(calls.map((c) => c.path).filter((p) => ["/folder", "/calendar/sync", "/reminders/desktop", "/settings"].includes(p))).toEqual([]);
+    expect(srv.refused).toEqual([]);
+  });
 });

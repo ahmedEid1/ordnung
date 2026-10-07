@@ -35,6 +35,8 @@ import type {
   MailOpenResult,
   NoticeUnit,
   PageInfo,
+  PairRequest,
+  PhoneAccessChange,
   Profile,
   PartyDetail,
   ReviewStarted,
@@ -99,6 +101,8 @@ import { confirmMockGiroCode, mockGiroCode } from "./girocode";
 import { checkTracking } from "@/lib/tracking";
 import { deliveredBefore, proofRoutes, resolveProofAsset, sentFollowup } from "./proof";
 import { addReading, compareReadings, defaultReadings, documentTrace, exportTraces, type TraceLedger } from "./data/traces";
+import { MockPhoneAccess, PhoneRefusal, maskNumbers, maskProfile, phoneGate, phoneHealth, type PhoneScope } from "./phone";
+import { NOT_PHONE_MESSAGE } from "./data/phone";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -107,6 +111,12 @@ export interface MockOptions {
   staticDemo: boolean;
   /** Artificial latency multiplier (0 in tests). */
   latency?: number;
+  /**
+   * Answer as the phone listener (a paired phone's requests): the phone's allow-list as the API publishes it
+   * (`x-ordnung-phone` in `openapi.json`, see `phoneScopeFromOpenApi`). Requests outside it get 403
+   * `computer_only` and are listed in `refused`; health says `client: "phone"`.
+   */
+  phoneScope?: PhoneScope;
 }
 
 interface Ctx {
@@ -116,6 +126,8 @@ interface Ctx {
   body: unknown;
   signal?: AbortSignal | null;
   opts: MockOptions;
+  /** Phone access (Settings → Phone) and pairing. */
+  phone: MockPhoneAccess;
 }
 
 /** Explicit status + body (default: 200 with the returned value as JSON). */
@@ -164,6 +176,16 @@ const DEMO_TRANSLATE_MESSAGE =
 const DEMO_DELETE_MESSAGE =
   "This is the demo, so there is nothing of yours to delete. To start over with Sam's original letters, stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”.";
 const STATIC_MESSAGE = "Install Ordnung to try this with your own letters — the online demo only replays recorded examples.";
+
+/** A phone-access refusal as the API answers it (`{detail, code}`). */
+function phoneRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof PhoneRefusal) throw new HttpError(err.status, err.message, err.code ?? undefined);
+    throw err;
+  }
+}
 
 function needsClaude(ctx: Ctx) {
   if (ctx.opts.staticDemo) throw new HttpError(403, STATIC_MESSAGE, "static_demo");
@@ -1164,9 +1186,15 @@ const routes: [string, string, Handler][] = [
   [
     "GET",
     "/health",
-    ({ db, query }) => (query.get("probe") === "1" || query.get("probe") === "true" ? { ...db.state.health, checks: DEMO_CHECKS } : db.state.health) satisfies Health,
+    ({ db, query, opts }) =>
+      (opts.phoneScope
+        ? phoneHealth(db.state.health)
+        : query.get("probe") === "1" || query.get("probe") === "true"
+          ? { ...db.state.health, checks: DEMO_CHECKS }
+          : db.state.health) satisfies Health,
   ],
-  ["GET", "/profile", ({ db }) => db.state.profile],
+  // on a phone the IBAN shows only its last 4 characters
+  ["GET", "/profile", ({ db, opts }) => (opts.phoneScope ? maskProfile(db.state.profile) : db.state.profile)],
   // like the API: PUT merges the fields sent (nulls change nothing; `models` merges by purpose)
   [
     "PUT",
@@ -1221,16 +1249,19 @@ const routes: [string, string, Handler][] = [
   [
     "DELETE",
     "/data",
-    ({ db, body, opts }) => {
+    ({ db, body, opts, phone }) => {
       if ((body as { confirm?: unknown } | null)?.confirm !== "DELETE") throw new HttpError(422, "Type DELETE to confirm.");
       if (opts.staticDemo) throw new HttpError(409, "This online demo keeps nothing — reload the page to start over with Sam's letters.");
       if (db.state.health.demo) throw new HttpError(409, DEMO_DELETE_MESSAGE);
       const st = db.state;
       // a connected calendar loses Ordnung's events (and the app password) first, as the API does
       const calendarEventsRemoved = mockForgetCalendar(db);
+      // phone access goes with the data folder: off, no phones, and its `phone/` folder (the certificate) removed
+      const phoneFolder = phone.certificate ? ["phone"] : [];
+      phone.forget();
       Object.assign(st, { parties: [], cases: [], documents: [], items: [], contracts: [], suggestions: [], drafts: [], activity: [], chat: [], tray: [], uploads: {}, proofs: [], calls: [], readings: {} });
       st.profile = { ...st.profile, name: "", address: "", email: "", phone: "", onboarded: false };
-      return { removed: ["derived", "drafts", "files", "ordnung.db"], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
+      return { removed: ["derived", "drafts", "files", "ordnung.db", ...phoneFolder], kept: [], calendar_events_removed: calendarEventsRemoved } satisfies DataDeleted;
     },
   ],
 
@@ -1639,7 +1670,8 @@ const routes: [string, string, Handler][] = [
   ["GET", "/timeline", ({ db, query }) => withAside(db, db.timeline(query.get("from"), query.get("to")))],
   ["GET", "/lanes", ({ db, query }) => db.lanes(query.get("from"), query.get("to"))],
   ["GET", "/dashboard", ({ db }) => db.dashboard()],
-  ["GET", "/numbers", ({ db }) => mockNumbers(db)],
+  // on a phone your numbers show only their last 4 characters (the full ones are on the computer)
+  ["GET", "/numbers", ({ db, opts }) => (opts.phoneScope ? maskNumbers(mockNumbers(db)) : mockNumbers(db))],
   ["GET", "/week", ({ db }) => mockWeek(db)],
   ["POST", "/week/done", ({ db }) => mockWeekDone(db)],
   ["POST", "/week/dismiss", ({ db }) => mockWeekDismiss(db)],
@@ -1869,7 +1901,41 @@ const routes: [string, string, Handler][] = [
       return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],
-  ["GET", "/activity", ({ db, query }) => db.state.activity.slice(0, Number(query.get("limit") ?? 100))],
+  [
+    "GET",
+    "/activity",
+    ({ db, query }) => {
+      const device = query.get("device");
+      const entries = device ? db.state.activity.filter((a) => a.data?.device === device) : db.state.activity;
+      return entries.slice(0, Number(query.get("limit") ?? 100));
+    },
+  ],
+
+  // phone access: Settings → Phone on the computer (`?mock=1` pretends a phone can reach it; the static demo
+  // can't), and pairing on a phone (the phone listener: a server made with `phoneScope`)
+  ["GET", "/phone", ({ phone }) => phone.status()],
+  ["PUT", "/phone", ({ phone, body }) => phoneRefusals(() => phone.change(body as PhoneAccessChange))],
+  ["POST", "/phone/pairing", ({ phone }) => phoneRefusals(() => phone.startPairing())],
+  [
+    "DELETE",
+    "/phone/pairing",
+    ({ phone }) => {
+      phone.cancelPairing();
+      return new Reply(204);
+    },
+  ],
+  ["DELETE", "/phone/devices/:id", ({ phone, params }) => phoneRefusals(() => phone.remove(params.id!))],
+  ["POST", "/phone/reset", ({ phone }) => phoneRefusals(() => phone.reset())],
+  [
+    "POST",
+    "/phone/pair",
+    ({ phone, body, opts }) => {
+      if (!opts.phoneScope) throw new HttpError(404, NOT_PHONE_MESSAGE, "not_phone");
+      const device = phoneRefusals(() => phone.pair(body as PairRequest));
+      phone.self = device.id; // this phone is signed in from now on (the answer's cookie)
+      return { name: device.name, check_words: device.check_words };
+    },
+  ],
   ["GET", "/usage", () => USAGE],
   ["GET", "/rules", () => RULES],
   ["GET", "/jobs", () => [...activeJobs.values()]],
@@ -1948,14 +2014,26 @@ export interface MockServer {
   resolveAsset(path: string): string | null;
   /** Open all New-mail letters instantly (for `?mock=full`). */
   openAllMail(): void;
+  /** Phone access as the computer has it, and a phone's side of pairing (tests drive it; see `./phone`). */
+  phone: MockPhoneAccess;
+  /**
+   * The requests the phone's allow-list refused (403 `computer_only`), as `"GET /api/settings"` — always empty
+   * unless the server was made with `phoneScope`.
+   */
+  refused: string[];
 }
 
 export function createMockServer(opts: MockOptions): MockServer {
   const db = new MockDb();
   const latency = opts.latency ?? 1;
+  const phone = new MockPhoneAccess(db, { staticDemo: opts.staticDemo, listener: opts.phoneScope ? "phone" : "computer" });
+  const refused: string[] = [];
 
   async function handle(method: string, path: string, query: URLSearchParams, body: unknown, signal?: AbortSignal | null): Promise<Response> {
     const m = method.toUpperCase();
+    // the phone listener's gate answers first: pairing only until paired, then the phone's allow-list
+    const refusal = opts.phoneScope ? phoneGate(phone, opts.phoneScope, m, path, query, refused) : null;
+    if (refusal) return json(refusal.status, { detail: refusal.message, code: refusal.code ?? undefined });
     for (const r of compiled) {
       if (r.method !== m) continue;
       const match = r.re.exec(path);
@@ -1964,7 +2042,7 @@ export function createMockServer(opts: MockOptions): MockServer {
       r.keys.forEach((k, i) => (params[k] = decodeURIComponent(match[i + 1]!)));
       if (latency > 0) await sleep((m === "GET" ? 90 + Math.random() * 110 : 160 + Math.random() * 140) * latency);
       try {
-        const out = await r.handler({ db, params, query, body, signal, opts });
+        const out = await r.handler({ db, params, query, body, signal, opts, phone });
         if (out instanceof Response) return out;
         if (out instanceof Reply) return json(out.status, out.body);
         return json(200, out ?? null);
@@ -2031,5 +2109,5 @@ export function createMockServer(opts: MockOptions): MockServer {
     }
   }
 
-  return { db, handle, resolveAsset, openAllMail };
+  return { db, handle, resolveAsset, openAllMail, phone, refused };
 }
