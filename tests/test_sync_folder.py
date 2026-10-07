@@ -203,7 +203,9 @@ def test_two_key_files_are_found(tmp_path: Path) -> None:  # F28
         b.close()
 
 
-def test_an_interrupted_setup_can_be_retried_with_another_passphrase(anna: Computer, monkeypatch: pytest.MonkeyPatch) -> None:  # finding 34
+def test_an_interrupted_setup_can_be_retried_with_another_passphrase(
+    anna: Computer, monkeypatch: pytest.MonkeyPatch
+) -> None:  # finding 34
     from ordnung.sync import engine as engine_module
 
     def crash(*_args: object, **_kwargs: object) -> None:

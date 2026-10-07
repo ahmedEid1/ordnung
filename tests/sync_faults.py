@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import errno
 import itertools
 import os
 import shutil
@@ -402,6 +403,66 @@ class HangingFs:
             return method(*args)
 
         return blocked
+
+
+class FullFs(CrashingFs):
+    """Like :class:`CrashingFs`, but the disk is full: ``OSError(ENOSPC)`` instead of a crash, and the
+    process goes on (cleanup runs)."""
+
+    def _alive(self) -> None:
+        pass
+
+    def _op(self) -> None:
+        if self.after_ops is not None and self.ops >= self.after_ops:
+            raise OSError(errno.ENOSPC, "No space left on device")
+        self.ops += 1
+
+    def open_new(self, path: Path) -> BinaryIO:
+        self._op()
+        handle = self.inner.open_new(path)
+        owner = self
+
+        class Full(_CountingHandle):
+            def write(self, data: bytes) -> int:
+                if owner.after_bytes is not None and owner.bytes + len(data) > owner.after_bytes:
+                    raise OSError(errno.ENOSPC, "No space left on device")
+                owner.bytes += len(data)
+                return self._handle.write(data)
+
+        return Full(handle, self)  # type: ignore[return-value]
+
+
+class _Stat:
+    """A stat result with the flags a dataless file has (Linux can't make one)."""
+
+    def __init__(self, real: os.stat_result, flags: int) -> None:
+        for name in ("st_mode", "st_size", "st_mtime_ns", "st_ino", "st_ctime_ns", "st_mtime"):
+            setattr(self, name, getattr(real, name))
+        self.st_flags = flags
+        self.st_file_attributes = 0
+
+
+class DatalessFs:
+    """:class:`~ordnung.sync.folder.FsOps` that reports the paths in ``dataless`` as macOS dataless files
+    (``SF_DATALESS``): real name and size, no data here; reading one fails as it would offline."""
+
+    def __init__(self, dataless: set[Path], inner: FsOps | None = None) -> None:
+        self.inner: FsOps = inner or RealFs()
+        self.dataless = dataless
+
+    def stat(self, path: Path) -> os.stat_result:
+        real = self.inner.stat(path)
+        if path.resolve() in self.dataless:
+            return _Stat(real, 0x40000000)  # type: ignore[return-value]
+        return real
+
+    def open_read(self, path: Path) -> BinaryIO:
+        if path.resolve() in self.dataless:
+            raise OSError(35, "Resource deadlock avoided (the provider can't fetch it now)")
+        return self.inner.open_read(path)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.inner, name)
 
 
 def copy_tree(source: Path, target: Path) -> None:

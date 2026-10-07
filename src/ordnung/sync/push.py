@@ -25,7 +25,15 @@ A push, in order:
 
 A crash anywhere before the head leaves only unreferenced objects and this computer's temp files (removed
 at its next push; GC frees the rest). After the head and before ``state.json``, the next start adopts the
-head (its ``sync_mark`` names it).
+head: its ``sync_mark`` names it, or — dead before ``sync_mark`` too — the database's digest equals the
+head's (a database put back from an OS backup doesn't, and is a ``local_rollback``).
+
+Churn (finding 21), measured in P1 on a generated library of 1,500 letters (each with two pages, three
+cache rows, two dates, an activity row; an 80 MiB database, 80 slices): one more reading changed 29
+slices (the search index merges its segments), one note 1, a search-index ``optimize`` 44. That is far
+above :data:`ordnung.sync.SLICE_CHURN_LIMIT_BYTES`, so GC drops the superseded slices of a version every
+live head has moved past after a day (:data:`ordnung.sync.SUPERSEDED_SLICE_GRACE_S`) rather than 7 days.
+Cutting slices per table was not needed for that.
 """
 
 from __future__ import annotations
@@ -322,7 +330,8 @@ def chunks_of(path: Path) -> Iterator[bytes]:
 class _Uploader:
     """Writes the objects a version needs that the folder lacks (one listing per shard)."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, rewrite: frozenset[str] = frozenset()) -> None:
+        self.rewrite = rewrite
         self.session = session
         self.listed: dict[str, dict[str, int]] = {}
         self.written = 0
@@ -349,6 +358,7 @@ class _Uploader:
         sha = hashlib.sha256(content).hexdigest()
         name = self.session.vault.object_name(kind, sha)
         size = sealed_size_of(len(content))
+        force = force or name in self.rewrite
         if force or not self._present(name, size):
             sealed = self.session.vault.seal(kind, name, content)
             self.session.folder.write_object(name, size, lambda out: out.write(sealed), force=force)
@@ -358,6 +368,7 @@ class _Uploader:
     def slice(self, piece: DbSlice, content: bytes, *, force: bool = False) -> None:
         name = self.session.vault.object_name("d", piece.sha256)
         size = sealed_size_of(piece.size)
+        force = force or name in self.rewrite
         if force or not self._present(name, size):
             sealed = self.session.vault.seal("d", name, content)
             self.session.folder.write_object(name, size, lambda out: out.write(sealed), force=force)
@@ -366,6 +377,7 @@ class _Uploader:
     def file(self, entry: FileEntry, source: Path, *, force: bool = False) -> None:
         name = self.session.vault.object_name("f", entry.sha256)
         size = sealed_size_of(entry.size)
+        force = force or name in self.rewrite
         if not force and self._present(name, size):
             return
         vault = self.session.vault
@@ -405,25 +417,30 @@ def push(
     force: bool = False,
     demo: bool = False,
     snapshot: Snapshot | None = None,
+    rewrite: frozenset[str] = frozenset(),
 ) -> PushResult:
     """Save this computer's data as a new version (module doc). ``lineage`` replaces the computed one (a
     choice); ``head_state`` is what the head says afterwards (default: what it says now); ``claim``
-    takes a new epoch; ``force`` writes a version even when nothing changed (refill, self-heal)."""
+    takes a new epoch; ``force`` writes a version even when nothing changed (refill, self-heal);
+    ``rewrite`` names objects written again even when they are there (another computer wants them)."""
     state = session.state
     snap = snapshot or take_snapshot(session, demo=demo)
     base = state.base.ref if state.base is not None else None
     person = state.force_person or snap.person is None or snap.person > state.pushed or base is None
     wanted_state = head_state or state.head_state
     if base is not None and snap.digest == base.digest and lineage is None and not force:
-        if person and snap.person is not None:
-            state.pushed = snap.person  # finding 14: a person's write that changed nothing synced
+        if person:
+            # finding 14: a person's write that changed nothing synced makes no version
+            if snap.person is None and store is not None:
+                session.mark(store, base.id, person_row=True)  # the counter row, back
+            state.pushed = snap.person if snap.person is not None else 0
             state.force_person = False
             session.save()
             return PushResult("accounted")
         return PushResult("unchanged")
 
     session.folder.remove_temps()
-    upload = _Uploader(session)
+    upload = _Uploader(session, rewrite)
     slices = slices_of(snap.data)
     for piece, content in slices:
         upload.slice(piece, content)

@@ -206,7 +206,9 @@ def test_gc_waits_seven_days_of_wall_clock_and_running_time(anna: Computer) -> N
 
 def test_buckets_follow_the_data_folders_layout() -> None:
     assert bucket_key("files/ab/" + "a" * 64 + ".pdf") == "files/ab"
-    assert bucket_key("derived/doc_1/page-1.jpg").startswith("derived/") and len(bucket_key("derived/x/y")) == 10
+    assert (
+        bucket_key("derived/doc_1/page-1.jpg").startswith("derived/") and len(bucket_key("derived/x/y")) == 10
+    )
     assert bucket_key("drafts/x.pdf") == "drafts"
 
 

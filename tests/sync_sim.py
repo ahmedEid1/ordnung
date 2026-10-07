@@ -12,8 +12,8 @@ Delivery modes:
 * ``pieces`` — written in place, first a part, the rest at a later step (Syncthing without temp files,
   a slow SMB copy);
 * ``placeholder`` — an older iCloud Drive placeholder ``.<name>.icloud`` first, the file later;
-* ``dataless`` — the file is there with its real name and size but no data yet: modelled as zeros of the
-  right size until a later step (what a dataless file reads as when the provider can't fetch it);
+* ``dataless`` — the file is there with its real name and size but no data yet (listed in :attr:`dataless`,
+  which ``sync_faults.DatalessFs`` reports as ``SF_DATALESS``) until a later step;
 * ``conflict`` — when the destination changed the same file too, its version is renamed to a conflict
   copy (``name (conflicted copy 2026-10-07)``, ``name.sync-conflict-…``) and the incoming one wins;
 * ``rollback`` — an older version of the file is delivered first (the tool's history), the newest later;
@@ -70,6 +70,8 @@ class SyncToolSim:
         self.history: dict[str, list[bytes]] = {}
         self.pending: list[Change] = []
         self.delivered: list[tuple[str, str, Mode]] = []
+        #: files delivered as dataless (see ``sync_faults.DatalessFs``) until their data arrives
+        self.dataless: set[Path] = set()
 
     @staticmethod
     def _other(side: str) -> str:
@@ -126,7 +128,8 @@ class SyncToolSim:
             done = False
         elif chosen == "dataless" and change.stage == 0:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(bytes(len(change.content)))
+            self._write(target, change.content)
+            self.dataless.add(target.resolve())  # there, with its size, but no data here yet (DatalessFs)
             change.stage = 1
             done = False
         elif chosen == "rollback" and change.stage == 0 and change.history:
@@ -144,6 +147,7 @@ class SyncToolSim:
             self._write(target, change.content)
         self.delivered.append((change.target, change.path, chosen))
         if done:
+            self.dataless.discard(target.resolve())
             self.pending.pop(index)
             placeholder = target.parent / f".{target.name}.icloud"
             if placeholder.exists():

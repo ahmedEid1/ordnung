@@ -51,6 +51,8 @@ class LocalView:
     has_person_data: bool = False
     #: this computer's small number in choices (``choose`` takes it)
     key: int = 0
+    #: versions this computer's data equalled lately (their keys): never "news" again
+    recent: frozenset[str] = frozenset()
 
     @property
     def lineage(self) -> Lineage:
@@ -380,7 +382,16 @@ def _use_here(local: LocalView, view: FolderView, *, older_copy: bool) -> Decisi
     relations = {h.computer: _relation(mine, h) for h in heads}
     if all(r in ("behind", "same") for r in relations.values()):  # U2
         same = [h for h in heads if relations[h.computer] == "same" and h.head.version is not None]
-        differing = [h for h in same if h.head.version is not None and h.head.version.digest != local.digest]
+        # background results of the other computer (its digest is neither this data's nor the base's)
+        assert local.base is not None
+        known = (local.digest, local.base.digest)
+        differing = [
+            h
+            for h in same
+            if h.head.version is not None
+            and h.head.version.digest not in known
+            and h.head.version.id.key() not in local.recent  # a version this computer had already
+        ]
         if differing and local.digest is not None:
             target = max(differing, key=_rank)
             return Pull(target, keep=False) if target.complete else Wait(target)

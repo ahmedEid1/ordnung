@@ -55,6 +55,7 @@ from ordnung.sync import (
     MAX_COMPUTERS,
     NOT_CONNECTED_MESSAGE,
     SELF_HEAL_EVERY_S,
+    SUPERSEDED_SLICE_GRACE_S,
     SYNC_MARK_KEY,
     TAKE_OVER_WAIT_MAX_S,
     NotArrived,
@@ -254,6 +255,8 @@ class Session:
         self._own_records: dict[str, bytes] = {}
         #: :meth:`start` ran (or this session connected the folder): the counters are known
         self.started = False
+        #: another computer wants a slice of this computer's version: the next round writes a new one
+        self._heal_push = False
 
     # ---- opening ----------------------------------------------------------------------------------
 
@@ -503,6 +506,14 @@ class Session:
         if not view.wants:
             return
         by_object = {self.vault.object_name("f", c.sha256): (path, c) for path, c in self.files.items()}
+        base = self.state.base.ref if self.state.base is not None else None
+        if base is not None and base.id.computer == self.state.computer and self.state.mode == "in_use":
+            with contextlib.suppress(Exception):
+                manifest = self.scanner.manifest(base)
+                if manifest is not None:
+                    slices = {self.vault.object_name("d", piece.sha256) for piece in manifest.db.slices}
+                    # a slice can't be made again from a database that moved on: a new version instead
+                    self._heal_push = self._heal_push or bool(slices & view.wants)
         for name in sorted(view.wants):
             with contextlib.suppress(OSError, SyncError):
                 content = self._own_records.get(name)
@@ -549,6 +560,7 @@ class Session:
             else (state.base.ref.digest if state.base else None),
             has_person_data=snapshot.person_data if snapshot is not None else has_person_data(store._conn()),
             key=self.key,
+            recent=frozenset(ref.id.key() for ref in state.recent),
         )
 
     def snapshot(self, *, demo: bool = False) -> Snapshot:
@@ -612,6 +624,14 @@ class Session:
         mark = store.get_meta(SYNC_MARK_KEY)
         own = self._own_version()
         assert own is not None
+        if mark != own.id.key() and own.id.computer == state.computer:
+            # F3 again: the head was written and the process died before ``sync_mark`` — the database
+            # then holds exactly that version (a database put back from an OS backup doesn't)
+            with contextlib.suppress(Exception):
+                if take_snapshot(self).digest == own.digest:
+                    self.mark(store, own.id)
+                    state.pushed = _counter(store) or 0
+                    mark = own.id.key()
         if mark == own.id.key():
             if own.id != state.base.ref.id:  # F3: the head was written, state.json wasn't
                 summary = state.base.summary
@@ -790,8 +810,9 @@ class Session:
             )
             self.write_head(state="in_use")
             return Outcome(decision, applied=applied, kept=kept, replaced=True, notice=notice)
-        if isinstance(decision, Push):
-            pushed = self.push(store, snapshot=snap, demo=demo)
+        if isinstance(decision, Push) or (isinstance(decision, Idle) and self._heal_push):
+            pushed = self.push(store, snapshot=snap, demo=demo, force=self._heal_push, rewrite=view.wants)
+            self._heal_push = False
             self._after_push(store, view)
             return Outcome(decision, pushed=pushed)
         if isinstance(decision, Idle | Paused):
@@ -1033,13 +1054,16 @@ class Session:
         if completeness.ready:
             return 0
         missing = completeness.need - completeness.have
+        # what failed to verify is there with the right size: written again, forced
+        failing = frozenset(self.scanner.damaged_since) | frozenset(self.scanner.missing_since)
         self.state.present = {}
-        self.push(store, force=True)
+        self.push(store, force=True, rewrite=failing)
         return missing
 
     def gc(self) -> int:
         """Delete objects unreferenced for 7 days of wall clock and 7 × 24 h of running time (§10.7,
-        finding 20); at most once a day, only in use, never while a head is unreadable or replayed."""
+        finding 20) — superseded database slices after a day (finding 21, :meth:`_superseded`); at most
+        once a day, only in use, never while a head is unreadable or replayed."""
         state = self.state
         now = self.clock.wall()
         if (
@@ -1058,6 +1082,7 @@ class Session:
         referenced = self._referenced()
         if referenced is None:
             return 0
+        superseded = self._superseded(referenced)
         removed = 0
         for prefix in self.folder.shard_names():
             for name in self.folder.shard(prefix):
@@ -1071,7 +1096,12 @@ class Session:
                     )
                     continue
                 age = (now - datetime.fromisoformat(seen.since)).total_seconds()
-                if age >= GC_GRACE_S and state.runtime - seen.runtime >= GC_GRACE_RUNTIME_S:
+                wall, running = (
+                    (SUPERSEDED_SLICE_GRACE_S, SUPERSEDED_SLICE_GRACE_S)
+                    if name in superseded
+                    else (GC_GRACE_S, GC_GRACE_RUNTIME_S)
+                )
+                if age >= wall and state.runtime - seen.runtime >= running:
                     self.folder.delete_object(name)
                     state.garbage.pop(name, None)
                     state.present.pop(name, None)
@@ -1128,6 +1158,47 @@ class Session:
                     names.add(self.vault.object_name("f", entry.sha256))
         return names
 
+    def _superseded(self, referenced: set[str]) -> set[str]:
+        """Finding 21: the database slices of the versions this computer held lately (``recent``) that
+        no head names any more and that every live head has moved past: the version it names or holds
+        came later here, or (a version this computer never held) knows strictly more. They go after
+        :data:`SUPERSEDED_SLICE_GRACE_S` instead of 7 days."""
+        assert self.view is not None
+        state = self.state
+        if state.base is None:
+            return set()
+        order = {ref.id: index for index, ref in enumerate(state.recent)}
+        if state.base.ref.id not in order:
+            return set()
+        live = [h for h in self.view.heads if not h.forgotten and not h.left and not h.this]
+        if any(not h.readable for h in live):
+            return set()
+
+        def past(head: HeadView, ref: VersionRef) -> bool:
+            version = head.head.version
+            ids = [i for i in (head.head.has, version.id if version is not None else None) if i in order]
+            if ids:
+                return max(order[i] for i in ids) > order[ref.id]
+            return (
+                version is not None
+                and lin.covers(version.lineage, ref.lineage)
+                and not lin.same(version.lineage, ref.lineage)
+            )
+
+        names: set[str] = set()
+        for ref in state.recent:
+            if ref.manifest in referenced or order[ref.id] >= order[state.base.ref.id]:
+                continue
+            if not all(past(head, ref) for head in live):
+                continue
+            try:
+                manifest = self.scanner.manifest(ref)
+            except Exception:
+                continue
+            if manifest is not None:
+                names.update(self.vault.object_name("d", piece.sha256) for piece in manifest.db.slices)
+        return names - referenced
+
     # ---- leaving and stopping ---------------------------------------------------------------------
 
     def leave(
@@ -1159,6 +1230,19 @@ class Session:
         if forget_passphrase:
             with contextlib.suppress(SecretsUnavailable):
                 self.secrets.delete(keyring_account(self.state.computer))
+
+    def save_now(self, store: Store, *, hand_over: bool = False, demo: bool = False) -> PushResult:
+        """ "Save now" (``POST /api/sync/save``): push at once; ``hand_over`` then says ``closed`` and
+        stands by, so another computer can take over (refused while standing by: ``standby``)."""
+        if self.state.mode != "in_use":
+            raise SyncError("standby", "Ordnung is in use on another computer.")
+        pushed = self.push(store, head_state="closed" if hand_over else None, demo=demo)
+        if hand_over:
+            if pushed.outcome != "pushed":
+                self.write_head(state="closed")
+            self.state.mode = "standing_by"
+            self.save()
+        return pushed
 
     def close(self, store: Store, *, demo: bool = False) -> PushResult | None:
         """At shutdown: the computer in use saves and says it was closed."""
@@ -1530,7 +1614,9 @@ def _join_inner(
     return ConnectResult(True, outcome=Outcome(decision, pushed=pushed), session=session)
 
 
-def _join(paths: Paths, root: Path, key_name: str, name: str, passphrase: str, **options: Any) -> ConnectResult:
+def _join(
+    paths: Paths, root: Path, key_name: str, name: str, passphrase: str, **options: Any
+) -> ConnectResult:
     """Join (:func:`_join_inner`); a join that didn't connect leaves no ``<data>/sync/`` behind."""
     local = Local(paths, options.get("data_fs"))
     existed = local.dir.exists()

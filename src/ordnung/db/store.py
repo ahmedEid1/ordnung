@@ -681,6 +681,13 @@ class Store:
         pass, and the files are made private again. The staged file must be a rollback-journal
         database with the live database's page size and schema (sync stages it so). ``pages`` and
         ``progress`` are passed to the backup (tests interrupt it there).
+
+        Probed with SQLite 3.45.1 (hand-off sync P1): the backup into the live WAL database succeeds
+        while another *process* holds a read transaction (0.002 s for 5,000 rows); that reader keeps
+        seeing its old snapshot until its transaction ends, then sees the new data; ``journal_mode``
+        stays ``wal``; ``wal_checkpoint(TRUNCATE)`` answers busy (not an error) while the reader is open.
+        A staged file of another page size is refused by SQLite ("attempt to write a readonly
+        database") — hence the page-size rule above.
         """
         if self.read_only:
             raise PermissionError(f"{self.db_path} is opened read-only")

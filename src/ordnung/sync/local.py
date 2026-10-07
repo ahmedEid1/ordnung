@@ -208,11 +208,14 @@ class Local:
 
     def ensure(self) -> None:
         for folder in (self.dir, self.kept_dir):
+            if folder.is_dir():
+                continue
             with contextlib.suppress(FileExistsError):
                 self.fs.mkdir(folder)
             if os.name == "posix":
                 with contextlib.suppress(OSError):
                     folder.chmod(PRIVATE_DIR_MODE)
+            self.fs.fsync_dir(folder.parent)  # a new name in its parent: durable too
 
     def connected(self) -> bool:
         return self.state_path.is_file()

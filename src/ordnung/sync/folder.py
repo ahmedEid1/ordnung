@@ -33,6 +33,7 @@ files, or an Ordnung sync folder. The data folder itself inside a synced folder 
 from __future__ import annotations
 
 import contextlib
+import errno
 import os
 import queue
 import secrets
@@ -314,6 +315,21 @@ class TimedFs:
         return self._deadline.run(lambda: self.inner.stat(path))
 
 
+FULL_MESSAGE = "The sync folder (or the drive or account it is on) is full. Ordnung tries again later."
+
+
+class FolderFull(SyncError):
+    """ENOSPC or EDQUOT while writing into the sync folder (F30; the problem ``folder_full``)."""
+
+    def __init__(self, message: str = FULL_MESSAGE) -> None:
+        super().__init__("folder_problem", message)
+
+
+def _raise_if_full(exc: OSError) -> None:
+    if exc.errno in (errno.ENOSPC, getattr(errno, "EDQUOT", errno.ENOSPC)):
+        raise FolderFull() from exc
+
+
 def online_only(info: os.stat_result) -> bool:
     """The sync tool keeps this file online-only here (its data isn't on this computer): a dataless
     file (macOS iCloud Drive and File Provider clouds) or a Windows placeholder (finding 6)."""
@@ -462,7 +478,11 @@ class SyncFolder:
         self, folder: Path, name: str, produce: Callable[[BinaryIO], object], *, replace_existing: bool = True
     ) -> None:
         temp = folder / self._temp_name()
-        handle = self.fs.open_new(temp)
+        try:
+            handle = self.fs.open_new(temp)
+        except OSError as exc:
+            _raise_if_full(exc)
+            raise
         try:
             try:
                 produce(handle)
@@ -472,9 +492,11 @@ class SyncFolder:
             if not replace_existing and self._regular(folder / name) is not None:
                 raise FileExistsError(folder / name)
             self.fs.replace(temp, folder / name)
-        except BaseException:
+        except BaseException as exc:
             with contextlib.suppress(OSError):
                 self.fs.unlink(temp)
+            if isinstance(exc, OSError):
+                _raise_if_full(exc)
             raise
         self._touched.add(folder)
 

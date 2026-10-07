@@ -142,7 +142,11 @@ def test_both_changed_asks_once_and_either_answer_keeps_a_copy(pair: Pair) -> No
     b.round()
     pair.settle()
     ra, rb = a.round(), b.round()
-    asked = [r for r in (ra, rb) if isinstance(r.decision, Choice) or (isinstance(r.decision, Standby) and r.decision.choice)]
+    asked = [
+        r
+        for r in (ra, rb)
+        if isinstance(r.decision, Choice) or (isinstance(r.decision, Standby) and r.decision.choice)
+    ]
     assert asked, (ra, rb)
     holder = a if a.mode == "in_use" else b
     other = b if holder is a else a
@@ -249,7 +253,9 @@ def test_three_computers_and_forgetting_one(tmp_path: Path) -> None:
             computer.close()
 
 
-@pytest.mark.parametrize("skew", [timedelta(days=-3), timedelta(minutes=-5), timedelta(), timedelta(minutes=5), timedelta(days=3)])
+@pytest.mark.parametrize(
+    "skew", [timedelta(days=-3), timedelta(minutes=-5), timedelta(), timedelta(minutes=5), timedelta(days=3)]
+)
 def test_clock_skew_changes_nothing(tmp_path: Path, skew: timedelta) -> None:  # F23
     pair = Pair(tmp_path, skew=skew)
     try:
@@ -332,16 +338,23 @@ def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) ->
 
 def test_the_calendar_record_travels_for_the_same_calendar(pair: Pair) -> None:  # finding 15
     a, b = pair.a, pair.b
-    state = CalendarSyncState(url="https://cal.example/", username="anna", connection="aa", events={"x.ics": "1"})
+    state = CalendarSyncState(
+        url="https://cal.example/", username="anna", connection="aa", events={"x.ics": "1"}
+    )
     a.db.set_meta("calendar_sync", state.model_dump_json())
-    b.db.set_meta("calendar_sync", state.model_copy(update={"connection": "bb", "events": {"y.ics": "2"}}).model_dump_json())
+    b.db.set_meta(
+        "calendar_sync",
+        state.model_copy(update={"connection": "bb", "events": {"y.ics": "2"}}).model_dump_json(),
+    )
     pair.joined()
     merged = CalendarSyncState.model_validate_json(b.db.get_meta("calendar_sync") or "")
     assert merged.connection == "bb"  # the connection stays
     assert merged.events == {"x.ics": "", "y.ics": ""}  # both records, checked again
     view = a.s.scan()
     head = view.by_computer(b.s.state.computer)
-    assert head is not None and head.head.calendar_target is not None and head.head.calendar_mode == "discreet"
+    assert (
+        head is not None and head.head.calendar_target is not None and head.head.calendar_mode == "discreet"
+    )
 
 
 def test_a_watched_folder_both_computers_share(pair: Pair) -> None:  # finding 16

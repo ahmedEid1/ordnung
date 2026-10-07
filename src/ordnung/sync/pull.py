@@ -427,7 +427,14 @@ def _place(paths: Paths, journal: Journal, fs: FsOps, refetch: Refetch | None) -
             refetch(entry, source)  # finding 12: fetched again from the folder (the key is here)
             fs.replace(source, target)
         touched.add(target.parent)
-    for folder in sorted(touched, key=lambda p: len(p.parts), reverse=True):
+    # every folder up to the data folder: a folder made for a new letter is a new name in its parent
+    chain = {
+        folder
+        for parent in touched
+        for folder in (parent, *parent.parents)
+        if paths.data_dir in (folder, *folder.parents)
+    }
+    for folder in sorted(chain, key=lambda p: len(p.parts), reverse=True):
         fs.fsync_dir(folder)
 
 

@@ -12,11 +12,11 @@ import pytest
 
 from fakes import use_fast_keys
 from ordnung.db.migrate import MIGRATIONS_DIR, latest_version, migrate
-from ordnung.db.store import Store, person_write
+from ordnung.db.store import person_write
 from ordnung.sync import NewerSyncFolder, NotArrived, SyncError, SyncRefused
 from ordnung.sync.crypto import sealed_size_of
 from ordnung.sync.decide import Pull
-from ordnung.sync.model import Bucket, BucketRef, FileEntry, Manifest, VersionRef
+from ordnung.sync.model import FileEntry, VersionRef
 from ordnung.sync.push import buckets_of
 from sync_harness import Computer
 
@@ -152,7 +152,14 @@ def test_hostile_manifests_are_refused(pair) -> None:  # type: ignore[no-untyped
     a, b = pair
     joined(a, b)
     b.round()
-    for bad in ("../outside.pdf", "files/../../x", "/etc/passwd", "inbox/x.pdf", "files/a\x00b", "sync/state.json"):
+    for bad in (
+        "../outside.pdf",
+        "files/../../x",
+        "/etc/passwd",
+        "inbox/x.pdf",
+        "files/a\x00b",
+        "sync/state.json",
+    ):
         forge(b, entries=[FileEntry(path=bad, sha256="0" * 64, size=1)])
         with pytest.raises(SyncError):
             a.s.stage(a.s.scan().by_computer(b.s.state.computer))  # type: ignore[arg-type]
