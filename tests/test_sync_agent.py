@@ -279,7 +279,7 @@ async def test_a_change_shows_as_unsaved_from_the_moment_it_is_made(tmp_path: Pa
 
 
 async def test_files_changing_while_saving_wait_and_a_damaged_original_shows_at_once(
-    tmp_path: Path, folder: Path
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Integration finding: both fell back to "the folder can't be reached"."""
     engine = FakeEngine()
@@ -293,12 +293,22 @@ async def test_files_changing_while_saving_wait_and_a_damaged_original_shows_at_
             assert (await _add_todo(api, "Pay the gym")).status_code == 201
             await eventually(lambda: sum(call.startswith("push:") for call in engine.calls) >= 2)
             assert agent.problem is None, "shown only when saving keeps failing (save_failing)"
+            # the next save fails on a damaged original, and the one after it is far away: only looks follow
+            monkeypatch.setattr(agent_module, "PUSH_RETRY_S", (60.0,))
             engine.fail_push = LocalDamaged("letters/2026/letter.pdf")
-            found = await eventually(lambda: agent.problem, within=5)
-            assert found.code == "local_damaged"
+            found = await eventually(
+                lambda: agent.problem and agent.problem.code == "local_damaged", within=5
+            )
+            assert found
+            # it stays through the looks at the folder that follow (they answer as they should): only a save ends it
+            looks = sum(call.startswith("scan") for call in engine.calls)
+            await eventually(lambda: sum(call.startswith("scan") for call in engine.calls) >= looks + 3)
+            assert agent.problem is not None and agent.problem.code == "local_damaged"
             assert (await status(api))["problem"]["code"] == "local_damaged"
         finally:
             engine.fail_push = None
+        await agent.save()
+        assert agent.problem is None
 
 
 async def test_the_watched_folder_s_letters_are_the_person_s_and_remembered_across_computers(

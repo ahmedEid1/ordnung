@@ -170,6 +170,9 @@ WAIT_CANCELLED = {
 _STOPPED: frozenset[SyncProblemCode] = frozenset(
     {"copied_folder", "forgotten", "folder_other", "two_setups", "pull_unfinished", "local_rollback"}
 )
+#: Problems a save reports (the folder filling up, saving failing for a while, a damaged original here): a look at
+#: the folder that answers as it should doesn't end them; only a save that succeeds does.
+_SAVE_PROBLEMS: tuple[SyncProblemCode, ...] = ("save_failing", "folder_full", "local_damaged")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1021,8 +1024,8 @@ class SyncAgent:
             if self.mode == "in_use" and decision.may_push and self._local_pending():
                 await self._push("change")
             return
-        if self.problem is not None and self.problem.code not in ("save_failing", "folder_full"):
-            self.problem = None  # the folder answered as it should
+        if self.problem is not None and self.problem.code not in _SAVE_PROBLEMS:
+            self.problem = None  # the folder answered as it should (a save's own problem waits for a save)
         if self.mode != "in_use":
             return  # standing by: report only (up to date, arriving, a choice)
         if kind == "become_standby":
@@ -1161,11 +1164,7 @@ class SyncAgent:
         self._failures = 0
         self._failing_since = None
         self._retry_at = 0.0
-        if self.problem is not None and self.problem.code in (
-            "save_failing",
-            "folder_full",
-            "folder_unreachable",
-        ):
+        if self.problem is not None and self.problem.code in (*_SAVE_PROBLEMS, "folder_unreachable"):
             self.problem = None
         if self._last_change is None or self._last_change <= started:
             self._dirty_since = self._last_change = self._person_since = None
