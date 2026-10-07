@@ -563,7 +563,8 @@ class SyncFolder:
 
     def temp_files(self) -> Iterator[Path]:
         """Every temp file of Ordnung's pattern in the folder (any writer's)."""
-        folders = [self.root, self.heads_dir, *(self.objects_dir / s for s in self.shard_names())]
+        shards = [self.objects_dir / s for s in self.shard_names()]
+        folders = [self.root, self.heads_dir, self.objects_dir, *shards]
         for folder in folders:
             for name in self._names(folder):
                 if TEMP_RE.match(name):

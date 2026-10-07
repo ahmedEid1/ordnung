@@ -263,7 +263,9 @@ class Scanner:
                 if file != own_file:
                     uncertain = True
             if file == own_file:
-                if readable and head.written == state.written and head.computer == state.computer:
+                # a head newer than state.json says is not stale: a crash after its rename, or a data
+                # folder put back from a backup — start() decides (finding 4); never written over here
+                if readable and head.written >= state.written and head.computer == state.computer:
                     own_stale = False
                 if head.computer != state.computer:
                     continue

@@ -37,7 +37,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO, Literal
+from typing import Any, BinaryIO, Literal
 
 from ordnung import __version__
 from ordnung.calendar.secrets import SecretsLocked, SecretStore, SecretsUnavailable
@@ -252,6 +252,8 @@ class Session:
         self._healed_at: float | None = None
         #: own records by object name (the latest push's manifest and buckets), for self-heal
         self._own_records: dict[str, bytes] = {}
+        #: :meth:`start` ran (or this session connected the folder): the counters are known
+        self.started = False
 
     # ---- opening ----------------------------------------------------------------------------------
 
@@ -312,7 +314,7 @@ class Session:
         now = self.clock.monotonic()
         elapsed = max(0.0, now - self._ticked)
         self._ticked = now
-        self.state.runtime += min(elapsed, 3600.0)
+        self.state.runtime += min(elapsed, 86_400.0)  # a monotonic clock that jumped is not believed
 
     def passphrase_now(self) -> str:
         """The sync passphrase, read from the password store now (a kept copy is encrypted with it)."""
@@ -477,8 +479,8 @@ class Session:
 
     def _keep_own_head(self, view: FolderView) -> None:
         state = self.state
-        if state.written == 0 and state.base is None:
-            return
+        if not self.started or (state.written == 0 and state.base is None):
+            return  # before start() raised the counters, this computer's head is never written
         rewrite = view.own_stale
         wants = self.scanner.wanted()
         if wants != state.wants:
@@ -567,6 +569,7 @@ class Session:
         view = self.scan()
         self._raise_counters(view)
         self.problem = self._check_mark(store, view)
+        self.started = True
         self.save()
         return self.problem
 
@@ -1089,7 +1092,7 @@ class Session:
         refs: list[VersionRef] = []
         live = [h for h in self.view.heads if not h.forgotten and not h.left]
         for head in self.view.heads:
-            if head.forgotten or head.head.version is None:
+            if head.forgotten or head.this or head.head.version is None:  # its own: from state, fresh
                 continue
             version = head.head.version
             if head.left and any(
@@ -1345,22 +1348,25 @@ def _create(
         machine=machine,
         passphrase=passphrase,
     )
+    session.started = True  # a new folder: nothing to reconcile
     session.folder.create_key_file(made.name, made.data)
     _store_passphrase(secrets, state.keyring_account, passphrase)
     with _bookkeeping():
         if store.get_meta(PERSON_META_KEY) is None:
             store.set_meta(PERSON_META_KEY, "0")
-    state.complete = True
     state.mode = "in_use"
     state.head_state = "in_use"
     session.save()
     session.log(store, "sync.connected", f"Started syncing through {root} as {name}.", {"computer": name})
     pushed = session.push(store, claim=True, head_state="in_use", force=True)
+    # only now (its head written) is the setup complete: an interrupted one is taken back on retry
+    session.state.complete = True
+    session.save()
     store.set_durable(True)
     return ConnectResult(True, created=True, outcome=Outcome(Push(), pushed=pushed), session=session)
 
 
-def _join(
+def _join_inner(
     paths: Paths,
     root: Path,
     key_name: str,
@@ -1431,6 +1437,7 @@ def _join(
         if store.get_meta(PERSON_META_KEY) is None:
             store.set_meta(PERSON_META_KEY, "0")
     state.complete = True
+    session.started = True
     state.pushed = _counter(store) or 0
     session.save()
     store.set_durable(True)
@@ -1521,6 +1528,28 @@ def _join(
     session.claim(store)
     pushed = session.push(store, head_state="in_use", force=True)
     return ConnectResult(True, outcome=Outcome(decision, pushed=pushed), session=session)
+
+
+def _join(paths: Paths, root: Path, key_name: str, name: str, passphrase: str, **options: Any) -> ConnectResult:
+    """Join (:func:`_join_inner`); a join that didn't connect leaves no ``<data>/sync/`` behind."""
+    local = Local(paths, options.get("data_fs"))
+    existed = local.dir.exists()
+
+    def undo() -> None:
+        state = None
+        with contextlib.suppress(Exception):
+            state = local.load()
+        if not existed and (state is None or not state.complete):
+            shutil.rmtree(local.dir, ignore_errors=True)
+
+    try:
+        result = _join_inner(paths, root, key_name, name, passphrase, **options)
+    except BaseException:
+        undo()
+        raise
+    if not result.connected:
+        undo()
+    return result
 
 
 def disconnect(
