@@ -75,6 +75,7 @@ import anyio
 from starlette.types import ASGIApp
 
 from ordnung.app_context import AppContext
+from ordnung.db.store import background_context
 from ordnung.ids import new_id
 from ordnung.phone import PhoneRefusal, tls
 from ordnung.phone.net import Candidate, Network, subnet_of
@@ -831,7 +832,10 @@ class PhoneAccess:
 
     def _start_watcher(self) -> None:
         if self._watcher is None or self._watcher.done():
-            self._watcher = asyncio.create_task(self._watch(), name="ordnung-phone-watcher")
+            # background work: never the person's change, even when a request of theirs started it
+            self._watcher = asyncio.create_task(
+                self._watch(), name="ordnung-phone-watcher", context=background_context()
+            )
 
     async def _stop_watcher(self) -> None:
         task, self._watcher = self._watcher, None

@@ -154,7 +154,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
   const look = (then?: (info: SyncFolderInfo) => void) => {
     const value = folder.trim();
     if (!value || !looksAbsolute(value)) {
-      setErrors({ folder: value ? "Enter the whole path, starting at the top: /home/you/Nextcloud/Ordnung." : "Enter the folder your sync tool keeps in step, like /home/you/Nextcloud/Ordnung." });
+      setErrors({ folder: value ? "Enter the whole path, starting at the top: /home/you/Nextcloud/Vault." : "Enter the folder your sync tool keeps in step, like /home/you/Nextcloud/Vault." });
       focusNext.current = "folder";
       return;
     }
@@ -302,7 +302,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
             <Field
               id="sync-folder"
               label="Sync folder"
-              hint="A folder of its own inside the folder your sync tool keeps in step, like /home/you/Nextcloud/Ordnung. Ordnung creates it if it isn't there."
+              hint="A folder of its own inside the folder your sync tool keeps in step, like /home/you/Nextcloud/Vault. Ordnung creates it if it isn't there."
               error={errors.folder}
             >
               <Input
@@ -311,7 +311,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
                 onBlur={() => {
                   if (folder.trim() && folder.trim() !== checked && !busy) look();
                 }}
-                placeholder="/home/you/Nextcloud/Ordnung"
+                placeholder="/home/you/Nextcloud/Vault"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}

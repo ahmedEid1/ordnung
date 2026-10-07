@@ -1206,8 +1206,9 @@ _SYNC_CLAIMS: list[tuple[str, str]] = [
     (
         _ADR_SYNC.name,
         "must reach about {bits} bits by a simple, documented estimator (distinct words and digit runs, each "
-        "at most {token_bits} bits), and setup suggests {words_word} random words",
+        "at most {token_bits} bits;",
     ),
+    (_ADR_SYNC.name, "in the web app and the CLI — suggests {words_word} random made-up words"),
     (
         _ADR_SYNC.name,
         "for {gc_days} days of its clock and {gc_runtime_days} × 24 hours of its own running time",
@@ -1307,8 +1308,14 @@ def test_the_passphrase_estimator_is_the_one_the_docs_describe() -> None:
         "2024",
     ]
     assert sync.passphrase_bits("ab") == pytest.approx(2 * sync.LETTER_BITS)
-    assert sync.passphrase_bits("1234") == pytest.approx(4 * sync.DIGIT_BITS)
-    assert sync.passphrase_bits("abc") == sync.TOKEN_BITS_MAX  # three letters already count the most
+    assert sync.passphrase_bits("2971") == pytest.approx(4 * sync.DIGIT_BITS)
+    assert sync.passphrase_bits("owl") == sync.TOKEN_BITS_MAX  # three letters already count the most
+    # a run (one character again and again, in order, along a keyboard row) about one character, a very
+    # common word 7 bits
+    assert sync.passphrase_bits("1234") == pytest.approx(sync.DIGIT_BITS + 1)
+    assert sync.passphrase_bits("qwertz") == pytest.approx(sync.LETTER_BITS + 1)
+    assert sync.passphrase_bits("zzzz") == pytest.approx(sync.LETTER_BITS + 1)
+    assert sync.passphrase_bits("password") == sync.COMMON_WORD_BITS
     assert sync.passphrase_bits("verylongword") == sync.TOKEN_BITS_MAX
     assert sync.passphrase_bits("maple Maple MAPLE") == sync.passphrase_bits("maple")
     five = "orbit velvet canyon maple thunder"

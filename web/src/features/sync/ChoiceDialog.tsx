@@ -1,7 +1,8 @@
 /**
  * "Which Ordnung do you want to keep?" (design §12.2): both computers changed something while they couldn't see
  * each other, and the two can't be combined. One radio per side — none chosen at first — with its letters, how many
- * were added since the two last agreed and the newest titles. The side not kept is saved as an encrypted copy on
+ * were added since the two last agreed and the newest titles; its open and done dates and to-dos, its notes, its
+ * latest changes and when it was saved (sides that differ only in to-dos or edits are told apart by these). The side not kept is saved as an encrypted copy on
  * its own computer, so nothing is thrown away. A side still arriving can be chosen: the dialog then waits for it,
  * with Cancel. Choosing makes this computer the one in use.
  */
@@ -15,8 +16,8 @@ import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
 import { focusWhenReady } from "@/features/today/focus";
-import { chosenMessage, choiceSideLine, sideArrivingLine, sideName, waitingLine } from "@/features/settings/sync";
-import { formatDate, formatTimeAgo } from "@/lib/format";
+import { chosenMessage, choiceSideLine, sideArrivingLine, sideContentsLine, sideLatestLine, sideName, waitingLine } from "@/features/settings/sync";
+import { formatDate, formatDateTime, formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const ERROR_ID = "sync-choice-error";
@@ -40,6 +41,7 @@ export function SideOption({
   disabled?: boolean;
 }) {
   const arriving = sideArrivingLine(side);
+  const latest = sideLatestLine(side);
   return (
     <label
       className={cn(
@@ -66,7 +68,16 @@ export function SideOption({
               ))
             : null}
         </span>
-        {!side.this && side.arrived_at ? <span className="block text-[12.5px] text-muted">Arrived here {formatTimeAgo(side.arrived_at)}</span> : null}
+        {!joining ? <span className="block text-ink/85">{sideContentsLine(side)}</span> : null}
+        {!joining && latest ? <span className="block text-[12.5px] text-muted [overflow-wrap:anywhere]">{latest}</span> : null}
+        {!side.this && side.saved_at ? (
+          <span className="block text-[12.5px] text-muted">
+            Saved there {formatDateTime(side.saved_at)}
+            {side.arrived_at ? `, arrived here ${formatTimeAgo(side.arrived_at)}` : ""}
+          </span>
+        ) : !side.this && side.arrived_at ? (
+          <span className="block text-[12.5px] text-muted">Arrived here {formatTimeAgo(side.arrived_at)}</span>
+        ) : null}
         {arriving ? (
           <span className="mt-0.5 flex items-center gap-1 text-[12.5px] font-medium text-warn-ink">
             <Hourglass className="size-3.5 shrink-0" aria-hidden />

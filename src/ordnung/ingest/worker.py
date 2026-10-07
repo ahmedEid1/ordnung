@@ -514,7 +514,9 @@ class IngestWorker:
             if ready:
                 self.claude_ready()
 
-        self._claude_checking = asyncio.create_task(run(), name="ordnung-claude-check")
+        self._claude_checking = asyncio.create_task(
+            run(), name="ordnung-claude-check", context=background_context()
+        )
 
     def _maybe_resume(self) -> None:
         if self.paused_until is not None and not self.is_paused():

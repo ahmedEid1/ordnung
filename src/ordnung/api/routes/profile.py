@@ -29,12 +29,14 @@ from ordnung.api.routes.common import ledger_changed
 from ordnung.api.routes.dates import recompute_all_items
 from ordnung.app_context import AppContext
 from ordnung.config import Paths, private_dir
+from ordnung.db.store import PERSON_WRITE, person_write
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.watcher import folder_chosen
 from ordnung.models import AppSettings, DesktopNotifyMode, Profile
 from ordnung.phone.mask import mask_profile
 from ordnung.rules import normalize_region
 from ordnung.secretary.scam import iban_valid, normalize_iban
+from ordnung.sync import LOCAL_SETTINGS
 
 router = APIRouter(tags=["profile"])
 
@@ -290,12 +292,17 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
         changes["model"] = _checked_model(changes["model"])
     if changes.get("models") is not None:
         changes["models"] = current.models.model_dump() | changes["models"]
-    merged = current.model_dump() | {name: value for name, value in changes.items() if value is not None}
+    before = current.model_dump()
+    merged = before | {name: value for name, value in changes.items() if value is not None}
     if "inbox_dir" in changes:
         merged["inbox_dir"] = changes["inbox_dir"]
-    ctx.store.save_settings(merged)
-    if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
-        folder_chosen(ctx.store)
+    # only this computer's own settings changed (its watched folder, its notifications): not a change
+    # of the person's data that hand-off sync carries, so it never makes a person version
+    synced = any(merged[name] != before[name] for name in merged if name not in LOCAL_SETTINGS)
+    with person_write(PERSON_WRITE.get() and synced):
+        ctx.store.save_settings(merged)
+        if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
+            folder_chosen(ctx.store)
     return ctx.reload_settings()
 
 

@@ -41,6 +41,16 @@ describe("the standing-by screen", () => {
     expect(links.map((l) => l.getAttribute("href"))).toEqual(["/settings?section=computers", "/settings?section=privacy"]);
   });
 
+  it("says no computer is using Ordnung when the one in use left sync — never that this one is", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().otherLeft();
+    await renderAppAt("/", "No computer is using Ordnung now");
+    expect(screen.getByText("sam-desktop stopped syncing; everything it saved last has arrived here.")).toBeInTheDocument();
+    expect(screen.getByText("Use Ordnung here to go on with it on this computer — nothing is lost.")).toBeInTheDocument();
+    expect(screen.queryByText(/is in use on/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Use Ordnung here" })).toBeInTheDocument();
+  });
+
   it("says when the other computer was closed", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().otherTakesOver("sam-desktop", { closed: true });

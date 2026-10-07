@@ -19,7 +19,10 @@ them. An object whose final name already has the expected size is not written ag
 **Reading** never trusts a name: only :data:`~ordnung.sync.KEY_FILE_RE`, :data:`~ordnung.sync.HEAD_RE`,
 :data:`~ordnung.sync.SHARD_RE`, :data:`~ordnung.sync.OBJECT_RE` and :data:`~ordnung.sync.TEMP_RE` are
 looked at, regular files only (symbolic links are ignored); everything else is ignored and never
-deleted (conflict copies, ``.stfolder``, ``desktop.ini``, the person's own files). A file the sync tool
+deleted (conflict copies, ``.stfolder``, ``desktop.ini``, the person's own files). Folders the same way:
+``h/``, ``o/`` and each ``o/<xx>/`` must be real folders — one that is a link (someone who can write the
+folder made it, or a sync tool that carries links) is never listed, read, written or deleted through, so
+nothing Ordnung does reaches outside the sync folder (:class:`LinkedFolder` when it would write). A file the sync tool
 keeps online-only (a dataless file on macOS, a Windows recall-on-access placeholder, an ``.icloud``
 sibling) has not arrived (:func:`online_only`).
 
@@ -325,6 +328,21 @@ class FolderFull(SyncError):
         super().__init__("folder_problem", message)
 
 
+LINKED_MESSAGE = (
+    "Part of the sync folder (h/ or o/) is a link to another place, so Ordnung doesn't write through it. "
+    "Remove that link from the sync folder."
+)
+#: How long a folder checked to be a real folder (not a link) is believed when only reading.
+DIR_CHECK_S = 2.0
+
+
+class LinkedFolder(SyncError):
+    """A folder of the sync folder's layout is a link (module doc): nothing is written through it."""
+
+    def __init__(self, message: str = LINKED_MESSAGE) -> None:
+        super().__init__("folder_problem", message)
+
+
 def _raise_if_full(exc: OSError) -> None:
     if exc.errno in (errno.ENOSPC, getattr(errno, "EDQUOT", errno.ENOSPC)):
         raise FolderFull() from exc
@@ -377,6 +395,8 @@ class SyncFolder:
         #: this computer's temp-file tag (``Vault.temp_tag``): the only temp files it ever removes
         self.tag = tag
         self._touched: set[Path] = set()
+        #: folders checked to be real folders, until when (monotonic) — reading only
+        self._real: dict[Path, float] = {}
 
     # ---- layout -----------------------------------------------------------------------------------
 
@@ -408,6 +428,39 @@ class SyncFolder:
             return None
         return FileInfo.of(info)
 
+    def _is_real_dir(self, folder: Path) -> bool:
+        try:
+            info = self.fs.stat(folder)
+        except OSError as exc:
+            if _missing(exc):
+                return False
+            raise
+        return stat_module.S_ISDIR(info.st_mode)
+
+    def _inside(self, folder: Path, *, fresh: bool = False) -> bool:
+        """``folder`` and every folder between it and the root are real folders, never links (module
+        doc). ``fresh``: checked now (before writing or deleting); else a check of the last
+        :data:`DIR_CHECK_S` stands (reading)."""
+        try:
+            parts = folder.relative_to(self.root).parts
+        except ValueError:
+            return False
+        current = self.root
+        now = time.monotonic()
+        for part in parts:
+            current = current / part
+            if not fresh and self._real.get(current, 0.0) > now:
+                continue
+            if not self._is_real_dir(current):
+                self._real.pop(current, None)
+                return False
+            self._real[current] = now + DIR_CHECK_S
+        return True
+
+    def _writable(self, folder: Path) -> None:
+        if folder != self.root and not self._inside(folder, fresh=True):
+            raise LinkedFolder()
+
     def is_dir(self) -> bool:
         try:
             info = self.fs.stat(self.root)
@@ -418,6 +471,8 @@ class SyncFolder:
         return stat_module.S_ISDIR(info.st_mode)
 
     def _names(self, folder: Path) -> list[str]:
+        if folder != self.root and not self._inside(folder):
+            return []  # missing, or a link: never listed through
         try:
             return sorted(self.fs.listdir(folder))
         except OSError as exc:
@@ -444,6 +499,8 @@ class SyncFolder:
 
     def read_bytes(self, path: Path, limit: int = MAX_RECORD_BYTES) -> bytes | None:
         """The bytes of ``path`` (``None``: missing, not a regular file, online-only or over ``limit``)."""
+        if path.parent != self.root and not self._inside(path.parent):
+            return None
         info = self._regular(path)
         if info is None or info.online_only or info.size > limit:
             return None
@@ -471,12 +528,14 @@ class SyncFolder:
             try:
                 self.fs.mkdir(folder)
             except FileExistsError:
+                self._writable(folder)  # there already: a real folder, never a link
                 continue
         self.fs.fsync_dir(self.root)
 
     def _atomic(
         self, folder: Path, name: str, produce: Callable[[BinaryIO], object], *, replace_existing: bool = True
     ) -> None:
+        self._writable(folder)
         temp = folder / self._temp_name()
         try:
             handle = self.fs.open_new(temp)
@@ -525,6 +584,8 @@ class SyncFolder:
 
     def object_info(self, name: str) -> FileInfo | None:
         path = self.object_path(name)
+        if not self._inside(path.parent):
+            return None
         info = self._regular(path)
         if info is None and self._regular(path.with_name(f".{path.name}.icloud")) is not None:
             return FileInfo(0, 0, 0, 0, True)  # an older iCloud Drive placeholder
@@ -545,7 +606,11 @@ class SyncFolder:
         return found
 
     def shard_names(self) -> list[str]:
-        return [name for name in self._names(self.objects_dir) if SHARD_RE.match(name)]
+        return [
+            name
+            for name in self._names(self.objects_dir)
+            if SHARD_RE.match(name) and self._inside(self.objects_dir / name)
+        ]
 
     def write_object(
         self, name: str, size: int, produce: Callable[[BinaryIO], object], *, force: bool = False
@@ -557,6 +622,7 @@ class SyncFolder:
             if info is not None and info.size == size and not info.online_only:
                 return False
         shard = self.objects_dir / name[:2]
+        self._writable(self.objects_dir)  # never a shard made inside a link
         try:
             self.fs.mkdir(shard)
             self._touched.add(self.objects_dir)
@@ -566,14 +632,20 @@ class SyncFolder:
         return True
 
     def open_object(self, name: str) -> BinaryIO:
-        return self.fs.open_read(self.object_path(name))
+        path = self.object_path(name)
+        if not self._inside(path.parent):
+            raise FileNotFoundError(path)
+        return self.fs.open_read(path)
 
     def delete_object(self, name: str) -> None:
         if not OBJECT_RE.match(name[2:]) or not SHARD_RE.match(name[:2]):
             raise ValueError("not an object name")
+        path = self.object_path(name)
+        if not self._inside(path.parent, fresh=True):
+            return  # a link: nothing is deleted through it
         with contextlib.suppress(FileNotFoundError):
-            self.fs.unlink(self.object_path(name))
-            self._touched.add(self.object_path(name).parent)
+            self.fs.unlink(path)
+            self._touched.add(path.parent)
 
     def flush(self) -> None:
         """``fsync`` every folder written into since the last flush (before a head names its content)."""
@@ -597,13 +669,15 @@ class SyncFolder:
         mine = tag or self.tag
         removed = 0
         for path in list(self.temp_files()):
-            if path.name[1:9] == mine:
+            if path.name[1:9] == mine and (path.parent == self.root or self._inside(path.parent, fresh=True)):
                 with contextlib.suppress(FileNotFoundError):
                     self.fs.unlink(path)
                     removed += 1
         return removed
 
     def unlink_head(self, name: str) -> None:
+        if not self._inside(self.heads_dir, fresh=True):
+            return
         with contextlib.suppress(FileNotFoundError):
             self.fs.unlink(self.head_path(name))
         self.fs.fsync_dir(self.heads_dir)
@@ -675,7 +749,7 @@ def folder_problem(value: str, paths: Paths, settings: AppSettings | None = None
     file of Ordnung's own temp pattern, removed at once."""
     folder = _resolved(value)
     if folder is None:
-        return "Please choose a full folder path, like /home/you/Nextcloud/Ordnung."
+        return "Please choose a full folder path, like /home/you/Nextcloud/Vault."
     if folder == Path(folder.anchor):
         return "The sync folder can't be the root of a drive. Choose a new folder inside your synced folder."
     if folder == Path.home().resolve():
@@ -702,7 +776,7 @@ def folder_problem(value: str, paths: Paths, settings: AppSettings | None = None
             more = f" and {len(others) - 1} more" if len(others) > 1 else ""
             return (
                 f"This folder has other files in it ({shown}{more}). Choose a new, empty folder, like "
-                f"{folder.parent / 'Ordnung'}."
+                f"{folder.parent / 'Vault'}."
             )
     probe_in = folder if folder.is_dir() else folder.parent
     probe = probe_in / f".{secrets.token_hex(8)}.tmp"

@@ -2,8 +2,9 @@
  * The standing-by screen (design §19.3): another computer is the one in use, so this one changes nothing — the app
  * shows this instead of its pages (Settings → Your computers and the privacy log stay open, under a banner).
  *
- * It says whose Ordnung is in use and whether everything from there has arrived, and offers one button, **Use
- * Ordnung here** (focused; never an "Are you sure?" — a take-over loses nothing). While the other computer's latest
+ * It says whose Ordnung is in use (or that none is: the one in use left sync) and whether everything from there has
+ * arrived, and offers one button, **Use Ordnung here** (focused; never an "Are you sure?" — a take-over loses
+ * nothing). While the other computer's latest
  * changes are still on their way it waits for them ("Use it here as soon as they've arrived", with Cancel and when
  * it stops waiting), or uses the copy this computer has now. A choice, a problem (the passphrase field, …) and
  * notices show here too.
@@ -18,7 +19,7 @@ import { LogoMark } from "@/components/shell/Logo";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { toast } from "@/components/ui/Toast";
-import { inUseName, olderCopyLabel, reassuranceLine, standbyStatusLine, waitingLine } from "@/features/settings/sync";
+import { inUseName, olderCopyLabel, reassuranceLine, standbyHeading, standbyStatusLine, waitingLine } from "@/features/settings/sync";
 import { focusWhenReady } from "@/features/today/focus";
 import { cn } from "@/lib/utils";
 import { ChoiceDialog } from "./ChoiceDialog";
@@ -71,7 +72,7 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
           <LogoMark className="size-7" />
           <span>Standing by</span>
         </div>
-        <h1 className="display mt-4 text-balance text-2xl font-semibold text-ink [overflow-wrap:anywhere]">Ordnung is in use on {name}</h1>
+        <h1 className="display mt-4 text-balance text-2xl font-semibold text-ink [overflow-wrap:anywhere]">{standbyHeading(status)}</h1>
         <p className="mt-2 text-pretty text-base leading-relaxed text-ink/85">{standbyStatusLine(status)}</p>
         <p className="mt-1 text-pretty text-[14px] leading-relaxed text-muted">{reassuranceLine(status)}</p>
 
@@ -107,14 +108,24 @@ export function StandbyScreen({ status }: { status: SyncStatus }) {
             <>
               {arriving ? <ArrivingNote arriving={arriving} /> : null}
               {!status.choice ? (
-                <Button variant="primary" size="lg" icon={ArrowRightLeft} autoFocus loading={takeOver.isPending} onClick={() => takeOverHere()} className="w-full sm:w-auto">
-                  {arriving ? "Use it here as soon as they've arrived" : "Use Ordnung here"}
+                <Button
+                  variant="primary"
+                  size="lg"
+                  icon={ArrowRightLeft}
+                  autoFocus
+                  loading={takeOver.isPending}
+                  onClick={() => takeOverHere()}
+                  // its longer label wraps on a narrow phone instead of widening the page (320 px): a label of
+                  // its own, not the button's one-line one
+                  className="h-auto! min-h-11 w-full whitespace-normal py-2.5 sm:w-auto"
+                >
+                  <span className="min-w-0 text-center">{arriving ? "Use it here as soon as they've arrived" : "Use Ordnung here"}</span>
                 </Button>
               ) : null}
               {arriving && !status.choice ? (
                 <div className="text-[13.5px] leading-5">
-                  <Button variant="link" size="sm" onClick={() => takeOverHere(true)} disabled={takeOver.isPending}>
-                    {olderCopyLabel(status)}
+                  <Button variant="link" size="sm" onClick={() => takeOverHere(true)} disabled={takeOver.isPending} className="shrink whitespace-normal text-left">
+                    <span className="min-w-0">{olderCopyLabel(status)}</span>
                   </Button>
                   <p className="mt-1 text-muted">
                     If you change something here before {arriving.from_computer}'s changes arrive, Ordnung will ask which computer's to keep. If you don't, they're

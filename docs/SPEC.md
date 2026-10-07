@@ -1451,8 +1451,10 @@ outside the database, Delete everything leaves first, a restored backup starts w
   and to connect — never by the status. `ORDNUNG_SYNC_PASSPHRASE` feeds the CLI. A new folder's passphrase:
   12–1024 characters and at least 70 bits by `passphrase_bits` (NFC; runs of letters and runs of digits,
   split where a lower-case letter meets an upper-case one; each distinct token, case-folded, counts its
-  length × log2 26 or × log2 10, at most 14 bits); setup suggests 5 words, and the web app counts the same
-  way.
+  length × log2 26 or × log2 10 — a run (one character again and again, in order either way, along a
+  keyboard row) one character's worth and 1 bit, one of a few hundred very common words (numbers, months,
+  days, colours, classic passwords) 7 bits, tokens that only make a run together that one run — at most 14
+  bits); setup suggests 5 words (in the CLI too), and the web app counts the same way.
 - **Leaving and forgetting.** Disconnect and Delete everything fence writes, save, write the head `left`
   with its version kept (the others still bring that version over), forget the passphrase and remove
   `sync/` (Disconnect keeps `kept/`); while no other computer has this one's latest changes they answer 409

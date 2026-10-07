@@ -240,6 +240,10 @@ function DeleteEverythingDialog({
             its certificate is deleted. A phone that trusted that certificate keeps it — remove it there. iPhone: {REMOVE_STEPS.ios} Android: {REMOVE_STEPS.android}
           </p>
         ) : null}
+        {!syncing && handOff.data?.kept.length ? (
+          // kept copies outlive Disconnect: they go with Delete everything all the same
+          <p className="text-[13.5px] leading-relaxed text-ink/85">The kept copies of hand-off sync on this computer are deleted too.</p>
+        ) : null}
         {syncing ? (
           <p className="text-[13.5px] leading-relaxed text-ink/85 [overflow-wrap:anywhere]">
             {deleteSyncNote(syncing.folder)}

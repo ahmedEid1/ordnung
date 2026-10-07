@@ -6069,6 +6069,34 @@ export interface components {
              */
             newest: components["schemas"]["SyncLetter"][];
             /**
+             * Items
+             * @description Dates and to-dos still open in that Ordnung
+             * @default 0
+             */
+            items: number;
+            /**
+             * Done
+             * @description Dates and to-dos marked done there
+             * @default 0
+             */
+            done: number;
+            /**
+             * Notes
+             * @description Notes there
+             * @default 0
+             */
+            notes: number;
+            /**
+             * Latest
+             * @description Its three latest changes (letters, dates, to-dos, notes, contracts), newest first: what tells two sides apart when their counts are alike
+             */
+            latest: components["schemas"]["SyncSideChange"][];
+            /**
+             * Saved At
+             * @description That computer's clock: when it saved this version
+             */
+            saved_at: string | null;
+            /**
              * Arrived At
              * @description This computer's clock: when it arrived here
              */
@@ -6080,6 +6108,24 @@ export interface components {
             complete: boolean;
             /** @description What is still arriving of it */
             arriving: components["schemas"]["SyncArriving"] | null;
+        };
+        /**
+         * SyncSideChange
+         * @description One of a side's latest changes: what it was made to, its title and the calendar date.
+         */
+        SyncSideChange: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "letter" | "date" | "to-do" | "note" | "contract";
+            /** Label */
+            label: string;
+            /**
+             * On
+             * @description The calendar date of the change (no clock time)
+             */
+            on: string;
         };
         /**
          * SyncStatus

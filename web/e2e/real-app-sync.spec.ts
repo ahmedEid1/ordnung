@@ -17,7 +17,8 @@
  *    keep, keeps its own, and the desktop's next "Use Ordnung here" saves the desktop's data as a kept copy first;
  * 5. neither copy of the folder holds a readable byte: only Ordnung's meaningless names (and the tool's own files,
  *    which Ordnung never touched), no name, title, passphrase, letter or database;
- * 6. Settings → Your computers, the standing-by screen and the choice pass axe in light and dark mode.
+ * 6. Settings → Your computers, the standing-by screen and the choice pass axe in light and dark mode; the
+ *    standing-by screen, while what it would bring over is still arriving, fits a 320 px phone.
  *
  * Afterwards both computers leave sync and the laptop's letter goes, so the real-app specs after this one find the
  * laptop as they expect it. What the pages offer (P3's copy, design §19) is named once below; the server's
@@ -65,6 +66,8 @@ const BRINGING = (from: string) => new RegExp(`Bringing Ordnung over from ${from
 /** The standing-by screen (instead of the app's pages) and its one button. */
 const STANDBY_HEADING = (name: string) => `Ordnung is in use on ${name}`;
 const USE_HERE = "Use Ordnung here";
+/** Its button while the other computer's latest changes are still on their way. */
+const ARRIVING_USE_HERE = "Use it here as soon as they've arrived";
 /** The top bar's word on saving, on the computer in use. */
 const SAVED = /^Saved\b/;
 /** The banner when both computers changed, its button, the dialog, a side and its answer. */
@@ -396,6 +399,30 @@ test("both computers changed: the laptop is asked once, keeps its own, and the d
     expect(titles).toContain(A_TODO);
     expect(titles).not.toContain(B_TODO);
     await until(page, "the laptop saved what it kept", saved, SAVE_WAIT);
+  });
+
+  await test.step("while the laptop's answer is still arriving, the standing-by screen fits a 320 px phone", async () => {
+    await tool.deliver("a", { only: (path) => !ORDNUNG_NAMES.object.test(path) }); // the heads first, the rest later
+    await until(b.page, "the desktop sees what is still arriving", (s) => s.mode === "standing_by" && s.arriving !== null);
+    const size = b.page.viewportSize();
+    await b.page.setViewportSize({ width: 320, height: 720 });
+    try {
+      await open(b.page, "/");
+      await expect(b.page.getByRole("heading", { level: 1, name: STANDBY_HEADING(A.name) })).toBeVisible();
+      await expect(b.page.getByRole("button", { name: ARRIVING_USE_HERE })).toBeVisible();
+      await settle(b.page);
+      const wide = await b.page.evaluate(() => {
+        const width = document.documentElement.clientWidth;
+        const past = [...document.querySelectorAll("main *")]
+          .filter((el) => el.getBoundingClientRect().right > width + 0.5)
+          .map((el) => `${el.tagName} “${(el.textContent ?? "").trim().slice(0, 60)}”`);
+        return { scroll: document.documentElement.scrollWidth, width, past };
+      });
+      expect(wide.past, "nothing past the right edge").toEqual([]);
+      expect(wide.scroll, "the page doesn't scroll sideways").toBeLessThanOrEqual(wide.width);
+    } finally {
+      if (size) await b.page.setViewportSize(size);
+    }
   });
 
   await test.step("the desktop takes over: its own data is kept as an encrypted copy first", async () => {

@@ -51,6 +51,28 @@ const UPPER = /\p{Uppercase}/u;
 const LOWER = /\p{Lowercase}/u;
 const LETTER_BITS = Math.log2(26);
 const DIGIT_BITS = Math.log2(10);
+/** What a very common word counts (`COMMON_WORD_BITS`). */
+const COMMON_WORD_BITS = 7;
+/** Keyboard rows (`KEYBOARD_ROWS`): a token along one, either way, is a walk. */
+export const KEYBOARD_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "qwertzuiop", "asdfghjklöä", "yxcvbnm", "azertyuiop", "qsdfghjklm", "wxcvbn", "1234567890"];
+/** Very common words, case-folded (`COMMON_WORDS_TEXT`, word for word). */
+export const COMMON_WORDS_TEXT =
+  "a about after all also an and any are as at back be because but by can come could day did do even " +
+  "first for from get give go good had has have he her him his how i if in into is it its just know " +
+  "like look make me most my new no not now of on one only or other our out over people say see she so " +
+  "some take than that the their them then there these they think this time to too two up us use want " +
+  "was way we well were what when which who why will with work would year yes you your der die das und " +
+  "ich du er sie es wir ihr ist nicht mit dem den ein eine zu von auf für im mein dein sein ja nein " +
+  "zero three four five six seven eight nine ten eleven twelve twenty hundred thousand second third " +
+  "null eins zwei drei vier fünf sechs sieben acht neun zehn elf zwölf zwanzig hundert tausend january " +
+  "february march april may june july august september october november december januar februar märz " +
+  "mai juni juli oktober dezember monday tuesday wednesday thursday friday saturday sunday montag " +
+  "dienstag mittwoch donnerstag freitag samstag sonntag today tomorrow yesterday heute morgen gestern " +
+  "spring summer autumn fall winter frühling sommer herbst red green blue yellow black white orange " +
+  "purple pink brown grey gray silver gold rot grün blau gelb schwarz weiss password passwort pass " +
+  "letmein welcome hello hallo admin login secret geheim iloveyou love liebe dragon monkey sunshine " +
+  "princess football master shadow test ordnung";
+const COMMON_WORDS = new Set(COMMON_WORDS_TEXT.split(" "));
 
 /**
  * The tokens {@link passphraseBits} counts (`ordnung.sync.passphrase_tokens`): the passphrase in Unicode NFC cut
@@ -88,18 +110,42 @@ function casefold(token: string): string {
   return token.toUpperCase().toLowerCase();
 }
 
+const perChar = (token: string) => (DIGIT.test([...token][0] ?? "") ? DIGIT_BITS : LETTER_BITS);
+
+/**
+ * `ordnung.sync.is_run`: a case-folded token of three characters or more that is one character again and again
+ * ("aaa"), runs in order either way ("abc", "54321") or walks along a keyboard row ("qwerty", "0987").
+ */
+export function isRun(token: string): boolean {
+  const chars = [...token];
+  if (chars.length < 3) return false;
+  if (new Set(chars).size === 1) return true;
+  const steps = new Set(chars.slice(1).map((c, i) => c.codePointAt(0)! - chars[i]!.codePointAt(0)!));
+  if (steps.size === 1 && (steps.has(1) || steps.has(-1))) return true;
+  return KEYBOARD_ROWS.some((row) => row.includes(token) || [...row].reverse().join("").includes(token));
+}
+
+/** What one case-folded token counts (`ordnung.sync.token_bits`). */
+function tokenBits(token: string): number {
+  if (isRun(token)) return perChar(token) + 1;
+  const length = [...token].length;
+  if (COMMON_WORDS.has(token)) return Math.min(COMMON_WORD_BITS, length * perChar(token));
+  return Math.min(length * perChar(token), TOKEN_BITS_MAX);
+}
+
 /**
  * The estimated entropy of a passphrase in bits (`ordnung.sync.passphrase_bits`): each *distinct* token (compared
  * case-folded) counts its length times log2 26 (letters) or log2 10 (digits), at most {@link TOKEN_BITS_MAX} — a
- * token is at best a word from a large list. Five unrelated words of three or more letters reach 70.
+ * token is at best a word from a large list; a run, a keyboard walk or a repeated character about one character, a
+ * very common word 7 bits, and tokens that only make a run together ("a b c d …") that one run. Five unrelated words
+ * of three or more letters reach 70.
  */
 export function passphraseBits(passphrase: string): number {
-  const distinct = new Set(passphraseTokens(passphrase).map(casefold));
+  const tokens = passphraseTokens(passphrase).map(casefold);
+  const joined = tokens.join("");
+  if (tokens.length > 1 && isRun(joined)) return perChar(joined) + 1;
   let bits = 0;
-  for (const token of distinct) {
-    const length = [...token].length;
-    bits += Math.min(length * (DIGIT.test(token[0] ?? "") ? DIGIT_BITS : LETTER_BITS), TOKEN_BITS_MAX);
-  }
+  for (const token of new Set(tokens)) bits += tokenBits(token);
   return bits;
 }
 
@@ -121,7 +167,7 @@ const characters = (s: string) => [...s].length;
  * typing the passphrase again, checks only that it opens the folder (the server says so).
  */
 export function newPassphraseProblem(passphrase: string, repeat?: string): PassphraseProblem | null {
-  if (characters(passphrase) < MIN_PASSPHRASE) return { field: "passphrase", message: `Use a passphrase of at least ${MIN_PASSPHRASE} characters — a short sentence works well.` };
+  if (characters(passphrase) < MIN_PASSPHRASE) return { field: "passphrase", message: `Use a passphrase of at least ${MIN_PASSPHRASE} characters — five or more words that don't belong together work well.` };
   if (characters(passphrase) > MAX_PASSPHRASE) return { field: "passphrase", message: `Use a passphrase of at most ${MAX_PASSPHRASE} characters.` };
   if (!strongEnough(passphrase)) return { field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE };
   if (repeat !== undefined && repeat !== passphrase) return { field: "repeat", message: "The two passphrases differ." };
@@ -152,9 +198,9 @@ const MAX_DRAWS = 64;
 
 /**
  * A random passphrase of {@link SUGGESTED_WORDS} made-up words like `kirun-bodaf-sumel-tavok-perin`, made in the
- * browser with the system's random numbers: each word is consonant-vowel-consonant-vowel-consonant (about 17 bits,
- * 83 in all). A word drawn twice is drawn again, so the estimator counts each — five distinct words of five letters
- * are exactly strong enough.
+ * browser with the system's random numbers: each word is consonant-vowel-consonant-vowel-consonant (log2(15³ · 5²) ≈
+ * 16.4 bits, about 82 in all). A word drawn twice, or one the estimator counts less (a common word), is drawn again,
+ * so the estimator counts each — five distinct words of five letters are exactly strong enough.
  */
 export function suggestSyncPassphrase(random: (bytes: Uint8Array) => Uint8Array = (b) => crypto.getRandomValues(b)): string {
   const words: string[] = [];
@@ -166,7 +212,7 @@ export function suggestSyncPassphrase(random: (bytes: Uint8Array) => Uint8Array 
       if (letter === null) continue;
       word += letter;
       if (word.length < 5) continue;
-      if (!words.includes(word)) words.push(word);
+      if (!words.includes(word) && tokenBits(word) >= TOKEN_BITS_MAX) words.push(word);
       word = "";
       if (words.length === SUGGESTED_WORDS) break;
     }
@@ -208,7 +254,7 @@ export function nameProblem(name: string): string | null {
   return null;
 }
 
-/** "/home/sam/Nextcloud/Ordnung", "C:\\Users\\Sam\\Dropbox\\Ordnung", "~/Dropbox/Ordnung" or "\\\\nas\\share": a full path. */
+/** "/home/sam/Nextcloud/Vault", "C:\\Users\\Sam\\Dropbox\\Vault", "~/Dropbox/Vault" or "\\\\nas\\share": a full path. */
 export function looksAbsolute(path: string): boolean {
   return /^(\/|~(\/|$)|[A-Za-z]:[\\/]|\\\\)/.test(path.trim());
 }
@@ -221,8 +267,8 @@ export function syncFormProblem(
   values: { folder: string; name: string; passphrase: string; repeat: string },
   kind: "new" | "existing" | null,
 ): { field: Exclude<SetupField, "form">; message: string } | null {
-  if (!values.folder.trim()) return { field: "folder", message: "Enter the folder your sync tool keeps in step, like /home/you/Nextcloud/Ordnung." };
-  if (!looksAbsolute(values.folder)) return { field: "folder", message: "Enter the whole path, starting at the top: /home/you/Nextcloud/Ordnung." };
+  if (!values.folder.trim()) return { field: "folder", message: "Enter the folder your sync tool keeps in step, like /home/you/Nextcloud/Vault." };
+  if (!looksAbsolute(values.folder)) return { field: "folder", message: "Enter the whole path, starting at the top: /home/you/Nextcloud/Vault." };
   const name = nameProblem(values.name);
   if (name) return { field: "name", message: name };
   if (kind === "existing" && !values.passphrase) return { field: "passphrase", message: "Type the passphrase you chose when you set up sync on your other computer." };
@@ -252,6 +298,23 @@ function liveOthers(status: Pick<SyncStatus, "computers">): SyncComputer[] {
 /** The computer in use, as a name to say ("desktop"; "your other computer" when it isn't known). */
 export function inUseName(status: Pick<SyncStatus, "in_use_on" | "computers">): string {
   return status.in_use_on ?? status.computers.find((c) => c.in_use && !c.this)?.name ?? "your other computer";
+}
+
+/**
+ * No computer is in use while this one stands by: the one in use left sync (Disconnect, Delete everything) — its last
+ * version still counts. Returns who left ("desktop", "desktop and mac"; null: someone is in use, or nothing is known).
+ */
+export function nobodyInUse(status: Pick<SyncStatus, "mode" | "in_use_on" | "computers">): string | null {
+  if (status.mode !== "standing_by" || status.in_use_on || !status.computers.length) return null;
+  if (status.computers.some((c) => c.in_use)) return null;
+  const left = status.computers.filter((c) => !c.this && c.state === "left").map((c) => c.name);
+  if (!left.length) return "Your other computer";
+  return left.length === 1 ? left[0]! : `${left.slice(0, -1).join(", ")} and ${left.at(-1)}`;
+}
+
+/** The standing-by screen's heading. */
+export function standbyHeading(status: Pick<SyncStatus, "mode" | "in_use_on" | "computers">): string {
+  return nobodyInUse(status) ? "No computer is using Ordnung now" : `Ordnung is in use on ${inUseName(status)}`;
 }
 
 /** This computer's badge in "Your computers": what it is now, and whether it needs the person. */
@@ -347,8 +410,16 @@ export function waitingLine(from: string): string {
 }
 
 /** The standing-by screen's status line. */
-export function standbyStatusLine(status: Pick<SyncStatus, "arriving" | "up_to_date" | "computers" | "in_use_on" | "base_arrived_at">, now: Date = new Date()): string {
+export function standbyStatusLine(
+  status: Pick<SyncStatus, "arriving" | "up_to_date" | "computers" | "in_use_on" | "base_arrived_at"> & Partial<Pick<SyncStatus, "mode">>,
+  now: Date = new Date(),
+): string {
   const name = inUseName(status);
+  const left = nobodyInUse({ mode: status.mode ?? "standing_by", in_use_on: status.in_use_on, computers: status.computers });
+  if (left && !status.arriving) {
+    const said = `${left} stopped syncing`;
+    return status.up_to_date ? `${said}; everything it saved last has arrived here.` : `${said}. Ordnung hasn't seen everything it saved last yet.`;
+  }
   if (status.arriving) {
     const { have, need } = status.arriving;
     return `${status.arriving.from_computer}'s latest changes are still on their way: ${have} of ${plural(need, "file")} ${have === 1 ? "is" : "are"} here.`;
@@ -360,7 +431,9 @@ export function standbyStatusLine(status: Pick<SyncStatus, "arriving" | "up_to_d
 }
 
 /** Whether the computer in use was closed there, or is still open (changes only the reassurance). */
-export function reassuranceLine(status: Pick<SyncStatus, "computers" | "in_use_on">): string {
+export function reassuranceLine(status: Pick<SyncStatus, "computers" | "in_use_on"> & Partial<Pick<SyncStatus, "mode">>): string {
+  if (nobodyInUse({ mode: status.mode ?? "standing_by", in_use_on: status.in_use_on, computers: status.computers }))
+    return "Use Ordnung here to go on with it on this computer — nothing is lost.";
   const name = inUseName(status);
   const holder = status.computers.find((c) => c.in_use && !c.this);
   if (holder?.state === "closed") return `${name} was closed. Use Ordnung here: nothing is lost.`;
@@ -447,6 +520,28 @@ export function choiceSideLine(side: Pick<SyncSide, "letters" | "added">, joinin
   const letters = plural(side.letters, "letter");
   if (joining || !side.added) return letters;
   return `${letters}, ${side.added} added since you last switched`;
+}
+
+/** "2 open dates and to-dos · 1 done · 1 note" — what tells two sides apart besides their letters. */
+export function sideContentsLine(side: Pick<SyncSide, "items" | "done" | "notes">): string {
+  const parts = [`${side.items} open ${side.items === 1 ? "date or to-do" : "dates and to-dos"}`, `${side.done} done`];
+  if (side.notes) parts.push(plural(side.notes, "note"));
+  return parts.join(" · ");
+}
+
+const CHANGE_KIND: Record<SyncSide["latest"][number]["kind"], string> = {
+  letter: "letter",
+  date: "date",
+  "to-do": "to-do",
+  note: "note",
+  contract: "contract",
+};
+
+/** "Latest: to-do “Renew the passport” (7 Oct), date “Rent” (6 Oct)" — its newest changes (null: none). */
+export function sideLatestLine(side: Pick<SyncSide, "latest">): string | null {
+  if (!side.latest.length) return null;
+  const changes = side.latest.map((change) => `${CHANGE_KIND[change.kind]} “${change.label}” (${formatDate(change.on, { style: "day" })})`);
+  return `Latest: ${changes.join(", ")}`;
 }
 
 /** "Still arriving: 5 of 9 files" for a side whose version isn't all here (null: it is). */

@@ -39,6 +39,10 @@ the latest); what a save counts as the person's comes from the counter in its ow
 5. only then: the kept copy (when the person's data would otherwise be lost), the apply (under
    ``ledger_lock`` and ``caldav.exclusive``), the claim, and the fence comes down.
 
+The same two phases put this computer's own last saved state back when its data went back in time (a
+power cut, a data folder put back from an OS backup: the decision ``repair``, review finding F10/4) —
+a write made while that version is staged is in the kept copy, never in neither.
+
 After a replace the settings are read again, the worker recovers the replaced database's jobs
 (:meth:`~ordnung.ingest.worker.IngestWorker.reload`), background work starts fresh when this computer is
 in use, and the app hears ``sync.updated {replaced: true}`` with the events that reload every page.
@@ -99,11 +103,14 @@ from ordnung.sync import (
     KEPT_RE,
     KEPT_WARN_BYTES,
     NAME_MAX_CHARS,
+    NOBODY_IN_USE_MESSAGE,
     NOT_CONNECTED_MESSAGE,
     PUSH_MAX_WAIT_S,
     PUSH_PERSON_QUIET_S,
     PUSH_QUIET_S,
     PUSH_RETRY_S,
+    PUTTING_BACK_MESSAGE,
+    ROLLBACK_NOTICE,
     SCAN_S,
     SHUTDOWN_PUSH_S,
     STANDBY_MESSAGE,
@@ -181,7 +188,8 @@ _STOPPED: frozenset[SyncProblemCode] = frozenset(
 #: ``push`` (R6), ``idle`` (R7); standing by — ``up_to_date``, ``arriving``, ``choice``, ``paused``;
 #: for "Use Ordnung here" — ``nothing`` (U0), ``late_push`` (U1), ``pull`` (U2-U4, ``keep`` for Rule K),
 #: ``claim`` (U2 at the local base, or the older copy), ``wait`` (the target hasn't arrived), ``choice``
-#: (U5, joining with letters).
+#: (U5, joining with letters); in either mode — ``repair`` (this computer's data went back in time: its
+#: own last saved version is put back, keeping a copy).
 DecisionKind = Literal[
     "idle",
     "push",
@@ -196,6 +204,7 @@ DecisionKind = Literal[
     "claim",
     "wait",
     "nothing",
+    "repair",
 ]
 #: Why a save runs; the head it writes says ``closed`` after ``shutdown``, ``left`` after ``leave``,
 #: ``standing_by`` with ``hand_over``, and ``in_use`` otherwise.
@@ -319,6 +328,7 @@ class Engine(Protocol):
     """``ordnung.sync.engine``. Everything blocks; the agent calls it in its thread, the CLI directly."""
 
     def local_summary(self, paths: Paths) -> LocalSummary | None: ...
+    def kept_copies(self, paths: Paths) -> Sequence[Any]: ...  # SyncKept-shaped, connected or not
     def writes_refused(self, paths: Paths) -> str | None: ...
     def resume_interrupted(self, paths: Paths) -> Any: ...
     def inspect_folder(self, value: str, paths: Paths, settings: AppSettings) -> Any: ...
@@ -520,7 +530,9 @@ class _Plan:
     action: UseHere | None  # decided again behind the fence (None: no decision to repeat)
     claim: bool
     choice_push: bool = False
-    note: Literal["taken_over", "brought_in", "chosen"] = "taken_over"
+    note: Literal["taken_over", "brought_in", "chosen", "rolled_back"] = "taken_over"
+    #: the gate's refusal while the fence is up (default: bringing over from ``from_name``)
+    fence_message: str | None = None
 
 
 def _same_plan(first: Decision, again: Decision) -> bool:
@@ -586,6 +598,8 @@ class SyncAgent:
         self._claim_when_unlocked = False
         self._joining = False
         self._published: dict[str, Any] | None = None
+        #: the kept copies while this computer doesn't sync (they outlive Disconnect)
+        self._kept_here: list[SyncKept] = []
 
     # ------------------------------------------------------------------------------ state
 
@@ -619,12 +633,15 @@ class SyncAgent:
 
     @property
     def in_use_on(self) -> str | None:
-        """The name of the computer in use (as last seen; this one's own the moment it claims)."""
+        """The name of the computer in use (as last seen; this one's own the moment it claims). ``None``
+        while this computer stands by and no other is in use (the one in use left sync)."""
         if self.mode == "in_use" and self.summary is not None:
             return self.summary.name
         for computer in self.view.computers if self.view is not None else ():
-            if getattr(computer, "in_use", False):
+            if getattr(computer, "in_use", False) and not getattr(computer, "this", False):
                 return str(computer.name)
+        if self.view is not None and self.view.computers:
+            return None  # the folder was seen: no other computer is in use
         return self.summary.in_use_on if self.summary is not None else None
 
     def _lock_now(self) -> asyncio.Lock:
@@ -640,8 +657,14 @@ class SyncAgent:
         if self._fenced:
             return self._fence_message
         if self.mode == "standing_by" and operation not in ALLOWED_IN_STANDBY:
-            return STANDBY_MESSAGE.format(name=self.in_use_on or "another computer")
+            return self._standby_message()
         return None
+
+    def _standby_message(self) -> str:
+        name = self.in_use_on
+        if name is None and self.view is not None and self.view.computers:
+            return NOBODY_IN_USE_MESSAGE
+        return STANDBY_MESSAGE.format(name=name or "another computer")
 
     @contextlib.contextmanager
     def admitted(self) -> Iterator[None]:
@@ -658,9 +681,12 @@ class SyncAgent:
         if not self.counts_person_writes:
             return
         now = time.monotonic()
+        fresh = self._dirty_since is None
         self._person_since = self._person_since or now
         self._dirty_since = self._dirty_since or now
         self._last_change = now
+        if fresh:
+            self._publish()  # the top bar says at once that a change isn't saved yet
         self.notify()
 
     def notify(self, *, look: bool = False) -> None:
@@ -688,9 +714,7 @@ class SyncAgent:
             SyncComputer.model_validate(computer, from_attributes=True)
             for computer in (self.view.computers if self.view is not None and self.connected else ())
         ]
-        kept = (
-            [SyncKept.model_validate(item, from_attributes=True) for item in summary.kept] if summary else []
-        )
+        kept = self._kept_list()
         notices = (
             [SyncNotice.model_validate(item, from_attributes=True) for item in summary.notices]
             if summary
@@ -755,13 +779,27 @@ class SyncAgent:
         """Disconnect and Delete everything ask twice: no other computer has this one's latest."""
         return self.connected and not self.status().others_have_latest
 
+    def _kept_list(self) -> list[SyncKept]:
+        """The kept copies the status lists: from the summary while connected, else the ones found here
+        (Disconnect leaves them; they stay listed, downloadable and deletable)."""
+        if self.connected and self.summary is not None:
+            return [SyncKept.model_validate(item, from_attributes=True) for item in self.summary.kept]
+        return list(self._kept_here) if not self.connected else []
+
+    async def _load_kept(self) -> None:
+        """The kept copies on this computer while it doesn't sync (no keyring, no folder)."""
+        if self.engine is None or self.is_demo:
+            self._kept_here = []
+            return
+        try:
+            found = await self._thread.call(self.engine.kept_copies, self.paths, limit=FOLDER_OP_TIMEOUT_S)
+        except Exception:
+            return
+        self._kept_here = [SyncKept.model_validate(item, from_attributes=True) for item in found]
+
     def kept_file(self, name: str) -> Path | None:
         """A kept copy listed in the status, by its name (``None``: no such one)."""
-        if not self.connected or not KEPT_RE.fullmatch(name) or self.summary is None:
-            return None
-        if name not in {
-            SyncKept.model_validate(item, from_attributes=True).name for item in self.summary.kept
-        }:
+        if not KEPT_RE.fullmatch(name) or name not in {item.name for item in self._kept_list()}:
             return None
         path = self.paths.sync / KEPT_DIR / name
         return path if path.is_file() and not path.is_symlink() else None
@@ -781,6 +819,7 @@ class SyncAgent:
             log.warning("sync: this computer's sync state can't be read (%s)", type(exc).__name__)
             return
         if summary is None:
+            await self._load_kept()
             return
         self._adopt(summary)
         self._start_loop()
@@ -797,6 +836,7 @@ class SyncAgent:
             return
         summary = await self._thread.call(self.engine.local_summary, self.paths)
         if summary is None:
+            await self._load_kept()
             return
         self._adopt(summary)
         if not look or (self.problem is not None and self.problem.code in _STOPPED):
@@ -805,6 +845,9 @@ class SyncAgent:
         if session is None:
             return
         decision = await self._look(session)
+        if decision.kind == "repair":
+            await self._repair(session, decision)
+            decision = await self._look(session)
         if decision.kind == "paused":
             self._set_decided_problem(decision)
         elif decision.kind == "choice":
@@ -922,19 +965,28 @@ class SyncAgent:
                 await self._wake.wait()
         self._wake.clear()
 
-    def _watch_changes(self, now: float) -> None:
+    def _data_version_now(self) -> int | None:
         """``PRAGMA data_version`` on the agent's own read-only connection: only real commits move it."""
         try:
             if self._watch is None:
                 uri = f"{self.paths.db.resolve().as_uri()}?mode=ro"
                 self._watch = sqlite3.connect(uri, uri=True, check_same_thread=False, timeout=1.0)
-            version = int(self._watch.execute("PRAGMA data_version").fetchone()[0])
+            return int(self._watch.execute("PRAGMA data_version").fetchone()[0])
         except sqlite3.Error:
             self._watch = None
+            return None
+
+    def _watch_changes(self, now: float) -> None:
+        """A commit since the last look at ``data_version`` is a change not saved yet (said at once)."""
+        version = self._data_version_now()
+        if version is None:
             return
         if self._data_version is not None and version != self._data_version:
+            fresh = self._dirty_since is None
             self._dirty_since = self._dirty_since or now
             self._last_change = now
+            if fresh:
+                self._publish()
         self._data_version = version
 
     def _push_due(self, now: float) -> bool:
@@ -961,11 +1013,19 @@ class SyncAgent:
             "keyring_unavailable",
         ):
             self.problem = None
-        if self._claim_when_unlocked:  # "Use Ordnung here anyway" while the password store was locked
-            self._claim_when_unlocked = False
-            with contextlib.suppress(Exception):
-                await self._thread.call(self._session.claim)
+        await self._claim_if_asked(self._session)
         return self._session
+
+    async def _claim_if_asked(self, session: Session) -> None:
+        """ "Use Ordnung here anyway" while the password store was locked (critique finding 31): the claim
+        is made once the key is there — after the session's start (its counters known); tried again at
+        the next look when the folder can't take it yet."""
+        if not self._claim_when_unlocked:
+            return
+        with contextlib.suppress(Exception):
+            await self._thread.call(session.local_view, self.store)  # the session's start
+            await self._thread.call(session.claim)
+            self._claim_when_unlocked = False
 
     async def _look(self, session: Session, action: UseHere | None = None) -> Decision:
         assert self.engine is not None
@@ -987,16 +1047,20 @@ class SyncAgent:
 
     async def _periodic(self) -> None:
         if self.problem is not None and self.problem.code in _STOPPED:
-            # nothing is saved or brought over until the person answers; still look at the folder
+            # nothing is saved or brought over until the person answers; still look at the folder (a
+            # local rollback whose last saved state has arrived meanwhile is put back now)
             if self._session is not None:
                 with contextlib.suppress(Exception):
-                    await self._look(self._session)
+                    decision = await self._look(self._session)
+                    if decision.kind == "repair":
+                        await self._repair(self._session, decision)
             self._publish()
             return
         session = await self._ensure_session()
         if session is None:
             self._publish()
             return
+        await self._claim_if_asked(session)
         try:
             if self._waiting is not None:
                 await self._continue_waiting(session)
@@ -1016,6 +1080,9 @@ class SyncAgent:
             if kind == "arriving" and decision.arriving is not None
             else None
         )
+        if kind == "repair":
+            await self._repair(session, decision)
+            return
         if kind == "paused":
             self._set_decided_problem(decision)
             if self.mode == "in_use" and decision.may_push and self._local_pending():
@@ -1023,8 +1090,13 @@ class SyncAgent:
             return
         if self.problem is not None and self.problem.code not in ("save_failing", "folder_full"):
             self.problem = None  # the folder answered as it should
+        await self._follow_standby()
         if self.mode != "in_use":
-            return  # standing by: report only (up to date, arriving, a choice)
+            if kind == "late_push" and self.mode == "standing_by" and self._waiting is None:
+                # the person's change that finished after this computer stood by (F21): it goes out as
+                # a late push; the computer in use brings it in quietly, or asks
+                await self._push("late")
+            return  # standing by: otherwise report only (up to date, arriving, a choice)
         if kind == "become_standby":
             await self._become_standby(late_push=decision.late_push)
         elif kind == "bring_in":
@@ -1169,14 +1241,38 @@ class SyncAgent:
             self.problem = None
         if self._last_change is None or self._last_change <= started:
             self._dirty_since = self._last_change = self._person_since = None
+        version = self._data_version_now() if self.mode == "in_use" else None
         with contextlib.suppress(Exception):  # what is pending now (not what the last look saw)
             self.local = await self._thread.call(session.local_view, self.store, limit=FOLDER_OP_TIMEOUT_S)
+            if version is not None and self._dirty_since is None and not self._local_pending():
+                # the save's own bookkeeping (``sync_mark``) committed: no change of the data, so the
+                # top bar doesn't go back to "not saved" for it (commits after ``version`` still count)
+                self._data_version = version
+        with contextlib.suppress(Exception):
+            # which computer has this computer's latest is worked out against the version just saved —
+            # never the last look's (the top bar's "has it" and the second confirmation read it)
+            self.view = await self._thread.call(session.scan, limit=FOLDER_OP_TIMEOUT_S)
         await self._refresh_summary()
         if self._last_gc is None or time.monotonic() - self._last_gc >= GC_EVERY_S:
             self._last_gc = time.monotonic()
             with contextlib.suppress(Exception):
                 await self._thread.call(session.gc)
+        if reason in ("change", "save", "first"):
+            await self._follow_standby()
         self._publish()
+
+    async def _follow_standby(self) -> None:
+        """The engine stood this computer by on its own — a save met another computer's newer claim
+        (the push's own fence): the agent follows at once (R3), so writes are refused from now on and
+        none is left behind unsaved."""
+        if (
+            self.mode == "in_use"
+            and not self._fenced
+            and not self._claim_when_unlocked  # in use here on the person's word, claimed once it can be
+            and self.summary is not None
+            and self.summary.mode == "standing_by"
+        ):
+            await self._become_standby(late_push=False)
 
     def _failed_push(self, exc: BaseException) -> None:
         """A save failed: tried again after :data:`~ordnung.sync.PUSH_RETRY_S`; a full or failing folder
@@ -1198,12 +1294,28 @@ class SyncAgent:
             self._set_problem(code, exc)
 
     async def _become_standby(self, *, late_push: bool) -> None:
-        """Another computer took over (R3): stop background work, save the person's late changes, say
-        so in this computer's head, stand by."""
+        """Another computer took over (R3): stop background work, wait for the writes already admitted
+        (a phone upload, a request whose body is still arriving — the person's late changes too, F21:
+        at most :data:`~ordnung.sync.FENCE_WAIT_S`), save the person's late changes, say so in this
+        computer's head, stand by. A write that finishes even later goes out as a late push from
+        standing by (:meth:`_execute`)."""
         self.mode = "standing_by"  # the gate refuses writes from now on
+        self._publish()
+        if not await self._settle_admitted():
+            log.warning("sync: writes in flight didn't finish before standing by; saved once they do")
         await self.host.stop_background()
         await self._push("late" if late_push else "hand_over", hand_over=True)
         self._publish()
+
+    async def _settle_admitted(self, *, own: int = 0) -> bool:
+        """Wait until the writes the gate already let through finished (``own``: the caller's own
+        request, not waited for) — at most :data:`~ordnung.sync.FENCE_WAIT_S` (``False``: they didn't)."""
+        deadline = time.monotonic() + FENCE_WAIT_S
+        while self._inflight > own:
+            if time.monotonic() >= deadline:
+                return False
+            await asyncio.sleep(0.02)
+        return True
 
     async def _quiesce(self, message: str, *, own: int = 0) -> bool:
         """The fence (writes refused with ``message``), then background work stopped and drained
@@ -1223,13 +1335,10 @@ class SyncAgent:
     async def _fence(self, message: str, *, own: int = 0) -> bool:
         self._fenced, self._fence_message = True, message
         self._publish()
-        deadline = time.monotonic() + FENCE_WAIT_S
-        while self._inflight > own:
-            if time.monotonic() >= deadline:
-                self._lift_fence()
-                log.warning("sync: writes in flight didn't finish in time; trying again later")
-                return False
-            await asyncio.sleep(0.02)
+        if not await self._settle_admitted(own=own):
+            self._lift_fence()
+            log.warning("sync: writes in flight didn't finish in time; trying again later")
+            return False
         return True
 
     def _lift_fence(self) -> None:
@@ -1254,7 +1363,7 @@ class SyncAgent:
         replaced = False
         kept_name: str | None = None
         try:
-            if not await self._quiesce(BRINGING_OVER_MESSAGE.format(name=from_name)):
+            if not await self._quiesce(plan.fence_message or BRINGING_OVER_MESSAGE.format(name=from_name)):
                 with contextlib.suppress(Exception):
                     await self._thread.call(session.discard, staged)
                 return False
@@ -1304,6 +1413,27 @@ class SyncAgent:
                 await self.host.start_background()
             self._publish(replaced=replaced)
 
+    async def _repair(self, session: Session, decision: Decision) -> bool:
+        """F10 / review finding 4: this computer's data went back in time (a power cut, a data folder put
+        back from an OS backup); its own last saved version is put back with the two phases of any
+        replacement — what is here, a write made while the version was staged included, goes into the
+        kept copy (``True`` once it is back; otherwise the next look tries again)."""
+        plan = _Plan(
+            target=decision.target,
+            keep=True,
+            why=decision.why,
+            from_name=self.summary.name if self.summary is not None else None,
+            action=None,
+            claim=False,
+            note="rolled_back",
+            fence_message=PUTTING_BACK_MESSAGE,
+        )
+        if not await self._replace(session, plan, decision):
+            return False
+        if self.problem is not None and self.problem.code == "local_rollback":
+            self.problem = None
+        return True
+
     def _announce_replaced(self) -> None:
         bus = self.ctx.bus
         with contextlib.suppress(Exception):
@@ -1313,6 +1443,15 @@ class SyncAgent:
 
     async def _log_after(self, plan: _Plan, from_name: str, kept: str | None) -> None:
         """The privacy-log rows (written into the data now here, so they travel with it) and notices."""
+        if plan.note == "rolled_back":
+            if kept is not None:
+                await self._log_now(
+                    "sync.kept",
+                    "Saved this computer's earlier data as an encrypted copy.",
+                    {"copy": kept, "why": plan.why or ""},
+                )
+            await self._notice("rolled_back", ROLLBACK_NOTICE, kept)
+            return
         if kept is not None:
             await self._log_now(
                 "sync.kept",
@@ -1619,6 +1758,11 @@ class SyncAgent:
         self, session: Session, decision: Decision, action: UseHere, *, depth: int = 0
     ) -> None:
         kind = decision.kind
+        if kind == "repair":  # this computer's last saved state goes back first, then the take-over
+            if await self._repair(session, decision) and depth < 2:
+                await self._take_over(session, action, depth=depth + 1)
+                return
+            self._raise_problem()
         if kind == "nothing":
             if self.mode != "in_use":
                 await self._claim(session)
@@ -1719,7 +1863,7 @@ class SyncAgent:
         async with self._operation():
             self._connected()
             if self.mode == "standing_by":
-                raise SyncError("standby", STANDBY_MESSAGE.format(name=self.in_use_on or "another computer"))
+                raise SyncError("standby", self._standby_message())
             if self._session is None and await self._ensure_session() is None:
                 self._raise_problem()
             if not hand_over:
@@ -1847,33 +1991,40 @@ class SyncAgent:
         if not unreceived_ok and self.needs_second_confirmation():
             raise SyncError("not_received", NOT_RECEIVED_MESSAGE)
         async with self._operation():
-            await self._leave(forget_passphrase=forget_passphrase, restart=True, own=0)
+            await self._leave(
+                forget_passphrase=forget_passphrase, restart=True, own=0, unreceived_ok=unreceived_ok
+            )
 
-    async def leave(self) -> None:
+    async def leave(self, *, unreceived_ok: bool = True) -> None:
         """Delete everything: this computer leaves sync (its last changes saved first, its head says
         ``left``, its passphrase leaves the password store, the loop idles). The caller asked for the
         second confirmation (:meth:`needs_second_confirmation`), stopped the background work, and wipes
-        the data next; its own request is the one write in flight not waited for."""
+        the data next; its own request is the one write in flight not waited for. Without
+        ``unreceived_ok`` the second confirmation is asked again once the last save is done."""
         if not self.connected:
             return
         async with self._operation():
-            await self._leave(forget_passphrase=True, restart=False, own=1)
+            await self._leave(forget_passphrase=True, restart=False, own=1, unreceived_ok=unreceived_ok)
 
-    async def _leave(self, *, forget_passphrase: bool, restart: bool, own: int) -> None:
+    async def _leave(
+        self, *, forget_passphrase: bool, restart: bool, own: int, unreceived_ok: bool = True
+    ) -> None:
         assert self.engine is not None
         session = self._session or await self._ensure_session()
-        fenced = False
+        fenced = left = False
         try:
             if session is not None:
                 fenced = await self._quiesce(SAVING_FIRST_MESSAGE, own=own)
                 if not fenced:
-                    if restart and self.allows_background:
-                        await self.host.start_background()
                     raise SyncError("folder_problem", STILL_WRITING_MESSAGE)
                 try:
                     await self._push("leave")
                 except Exception as exc:  # the confirmation covered it; leave anyway
                     log.warning("sync: the last save before leaving failed (%s)", type(exc).__name__)
+                if not unreceived_ok and self.needs_second_confirmation():
+                    # the last save made a version no other computer has yet (a change the first
+                    # check didn't see): the second confirmation after all
+                    raise SyncError("not_received", NOT_RECEIVED_MESSAGE)
             # the engine logs "stopped syncing" into the data, saves it, and writes the head as left
             await self._thread.call(
                 self.engine.disconnect,
@@ -1882,10 +2033,14 @@ class SyncAgent:
                 forget_passphrase=forget_passphrase,
                 store=self.store,
             )
+            left = True
         finally:
             if fenced:
                 self._lift_fence()
+            if not left and restart and self.allows_background:
+                await self.host.start_background()
         self._reset()
+        await self._load_kept()  # kept copies stay (and stay listed)
         if restart:
             await self.host.start_background()
 
@@ -1908,7 +2063,10 @@ class SyncAgent:
             if self.kept_file(name) is None:
                 return False
             deleted = await self._thread.call(self.engine.delete_kept, self.paths, name)
-            await self._refresh_summary()
+            if self.connected:
+                await self._refresh_summary()
+            else:
+                await self._load_kept()
             return bool(deleted)
 
 

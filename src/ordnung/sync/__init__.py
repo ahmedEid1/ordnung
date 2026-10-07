@@ -62,6 +62,7 @@ amendments): changing a value changes what the docs promise.
 
 from __future__ import annotations
 
+import itertools
 import math
 import re
 import unicodedata
@@ -436,7 +437,17 @@ DEMO_MESSAGE = "This is the demo, so it doesn't sync. Your own Ordnung can."
 NOT_CONNECTED_MESSAGE = "This computer isn't syncing. Set it up in Settings → Your computers."
 #: The gate's refusal while another computer is in use, and while data is being brought over.
 STANDBY_MESSAGE = "Ordnung is in use on {name}. Use it here first (Settings → Your computers)."
+#: The same while no computer is in use (the one in use left sync): this one still stands by.
+NOBODY_IN_USE_MESSAGE = "No computer is using Ordnung now. Use it here first (Settings → Your computers)."
 BRINGING_OVER_MESSAGE = "Bringing over changes from {name} — one moment."
+#: The gate's refusal while this computer's own last saved state is put back (F10, finding 4).
+PUTTING_BACK_MESSAGE = "Putting this computer's last saved state back — one moment."
+#: The kept copy's reason, and the notice, when this computer's own last saved state is put back.
+ROLLBACK_WHY = "before this computer's last saved state was put back"
+ROLLBACK_NOTICE = (
+    "This computer's data went back in time (a power cut, or a backup put back?). Its last saved state was "
+    "put back; what was found is kept as a copy."
+)
 WRONG_PASSPHRASE_MESSAGE = "That passphrase doesn't open this folder."
 NEWER_MESSAGE = "This folder was set up by a newer version of Ordnung. Update Ordnung on this computer."
 NOT_ARRIVED_MESSAGE = "Not everything has arrived from your sync tool yet."
@@ -498,6 +509,46 @@ SUGGESTED_WORDS = 5
 TOKEN_BITS_MAX = 14.0
 LETTER_BITS = math.log2(26)
 DIGIT_BITS = math.log2(10)
+#: What a very common word counts (one of a few hundred: :data:`COMMON_WORDS`).
+COMMON_WORD_BITS = 7.0
+#: Keyboard rows (QWERTY, QWERTZ, AZERTY and the digits): a token along one, either way, is a walk.
+KEYBOARD_ROWS: tuple[str, ...] = (
+    "qwertyuiop",
+    "asdfghjkl",
+    "zxcvbnm",
+    "qwertzuiop",
+    "asdfghjklöä",
+    "yxcvbnm",
+    "azertyuiop",
+    "qsdfghjklm",
+    "wxcvbn",
+    "1234567890",
+)
+#: Very common words, case-folded (the web app reads this very text): English and German short words,
+#: numbers, months, days, seasons, colours and the classic passwords. Each counts
+#: :data:`COMMON_WORD_BITS`.
+COMMON_WORDS_TEXT = (
+    "a about after all also an and any are as at back be because but by can come could day did do even "
+    "first for from get give go good had has have he her him his how i if in into is it its just know "
+    "like look make me most my new no not now of on one only or other our out over people say see she so "
+    "some take than that the their them then there these they think this time to too two up us use want "
+    "was way we well were what when which who why will with work would year yes you your "
+    "der die das und ich du er sie es wir ihr ist nicht mit dem den ein eine zu von auf für im mein dein "
+    "sein ja nein "
+    "zero three four five six seven eight nine ten eleven twelve twenty hundred thousand second third "
+    "null eins zwei drei vier fünf sechs sieben acht neun zehn elf zwölf zwanzig hundert tausend "
+    "january february march april may june july august september october november december "
+    "januar februar märz mai juni juli oktober dezember "
+    "monday tuesday wednesday thursday friday saturday sunday "
+    "montag dienstag mittwoch donnerstag freitag samstag sonntag "
+    "today tomorrow yesterday heute morgen gestern "
+    "spring summer autumn fall winter frühling sommer herbst "
+    "red green blue yellow black white orange purple pink brown grey gray silver gold "
+    "rot grün blau gelb schwarz weiss "
+    "password passwort pass letmein welcome hello hallo admin login secret geheim iloveyou love liebe "
+    "dragon monkey sunshine princess football master shadow test ordnung"
+)
+COMMON_WORDS: frozenset[str] = frozenset(COMMON_WORDS_TEXT.split())
 WEAK_PASSPHRASE_MESSAGE = (
     "This passphrase would be too easy to guess for a folder your sync provider keeps. Use five or more "
     "words that don't belong together, each of three letters or more — or take the suggested one."
@@ -531,20 +582,71 @@ def passphrase_tokens(passphrase: str) -> list[str]:
     return tokens
 
 
+def _per_char(token: str) -> float:
+    return DIGIT_BITS if token[0].isdecimal() else LETTER_BITS
+
+
+def is_run(token: str) -> bool:
+    """``token`` (case-folded, three characters or more) is one character again and again ("aaa"), runs
+    in order either way ("abc", "54321") or walks along a keyboard row ("qwerty", "0987")."""
+    if len(token) < 3:
+        return False
+    if len(set(token)) == 1:
+        return True
+    steps = {ord(b) - ord(a) for a, b in itertools.pairwise(token)}
+    if steps in ({1}, {-1}):
+        return True
+    return any(token in row or token in row[::-1] for row in KEYBOARD_ROWS)
+
+
+def token_bits(token: str) -> float:
+    """What one case-folded token counts (:func:`passphrase_bits`)."""
+    if is_run(token):
+        return _per_char(token) + 1.0  # about one character, and which way it runs
+    if token in COMMON_WORDS:
+        return min(COMMON_WORD_BITS, len(token) * _per_char(token))
+    return min(len(token) * _per_char(token), TOKEN_BITS_MAX)
+
+
 def passphrase_bits(passphrase: str) -> float:
-    """The estimated entropy of a passphrase, in bits — a simple estimator, no dictionary.
+    """The estimated entropy of a passphrase, in bits — a simple estimator, with a short list.
 
     Each *distinct* token (:func:`passphrase_tokens`, compared case-folded) counts its length times
     :data:`LETTER_BITS` (letters) or :data:`DIGIT_BITS` (digits), at most :data:`TOKEN_BITS_MAX`: a
-    token is at best a word from a large list. So five unrelated words of three or more letters reach
-    :data:`MIN_PASSPHRASE_BITS`; a repeated word, a long run of one kind or a short sentence doesn't.
-    The web app counts the same way.
+    token is at best a word from a large list. A token that is one character again and again, runs in
+    order or walks along a keyboard row (:func:`is_run`) counts about one character; a very common word
+    (:data:`COMMON_WORDS`) :data:`COMMON_WORD_BITS`; and tokens that only make such a run together ("a b c
+    d …") count as that one run. So five unrelated words of three or more letters reach
+    :data:`MIN_PASSPHRASE_BITS`; a repeated word, a long run of one kind, a pattern ("aaa bbb ccc", "abc
+    def ghi", "qwerty asdfgh"), the months or a short sentence of common words don't. The web app counts
+    the same way.
     """
-    distinct = dict.fromkeys(token.casefold() for token in passphrase_tokens(passphrase))
-    return sum(
-        min(len(token) * (DIGIT_BITS if token[0].isdecimal() else LETTER_BITS), TOKEN_BITS_MAX)
-        for token in distinct
-    )
+    tokens = [token.casefold() for token in passphrase_tokens(passphrase)]
+    joined = "".join(tokens)
+    if len(tokens) > 1 and is_run(joined):
+        return _per_char(joined) + 1.0
+    return sum(token_bits(token) for token in dict.fromkeys(tokens))
+
+
+#: Easy to say and type: consonants and vowels that can't be mistaken for one another when read aloud
+#: (the web app suggests the same).
+SUGGEST_CONSONANTS = "bdfgjklmnprstvz"
+SUGGEST_VOWELS = "aeiou"
+
+
+def suggested_passphrase() -> str:
+    """A random passphrase of :data:`SUGGESTED_WORDS` made-up words like ``kirun-bodaf-sumel-tavok-perin``
+    (consonant-vowel-consonant-vowel-consonant: log2(15³ · 5²) ≈ 16.4 bits each, about 82 in all), from
+    the system's random numbers; a word drawn twice, or one the estimator counts less (a common word), is
+    drawn again — so it always passes :func:`passphrase_problem`."""
+    import secrets
+
+    words: list[str] = []
+    while len(words) < SUGGESTED_WORDS:
+        word = "".join(secrets.choice(SUGGEST_CONSONANTS if i % 2 == 0 else SUGGEST_VOWELS) for i in range(5))
+        if word not in words and token_bits(word) >= TOKEN_BITS_MAX:
+            words.append(word)
+    return "-".join(words)
 
 
 def passphrase_problem(passphrase: str) -> str | None:

@@ -229,7 +229,7 @@ async def delete_everything(
     await ctx.worker.stop(grace=WORKER_GRACE_S)
     try:
         if syncing:  # what isn't saved goes to the sync folder; this computer leaves sync
-            await sync.leave()
+            await sync.leave(unreceived_ok=body.unreceived_ok)
         shared_with = {"calendar_shared_with": shared} if shared is not None else {}
         result = await asyncio.to_thread(wipe_data_dir, ctx, secrets, transport, **shared_with)
     except BaseException as exc:

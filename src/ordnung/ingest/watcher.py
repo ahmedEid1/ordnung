@@ -71,7 +71,7 @@ from typing import TYPE_CHECKING
 
 from watchfiles import awatch
 
-from ordnung.db.store import Store, person_write
+from ordnung.db.store import Store, background_context, person_write
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
 from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
@@ -402,7 +402,11 @@ class FolderWatcher:
             return
         self.folder = Path(configured)
         self._stop = asyncio.Event()
-        self._task = asyncio.create_task(self._run(self.folder, self._stop), name="ordnung-folder-watcher")
+        # background work: its bookkeeping is never the person's change, even when a request of theirs
+        # (a settings save) started it — only an intake is (``person_write`` around it)
+        self._task = asyncio.create_task(
+            self._run(self.folder, self._stop), name="ordnung-folder-watcher", context=background_context()
+        )
 
     # ------------------------------------------------------------------------------ state
 

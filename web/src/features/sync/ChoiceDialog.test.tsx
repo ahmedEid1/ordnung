@@ -65,6 +65,19 @@ describe("the choice dialog", () => {
     expect(document.activeElement).not.toBe(within(dialog).getByRole("button", { name: "Keep this one" }));
   });
 
+  it("tells the sides apart by their dates and to-dos, latest changes and when each was saved — not only letters", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().bothChanged();
+    const dialog = await openDialog();
+    const mine = within(dialog).getByRole("radio", { name: /This computer \(sam-laptop\)/ });
+    expect(mine).toHaveAccessibleName(/24 open dates and to-dos · 40 done · 3 notes/);
+    expect(mine).toHaveAccessibleName(/Latest: to-do “Pay the Stadtwerke instalment” \(7 Oct\), letter “Stadtwerke Abschlag 2027” \(6 Oct\)/);
+    const theirs = within(dialog).getByRole("radio", { name: /sam-desktop/ });
+    expect(theirs).toHaveAccessibleName(/23 open dates and to-dos · 41 done · 3 notes/);
+    expect(theirs).toHaveAccessibleName(/Latest: date “Vodafone payment” \(6 Oct\)/);
+    expect(theirs).toHaveAccessibleName(/Saved there .*, arrived here/);
+  });
+
   it("Not now closes it, and nothing is chosen", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().bothChanged();

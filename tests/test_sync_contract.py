@@ -77,9 +77,18 @@ def test_the_key_file_takes_256_mib_of_scrypt() -> None:
         ("aqua-blunt-clay-dove-erupt", 70.0, True),  # five words: the suggestion's shape
         ("CorrectHorseBatteryStapleDoor", 70.0, True),  # camel case is five words too
         ("correct horse battery staple", 56.0, False),  # four
-        ("password password password password password", 14.0, False),  # a repeated word counts once
+        ("password password password password password", 7.0, False),  # once, and a common word
         ("xkqmzvtpwbrnyhdflcga", 14.0, False),  # one run of letters is at best one word
-        ("Sommer 2025 Urlaub Sommer", 28 + 4 * math.log2(10), False),  # four digits: about 13 bits
+        ("Sommer 2025 Urlaub Sommer", 7 + 14 + 4 * math.log2(10), False),  # four digits: about 13 bits
+        # the review's patterns: a character again and again, runs in order, keyboard walks, common words
+        ("aaa bbb ccc ddd eee", 5 * (math.log2(26) + 1), False),
+        ("abc def ghi jkl mno", math.log2(26) + 1, False),  # together one run of the alphabet
+        ("12345 23456 34567 45678 56789", 5 * (math.log2(10) + 1), False),
+        ("one two three four five", 35.0, False),
+        ("january february march april may", 35.0, False),
+        ("qwerty asdfgh zxcvbn password letmein", 3 * (math.log2(26) + 1) + 14.0, False),
+        ("a b c d e f g h i j k l m n o", math.log2(26) + 1, False),
+        ("the cat sat on the mat today", 63.0, False),  # a short sentence
     ],
 )
 def test_a_new_folder_s_passphrase_needs_about_70_bits(passphrase: str, bits: float, accepted: bool) -> None:

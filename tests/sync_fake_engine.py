@@ -380,6 +380,23 @@ class FakeEngine:
             journal=(paths.sync / JOURNAL_FILE).is_file(),
         )
 
+    def kept_copies(self, paths: Paths) -> list[dict[str, Any]]:
+        """The kept copies here, connected or not (the files of ``sync/kept/``)."""
+        state = _state(paths)
+        listed = {kept["name"]: kept for kept in (state or {}).get("kept", [])}
+        found = []
+        kept_dir = paths.sync / sync.KEPT_DIR
+        for path in sorted(kept_dir.iterdir()) if kept_dir.is_dir() else ():
+            if sync.KEPT_RE.match(path.name) and path.is_file():
+                info = listed.get(path.name) or {
+                    "name": path.name,
+                    "size": path.stat().st_size,
+                    "created_at": _now(),
+                    "why": "kept",
+                }
+                found.append({**info, "path": str(path)})
+        return found
+
     def writes_refused(self, paths: Paths) -> str | None:
         summary = self.local_summary(paths)
         if summary is None or summary.mode != "standing_by":
@@ -581,11 +598,12 @@ class FakeEngine:
     def delete_kept(self, paths: Paths, name: str) -> bool:
         state = _state(paths)
         path = paths.sync / sync.KEPT_DIR / name
-        if state is None or not path.is_file():
+        if not path.is_file():
             return False
         path.unlink()
-        state["kept"] = [kept for kept in state["kept"] if kept["name"] != name]
-        _write_state(paths, state)
+        if state is not None:
+            state["kept"] = [kept for kept in state["kept"] if kept["name"] != name]
+            _write_state(paths, state)
         return True
 
 
