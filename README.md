@@ -116,7 +116,9 @@ and photo attachments become letters; new files wait on your computer until you 
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM) with a restore that checks
-every byte · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools.
+every byte · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools · *your phone at
+home* — pair it with a QR code, then photograph letters, tick off to-dos and read Claude's explanations in
+its browser over your home Wi-Fi.
 
 ## The model reads, code computes
 
@@ -368,13 +370,15 @@ installed and signed in to). Ordnung has no server, no telemetry and never sees 
 A letter's page says where it went: *Not sent to Claude* until a call to Claude has carried it (one that
 never started, because Claude isn't installed, carried nothing).
 
-The web server listens on `127.0.0.1` by default (another `--host` prints a warning and still needs
-the token) and requires a per-session token, a known `Host` header and same-origin requests. Settings
-show what each feature sends and a usage log per document; the address and IBAN in your profile are
-never put into a prompt. Files from a watched folder are sent to Claude only after you say so. Calendar
-sync, off until you connect a calendar, is the only feature that sends anything to another third party
-(your calendar provider), by default only dates with generic titles. Details in
-[docs/privacy.md](docs/privacy.md).
+The web server listens on `127.0.0.1` and answers only requests addressed to this computer, with a
+per-session token and same-origin checks. Phone access, off until you turn it on, adds a second listener
+on your home network: HTTPS with a certificate Ordnung makes on your computer, answering only phones you
+paired with a one-time code, and never their requests for settings, backups or deletion; on a phone,
+*My numbers* and your profile's IBAN show only their last 4 characters. Settings show what each feature
+sends and a usage log per document; the address and IBAN in your profile are never put into a prompt.
+Files from a watched folder are sent to Claude only after you say so. Calendar sync, off until you
+connect a calendar, is the only feature that sends anything to another third party (your calendar
+provider), by default only dates with generic titles. Details in [docs/privacy.md](docs/privacy.md).
 
 ## Install and run
 
@@ -399,6 +403,19 @@ ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung res
 
 `ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed or signed
 in, or for its usage limit to pass (it is stored and read once Claude is ready).
+
+**On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
+choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
+phone warns once that the connection isn't private, because Ordnung made its own certificate; the
+pairing dialog shows its fingerprint, so you can check that it is your computer answering. Your
+computer's firewall may ask whether Python may accept connections: allow it on private networks only
+(the dialog's *Phone can't connect?* has the narrowest rule for each system). The phone must be on the
+same Wi-Fi as the computer, and not on a guest network: guest networks keep devices apart. Then Ordnung
+opens in the phone's browser: photograph a letter page by page, see what's due, tick things off, pay by
+copying the details or saving the GiroCode as a picture. It works while the computer is on and Ordnung
+runs; reserve the computer's address in your router, because a new address means pairing again.
+Details: [docs/privacy.md](docs/privacy.md#phone-access-optional) and
+[ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md).
 
 **The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
@@ -431,7 +448,7 @@ make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 flowchart LR
   subgraph PC["Your computer"]
     direction LR
-    UI["Web app<br/>React · 127.0.0.1 only"] <-->|"token, same-origin checks"| API["FastAPI server"]
+    UI["Web app<br/>React · 127.0.0.1"] <-->|"token, same-origin checks"| API["FastAPI server"]
     IN["Watched folder · e-mails"] --> API
     API --> Q["Job queue"] --> P["Pipeline<br/>text · transcribe · extract · verify · link"]
     P --> R["Rules engine<br/>(pure Python, 100 % branch coverage)"]
@@ -441,6 +458,7 @@ flowchart LR
     TICK["Daily tick<br/>notification · calendar"] --> DB
     CD["Claude Desktop / Code<br/>(optional)"] -->|"MCP: rules tools"| R
   end
+  Phone["Phone browser<br/>home Wi-Fi · HTTPS · paired<br/>(optional)"] <-->|"device cookie, phone scope"| API
   P -- "a letter's text or page images" --> CLI["claude CLI<br/>your account"]
   ASK --> CLI
   CLI -. "HTTPS" .-> ANT["Anthropic"]
@@ -455,6 +473,7 @@ flowchart LR
 | Ask and MCP | [`src/ordnung/assistant/`](src/ordnung/assistant) | Read-only MCP server with two channels, the claim check, the rules tools for other clients |
 | Letters | [`src/ordnung/drafts/`](src/ordnung/drafts) | Fixed legal templates, bilingual drafts, DIN 5008 PDFs, sending advice, proof of sending |
 | Web app | [`web/`](web) | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
+| Phone access | [`src/ordnung/phone/`](src/ordnung/phone) | Optional second listener on your home network: its certificates, pairing, paired phones' sign-ins and the allow-list of what a phone may do ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)) |
 
 The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
 no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
@@ -467,7 +486,7 @@ More in [docs/architecture.md](docs/architecture.md).
 
 | | |
 |---|---|
-| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude, with axe accessibility checks in light and dark mode |
+| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS), with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
 | CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
@@ -522,8 +541,15 @@ More in [docs/architecture.md](docs/architecture.md).
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
-- A single user on a single computer. There is no sync between computers (calendar sync only sends
-  dates to your own calendar) and no mobile app.
+- One person's Ordnung on one computer. A phone you pair in Settings → Phone can use it in its browser
+  over your home Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once
+  about Ordnung's own certificate, and it can't change settings, back up or delete. There is no app-store
+  app and no sync between computers (calendar sync only sends dates to your own calendar).
+- Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
+  iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
+  to the computer's one address, whether the page can open their camera and whether they keep the sign-in
+  when Ordnung is opened from a bookmark or the Home Screen still has to be checked on real devices; until
+  then the steps the app shows follow each system's documented menus.
 
 ## Documentation
 
@@ -535,7 +561,7 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0016 an incomplete reading is asked for once more](docs/decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)
+  [0017 phone access over the home network](docs/decisions/0017-phone-access-over-the-home-network.md)
 
 ## How this was built
 
