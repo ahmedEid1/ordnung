@@ -24,10 +24,7 @@ from ordnung import clock
 from ordnung.api.routes import calendar_sync, sync
 from test_api_support import TODAY, Api, api_for, sse_messages
 
-NOT_CALLED = {
-    "/api/events": "an endless event stream (tested in test_api_ledger)",
-    "/api/sync/kept/{name}": "no kept copy exists in the demo, which never syncs (tested in test_api_sync)",
-}
+NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
 
 
 @pytest.fixture(autouse=True)
@@ -157,7 +154,30 @@ async def _seed(api: Api, contract: Contract) -> dict[str, str]:
     }
 
 
-async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> None:
+async def _hand_off_sync(contract: Contract, data_dir: Path, folder: Path) -> None:
+    """The demo never syncs: hand-off sync's GETs on a computer that does (the fake engine), with
+    another computer and a kept copy."""
+    from sync_fake_engine import FakeEngine, FakeSession
+    from sync_support import computer, connect
+
+    engine = FakeEngine()
+    async with (
+        computer(data_dir / "desk", engine=engine) as desk,
+        computer(data_dir / "lap", engine=engine) as lap,
+    ):
+        await connect(desk, folder, "desktop")
+        await connect(lap, folder, "laptop")
+        kept = FakeSession(engine, lap.ctx.paths).keep_local(
+            lap.ctx.paths, "before you kept desktop's Ordnung"
+        )
+        await lap.app.state.ordnung.sync.load()
+        found = await _get(lap, contract, "/api/sync")
+        assert found["connected"] and len(found["computers"]) == 2 and found["kept"]
+        await _get_file(lap, contract, f"/api/sync/kept/{kept.name}", "application/octet-stream")
+
+
+async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp_path: Path) -> None:
+    (tmp_path / "Nextcloud").mkdir()
     async with api_for(data_dir, demo=True) as api:
         contract = Contract(api.app.openapi())
         ids = await _seed(api, contract)
@@ -219,6 +239,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path) -> 
         api.app.dependency_overrides[sync.get_secrets] = lambda: MemorySecrets()  # not the real keyring
         hand_off = await _get(api, contract, "/api/sync")
         assert hand_off["available"] is False and hand_off["mode"] == "off"  # the demo never syncs
+        await _hand_off_sync(contract, tmp_path, tmp_path / "Nextcloud" / "Ordnung")
         await _get(api, contract, "/api/demo/tour")
         await _get(api, contract, "/api/demo/mail")
         await _get(api, contract, "/api/demo/questions")

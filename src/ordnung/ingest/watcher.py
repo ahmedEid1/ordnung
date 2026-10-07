@@ -44,6 +44,13 @@ The policy, which decides every case:
   fail, watching falls back to polling; one file's error never ends the watching.
 
 Changing the folder in Settings restarts the watcher (:meth:`FolderWatcher.reconfigure`).
+
+With hand-off sync connected (``sync_on``), a file the folder brings in is the person's change (its
+writes are counted, :data:`~ordnung.db.store.PERSON_WRITE`; ``on_added`` hears of each new letter), and
+its content's SHA-256 is remembered in :data:`TAKEN_META_KEY`, which travels to the person's other
+computers: a folder both computers watch (a scanner app saving into a synced folder) never brings back,
+on the other computer, a letter the person deleted — a file whose content any computer already took
+from a watched folder is skipped quietly.
 """
 
 from __future__ import annotations
@@ -56,14 +63,14 @@ import logging
 import os
 import stat
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from watchfiles import awatch
 
-from ordnung.db.store import Store
+from ordnung.db.store import Store, person_write
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
 from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
@@ -86,6 +93,10 @@ SEEN_META_KEY = "inbox_seen"
 BASELINE_META_KEY = "inbox_baseline"
 MAX_FILES = 5000
 RECENT = 6
+#: Hand-off sync: the SHA-256 of every file any computer took from a watched folder, newest first
+#: (``ordnung.sync.FOLDER_TAKEN_META_KEY``; synced and merged as a union), at most :data:`TAKEN_MAX`.
+TAKEN_META_KEY = "folder_taken"
+TAKEN_MAX = 5000
 #: Activity kinds of files the folder brought in (``document.added`` with ``data.source == "folder"``).
 _OUTCOMES: dict[str, FolderOutcome] = {
     "document.added": "added",
@@ -266,6 +277,26 @@ def recent_pickups(store: Store, limit: int = RECENT) -> list[FolderPickup]:
 # --------------------------------------------------------------------------------------------------
 
 
+def was_taken(store: Store, digest: str) -> bool:
+    """Whether a file with this content was already taken from a watched folder (on any computer)."""
+    return digest in _taken(store)
+
+
+def remember_taken(store: Store, digest: str) -> None:
+    """Remember that a file with this content was taken from a watched folder (newest first)."""
+    with store.tx():
+        kept = [value for value in _taken(store) if value != digest]
+        store.set_meta(TAKEN_META_KEY, json.dumps([digest, *kept][:TAKEN_MAX]))
+
+
+def _taken(store: Store) -> list[str]:
+    try:
+        stored = json.loads(store.get_meta(TAKEN_META_KEY) or "[]")
+    except ValueError:
+        return []
+    return [value for value in stored if isinstance(value, str)] if isinstance(stored, list) else []
+
+
 def folder_chosen(store: Store) -> None:
     """The person chose another watched folder, or none (Settings): the next watch lists its folder as
     chosen now — the files in it then wait, even when it is the folder watched before. Called by the
@@ -307,6 +338,11 @@ class FolderWatcher:
         self._seen: list[str] = []
         self._seen_set: set[str] = set()
         self._baseline: set[str] = set()
+        #: Whether hand-off sync is connected (set by the API): files are then the person's changes and
+        #: remembered across computers (:data:`TAKEN_META_KEY`).
+        self.sync_on: Callable[[], bool] | None = None
+        #: Hears of every letter the folder added (hand-off sync saves it soon after).
+        self.on_added: Callable[[], None] | None = None
 
     # ------------------------------------------------------------------------------ lifecycle
 
@@ -484,14 +520,22 @@ class FolderWatcher:
 
     async def _add(self, data: bytes, name: str, *, hold: bool) -> None:
         store = self.ctx.store
+        syncing = self.sync_on is not None and self.sync_on()
+        digest = hashlib.sha256(data).hexdigest() if syncing else ""
+        if syncing and await asyncio.to_thread(was_taken, store, digest):
+            log.debug("a file of the watched folder was taken on this or another computer before")
+            return
         if await asyncio.to_thread(is_own_file, store, data):
             self._refused(name, OWN_LETTER)
             return
         hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
-            added = await add_file_result(
-                self.ctx, data, name, hold=hold, source=SOURCE, restore_trashed=False
-            )
+            with person_write(syncing):  # the person's scan: hand-off sync counts it as their change
+                added = await add_file_result(
+                    self.ctx, data, name, hold=hold, source=SOURCE, restore_trashed=False
+                )
+                if syncing:
+                    await asyncio.to_thread(remember_taken, store, digest)
         except IntakeError as exc:
             self._refused(name, str(exc))
             return
@@ -512,6 +556,8 @@ class FolderWatcher:
         self.ctx.bus.publish(
             "folder.updated", state=self.state, doc_id=added.document.id, held=added.document.status == "held"
         )
+        if syncing and self.on_added is not None:
+            self.on_added()
 
     def _refused(self, name: str, reason: str) -> None:
         try:

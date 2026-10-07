@@ -20,12 +20,14 @@ lower-cased, diacritic-folded copy, so "steuerbescheid" finds "Einkommensteuerbe
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import json
 import logging
 import os
 import re
 import shutil
 import sqlite3
+import sys
 import threading
 import types
 import unicodedata
@@ -94,6 +96,17 @@ _PRAGMAS: tuple[str, ...] = (
     "PRAGMA secure_delete=ON",  # deleted rows are overwritten, not left in free pages ("Delete means delete")
 )
 _READ_ONLY_PRAGMAS: tuple[str, ...] = ("PRAGMA busy_timeout=5000", "PRAGMA query_only=ON")
+#: While hand-off sync is on, every commit is on disk before a save to the sync folder can carry it.
+_DURABLE_PRAGMAS: tuple[str, ...] = (
+    ("PRAGMA synchronous=FULL", "PRAGMA fullfsync=ON", "PRAGMA checkpoint_fullfsync=ON")
+    if sys.platform == "darwin"  # fsync alone doesn't flush the drive's cache there
+    else ("PRAGMA synchronous=FULL",)
+)
+_NORMAL_PRAGMAS: tuple[str, ...] = (
+    ("PRAGMA synchronous=NORMAL", "PRAGMA fullfsync=OFF", "PRAGMA checkpoint_fullfsync=OFF")
+    if sys.platform == "darwin"
+    else ("PRAGMA synchronous=NORMAL",)
+)
 _READ_ONLY = frozenset({"id", "created_at", "updated_at"})
 _ACTIVE_JOB_STATUSES = ("queued", "running", "waiting")
 #: A job interrupted this often (the process died while reading it) is failed, not queued again.
@@ -113,6 +126,39 @@ SETTINGS_META_KEY = _SETTINGS_KEY
 
 class NotFoundError(LookupError):
     """An update or lookup that requires an existing row found none."""
+
+
+# --------------------------------------------------------------------------------------------------
+# The person's writes (hand-off sync, ``ordnung.sync``)
+# --------------------------------------------------------------------------------------------------
+
+#: The ``meta`` row counting the person's own writes (``ordnung.sync.PERSON_META_KEY``; per computer,
+#: never synced): bumped inside the very transaction of every write made while :data:`PERSON_WRITE` is
+#: set, so a save to the sync folder that reads it from its snapshot never counts a change it lacks.
+PERSON_META_KEY = "sync_person"
+#: Set while the person's own write runs (hand-off sync's gate for a request, the watched folder for a
+#: file it adds, the command line for ``add``/``brief``/``ask``); background work (readings, the day
+#: change, calendar sync) never sets it. Only set while sync is connected, so the counter row exists
+#: only then.
+PERSON_WRITE: contextvars.ContextVar[bool] = contextvars.ContextVar("ordnung_person_write", default=False)
+
+
+@contextmanager
+def person_write(on: bool = True) -> Iterator[None]:
+    """Count the writes in the block as the person's (``on``), or as background work (``False``)."""
+    token = PERSON_WRITE.set(on)
+    try:
+        yield
+    finally:
+        PERSON_WRITE.reset(token)
+
+
+def background_context() -> contextvars.Context:
+    """A copy of the current context for a task that does background work on its own (a reading, the
+    Ideas refresh): its writes are never the person's, even when a request of theirs started it."""
+    context = contextvars.copy_context()
+    context.run(PERSON_WRITE.set, False)
+    return context
 
 
 # --------------------------------------------------------------------------------------------------
@@ -454,6 +500,8 @@ class _IndexedText:
 class _ThreadState(threading.local):
     def __init__(self) -> None:
         self.conn: sqlite3.Connection | None = None
+        #: the :attr:`Store.durable` setting this thread's connection was last given
+        self.durable: bool | None = None
         self.depth = 0
         self.after_commit: list[Callable[[], None]] = []
         # Held only here: dropped with the thread's state when the thread ends, which closes ``conn``.
@@ -491,7 +539,12 @@ class Store:
     """All reads and writes of one Ordnung database. Safe to share between threads."""
 
     def __init__(
-        self, db_path: str | Path, *, data_dir: str | Path | None = None, read_only: bool = False
+        self,
+        db_path: str | Path,
+        *,
+        data_dir: str | Path | None = None,
+        read_only: bool = False,
+        durable: bool = False,
     ) -> None:
         """Open (creating and migrating if needed) the database at ``db_path``.
 
@@ -499,10 +552,12 @@ class Store:
         is used to resolve relative file paths and to purge files in :meth:`delete_document`.
         ``read_only`` opens an existing, up-to-date database with ``mode=ro`` and
         ``PRAGMA query_only=ON`` (the MCP server's view); every write then raises ``PermissionError``.
+        ``durable`` (hand-off sync is on) commits with ``synchronous=FULL`` (:meth:`set_durable`).
         """
         self.db_path = Path(db_path)
         self.paths = Paths(Path(data_dir) if data_dir is not None else self.db_path.parent)
         self.read_only = read_only
+        self.durable = durable and not read_only
         self._local = _ThreadState()
         self._connections: list[sqlite3.Connection] = []
         # re-entrant: a thread's state may be dropped (closing its connection) wherever it is freed
@@ -515,11 +570,17 @@ class Store:
             raise
 
     @classmethod
-    def open(cls, paths: Paths, *, read_only: bool = False) -> Store:
+    def open(cls, paths: Paths, *, read_only: bool = False, durable: bool = False) -> Store:
         """Open the database of a data directory (creating the directory layout unless read-only)."""
         if not read_only:
             paths.ensure()
-        return cls(paths.db, data_dir=paths.data_dir, read_only=read_only)
+        return cls(paths.db, data_dir=paths.data_dir, read_only=read_only, durable=durable)
+
+    def set_durable(self, durable: bool) -> None:
+        """Commit with ``synchronous=FULL`` from now on (hand-off sync connected) or ``NORMAL`` again:
+        every thread's connection takes it at its next write transaction."""
+        if not self.read_only:
+            self.durable = durable
 
     def _migrate(self) -> int:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -625,6 +686,10 @@ class Store:
         conn.row_factory = sqlite3.Row
         for pragma in pragmas:
             conn.execute(pragma)
+        if not self.read_only:
+            for pragma in _DURABLE_PRAGMAS if self.durable else ():
+                conn.execute(pragma)
+            self._local.durable = self.durable
         with self._connections_lock:
             if self._closed:
                 conn.close()
@@ -653,6 +718,10 @@ class Store:
             with self._savepoint(conn, state):
                 yield conn
         else:
+            if state.durable is not self.durable:  # outside a transaction: synchronous can change
+                for pragma in _DURABLE_PRAGMAS if self.durable else _NORMAL_PRAGMAS:
+                    conn.execute(pragma)
+                state.durable = self.durable
             with self._transaction(conn, state):
                 yield conn
 
@@ -661,8 +730,16 @@ class Store:
         with _WRITE_LOCK:
             conn.execute("BEGIN IMMEDIATE")
             state.depth = 1
+            changes = conn.total_changes
             try:
                 yield
+                if PERSON_WRITE.get() and conn.total_changes != changes:
+                    # the person's write: counted in its own transaction (hand-off sync, see PERSON_WRITE)
+                    conn.execute(
+                        "INSERT INTO meta (key, value) VALUES (?, '1') ON CONFLICT(key) DO UPDATE "
+                        "SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)",
+                        (PERSON_META_KEY,),
+                    )
                 conn.execute("COMMIT")
             except BaseException:
                 if conn.in_transaction:

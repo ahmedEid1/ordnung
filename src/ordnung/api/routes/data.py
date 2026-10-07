@@ -17,6 +17,15 @@ example when the data folder was pointed at a folder with other files) are never
 listed in the answer, which also tells the browser to empty its cache (``Clear-Site-Data``). The
 zero-token demo refuses (409): ``ordnung demo --reset``, once the demo is stopped, starts it over. A
 paired phone can never ask for it (403).
+
+With hand-off sync connected (:mod:`ordnung.sync`), this computer leaves sync first: what isn't saved
+yet goes to the sync folder, its entry there says it left (its last version stays for the other
+computers to bring over), its passphrase leaves the password store, and ``sync/`` — kept copies
+included — is removed with Ordnung's files. The sync folder and the other computers are untouched.
+While no other computer has received this computer's latest changes, the answer is 409
+``not_received`` unless ``unreceived_ok`` confirms it a second time. When another computer sends to the
+same calendar, Ordnung's events stay in it (that computer keeps them current): only this computer's
+connection is removed, and ``calendar_shared_with`` names that computer.
 """
 
 from __future__ import annotations
@@ -40,6 +49,8 @@ from ordnung.calendar import caldav
 from ordnung.calendar.secrets import SecretStore
 from ordnung.locking import LOCK_NAME
 from ordnung.server import SERVER_FILE
+from ordnung.sync import SyncError
+from ordnung.sync.agent import NOT_RECEIVED_MESSAGE
 
 router = APIRouter(tags=["data"])
 log = logging.getLogger(__name__)
@@ -96,7 +107,14 @@ class CalendarNotCleared(RuntimeError):
 def _ordnung_entries(ctx: AppContext) -> frozenset[str]:
     """Names in the data folder that Ordnung itself creates (besides the lock and ``server.json``)."""
     paths = ctx.paths
-    folders = {paths.files.name, paths.derived.name, paths.drafts.name, paths.inbox.name, paths.phone.name}
+    folders = {
+        paths.files.name,
+        paths.derived.name,
+        paths.drafts.name,
+        paths.inbox.name,
+        paths.phone.name,
+        paths.sync.name,
+    }
     return frozenset(folders | {paths.db.name + suffix for suffix in _DB_SUFFIXES})
 
 
@@ -112,14 +130,18 @@ def _remove(path: Path) -> None:
         path.unlink(missing_ok=True)
 
 
-def _forget_calendar(ctx: AppContext, secrets: SecretStore, transport: Any) -> int | None:
-    """Remove Ordnung's events from the connected calendar and forget its password (``None``: no
-    calendar is connected); :class:`CalendarNotCleared` when that can't be done."""
+def _forget_calendar(
+    ctx: AppContext, secrets: SecretStore, transport: Any, *, remove_events: bool = True
+) -> int | None:
+    """Remove Ordnung's events from the connected calendar (unless another computer still sends to it,
+    ``remove_events=False``) and forget its password (``None``: no calendar is connected, or its events
+    stay); :class:`CalendarNotCleared` when that can't be done."""
     state = caldav.load_state(ctx.store)
     if state is None:
         return None
     try:
-        return caldav.disconnect(ctx.store, secrets, remove_events=True, transport=transport)
+        removed = caldav.disconnect(ctx.store, secrets, remove_events=remove_events, transport=transport)
+        return removed if remove_events else None
     except caldav.CalDavError as exc:
         where = state.calendar_name or caldav.host_of(state.url)
         raise CalendarNotCleared(
@@ -129,18 +151,28 @@ def _forget_calendar(ctx: AppContext, secrets: SecretStore, transport: Any) -> i
         ) from None
 
 
-def wipe_data_dir(ctx: AppContext, secrets: SecretStore | None = None, transport: Any = None) -> DataDeleted:
-    """Clear the connected calendar, then empty the database in place and delete Ordnung's files
+def wipe_data_dir(
+    ctx: AppContext,
+    secrets: SecretStore | None = None,
+    transport: Any = None,
+    *,
+    calendar_shared_with: str | None = None,
+) -> DataDeleted:
+    """Clear the connected calendar (its events stay when ``calendar_shared_with`` — another computer of
+    hand-off sync — still sends to it), then empty the database in place and delete Ordnung's files
     (keeping the lock and ``server.json``)."""
     from ordnung.calendar.secrets import KeyringSecrets
 
     data_dir = ctx.paths.data_dir
     known = _ordnung_entries(ctx)
     db_files = {ctx.paths.db.name + suffix for suffix in _DB_SUFFIXES}
+    shared = calendar_shared_with if caldav.load_state(ctx.store) is not None else None
     with caldav.exclusive():  # no sync may write its record back into the emptied database
-        events_removed = _forget_calendar(ctx, secrets or KeyringSecrets(), transport)
+        events_removed = _forget_calendar(
+            ctx, secrets or KeyringSecrets(), transport, remove_events=shared is None
+        )
         ctx.store.wipe()
-    result = DataDeleted(calendar_events_removed=events_removed)
+    result = DataDeleted(calendar_events_removed=events_removed, calendar_shared_with=shared)
     for entry in sorted(data_dir.iterdir(), key=lambda path: path.name):
         name = entry.name
         if name in KEPT_FILES:
@@ -183,6 +215,12 @@ async def delete_everything(
     ctx = state.ctx
     if state.demo or ctx.settings.demo:
         raise HTTPException(status.HTTP_409_CONFLICT, DEMO_MESSAGE)
+    sync = state.sync
+    syncing = sync.connected
+    if syncing and not body.unreceived_ok and sync.needs_second_confirmation():
+        raise SyncError("not_received", NOT_RECEIVED_MESSAGE)
+    shared = sync.calendar_shared_with() if syncing else None
+    background_was_on = state.background_on
     pinned = bool(ctx.settings.simulated_today or ctx.store.get_meta(SIMULATED_TODAY_KEY))
     worker_was_running = ctx.worker.running
     await state.background.stop()
@@ -190,13 +228,19 @@ async def delete_everything(
     await state.phone.forget()  # no phone may reach what is going; its record and certificates go too
     await ctx.worker.stop(grace=WORKER_GRACE_S)
     try:
-        result = await asyncio.to_thread(wipe_data_dir, ctx, secrets, transport)
+        if syncing:  # what isn't saved goes to the sync folder; this computer leaves sync
+            await sync.leave()
+        shared_with = {"calendar_shared_with": shared} if shared is not None else {}
+        result = await asyncio.to_thread(wipe_data_dir, ctx, secrets, transport, **shared_with)
     except BaseException as exc:
         with contextlib.suppress(Exception):  # what stays is watched again, as its settings say
             ctx.reload_settings()
             await state.folder.reconfigure()
         with contextlib.suppress(Exception):  # and phones reach it again, if phone access was on
             await state.phone.start_if_enabled()
+        if syncing and background_was_on:  # leaving stopped the daily tick too
+            with contextlib.suppress(Exception):
+                await state.start_background()
         if isinstance(exc, CalendarNotCleared):  # nothing was deleted
             raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from None
         raise
@@ -208,6 +252,8 @@ async def delete_everything(
         clock.set_today(None)
     ctx.reload_settings()
     await state.folder.reconfigure()
+    if syncing and background_was_on:  # leaving sync stopped the daily tick too
+        await state.start_background()
     for event in ("profile.updated", "item.updated", "suggestions.updated"):
         ctx.bus.publish(event)
     response.headers.update(CLEAR_CACHE)
