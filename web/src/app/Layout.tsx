@@ -131,14 +131,18 @@ function BrowserNotifications() {
   return null;
 }
 
-/** Redirect first-run users (not onboarded, not demo) to the welcome wizard. */
+/**
+ * Redirect first-run users (not onboarded, not demo) to the welcome wizard. Never on a paired phone: setting
+ * Ordnung up happens on the computer (`POST /api/onboarding` is computer-only), and phone access can only be
+ * turned on there once it is.
+ */
 function useOnboardingRedirect() {
   const { data: health } = useHealth();
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
-    if (!health || !profile) return;
+    if (!health || !profile || health.client === "phone") return;
     if (!health.demo && !profile.onboarded && location.pathname !== "/welcome") navigate("/welcome", { replace: true });
   }, [health, profile, location.pathname, navigate]);
 }

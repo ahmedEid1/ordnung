@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { toast } from "@/components/ui/Toast";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { ITEM_KIND_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { parseMoney } from "@/lib/money";
@@ -108,6 +109,7 @@ export function AddDateDialog({ open, onClose, letter = null }: AddDateDialogPro
   const fieldId = (k: keyof DateDraft) => `${ids}-${k}`;
   const create = useCreateItem();
   const remove = useDeleteItem();
+  const phone = usePhoneCompanion();
   // every letter, kept private and unread ones too — asked for only once the dialog is open on Timeline
   const letters = useDocuments({}, { enabled: open && !letter });
   const [d, setD] = useState<DateDraft>(EMPTY);
@@ -139,7 +141,8 @@ export function AddDateDialog({ open, onClose, letter = null }: AddDateDialogPro
       onSuccess: (item) => {
         toast.success("Date added", {
           description: `${item.title} — ${formatDate(d.date, { style: "short" })}`,
-          undo: () => remove.mutate(item.id),
+          // undone by deleting it, which a paired phone leaves to the computer
+          undo: phone ? undefined : () => remove.mutate(item.id),
         });
         onClose();
       },

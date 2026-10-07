@@ -23,6 +23,9 @@ import { formatDate } from "@/lib/format";
 import { useHotkey } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
 import { cn, prefersReducedMotion } from "@/lib/utils";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { OnYourComputer } from "@/features/phone/ComputerOnly";
+import { PDF_ON_COMPUTER } from "@/features/phone/copy";
 import {
   adviceFor,
   changedFields,
@@ -181,6 +184,9 @@ function UnsavedNote({ className }: { className?: string }) {
 export function LetterView({ draft }: { draft: Draft }) {
   const navigate = useNavigate();
   const today = useTodayISO();
+  // on a paired phone the PDF is downloaded (and the letter deleted) on the computer; writing, translating,
+  // "sent", tracking and proof photos all work here
+  const phone = usePhoneCompanion();
   const parties = useParties();
   const docs = useDocuments();
   const contracts = useContracts();
@@ -358,7 +364,7 @@ export function LetterView({ draft }: { draft: Draft }) {
       : draft.status === "final"
         ? [{ label: "Back to draft", icon: FilePen, onSelect: () => setStatus("draft") }]
         : [{ label: "Mark as ready to send", icon: FileCheck2, onSelect: () => setStatus("final") }]),
-    { label: "Delete this letter", icon: Trash2, danger: true, onSelect: () => setDeleteOpen(true) },
+    ...(phone ? [] : [{ label: "Delete this letter", icon: Trash2, danger: true, onSelect: () => setDeleteOpen(true) }]),
   ];
 
   const aboutCls =
@@ -435,8 +441,9 @@ export function LetterView({ draft }: { draft: Draft }) {
     <section aria-labelledby="pdf-title" className="min-w-0">
       <SectionHeader id="pdf-title" title="Print preview" />
       <div className="rounded-[var(--radius-card)] border border-line bg-surface-2/60 px-4 py-6 sm:px-8 sm:py-8">
-        <PdfPreview src={previewUrl} pdfHref={pdfUrl} version={draft.updated_at} stale={dirty} />
+        <PdfPreview src={previewUrl} pdfHref={phone ? undefined : pdfUrl} version={draft.updated_at} stale={dirty} />
       </div>
+      {phone ? <OnYourComputer className="mt-2 px-1">{PDF_ON_COMPUTER}</OnYourComputer> : null}
     </section>
   );
 
@@ -493,7 +500,13 @@ export function LetterView({ draft }: { draft: Draft }) {
             className={cn(
               // phones: the main action first, on its own row; then the rest side by side
               "grid gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end xl:ml-auto xl:shrink-0",
-              isSent ? "grid-cols-[minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]",
+              // the row under "Mark as sent": Save, Download and the menu — a paired phone has no Download (the PDF is
+              // downloaded on the computer), a sent letter no Save
+              isSent && phone
+                ? "grid-cols-[auto] justify-end"
+                : isSent || phone
+                  ? "grid-cols-[minmax(0,1fr)_auto]"
+                  : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]",
             )}
           >
             {!isSent ? (
@@ -511,12 +524,14 @@ export function LetterView({ draft }: { draft: Draft }) {
                 {dirty ? <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-warn ring-2 ring-canvas" data-unsaved aria-hidden /> : null}
               </Button>
             ) : null}
-            <a href={pdfUrl} download={fileName} onClick={download} aria-label="Download PDF" className={buttonVariants({ variant: "secondary", className: "min-w-0 max-[359px]:px-2.5" })}>
-              <Download aria-hidden />
-              <span className="min-w-0 truncate">
-                Download<span className="max-[359px]:hidden"> PDF</span>
-              </span>
-            </a>
+            {phone ? null : (
+              <a href={pdfUrl} download={fileName} onClick={download} aria-label="Download PDF" className={buttonVariants({ variant: "secondary", className: "min-w-0 max-[359px]:px-2.5" })}>
+                <Download aria-hidden />
+                <span className="min-w-0 truncate">
+                  Download<span className="max-[359px]:hidden"> PDF</span>
+                </span>
+              </a>
+            )}
             {!isSent ? (
               <Button variant="primary" icon={Send} onClick={() => setSentOpen(true)} className="max-sm:order-first max-sm:col-span-full">
                 Mark as sent

@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { theComputer } from "@/features/phone/copy";
 import { PROOF_KIND_COPY, copyFor } from "@/lib/copy";
 import { useTodayISO } from "@/lib/today";
 import { PROOF_DAY_LABEL, SENDING_DAY_KINDS, proofKindsFor } from "./proof";
@@ -45,6 +47,8 @@ export function startDay(kind: ProofKind, sentOn: string | null | undefined): st
  */
 export function AddProofDialog({ open, onClose, draftId, channel, sentOn, suggested, editing }: AddProofDialogProps) {
   const today = useTodayISO();
+  // a paired phone sends the proof to the computer: "your computer"
+  const phone = usePhoneCompanion();
   const add = useAddProof();
   const update = useUpdateProof();
   const [file, setFile] = useState<File | null>(null);
@@ -156,7 +160,7 @@ export function AddProofDialog({ open, onClose, draftId, channel, sentOn, sugges
             ) : null}
             <p id={fileHint} className="flex items-start gap-1.5 text-sm leading-5 text-muted">
               <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              <span>Kept on this computer with the letter, and never sent to Claude.</span>
+              <span>Kept on {theComputer(phone)} with the letter, and never sent to Claude.</span>
             </p>
           </div>
         ) : null}

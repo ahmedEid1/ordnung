@@ -80,6 +80,7 @@ import { GermanTerms } from "@/lib/germanTerms";
 import { keepCitations, NB_HYPHEN, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
+import { usePhoneCompanion } from "@/features/phone/client";
 
 const countdownTone: Record<Urgency, string> = {
   overdue: "bg-danger text-white dark:text-canvas",
@@ -198,8 +199,11 @@ function CardLink({ text, docId }: { text: string; docId: string }) {
  * this card's place, so focus moves to its heading (`onAnswered`: the page moves it once that card is
  * rendered); a failed undo leaves focus on the button.
  */
-function NotRead({ doc, canWaitAgain, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
+function NotRead({ doc, canWaitAgain: canWait, onAnswered }: { doc: DocumentDetail["document"]; canWaitAgain: boolean; onAnswered?: (from: DocumentDetail["document"]["status"]) => void }) {
   const wait = useWaitAgain();
+  // whether Claude may read it is decided on the computer: a paired phone doesn't offer it
+  const phone = usePhoneCompanion();
+  const canWaitAgain = canWait && !phone;
   return (
     <>
       <p className="flex items-start gap-2 text-[16px] font-medium leading-snug text-ink">

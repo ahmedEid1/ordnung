@@ -1,8 +1,11 @@
 import { createElement, Fragment, type ReactNode } from "react";
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
+import { clientKind } from "@/api/clientKind";
 import { TechnicalDetails, technicalDetails } from "@/components/ui/LoadError";
 import { dismissToast, toast } from "@/components/ui/Toast";
+import { PHONE_OFFLINE_DETAIL, PHONE_OFFLINE_TITLE } from "@/features/phone/copy";
+import { pageLoad } from "@/features/phone/platform";
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -29,7 +32,7 @@ function describe(err: unknown): { title: string; description?: ReactNode } {
   if (err instanceof ApiError) {
     if (err.isStaticDemo) return { title: "Not available in the online demo", description: err.message };
     if (err.isDemoLimit) return { title: "Not available in the demo", description: err.message };
-    if (err.status === 0) return { title: "Can't reach Ordnung", description: err.message };
+    if (err.status === 0) return { title: clientKind() === "phone" ? PHONE_OFFLINE_TITLE : "Can't reach Ordnung", description: err.message };
     if (err.status === 429) return { title: "Claude needs a short break", description: err.message };
     return { title: "That didn't work", description: sentence(err) };
   }
@@ -49,11 +52,12 @@ let offline = false;
  */
 export function showOffline(client: QueryClient): void {
   offline = true;
+  const phone = clientKind() === "phone";
   toast({
     id: OFFLINE_TOAST_ID,
     tone: "warn",
-    title: "Can't reach Ordnung",
-    description: "Showing what was last loaded. Is Ordnung still running on this computer?",
+    title: phone ? PHONE_OFFLINE_TITLE : "Can't reach Ordnung",
+    description: phone ? PHONE_OFFLINE_DETAIL : "Showing what was last loaded. Is Ordnung still running on this computer?",
     duration: Infinity,
     action: { label: "Try again", onClick: () => void client.refetchQueries({ type: "active" }) },
   });
@@ -67,9 +71,27 @@ export function showBackOnline(): void {
   toast.success("Back online", { description: "Ordnung is answering again — everything is up to date." });
 }
 
+/** Where a phone the computer no longer knows goes: pairing again, told why. */
+export const REMOVED_PHONE_PATH = "/pair?removed=1";
+let leaving = false;
+
+/**
+ * A refusal only the phone listener gives, `phone_not_paired`: the computer removed this phone (or forgot it), so
+ * every further request fails the same way. One full page load to the pairing page, which says so — it drops what
+ * the phone still showed. Never from the pairing page itself, which expects this answer before pairing.
+ */
+export function leaveIfUnpaired(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.code !== "phone_not_paired") return false;
+  if (leaving || window.location.pathname === "/pair") return true;
+  leaving = true;
+  pageLoad.assign(REMOVED_PHONE_PATH);
+  return true;
+}
+
 /** Test helper. */
 export function __resetOfflineForTests(): void {
   offline = false;
+  leaving = false;
 }
 
 /** Shared QueryClient: local API → short retries, no refetch storms, friendly error toasts. */
@@ -77,6 +99,8 @@ export function createQueryClient(): QueryClient {
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (err, query) => {
+        // a phone the computer removed: to the pairing page (every request would fail the same way)
+        if (leaveIfUnpaired(err)) return;
         // background refetch failures of data we already show → one warning until it answers again
         if (query.state.data !== undefined && err instanceof ApiError && err.status === 0) showOffline(client);
       },
@@ -84,6 +108,7 @@ export function createQueryClient(): QueryClient {
     }),
     mutationCache: new MutationCache({
       onError: (err, variables, _ctx, mutation) => {
+        if (leaveIfUnpaired(err)) return;
         if (mutation.meta?.silent) return;
         const { title, description } = describe(err);
         // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note

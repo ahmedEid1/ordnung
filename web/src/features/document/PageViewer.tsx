@@ -43,6 +43,7 @@ import { GROUNDING_COPY, TONES, copyFor } from "@/lib/copy";
 import { Button } from "@/components/ui/Button";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ComputerOnly } from "@/features/phone/ComputerOnly";
 import { useEvidence } from "./EvidenceContext";
 import {
   boxToStyle,
@@ -412,16 +413,19 @@ export function PageViewer({
               { value: "zoom", label: "150%" },
             ]}
           />
-          <a
-            href={api.fileUrl(docId)}
-            target="_blank"
-            rel="noreferrer"
-            className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-3/70 hover:text-ink"
-            title="Open the original file"
-          >
-            <ExternalLink className="size-4" aria-hidden />
-            <span className="sr-only">Open the original file (new tab)</span>
-          </a>
+          {/* the original file never leaves the computer for a paired phone (its page images do) */}
+          <ComputerOnly what="Open the original file">
+            <a
+              href={api.fileUrl(docId)}
+              target="_blank"
+              rel="noreferrer"
+              className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-3/70 hover:text-ink"
+              title="Open the original file"
+            >
+              <ExternalLink className="size-4" aria-hidden />
+              <span className="sr-only">Open the original file (new tab)</span>
+            </a>
+          </ComputerOnly>
         </div>
       </div>
 
