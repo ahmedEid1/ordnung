@@ -22,6 +22,7 @@ goes where.
 | The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
 | Calendar sync (only if you connect a calendar) | the calendar you connect (Nextcloud, iCloud, mailbox.org, …); the app password in your system's password store | To that calendar's provider: dates, times and alarms (discreet, the default) — or the events' titles, what to do, amounts and who it is with (with details) |
 | Phone access (only if you turn it on) | the certificates in `<data dir>/phone/`; the paired phones (their names, when and from which address they were last used, a hash of each sign-in) in `ordnung.db` | Only to phones you paired, encrypted, on your home network — they show what is on the computer and keep no copy ([below](#phone-access-optional)) |
+| Hand-off sync between your computers (only if you set it up) | an encrypted copy in the folder you choose; this computer's sync state in `<data dir>/sync/`; the passphrase in each computer's password store | Only where your own sync tool takes that folder: encrypted, under names that reveal nothing ([below](#hand-off-sync-between-your-computers-optional)) |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
 `~/Library/Application Support/ordnung`, `%LOCALAPPDATA%\ordnung`) and can be changed with
@@ -123,9 +124,16 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
   connected for calendar sync, first removes Ordnung's events from it and the app password from your
-  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do).
+  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do; when
+  another of your computers sends to the same calendar through hand-off sync, the events stay there and
+  only this computer's connection goes).
   Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
-  when you made them, deleted letters included, until you delete them.
+  when you made them, deleted letters included, until you delete them. With [hand-off
+  sync](#hand-off-sync-between-your-computers-optional) on, a deleted letter's encrypted files leave the
+  sync folder once nothing refers to them for 7 days (of Ordnung's clock and of its running time); your
+  sync tool's version history or trash may keep them longer — empty it there too. A kept copy holds what it
+  saved until you delete it. *Delete everything* takes this computer out of sync first; your other
+  computers and the sync folder keep what they have.
 - **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
   add to a sent letter is stored like any upload with *Keep private — no AI* on: it is never sent to
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
@@ -162,8 +170,9 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   change it). The demo and the benchmarks keep the model they were recorded with.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
-  there. (The one thing that keeps itself current is calendar sync, and only after you
-  connect a calendar: it updates Ordnung's own events there — see below.)
+  there. (Two things keep themselves current, each only after you turn it on: calendar sync updates
+  Ordnung's own events in the calendar you connected, and hand-off sync keeps the encrypted copy in your
+  sync folder up to date — see below.)
 - **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
   your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
   though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
@@ -278,8 +287,9 @@ third party** — your calendar provider — so:
   reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
   things tidy. Once a day (and on *Sync now*) it asks the server which of *its own* events are still
   there, by name, and puts back any that went missing. Disconnecting forgets the password and can
-  remove Ordnung's events first; "Delete everything" always removes them (and forgets the password)
-  before it deletes anything.
+  remove Ordnung's events first; "Delete everything" removes them (and forgets the password) before it
+  deletes anything — unless another of your computers sends to the same calendar through hand-off sync:
+  then the events stay for that computer to keep current.
 - **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
   runs — only what changed is sent. The activity log notes each sync that sent or removed events.
 - **A restored backup doesn't take over the calendar.** The backup holds the calendar's address and
@@ -372,14 +382,93 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   everything else. Backups never carry phone access — no certificates, no paired phones — and a restored
   copy starts with it off ([below](#encrypted-backups)).
 
+## Hand-off sync between your computers (optional)
+
+Settings → Your computers lets you use the same Ordnung on your laptop and your desktop, one at a time,
+through a folder your own sync tool already keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a
+network drive). It is off until you set it up, never available in the demo, and needs this computer's
+password store. The policy is in `ordnung/sync/__init__.py`, the decision in
+[ADR 0018](decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
+
+- **One computer at a time.** The computer in use saves an encrypted copy into the folder about 2 seconds
+  after a change of yours, 10 seconds after Ordnung's own work (a reading, the day changing), at the latest
+  60 seconds after the first change not yet saved, and again when Ordnung stops. Your other computers are
+  *standing by*: they change nothing — every change there, a paired phone's too, is refused until you
+  choose *Use Ordnung here* — and they read no letters, send no reminders and update no calendar. *Use Ordnung here* brings everything over once your sync tool has delivered it; the computer
+  that was in use switches to standing by when its sync tool tells it.
+- **Only ciphertext goes into the folder.** Every file there is encrypted with AES-256-GCM, under keys that
+  come from a random key your passphrase locks (scrypt, N = 2^18, r = 8: 256 MiB of memory to try one
+  passphrase); its name is a keyed hash, its size is rounded up (by at most 12 %, to at least 4 KiB), and
+  the key file is 92 bytes with nothing readable in it. Not one byte in the folder is plain text: no name,
+  date, sender, file type, the word "Ordnung" or a computer's name.
+- **What your sync provider can see** — anyone with the folder but not the passphrase: that it is an
+  encrypted store; how many files there are and roughly how large; how many computers take part (one file
+  each); when things change; and from bursts of new files, roughly how many letters and pages you add. Never
+  your letters' content, their names, senders or dates, or which file is which, and a file it already
+  knows can't be recognised in the folder (the names are keyed). Its version history and trash may keep
+  old encrypted files after Ordnung has removed them.
+- **The passphrase stays in each computer's password store.** You type it once on each computer, and
+  Ordnung keeps it in the system's password store (service "Ordnung sync", an account for this data
+  folder) — never in the folder, its database, `sync/state.json`, a log, a backup or an answer. Opening
+  Settings never reads it; it is read when Ordnung needs the folder's keys (at start, or after you typed it
+  again), to write a kept copy, and when you set sync up. A password store that doesn't keep it safely is
+  refused, as for calendar sync, and there is no file to fall back on. A new sync folder's passphrase must
+  reach about 70 bits by Ordnung's estimate — five unrelated words, like the five-word one Settings
+  suggests — because the key file sits at your provider for years, open to guessing offline (and at least
+  12 characters, as for backups). Without it nobody can open the folder: not your sync provider, not
+  Ordnung's makers, not you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
+- **What stays on each computer.** Only your ledger and your letters' files travel. Never: phone access and
+  the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
+  which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
+  it remembers (only a fingerprint of each file it brought in travels, so a folder both computers watch
+  never brings back a letter you deleted); Claude's pause; the morning notification's bookkeeping; the
+  lock and the running server's session file; and the privacy-log entries of a backup made on that
+  computer, of its phone access and of its watched folder — they name local addresses and paths.
+- **When both computers changed something.** Nothing is merged and nothing is thrown away: Ordnung asks
+  once which computer's Ordnung to keep, and the other one is saved on its own computer as a *kept copy*
+  before anything there is replaced. Work a computer did by itself (a reading finished after you closed
+  the lid, the day changing) never makes it ask; a reading cut off that way is done again on the computer
+  in use, so its Claude tokens are spent twice.
+- **Kept copies** are encrypted backups — the sync passphrase opens them with `ordnung restore` — written to
+  `<data dir>/sync/kept/` before this computer's data is replaced. They stay on this computer, are never
+  synced or deleted by themselves (Settings warns once they take more than 2 GiB), and are lost with this
+  computer's disk and with *Delete everything*.
+- **Nothing half-arrived is used.** A version is brought over only once every file of it has arrived and
+  passed its check: a file still arriving or cut short, an online-only placeholder (iCloud Drive's
+  "Optimise storage", online-only files in Dropbox or OneDrive) and a file that can't be read all count as
+  "not arrived yet", and Settings says what is still on its way. Keep the folder available offline on every
+  computer.
+- **A copied or restored data folder.** A data folder moved or copied to another computer pauses sync
+  until you say *This is the same computer* or *Set up as a new computer*. One put back from an operating
+  system's backup is never taken for new changes: Ordnung keeps it as a kept copy and brings back what it
+  last saved.
+- **Forgetting a lost computer** (Settings → Your computers) removes it from the folder's list, after a
+  kept copy of any changes only it had. It doesn't lock that computer out — it still knows the passphrase.
+  To shut out a lost or stolen computer, set up a new sync folder with a new passphrase.
+- **What is logged.** The privacy log notes starting and stopping sync, joining, each switch ("Ordnung moved
+  here from desktop (3 new letters)"), a late change brought in, a choice, a kept copy and a computer
+  forgotten; only the computer in use writes it, and the entries travel with your data. Routine saves are
+  not logged: Settings says when the last one was.
+- **Disconnect, Delete everything and backups.** Disconnecting saves what isn't saved yet and leaves the
+  folder and your other computers with everything (kept copies stay). *Delete everything* does the same
+  first, then deletes `sync/` with the kept copies and the passphrase from this computer's password store;
+  when another of your computers sends to the same calendar, Ordnung's events stay there. While no other
+  computer has received this one's latest changes, both ask a second time. Backups never carry sync, so a
+  restored copy starts without it.
+- **Tested** with a simulated sync tool (files late, out of order, in pieces, conflict copies, online-only
+  placeholders) and two data folders on one machine. A pass with a real Nextcloud, Syncthing or iCloud Drive
+  folder on two physical computers is still to be done.
+
 ## Encrypted backups
 
 `ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
 Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
 your *Ask* conversations, the usage log and cached model answers), your original files, the page
 images and the letter PDFs. Not in it: the watched folder (those files are your own; what Ordnung
-took from them is), the lock, the running server's session file and phone access — neither its
-certificates nor the paired phones (they are taken out of the backup's copy of the database).
+took from them is), the lock, the running server's session file, phone access — neither its
+certificates nor the paired phones (they are taken out of the backup's copy of the database) — and
+hand-off sync's state (its folder, the computers, the kept copies; the passphrase never was in the data
+folder): a restored copy starts without sync.
 
 - **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
   passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else

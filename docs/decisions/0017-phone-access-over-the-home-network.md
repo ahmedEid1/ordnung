@@ -97,7 +97,7 @@ read a large body before it is signed in. Policy: `ordnung/api/phone_gate.py`.
 
 **A restored copy doesn't take over phones.** Backups leave phone access out (the record is removed from
 the database snapshot, and `phone/` was never in a backup); a restore detaches it; Delete everything
-removes the certificates. Sync between computers, when it comes, leaves the same record out.
+removes the certificates. Hand-off sync between computers (ADR 0018) leaves the same record out.
 
 Chosen over: the session link on the phone (one full-admin secret, no scope, no revocation);
 `serve --host 0.0.0.0` (the whole API on every interface); plain HTTP (sniffable letters and sign-ins); a
@@ -126,4 +126,5 @@ network; unreliable on Android); a separate process (two writers on one data fol
   check what it is refused and remove it), not yet on physical phones. How each phone's browser words the
   warning, keeps the authority's constraint, opens the camera and keeps the sign-in still has to be
   checked on real iPhones and Android phones before the docs' steps can be called confirmed.
-- No IPv6, no mDNS, no app-store app, no sync between computers.
+- No IPv6, no mDNS, no app-store app. A phone reaches only its own computer: it can't take Ordnung over
+  from another one (hand-off sync between computers, ADR 0018, is the computers' own).

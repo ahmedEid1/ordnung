@@ -116,9 +116,11 @@ and photo attachments become letters; new files wait on your computer until you 
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM) with a restore that checks
-every byte · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools · *your phone at
-home* — pair it with a QR code, then photograph letters, tick off to-dos and read Claude's explanations in
-its browser over your home Wi-Fi.
+every byte · *hand-off between your computers* (optional) — an encrypted copy in a folder you already sync
+(Nextcloud, Syncthing, Dropbox, iCloud Drive); Ordnung is in use on one computer at a time, *Use Ordnung
+here* brings everything over, and nothing is merged · *Claude Desktop and Claude Code* can use the deadline
+engine as MCP tools · *your phone at home* — pair it with a QR code, then photograph letters, tick off
+to-dos and read Claude's explanations in its browser over your home Wi-Fi.
 
 ## The model reads, code computes
 
@@ -377,8 +379,11 @@ paired with a one-time code, and never their requests for settings, backups or d
 *My numbers* and your profile's IBAN show only their last 4 characters. Settings show what each feature
 sends and a usage log per document; the address and IBAN in your profile are never put into a prompt.
 Files from a watched folder are sent to Claude only after you say so. Calendar sync, off until you
-connect a calendar, is the only feature that sends anything to another third party (your calendar
-provider), by default only dates with generic titles. Details in [docs/privacy.md](docs/privacy.md).
+connect a calendar, is the only feature that sends anything readable to another third party (your calendar
+provider), by default only dates with generic titles. If you turn on hand-off sync between your computers,
+your own sync tool receives only encrypted files with meaningless names: the passphrase stays in each
+computer's password store, and the provider learns how many files there are, roughly how large, and when
+they change — never what is in them. Details in [docs/privacy.md](docs/privacy.md).
 
 ## Install and run
 
@@ -416,6 +421,28 @@ copying the details or saving the GiroCode as a picture. It works while the comp
 runs; reserve the computer's address in your router, because a new address means pairing again.
 Details: [docs/privacy.md](docs/privacy.md#phone-access-optional) and
 [ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md).
+
+**On your other computer.** Ordnung can move between your laptop and your desktop through a folder your
+own sync tool already keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a network drive). In
+Settings → Your computers, choose a new folder inside it, name this computer and take the suggested
+five-word passphrase (save it in your password manager). On the other computer, choose *I already use
+Ordnung on another computer* when you set Ordnung up, the same folder and the same passphrase. From then on
+Ordnung is in use on one computer at a time: the computer in use saves an encrypted copy into the folder a
+few seconds after each change, the top bar says when the other computer has it ("Saved · desktop has it"),
+and on the other computer one click, *Use Ordnung here*, brings everything over. If both computers changed
+something while they couldn't see each other, Ordnung asks once which computer's Ordnung to keep and saves
+the other as an encrypted copy. Keep the folder available offline on both computers, and update Ordnung on
+both together. Details: [docs/privacy.md](docs/privacy.md#hand-off-sync-between-your-computers-optional)
+and [ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
+
+```bash
+ordnung sync                                     # in use here or standing by, when it last saved, the other computers
+ordnung sync connect ~/Nextcloud/Ordnung         # set up (the passphrase twice) or join (once); ORDNUNG_SYNC_PASSPHRASE skips the prompt
+ordnung sync use-here                            # bring everything over and use Ordnung on this computer
+ordnung sync choose this                         # both computers changed: keep this one's Ordnung (or the other's name)
+ordnung sync save --hand-over                    # save now and stand by, before you switch computers
+ordnung sync passphrase | kept | forget NAME | disconnect
+```
 
 **The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
@@ -459,6 +486,8 @@ flowchart LR
     CD["Claude Desktop / Code<br/>(optional)"] -->|"MCP: rules tools"| R
   end
   Phone["Phone browser<br/>home Wi-Fi · HTTPS · paired<br/>(optional)"] <-->|"device cookie, phone scope"| API
+  DB <-->|"encrypted objects<br/>(hand-off sync, optional)"| SF["Sync folder<br/>your Nextcloud / Syncthing / …<br/>ciphertext only"]
+  SF <-.->|"your sync tool"| PC2["Your other computer's Ordnung<br/>(standing by)"]
   P -- "a letter's text or page images" --> CLI["claude CLI<br/>your account"]
   ASK --> CLI
   CLI -. "HTTPS" .-> ANT["Anthropic"]
@@ -474,6 +503,7 @@ flowchart LR
 | Letters | [`src/ordnung/drafts/`](src/ordnung/drafts) | Fixed legal templates, bilingual drafts, DIN 5008 PDFs, sending advice, proof of sending |
 | Web app | [`web/`](web) | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
 | Phone access | [`src/ordnung/phone/`](src/ordnung/phone) | Optional second listener on your home network: its certificates, pairing, paired phones' sign-ins and the allow-list of what a phone may do ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)) |
+| Hand-off sync | [`src/ordnung/sync/`](src/ordnung/sync) | Optional: the encrypted folder format, versions that count the person's changes, the decision of who is in use, save and take-over with a journal, kept copies, the standing-by gate ([ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md)) |
 
 The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
 no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
@@ -486,7 +516,7 @@ More in [docs/architecture.md](docs/architecture.md).
 
 | | |
 |---|---|
-| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS), with axe accessibility checks in light and dark mode |
+| Tests | 7,200+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,550+ Vitest tests; 375+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI |
 | CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
@@ -541,10 +571,17 @@ More in [docs/architecture.md](docs/architecture.md).
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
-- One person's Ordnung on one computer. A phone you pair in Settings → Phone can use it in its browser
-  over your home Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once
-  about Ordnung's own certificate, and it can't change settings, back up or delete. There is no app-store
-  app and no sync between computers (calendar sync only sends dates to your own calendar).
+- One person's Ordnung, in use on one computer at a time. A phone you pair in Settings → Phone can use it in
+  its browser over your home Wi-Fi while the computer is on: the letters stay on the computer, the phone
+  warns once about Ordnung's own certificate, and it can't change settings, back up or delete. There is no
+  app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
+  doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
+  sends no reminders and reads no letters, and calendar sync is connected on each computer.
+- Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
+  online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
+  iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
+  knows the passphrase): a new sync folder with a new passphrase does, and changing the passphrase isn't
+  possible yet.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in
@@ -561,7 +598,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0017 phone access over the home network](docs/decisions/0017-phone-access-over-the-home-network.md)
+  [0017 phone access over the home network](docs/decisions/0017-phone-access-over-the-home-network.md) and
+  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md)
 
 ## How this was built
 
