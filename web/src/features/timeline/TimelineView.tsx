@@ -40,6 +40,8 @@ import {
   type TimelineFilters as Filters,
 } from "./model";
 import { TOUR_TARGETS } from "@/features/tour/steps";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { filesStay } from "@/features/phone/copy";
 import { useStickyError } from "@/lib/hooks";
 
 const DESCRIPTION = "Your year ahead as life lanes — permits, contracts, deadlines and study — and every date, month by month.";
@@ -50,6 +52,7 @@ const DESCRIPTION = "Your year ahead as life lanes — permits, contracts, deadl
  */
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
+  const phone = usePhoneCompanion();
   return (
     <EmptyState
       illustration="calendar"
@@ -65,7 +68,7 @@ function FirstRun() {
       }
     >
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
-        <Lock className="size-3.5 shrink-0" aria-hidden /> Your files stay on this computer.
+        <Lock className="size-3.5 shrink-0" aria-hidden /> {filesStay(phone)}
       </p>
     </EmptyState>
   );

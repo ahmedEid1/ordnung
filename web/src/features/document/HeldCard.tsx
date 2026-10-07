@@ -11,6 +11,7 @@
  * whether that render comes before the answer returns or after) — only when the answer changed the
  * letter (`answeredFor`).
  * While an answer runs its button keeps focus, so a failed one leaves the person where they were.
+ * On a paired phone there are no answers: whether Claude may read a letter is decided on the computer.
  */
 import { Lock, Sparkles } from "lucide-react";
 import type { DocumentDetail, HeldResult } from "@/api/types";
@@ -23,6 +24,9 @@ import { FileNameText } from "@/components/ui/FileNameText";
 import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { heldOrigin } from "@/features/inbox/waiting";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { OnYourComputer } from "@/features/phone/ComputerOnly";
+import { DECIDE_ONE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { hasLongWord } from "./verdict";
 
 /**
@@ -72,6 +76,8 @@ export interface HeldCardProps {
 
 export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
   const doc = detail.document;
+  // whether Claude may read a letter is decided on the computer (a phone may not answer it)
+  const phone = usePhoneCompanion();
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
   const wait = useWaitAgain();
@@ -121,24 +127,28 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
           </p>
         ) : null}
         <p className="mt-3 text-[15px] leading-relaxed text-ink/85">
-          {heldOrigin(doc, detail.email)} It is stored on this computer and has not been sent to Claude.
+          {heldOrigin(doc, detail.email)} It is stored on {theComputer(phone)} and has not been sent to Claude.
         </p>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
           Let Claude read it to have its dates, amounts and deadlines filed — every fact is checked against the page. Or keep it private: it stays searchable here and is
           never sent, but nothing in it is read.
           {attached === 1 ? " Its attachment that waits goes with it." : attached > 1 ? ` Its ${plural(attached, "attachment")} that wait go with it.` : ""}
         </p>
-        {/* the same order as the Inbox's group (the main answer last); phones: the two share the row */}
-        <div className="mt-4 flex w-full gap-2 sm:w-auto">
-          <AnswerButton icon={Lock} busy={keep.isPending} blocked={busy} onClick={keepIt} className="max-sm:flex-1">
-            Keep private
-          </AnswerButton>
-          <AnswerButton variant="primary" icon={Sparkles} busy={read.isPending} blocked={busy} onClick={readIt} className="max-sm:flex-1">
-            <span>
-              Read it <span className="max-sm:sr-only">with Claude</span>
-            </span>
-          </AnswerButton>
-        </div>
+        {phone ? (
+          <OnYourComputer className="mt-4 text-[13.5px]">{DECIDE_ONE_ON_COMPUTER}</OnYourComputer>
+        ) : (
+          // the same order as the Inbox's group (the main answer last); phones: the two share the row
+          <div className="mt-4 flex w-full gap-2 sm:w-auto">
+            <AnswerButton icon={Lock} busy={keep.isPending} blocked={busy} onClick={keepIt} className="max-sm:flex-1">
+              Keep private
+            </AnswerButton>
+            <AnswerButton variant="primary" icon={Sparkles} busy={read.isPending} blocked={busy} onClick={readIt} className="max-sm:flex-1">
+              <span>
+                Read it <span className="max-sm:sr-only">with Claude</span>
+              </span>
+            </AnswerButton>
+          </div>
+        )}
       </div>
     </article>
   );

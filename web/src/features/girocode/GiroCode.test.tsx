@@ -26,7 +26,9 @@ import {
   GIROCODE_MISMATCH,
   GIROCODE_MISMATCH_DETAILS,
   GIROCODE_NO_REFERENCE,
+  GIROCODE_ON_COMPANION,
   GIROCODE_ON_PHONE,
+  GIROCODE_PICTURE_HINT,
   GIROCODE_READING_AGAIN,
   GiroCodeSection,
   canReadLetterAgain,
@@ -35,6 +37,8 @@ import {
 } from "./GiroCode";
 import { plainText } from "@/lib/glue";
 import { qrMatrix, qrPath } from "./qr";
+import { GIROCODE_FILE } from "./savePicture";
+import { setClientKind } from "@/api/clientKind";
 
 const NK = "BCD\n002\n1\nSCT\n\nWohnbau Musterstadt eG\nDE05123456000004455660\nEUR184.3\n\n\nMV-2025-0412 NK 2025";
 const ready: GiroCode = { status: "ready", item_id: "itm_nk", payload: NK, checked: false };
@@ -480,5 +484,117 @@ describe("on Today", () => {
     const panel = await screen.findByRole("dialog", { name: "Pay: TechMarkt reminder" });
     await user.click(await within(panel).findByRole("button", { name: "Show code" }));
     expect(within(panel).getByRole("img", { name: /^GiroCode: transfer €94\.99 to TechMarkt Online GmbH, reference RE-2026-084213$/ })).toBeInTheDocument();
+  });
+});
+
+describe("on a paired phone", () => {
+  /** The phone draws the picture on a canvas (jsdom has none): every dark module a filled square. */
+  function fakeCanvas() {
+    const ctx = { fillStyle: "", fillRect: vi.fn() };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((done: BlobCallback) => done(new Blob(["png"], { type: "image/png" })));
+    return ctx;
+  }
+
+  /** A share sheet that takes files (or not). */
+  function shareSheet(canShare: boolean, share: () => Promise<void> = async () => {}) {
+    const spy = vi.fn(share);
+    Object.defineProperty(navigator, "canShare", { configurable: true, value: () => canShare });
+    Object.defineProperty(navigator, "share", { configurable: true, value: spy });
+    return spy;
+  }
+
+  beforeEach(() => {
+    setClientKind("phone");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:girocode");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    Reflect.deleteProperty(navigator, "canShare");
+    Reflect.deleteProperty(navigator, "share");
+  });
+
+  it("says the phone can't scan itself, and offers the code as a picture for its banking app", () => {
+    fakeCanvas();
+    renderSection(ready, true);
+    const section = screen.getByRole("region", { name: "GiroCode (EPC-QR)" });
+    expect(within(section).getByText(GIROCODE_ON_COMPANION)).toBeInTheDocument();
+    expect(within(section).queryByText(GIROCODE_ON_PHONE)).toBeNull();
+    expect(within(section).getByText(GIROCODE_PICTURE_HINT)).toBeInTheDocument();
+    // there even while the code is folded
+    expect(within(section).getByRole("button", { name: "Show code" })).toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "Save as picture" })).toBeInTheDocument();
+  });
+
+  it("hands the picture to the share sheet when it takes files — no download", async () => {
+    const ctx = fakeCanvas();
+    const share = shareSheet(true);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const user = userEvent.setup();
+    renderSection(ready);
+    await user.click(screen.getByRole("button", { name: "Save as picture" }));
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    const [{ files }] = share.mock.calls[0] as unknown as [{ files: File[] }];
+    expect(files.map((f) => [f.name, f.type])).toEqual([[GIROCODE_FILE, "image/png"]]);
+    expect(click).not.toHaveBeenCalled();
+    // drawn once, ahead of the tap: the white ground, then each dark module of the payload's code
+    const { modules } = qrMatrix(NK);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(1 + modules.flat().filter(Boolean).length);
+    expect(screen.queryByText(/Saved as|Couldn't save/)).toBeNull();
+  });
+
+  it("downloads it where there is no share sheet for files", async () => {
+    fakeCanvas();
+    const seen: { download: string; href: string }[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      seen.push({ download: this.download, href: this.getAttribute("href") ?? "" });
+    });
+    const user = userEvent.setup();
+    renderSection(ready);
+    await user.click(screen.getByRole("button", { name: "Save as picture" }));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    expect(seen).toEqual([{ download: GIROCODE_FILE, href: "blob:girocode" }]);
+    expect(await screen.findByText(`Saved as ${GIROCODE_FILE} in your downloads.`)).toBeInTheDocument();
+  });
+
+  it("a share sheet closed without saving: nothing else happens", async () => {
+    fakeCanvas();
+    const share = shareSheet(true, async () => {
+      throw new DOMException("Share canceled", "AbortError");
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const user = userEvent.setup();
+    renderSection(ready);
+    await user.click(screen.getByRole("button", { name: "Save as picture" }));
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save as picture" })).not.toHaveAttribute("aria-busy"));
+    expect(click).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Saved as|Couldn't save/)).toBeNull();
+  });
+
+  it("a picture that can't be drawn says so in the block", async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+    const user = userEvent.setup();
+    renderSection(ready);
+    await user.click(screen.getByRole("button", { name: "Save as picture" }));
+    expect(await screen.findByText(/^Couldn't save the picture: This browser can't draw the picture\./)).toBeInTheDocument();
+  });
+
+  it("only for a ready code: never before the details were compared with the letter, never without a code", () => {
+    fakeCanvas();
+    const { unmount } = renderSection(GIROCODES.itm_parking);
+    expect(screen.getByRole("button", { name: "These match the letter" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save as picture" })).toBeNull();
+    unmount();
+    renderSection(GIROCODES.itm_scam_demand);
+    expect(screen.queryByRole("button", { name: "Save as picture" })).toBeNull();
+  });
+
+  it("the computer keeps its own line (a phone or tablet scans the computer's screen)", () => {
+    setClientKind("computer");
+    renderSection(ready, true);
+    expect(screen.getByText(GIROCODE_ON_PHONE)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save as picture" })).toBeNull();
   });
 });

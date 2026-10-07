@@ -3,6 +3,9 @@
  * whose it is (`GET /api/numbers`, `ordnung/numbers.py`): About you (with your identity documents),
  * Open cases and a call sheet per organisation. Values are hidden until "Show"; Copy works either way.
  * URL state: `?tab=you|cases|organisations`.
+ *
+ * On a paired phone the API sends your numbers with only their last 4 characters (`masked`): someone holding the
+ * phone can't read them, and the full numbers are on the computer (each row says so, `NumberRow`).
  */
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -12,6 +15,7 @@ import type { MyNumbers } from "@/api/types";
 import { PageHeader } from "@/components/shell/Page";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Callout";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
@@ -19,6 +23,8 @@ import { LoadError } from "@/components/ui/LoadError";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { filesStay, NUMBERS_MASKED } from "@/features/phone/copy";
 import { plural } from "@/lib/utils";
 import { CallSheetCard, DocumentCard, OpenCaseCard } from "./cards";
 import { NumberRow } from "./NumberRow";
@@ -28,6 +34,8 @@ export type NumbersTab = "you" | "cases" | "organisations";
 const TABS: NumbersTab[] = ["you", "cases", "organisations"];
 const DESCRIPTION =
   "The numbers forms, portals and hotlines ask for — read from your letters and sorted by whose they are. Hidden on screen until you choose Show.";
+/** On a paired phone, whose numbers come masked (nothing to show or hide). */
+const PHONE_DESCRIPTION = "The numbers forms, portals and hotlines ask for — read from your letters and sorted by whose they are.";
 
 /**
  * Cards side by side as the column allows, each at least 20rem (never wider than a phone). The cards
@@ -91,6 +99,7 @@ function NumbersSkeleton() {
 
 function FirstRun() {
   const { openPicker, uploading } = useAddLetters();
+  const phone = usePhoneCompanion();
   return (
     <EmptyState
       illustration="letter"
@@ -103,7 +112,7 @@ function FirstRun() {
       }
     >
       <p className="mt-5 inline-flex items-center gap-1.5 text-sm text-muted">
-        <Lock className="size-3.5 shrink-0" aria-hidden /> Your files stay on this computer.
+        <Lock className="size-3.5 shrink-0" aria-hidden /> {filesStay(phone)}
       </p>
     </EmptyState>
   );
@@ -268,8 +277,11 @@ export function NumbersView() {
   // a retry of a failed load starts over as "pending": keep the message on screen meanwhile
   const lastError = useStickyError(q.error, Boolean(q.data));
   const failed = !q.data && (q.isError || Boolean(lastError));
+  // a paired phone gets your numbers masked: the full ones are on the computer
+  const phone = usePhoneCompanion();
+  const masked = Boolean(q.data?.masked);
 
-  const header = <PageHeader title="My numbers" description={DESCRIPTION} />;
+  const header = <PageHeader title="My numbers" description={phone ? PHONE_DESCRIPTION : DESCRIPTION} />;
   if (failed) {
     return (
       <>
@@ -304,6 +316,11 @@ export function NumbersView() {
   return (
     <>
       {header}
+      {masked ? (
+        <Callout tone="info" icon={Lock} className="mb-6">
+          {NUMBERS_MASKED}
+        </Callout>
+      ) : null}
       <Tabs id="numbers" label="Which numbers" items={items} value={tab} onChange={setTab} fill className="mb-6" />
       {/* no tabindex: the panel's first control (a Show button) takes the focus after the tabs */}
       <div role="tabpanel" id={`numbers-panel-${tab}`} aria-labelledby={`numbers-tab-${tab}`}>

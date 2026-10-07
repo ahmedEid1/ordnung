@@ -7,30 +7,39 @@
  * them from the letter, or have the letter read again). A refused comparison, or a failed reading,
  * says why in the block itself — a toast would wait behind a phone's sheet or cover the panel's
  * footer. A code without a reference says so (the letter may name one the reading missed), and on a
- * phone or tablet, which can't scan its own screen, the block says what to do instead.
+ * phone or tablet, which can't scan its own screen, the block says what to do instead — on a phone paired with the
+ * computer, save the ready code as a picture its banking app can read (`savePicture.ts`; never before the code is
+ * ready, so the comparison with the letter is never skipped).
  *
  * The code stays dark on white with its quiet zone in both themes and in forced-colours mode:
  * scanners need that contrast, whatever the page around it looks like. Each module is a whole
  * number of pixels, at least three, so a phone camera sees even squares.
  */
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Check, ChevronDown, CircleCheck, Info, QrCode as QrIcon, RotateCw, ScanLine, ShieldAlert, Smartphone } from "lucide-react";
+import { Check, ChevronDown, CircleCheck, ImageDown, Info, QrCode as QrIcon, RotateCw, ScanLine, ShieldAlert, Smartphone } from "lucide-react";
 import type { Document, GiroCode as GiroCodeData, GiroCodeBlocked } from "@/api/types";
 import { useConfirmGiroCode, useReadLetterAgain } from "@/api/hooks";
 import { dismissJob, seedJob, useJobProgress } from "@/api/sse";
 import { setUploadToastHidden } from "@/components/shell/UploadCenter";
 import { Button } from "@/components/ui/Button";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { formatMoney } from "@/lib/format";
 import { useIsTabletUp, useMediaQuery } from "@/lib/hooks";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { qrMatrix, qrPath, readPayload } from "./qr";
+import { GIROCODE_FILE, giroCodePicture, savePicture } from "./savePicture";
 
 export const GIROCODE_TITLE = "GiroCode (EPC-QR)";
 export const GIROCODE_HINT = "Scan with your banking app; you confirm the transfer there.";
 export const GIROCODE_CHECKED = "You compared these details with the letter.";
 /** Below the heading on a phone or tablet: the code is for another device's banking app. */
 export const GIROCODE_ON_PHONE = "A phone or tablet can't scan its own screen: open this letter on a computer and scan the code there, or copy the details above.";
+/** …on a phone paired with the computer (phone access): its banking app is right here, so the code can go to it as a picture. */
+export const GIROCODE_ON_COMPANION =
+  "A phone can't scan its own screen. Copy the details above into your banking app, or save the code as a picture — many banking apps can read a GiroCode from a photo.";
+/** Under "Save as picture": where the picture goes, and that it stays there. */
+export const GIROCODE_PICTURE_HINT = "The picture stays in your Photos until you delete it.";
 /** A code whose letter gave no reference: the reading may have missed it, and a payment without one gets misallocated. */
 export const GIROCODE_NO_REFERENCE = "This code carries no reference. If the letter names one (a Kassenzeichen, an invoice number), add it in your banking app.";
 
@@ -222,7 +231,9 @@ function Ready({
   // a phone (or a tablet) can't scan its own screen, upright or turned sideways
   const tabletUp = useIsTabletUp();
   const touch = useMediaQuery("(hover: none) and (pointer: coarse)");
-  const onPhone = !tabletUp || touch;
+  // a phone paired with the computer: its own banking app can take the code as a picture
+  const companion = usePhoneCompanion();
+  const onPhone = !companion && (!tabletUp || touch);
   // a code the person just unfolded (or unlocked) scrolls into the panel's view; an unlocked one
   // takes focus on its heading first — without scrolling, which would cancel the smooth scroll
   useEffect(() => {
@@ -261,6 +272,7 @@ function Ready({
           {GIROCODE_ON_PHONE}
         </p>
       ) : null}
+      {companion ? <SaveAsPicture payload={payload} /> : null}
       {noReference ? (
         <p data-girocode-no-reference="" className="mt-2 flex gap-1.5 text-xs leading-5 text-warn-ink">
           <Info className="mt-[3px] size-3.5 shrink-0" aria-hidden />
@@ -279,6 +291,58 @@ function Ready({
         ) : null}
       </div>
     </section>
+  );
+}
+
+/**
+ * On a paired phone: why the code can't be scanned here, and "Save as picture" — drawn as soon as the block shows,
+ * so the tap hands it straight to the share sheet (which opens only in answer to a tap).
+ */
+function SaveAsPicture({ payload }: { payload: string }) {
+  const [picture, setPicture] = useState<{ payload: string; blob: Blob } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [said, setSaid] = useState<{ text: string; failed: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    giroCodePicture(payload)
+      .then((blob) => {
+        if (live) setPicture({ payload, blob });
+      })
+      .catch(() => undefined); // drawn again on the tap, which then says why it can't be
+    return () => {
+      live = false;
+    };
+  }, [payload]);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    setSaid(null);
+    try {
+      const blob = picture?.payload === payload ? picture.blob : await giroCodePicture(payload);
+      const outcome = await savePicture(blob, GIROCODE_FILE);
+      if (outcome === "downloaded") setSaid({ text: `Saved as ${GIROCODE_FILE} in your downloads.`, failed: false });
+    } catch (err) {
+      setSaid({ text: `Couldn't save the picture: ${err instanceof Error ? err.message : "please try again."}`, failed: true });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <div data-girocode-companion="" className="mt-2">
+      <p className="flex gap-1.5 text-xs leading-5 text-muted">
+        <Smartphone className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+        {GIROCODE_ON_COMPANION}
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Button variant="secondary" size="sm" icon={ImageDown} loading={saving} onClick={() => void save()}>
+          Save as picture
+        </Button>
+        <span className="text-xs leading-5 text-muted">{GIROCODE_PICTURE_HINT}</span>
+      </div>
+      <p role="status" className={cn("mt-1 text-xs leading-5 empty:hidden", said?.failed ? "text-danger-ink" : "text-muted")}>
+        {said?.text ?? ""}
+      </p>
+    </div>
   );
 }
 

@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { composerHref } from "@/features/today/selection";
 import { focusWhenReady } from "@/features/today/focus";
 import { WRAPPING_BUTTON, asksForACall, closeLabel } from "@/features/waiting/model";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { OnYourComputer } from "@/features/phone/ComputerOnly";
+import { PROOF_ON_COMPUTER } from "@/features/phone/copy";
 import { AddProofDialog } from "./AddProofDialog";
 import { RemoveProofDialog } from "./RemoveProofDialog";
 import { TrackingField, trackingSavable } from "./TrackingField";
@@ -222,7 +225,8 @@ function Tracking({ draft, overview }: { draft: Draft; overview: ProofOverview }
 }
 
 /** One proof: its picture (or its kind's icon), what it is, the day it shows, and what it does and doesn't show. */
-function ProofRow({ entry, onEdit, onRemove }: { entry: ProofEntry; onEdit: () => void; onRemove: () => void }) {
+/** One proof: `onRemove` is left out where a proof can't be removed (a paired phone: on the computer only). */
+function ProofRow({ entry, onEdit, onRemove }: { entry: ProofEntry; onEdit: () => void; onRemove?: () => void }) {
   const copy = copyFor(PROOF_KIND_COPY, entry.proof.kind);
   const doc = entry.document;
   // a file without a picture (an e-mail, a text file, a PDF that couldn't be drawn) shows the kind's icon
@@ -257,12 +261,16 @@ function ProofRow({ entry, onEdit, onRemove }: { entry: ProofEntry; onEdit: () =
                 icon: PenLine,
                 onSelect: onEdit,
               },
-              {
-                label: "Remove this proof",
-                icon: Trash2,
-                danger: true,
-                onSelect: onRemove,
-              },
+              ...(onRemove
+                ? [
+                    {
+                      label: "Remove this proof",
+                      icon: Trash2,
+                      danger: true,
+                      onSelect: onRemove,
+                    },
+                  ]
+                : []),
             ]}
           >
             <IconButton icon={Ellipsis} label={`Actions for ${copy.label}`} size="sm" className="-mr-1.5 -mt-1" />
@@ -368,6 +376,8 @@ function Timeline({ events, draftId }: { events: ProofEvent[]; draftId: string }
  */
 export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeSending?: () => void }) {
   const q = useDraftProof(draft.id);
+  // a paired phone adds proofs (a photo of the receipt) but removes and downloads them on the computer
+  const phone = usePhoneCompanion();
   const remove = useRemoveProof();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<ProofEntry | null>(null);
@@ -423,7 +433,7 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                   {overview.proofs.length ? (
                     <ul className="divide-y divide-line">
                       {overview.proofs.map((p) => (
-                        <ProofRow key={p.proof.id} entry={p} onEdit={() => setEditing(p)} onRemove={() => setRemoving(p)} />
+                        <ProofRow key={p.proof.id} entry={p} onEdit={() => setEditing(p)} onRemove={phone ? undefined : () => setRemoving(p)} />
                       ))}
                     </ul>
                   ) : (
@@ -433,18 +443,21 @@ export function ProofPanel({ draft, onChangeSending }: { draft: Draft; onChangeS
                     <Button size="sm" variant="soft" icon={Plus} onClick={() => setAdding(true)}>
                       Add proof
                     </Button>
-                    <a
-                      href={api.proofPdfUrl(draft.id)}
-                      download={nachweisFileName(draft)}
-                      className={buttonVariants({
-                        variant: "secondary",
-                        size: "sm",
-                      })}
-                    >
-                      <FileDown aria-hidden />
-                      Download Nachweis (PDF)
-                    </a>
+                    {phone ? null : (
+                      <a
+                        href={api.proofPdfUrl(draft.id)}
+                        download={nachweisFileName(draft)}
+                        className={buttonVariants({
+                          variant: "secondary",
+                          size: "sm",
+                        })}
+                      >
+                        <FileDown aria-hidden />
+                        Download Nachweis (PDF)
+                      </a>
+                    )}
                   </div>
+                  {phone ? <OnYourComputer className="mt-2">{PROOF_ON_COMPUTER}</OnYourComputer> : null}
                 </section>
 
                 <section aria-labelledby="proof-missing">

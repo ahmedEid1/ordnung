@@ -9,12 +9,21 @@
  *   "Internal Server Error").
  */
 
+import { clientKind } from "./clientKind";
+
 export const API_BASE = "/api";
 
 /** The sentence for a server error that brings no words for a person (what it said is kept as `technical`). */
 export const SERVER_PROBLEM = "Ordnung ran into a problem it didn't expect. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
 /** The sentence for an answer the page can't read (not Ordnung's JSON: a proxy's page, a cut-off body). */
 export const UNREADABLE_ANSWER = "Ordnung's answer couldn't be read. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
+/** Ordnung didn't answer (a network error): the computer's own tab says where it should be running. */
+export const UNREACHABLE = "Ordnung isn't reachable. Is it still running on this computer?";
+/**
+ * Ordnung didn't answer a paired phone: the computer may be off or asleep, Ordnung stopped, or the phone left the
+ * home Wi‑Fi ("Wi‑Fi" with a non-breaking hyphen, U+2011).
+ */
+export const PHONE_UNREACHABLE = "Can't reach your computer. Is it on, with Ordnung running, and is this phone on the same Wi‑Fi?";
 /** The `code` of an answer the page couldn't read ({@link UNREADABLE_ANSWER}). */
 export const UNREADABLE_CODE = "unreadable_answer";
 /** How much of a body that isn't JSON is kept for "Technical details". */
@@ -120,7 +129,12 @@ function clip(text: string): string {
   return line.length > TECHNICAL_MAX ? `${line.slice(0, TECHNICAL_MAX)}…` : line;
 }
 
-async function toApiError(res: Response): Promise<ApiError> {
+/**
+ * An answer that isn't 2xx as an {@link ApiError}: Ordnung's `{detail, code}` in its own words, anything else as a
+ * plain sentence with the raw words kept for "Technical details". Exported for requests made without `fetch` (a
+ * phone's upload with progress, `features/phone/upload.ts`).
+ */
+export async function toApiError(res: Response): Promise<ApiError> {
   let detail: unknown = undefined;
   let code: string | null = null;
   let technical: string | null = null;
@@ -162,7 +176,7 @@ export async function requestRaw(path: string, opts: RequestOptions = {}): Promi
     res = await fetch(apiPath(path, opts.query), buildInit(opts));
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError(0, "Ordnung isn't reachable. Is it still running on this computer?", err);
+    throw new ApiError(0, clientKind() === "phone" ? PHONE_UNREACHABLE : UNREACHABLE, err);
   }
   if (!res.ok) throw await toApiError(res);
   return res;

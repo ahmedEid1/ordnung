@@ -23,6 +23,14 @@ export const routes: RouteObject[] = [
     handle: { title: "Welcome" } satisfies RouteHandle,
   },
   {
+    // a phone pairs here (the QR code's link, or the address typed): outside the shell, which needs a paired phone
+    path: "/pair",
+    lazy: page(() => import("@/pages/PairPage")),
+    errorElement: <RouteError fullScreen />,
+    hydrateFallbackElement: <BootScreen />,
+    handle: { title: "Pair this phone" } satisfies RouteHandle,
+  },
+  {
     path: "/",
     element: <AppLayout />,
     errorElement: <RouteError fullScreen />,
