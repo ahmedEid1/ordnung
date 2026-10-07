@@ -419,6 +419,7 @@ class FakeEngine:
         *,
         secrets: SecretStore,
         keep: Literal["this", "folder"] | None,
+        store: Store | None = None,
     ) -> Connected:
         self._call("connect")
         with _FOLDER_LOCK:
@@ -560,7 +561,9 @@ class FakeEngine:
         state["confirmed_same"] = state.get("confirmed_same", False) or confirm_same_computer
         _write_state(paths, state)
 
-    def disconnect(self, paths: Paths, secrets: SecretStore, *, forget_passphrase: bool) -> None:
+    def disconnect(
+        self, paths: Paths, secrets: SecretStore, *, forget_passphrase: bool, store: Store | None = None
+    ) -> None:
         self._call("disconnect")
         state = _state(paths)
         if state is None:

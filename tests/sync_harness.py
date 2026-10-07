@@ -1,6 +1,6 @@
 """Computers for hand-off sync's tests (design §23.2): a data folder each, an in-memory password store,
-clocks of their own, and the real engine; plus :class:`FakeEngine`, a small stand-in for the engine's
-façade that the server's tests (P2) can drive without a folder.
+clocks of their own, and the real engine (the server's tests drive the agent with
+:mod:`sync_fake_engine`, and with the real engine in :mod:`test_sync_real_engine`).
 
 A :class:`Computer` writes the person's changes (:meth:`Computer.person_edit`, :meth:`Computer.add_letter`
 — inside :func:`ordnung.db.store.person_write`, as the server's gate does) and background changes
@@ -208,72 +208,6 @@ class Computer:
     @property
     def mode(self) -> str:
         return self.s.state.mode
-
-
-# --------------------------------------------------------------------------------------------------
-# FakeEngine: the façade without a folder (for the server's tests)
-# --------------------------------------------------------------------------------------------------
-
-
-@dataclass
-class FakeEngine:
-    """A stand-in for :mod:`ordnung.sync.engine` that keeps everything in memory and records calls.
-
-    It implements the façade's shape (I2): ``connect``, ``round``, ``use_here``, ``choose``, ``save``,
-    ``leave``, ``close``; ``mode`` and ``problem`` steer what it answers, ``calls`` records what was
-    asked. Nothing unverified is ever "applied": :meth:`use_here` only switches the mode when
-    ``arrived`` is set (I2)."""
-
-    mode: str = "off"
-    problem: str | None = None
-    arrived: bool = True
-    choice: list[str] | None = None
-    calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
-    saved: int = 0
-
-    def _call(self, name: str, **kwargs: Any) -> None:
-        self.calls.append((name, kwargs))
-
-    def connect(self, folder: str, name: str, passphrase: str, keep: str | None = None) -> str:
-        self._call("connect", folder=folder, name=name, keep=keep)
-        if self.choice and keep is None:
-            return "choice"
-        self.mode = "in_use"
-        return self.mode
-
-    def round(self) -> str:
-        self._call("round")
-        return self.mode
-
-    def use_here(self, older_copy: bool = False) -> str:
-        self._call("use_here", older_copy=older_copy)
-        if self.choice:
-            return "choice"
-        if not self.arrived and not older_copy:
-            return "waiting"
-        self.mode = "in_use"
-        return self.mode
-
-    def choose(self, key: int) -> str:
-        self._call("choose", key=key)
-        self.choice = None
-        self.mode = "in_use"
-        return self.mode
-
-    def save(self, hand_over: bool = False) -> str:
-        self._call("save", hand_over=hand_over)
-        self.saved += 1
-        if hand_over:
-            self.mode = "standing_by"
-        return self.mode
-
-    def leave(self, unreceived_ok: bool = False) -> str:
-        self._call("leave", unreceived_ok=unreceived_ok)
-        self.mode = "off"
-        return self.mode
-
-    def close(self) -> None:
-        self._call("close")
 
 
 @contextmanager

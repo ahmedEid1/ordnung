@@ -331,6 +331,7 @@ class Engine(Protocol):
         *,
         secrets: SecretStore,
         keep: Literal["this", "folder"] | None,
+        store: Store,
     ) -> ConnectResult: ...
     def open_session(self, paths: Paths, secrets: SecretStore) -> Session: ...
     def decide(self, local: LocalView, view: FolderView, action: UseHere | None) -> Decision: ...
@@ -347,26 +348,30 @@ class Engine(Protocol):
         dismiss_notice: str | None = None,
         notice: tuple[SyncNoticeCode, str, str | None] | None = None,
     ) -> None: ...
-    def disconnect(self, paths: Paths, secrets: SecretStore, *, forget_passphrase: bool) -> None: ...
+    def disconnect(
+        self, paths: Paths, secrets: SecretStore, *, forget_passphrase: bool, store: Store
+    ) -> None: ...
     def delete_kept(self, paths: Paths, name: str) -> bool: ...
 
 
 def load_engine() -> Engine | None:
-    """The engine of this installation (``None`` while it isn't part of it)."""
+    """The engine of this installation: the façade over the sync core (:mod:`ordnung.sync.facade`;
+    ``None`` while it isn't part of it)."""
     try:
-        module = importlib.import_module("ordnung.sync.engine")
+        module = importlib.import_module("ordnung.sync.facade")
     except ImportError:
         return None
-    return cast(Engine, module)
+    return cast(Engine, module.ENGINE)
 
 
 def default_secrets() -> SecretStore:
     """Where this computer keeps the sync passphrase: the OS keyring under hand-off sync's own service
-    (``calendar.secrets.SyncSecrets``) where this installation has it."""
-    from ordnung.calendar import secrets
-
-    factory = getattr(secrets, "SyncSecrets", None)
-    return cast(SecretStore, factory()) if callable(factory) else KeyringSecrets()
+    (:data:`ordnung.sync.local.SyncSecrets`)."""
+    try:
+        from ordnung.sync.local import SyncSecrets
+    except ImportError:
+        return KeyringSecrets()
+    return cast(SecretStore, SyncSecrets())
 
 
 def name_problem(name: str) -> str | None:
@@ -1265,9 +1270,17 @@ class SyncAgent:
                 kept = await self._thread.call(session.keep_local, self.paths, plan.why or "")
                 kept_name = str(getattr(kept, "name", "")) or None
             self.activity = "bringing_over"
-            async with ledger_lock():
-                await self._thread.call(_apply, session, staged, self.store)
+            try:
+                async with ledger_lock():
+                    applied = await self._thread.call(_apply, session, staged, self.store)
+            except SyncError as exc:
+                if exc.kind != "not_needed":
+                    raise
+                # the person's write landed after all (the apply's own guard): decide afresh
+                log.info("sync: something changed before the data was replaced; deciding again")
+                return False
             replaced = True
+            kept_name = kept_name or (str(getattr(applied, "kept", None) or "") or None)
             self.ctx.reload_settings()
             self.ctx.worker.reload()
             if plan.choice_push:
@@ -1479,39 +1492,53 @@ class SyncAgent:
             elif not passphrase:
                 raise SyncError("passphrase", "Type the passphrase of this sync folder.")
             self.secrets = secrets
-            result = await self._thread.call(
-                self.engine.connect,
-                self.paths,
-                Path(str(info.folder)),
-                name.strip(),
-                passphrase,
-                secrets=secrets,
-                keep=keep,
-            )
-            if result.choice is not None and keep is None:
-                return SyncChoice.model_validate(result.choice, from_attributes=True)
-            summary = await self._thread.call(self.engine.local_summary, self.paths)
-            if summary is None:
-                raise SyncError("folder_problem", CANT_OPEN_MESSAGE)
+            joining = info.kind == "existing"
+            # joining may bring the folder's data over at once: writes and background work wait
+            if joining and not await self._quiesce(BRINGING_OVER_MESSAGE.format(name="your other computer")):
+                raise SyncError("folder_problem", STILL_WRITING_MESSAGE)
+            try:
+                result = await self._thread.call(
+                    self.engine.connect,
+                    self.paths,
+                    Path(str(info.folder)),
+                    name.strip(),
+                    passphrase,
+                    secrets=secrets,
+                    keep=keep,
+                    store=self.store,
+                )
+                if result.choice is not None and keep is None:
+                    choice = SyncChoice.model_validate(result.choice, from_attributes=True)
+                    if joining:
+                        self._lift_fence()
+                        await self.host.start_background()
+                    return choice
+                summary = await self._thread.call(self.engine.local_summary, self.paths)
+                if summary is None:
+                    raise SyncError("folder_problem", CANT_OPEN_MESSAGE)
+            except BaseException:
+                if joining:
+                    self._lift_fence()
+                    await self.host.start_background()
+                raise
+            self._lift_fence()
             self._adopt(summary)
             if self._task is None and not isinstance(self.host, NoBackground):
                 self._start_loop()  # it waits for this operation's lock, and goes on even if a step fails
             self._session = None
             self.problem = self.choice = None
             session = await self._ensure_session()
-            if result.created:
+            if result.created:  # the engine saved into the new folder and logged it
                 self.mode = "in_use"
-                await self._log_now(
-                    "sync.connected",
-                    f"Started syncing through {summary.folder} as {summary.name}.",
-                    {"computer": summary.name},
-                )
                 if session is not None:
                     await self._push("first")
-            else:
-                if self.mode == "in_use":
-                    self.mode = "standing_by"
-                await self.host.stop_background()
+            elif self.mode == "in_use":  # the engine brought the data over and claimed: in use here
+                self.ctx.reload_settings()
+                self.ctx.worker.reload()
+                self._announce_replaced()
+                await self.host.start_background()
+                self._publish(replaced=True)
+            else:  # standing by until the data can be brought over
                 if session is not None:
                     self._joining = True
                     try:
@@ -1840,13 +1867,17 @@ class SyncAgent:
                     if restart and self.allows_background:
                         await self.host.start_background()
                     raise SyncError("folder_problem", STILL_WRITING_MESSAGE)
-                await self._log_now("sync.disconnected", "This computer stopped syncing.", {})
                 try:
                     await self._push("leave")
                 except Exception as exc:  # the confirmation covered it; leave anyway
                     log.warning("sync: the last save before leaving failed (%s)", type(exc).__name__)
+            # the engine logs "stopped syncing" into the data, saves it, and writes the head as left
             await self._thread.call(
-                self.engine.disconnect, self.paths, self.secrets, forget_passphrase=forget_passphrase
+                self.engine.disconnect,
+                self.paths,
+                self.secrets,
+                forget_passphrase=forget_passphrase,
+                store=self.store,
             )
         finally:
             if fenced:

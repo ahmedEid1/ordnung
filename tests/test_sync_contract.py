@@ -128,10 +128,7 @@ def test_the_gate_s_lists_name_real_operations(schema: dict[str, Any]) -> None:
 
 
 async def test_the_status_reads_no_secret_and_the_demo_never_syncs(data_dir: Path) -> None:
-    from sync_fake_engine import FakeEngine  # until the sync engine is part of this branch
-
-    async with api_for(data_dir) as api:
-        api.app.state.ordnung.sync.engine = FakeEngine()
+    async with api_for(data_dir) as api:  # the real engine (the façade over the sync core)
         api.app.dependency_overrides[sync_routes.get_secrets] = lambda: _NeverRead()
         status = (await api.client.get("/api/sync")).json()
         assert (status["available"], status["connected"], status["mode"]) == (True, False, "off")

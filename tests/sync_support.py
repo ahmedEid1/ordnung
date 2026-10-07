@@ -1,6 +1,6 @@
 """Shared helpers for hand-off sync's server, API and command-line tests (no tests here): short timings,
-an app per "computer" with the fake engine (:mod:`sync_fake_engine`) and an in-memory password store,
-its lifespan running, and waiting for the agent's loop."""
+an app per "computer" with the fake engine (:mod:`sync_fake_engine`) or the real one (:class:`RealEngine`)
+and an in-memory password store, its lifespan running, and waiting for the agent's loop."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from fake_caldav import MemorySecrets
 from ordnung.api.deps import ApiState
 from ordnung.api.routes import sync as sync_routes
 from ordnung.sync import agent as agent_module
+from ordnung.sync import facade
 from ordnung.sync.agent import SyncAgent
 from sync_fake_engine import FakeEngine
 from test_api_support import Api, api_for, lifespan
@@ -39,6 +40,18 @@ FAST = {
 }
 
 
+class RealEngine(facade.RealEngine):
+    """The real engine (the façade over the sync core) with an in-memory password store per computer,
+    as :class:`~sync_fake_engine.FakeEngine` offers them (``computer(engine=RealEngine())``)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.keyrings: dict[Path, MemorySecrets] = {}
+
+    def keyring(self, data_dir: Path) -> MemorySecrets:
+        return self.keyrings.setdefault(Path(data_dir).resolve(), MemorySecrets())
+
+
 def fast_sync(monkeypatch: pytest.MonkeyPatch, **overrides: Any) -> None:
     """The agent's timings in tenths of seconds."""
     for name, value in {**FAST, **overrides}.items():
@@ -59,13 +72,13 @@ def state_of(api: Api) -> ApiState:
 async def computer(
     data_dir: Path,
     *,
-    engine: FakeEngine | None = None,
+    engine: FakeEngine | RealEngine | None = None,
     secrets: MemorySecrets | None = None,
     start: bool = True,
     **kwargs: Any,
 ) -> AsyncIterator[Api]:
-    """An app on ``data_dir`` with the fake engine and an in-memory password store (its lifespan runs
-    when ``start``)."""
+    """An app on ``data_dir`` with the fake engine (or ``engine``) and an in-memory password store (its
+    lifespan runs when ``start``)."""
     async with api_for(data_dir, **kwargs) as api:
         agent = agent_of(api)
         engine = engine or FakeEngine()
