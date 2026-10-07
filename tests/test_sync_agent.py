@@ -21,6 +21,7 @@ from ordnung.ingest import watcher as watcher_module
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import ClaudeStatus
 from ordnung.sync import agent as agent_module
+from ordnung.sync.push import LocalDamaged, TryAgain
 from sync_fake_engine import FakeEngine, counter, deliver, head_of, withhold
 from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync, state_of, status
 from test_api_support import Api
@@ -261,6 +262,45 @@ async def test_a_person_s_change_is_saved_within_seconds(tmp_path: Path, folder:
         assert (await status(api))["pending_changes"] is False
 
 
+async def test_a_change_shows_as_unsaved_from_the_moment_it_is_made(tmp_path: Path, folder: Path) -> None:
+    """Integration finding: right after a change the status said "saved" (the last look found nothing
+    unsaved), though the change wasn't in the folder yet."""
+    engine = FakeEngine()
+    desk, _ = _dirs(tmp_path)
+    async with computer(desk, engine=engine) as api:
+        await connect(api, folder, "desktop")
+        agent = agent_of(api)
+        await agent.save()
+        assert agent.local is not None and not agent.local.pending, "the last look found everything saved"
+        assert not agent.status().pending_changes
+        agent.person_wrote()  # a request of the person's finished: its save is moments away
+        assert agent.status().pending_changes
+        await eventually(lambda: not agent.status().pending_changes)
+
+
+async def test_files_changing_while_saving_wait_and_a_damaged_original_shows_at_once(
+    tmp_path: Path, folder: Path
+) -> None:
+    """Integration finding: both fell back to "the folder can't be reached"."""
+    engine = FakeEngine()
+    desk, _ = _dirs(tmp_path)
+    async with computer(desk, engine=engine) as api:
+        await connect(api, folder, "desktop")
+        agent = agent_of(api)
+        engine.calls.clear()
+        engine.fail_push = TryAgain()
+        try:
+            assert (await _add_todo(api, "Pay the gym")).status_code == 201
+            await eventually(lambda: sum(call.startswith("push:") for call in engine.calls) >= 2)
+            assert agent.problem is None, "shown only when saving keeps failing (save_failing)"
+            engine.fail_push = LocalDamaged("letters/2026/letter.pdf")
+            found = await eventually(lambda: agent.problem, within=5)
+            assert found.code == "local_damaged"
+            assert (await status(api))["problem"]["code"] == "local_damaged"
+        finally:
+            engine.fail_push = None
+
+
 async def test_the_watched_folder_s_letters_are_the_person_s_and_remembered_across_computers(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -431,6 +471,20 @@ async def test_a_take_over_waits_for_what_hasn_t_arrived_and_finishes_by_itself(
         await eventually(lambda: agent_of(a).mode == "in_use")
         titles = [item["title"] for item in (await a.client.get("/api/items")).json()]
         assert "Arrives late" in titles
+
+
+async def test_after_taking_over_this_computer_is_the_one_in_use_at_once(
+    tmp_path: Path, folder: Path
+) -> None:
+    """Integration finding: the last look still named the other computer until the next one."""
+    engine = FakeEngine()
+    desk, lap = _dirs(tmp_path)
+    async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
+        await _switch(a, b, folder)
+        assert (await status(a))["in_use_on"] == "laptop"
+        taken = await a.client.post("/api/sync/use-here", json={})
+        assert taken.status_code == 200, taken.text
+        assert taken.json()["mode"] == "in_use" and taken.json()["in_use_on"] == "desktop"
 
 
 async def test_a_waiting_take_over_gives_up_after_its_time(
