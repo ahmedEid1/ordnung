@@ -7,7 +7,7 @@ import { LLM_PURPOSE_LABELS, humanize } from "@/lib/copy";
 // Sections
 // ------------------------------------------------------------------------------------------------
 
-export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "folder", "ai", "claude", "privacy", "rules", "data"] as const;
+export const SECTION_IDS = ["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "data"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
 export function parseSection(v: string | null | undefined): SectionId {
@@ -21,6 +21,7 @@ export const SECTION_LABELS: Record<SectionId, string> = {
   reminders: "Reminders",
   calendar: "Calendar",
   folder: "Watched folder",
+  phone: "Phone",
   ai: "AI & models",
   claude: "Claude connection",
   privacy: "Privacy & AI usage",
@@ -152,13 +153,21 @@ export function sentSummary(c: Pick<LLMCallRecord, "doc_ids" | "pages_sent" | "b
 // Activity
 // ------------------------------------------------------------------------------------------------
 
-/** Where an activity entry leads: its letter, its draft, or Ask for the checks of an answer. */
-export function activityHref(a: Pick<Activity, "ref_type" | "ref_id">): string | null {
+/**
+ * Where an activity entry leads: its letter, its draft, Ask for the checks of an answer — or, for phone access
+ * (pairing, removing, turning it on; a phone's change that names nothing), Settings → Phone.
+ */
+export function activityHref(a: Pick<Activity, "ref_type" | "ref_id"> & { kind?: string }): string | null {
   if (a.ref_type === "chat") return "/ask";
-  if (!a.ref_id) return null;
-  if (a.ref_type === "document") return `/documents/${a.ref_id}`;
-  if (a.ref_type === "draft") return `/letters/${a.ref_id}`;
+  if (a.ref_id && a.ref_type === "document") return `/documents/${a.ref_id}`;
+  if (a.ref_id && a.ref_type === "draft") return `/letters/${a.ref_id}`;
+  if (a.kind?.startsWith("phone.")) return "/settings?section=phone";
   return null;
+}
+
+/** The privacy log filtered to what one paired phone did (Settings → Privacy & AI usage, `?device=`). */
+export function deviceActivityHref(deviceId: string): string {
+  return `/settings?section=privacy&device=${encodeURIComponent(deviceId)}`;
 }
 
 /** What Ask's checks did to a run of answers, folded into one row of the activity log. */
