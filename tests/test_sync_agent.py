@@ -22,7 +22,7 @@ from ordnung.llm.fake import FakeBackend
 from ordnung.models import ClaudeStatus
 from ordnung.sync import agent as agent_module
 from ordnung.sync.push import LocalDamaged, TryAgain
-from sync_fake_engine import FakeEngine, counter, deliver, head_of, withhold
+from sync_fake_engine import FakeEngine, FakeSession, Problem, View, counter, deliver, head_of, withhold
 from sync_support import PASSPHRASE, agent_of, computer, connect, eventually, fast_sync, state_of, status
 from test_api_support import Api
 
@@ -451,8 +451,6 @@ async def test_a_change_made_while_staging_stops_a_quiet_pull(tmp_path: Path, fo
                 a.ctx.store.set_meta("weekly_session_at", "2026-10-07")
             return staged
 
-        from sync_fake_engine import FakeSession
-
         FakeSession.stage = stage_then_write  # type: ignore[method-assign]
         try:
             await agent_of(a).use_here()
@@ -611,6 +609,38 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
             engine.hang = None
 
 
+async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_does(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Audit: a hung folder was looked at as often as ever (each look left a thread stuck in it)."""
+    engine = FakeEngine()
+    desk, _ = _dirs(tmp_path)
+    answering = FakeSession.scan
+
+    def unreachable(session: FakeSession) -> View:
+        answering(session)  # counted as a look
+        return View([], Problem("folder_unreachable"))
+
+    def looks() -> int:
+        return engine.calls_of(desk).count("scan")
+
+    async with computer(desk, engine=engine) as api:
+        await connect(api, folder, "desktop")
+        monkeypatch.setattr(FakeSession, "scan", unreachable)
+        found = await eventually(lambda: agent_of(api).problem)
+        assert found.code == "folder_unreachable"
+        before = looks()
+        await asyncio.sleep(5 * agent_module.SCAN_S)
+        assert looks() <= before + 1, "not every SCAN_S while the folder doesn't answer"
+        assert agent_module.UNREACHABLE_SCAN_S > 5 * agent_module.SCAN_S
+
+        monkeypatch.setattr(FakeSession, "scan", answering)
+        await eventually(lambda: agent_of(api).problem is None, within=4 * agent_module.UNREACHABLE_SCAN_S)
+        before = looks()
+        await asyncio.sleep(5 * agent_module.SCAN_S)
+        assert looks() >= before + 2, "every SCAN_S again"
+
+
 async def test_shutdown_saves_and_says_the_computer_was_closed(tmp_path: Path, folder: Path) -> None:
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
@@ -670,7 +700,7 @@ async def test_both_computers_changed_gives_a_choice_and_either_answer_ends_it(
 
 
 async def test_a_copied_data_folder_pauses_with_two_actions(tmp_path: Path, folder: Path) -> None:
-    from sync_fake_engine import Decision, Problem
+    from sync_fake_engine import Decision
 
     engine = FakeEngine()
     engine.decide = lambda local, view, action: Decision("paused", problem=Problem("copied_folder"))  # type: ignore[method-assign]

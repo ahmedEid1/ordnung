@@ -1150,6 +1150,7 @@ _SYNC_NUMBERS: dict[str, Callable[[], object]] = {
     "damaged_minutes": lambda: _whole(sync.DAMAGED_AFTER_S, 60),
     "wants": lambda: sync.WANTS_MAX,
     "folder_timeout_s": lambda: _whole(sync.FOLDER_OP_TIMEOUT_S),
+    "unreachable_minutes": lambda: _whole(sync.UNREACHABLE_SCAN_S, 60),
     "take_over_minutes": lambda: _whole(sync.TAKE_OVER_WAIT_MAX_S, 60),
     "fence_s": lambda: _whole(sync.FENCE_WAIT_S),
     "kept_gib": lambda: _whole(sync.KEPT_WARN_BYTES, _GIB),
@@ -1246,6 +1247,10 @@ _SYNC_CLAIMS: list[tuple[str, str]] = [
     ("docs/SPEC.md", "keeps failing for {damaged_minutes} minutes is damaged"),
     ("docs/SPEC.md", "`wants` (at most {wants})"),
     ("docs/SPEC.md", "Every folder operation gives up after {folder_timeout_s} s"),
+    (
+        "docs/SPEC.md",
+        "while the folder doesn't answer its heads are read every {unreachable_minutes} minutes",
+    ),
     ("docs/SPEC.md", "a waiting take-over ends after {take_over_minutes} minutes"),
     ("docs/SPEC.md", "finish within {fence_s} s"),
     ("docs/SPEC.md", "a warning above {kept_gib} GiB in all"),
