@@ -1,18 +1,30 @@
 """ordnung.rules.postcodes: the Land the postcode on a sender's letter suggests — a question for the person,
-never an answer (ADR 0019)."""
+never an answer (ADR 0019) — and which of their dates confirming it may change (waits_for_sender_land)."""
 
 from __future__ import annotations
 
 import os
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 import ordnung
+from ordnung.models import DateSpec
 from ordnung.rules.calendar_de import REGION_NAMES
+from ordnung.rules.deadlines import (
+    ASSUMED_RECEIPT_WARNING,
+    REGION_EARLIER,
+    REGION_UNKNOWN,
+    LandWait,
+    RuleContext,
+    compute_due,
+    waits_for_sender_land,
+)
+from ordnung.rules.delivery import LAND_DAYS_UNCONFIRMED, resolve_delivery
 from ordnung.rules.postcodes import (
     TABLE_PATH,
     Home,
@@ -25,6 +37,7 @@ from ordnung.rules.postcodes import (
     table,
 )
 
+D = date.fromisoformat
 MUNICH = "Marienplatz 8, 80331 München"
 
 # ------------------------------------------------------------------------------------ the table
@@ -283,3 +296,66 @@ def test_no_question_when_the_table_contradicts_the_person_s_own_land(
     first two digits, yet the table puts it elsewhere: the table and the person disagree, so nothing is asked.
     Before onboarding the region is no one's choice (``Profile.known_region`` is None) and never vetoes."""
     assert suggest_land_why(sender, home=home) == expected
+
+
+# ------------------------------------------------------------------------------------ which dates wait
+
+
+def relative(anchor_date: str, amount: int, nature: str) -> DateSpec:
+    return DateSpec(
+        type="relative",
+        anchor="explicit_date",
+        anchor_date=anchor_date,
+        amount=amount,
+        unit="business_days",
+        nature=nature,  # type: ignore[arg-type]
+    )
+
+
+def warnings(spec: DateSpec, **kw: Any) -> list[str]:
+    """The engine's warnings with the sender's Land unknown, as the app computes them until it is set."""
+    kw.setdefault("today", D("2026-09-25"))
+    return compute_due(spec, RuleContext(region=None, **kw)).warnings
+
+
+def test_a_holiday_the_engine_could_not_place_waits_for_the_land() -> None:
+    later = warnings(relative("2026-05-29", 5, "other"))  # Fronleichnam, Thu 4 Jun 2026
+    assert len(later) == 1 and later[0].startswith(REGION_UNKNOWN) and REGION_EARLIER not in later[0]
+    assert waits_for_sender_land(later, "BY") == LandWait(waits=True, may_be_late=False)
+    assert waits_for_sender_land(later, "TH") == (True, False)
+
+
+def test_a_date_counted_backwards_waits_and_may_be_late() -> None:
+    earlier = warnings(relative("2025-11-05", -5, "declaration"), today=D("2025-10-01"))  # Reformationstag
+    assert len(earlier) == 1 and REGION_EARLIER in earlier[0]
+    assert waits_for_sender_land(earlier, "NI") == LandWait(waits=True, may_be_late=True)
+
+
+def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day() -> None:
+    """For HB, SL and TH the 4th day isn't confirmed: Ordnung counts 3 days with their Land as without it."""
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        legal_basis="§ 70 VwGO",
+    )
+    days = warnings(spec, document_date=D("2026-09-29"), delivery_scope="vwvfg")
+    assert days == [LAND_DAYS_UNCONFIRMED]
+    assert waits_for_sender_land(days, "BY") == LandWait(waits=True, may_be_late=False)
+    for land in ("HB", "SL", "TH"):
+        assert waits_for_sender_land(days, land) == (False, False)
+
+
+def test_land_days_unconfirmed_is_what_delivery_says() -> None:
+    assert resolve_delivery(D("2026-09-29"), scope="vwvfg", region=None).uncertainty == LAND_DAYS_UNCONFIRMED
+    assert resolve_delivery(D("2026-09-29"), scope="vwvfg", region="BY").uncertainty is None
+
+
+def test_other_warnings_wait_for_nothing() -> None:
+    quiet = warnings(relative("2026-09-01", 5, "other"))
+    assert quiet == []
+    assert waits_for_sender_land(quiet, "BY") == LandWait(waits=False, may_be_late=False)
+    assert waits_for_sender_land([ASSUMED_RECEIPT_WARNING], "BY") == (False, False)
