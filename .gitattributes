@@ -1,0 +1,4 @@
+# Every file is checked out byte for byte, on Windows too: Git for Windows (and so pip's clone for
+# `pipx install git+…`) would otherwise write CRLF line ends, and the demo snapshot's version is a hash
+# of its fixtures' bytes.
+* -text

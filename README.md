@@ -399,8 +399,12 @@ You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own lette
 Ordnung calls it in headless mode; there is nothing else to configure. Without Claude you can still store
 letters privately, search them and add your own dates (Timeline → Add a date, or on a letter's page). A
 letter added while Claude isn't installed or signed in waits (*Waiting for Claude*) instead of failing, and
-is read once Claude is ready, without a restart. CI tests Ordnung on Linux. The macOS and Windows code
-paths (autostart, notifications) exist but are not tested in CI.
+is read once Claude is ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
+(weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
+runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
+access's network lookups and certificates, autostart entries and backups. The other tests, desktop
+notifications, starting at a real login, and phone access and sync between real devices are not tested on
+macOS or Windows.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
@@ -439,8 +443,9 @@ few seconds after each change, the top bar says when the other computer has it (
 and on the other computer one click, *Use Ordnung here*, brings everything over. If both computers changed
 something while they couldn't see each other, Ordnung asks once which computer's Ordnung to keep and saves
 the other as an encrypted copy. Keep the folder available offline on both computers, and update Ordnung on
-both together. Details: [docs/privacy.md](docs/privacy.md#hand-off-sync-between-your-computers-optional)
-and [ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
+both together ([Updating](#updating)). Details:
+[docs/privacy.md](docs/privacy.md#hand-off-sync-between-your-computers-optional) and
+[ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
 
 ```bash
 ordnung sync                                     # in use here or standing by, when it last saved, the other computers
@@ -475,6 +480,26 @@ make serve       # backend; `make web-dev` for the Vite dev server
 make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
 make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 ```
+
+### Updating
+
+Each release has a version number (`ordnung --version` shows yours) and an entry in
+[CHANGELOG.md](CHANGELOG.md). Stop Ordnung first (Ctrl+C where `ordnung serve` runs; if it starts at login,
+`ordnung autostart disable` prints how to stop it and `ordnung autostart enable` how to start it again).
+A backup first lets you go back: an older Ordnung can't open a database a newer one has updated.
+
+```bash
+ordnung backup --to /media/usb   # optional: the way back
+pipx reinstall ordnung           # installed with uv: uv tool upgrade ordnung
+ordnung doctor
+```
+
+`pipx reinstall` and `uv tool upgrade` always install the newest code from GitHub; `pipx upgrade ordnung`
+can keep the old code when the version number didn't change. When a version changes how the database is
+stored, Ordnung updates your data folder by itself the next time it starts (each step completes or leaves
+it as it was). With hand-off sync, update both computers: until then Settings → Your computers says that
+the other one runs another version, and if the database changed, the computer with the older Ordnung can't
+bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving its own changes.
 
 ## Architecture
 
@@ -526,7 +551,7 @@ More in [docs/architecture.md](docs/architecture.md).
 | Tests | 9,300+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,800+ Vitest tests; 400+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI; hand-off sync's standing-by screen, which only two real computers show, is checked at 320 px in their story ([`web/e2e/real-app-sync.spec.ts`](web/e2e/real-app-sync.spec.ts)) |
-| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources |
+| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources. Not yet a gate: weekly and on main, the wheel and the tests of the code that differs per system on macOS and Windows |
 | Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
 
 ## Limitations
