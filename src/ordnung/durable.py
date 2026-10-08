@@ -42,15 +42,16 @@ def is_durable() -> bool:
 
 def fsync(fd: int) -> None:
     """Flush the open file ``fd`` to the disk itself (``F_FULLFSYNC`` on macOS)."""
-    full = getattr(os, "F_FULLFSYNC", None) if sys.platform == "darwin" else None
-    if full is not None:
-        import fcntl
+    if sys.platform == "darwin":
+        import fcntl  # where Python has F_FULLFSYNC (``os`` doesn't)
 
-        try:
-            fcntl.fcntl(fd, full)
-            return
-        except OSError:  # not supported by this file system: an ordinary fsync is the best there is
-            pass
+        full = getattr(fcntl, "F_FULLFSYNC", None)
+        if full is not None:
+            try:
+                fcntl.fcntl(fd, full)
+                return
+            except OSError:  # not supported by this file system: an ordinary fsync is the best there is
+                pass
     os.fsync(fd)
 
 

@@ -140,11 +140,87 @@ jobs:
         run: unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
       - name: Install the wheel into a clean venv and run it (outside the checkout)
         run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ordnung/__init__.py)
           uv venv "$RUNNER_TEMP/wheel"
           uv pip install --python "$RUNNER_TEMP/wheel/bin/python" dist/ordnung-*.whl -c constraints.txt
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/wheel/bin/ordnung" --version
+          reported=$("$RUNNER_TEMP/wheel/bin/ordnung" --version) && echo "$reported"
+          test "$reported" = "ordnung $version"
           "$RUNNER_TEMP/wheel/bin/ordnung" demo --check
+
+  other-systems:
+    name: Other systems (${{ matrix.os }}, Python 3.12)
+    # the lock, durable writes, sync's computer id, phone access's network lookups and autostart differ on
+    # macOS and Windows: on main, by hand and weekly (not on pull requests); while the job is new a failure
+    # shows here without failing the run
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      # a Windows console prints any character; the runner's pipe would use the ANSI code page
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Install (the versions in constraints.txt)
+        id: install
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
+      - name: Build the wheel and install it into a clean venv
+        id: wheel
+        run: |
+          uv build --wheel
+          uv venv "$RUNNER_TEMP/wheel"
+          uv pip install --python "$RUNNER_TEMP/wheel" dist/ordnung-*.whl -c constraints.txt
+          if [ "$RUNNER_OS" = Windows ]; then bin="$RUNNER_TEMP/wheel/Scripts"; else bin="$RUNNER_TEMP/wheel/bin"; fi
+          echo "WHEEL_BIN=$bin" >> "$GITHUB_ENV"
+      - name: The wheel reports this version and rebuilds the demo identically (outside the checkout)
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ordnung/__init__.py)
+          cd "$RUNNER_TEMP"
+          reported=$("$WHEEL_BIN/ordnung" --version | tr -d '\r') && echo "$reported"
+          test "$reported" = "ordnung $version"
+          "$WHEEL_BIN/ordnung" demo --check
+      - name: The doctor passes, but for Claude Code (not set up here)
+        if: ${{ !cancelled() && steps.wheel.outcome == 'success' }}
+        working-directory: ${{ runner.temp }}
+        env:
+          ORDNUNG_HOME: ${{ runner.temp }}/ordnung-data
+        run: |
+          # it exits 1 when a check fails: Claude's checks may (no `claude`, or not signed in), every other
+          # check must pass, and the exit code must say which
+          code=0
+          "$WHEEL_BIN/ordnung" doctor || code=$?
+          "$WHEEL_BIN/python" - "$code" <<'EOF'
+          import sys
+          from ordnung.config import default_data_dir
+          from ordnung.doctor import run_doctor_sync
+
+          failed = [check.id for check in run_doctor_sync(default_data_dir()).checks if check.status == "fail"]
+          assert all(name.startswith("claude") for name in failed), failed
+          assert int(sys.argv[1]) == (1 if failed else 0), (sys.argv[1], failed)
+          EOF
+      - name: Tests of the code that differs per system
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          if [ -d .venv/Scripts ]; then venv=.venv/Scripts; else venv=.venv/bin; fi
+          "$venv/python" -m pytest -m "not slow" tests/test_platform_smoke.py \
+            tests/test_cli.py::test_the_lock_keeps_a_second_writer_out \
+            tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
+            tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
+            tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
+            tests/test_autostart.py tests/test_backup.py tests/test_backup_container.py
 
   frontend:
     name: Frontend
