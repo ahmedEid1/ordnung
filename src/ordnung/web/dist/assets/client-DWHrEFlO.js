@@ -1,1 +1,0 @@
-import{tr as e}from"./scale-CtlZNufF.js";function t(){return e().data?.client===`phone`}export{t};
