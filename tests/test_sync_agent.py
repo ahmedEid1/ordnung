@@ -259,6 +259,9 @@ async def test_a_person_s_change_is_saved_within_seconds(tmp_path: Path, folder:
         assert (await _add_todo(api, "Pay the gym")).status_code == 201
         await eventually(lambda: head_of(folder, "desktop")["version"] != first)
         assert "push:change" in engine.calls
+        # the new head is written during the save; the agent counts the change as saved once the save returns and
+        # it has looked at the local data again — moments later
+        await eventually(lambda: not agent_of(api).status().pending_changes)
         assert (await status(api))["pending_changes"] is False
 
 
