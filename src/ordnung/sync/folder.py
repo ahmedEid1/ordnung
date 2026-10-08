@@ -207,8 +207,9 @@ _Work = queue.Queue[tuple[Callable[[], Any], "_Result"] | None]
 
 class _Deadline:
     """Runs one call at a time on a worker thread and waits at most ``timeout`` for it. A call that
-    hangs keeps its thread until it returns; meanwhile a call on the same path gives up at once, and
-    other paths go on with a new thread, until :data:`MAX_STUCK` calls hang (then every call gives up)."""
+    hangs keeps its thread until it returns (then the thread ends); meanwhile a call on the same path
+    gives up at once, and other paths go on with a new thread, until :data:`MAX_STUCK` calls hang (then
+    every call gives up)."""
 
     def __init__(self, timeout: float) -> None:
         self.timeout = timeout
@@ -221,6 +222,8 @@ class _Deadline:
             work: _Work = queue.Queue()
 
             def loop() -> None:
+                call: Callable[[], Any] | None = None
+                result: _Result | None = None
                 while (item := work.get()) is not None:
                     call, result = item
                     try:
@@ -228,20 +231,22 @@ class _Deadline:
                     except BaseException as exc:  # handed to the caller
                         result.error = exc
                     result.done.set()
+                # a hung call's leftovers (a given-up handle) are let go here, not on another thread
+                if result is not None:
+                    result.value = result.error = None
+                del call, result
 
             threading.Thread(target=loop, name="ordnung-sync-folder", daemon=True).start()
             self._work = work
         return self._work
 
     def _settle(self) -> None:
-        """Forget hung calls that returned: their thread takes the next call, or ends."""
+        """Forget hung calls that returned. Their thread ends, never taking another call: what the hung
+        call left (a given-up handle's last flush) could still hang in front of it."""
         for key, (stuck, work) in list(self._stuck.items()):
             if stuck.done.is_set():
                 del self._stuck[key]
-                if self._work is None:
-                    self._work = work
-                else:
-                    work.put(None)
+                work.put(None)
 
     def run(self, call: Callable[[], T], key: object = None) -> T:
         with self._lock:

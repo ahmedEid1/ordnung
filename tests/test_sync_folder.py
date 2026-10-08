@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import errno
+import io
 import os
 import threading
 import time
 from pathlib import Path
+from typing import Any, BinaryIO
 
 import pytest
 
@@ -18,6 +21,7 @@ from ordnung.sync.folder import (
     MAX_STUCK,
     FileInfo,
     FolderUnreachable,
+    RealFs,
     SyncFolder,
     TimedFs,
     data_folder_synced,
@@ -370,6 +374,47 @@ def test_one_hung_file_holds_up_only_calls_on_that_file(tmp_path: Path) -> None:
         assert _folder_threads() <= before + 2  # the hung call's, and the one that goes on
     finally:
         hanging.release()
+
+
+def test_a_handle_left_behind_by_a_hung_call_doesn_t_hold_up_the_next_call(tmp_path: Path) -> None:
+    """Review: a temp file's fsync hangs on a dead share and its handle is given up with bytes still
+    buffered. Once the fsync returns, the handle's last flush must not run in front of the next call."""
+    returned = threading.Event()
+
+    class DeadShare(io.RawIOBase):
+        writes = 0
+
+        def writable(self) -> bool:
+            return True
+
+        def write(self, data: Any) -> int:
+            DeadShare.writes += 1
+            if DeadShare.writes == 1:
+                returned.wait()  # hangs past the deadline, then the share fails
+                raise OSError(errno.EIO, "I/O error")
+            time.sleep(1.0)  # the given-up handle's last flush hangs too
+            return len(data)
+
+    class Fs(RealFs):
+        def open_new(self, path: Path) -> BinaryIO:
+            return io.BufferedWriter(DeadShare())  # type: ignore[return-value]
+
+        def fsync(self, handle: BinaryIO) -> None:
+            handle.flush()
+
+    timed = TimedFs(Fs(), timeout=0.2)
+    handle = timed.open_new(tmp_path / ".temp")
+    handle.write(b"sealed head")
+    with pytest.raises(FolderUnreachable):
+        timed.fsync(handle)
+    with pytest.raises(FolderUnreachable):
+        handle.close()  # its path is stuck: given up at once
+    del handle
+    returned.set()
+    time.sleep(0.05)
+    started = time.monotonic()
+    assert timed.stat(tmp_path).st_mode
+    assert time.monotonic() - started < 0.2
 
 
 def test_calls_hung_on_many_files_hold_a_bounded_number_of_threads(tmp_path: Path) -> None:
