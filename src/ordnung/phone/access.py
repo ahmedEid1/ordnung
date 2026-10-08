@@ -42,6 +42,8 @@ again, before the watcher's first round — and the paired phones are swept when
 hour, on a page load. The previous one stays valid for :data:`PREVIOUS_GRACE_S` seconds after the phone
 first uses the new one (a phone that never got the new one keeps the previous); one of its earlier
 sign-ins coming back means it was copied, and the phone is signed out with a notice on the computer.
+Two page loads that cross the change make one new sign-in between them: the one that came with the
+previous sign-in leaves the cookie alone while the new one is in use or just made.
 
 **Limits per phone**: :data:`DEVICE_LIMITS` (Ask, the everyday actions that ask Claude, letters added)
 per hour; more gets 429 with ``Retry-After``. An upload counts each letter it adds (photos combined into
@@ -342,7 +344,6 @@ class Auth:
     was signed out, when it still remembers)."""
 
     device: PhoneDeviceRecord | None = None
-    via: Literal["current", "previous"] | None = None
     unknown: bool = False
     removed: RemovedBy | None = None
 
@@ -980,10 +981,10 @@ class PhoneAccess:
             if device.confirmed_at is None:
                 device.confirmed_at = _iso(now)
                 await self._save()
-            return Auth(device, "current")
+            return Auth(device)
         confirmed = _seconds(device.confirmed_at)
         if which == "previous" and (confirmed is None or now - confirmed <= PREVIOUS_GRACE_S):
-            return Auth(device, "previous")
+            return Auth(device)
         # a sign-in the phone had before came back: it was copied, and both copies are signed out
         self._drop_now(device, "token_reuse")
         self._notify("token_reuse", [device.last_address or "", client], device.name)
@@ -995,26 +996,38 @@ class PhoneAccess:
         """Why the phone whose sign-in ``token`` was is signed out, when this computer still knows."""
         return self._signed_out.get(token_hash(token)) if token else None
 
-    async def renew_sign_in(
-        self, device: PhoneDeviceRecord, via: Literal["current", "previous"]
-    ) -> str | None:
-        """A new sign-in for a page load, at most once an hour (``None``: the phone keeps its own). A
-        phone that came with its previous one never got the current one: it gets a new one again."""
+    async def renew_sign_in(self, device: PhoneDeviceRecord, token: str) -> str | None:
+        """The sign-in the answer to a page load that came with ``token`` sets: ``token`` itself while it is
+        current and under an hour old, else a new one (``None``: the phone's cookie is left as it is).
+
+        ``token`` is looked up now, not as it was when the request was signed in: two page loads with the
+        same cookie can cross the change. One that came with the previous sign-in gets a new one only when
+        the phone never got the current one (unused and older than :data:`PREVIOUS_GRACE_S` seconds).
+        While the current one is in use or that new, the other page load brings it: handing back the
+        previous one (soon refused) or yet another one (the current one forgotten) could sign the phone
+        out, whichever answer its browser applies last."""
         now = self.clock()
-        if via == "current":
+        digest = token_hash(token)
+        if digest == device.token_sha256:
             since = _seconds(device.rotated_at) or _seconds(device.paired_at) or now
             if now - since < ROTATE_EVERY_S:
-                return None
+                return token
             if device.previous_sha256:
                 device.retired = [*device.retired, device.previous_sha256][-RETIRED_KEPT:]
             device.previous_sha256 = device.token_sha256
-        token = secrets.token_urlsafe(32)
-        device.token_sha256 = token_hash(token)
+        elif digest == device.previous_sha256:
+            issued = _seconds(device.rotated_at) or 0.0
+            if device.confirmed_at is not None or now - issued < PREVIOUS_GRACE_S:
+                return None
+        else:  # retired meanwhile
+            return None
+        renewed = secrets.token_urlsafe(32)
+        device.token_sha256 = token_hash(renewed)
         device.rotated_at = _iso(now)
         device.confirmed_at = None
         self._reindex()
         await self._save()
-        return token
+        return renewed
 
     def seen(self, device: PhoneDeviceRecord, client: str) -> None:
         """A request from ``device`` (kept in memory; saved every few minutes)."""

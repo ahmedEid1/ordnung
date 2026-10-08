@@ -633,6 +633,82 @@ async def test_a_phone_that_missed_its_new_sign_in_gets_another(
         assert access.devices, "a lost answer is not a copied sign-in"
 
 
+@pytest.mark.parametrize("crossing", ["one_after_the_other", "both_signed_in_first"])
+@pytest.mark.parametrize("last", ["the_new_sign_in", "the_other_answer"])
+async def test_two_page_loads_that_cross_the_hourly_change_keep_the_phone_signed_in(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, crossing: str, last: str
+) -> None:
+    """Risk review: two page loads with the same cookie at the hourly change (restored tabs, a double
+    reload) could each change the sign-in, so the phone could end up with one the computer had already
+    replaced (signed out at once) or with the previous one (signed out 2 minutes after it used the new
+    one). Whichever answer its browser applies last, the phone stays signed in."""
+    from ordnung.api import app as app_module
+    from test_api_support import fake_web_dist
+
+    built = fake_web_dist(tmp_path)
+    monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        access = phone_of(api)
+        now = [time.time()]
+        access.clock = lambda: now[0]
+        first = (await pair(api, phone))["token"]
+        now[0] += ROTATE_EVERY_S + 1
+        sign_in = {"Cookie": f"{COOKIE}={first}"}
+        if crossing == "both_signed_in_first":
+            both_signed_in = asyncio.Barrier(2)
+            renew = access.renew_sign_in
+
+            async def after_both(*args: Any) -> str | None:
+                await both_signed_in.wait()
+                return await renew(*args)
+
+            monkeypatch.setattr(access, "renew_sign_in", after_both)
+            loads = asyncio.gather(phone.get("/", headers=sign_in), phone.get("/", headers=sign_in))
+            answers = list(await asyncio.wait_for(loads, 10))
+        else:
+            answers = [await phone.get("/", headers=sign_in), await phone.get("/", headers=sign_in)]
+        assert [a.status_code for a in answers] == [200, 200]
+        new = next(a for a in answers if a.cookies.get(COOKIE) not in (None, first))
+        other = answers[1] if new is answers[0] else answers[0]
+        cookie = first
+        for answer in (other, new) if last == "the_new_sign_in" else (new, other):
+            cookie = answer.cookies.get(COOKIE) or cookie  # an answer without a cookie leaves it alone
+            used = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={cookie}"})
+            assert used.status_code == 200, used.json()
+        now[0] += PREVIOUS_GRACE_S + 1
+        later = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={cookie}"})
+        assert later.status_code == 200, later.json()
+        assert access.devices, "two page loads are not a copied sign-in"
+
+
+async def test_a_late_page_load_with_the_previous_sign_in_leaves_the_new_one_alone(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A page load that left with the previous sign-in arrives after the phone already uses the new one:
+    its answer leaves the phone's cookie alone (no third sign-in its other requests don't carry yet), and
+    the previous one still stops working 2 minutes later."""
+    from ordnung.api import app as app_module
+    from test_api_support import fake_web_dist
+
+    built = fake_web_dist(tmp_path)
+    monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        access = phone_of(api)
+        now = [time.time()]
+        access.clock = lambda: now[0]
+        first = (await pair(api, phone))["token"]
+        now[0] += ROTATE_EVERY_S + 1
+        second = (await phone.get("/", headers={"Cookie": f"{COOKIE}={first}"})).cookies[COOKIE]
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        late = await phone.get("/", headers={"Cookie": f"{COOKIE}={first}"})
+        assert late.status_code == 200 and "set-cookie" not in late.headers
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        now[0] += PREVIOUS_GRACE_S + 1
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        reused = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={first}"})
+        assert (reused.status_code, reused.json()["removed"]) == (401, "token_reuse")
+
+
 # --------------------------------------------------------------------------------------------------
 # what a phone sees (M6) and does
 # --------------------------------------------------------------------------------------------------

@@ -1329,7 +1329,10 @@ detached.
 - **Sign-in.** A 256-bit token per phone; the record keeps its SHA-256, the previous one and the last 8
   retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
   for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
-  "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
+  "token_reuse"`, notice `token_reuse`). A page load with the current sign-in re-sets the cookie; one with
+  the previous sign-in gets a new one only when the current one is unused and older than 120 s (the phone
+  never got it), else its answer sets no cookie — so two page loads that cross the change make one new
+  sign-in between them, whichever answer the browser applies last. An unknown cookie gets
   401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
   `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
   else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from

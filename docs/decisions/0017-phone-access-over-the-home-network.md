@@ -79,13 +79,16 @@ cookie (Secure, HttpOnly, SameSite=Strict, named per port); only its SHA-256 is 
 most once an hour on a page load, and the previous one stays valid for 2 minutes after the phone first
 uses the new one; a sign-in it replaced that comes back later means it was copied, and the phone is
 signed out with a notice on the computer — so a cookie taken while someone clicked through a warning
-stops working soon after. Removing a phone signs it out at once, ends its live streams and stops an upload
-still arriving; turning phone access off does the same. A request counts as in flight from the gate's
-first check, so a stop waits for it; one that writes always finishes — the listener's own stop never
-cancels it (it may hold the ledger lock) — an upload that arrived is filed and answered, and the next
-request is refused. The phone is told why: removed, its sign-in used from two places, its code used by
-another device, unused (the pairing page says which), or that phone access stopped (it stays paired and
-keeps what it was sending). A phone unused for 30 days is forgotten; pairing again is one scan. It is
+stops working soon after. Two page loads that cross the change (restored tabs, a double reload) make one
+new sign-in between them: the one that came with the previous sign-in doesn't change the cookie while
+the new one is in use or just made, so whichever answer the browser applies last, the phone stays
+signed in. Removing a phone signs it out at once, ends its live streams and stops an upload still
+arriving; turning phone access off does the same. A request counts as in flight from the gate's first
+check, so a stop waits for it; one that writes always finishes — the listener's own stop never cancels
+it (it may hold the ledger lock) — an upload that arrived is filed and answered, and the next request is
+refused. The phone is told why: removed, its sign-in used from two places, its code used by another
+device, unused (the pairing page says which), or that phone access stopped (it stays paired and keeps
+what it was sending). A phone unused for 30 days is forgotten; pairing again is one scan. It is
 refused when it comes back, not only by the daily round, so a restart doesn't let it in. The session
 token is ignored on the phone listener and the phone cookie on the computer listener.
 
