@@ -31,15 +31,23 @@ The first numbered release. Every install before it reports 0.1.0, the version o
 ### Fixed
 
 - Updates install: the version now goes up with each release and is stated once, in
-  `src/ordnung/__init__.py`.
-- Claude Code setup advice is up to date, and an outdated Claude Code no longer counts as ready.
-- *Read again* no longer starts two paid readings of the same letter.
-- Phone access no longer offers VPN or virtual-machine addresses on Windows, and learns the router later
-  when it couldn't read it at turn-on.
+  `src/ordnung/__init__.py`, and [Updating](README.md#updating) says how to update.
+- Claude Code setup advice follows Anthropic's installer for each system and names the Claude plans that
+  include it. A Claude Code older than 2.1.0 no longer counts as ready: letters wait, and nothing is sent,
+  until it is updated.
+- *Read again* no longer starts two paid readings of the same letter: while one waits or runs, it gets
+  that one.
+- Phone access no longer offers VPN or virtual-machine addresses on Windows, recommends the address on the
+  router's network, and learns the router later when it couldn't read it at turn-on.
 - A phone is no longer signed out when two page loads cross the hourly sign-in change.
-- A hanging sync folder no longer leaks a thread per scan.
-- Kept sync copies are tested and written safely.
-- Backups use sync's passphrase strength check and key stretching.
+- A sync folder that stops answering no longer leaves a thread behind on each look; until it answers,
+  Ordnung looks at it every 3 minutes instead of every 15 seconds.
+- Kept sync copies: forgetting a computer on a full disk is refused for lack of space instead of failing
+  with an internal error, and the record of kept copies reaches the disk before it counts. Both now have
+  direct tests.
+- Backups: a new backup's passphrase must be as strong as a new sync folder's (about 70 bits: five or more
+  unrelated words), and new backups use sync's key stretching (scrypt 2^18, 256 MiB). Older backups still
+  open.
 - macOS and Windows: CI runs the code that differs there (the lock, durable writes, sync, phone access,
   autostart, backups) weekly and on main. On macOS a durable write now flushes the drive's cache
   (`F_FULLFSYNC`; it was a plain fsync), and a Windows checkout, also the one `pipx install git+…` makes,
@@ -50,6 +58,9 @@ The first numbered release. Every install before it reports 0.1.0, the version o
 
 - Follow [Updating](README.md#updating): `pipx reinstall ordnung` (or `uv tool upgrade ordnung`), then
   `ordnung doctor`. With hand-off sync, update both computers.
+- Ordnung now needs Claude Code 2.1.0 or newer; `claude update` updates it. Until then letters wait.
+- `ordnung backup`, the download in Settings → Data and `ORDNUNG_BACKUP_PASSPHRASE` refuse a long but
+  guessable passphrase; Ordnung suggests five made-up words instead. Backups made before still restore.
 - A letter keeps the reading it was given. One read before extraction prompt version 9 or 12 lacks what
   those versions added; *Read again* on its page reads it with the current prompt
   ([Limitations](README.md#limitations)).
