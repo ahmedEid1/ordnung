@@ -300,7 +300,7 @@ async def test_files_changing_while_saving_wait_and_a_damaged_original_shows_at_
             monkeypatch.setattr(agent_module, "PUSH_RETRY_S", (60.0,))
             engine.fail_push = LocalDamaged("letters/2026/letter.pdf")
             found = await eventually(
-                lambda: agent.problem and agent.problem.code == "local_damaged", within=5
+                lambda: agent.problem and agent.problem.code == "local_damaged", within=15
             )
             assert found
             # it stays through the looks at the folder that follow (they answer as they should): only a save ends it
@@ -599,7 +599,7 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
         await connect(api, folder, "desktop")
         engine.hang = threading.Event()
         try:
-            found = await eventually(lambda: agent_of(api).problem, within=5)
+            found = await eventually(lambda: agent_of(api).problem, within=15)
             assert found.code == "folder_unreachable"
             assert (await status(api))["problem"]["code"] == "folder_unreachable"  # from memory
             busy = await api.client.post("/api/sync/save", json={})

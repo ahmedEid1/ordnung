@@ -4,6 +4,7 @@ the triggers hook."""
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import stat
@@ -565,12 +566,18 @@ async def test_documents_are_read_concurrently(ctx: AppContext) -> None:
     original = backend.complete
     running = 0
     peak = 0
+    both = asyncio.Event()
 
     async def tracked(req):  # type: ignore[no-untyped-def]
         nonlocal running, peak
         running += 1
         peak = max(peak, running)
-        await asyncio.sleep(0.05)
+        if running == 2:
+            both.set()
+        # a call waits for the other letter's (each letter prepares its pages first, which a slow machine can
+        # stretch past any fixed overlap); a worker that reads one at a time leaves it waiting until the timeout
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(both.wait(), timeout=5)
         running -= 1
         return await original(req)
 

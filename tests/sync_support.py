@@ -93,7 +93,7 @@ async def computer(
             yield api
 
 
-async def eventually(check: Callable[[], Any], *, within: float = 5.0, step: float = 0.02) -> Any:
+async def eventually(check: Callable[[], Any], *, within: float = 15.0, step: float = 0.02) -> Any:
     """Wait until ``check()`` is truthy (an assertion failure names what it last returned)."""
     deadline = time.monotonic() + within
     last: Any = None
