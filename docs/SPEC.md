@@ -666,7 +666,9 @@ first — while a letter only Claude can read still waits — and reads each let
 from `GET /api/jobs?active_only=true`; a letter waiting for Claude then shows "This letter waits for
 Claude" with the dates list and *Add a date* instead of the stepper.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
-non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
+non-user-modified extracted rows in one transaction. While a reading of the letter is queued or running,
+reprocess returns that job instead of queuing another, and the worker never claims a letter's job while
+another job of that letter runs. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
 
 **E-mail attachments** (`ingest/attachments.py`, policy in its docstring). When an `.eml` is added,
@@ -1952,7 +1954,7 @@ upsert_suggestion(s) · get_suggestion · update_suggestion · list_suggestions(
 # drafts / notes / chat
 add_draft · get_draft · update_draft · list_drafts · delete_draft · add_note · list_notes · add_chat_message · list_chat_messages
 # jobs (queue of record)
-enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
+enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · active_job(doc_id, kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)

@@ -147,6 +147,8 @@ STAGE_PROGRESS: dict[str, float] = {
     "plan": 0.94,
     "done": 1.0,
 }
+#: The jobs that read a letter (the ingest worker claims these).
+READING_JOBS: tuple[str, ...] = ("ingest", "reprocess")
 MAX_KNOWN_PARTIES = 200
 HIDDEN_TEXT_WARNING = (
     "This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — "
@@ -605,9 +607,16 @@ def _attachments_message(filename: str, rows: Sequence[EmailAttachment], more: i
 
 
 def reprocess(ctx: AppContext, doc_id: str) -> Job:
-    """Queue a document to be read again, bypassing the model cache (items the person edited stay)."""
-    document = ctx.store.update_document(doc_id, status="queued", error=None)
-    job = ctx.store.enqueue_job("reprocess", doc_id, force=True)
+    """Queue a document to be read again, bypassing the model cache (items the person edited stay).
+    While a reading of it is queued or running, that job is returned instead: asked twice (a double
+    click, the phone as well), Claude still reads the letter once."""
+    store = ctx.store
+    with store.tx():  # one transaction: two requests at once never both find no job
+        waiting = store.active_job(doc_id, READING_JOBS)
+        if waiting is not None:
+            return waiting
+        document = store.update_document(doc_id, status="queued", error=None)
+        job = store.enqueue_job("reprocess", doc_id, force=True)
     announce_job(ctx, job, quiet=unannounced(document))
     return job
 

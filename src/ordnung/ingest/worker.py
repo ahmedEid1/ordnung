@@ -1,7 +1,7 @@
 """Background ingestion worker: claims jobs from the queue of record and reads documents.
 
-* Up to ``settings.concurrency`` documents at once; ``start()`` first returns jobs a previous
-  process left ``running`` to the queue.
+* Up to ``settings.concurrency`` documents at once, never one document twice (a job of a letter being
+  read waits); ``start()`` first returns jobs a previous process left ``running`` to the queue.
 * A rate limit pauses the worker globally until the reset time (or 15 minutes): the job goes back
   to ``queued`` with a ``waiting_reason``, ``llm.paused`` is published (``llm.resumed`` when it ends)
   and the pause survives restarts (meta ``llm_paused_until``).
@@ -44,7 +44,7 @@ from typing import TYPE_CHECKING, ClassVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung.db.store import background_context, person_write
-from ordnung.ingest.pipeline import ingest_document, run_triggers
+from ordnung.ingest.pipeline import READING_JOBS, ingest_document, run_triggers
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
 from ordnung.models import Job
 from ordnung.trace.runs import recover_readings
@@ -127,7 +127,7 @@ class IngestWorker:
     """Reads queued documents in the background (see the module docstring)."""
 
     POLL_SECONDS: ClassVar[float] = 1.0
-    JOB_KINDS: ClassVar[tuple[str, ...]] = ("ingest", "reprocess")
+    JOB_KINDS: ClassVar[tuple[str, ...]] = READING_JOBS
 
     def __init__(self, ctx: AppContext) -> None:
         self.ctx = ctx

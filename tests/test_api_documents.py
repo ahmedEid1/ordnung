@@ -291,6 +291,29 @@ async def test_reprocess_queues_a_forced_job(data_dir: Path) -> None:
         assert [call.purpose for call in api.backend.calls] == ["extract", "extract"]  # cache bypassed
 
 
+async def test_read_again_while_a_reading_waits_or_runs_queues_no_second_one(data_dir: Path) -> None:
+    """Two quick “Read again” (a double click, or the phone as well) get the same job back, also while it
+    runs: Claude reads the letter once."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, INVOICE_LETTER.pdf())
+        url = f"/api/documents/{doc_id}/reprocess"
+        first, second = await asyncio.gather(api.client.post(url), api.client.post(url))
+        assert first.status_code == second.status_code == 202
+        job = first.json()
+        assert second.json() == job and (job["kind"], job["force"]) == ("reprocess", True)
+
+        running = api.ctx.store.claim_next_job()
+        assert running is not None and running.id == job["id"]
+        third = await api.client.post(url)
+        assert third.status_code == 202
+        assert (third.json()["id"], third.json()["status"]) == (job["id"], "running")
+        assert [j.id for j in api.ctx.store.list_jobs(active_only=True)] == [job["id"]]
+
+        api.ctx.store.update_job(job["id"], status="queued")  # give it back to the worker
+        assert await api.read_all() == 1
+        assert [call.purpose for call in api.backend.calls] == ["extract", "extract"]
+
+
 async def test_delete_moves_to_trash_or_purges(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         tax = await _read_letter(api, TAX_LETTER.pdf())
