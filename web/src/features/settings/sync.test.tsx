@@ -1,6 +1,7 @@
 /**
  * Settings → Your computers (hand-off sync): the pure helpers first — the passphrase estimator counted exactly as
- * the server counts it, the numbers pinned to `src/ordnung/sync/__init__.py` — then the section through the mock
+ * the server counts it, the numbers pinned to `src/ordnung/sync/__init__.py` (the estimator's to
+ * `src/ordnung/passphrase.py`, which a new backup's passphrase meets too) — then the section through the mock
  * API: not syncing, unavailable, setting up (a new folder, joining one, refusals under their fields, the synced data
  * folder, the joining choice), in use, standing by, problems with their actions, the other computers, kept copies,
  * disconnecting (twice when the latest changes reached no other computer) and Delete everything.
@@ -40,15 +41,10 @@ import {
   lastSavedLine,
   latestLine,
   looksAbsolute,
-  MIN_PASSPHRASE_BITS,
   modeLabel,
   NAME_MAX_CHARS,
   nameProblem,
   newPassphraseProblem,
-  passphraseBits,
-  COMMON_WORDS_TEXT,
-  KEYBOARD_ROWS,
-  passphraseTokens,
   PASSPHRASE_WORDING,
   PROBLEM_TITLES,
   problemTitle,
@@ -56,15 +52,12 @@ import {
   sideArrivingLine,
   standbyStatusLine,
   strengthLine,
-  SUGGESTED_WORDS,
-  suggestSyncPassphrase,
   syncFormProblem,
   TAKE_OVER_WAIT_MINUTES,
-  TOKEN_BITS_MAX,
   unreceivedLine,
   WEAK_PASSPHRASE_MESSAGE,
-  wordsShort,
 } from "./sync";
+import { COMMON_WORDS_TEXT, KEYBOARD_ROWS, MIN_PASSPHRASE_BITS, passphraseBits, passphraseTokens, SUGGESTED_WORDS, suggestPassphrase, TOKEN_BITS_MAX, wordsShort } from "./passphrase";
 
 class RO {
   observe() {}
@@ -84,11 +77,13 @@ afterEach(() => {
 
 const WAIT = { timeout: 5000 };
 const POLICY = readFileSync(resolve(__dirname, "../../../../src/ordnung/sync/__init__.py"), "utf8");
+/** The estimator a new sync folder's and a new backup's passphrase meet (`ordnung.passphrase`). */
+const ESTIMATOR = readFileSync(resolve(__dirname, "../../../../src/ordnung/passphrase.py"), "utf8");
 
-/** A constant of the policy module as written there (`NAME = 1800.0`, `NAME = 2 * _GIB`). */
-function constant(name: string): string {
-  const m = new RegExp(`^${name}(?::[^=]+)? = (.+)$`, "m").exec(POLICY);
-  if (!m) throw new Error(`${name} isn't in ordnung/sync/__init__.py`);
+/** A constant of the policy module (or `source`) as written there (`NAME = 1800.0`, `NAME = 2 * _GIB`). */
+function constant(name: string, source = POLICY): string {
+  const m = new RegExp(`^${name}(?::[^=]+)? = (.+)$`, "m").exec(source);
+  if (!m) throw new Error(`${name} isn't in ${source === POLICY ? "ordnung/sync/__init__.py" : "ordnung/passphrase.py"}`);
   return m[1]!.trim();
 }
 
@@ -147,9 +142,9 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
   });
 
   it("uses the policy's numbers and words", () => {
-    expect(Number(constant("MIN_PASSPHRASE_BITS"))).toBe(MIN_PASSPHRASE_BITS);
-    expect(Number(constant("TOKEN_BITS_MAX"))).toBe(TOKEN_BITS_MAX);
-    expect(Number(constant("SUGGESTED_WORDS"))).toBe(SUGGESTED_WORDS);
+    expect(Number(constant("MIN_PASSPHRASE_BITS", ESTIMATOR))).toBe(MIN_PASSPHRASE_BITS);
+    expect(Number(constant("TOKEN_BITS_MAX", ESTIMATOR))).toBe(TOKEN_BITS_MAX);
+    expect(Number(constant("SUGGESTED_WORDS", ESTIMATOR))).toBe(SUGGESTED_WORDS);
     expect(Number(constant("NAME_MAX_CHARS"))).toBe(NAME_MAX_CHARS);
     expect(Number(constant("TAKE_OVER_WAIT_MAX_S"))).toBe(TAKE_OVER_WAIT_MINUTES * 60);
     expect(Number(constant("ARRIVAL_PATIENCE_S"))).toBe(ARRIVAL_PATIENCE_MINUTES * 60);
@@ -157,11 +152,11 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
     expect(KEPT_WARN_BYTES).toBe(2 * 1024 ** 3);
     const weak = /^WEAK_PASSPHRASE_MESSAGE = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(POLICY)?.[1] ?? "";
     expect([...weak.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(WEAK_PASSPHRASE_MESSAGE);
-    const common = /^COMMON_WORDS_TEXT = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(POLICY)?.[1] ?? "";
+    const common = /^COMMON_WORDS_TEXT = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(ESTIMATOR)?.[1] ?? "";
     expect([...common.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(COMMON_WORDS_TEXT);
-    const rows = /^KEYBOARD_ROWS: tuple\[str, \.\.\.\] = \(([^)]*)\)/m.exec(POLICY)?.[1] ?? "";
+    const rows = /^KEYBOARD_ROWS: tuple\[str, \.\.\.\] = \(([^)]*)\)/m.exec(ESTIMATOR)?.[1] ?? "";
     expect([...rows.matchAll(/"([^"]*)"/g)].map((m) => m[1])).toEqual(KEYBOARD_ROWS);
-    expect(Number(constant("COMMON_WORD_BITS"))).toBe(7);
+    expect(Number(constant("COMMON_WORD_BITS", ESTIMATOR))).toBe(7);
   });
 
   it("refuses a new passphrase that is short, weak or typed differently twice — before asking the server", () => {
@@ -184,7 +179,7 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
 
   it("suggests five made-up words that pass, drawn again when two are alike", () => {
     for (let i = 0; i < 20; i++) {
-      const suggestion = suggestSyncPassphrase();
+      const suggestion = suggestPassphrase();
       expect(suggestion).toMatch(/^[bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz](-[bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz]){4}$/);
       expect(passphraseBits(suggestion)).toBeGreaterThanOrEqual(MIN_PASSPHRASE_BITS);
       expect(newPassphraseProblem(suggestion, suggestion)).toBeNull();
@@ -200,12 +195,12 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
         return seed >>> 24;
       });
     };
-    const suggestion = suggestSyncPassphrase(random);
+    const suggestion = suggestPassphrase(random);
     expect(calls).toBeGreaterThan(1);
     expect(suggestion.startsWith("babab-")).toBe(true);
     expect(new Set(suggestion.split("-")).size).toBe(5);
     // random numbers that never vary can't make one: said, never a loop without end
-    expect(() => suggestSyncPassphrase((bytes) => bytes.fill(0))).toThrow(/keep repeating/);
+    expect(() => suggestPassphrase((bytes) => bytes.fill(0))).toThrow(/keep repeating/);
   });
 
   it("never reuses the backup's 'Ordnung never stores it': the sync passphrase is kept in the password store", () => {

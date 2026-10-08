@@ -480,12 +480,17 @@ hand-off sync's state (its folder, the computers, the kept copies; the passphras
 folder): a restored copy starts without sync.
 
 - **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
-  passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else
-  in plain text. A backup file someone hands you can't make restoring use more than 256 MiB of
-  memory for the key. The database snapshot is made in memory, so no unencrypted copy is written to disk.
-- **Your passphrase stays yours.** At least 12 characters; Ordnung never stores or logs it and
-  can't recover it — without it the backup can't be opened, by anyone. In the browser the
-  passphrase goes only to the Ordnung on this computer (in the request body, never in a web address).
+  passphrase with scrypt (N = 2¹⁸, r = 8: 256 MiB of memory to try one passphrase, as for a sync folder);
+  the file starts with a versioned header and nothing else in plain text. Backups made with the earlier
+  setting (N = 2¹⁷) still open: the header says which was used. A backup file someone hands you can't make
+  restoring use more than 256 MiB of memory for the key. The database snapshot is made in memory, so no
+  unencrypted copy is written to disk.
+- **Your passphrase stays yours.** At least 12 characters and about 70 bits by Ordnung's estimate — five
+  unrelated words, like the five-word one Ordnung suggests — the rule of a new sync folder, because a
+  backup on another drive or in the cloud can be copied and guessed at offline for years. Ordnung never
+  stores or logs it and can't recover it — without it the backup can't be opened, by anyone. In the
+  browser the passphrase goes only to the Ordnung on this computer (in the request body, never in a web
+  address).
 - **Restoring checks everything.** `ordnung restore` refuses a wrong passphrase, a file that was
   changed, cut short or reordered, a newer format, and anything in the archive Ordnung never writes;
   every file must match the backup's own list of hashes and row counts. It never replaces a data

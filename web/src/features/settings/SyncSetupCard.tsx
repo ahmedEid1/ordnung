@@ -29,7 +29,8 @@ import { cn } from "@/lib/utils";
 import type { PassphraseProblem } from "./backup";
 import { PassphraseFields } from "./PassphraseFields";
 import { SettingsCard } from "./SettingsCard";
-import { fieldFor, looksAbsolute, PASSPHRASE_WORDING, strengthLine, suggestSyncPassphrase, syncFormProblem, type SetupField } from "./sync";
+import { suggestPassphrase } from "./passphrase";
+import { fieldFor, looksAbsolute, PASSPHRASE_WORDING, strengthLine, syncFormProblem, type SetupField } from "./sync";
 
 /** The card's heading, in both its places: where focus goes after disconnecting. */
 export const SETUP_HEADING_ID = "set-sync";
@@ -183,7 +184,7 @@ export function SyncSetupCard({ status, join = false, onConnected }: { status: S
   };
 
   const suggest = () => {
-    const value = suggestSyncPassphrase();
+    const value = suggestPassphrase();
     setPassphrase(value);
     setRepeat(value);
     setVisible(true);
