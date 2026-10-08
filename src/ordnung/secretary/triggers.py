@@ -2104,6 +2104,14 @@ def student_permit_info(ledger: Ledger) -> list[Suggestion]:
     ]
 
 
+def sender_land(ledger: Ledger) -> list[Suggestion]:
+    """Senders whose letters suggest a Land while a date of theirs may change with it
+    (:func:`ordnung.secretary.sender_land.sender_land_ideas`, imported here because it builds on this module)."""
+    from ordnung.secretary.sender_land import sender_land_ideas
+
+    return sender_land_ideas(ledger)
+
+
 Trigger = Callable[[Ledger], list[Suggestion]]
 
 #: Every rule in evaluation order (the keys are the ``rule_id``s stored on the Ideas).
@@ -2117,6 +2125,7 @@ TRIGGERS: dict[str, Trigger] = {
     "followup_due": followup_due,
     "proof_missing": proof_missing,
     "please_check": please_check,
+    "sender_land": sender_land,
     "dunning_escalation": dunning_escalation,
     "scam_warning": scam_warning,
     "iban_misprint": iban_misprint,

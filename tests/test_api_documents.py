@@ -14,6 +14,7 @@ from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from helpers_docs import photo
 from helpers_secretary import TODAY as TODAY_DATE
 from helpers_secretary import add_doc, add_item
+from helpers_sender_land import BACKWARDS, HOLIDAY, MUNICH, letter_from, to_do
 from ordnung import clock
 from ordnung.api.routes.documents import document_detail
 from ordnung.db.store import Store
@@ -500,3 +501,27 @@ def test_a_letters_page_lists_the_scam_signs_its_idea_counts(store: Store) -> No
     ]
     plain = add_doc(store, "plain", kind="invoice", warnings=["It threatens enforcement within 48 hours."])
     assert document_detail(store, plain, TODAY_DATE).scam_signs == []
+
+
+def test_a_letter_asks_about_its_sender_s_land_with_its_own_dates(store: Store) -> None:
+    """The letter page carries the question the postcode on the sender's letters raises (ADR 0019), counting
+    the dates of that letter that may change; the drawer counts all of the sender's. A letter with scam signs
+    asks nothing, and neither does one from a sender whose Land is set."""
+    party = store.add_party(name="Stadt München", kind="authority")
+    first = letter_from(store, party, MUNICH, day="2026-08-01")
+    second = letter_from(store, party, MUNICH, day="2026-09-20")
+    to_do(store, party, first, HOLIDAY)
+    to_do(store, party, second, HOLIDAY)
+    to_do(store, party, second, BACKWARDS)
+    scam = letter_from(store, party, MUNICH, day="2026-09-25", warnings=["Possible scam: an account abroad."])
+
+    asked = document_detail(store, first, TODAY_DATE).region_suggestion
+    assert asked is not None
+    assert (asked.region, asked.postcode, asked.doc_id) == ("BY", "80331", second)
+    assert (asked.waiting, asked.may_be_late) == (1, False)
+    later = document_detail(store, second, TODAY_DATE).region_suggestion
+    assert later is not None and (later.waiting, later.may_be_late) == (2, True)
+    assert document_detail(store, scam, TODAY_DATE).region_suggestion is None
+
+    store.update_party(party.id, region="BY")
+    assert document_detail(store, first, TODAY_DATE).region_suggestion is None
