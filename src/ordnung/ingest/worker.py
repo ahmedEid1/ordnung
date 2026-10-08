@@ -5,9 +5,9 @@
 * A rate limit pauses the worker globally until the reset time (or 15 minutes): the job goes back
   to ``queued`` with a ``waiting_reason``, ``llm.paused`` is published (``llm.resumed`` when it ends)
   and the pause survives restarts (meta ``llm_paused_until``).
-* Claude not installed or not signed in pauses reading too, without an end (``llm.paused`` with an
-  empty ``until``): the letter waits in the queue instead of failing, and so does every letter for
-  Claude claimed meanwhile (put back for :data:`CLAUDE_RECHECK_S` seconds at a time; private letters
+* Claude not installed, not signed in or too old pauses reading too, without an end (``llm.paused``
+  with an empty ``until``): the letter waits in the queue instead of failing, and so does every letter
+  for Claude claimed meanwhile (put back for :data:`CLAUDE_RECHECK_S` seconds at a time; private letters
   are read as usual), and the API's cached Claude status is dropped (``claude_failed``). Reading goes
   on once a check sees Claude ready (:meth:`IngestWorker.claude_ready` — the API's Claude status
   check, and the worker's own every :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``);
@@ -45,7 +45,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung.db.store import background_context, person_write
 from ordnung.ingest.pipeline import READING_JOBS, ingest_document, run_triggers
-from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
+from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeOutdated, ClaudeRateLimited
+from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.models import Job
 from ordnung.trace.runs import recover_readings
 
@@ -70,7 +71,11 @@ CLAUDE_RECHECK_S = 30.0
 CLAUDE_RECHECK_MAX_S = 30 * 60.0
 NOT_INSTALLED_REASON = "Claude Code isn't installed on this computer yet."
 NOT_SIGNED_IN_REASON = "Claude Code isn't signed in."
-#: How the reason of a letter waiting because Claude is not installed or not signed in starts.
+OUTDATED_REASON = (
+    f"Claude Code isn't up to date — Ordnung needs version {version_text(MIN_CLAUDE_VERSION)} or newer. "
+    "Run “claude update” in a terminal to update it."
+)
+#: How the reason of a letter waiting because Claude is not installed, not signed in or too old starts.
 _NOT_READY = f"{WAITING_FOR_CLAUDE}: Claude Code isn't "
 
 
@@ -435,7 +440,10 @@ class IngestWorker:
         letter keeps the status its answer gave it): its job goes back to the queue, waiting, and so do the
         letters for Claude after it. The API's cached status is dropped, so its next check asks Claude again;
         when a check said "ready" just before this same failure, the next one waits twice as long."""
-        why = NOT_INSTALLED_REASON if isinstance(exc, ClaudeNotInstalled) else NOT_SIGNED_IN_REASON
+        if isinstance(exc, ClaudeOutdated):
+            why = OUTDATED_REASON
+        else:
+            why = NOT_INSTALLED_REASON if isinstance(exc, ClaudeNotInstalled) else NOT_SIGNED_IN_REASON
         if self.claude_failed is not None:
             self.claude_failed()
         if self.waiting_for_claude is None:

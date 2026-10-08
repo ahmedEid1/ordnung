@@ -23,6 +23,10 @@ Design notes
 * **Structured output.** ``--json-schema`` makes the CLI validate the final answer; we read
   ``structured_output`` from the ``result`` event.
 * **Errors are classified from the result object**, not the exit code.
+* **Recent enough.** Before a backend first runs a ``claude`` it asks ``claude --version`` (zero
+  tokens): one older than :data:`MIN_CLAUDE_VERSION` would reject flags every call passes, so it is
+  refused with :class:`~ordnung.llm.base.ClaudeOutdated` (a letter then waits, as for a missing
+  Claude). A version it can't read lets the call go ahead, as ``ordnung doctor`` only warns about it.
 * Credentials are never touched — the CLI uses whatever login the user configured.
 """
 
@@ -47,6 +51,7 @@ from ordnung.llm.base import (
     ClaudeAuthError,
     ClaudeBadOutput,
     ClaudeNotInstalled,
+    ClaudeOutdated,
     ClaudeRateLimited,
     ClaudeTimeout,
     LLMError,
@@ -67,6 +72,9 @@ _RESET_RE = re.compile(r"reset[s]? (?:at|in)\s+([^.\n|]+)", re.I)
 _STREAM_LIMIT = 32 * 1024 * 1024
 _STDERR_KEEP = 64 * 1024  # only the end of stderr is ever shown
 _EXIT_WAIT_S = 30.0  # how long an answered call may take to exit
+#: The oldest Claude Code Ordnung works with (``ordnung doctor`` and the app's status check hold it to the same).
+MIN_CLAUDE_VERSION: tuple[int, int, int] = (2, 1, 0)
+_VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
 class TransientError(LLMError):
@@ -78,6 +86,35 @@ def find_claude(binary: str | None = None) -> str | None:
     if os.path.sep in candidate:
         return candidate if Path(candidate).exists() else None
     return shutil.which(candidate)
+
+
+def parse_version(text: str | None) -> tuple[int, int, int] | None:
+    """``(major, minor, patch)`` from ``claude --version`` output such as ``2.1.3 (Claude Code)``."""
+    match = _VERSION_RE.search(text or "")
+    if match is None:
+        return None
+    major, minor, patch = (int(part) for part in match.groups())
+    return major, minor, patch
+
+
+def version_text(version: tuple[int, int, int]) -> str:
+    """``(2, 1, 0)`` → ``2.1.0``."""
+    return ".".join(str(part) for part in version)
+
+
+def too_old(raw: str | None) -> tuple[int, int, int] | None:
+    """The version ``claude --version`` printed when it is older than :data:`MIN_CLAUDE_VERSION`; ``None``
+    when it is recent enough or names no version."""
+    found = parse_version(raw)
+    return found if found is not None and found < MIN_CLAUDE_VERSION else None
+
+
+def outdated_message(found: tuple[int, int, int]) -> str:
+    """What the app says of a Claude Code older than Ordnung needs: the version needed and the update command."""
+    return (
+        f"Claude Code {version_text(found)} is too old: Ordnung needs {version_text(MIN_CLAUDE_VERSION)} or "
+        "newer. Run “claude update” in a terminal to update it."
+    )
 
 
 def extract_json(text: str) -> dict[str, Any] | None:
@@ -256,6 +293,8 @@ class ClaudeCLIBackend:
         #: while it is not found, so one installed while Ordnung runs is used without a restart.
         self._wanted = binary
         self.binary = find_claude(binary)
+        #: The ``claude`` whose version was found recent enough (asked again for any other).
+        self._recent: str | None = None
         self._background = asyncio.Semaphore(max(1, concurrency))
         self._interactive = asyncio.Semaphore(max(1, interactive_concurrency))
         self.max_retries = max_retries
@@ -282,6 +321,16 @@ class ClaudeCLIBackend:
                 "sign in by running “claude” once, then try again."
             )
         return self.binary
+
+    async def _require_recent(self) -> None:
+        """Refuse a ``claude`` older than :data:`MIN_CLAUDE_VERSION` before it is asked anything."""
+        binary = self._require_binary()
+        if binary == self._recent:
+            return
+        found = too_old(await version(binary))
+        if found is not None:
+            raise ClaudeOutdated(outdated_message(found))
+        self._recent = binary
 
     def build_args(self, req: LLMRequest, *, partial: bool = False, model: str | None = None) -> list[str]:
         """argv for ``req``; ``model`` is the one :meth:`model_for` decided (a run decides it once)."""
@@ -356,6 +405,7 @@ class ClaudeCLIBackend:
 
     async def _run(self, req: LLMRequest, *, partial: bool) -> AsyncIterator[StreamEvent]:
         """Spawn the CLI, feed stdin, translate stdout events. Ends with a ``done`` event or raises."""
+        await self._require_recent()
         model = self.model_for(req)  # decided once: the argv and the answer name the same model
         args = self.build_args(req, partial=partial, model=model)
         line, _nbytes = build_user_message(req)

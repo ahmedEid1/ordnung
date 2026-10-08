@@ -2656,6 +2656,8 @@ export interface components {
             ok: boolean | null;
             /** Detail */
             detail: string | null;
+            /** Needs Version */
+            needs_version: string | null;
         };
         /** ComputationReceipt */
         ComputationReceipt: {

@@ -9,7 +9,7 @@ export const HEALTH: Health = {
   simulated_today: TODAY,
   today: TODAY,
   backend: "replay",
-  claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription." },
+  claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription.", needs_version: null },
   model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],

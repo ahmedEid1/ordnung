@@ -16,9 +16,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
-import re
 import shutil
 import sqlite3
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -28,30 +28,40 @@ from pydantic import BaseModel, Field
 from ordnung.config import Paths, web_dist_dir
 from ordnung.db.migrate import SchemaError, applied_versions, current_version, discover
 from ordnung.llm import claude_cli
+from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, parse_version, version_text
 from ordnung.models import CheckStatus, ClaudeStatus, DoctorCheck
 
-__all__ = ["CheckStatus", "DoctorCheck"]  # re-exported: the check models live in ordnung.models
+# re-exported: the check models live in ordnung.models, the version floor with the backend that keeps to it
+__all__ = ["MIN_CLAUDE_VERSION", "CheckStatus", "DoctorCheck", "parse_version"]
 
-MIN_CLAUDE_VERSION: tuple[int, int, int] = (2, 1, 0)
 MIN_FREE_BYTES = 100 * 1024 * 1024
 LOW_FREE_BYTES = 1024 * 1024 * 1024
 #: Where to get Claude Code — the address every install hint names (the reading job's error names it too).
 CLAUDE_CODE_URL = "https://claude.com/claude-code"
+#: The installer Anthropic's setup page recommends for this system (PowerShell's on Windows).
+NATIVE_INSTALL = (
+    "irm https://claude.ai/install.ps1 | iex"
+    if sys.platform == "win32"
+    else "curl -fsSL https://claude.ai/install.sh | bash"
+)
 INSTALL_HINT = (
-    f"Install Claude Code ({CLAUDE_CODE_URL}), run `claude` once to sign in, then run `ordnung doctor` again."
+    f"Install Claude Code with `{NATIVE_INSTALL}` (other ways: {CLAUDE_CODE_URL}; it needs a paid Claude "
+    "plan or a Console account), run `claude` once to sign in, then run `ordnung doctor` again."
 )
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
 MODEL_HINT = (
     "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude connection), may "
     "not be a name Claude Code accepts."
 )
-UPDATE_HINT = "Update Claude Code with `claude update` (or npm install -g @anthropic-ai/claude-code)."
+UPDATE_HINT = (
+    "Update Claude Code with `claude update` (installed with Homebrew: `brew upgrade claude-code`; with "
+    "WinGet: `winget upgrade Anthropic.ClaudeCode`), then run `ordnung doctor` again."
+)
 API_KEY_HINT = "Unset it (`unset ANTHROPIC_API_KEY`) so Claude Code uses your Claude subscription."
 RESTORE_HINT = (
     "Restore your latest backup with `ordnung restore FILE --force` (FILE is the .ordnung-backup file; "
     "the damaged data is moved aside, not deleted)."
 )
-_VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
 
 
 class DoctorReport(BaseModel):
@@ -75,15 +85,6 @@ class DoctorReport(BaseModel):
 # --------------------------------------------------------------------------------------------------
 
 
-def parse_version(text: str | None) -> tuple[int, int, int] | None:
-    """``(major, minor, patch)`` from ``claude --version`` output such as ``2.1.3 (Claude Code)``."""
-    match = _VERSION_RE.search(text or "")
-    if match is None:
-        return None
-    major, minor, patch = (int(part) for part in match.groups())
-    return major, minor, patch
-
-
 def _version_check(raw: str | None) -> DoctorCheck:
     label = "Claude Code version"
     version = parse_version(raw)
@@ -99,9 +100,9 @@ def _version_check(raw: str | None) -> DoctorCheck:
         return DoctorCheck(
             id="claude_version", label=label, status="warn", detail=f"Unrecognised version: {raw}"
         )
-    shown = ".".join(str(part) for part in version)
+    shown = version_text(version)
     if version < MIN_CLAUDE_VERSION:
-        needed = ".".join(str(part) for part in MIN_CLAUDE_VERSION)
+        needed = version_text(MIN_CLAUDE_VERSION)
         return DoctorCheck(
             id="claude_version",
             label=label,
@@ -179,10 +180,11 @@ async def check_claude(
     problem = next((check for check in checks if check.status == "fail"), None)
     status = ClaudeStatus(
         installed=True,
-        version=".".join(str(part) for part in version) if version else raw_version,
+        version=version_text(version) if version else raw_version,
         path=path,
         ok=problem is None,
         detail=problem.detail if problem else checks[2].detail,
+        needs_version=version_text(MIN_CLAUDE_VERSION) if claude_cli.too_old(raw_version) else None,
     )
     return checks, status
 

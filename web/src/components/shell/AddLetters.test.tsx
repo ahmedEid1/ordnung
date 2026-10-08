@@ -105,12 +105,14 @@ describe("Claude isn't ready: store now, read later", () => {
     expect(sentForm().get("private")).toBe("false");
   });
 
-  it("names signing in, and leaves a session that doesn't use Claude as it was", () => {
+  it("names signing in or updating, and leaves a session that doesn't use Claude as it was", () => {
     expect(claudeNotReady(health({ installed: true, ok: false }))).toBe("signed_out");
     expect(claudeNotReady(health({ installed: true, ok: null }))).toBeNull(); // not checked yet: the first letter tells
     expect(claudeNotReady(health({ installed: false }, "replay"))).toBeNull();
     expect(claudeNotReady(undefined)).toBeNull();
     expect(addDescription(false, true, "signed_out")).toMatch(/^Claude isn't signed in yet, so Ordnung stores them now and reads them/);
+    expect(claudeNotReady(health({ installed: true, ok: false, version: "2.0.9 (Claude Code)", needs_version: "2.1.0" }))).toBe("outdated");
+    expect(addDescription(false, false, "outdated")).toMatch(/^Claude Code needs an update, so Ordnung stores it now and reads it/);
     expect(addDescription(true, false, "missing")).toMatch(/^Stored on this computer only/);
   });
 });

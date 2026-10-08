@@ -7,6 +7,7 @@ import json
 import os
 import sqlite3
 import stat
+import sys
 from pathlib import Path
 
 import pytest
@@ -100,6 +101,13 @@ def test_one_install_hint_everywhere(isolated_path: Path) -> None:
     assert doctor.CLAUDE_CODE_URL in str(raised.value)
 
 
+def test_the_install_hint_names_the_installer_for_this_system() -> None:
+    """The installer Anthropic's setup page recommends (no Node.js needed), and that the free plan won't do."""
+    installer = "install.ps1" if sys.platform == "win32" else "install.sh"
+    assert f"https://claude.ai/{installer}" in doctor.INSTALL_HINT
+    assert "npm" not in doctor.INSTALL_HINT and "paid Claude plan" in doctor.INSTALL_HINT
+
+
 def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: Path) -> None:
     fake_claude(isolated_path, version="2.0.9 (Claude Code)")
     report = run_doctor_sync(data_dir)
@@ -107,6 +115,38 @@ def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: 
     assert old is not None and old.status == "fail"
     assert "2.1.0" in old.detail and old.fix is not None and "claude update" in old.fix
     assert report.claude.ok is False
+
+
+@pytest.mark.parametrize(
+    ("version", "ready"),
+    [("2.0.9 (Claude Code)", False), ("2.1.0 (Claude Code)", True), ("2.10.3 (Claude Code)", True)],
+)
+async def test_the_app_holds_claude_to_the_doctors_minimum(
+    isolated_path: Path, version: str, ready: bool
+) -> None:
+    """The app's zero-token status check and ``ordnung doctor`` (also behind "Run check") count the same
+    Claude Code as too old: it is not ready (letters wait), and the status names the version needed and the
+    update command."""
+    fake_claude(isolated_path, version=version)
+    app, doctors = await deps.probe_claude_cli(), await doctor.claude_status()
+    for status in (app, doctors):
+        assert status.installed and status.ok is ready and deps.claude_ready(status) is ready
+        assert status.needs_version == (None if ready else "2.1.0")
+    if not ready:
+        assert app.detail is not None
+        assert "2.0.9" in app.detail and "2.1.0 or newer" in app.detail and "“claude update”" in app.detail
+
+
+async def test_a_version_nobody_can_read_counts_as_the_doctor_says(
+    isolated_path: Path, data_dir: Path
+) -> None:
+    """``ordnung doctor`` only warns about a ``claude --version`` it can't read; the app's status check
+    doesn't hold letters back over it either."""
+    fake_claude(isolated_path, version="nightly (Claude Code)")
+    report = await run_doctor(data_dir)
+    assert statuses(report)["claude_version"] == "warn" and report.claude.ok is True
+    status = await deps.probe_claude_cli()
+    assert status.ok is True and status.needs_version is None and deps.claude_ready(status)
 
 
 def test_signed_out(isolated_path: Path, data_dir: Path) -> None:

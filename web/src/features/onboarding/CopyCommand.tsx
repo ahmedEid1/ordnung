@@ -13,7 +13,8 @@ export function CopyCommand({ command, label, className, display }: { command: s
   const { copy, copied } = useClipboard();
   const done = copied === command;
   // words wrap at spaces and after a "/" inside a path — never after the root "/" right after a space (a
-  // lone "/" at a line's end) — and a long option ("--otel") never breaks after its dashes
+  // lone "/" at a line's end) nor between the two of "https://" — and a long option ("--otel") never breaks
+  // after its dashes
   const words = command.split(/(\s+)/);
   return (
     <div className={cn("flex items-start gap-2 rounded-xl border border-line bg-[#1d1b16] py-1.5 pl-3.5 pr-1.5 text-[#f2efe7] dark:bg-canvas", className)}>
@@ -30,7 +31,7 @@ export function CopyCommand({ command, label, className, display }: { command: s
               </span>
             ) : (
               <Fragment key={i}>
-                {word.split(/(?<=\S\/)/).map((part, j) => (
+                {word.split(/(?<=\S\/)(?!\/)/).map((part, j) => (
                   <Fragment key={j}>
                     {j > 0 ? <wbr /> : null}
                     {part}

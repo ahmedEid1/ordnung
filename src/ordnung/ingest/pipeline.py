@@ -100,7 +100,14 @@ from ordnung.ingest.text import (
     text_file_pages,
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
-from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
+from ordnung.llm.base import (
+    ClaudeAuthError,
+    ClaudeNotInstalled,
+    ClaudeOutdated,
+    ClaudeRateLimited,
+    ClaudeTimeout,
+    LLMError,
+)
 from ordnung.models import (
     PROOF_SOURCE,
     Direction,
@@ -1117,6 +1124,8 @@ def failure_code(exc: BaseException) -> str:
 
 def pause_code(exc: ClaudeRateLimited | ClaudeNotInstalled | ClaudeAuthError) -> str:
     """Why a reading paused, as the code its trace keeps (:data:`ordnung.trace.runs.INTERRUPTIONS`)."""
+    if isinstance(exc, ClaudeOutdated):
+        return "paused_outdated"
     if isinstance(exc, ClaudeNotInstalled):
         return "paused_not_installed"
     if isinstance(exc, ClaudeAuthError):
