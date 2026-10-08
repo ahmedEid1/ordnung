@@ -449,6 +449,46 @@ async def test_the_same_address_behind_another_router_pauses_until_confirmed(dat
         assert load_record(api.ctx.store).gateway == "192.168.1.1 11:22:33:44:55:66"
 
 
+HOME_ROUTER = "192.168.1.1 aa:bb:cc:dd:ee:ff"
+CAFE_ROUTER = "192.168.1.1 11:22:33:44:55:66"
+
+
+async def test_a_router_unreadable_when_turned_on_is_remembered_once_it_can_be_read(data_dir: Path) -> None:
+    """Risk review: the router was saved only when phone access was turned on, so one that couldn't be
+    read then (no ARP entry yet) was never learned and the pause on another network stayed off. The
+    first reading is kept, and a different router never replaces it."""
+    async with phone_app(data_dir, network=FakeNetwork(router=None)) as (api, net, _servers):
+        access = phone_of(api)
+        assert load_record(api.ctx.store).gateway is None
+        await access.check()
+        assert access.listening and load_record(api.ctx.store).gateway is None
+        net.router = HOME_ROUTER
+        await access.check()
+        assert access.listening and load_record(api.ctx.store).gateway == HOME_ROUTER
+        net.router = CAFE_ROUTER
+        await access.check()
+        status = (await api.client.get("/api/phone")).json()
+        assert status["listening"] is False and status["problem"]["code"] == "other_network"
+        assert load_record(api.ctx.store).gateway == HOME_ROUTER
+        net.router = HOME_ROUTER
+        await access.check()
+        assert access.listening
+
+
+async def test_starting_phone_access_remembers_a_router_it_couldn_t_read_before(data_dir: Path) -> None:
+    async with phone_app(data_dir, network=FakeNetwork(router=None)) as (api, net, _servers):
+        access = phone_of(api)
+        await access.stop()
+        net.router = HOME_ROUTER
+        await access.start_if_enabled()  # as at the next start
+        assert access.listening and load_record(api.ctx.store).gateway == HOME_ROUTER
+        await access.stop()
+        net.router = CAFE_ROUTER
+        await access.start_if_enabled()
+        assert not access.listening and access.problem == "other_network"
+        assert load_record(api.ctx.store).gateway == HOME_ROUTER
+
+
 async def test_phones_unused_for_thirty_days_are_forgotten(data_dir: Path) -> None:
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
         await pair(api, phone)
@@ -591,6 +631,82 @@ async def test_a_phone_that_missed_its_new_sign_in_gets_another(
         assert third not in (first, lost)
         assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={third}"})).status_code == 200
         assert access.devices, "a lost answer is not a copied sign-in"
+
+
+@pytest.mark.parametrize("crossing", ["one_after_the_other", "both_signed_in_first"])
+@pytest.mark.parametrize("last", ["the_new_sign_in", "the_other_answer"])
+async def test_two_page_loads_that_cross_the_hourly_change_keep_the_phone_signed_in(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, crossing: str, last: str
+) -> None:
+    """Risk review: two page loads with the same cookie at the hourly change (restored tabs, a double
+    reload) could each change the sign-in, so the phone could end up with one the computer had already
+    replaced (signed out at once) or with the previous one (signed out 2 minutes after it used the new
+    one). Whichever answer its browser applies last, the phone stays signed in."""
+    from ordnung.api import app as app_module
+    from test_api_support import fake_web_dist
+
+    built = fake_web_dist(tmp_path)
+    monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        access = phone_of(api)
+        now = [time.time()]
+        access.clock = lambda: now[0]
+        first = (await pair(api, phone))["token"]
+        now[0] += ROTATE_EVERY_S + 1
+        sign_in = {"Cookie": f"{COOKIE}={first}"}
+        if crossing == "both_signed_in_first":
+            both_signed_in = asyncio.Barrier(2)
+            renew = access.renew_sign_in
+
+            async def after_both(*args: Any) -> str | None:
+                await both_signed_in.wait()
+                return await renew(*args)
+
+            monkeypatch.setattr(access, "renew_sign_in", after_both)
+            loads = asyncio.gather(phone.get("/", headers=sign_in), phone.get("/", headers=sign_in))
+            answers = list(await asyncio.wait_for(loads, 10))
+        else:
+            answers = [await phone.get("/", headers=sign_in), await phone.get("/", headers=sign_in)]
+        assert [a.status_code for a in answers] == [200, 200]
+        new = next(a for a in answers if a.cookies.get(COOKIE) not in (None, first))
+        other = answers[1] if new is answers[0] else answers[0]
+        cookie = first
+        for answer in (other, new) if last == "the_new_sign_in" else (new, other):
+            cookie = answer.cookies.get(COOKIE) or cookie  # an answer without a cookie leaves it alone
+            used = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={cookie}"})
+            assert used.status_code == 200, used.json()
+        now[0] += PREVIOUS_GRACE_S + 1
+        later = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={cookie}"})
+        assert later.status_code == 200, later.json()
+        assert access.devices, "two page loads are not a copied sign-in"
+
+
+async def test_a_late_page_load_with_the_previous_sign_in_leaves_the_new_one_alone(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A page load that left with the previous sign-in arrives after the phone already uses the new one:
+    its answer leaves the phone's cookie alone (no third sign-in its other requests don't carry yet), and
+    the previous one still stops working 2 minutes later."""
+    from ordnung.api import app as app_module
+    from test_api_support import fake_web_dist
+
+    built = fake_web_dist(tmp_path)
+    monkeypatch.setattr(app_module, "web_dist_dir", lambda: built)
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        access = phone_of(api)
+        now = [time.time()]
+        access.clock = lambda: now[0]
+        first = (await pair(api, phone))["token"]
+        now[0] += ROTATE_EVERY_S + 1
+        second = (await phone.get("/", headers={"Cookie": f"{COOKIE}={first}"})).cookies[COOKIE]
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        late = await phone.get("/", headers={"Cookie": f"{COOKIE}={first}"})
+        assert late.status_code == 200 and "set-cookie" not in late.headers
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        now[0] += PREVIOUS_GRACE_S + 1
+        assert (await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})).status_code == 200
+        reused = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={first}"})
+        assert (reused.status_code, reused.json()["removed"]) == (401, "token_reuse")
 
 
 # --------------------------------------------------------------------------------------------------

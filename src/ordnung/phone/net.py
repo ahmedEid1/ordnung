@@ -5,17 +5,25 @@ network is still the one phone access was turned on in (policy: :mod:`ordnung.ph
   (:data:`HOME_NETWORKS`; ``is_private`` isn't used: it also says yes to link-local 169.254/16 and no
   to nothing else that matters here).
 * **Interfaces, not guesses.** The candidates come from the network interfaces with their names and
-  netmasks (``ifaddr``). Tunnels, VPNs, containers and virtual machines (:data:`TUNNEL_INTERFACES`:
-  ``utun``, ``wg``, ``tailscale``, ``docker``, ``vboxnet`` …) are never offered, so the pairing page
-  never ends up on a company VPN or a VM's network. The address this computer reaches the internet
-  from (a UDP "connect" that sends nothing) is the recommended one when it is a candidate.
+  netmasks (``ifaddr``; on Windows both the name people see, "vEthernet (WSL)", and the adapter's
+  description, "Hyper-V Virtual Ethernet Adapter", are checked). Tunnels and VPNs
+  (:data:`TUNNEL_INTERFACES`: ``utun``, ``wg``, ``tailscale``, "WireGuard", "AnyConnect" …) are never
+  offered, so the pairing page never ends up on a company VPN; containers and virtual machines
+  (:data:`VIRTUAL_INTERFACES`: ``docker``, ``vboxnet``, "Hyper-V" …) neither, unless the router is on
+  their network (an external Hyper-V switch or a bridge then carries this computer's own home network).
+* **The router's network is recommended.** The candidate whose network holds the router is the
+  recommended one; when none does or the router can't be read, the address this computer reaches the
+  internet from (a UDP "connect" that sends nothing) when it is a candidate, else the first — so a VPN
+  that took the default route isn't recommended over the address on the router's network, even one by
+  a name Ordnung doesn't know.
 * **Only the home network's own devices.** The listener answers a client in the bound address's subnet
   (``/24`` when the netmask is unknown) or the address itself (:func:`client_allowed`): a Docker
   container on 172.17.0.2 or a peer behind a VPN on 10.8.0.6 is refused.
 * **The same address on another network.** :func:`gateway_fingerprint` reads the default gateway and its
   hardware address (``/proc/net/route`` and ``/proc/net/arp`` on Linux, ``route``/``arp`` elsewhere),
   best effort: a café whose router hands out the same address as home is told apart when it can be
-  read, and when it can't nothing changes.
+  read, and when it can't nothing changes. On Linux the default route of a tunnel or VPN, and the two
+  halves of the internet a full-tunnel VPN routes through itself, are passed over for the router's.
 * **Tests and the browser tests** set :data:`TEST_ADDRESS_ENV` to a loopback address: it is then the only
   candidate (any other value is ignored).
 """
@@ -43,10 +51,19 @@ HOME_NETWORKS = (
 #: Tests and the browser tests only: a loopback address phone access then listens on (anything else is
 #: ignored, so it can never open the listener to a network).
 TEST_ADDRESS_ENV = "ORDNUNG_PHONE_TEST_ADDRESS"
-#: Interfaces that are never offered: tunnels and VPNs, containers, virtual machines and Apple's
-#: peer-to-peer links.
+#: Interfaces that are never offered: tunnels and VPNs and Apple's peer-to-peer links. A name starting
+#: with one of the first group, or (a Windows adapter's description, mostly) holding one of the second.
 TUNNEL_INTERFACES = re.compile(
-    r"^(utun|tun|tap|wg|ppp|ipsec|tailscale|zt|docker|br-|veth|virbr|vboxnet|vmnet|vEthernet|awdl|llw)",
+    r"^(?:utun|tun|tap|wg|ppp|ipsec|tailscale|zt|awdl|llw|cscotun|gpd|nordlynx|nordtun|proton|pvpn|ham)"
+    r"|WireGuard|Wintun|\bTAP-|VPN|AnyConnect|Cisco Secure Client|PANGP|Fortinet|ZeroTier|Hamachi"
+    r"|Juniper|Mullvad",
+    re.IGNORECASE,
+)
+#: Containers' and virtual machines' networks: never offered either, unless the router is on one (an
+#: external Hyper-V switch, or a bridge, then carries this computer's own home network).
+VIRTUAL_INTERFACES = re.compile(
+    r"^(?:docker|br-|veth|virbr|vboxnet|vmnet|vEthernet|lxdbr|lxcbr|cni|flannel|cali|kube|podman|bridge"
+    r"|vmenet|vnic)|Hyper-V|VirtualBox|VMware",
     re.IGNORECASE,
 )
 #: The netmask assumed when an interface doesn't say.
@@ -64,6 +81,16 @@ class Candidate:
     interface: str
     subnet: str
     recommended: bool = False
+
+
+@dataclass(frozen=True)
+class Interface:
+    """An IPv4 address of one of this computer's network interfaces."""
+
+    name: str  # the name people see: "en0", "wlan0", "Wi-Fi", "vEthernet (WSL)"
+    address: str
+    prefix: int | None
+    description: str = ""  # Windows: the adapter's ("Hyper-V Virtual Ethernet Adapter")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -105,32 +132,60 @@ def default_route_address() -> str | None:
     return None
 
 
-def interfaces() -> list[tuple[str, str, int | None]]:
-    """``(interface name, IPv4 address, prefix length)`` of every interface (``ifaddr``)."""
+def interfaces() -> list[Interface]:
+    """Every IPv4 address of every interface, with the interface's names and the netmask (``ifaddr``)."""
     import ifaddr  # pure Python; imported on first use
 
-    found: list[tuple[str, str, int | None]] = []
+    found: list[Interface] = []
     for adapter in ifaddr.get_adapters():
-        # Windows names an adapter by a GUID and calls it "Wi-Fi" or "vEthernet (WSL)": the latter counts
-        name = str(adapter.nice_name or adapter.name or "")
+        # Windows names an adapter by a GUID and its description ("Hyper-V Virtual Ethernet Adapter") and
+        # each of its addresses by the name people see ("vEthernet (WSL)"); elsewhere all are one name
+        adapter_name = str(adapter.nice_name or adapter.name or "")
         for ip in adapter.ips:
             if isinstance(ip.ip, str):  # IPv6 addresses are tuples
+                name = str(ip.nice_name or adapter_name)
                 prefix = ip.network_prefix if isinstance(ip.network_prefix, int) else None
-                found.append((name, ip.ip, prefix))
+                found.append(Interface(name, ip.ip, prefix, adapter_name if adapter_name != name else ""))
     return found
 
 
-def is_tunnel(name: str) -> bool:
-    """A tunnel, VPN, container, virtual machine or peer-to-peer interface (never offered)."""
-    return bool(TUNNEL_INTERFACES.match(name.strip()))
+def _named(pattern: re.Pattern[str], *names: str) -> bool:
+    return any(pattern.search(name.strip()) for name in names if name)
+
+
+def is_tunnel(*names: str) -> bool:
+    """A tunnel, VPN, container, virtual machine or peer-to-peer interface by any of its names (never
+    offered, but for a container's or virtual machine's network the router is on)."""
+    return _named(TUNNEL_INTERFACES, *names) or _named(VIRTUAL_INTERFACES, *names)
+
+
+def _holds(subnet: str, router: str | None) -> bool:
+    """Whether the router's address is in ``subnet``."""
+    if router is None:
+        return False
+    try:
+        return ipaddress.ip_address(router) in ipaddress.ip_network(subnet, strict=False)
+    except ValueError:
+        return False
+
+
+def _offered(interface: Interface, subnet: str, router: str | None) -> bool:
+    names = (interface.name, interface.description)
+    if _named(TUNNEL_INTERFACES, *names):
+        return False
+    return not _named(VIRTUAL_INTERFACES, *names) or _holds(subnet, router)
 
 
 def candidate_addresses(
-    found: list[tuple[str, str, int | None]] | None = None, default: str | None = None
+    found: list[Interface] | None = None, default: str | None = None, router: str | None = None
 ) -> list[Candidate]:
-    """This computer's addresses on home networks, the recommended one first; never a tunnel's.
+    """This computer's addresses on home networks, the recommended one first: never a tunnel's or a VPN's,
+    and a container's or virtual machine's only when the router is on its network. The one on the
+    router's network is recommended; when none is or the router can't be read, the default route's
+    address when it is a candidate, else the first.
 
-    ``found`` and ``default`` replace :func:`interfaces` and :func:`default_route_address` (tests).
+    ``found``, ``default`` and ``router`` replace :func:`interfaces`, :func:`default_route_address` and
+    :func:`default_gateway` (tests; with ``found`` given, the router is only what ``router`` says).
     """
     loopback = test_address()
     if loopback is not None:
@@ -141,17 +196,24 @@ def candidate_addresses(
         except Exception:  # an interface listing that fails is no reason to fail the page
             log.warning("phone access: the network interfaces couldn't be read", exc_info=True)
             found = []
+        if router is None:
+            router = default_gateway()
     route = default if default is not None else default_route_address()
     seen: set[str] = set()
     candidates: list[Candidate] = []
-    for name, address, prefix in found:
-        if is_tunnel(name) or not usable(address) or address in seen:
+    for interface in found:
+        address = interface.address
+        if not usable(address) or address in seen:
+            continue
+        subnet = subnet_of(address, interface.prefix)
+        if not _offered(interface, subnet, router):
             continue
         seen.add(address)
-        candidates.append(Candidate(address, name, subnet_of(address, prefix)))
+        candidates.append(Candidate(address, interface.name, subnet))
     if not candidates:
         return []
-    chosen = next((c for c in candidates if c.address == route), candidates[0])
+    home = [c for c in candidates if _holds(c.subnet, router)] or candidates
+    chosen = next((c for c in home if c.address == route), home[0])
     ordered = [chosen, *(c for c in candidates if c is not chosen)]
     return [Candidate(c.address, c.interface, c.subnet, recommended=c is chosen) for c in ordered]
 
@@ -209,7 +271,13 @@ def _linux_gateway(proc: Path) -> str | None:
         return None
     for line in lines:
         fields = line.split()
-        if len(fields) > 3 and fields[1] == "00000000" and int(fields[3], 16) & 0x2:  # RTF_GATEWAY
+        if (
+            len(fields) > 7
+            and fields[1] == "00000000"
+            and fields[7] == "00000000"  # to everywhere, not a full-tunnel VPN's 0/1 or 128/1
+            and int(fields[3], 16) & 0x2  # RTF_GATEWAY
+            and not _named(TUNNEL_INTERFACES, fields[0])
+        ):
             return str(ipaddress.IPv4Address(bytes.fromhex(fields[2])[::-1]))
     return None
 
@@ -253,20 +321,27 @@ def _normalised_mac(mac: str) -> str:
     return ":".join(part.zfill(2) for part in re.split(r"[:-]", mac.lower()))
 
 
-def gateway_fingerprint(proc: Path = Path("/proc")) -> str | None:
-    """The default gateway's address and hardware address (``"192.168.178.1 3c:a6:2f:…"``), or ``None``
-    when either can't be read (then nothing is compared)."""
+def default_gateway(proc: Path = Path("/proc")) -> str | None:
+    """The router's address: the default gateway's (``None``: unreadable)."""
     try:
-        if (proc / "net" / "route").is_file():
-            gateway = _linux_gateway(proc)
-            mac = _linux_mac(proc, gateway) if gateway else None
-        else:
-            gateway = _command_gateway()
-            mac = _command_mac(gateway) if gateway else None
+        return _linux_gateway(proc) if (proc / "net" / "route").is_file() else _command_gateway()
     except Exception:  # best effort: an unreadable router is not an error
         log.debug("phone access: the router couldn't be read", exc_info=True)
         return None
-    if not gateway or not mac:
+
+
+def gateway_fingerprint(proc: Path = Path("/proc")) -> str | None:
+    """The default gateway's address and hardware address (``"192.168.178.1 3c:a6:2f:…"``), or ``None``
+    when either can't be read (then nothing is compared)."""
+    gateway = default_gateway(proc)
+    if not gateway:
+        return None
+    try:
+        mac = _linux_mac(proc, gateway) if (proc / "net" / "route").is_file() else _command_mac(gateway)
+    except Exception:  # best effort: an unreadable router is not an error
+        log.debug("phone access: the router couldn't be read", exc_info=True)
+        return None
+    if not mac:
         return None
     return f"{gateway} {_normalised_mac(mac)}"
 

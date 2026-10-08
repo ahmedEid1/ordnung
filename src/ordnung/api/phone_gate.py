@@ -417,8 +417,8 @@ class PhoneGate:
                 return
         token = cookies.get(cookie_name(port))
         refresh: str | None = None
-        if safe and page_load(path, headers):
-            refresh = await access.renew_sign_in(device, auth.via or "current") or token
+        if safe and page_load(path, headers) and token:
+            refresh = await access.renew_sign_in(device, token)
         access.seen(device, client)
         kind: LiveKind = "upload" if operation in phone_scope.UPLOADS else "other"
         if operation in phone_scope.STREAMS:

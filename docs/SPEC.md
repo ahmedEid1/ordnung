@@ -1281,9 +1281,14 @@ detached.
 
 - **On and off** (`phone/access.py`). Settings → Phone (`PUT /api/phone {enabled, address?, port?,
   home_network}`) turns it on: an address from `phone/net.py` (the network interfaces with their netmasks,
-  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never an interface whose name
-  starts with `utun`, `tun`, `tap`, `wg`, `ppp`, `ipsec`, `tailscale`, `zt`, `docker`, `br-`, `veth`,
-  `virbr`, `vboxnet`, `vmnet`, `vEthernet`, `awdl` or `llw`; the default route's address recommended),
+  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never a tunnel or VPN — a name,
+  or on Windows the adapter's description, matching `TUNNEL_INTERFACES` (`utun`, `tun`, `tap`, `wg`,
+  `ppp`, `ipsec`, `tailscale`, `zt`, `cscotun`, `gpd`, `nordlynx`, `proton`, "WireGuard", "Wintun",
+  "TAP-", "VPN", "AnyConnect", "PANGP", "Fortinet", "ZeroTier" …); a container's or virtual machine's
+  network — `VIRTUAL_INTERFACES` (`docker`, `br-`, `veth`, `virbr`, `vboxnet`, `vmnet`, `vEthernet`,
+  `lxdbr`, `cni`, `podman`, `bridge`, "Hyper-V", "VirtualBox", "VMware" …) — only when the default
+  gateway is in its subnet; recommended: the address whose subnet holds the default gateway, else the
+  default route's address),
   a port (8767, or the first free one up to 8775; `PUT {port}` takes 1024–65535), the certificates, then
   the listener. Refusals: 409 `unavailable` in the demo (`ordnung demo`, `serve --demo`, a demo folder)
   and without a session token (`--no-token`; the tests' hook may still enable it), `not_set_up` before
@@ -1299,7 +1304,9 @@ detached.
   gone (`problem.code = "address_gone"`, or `no_network`) or when the router's fingerprint — the default
   gateway's address and hardware address, read best effort — differs from the saved one
   (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
-  resumes when both are back; it never moves to another address by itself. Once a day it renews the
+  resumes when both are back; it never moves to another address by itself. With no fingerprint saved
+  (unreadable when turned on), the first one read while the computer has the address — by the watcher,
+  at start or on resuming — is saved; a saved one is never replaced by itself. Once a day it renews the
   server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
   on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
   /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.
@@ -1329,7 +1336,10 @@ detached.
 - **Sign-in.** A 256-bit token per phone; the record keeps its SHA-256, the previous one and the last 8
   retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
   for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
-  "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
+  "token_reuse"`, notice `token_reuse`). A page load with the current sign-in re-sets the cookie; one with
+  the previous sign-in gets a new one only when the current one is unused and older than 120 s (the phone
+  never got it), else its answer sets no cookie — so two page loads that cross the change make one new
+  sign-in between them, whichever answer the browser applies last. An unknown cookie gets
   401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
   `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
   else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from
