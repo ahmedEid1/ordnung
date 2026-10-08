@@ -192,6 +192,8 @@ jobs:
           reported=$("$WHEEL_BIN/ordnung" --version | tr -d '\r') && echo "$reported"
           test "$reported" = "ordnung $version"
           "$WHEEL_BIN/ordnung" demo --check
+          # the postcode table ships in the wheel and reads as UTF-8 here
+          "$WHEEL_BIN/python" -c "from ordnung.rules.postcodes import land_of_postcode as f; assert f('80331') == 'BY'"
       - name: The doctor passes, but for Claude Code (not set up here)
         if: ${{ !cancelled() && steps.wheel.outcome == 'success' }}
         working-directory: ${{ runner.temp }}
@@ -220,7 +222,8 @@ jobs:
             tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
             tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
             tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
-            tests/test_autostart.py tests/test_backup.py tests/test_backup_container.py
+            tests/test_autostart.py tests/test_backup.py tests/test_backup_container.py \
+            tests/test_rules_postcodes.py tests/test_make_postcode_table.py
 
   frontend:
     name: Frontend
