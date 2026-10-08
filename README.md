@@ -33,6 +33,7 @@ Nothing is ever paid, sent or cancelled for you.
 <p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 45 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
 
 <p align="center">
+  <a href="https://claude.ai/artifact/1gE8rCDfV15bAtFkkyhST7">Online demo</a> ·
   <a href="#try-it-in-60-seconds-with-zero-tokens">Try it</a> ·
   <a href="#a-tour">Tour</a> ·
   <a href="#the-model-reads-code-computes">The model reads, code computes</a> ·
@@ -52,6 +53,10 @@ The demo is the sample life of *Sam Rivera*, an international student in the fic
 Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopened letters in the
 *New mail* tray that are read live. Every model answer in the demo is a recording of a real Claude
 run, so it needs **no Claude account and uses no tokens**.
+
+**Nothing to install:** open the [online demo](https://claude.ai/artifact/1gE8rCDfV15bAtFkkyhST7). It is the
+same interface running in your browser with no server behind it, on the browser-only demo's version of
+Sam's letters, and it keeps nothing once you reload the page. Or run the full demo on your computer:
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # or: uv tool install git+https://github.com/ahmedEid1/ordnung
