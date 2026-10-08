@@ -2,15 +2,25 @@
 import type { BackupInfo } from "@/api/types";
 import { formatFileSize } from "@/lib/format";
 import { NB_HYPHEN } from "@/lib/glue";
-import { passphraseStrength, strongEnough } from "./passphrase";
+import { COMMON_WORDS, isRun, passphraseStrength, strongEnough } from "./passphrase";
 
 /** The API's minimum (`BackupInfo.min_passphrase`), used before the info has loaded. */
 export const MIN_PASSPHRASE = 12;
 export const MAX_PASSPHRASE = 1024;
 
-/** The server's refusal of a new backup's passphrase that is too easy to guess (`WEAK_PASSPHRASE_MESSAGE`), said before asking it. */
+/** The server's refusal of a new backup's passphrase that falls short of the strength (`WEAK_PASSPHRASE_MESSAGE`), said before asking it. */
 export const WEAK_PASSPHRASE_MESSAGE =
-  "This passphrase would be too easy to guess for a backup kept on another drive or in the cloud. Use five or more words that don't belong together, each of three letters or more — or take the suggested one.";
+  "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the cloud: it counts words, and random characters count for little. Use five or more words that don't belong together, each of three letters or more — or take the suggested one.";
+
+/** What Ordnung 0.1.0's backup dialog suggested (`EARLIER_SUGGESTION`): four groups of five of 31 letters and digits, drawn at random (about 99 bits). */
+const EARLIER_SUGGESTION = /^[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}$/;
+
+/** `ordnung.backup.earlier_suggestion`: a passphrase Ordnung 0.1.0 could have suggested — four different groups, none a run, a keyboard walk or a common word — still protects a new backup. */
+export function earlierSuggestion(passphrase: string): boolean {
+  if (!EARLIER_SUGGESTION.test(passphrase)) return false;
+  const groups = passphrase.split("-");
+  return new Set(groups).size === groups.length && !groups.some((group) => isRun(group) || COMMON_WORDS.has(group));
+}
 
 export interface PassphraseProblem {
   field: "passphrase" | "repeat";
@@ -19,20 +29,23 @@ export interface PassphraseProblem {
 
 /**
  * Why the passphrase can't protect a new backup (`ordnung.backup.passphrase_problem`): `min`-1024 characters, then
- * the strength a new sync folder's needs — and, with `repeat`, that the two typed agree (null: it can).
+ * the strength a new sync folder's needs or {@link earlierSuggestion} — and, with `repeat`, that the two typed agree
+ * (null: it can).
  */
 export function passphraseProblem(passphrase: string, repeat?: string, min = MIN_PASSPHRASE): PassphraseProblem | null {
   const length = [...passphrase].length;
   if (length < min) return { field: "passphrase", message: `Use a passphrase of at least ${min} characters — five or more words that don't belong together work well.` };
   if (length > MAX_PASSPHRASE) return { field: "passphrase", message: `Use a passphrase of at most ${MAX_PASSPHRASE} characters.` };
-  if (!strongEnough(passphrase)) return { field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE };
+  if (!strongEnough(passphrase) && !earlierSuggestion(passphrase)) return { field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE };
   if (repeat !== undefined && repeat !== passphrase) return { field: "repeat", message: "The two passphrases differ." };
   return null;
 }
 
 /** The strength said under a new backup's passphrase while it is typed (null: nothing typed yet). */
 export function backupStrengthLine(passphrase: string, min = MIN_PASSPHRASE): { tone: "ok" | "warn"; text: string } | null {
-  return passphraseStrength(passphrase, "Strong enough for a backup kept on another drive or in the cloud.", min);
+  const enough = "Strong enough for a backup kept on another drive or in the cloud.";
+  if (earlierSuggestion(passphrase) && [...passphrase].length >= min) return { tone: "ok", text: enough };
+  return passphraseStrength(passphrase, enough, min);
 }
 
 const count = (n: number, one: string, many: string) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;

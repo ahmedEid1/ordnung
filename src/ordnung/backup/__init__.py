@@ -12,7 +12,11 @@ The passphrase policy for *new* backups (:func:`passphrase_problem`): at least
 :data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits by :func:`~ordnung.passphrase.passphrase_bits` — the
 rule of a new sync folder, for the same reason: a backup on another drive or in a cloud folder can be
 copied and guessed at offline for years. It is checked where a passphrase is chosen (``ordnung backup``,
-the browser's download), and both of them suggest a strong one. Its key takes a sync folder's scrypt costs
+the browser's download), and both of them suggest a strong one. The estimator counts words, so a random
+password often falls short (symbols don't count, a run of letters counts as one word at most); what
+Ordnung 0.1.0 suggested still counts as strong (:func:`earlier_suggestion`), and a passphrase a script
+gives in ``ORDNUNG_BACKUP_PASSPHRASE`` that falls short only gets a warning, so a scheduled backup is
+still made (its length is checked as ever). Its key takes a sync folder's scrypt costs
 (:data:`DEFAULT_KDF`); a backup made with the earlier, cheaper ones (2^17) opens as before, since the
 header records them. Ordnung never stores the passphrase: without it the backup can't be opened, by anyone.
 
@@ -37,6 +41,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 from datetime import date
 from pathlib import Path
 
@@ -52,10 +57,11 @@ from ordnung.backup.container import (
     read_header,
 )
 from ordnung.backup.restore import RestoreResult, TargetInUse, TargetNotFree, restore_backup
-from ordnung.passphrase import MIN_PASSPHRASE_BITS, passphrase_bits
+from ordnung.passphrase import COMMON_WORDS, MIN_PASSPHRASE_BITS, is_run, passphrase_bits
 
 __all__ = [
     "DEFAULT_KDF",
+    "EARLIER_SUGGESTION",
     "FILE_SUFFIX",
     "MAX_PASSPHRASE_CHARS",
     "MIN_PASSPHRASE_CHARS",
@@ -72,6 +78,7 @@ __all__ = [
     "WrongPassphrase",
     "backup_file_name",
     "check_backup",
+    "earlier_suggestion",
     "estimate",
     "length_problem",
     "links_left_out",
@@ -85,9 +92,13 @@ __all__ = [
 MIN_PASSPHRASE_CHARS = 12
 MAX_PASSPHRASE_CHARS = 1024
 WEAK_PASSPHRASE_MESSAGE = (
-    "This passphrase would be too easy to guess for a backup kept on another drive or in the cloud. Use five "
-    "or more words that don't belong together, each of three letters or more — or take the suggested one."
+    "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the "
+    "cloud: it counts words, and random characters count for little. Use five or more words that don't "
+    "belong together, each of three letters or more — or take the suggested one."
 )
+#: What Ordnung 0.1.0's backup dialog suggested: four groups of five of 31 letters and digits, drawn at
+#: random (``k7qmx-3vxdp-9tawr-2emnb``: about 99 bits, though the estimator counts each group as a word).
+EARLIER_SUGGESTION = re.compile(r"[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}")
 FILE_SUFFIX = ".ordnung-backup"
 PRIVATE_FILE_MODE = 0o600
 
@@ -109,13 +120,23 @@ def length_problem(passphrase: str) -> str | None:
     return None
 
 
+def earlier_suggestion(passphrase: str) -> bool:
+    """``passphrase`` is one Ordnung 0.1.0 could have suggested (:data:`EARLIER_SUGGESTION`): four
+    different groups, none a run, a keyboard walk or a common word."""
+    if not EARLIER_SUGGESTION.fullmatch(passphrase):
+        return False
+    groups = passphrase.split("-")
+    return len(set(groups)) == len(groups) and not any(is_run(g) or g in COMMON_WORDS for g in groups)
+
+
 def passphrase_problem(passphrase: str) -> str | None:
     """Why ``passphrase`` can't protect a new backup (``None`` if it can): :func:`length_problem`, then
-    about :data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits (see the module policy)."""
+    about :data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits, or a suggestion of Ordnung 0.1.0's
+    (:func:`earlier_suggestion`; see the module policy)."""
     problem = length_problem(passphrase)
-    if problem is None and passphrase_bits(passphrase) < MIN_PASSPHRASE_BITS:
-        return WEAK_PASSPHRASE_MESSAGE
-    return problem
+    if problem is not None or earlier_suggestion(passphrase):
+        return problem
+    return WEAK_PASSPHRASE_MESSAGE if passphrase_bits(passphrase) < MIN_PASSPHRASE_BITS else None
 
 
 def _names_a_folder(to: str | Path) -> bool:

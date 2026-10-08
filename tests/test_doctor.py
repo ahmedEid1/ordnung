@@ -108,6 +108,13 @@ def test_the_install_hint_names_the_installer_for_this_system() -> None:
     assert "npm" not in doctor.INSTALL_HINT and "paid Claude plan" in doctor.INSTALL_HINT
 
 
+def test_the_windows_install_hint_says_where_to_run_it() -> None:
+    """Audit: ``irm … | iex`` is PowerShell's; pasted into cmd.exe it fails with "'irm' is not recognized"."""
+    assert "`irm https://claude.ai/install.ps1 | iex` in PowerShell" in doctor.install_hint("win32")
+    assert "PowerShell" not in doctor.install_hint("linux") + doctor.install_hint("darwin")
+    assert doctor.install_hint() == doctor.INSTALL_HINT
+
+
 def test_an_old_claude_fails_with_an_update_hint(isolated_path: Path, data_dir: Path) -> None:
     fake_claude(isolated_path, version="2.0.9 (Claude Code)")
     report = run_doctor_sync(data_dir)

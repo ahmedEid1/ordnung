@@ -4,6 +4,7 @@ recommended), whom it answers (its own subnet only), the tests' loopback hook an
 from __future__ import annotations
 
 import socket
+import sys
 from pathlib import Path
 
 import ifaddr
@@ -292,6 +293,41 @@ def test_sockets_tell_local_addresses_and_free_ports() -> None:
         assert not net.port_free("127.0.0.1", taken.getsockname()[1])
     route = net.default_route_address()  # sends nothing; None without a network
     assert route is None or isinstance(route, str)
+
+
+def test_a_port_probe_on_windows_doesn_t_share_a_port_another_program_listens_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Audit: on Windows ``SO_REUSEADDR`` lets a bind share a port another program listens on, so phone
+    access and ``ordnung serve`` read a busy port as free. There both probes bind plainly, as
+    ``socket.create_server`` does (Windows binds a port with connections in TIME_WAIT anyway)."""
+    from ordnung import cli
+
+    options: list[tuple[int, int, int]] = []
+
+    class Probe:
+        def __init__(self, *args: object) -> None:
+            pass
+
+        def __enter__(self) -> Probe:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def setsockopt(self, level: int, option: int, value: int) -> None:
+            options.append((level, option, value))
+
+        def bind(self, address: tuple[str, int]) -> None:
+            pass
+
+    monkeypatch.setattr(socket, "socket", Probe)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert net.port_free("192.168.178.23", 8767) and cli._port_free("127.0.0.1", 8765)
+    assert options == []
+    monkeypatch.setattr(sys, "platform", "linux")  # elsewhere a port in TIME_WAIT needs it
+    assert net.port_free("192.168.178.23", 8767) and cli._port_free("127.0.0.1", 8765)
+    assert options == [(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)] * 2
 
 
 def _proc(tmp_path: Path, route: str, arp: str) -> Path:

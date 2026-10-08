@@ -81,7 +81,7 @@ def test_the_computer_id_sync_uses() -> None:
 def test_a_file_and_its_folder_can_be_flushed_to_the_disk(tmp_path: Path) -> None:
     path = tmp_path / "written"
     path.write_bytes(b"on disk")
-    fd = os.open(path, os.O_RDONLY)
+    fd = os.open(path, os.O_RDWR)  # writable, as every writer's: Windows can't flush a read-only handle
     try:
         durable.fsync(fd)
     finally:

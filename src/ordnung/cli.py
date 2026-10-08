@@ -426,7 +426,8 @@ def summary_table(
 def _port_free(host: str, port: int) -> bool:
     family = socket.AF_INET6 if ":" in host else socket.AF_INET
     with socket.socket(family, socket.SOCK_STREAM) as probe:
-        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if sys.platform != "win32":  # on Windows it lets a bind share a port in use
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             probe.bind((host, port))
         except OSError:
@@ -2274,6 +2275,11 @@ def _disconnect(folder: Path, body: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------------------------------
 
 PASSPHRASE_ENV = "ORDNUNG_BACKUP_PASSPHRASE"
+PASSPHRASE_ENV_WEAK = (
+    "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the "
+    "cloud. The backup is made all the same, so a scheduled one keeps running; for a stronger passphrase, "
+    f"run `ordnung backup` without {PASSPHRASE_ENV} once and it suggests one."
+)
 PASSPHRASE_WARNING = (
     "Choose a passphrase and keep it somewhere safe (a password manager): Ordnung never stores it, and "
     "without it nobody can open this backup — not even you."
@@ -2298,8 +2304,9 @@ PASSPHRASE_TRIES = 3
 def _passphrase(*, new: bool) -> str:
     """The backup passphrase: ``ORDNUNG_BACKUP_PASSPHRASE`` (scripts) or a hidden prompt — twice for
     a new backup, which must meet :func:`ordnung.backup.passphrase_problem`'s policy (a strong one is
-    suggested first, as the web app's dialog does)."""
-    from ordnung.backup import passphrase_problem
+    suggested first, as the web app's dialog does). A script's passphrase that is long enough but falls
+    short of the strength only gets a warning: a scheduled backup set up before the rule keeps running."""
+    from ordnung.backup import length_problem, passphrase_problem
     from ordnung.passphrase import suggested_passphrase
 
     def problem(value: str) -> str | None:
@@ -2309,9 +2316,12 @@ def _passphrase(*, new: bool) -> str:
 
     given = os.environ.get(PASSPHRASE_ENV)
     if given is not None:
-        wrong = problem(given)
+        # long enough is required; strong enough only warned about (a script may predate the rule)
+        wrong = "The passphrase is empty." if not given else length_problem(given) if new else None
         if wrong:
             raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
+        if new and passphrase_problem(given):
+            err_console.print(f"[yellow]![/] {PASSPHRASE_ENV}: {PASSPHRASE_ENV_WEAK}", soft_wrap=True)
         return given
     if new:
         err_console.print(

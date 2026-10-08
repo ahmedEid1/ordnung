@@ -1836,9 +1836,11 @@ data) holding a tar of `ordnung.db` (online-backup snapshot, in memory), `files/
 `drafts/` and a `manifest.json` (versions, row count per table, size and SHA-256 per file).
 A new backup's passphrase: 12–1024 characters and at least 70 bits by `passphrase_bits`, as a new sync
 folder's (§12c; `ordnung/passphrase.py`), checked by `ordnung backup` and `POST /api/backup` (the CLI and
-the web app suggest five made-up words); read in NFC. Restore: newer format → refused before any key is
-derived; wrong passphrase → refused at the header MAC; any other change → refused; the archive is extracted
-under a strict name policy into a staging folder next to the target, read to its authenticated
+the web app suggest five made-up words); read in NFC. What 0.1.0's dialog suggested (`EARLIER_SUGGESTION`:
+four different random groups of five of 31 letters and digits) also passes, and below 70 bits
+`ORDNUNG_BACKUP_PASSPHRASE` only warns (the length is still required). Restore: newer format → refused
+before any key is derived; wrong passphrase → refused at the header MAC; any other change → refused; the
+archive is extracted under a strict name policy into a staging folder next to the target, read to its authenticated
 end, checked against the manifest (`integrity_check`, schema not newer, row counts), then swapped
 in; a folder with data needs `--force` and is moved to `<folder>.before-restore-<time>`. Each
 restored file's size on disk is checked against the archive's. A restored calendar-sync connection

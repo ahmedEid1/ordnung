@@ -203,9 +203,12 @@ def test_ci_installs_the_samples_library_versions() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_version_is_stated_in_one_place() -> None:
+def test_the_package_takes_its_version_from_init_py() -> None:
     """The release audit: pyproject and ``ordnung/__init__.py`` each said 0.1.0 for 691 commits. The
-    build reads the version from ``__init__.py``, so a release changes it there only."""
+    Python package reads its version from ``__init__.py``. A release also changes its copies, which tests
+    compare with it: ``web/package.json`` (``npm version`` in ``web/``), the mocks' health answer,
+    ``web/openapi.json`` (``make openapi``), the demo snapshot (``ordnung demo --rebuild``) and the built
+    web app (``make build-web``); and it adds a CHANGELOG entry."""
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert "version" not in pyproject["project"]
     assert "version" in pyproject["project"]["dynamic"]

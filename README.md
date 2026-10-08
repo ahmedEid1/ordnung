@@ -507,6 +507,10 @@ it as it was). With hand-off sync, update both computers: until then Settings â†
 the other one runs another version, and if the database changed, the computer with the older Ordnung can't
 bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving its own changes.
 
+To go back, install the earlier version again by its commit (`pipx install --force
+"git+https://github.com/ahmedEid1/ordnung@COMMIT"`, the commit taken from the repository's history), then
+`ordnung restore FILE --force`, which moves the updated data folder aside.
+
 ## Architecture
 
 ```mermaid

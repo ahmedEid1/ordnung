@@ -124,6 +124,19 @@ describe("backup helpers", () => {
     expect(passphraseProblem("twenty chars exactly", "twenty chars exactly", 24)?.message).toMatch(/at least 24/);
   });
 
+  it("still takes a passphrase Ordnung 0.1.0 suggested, but not a pattern in its shape", () => {
+    // four random groups of five letters and digits: the estimator counts one with few digits as four words
+    for (const earlier of ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]) {
+      expect(passphraseProblem(earlier, earlier)).toBeNull();
+      expect(backupStrengthLine(earlier)?.tone).toBe("ok");
+    }
+    for (const pattern of ["water-water-water-water", "abcde-fghjk-mnpqr-stuvw", "after-these-three-seven", "Fsumn-hqfzc-jgtck-crjwz"]) {
+      expect(passphraseProblem(pattern, pattern)).toEqual({ field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE });
+    }
+    // the server's shape, character for character
+    expect(/^EARLIER_SUGGESTION = re\.compile\(r"(.+)"\)$/m.exec(BACKUP_POLICY)?.[1]).toBe("[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}");
+  });
+
   it("refuses in the server's words", () => {
     const weak = /^WEAK_PASSPHRASE_MESSAGE = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(BACKUP_POLICY)?.[1] ?? "";
     expect([...weak.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(WEAK_PASSPHRASE_MESSAGE);

@@ -229,7 +229,8 @@ def address_is_local(ip: str) -> bool:
 def port_free(ip: str, port: int) -> bool:
     """Whether a listener could bind ``ip:port`` now (the same test as ``ordnung serve``'s)."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if sys.platform != "win32":  # on Windows it lets a bind share a port in use
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
             sock.bind((ip, port))
         except OSError:

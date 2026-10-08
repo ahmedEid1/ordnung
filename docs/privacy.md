@@ -323,14 +323,14 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   photo is kept on the computer as the phone sent it, with what the camera wrote into it (the time, and
   the place if the camera records it); Claude only ever sees the page image Ordnung makes from it.
 - **Home network only.** Phone access listens on one address of your computer on your home network and
-  answers only devices on that network — never through a VPN, a tunnel, a container or a virtual
-  machine. Nothing goes over the internet; there is no relay. When Ordnung can read your router's
-  identity (not every system lets it) and your computer wakes up on another network that gives it the
-  same address — many routers use the same addresses — phone access pauses until you choose *This is my
-  home network*. When your computer's address changes, phone access pauses too; moving it to the new
-  address means pairing every phone again. Reserving the address in your router avoids that (on a
-  FRITZ!Box: Heimnetz → Netzwerk → the computer → "Diesem Netzwerkgerät immer die gleiche IPv4-Adresse
-  zuweisen").
+  answers only devices on that network — never through a VPN or a tunnel, nor through a container's or a
+  virtual machine's network unless your router is on it (as with Hyper-V's external switch). Nothing goes
+  over the internet; there is no relay. When Ordnung can read your router's identity (not every system lets
+  it) and your computer wakes up on another network that gives it the same address — many routers use the
+  same addresses — phone access pauses until you choose *This is my home network*. When your computer's
+  address changes, phone access pauses too; moving it to the new address means pairing every phone again.
+  Reserving the address in your router avoids that (on a FRITZ!Box: Heimnetz → Netzwerk → the computer →
+  "Diesem Netzwerkgerät immer die gleiche IPv4-Adresse zuweisen").
 - **Pairing.** *Pair a phone* shows a QR code whose address carries a one-time code after its `#`, the
   part of an address a browser never sends to a server, so no log or link preview sees it. The code has 10
   characters, works once, for 10 minutes, and closing the dialog cancels it. A wrong, expired or missing
@@ -487,7 +487,10 @@ folder): a restored copy starts without sync.
   unencrypted copy is written to disk.
 - **Your passphrase stays yours.** At least 12 characters and about 70 bits by Ordnung's estimate — five
   unrelated words, like the five-word one Ordnung suggests — the rule of a new sync folder, because a
-  backup on another drive or in the cloud can be copied and guessed at offline for years. Ordnung never
+  backup on another drive or in the cloud can be copied and guessed at offline for years. The estimate
+  counts words, so a random password from a password manager often falls short (symbols don't count); one
+  Ordnung 0.1.0 suggested still counts as strong, and one a script gives in `ORDNUNG_BACKUP_PASSPHRASE`
+  that falls short gets a warning, so a scheduled backup is still made. Ordnung never
   stores or logs it and can't recover it — without it the backup can't be opened, by anyone. In the
   browser the passphrase goes only to the Ordnung on this computer (in the request body, never in a web
   address).

@@ -38,7 +38,7 @@ export const COMMON_WORDS_TEXT =
   "purple pink brown grey gray silver gold rot grün blau gelb schwarz weiss password passwort pass " +
   "letmein welcome hello hallo admin login secret geheim iloveyou love liebe dragon monkey sunshine " +
   "princess football master shadow test ordnung";
-const COMMON_WORDS = new Set(COMMON_WORDS_TEXT.split(" "));
+export const COMMON_WORDS = new Set(COMMON_WORDS_TEXT.split(" "));
 
 /**
  * The tokens {@link passphraseBits} counts (`ordnung.passphrase.passphrase_tokens`): the passphrase in Unicode NFC cut

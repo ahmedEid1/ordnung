@@ -83,9 +83,12 @@ file goes — another drive, a cloud folder — and whoever copies it can guess 
 the rule is the same (ADR 0018). A new backup's passphrase must reach about 70 bits by the estimator a new
 sync folder's meets (`ordnung/passphrase.py`), besides 12–1024 characters, and the CLI and the web app
 suggest five random made-up words. It is checked where a passphrase is chosen (`ordnung backup`, the
-download); a kept copy of hand-off sync uses the sync passphrase, judged when its folder was set up. The
-key costs went from 2¹⁷ to sync's 2¹⁸ with the same change: the header records them, so a backup made with
-the earlier ones opens as before.
+download); a kept copy of hand-off sync uses the sync passphrase, judged when its folder was set up. Two
+exceptions keep backups that worked before the rule working: what Ordnung 0.1.0's dialog suggested (four
+random groups of five letters and digits, about 99 bits) still counts as strong, and a passphrase a script
+gives in `ORDNUNG_BACKUP_PASSPHRASE` that falls short gets a warning, not a refusal, so a scheduled backup
+is still made (12 characters are still required). The key costs went from 2¹⁷ to sync's 2¹⁸ with the same
+change: the header records them, so a backup made with the earlier ones opens as before.
 
 **Restore proves everything before it replaces anything.** It extracts into a staging folder next to
 the target under a name policy (regular files: `ordnung.db`, `manifest.json`, paths under `files/`,
@@ -106,7 +109,9 @@ it on again — also when a crafted backup switched it on.
   description, the CLI's line before the prompt); Ordnung never stores it. The web app offers a
   random one, with a Copy button, to put into a password manager; the CLI prints one before the prompt.
 - A passphrase that is long but easy to guess (a short sentence of common words) is refused for a new
-  backup, also from `ORDNUNG_BACKUP_PASSPHRASE` in a script.
+  backup; from `ORDNUNG_BACKUP_PASSPHRASE` in a script it gets a warning. The estimator counts words, so
+  many random passwords from a password manager are refused too: symbols don't count, and a run of
+  letters counts as one word at most (16 random letters, digits and symbols almost never reach 70 bits).
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at

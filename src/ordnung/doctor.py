@@ -38,16 +38,27 @@ MIN_FREE_BYTES = 100 * 1024 * 1024
 LOW_FREE_BYTES = 1024 * 1024 * 1024
 #: Where to get Claude Code — the address every install hint names (the reading job's error names it too).
 CLAUDE_CODE_URL = "https://claude.com/claude-code"
-#: The installer Anthropic's setup page recommends for this system (PowerShell's on Windows).
-NATIVE_INSTALL = (
-    "irm https://claude.ai/install.ps1 | iex"
-    if sys.platform == "win32"
-    else "curl -fsSL https://claude.ai/install.sh | bash"
-)
-INSTALL_HINT = (
-    f"Install Claude Code with `{NATIVE_INSTALL}` (other ways: {CLAUDE_CODE_URL}; it needs a paid Claude "
-    "plan or a Console account), run `claude` once to sign in, then run `ordnung doctor` again."
-)
+
+
+def native_install(platform: str = sys.platform) -> str:
+    """The installer Anthropic's setup page recommends for ``platform`` (PowerShell's on Windows)."""
+    if platform == "win32":
+        return "irm https://claude.ai/install.ps1 | iex"
+    return "curl -fsSL https://claude.ai/install.sh | bash"
+
+
+def install_hint(platform: str = sys.platform) -> str:
+    """How to install Claude Code on ``platform``; on Windows it says PowerShell (cmd.exe can't run it)."""
+    shell = " in PowerShell" if platform == "win32" else ""
+    return (
+        f"Install Claude Code with `{native_install(platform)}`{shell} (other ways: {CLAUDE_CODE_URL}; it "
+        "needs a paid Claude plan or a Console account), run `claude` once to sign in, then run "
+        "`ordnung doctor` again."
+    )
+
+
+NATIVE_INSTALL = native_install()
+INSTALL_HINT = install_hint()
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
 MODEL_HINT = (
     "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude connection), may "

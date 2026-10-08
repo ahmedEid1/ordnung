@@ -1088,14 +1088,15 @@ def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
 
 def test_phone_access_answers_only_on_the_home_network() -> None:
     """README: the phone uses Ordnung "over your home Wi-Fi"; privacy.md: phone access answers "only
-    devices on that network — never through a VPN, a tunnel, a container or a virtual machine". The
-    address must be a home-network one (no public, shared-carrier, link-local or loopback address), a
-    client must be in its subnet, and a tunnel's interface is never offered (design § 16.5, amendment M2)."""
+    devices on that network — never through a VPN or a tunnel, nor through a container's or a virtual
+    machine's network unless your router is on it". The address must be a home-network one (no public,
+    shared-carrier, link-local or loopback address), a client must be in its subnet, and a tunnel's
+    interface is never offered, a virtual one only on the router's network (design § 16.5, amendment M2)."""
     net = importlib.import_module("ordnung.phone.net")
     assert "over your home Wi-Fi" in _flat(_readme())
     assert (
-        "answers only devices on that network — never through a VPN, a tunnel, a container or a virtual "
-        "machine"
+        "answers only devices on that network — never through a VPN or a tunnel, nor through a container's "
+        "or a virtual machine's network unless your router is on it"
     ) in _doc("docs/privacy.md")
     for address in ("8.8.8.8", "100.64.0.1", "169.254.1.1", "127.0.0.1", "::1"):
         assert not net.usable(address), address
@@ -1108,6 +1109,11 @@ def test_phone_access_answers_only_on_the_home_network() -> None:
         assert net.is_tunnel(interface), interface
     for interface in ("en0", "wlan0", "Wi-Fi", "eth0"):
         assert not net.is_tunnel(interface), interface
+    external = net.Interface("vEthernet (External)", "192.168.178.20", 24, "Hyper-V Virtual Ethernet Adapter")
+    docker = net.Interface("docker0", "172.17.0.1", 16, "")
+    offered = net.candidate_addresses([external, docker], default="192.168.178.20", router="192.168.178.1")
+    assert [c.address for c in offered] == ["192.168.178.20"]
+    assert not net.candidate_addresses([external, docker], default="192.168.178.20", router="10.0.0.1")
 
 
 # --------------------------------------------------------------------------------------------------

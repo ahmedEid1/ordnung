@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import random
 import shutil
 import sqlite3
 import sys
@@ -348,8 +349,51 @@ def test_weak_or_huge_passphrases_are_refused_for_new_backups(
 )
 def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> None:
     assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
-    assert "too easy to guess" in backups.WEAK_PASSPHRASE_MESSAGE
+    assert "can't count this passphrase as strong enough" in backups.WEAK_PASSPHRASE_MESSAGE
     assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
+
+
+def test_the_refusal_doesn_t_call_a_random_password_guessable() -> None:
+    """Audit: a 16-character password from a password manager counts less than five words (symbols don't
+    count, and a run of letters counts as one word at most), so it is refused — and the refusal called it
+    too easy to guess. It says what Ordnung counts instead."""
+    assert backups.passphrase_problem("Xk9#mQ2!vR7@pL4$") == backups.WEAK_PASSPHRASE_MESSAGE
+    assert "too easy to guess" not in backups.WEAK_PASSPHRASE_MESSAGE
+    assert "random characters" in backups.WEAK_PASSPHRASE_MESSAGE
+
+
+#: Suggestions of Ordnung 0.1.0's backup dialog: four groups of five of 31 letters and digits (about 99 bits)
+EARLIER_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+
+
+@pytest.mark.parametrize(
+    "passphrase", ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
+)
+def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup(passphrase: str) -> None:
+    """Audit: about a third of 0.1.0's suggestions, those with few digits, count as four words (56 bits),
+    so a passphrase saved in a password manager was refused after the update."""
+    assert backups.passphrase_problem(passphrase) is None
+
+
+def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> None:
+    chosen = random.Random(2026)
+    for _ in range(2000):
+        groups = ["".join(chosen.choice(EARLIER_ALPHABET) for _ in range(5)) for _ in range(4)]
+        assert backups.passphrase_problem("-".join(groups)) is None, groups
+
+
+@pytest.mark.parametrize(
+    "passphrase",
+    [
+        "water-water-water-water",
+        "abcde-fghjk-mnpqr-stuvw",
+        "after-these-three-seven",
+        "Fsumn-hqfzc-jgtck-crjwz",
+    ],
+)
+def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused(passphrase: str) -> None:
+    """A group again, a run, a keyboard walk or common words: not what 0.1.0 drew (nor upper case)."""
+    assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
 
 
 @pytest.mark.parametrize(
@@ -368,7 +412,8 @@ def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> N
     ],
 )
 def test_a_new_backup_s_passphrase_meets_the_rule_of_a_new_sync_folder(passphrase: str) -> None:
-    """The same estimator and the same threshold: what a new sync folder accepts, a new backup does."""
+    """The same estimator and the same threshold: what a new sync folder accepts, a new backup does (and
+    a backup also what Ordnung 0.1.0's backup dialog suggested)."""
     assert (backups.passphrase_problem(passphrase) is None) == (sync.passphrase_problem(passphrase) is None)
 
 
@@ -875,24 +920,26 @@ def test_backup_refuses_a_guessable_passphrase_and_suggests_a_strong_one(
     typed = f"{GUESSABLE}\n{PASS}\n{PASS}\n"  # long enough but guessable, then a strong one twice
     result = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=None, input=typed)
     assert result.exit_code == 0, result.output
-    assert "too easy to guess" in result.output
+    assert "can't count this passphrase as strong enough" in result.output
     lines = result.output.splitlines()
     suggested = lines[next(i for i, line in enumerate(lines) if "made up just now" in line) + 1].strip()
     assert len(suggested.split("-")) == sync.SUGGESTED_WORDS and backups.passphrase_problem(suggested) is None
     assert check_backup(tmp_path / "ordnung-backup-2026-09-28.ordnung-backup", PASS).letters
 
 
-def test_backup_refuses_a_guessable_passphrase_from_the_environment(
+def test_a_scripted_backup_is_made_with_a_warning_when_its_passphrase_falls_short(
     life: Path, tmp_path: Path, pinned_today: None
 ) -> None:
-    weak = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=GUESSABLE)
-    assert (
-        weak.exit_code == 1
-        and "ORDNUNG_BACKUP_PASSPHRASE" in weak.output
-        and "too easy to guess" in weak.output
-    )
-    assert GUESSABLE not in weak.output
-    assert not list(tmp_path.glob("*.ordnung-backup"))
+    """Audit: a scheduled ``ordnung backup`` whose ``ORDNUNG_BACKUP_PASSPHRASE`` met 0.1.0's rule (12
+    characters) stopped making backups after the update, often where nobody reads its errors. It still
+    makes them and says why the passphrase falls short (never the passphrase itself); one typed at the
+    prompt is refused (above), and one too short is refused here too (below)."""
+    result = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path), passphrase=GUESSABLE)
+    assert result.exit_code == 0, result.output
+    assert "ORDNUNG_BACKUP_PASSPHRASE" in result.output and "can't count" in result.output
+    assert "take the suggested one" not in result.output  # none is shown here
+    assert GUESSABLE not in result.output
+    assert check_backup(tmp_path / "ordnung-backup-2026-09-28.ordnung-backup", GUESSABLE).letters
 
 
 def test_backup_gives_up_after_three_tries(life: Path, tmp_path: Path, pinned_today: None) -> None:
