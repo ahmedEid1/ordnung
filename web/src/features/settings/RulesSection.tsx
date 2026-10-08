@@ -15,6 +15,9 @@ import { SectionHeading, SettingsCard } from "./SettingsCard";
 
 const topicId = (i: number) => `rules-topic-${i}`;
 
+/** A link in a line of text, still a 24 px tall target. */
+const CREDIT_LINK = "inline-flex min-h-6 items-center font-medium text-accent underline decoration-accent/30 underline-offset-[3px] hover:decoration-accent";
+
 /** One rule: title, each legal source as its own chip (they wrap, never clip), summary, link. */
 function Rule({ r }: { r: RuleInfo }) {
   return (
@@ -93,7 +96,22 @@ export function RulesSection() {
             </span>
             <div className="min-w-0">
               <p className="text-base font-semibold text-ink">2 · The rules compute</p>
-              <p className="mt-0.5 text-sm leading-5 text-muted">Delivery days, month ends, weekends and public holidays (nationwide ones until you set a sender's state) — the earlier date when unsure.</p>
+              <p className="mt-0.5 text-sm leading-5 text-muted">
+                Delivery days, month ends, weekends and public holidays (nationwide ones until you set a sender's state or answer Ordnung's question about
+                it) — the earlier date when unsure.
+              </p>
+              {/* the credit CC BY 4.0 asks for: the source, the licence (the changes are in the table's header and LICENSE-GeoNames.txt) */}
+              <p className="mt-1.5 text-[12.5px] leading-5 text-muted">
+                State suggestions come from the postcode on a letter:{" "}
+                <a href="https://www.geonames.org/" target="_blank" rel="noreferrer noopener" className={CREDIT_LINK}>
+                  GeoNames postal codes <span className="sr-only">(opens in a new tab)</span>
+                </a>{" "}
+                (
+                <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer noopener" className={CREDIT_LINK}>
+                  CC BY 4.0 <span className="sr-only">(opens in a new tab)</span>
+                </a>
+                ).
+              </p>
             </div>
           </div>
         </div>

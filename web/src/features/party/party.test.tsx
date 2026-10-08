@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Document, Draft, MyNumbers } from "@/api/types";
+import type { Document, Draft, MyNumbers, PartyDetail } from "@/api/types";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
@@ -310,6 +310,166 @@ describe("People & organisations drawer", () => {
   });
 });
 
+describe("a sender's state, suggested from the postcode on their letter (ADR 0019)", () => {
+  /** The question the mock asks about FunkNetz, as the real demo does: their letter shows a Berlin postcode. */
+  const FUNKNETZ = "Is FunkNetz Mobil GmbH in Berlin? (12351 on their letter)";
+
+  /** FunkNetz's drawer (or `id`'s) with the toasts, on the mock API. */
+  async function openDrawer(route = "/?party=pty_funknetz", name = "FunkNetz Mobil GmbH") {
+    const user = userEvent.setup();
+    const view = renderWithProviders(
+      <>
+        <PartyDrawer />
+        <Toaster />
+      </>,
+      { route },
+    );
+    const drawer = await screen.findByRole("dialog", { name });
+    await within(drawer).findByRole("heading", { name: "State" });
+    return { user, drawer, picker: within(drawer).getByRole("combobox", { name: "Which state is this sender in?" }), ...view };
+  }
+
+  afterEach(() => act(() => __clearToasts()));
+
+  it("asks above the State picker, with the postcode it comes from; the picker stays unchosen and Yes is never focused by itself", async () => {
+    const { srv } = useMockApi();
+    const { drawer, picker } = await openDrawer();
+    const question = within(drawer).getByRole("group", { name: FUNKNETZ });
+    // none of their dates waits for it (as in the demo): only what it decides
+    expect(question).toHaveTextContent("Their state's public holidays can move the dates in their letters.");
+    // without their Idea there is nothing to dismiss: Yes and Other state… only
+    expect(within(question).getAllByRole("button").map((b) => b.textContent)).toEqual(["Yes", "Other state…"]);
+    expect(question.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(picker).toHaveValue("");
+    await waitFor(() => expect(drawer.contains(document.activeElement)).toBe(true));
+    expect(within(question).getByRole("button", { name: "Yes" })).not.toHaveFocus();
+    // asking set nothing
+    expect(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region).toBeNull();
+  });
+
+  it("says how many of your dates may change, and when one may be late until you answer", async () => {
+    const { srv } = useMockApi();
+    const answer = globalThis.fetch;
+    let suggestion = { waiting: 2, may_be_late: false };
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await answer(input, init);
+      if (!String(input).endsWith("/api/parties/pty_funknetz")) return response;
+      const detail = (await response.json()) as PartyDetail;
+      const body = { ...detail, region_suggestion: detail.region_suggestion && { ...detail.region_suggestion, ...suggestion } };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    expect(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region).toBeNull();
+    const first = await openDrawer();
+    expect(within(first.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
+      "This may change 2 of your dates with them. Until you answer, Ordnung counts only nationwide holidays, so they may be a day or two early.",
+    );
+    first.unmount();
+    suggestion = { waiting: 1, may_be_late: true };
+    const second = await openDrawer();
+    expect(within(second.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
+      "This may change 1 of your dates with them. Until you answer, act a working day before it: a holiday in their state could make it earlier.",
+    );
+  });
+
+  it("is not asked once their state is set, without a suggestion, or for a sender abroad", async () => {
+    const { srv } = useMockApi();
+    Object.assign(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!, { region: "BE" });
+    const set = await openDrawer();
+    expect(within(set.drawer).queryByRole("group", { name: /^Is FunkNetz/ })).toBeNull();
+    expect(set.picker).toHaveValue("BE");
+    set.unmount();
+    // the postcode on Wohnbau's letters suggests nothing (as in the demo: it is the person's own town)
+    const none = await openDrawer("/?party=pty_wohnbau", "Wohnbau Musterstadt eG");
+    expect(within(none.drawer).queryByRole("group", { name: /^Is Wohnbau/ })).toBeNull();
+  });
+
+  it("keeps the State section for a sender whose stored address has no postcode when a later letter of theirs suggests one", async () => {
+    const { srv } = useMockApi();
+    // the stored address is the first letter's: without a postcode the sender looked abroad
+    Object.assign(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!, { address: "Wellenweg 7, Beispielhausen" });
+    const { drawer } = await openDrawer();
+    expect(within(drawer).getByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
+  });
+
+  it("Yes saves their state, says so with an Undo that takes it back, and gives the keyboard to the State picker", async () => {
+    const { srv, calls } = useMockApi();
+    const region = () => srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region;
+    const { user, drawer, picker } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Yes" }));
+    await waitFor(() => expect(region()).toBe("BE"));
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([{ method: "PATCH", path: "/parties/pty_funknetz", body: { region: "BE" } }]);
+    expect(await screen.findByText("Saved: FunkNetz Mobil GmbH is in Berlin")).toBeInTheDocument();
+    expect(screen.getByText("Their dates now skip the public holidays of Berlin.")).toBeInTheDocument();
+    await waitFor(() => expect(within(drawer).queryByRole("group", { name: FUNKNETZ })).toBeNull());
+    expect(picker).toHaveValue("BE");
+    await waitFor(() => expect(picker).toHaveFocus());
+
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(region()).toBeNull());
+    expect(calls.filter((c) => c.method !== "GET").at(-1)).toEqual({ method: "PATCH", path: "/parties/pty_funknetz", body: { region: null } });
+    // not known again: asked again
+    expect(await within(drawer).findByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
+    expect(picker).toHaveValue("");
+  });
+
+  it("“Other state…” leaves the question for this visit and focuses the State picker; nothing is saved", async () => {
+    const { calls } = useMockApi();
+    const { user, drawer, picker } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Other state…" }));
+    expect(picker).toHaveFocus();
+    expect(picker).toHaveValue("");
+    expect(within(drawer).queryByRole("group", { name: FUNKNETZ })).toBeNull();
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+  });
+
+  it("offers “Don't know” while their Idea stands: it dismisses the Idea, keeps the question and has an Undo", async () => {
+    const { srv, calls } = useMockApi();
+    srv.db.state.suggestions.push({
+      ...srv.db.state.suggestions[0]!,
+      id: "sug_land_funknetz",
+      kind: "deadline",
+      title: "Is FunkNetz Mobil GmbH in Berlin?",
+      status: "new",
+      rule_id: "sender_land",
+      refs: [{ type: "party", id: "pty_funknetz" }],
+      action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_funknetz", label: "Answer" },
+    });
+    const idea = () => srv.db.state.suggestions.find((s) => s.id === "sug_land_funknetz")!;
+    const { user, drawer } = await openDrawer();
+    const question = within(drawer).getByRole("group", { name: FUNKNETZ });
+    expect(within(question).getAllByRole("button").map((b) => b.textContent)).toEqual(["Yes", "Other state…", "Don't know"]);
+    await user.click(within(question).getByRole("button", { name: "Don't know" }));
+    await waitFor(() => expect(idea().status).toBe("dismissed"));
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([{ method: "PATCH", path: "/suggestions/sug_land_funknetz", body: { status: "dismissed" } }]);
+    expect(await screen.findByText("Okay — nationwide holidays for FunkNetz Mobil GmbH")).toBeInTheDocument();
+    expect(screen.getByText("Their dates stay the earlier ones. You can choose their state any time in their details.")).toBeInTheDocument();
+    // the drawer keeps asking, without "Don't know"; nothing was set; the keyboard is on the State heading, not on Yes
+    await waitFor(() => expect(within(question).queryByRole("button", { name: "Don't know" })).toBeNull());
+    expect(within(drawer).getByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
+    expect(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region).toBeNull();
+    await waitFor(() => expect(within(drawer).getByRole("heading", { name: "State" })).toHaveFocus());
+
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(idea().status).toBe("new"));
+    expect(await within(question).findByRole("button", { name: "Don't know" })).toBeInTheDocument();
+  });
+
+  it("opened to answer (`state=ask`) focuses the State heading, never Yes; to choose (`state=choose`) the picker", async () => {
+    useMockApi();
+    const ask = await openDrawer("/?party=pty_funknetz&state=ask");
+    await waitFor(() => expect(within(ask.drawer).getByRole("heading", { name: "State" })).toHaveFocus());
+    expect(within(ask.drawer).getByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
+    // read once: a reload doesn't do it again
+    await waitFor(() => expect(ask.router.state.location.search).toBe("?party=pty_funknetz"));
+    ask.unmount();
+
+    const choose = await openDrawer("/?party=pty_funknetz&state=choose");
+    await waitFor(() => expect(choose.picker).toHaveFocus());
+    expect(within(choose.drawer).queryByRole("group", { name: FUNKNETZ })).toBeNull(); // they said "Other state…"
+    await waitFor(() => expect(choose.router.state.location.search).toBe("?party=pty_funknetz"));
+  });
+});
+
 describe("drawer history", () => {
   function Opener() {
     const { open, partyId } = usePartyDrawer();
@@ -338,5 +498,32 @@ describe("drawer history", () => {
     // one more Back leaves /today (no second copy of it in the history)
     await act(() => router.navigate(-1));
     expect(router.state.location.pathname).toBe("/inbox");
+  });
+
+  it("opens at their state with `state` (to answer or to choose), and another opening drops it", async () => {
+    function StateOpener() {
+      const { open } = usePartyDrawer();
+      return (
+        <>
+          <button type="button" onClick={() => open("pty_funknetz", { state: "choose" })}>
+            choose
+          </button>
+          <button type="button" onClick={() => open("pty_funknetz", { state: "ask" })}>
+            ask
+          </button>
+          <button type="button" onClick={() => open("pty_wohnbau")}>
+            plain
+          </button>
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(<StateOpener />, { route: "/documents/doc_phone" });
+    await user.click(screen.getByRole("button", { name: "choose" }));
+    expect(router.state.location.search).toBe("?party=pty_funknetz&state=choose");
+    await user.click(screen.getByRole("button", { name: "ask" }));
+    expect(router.state.location.search).toBe("?party=pty_funknetz&state=ask");
+    await user.click(screen.getByRole("button", { name: "plain" }));
+    expect(router.state.location.search).toBe("?party=pty_wohnbau");
   });
 });

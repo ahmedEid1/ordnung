@@ -2,17 +2,17 @@
  * Everything that needs the person's eyes, right under the verdict: the scam banner, the
  * hidden-text banner, the "get advice" card of a high-stakes letter (a court order, a dismissal, a
  * landlord's letter), "get advice" when the letter can only be challenged in court (or it is
- * unclear how), "Please check" to-dos, the "When did this letter arrive?" question and any other
- * warnings from reading the letter.
+ * unclear how), "Please check" to-dos, the "When did this letter arrive?" question, the question about
+ * the sender's state the postcode on the letter suggests, and any other warnings from reading the letter.
  */
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { ArrowRight, CalendarCheck, Check, EyeOff, Pencil, Scale, ShieldAlert, TriangleAlert, X } from "lucide-react";
-import type { Document, DocumentDetail, Item, Suggestion } from "@/api/types";
+import type { Document, DocumentDetail, Item, Party, RegionSuggestion, Suggestion } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { qk, useUpdateDocument, useUpdateSuggestion } from "@/api/hooks";
-import { cn } from "@/lib/utils";
+import { cn, plural } from "@/lib/utils";
 import { GROUNDING_COPY } from "@/lib/copy";
 import { daysUntil, formatDate, glueText, toISODate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
@@ -26,12 +26,15 @@ import { quoteLanguage } from "@/components/ui/Receipt";
 import { toast } from "@/components/ui/Toast";
 import { focusAfterLeaving } from "@/features/today/focus";
 import { useLetterLanguage } from "./WhyThisDate";
-import { arrivalSavedNote, isCourtServed, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
+import { actionDate, arrivalSavedNote, isCourtServed, isOpenItem, isServed, MAY_BE_PUBLIC_KINDS, needsArrivalDate, needsCheck, scamSuggestion } from "./verdict";
 import { HIGH_STAKES_KINDS } from "@/api/types";
 import { useItemActions } from "./actions";
 import { useEvidence } from "./EvidenceContext";
 import { LetterAdviceCard } from "./LetterAdvice";
 import { DEMO_NOTE } from "@/mocks/mode";
+import { usePartyDrawer } from "@/lib/party-drawer";
+import { SenderLandQuestion } from "@/features/party/SenderLandQuestion";
+import { LAND_WAIT_REASON, landWait } from "@/features/party/sender-land";
 
 export const SAFE_NOTE = "No warning does not mean it is safe.";
 
@@ -143,6 +146,8 @@ function otherWarnings(doc: Document, items: Item[]): string[] {
 
 const WARNINGS_ID = "letter-warnings";
 const checkHeadingId = (itemId: string) => `check-${itemId}`;
+/** The heading of the card asking for the sender's state (a to-do's card is `check-<item id>`). */
+const LAND_HEADING_ID = "check-land";
 
 /**
  * A "Please check" card is about to leave (confirmed, dated, done or dismissed): once it has, focus goes to the card
@@ -169,6 +174,10 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
   const advice = detail.advice && !scam ? <LetterAdviceCard key="letter-advice" advice={detail.advice} doc={doc} party={detail.party} /> : null;
   const urgent = Boolean(detail.advice?.urgent);
 
+  // the state the postcode on the letter suggests, while one of its dates may change with it (ADR 0019)
+  const { party, region_suggestion: land } = detail;
+  const askLand = !scam && party && !party.region && land && !land.declined && land.waiting > 0 ? { party, land } : null;
+
   const blocks = [
     // the Idea's own list and count (the API's `scam_signs`); the letter's warnings where there is none
     scam ? <ScamBanner key="scam" suggestion={scam} doc={doc} reasons={detail.scam_signs?.length ? detail.scam_signs : warnings} /> : null,
@@ -178,6 +187,7 @@ export function DocumentWarnings({ detail }: { detail: DocumentDetail }) {
     arrival.length ? (
       <ArrivalQuestion key="arrival" doc={doc} items={arrival} mayBePublic={Boolean(detail.party && MAY_BE_PUBLIC_KINDS.includes(detail.party.kind))} />
     ) : null,
+    askLand ? <SenderLandCheck key="land" detail={detail} party={askLand.party} suggestion={askLand.land} /> : null,
     ...checks.map((it) => <PleaseCheckItem key={it.id} item={it} scam={Boolean(scam)} />),
     !scam && general.length ? <GeneralWarnings key="general" warnings={general} /> : null,
     urgent ? null : advice,
@@ -500,6 +510,61 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
         </div>
       </div>
     </form>
+  );
+}
+
+/** What confirming the sender's state did to the letter's dates: the first one that moved, or that none did. */
+function movedNote(before: ReadonlyMap<string, string | null>, after: readonly Item[]): string {
+  const moved = after.flatMap((i) => {
+    const was = before.get(i.id);
+    const now = actionDate(i);
+    return was && now && was !== now ? [{ title: i.title, was, now }] : [];
+  });
+  if (!moved.length) return "No date on this letter moved.";
+  const { title, was, now } = moved[0]!;
+  const first = `“${title}” moved from ${formatDate(was, { style: "short" })} to ${formatDate(now, { style: "short" })}.`;
+  return moved.length > 1 ? `${first} ${plural(moved.length - 1, "more date")} on this letter moved too.` : first;
+}
+
+/**
+ * "Is TechMarkt Online GmbH in Berlin? (12353 on their letter)" on a letter one of whose dates may change once the
+ * state the postcode on it suggests is confirmed (ADR 0019), after the arrival question: asked while their state
+ * isn't set, they didn't say "Don't know" and the letter shows no scam signs. Why comes from the letter's own
+ * dates, the strongest first. Yes takes the keyboard to the verdict (its date may have moved) and says which date
+ * moved; "Other state…" opens their details at the State picker; "Don't know" hands the keyboard on as the card
+ * leaves.
+ */
+function SenderLandCheck({ detail, party, suggestion }: { detail: DocumentDetail; party: Party; suggestion: RegionSuggestion }) {
+  const qc = useQueryClient();
+  const drawer = usePartyDrawer();
+  const doc = detail.document;
+  const open = detail.items.filter(isOpenItem);
+  const why = landWait(open.flatMap((i) => i.computation?.warnings ?? []), suggestion.region);
+  const afterYes = async () => {
+    // the letter's dates as they were when Yes was tapped
+    const before = new Map(open.map((i) => [i.id, actionDate(i)]));
+    // the card leaves with the refetched letter: the verdict and its date take the keyboard, in view
+    const title = document.getElementById("verdict-title");
+    title?.focus({ preventScroll: true });
+    title?.scrollIntoView?.({ block: "start" });
+    const fresh = await qc
+      .fetchQuery({ queryKey: qk.documents.detail(doc.id), queryFn: () => api.document(doc.id), staleTime: 5_000 })
+      .catch(() => undefined);
+    return fresh ? movedNote(before, fresh.items) : null;
+  };
+  return (
+    <CheckCard headingId={LAND_HEADING_ID}>
+      <SenderLandQuestion
+        party={party}
+        suggestion={suggestion}
+        place="card"
+        onOther={() => drawer.open(party.id, { state: "choose" })}
+        afterYes={afterYes}
+        onDontKnow={() => focusAfterLeaving(() => Array.from(document.querySelectorAll<HTMLElement>(`#${WARNINGS_ID} h2`)), LAND_HEADING_ID, "todos-title")}
+      >
+        {LAND_WAIT_REASON[why ?? "holiday"]}
+      </SenderLandQuestion>
+    </CheckCard>
   );
 }
 

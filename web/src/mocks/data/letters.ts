@@ -240,7 +240,7 @@ export const LETTERS: Record<string, LetterSpec> = {
 
   doc_phone: {
     brand: { name: "FunkNetz Mobil", color: "#d4145a", tagline: "Netz, das mitdenkt.", mark: "wave" },
-    senderLine: "FunkNetz Mobil GmbH · Postfach 10 20 30 · 12340 Musterstadt",
+    senderLine: "FunkNetz Mobil GmbH · Wellenweg 7 · 12351 Beispielhausen",
     recipient: RECIPIENT,
     info: [
       ["Datum", "15.10.2024"],
@@ -507,7 +507,7 @@ export const LETTERS: Record<string, LetterSpec> = {
 
   doc_tm_invoice: {
     brand: { name: "TechMarkt", color: "#f28c00", tagline: "Online-Shop für Technik", mark: "square" },
-    senderLine: "TechMarkt Online GmbH · Handelsstraße 50 · 12341 Musterstadt",
+    senderLine: "TechMarkt Online GmbH · Handelsstraße 88 · 12353 Beispielburg",
     recipient: RECIPIENT,
     info: [
       ["Datum", "20.08.2026"],
@@ -536,7 +536,7 @@ export const LETTERS: Record<string, LetterSpec> = {
 
   doc_tm_dunning: {
     brand: { name: "TechMarkt", color: "#f28c00", tagline: "Online-Shop für Technik", mark: "square" },
-    senderLine: "TechMarkt Online GmbH · Handelsstraße 50 · 12341 Musterstadt",
+    senderLine: "TechMarkt Online GmbH · Handelsstraße 88 · 12353 Beispielburg",
     recipient: RECIPIENT,
     info: [
       ["Datum", "18.09.2026"],

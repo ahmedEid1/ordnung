@@ -197,6 +197,22 @@ describe("How dates are computed", () => {
     expect(screen.getByRole("heading", { level: 3, name: "Price increases" })).toHaveFocus();
   });
 
+  it("says a sender's state is nationwide until set or confirmed, and credits the postcode data (CC BY 4.0)", async () => {
+    useMockApi();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=rules" });
+    await screen.findByRole("navigation", { name: "Rule topics" });
+    expect(
+      screen.getByText(
+        "Delivery days, month ends, weekends and public holidays (nationwide ones until you set a sender's state or answer Ordnung's question about it) — the earlier date when unsure.",
+      ),
+    ).toBeInTheDocument();
+    const credit = screen.getByText(/^State suggestions come from the postcode on a letter:/);
+    // (each link says, to screen readers only, that it opens in a new tab)
+    expect(credit.textContent!.replace(/ \(opens in a new tab\)/g, "")).toBe("State suggestions come from the postcode on a letter: GeoNames postal codes (CC BY 4.0).");
+    expect(within(credit).getByRole("link", { name: "GeoNames postal codes (opens in a new tab)" })).toHaveAttribute("href", "https://www.geonames.org/");
+    expect(within(credit).getByRole("link", { name: "CC BY 4.0 (opens in a new tab)" })).toHaveAttribute("href", "https://creativecommons.org/licenses/by/4.0/");
+  });
+
   it("shows each source of a long citation as its own chip that may wrap", async () => {
     useMockApi();
     const client = makeTestQueryClient();

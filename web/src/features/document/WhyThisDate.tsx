@@ -18,10 +18,15 @@ import { dueDateLabel, sendByLabel } from "./dateLabels";
 
 /**
  * How the rules engine says a date waits for the sender's Land: a regional holiday may move it
- * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts), or a Land authority's own delivery rule may
- * (`rules.delivery`: "… we couldn't confirm this sender's, so we counted 3 days").
+ * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts; counted backwards it says `REGION_EARLIER`: the date
+ * may then be a day late), or a Land authority's own delivery rule may (`rules.delivery`: "… we couldn't confirm
+ * this sender's, so we counted 3 days").
  */
-const LAND_UNKNOWN = { start: "Holiday region unknown", threeDays: "couldn't confirm this sender's" } as const;
+export const LAND_UNKNOWN = {
+  start: "Holiday region unknown",
+  earlier: "where the deadline would be earlier",
+  threeDays: "couldn't confirm this sender's",
+} as const;
 
 /** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
 const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
@@ -116,7 +121,7 @@ export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">,
  * The receipt closes first (`close`): on a phone it is a modal sheet, which would keep the keyboard from the drawer
  * opened over it (final check of the fix wave: Tab went round the sheet's three buttons, never to the State picker).
  */
-function SenderLandNote({ party, close }: { party: Party; close?: () => void }) {
+export function SenderLandNote({ party, close }: { party: Party; close?: () => void }) {
   const drawer = usePartyDrawer();
   return (
     <p className="flex items-start gap-1.5 text-sm leading-relaxed text-muted">
