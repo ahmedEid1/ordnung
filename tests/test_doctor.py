@@ -225,7 +225,9 @@ def test_a_data_folder_that_does_not_exist_yet_is_fine(tmp_path: Path) -> None:
     assert not (tmp_path / "new").exists()
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason="root can write anywhere")
+@pytest.mark.skipif(
+    sys.platform == "win32" or os.geteuid() == 0, reason="root (and Windows: no folder modes) writes anywhere"
+)
 def test_a_read_only_data_folder_fails(tmp_path: Path) -> None:
     locked = tmp_path / "locked"
     locked.mkdir()

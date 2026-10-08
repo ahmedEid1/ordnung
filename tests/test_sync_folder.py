@@ -6,6 +6,7 @@ from __future__ import annotations
 import errno
 import io
 import os
+import sys
 import threading
 import time
 from pathlib import Path
@@ -84,8 +85,8 @@ def test_folder_rules(tmp_path: Path, paths: Paths) -> None:
 
 
 def test_a_folder_that_cant_be_written_is_refused(tmp_path: Path, paths: Paths) -> None:
-    if os.geteuid() == 0:
-        pytest.skip("root writes anywhere")
+    if sys.platform == "win32" or os.geteuid() == 0:
+        pytest.skip("root (and Windows: no folder modes) writes anywhere")
     locked = tmp_path / "locked"
     locked.mkdir()
     locked.chmod(0o500)
@@ -128,7 +129,8 @@ def test_names_in_the_folder_follow_the_patterns(anna: Computer) -> None:
             assert len(rel.name) == 32
         else:
             assert len(rel.parts[1]) == 2 and len(rel.name) == 30
-        assert os.stat(path).st_mode & 0o077 == 0
+        if os.name == "posix":  # Windows has no such modes
+            assert os.stat(path).st_mode & 0o077 == 0
 
 
 def test_own_temp_files_go_foreign_names_stay(anna: Computer) -> None:  # I7, I9, F16
