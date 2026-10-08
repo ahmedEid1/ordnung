@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import importlib
 import json
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -166,8 +168,11 @@ def test_every_data_folder_entry_is_classified(paths: Paths) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def _copy(store: Store) -> sqlite3.Connection:
-    return database_copy(store.db_path)
+@contextlib.contextmanager
+def _copy(store: Store) -> Iterator[sqlite3.Connection]:
+    """The in-memory copy a save scrubs, closed after the block."""
+    with contextlib.closing(database_copy(store.db_path)) as copy:
+        yield copy
 
 
 def test_scrub_removes_what_stays_here(store: Store) -> None:
@@ -186,29 +191,29 @@ def test_scrub_removes_what_stays_here(store: Store) -> None:
     store.log_activity("phone.paired", "Paired Anna's iPhone at 192.168.1.20")
     store.log_activity("folder.problem", "Ordnung can't read /home/anna/Scans")
     store.log_activity("document.added", "Added “Rechnung”")
-    copy = _copy(store)
-    scrub(copy)
-    keys = {row[0] for row in copy.execute("SELECT key FROM meta")}
-    assert not keys & (LOCAL_META | DEMO_META)
-    assert "profile" in keys
-    settings = AppSettings.model_validate_json(
-        copy.execute("SELECT value FROM meta WHERE key='settings'").fetchone()[0]
-    )
-    assert settings.inbox_dir is None and not settings.inbox_auto_read and settings.concurrency == 2
-    assert settings.model == "opus"  # travels
-    kinds = [row[0] for row in copy.execute("SELECT kind FROM activity")]
-    assert kinds == ["document.added"]  # finding 25: backups, phone and folder rows stay here
-    assert b"/home/anna/Scans" not in copy.serialize() and b"192.168.1.20" not in copy.serialize()
+    with _copy(store) as copy:
+        scrub(copy)
+        keys = {row[0] for row in copy.execute("SELECT key FROM meta")}
+        assert not keys & (LOCAL_META | DEMO_META)
+        assert "profile" in keys
+        settings = AppSettings.model_validate_json(
+            copy.execute("SELECT value FROM meta WHERE key='settings'").fetchone()[0]
+        )
+        assert settings.inbox_dir is None and not settings.inbox_auto_read and settings.concurrency == 2
+        assert settings.model == "opus"  # travels
+        kinds = [row[0] for row in copy.execute("SELECT kind FROM activity")]
+        assert kinds == ["document.added"]  # finding 25: backups, phone and folder rows stay here
+        assert b"/home/anna/Scans" not in copy.serialize() and b"192.168.1.20" not in copy.serialize()
 
 
 def test_the_demo_flag_is_not_reset(store: Store) -> None:  # finding 19
     store.save_settings(AppSettings(demo=True))
-    copy = _copy(store)
-    scrub(copy)
-    settings = AppSettings.model_validate_json(
-        copy.execute("SELECT value FROM meta WHERE key='settings'").fetchone()[0]
-    )
-    assert settings.demo
+    with _copy(store) as copy:
+        scrub(copy)
+        settings = AppSettings.model_validate_json(
+            copy.execute("SELECT value FROM meta WHERE key='settings'").fetchone()[0]
+        )
+        assert settings.demo
 
 
 def test_running_jobs_travel_as_queued(store: Store) -> None:  # F34
@@ -217,9 +222,9 @@ def test_running_jobs_travel_as_queued(store: Store) -> None:  # F34
     )
     job = store.enqueue_job("ingest", doc.id)
     store._conn().execute("UPDATE jobs SET status='running' WHERE id=?", (job.id,))
-    copy = _copy(store)
-    scrub(copy)
-    assert copy.execute("SELECT status FROM jobs").fetchone()[0] == "queued"
+    with _copy(store) as copy:
+        scrub(copy)
+        assert copy.execute("SELECT status FROM jobs").fetchone()[0] == "queued"
 
 
 def test_stored_paths_travel_with_slashes(store: Store) -> None:
@@ -229,10 +234,10 @@ def test_stored_paths_travel_with_slashes(store: Store) -> None:
     store.add_document(
         sha256="c" * 64, filename="y.pdf", mime="application/pdf", file_path="C:\\Users\\x.pdf"
     )
-    copy = _copy(store)
-    scrub(copy)
-    paths = sorted(row[0] for row in copy.execute("SELECT file_path FROM documents"))
-    assert paths == ["C:\\Users\\x.pdf", "files/bb/x.pdf"]
+    with _copy(store) as copy:
+        scrub(copy)
+        paths = sorted(row[0] for row in copy.execute("SELECT file_path FROM documents"))
+        assert paths == ["C:\\Users\\x.pdf", "files/bb/x.pdf"]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -243,12 +248,9 @@ def test_stored_paths_travel_with_slashes(store: Store) -> None:
 def _digest(
     store: Store, files: list[tuple[str, str]] | None = None, calendar: CalendarHandover | None = None
 ) -> str:
-    copy = _copy(store)
-    try:
+    with _copy(store) as copy:
         scrub(copy)
         return state_digest(copy, files or [], calendar)
-    finally:
-        copy.close()
 
 
 def test_the_digest_ignores_noise_and_sees_real_edits(store: Store) -> None:
@@ -298,12 +300,11 @@ def test_the_counter_moves_only_for_the_persons_writes(store: Store) -> None:  #
 
 
 def _staged_from(store: Store, tmp: Path) -> sqlite3.Connection:
-    copy = _copy(store)
-    scrub(copy)
-    target = tmp / "staged.db"
-    disk = sqlite3.connect(target, isolation_level=None)
-    copy.backup(disk)
-    copy.close()
+    with _copy(store) as copy:
+        scrub(copy)
+        target = tmp / "staged.db"
+        disk = sqlite3.connect(target, isolation_level=None)
+        copy.backup(disk)
     return disk
 
 

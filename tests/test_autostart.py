@@ -34,6 +34,13 @@ PY = "/opt/ordnung/venv/bin/python3"
 PATH_ENV = "/home/sam/.local/bin:/usr/local/bin:/usr/bin:/bin"
 runner = CliRunner(env={"COLUMNS": "200", "NO_COLOR": "1"})
 
+#: Linux's and macOS's entries, simulated on this computer. On Windows a POSIX data folder gains a drive
+#: (/home/sam becomes D:\home\sam) and a symlink reads back with a \\?\ prefix, so the entry is never
+#: found unchanged there; Windows' own entry has no link, and its tests run everywhere.
+POSIX_ONLY = pytest.mark.skipif(
+    sys.platform == "win32", reason="simulates a POSIX data folder and its symlink, which Windows can't"
+)
+
 
 def linux_env(home: Path) -> dict[str, str]:
     return {"PATH": PATH_ENV, "HOME": str(home)}
@@ -44,6 +51,7 @@ def linux_env(home: Path) -> dict[str, str]:
 # --------------------------------------------------------------------------------------------------
 
 
+@POSIX_ONLY
 def test_linux_writes_a_systemd_user_unit_and_the_enable_link(tmp_path: Path) -> None:
     home = tmp_path / "home"
     entry = plan(
@@ -136,6 +144,7 @@ def test_no_path_no_environment_line(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
+@POSIX_ONLY
 def test_macos_writes_a_launch_agent(tmp_path: Path) -> None:
     home = tmp_path / "Users" / "sam"
     entry = plan(
@@ -289,7 +298,7 @@ def test_the_telemetry_opt_out_set_at_enable_goes_into_the_entry(tmp_path: Path)
 # --------------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("platform", ["linux", "darwin", "win32"])
+@pytest.mark.parametrize("platform", [pytest.param("linux", marks=POSIX_ONLY), "darwin", "win32"])
 def test_enable_is_idempotent_and_the_last_folder_wins(tmp_path: Path, platform: str) -> None:
     env = {"PATH": "/usr/bin", "APPDATA": str(tmp_path / "roaming")}
     first = plan(tmp_path / "one", platform=platform, env=env, home=tmp_path, python=PY)
@@ -311,23 +320,27 @@ def test_enable_is_idempotent_and_the_last_folder_wins(tmp_path: Path, platform:
     assert not state(tmp_path / "two", platform=platform, env=env, home=tmp_path).enabled
 
 
-def test_a_moved_python_makes_the_entry_stale(tmp_path: Path) -> None:
-    env = {"PATH": "/usr/bin"}
-    enable(plan(tmp_path / "d", platform="linux", env=env, home=tmp_path, python=PY))
-    assert state(tmp_path / "d", platform="linux", env=env, home=tmp_path, python=PY).current
+@pytest.mark.parametrize("platform", [pytest.param("linux", marks=POSIX_ONLY), "darwin", "win32"])
+def test_a_moved_python_makes_the_entry_stale(tmp_path: Path, platform: str) -> None:
+    env = {"PATH": "/usr/bin", "APPDATA": str(tmp_path / "roaming")}
+    enable(plan(tmp_path / "d", platform=platform, env=env, home=tmp_path, python=PY))
+    assert state(tmp_path / "d", platform=platform, env=env, home=tmp_path, python=PY).current
     assert not state(
-        tmp_path / "d", platform="linux", env=env, home=tmp_path, python="/usr/bin/python3"
+        tmp_path / "d", platform=platform, env=env, home=tmp_path, python="/usr/bin/python3"
     ).current
     # another PATH in this terminal changes nothing
-    assert state(tmp_path / "d", platform="linux", env={"PATH": "/x"}, home=tmp_path, python=PY).current
+    other_path = {**env, "PATH": "/x"}
+    assert state(tmp_path / "d", platform=platform, env=other_path, home=tmp_path, python=PY).current
 
 
-def test_a_custom_port_is_part_of_the_entry(tmp_path: Path) -> None:
-    env = {"PATH": "/usr/bin"}
-    enable(plan(tmp_path / "d", port=9001, platform="linux", env=env, home=tmp_path, python=PY))
-    assert state(tmp_path / "d", platform="linux", env=env, home=tmp_path, python=PY).current
+@pytest.mark.parametrize("platform", [pytest.param("linux", marks=POSIX_ONLY), "darwin", "win32"])
+def test_a_custom_port_is_part_of_the_entry(tmp_path: Path, platform: str) -> None:
+    env = {"PATH": "/usr/bin", "APPDATA": str(tmp_path / "roaming")}
+    enable(plan(tmp_path / "d", port=9001, platform=platform, env=env, home=tmp_path, python=PY))
+    assert state(tmp_path / "d", platform=platform, env=env, home=tmp_path, python=PY).current
 
 
+@POSIX_ONLY
 def test_a_missing_link_is_restored_and_disable_leaves_other_units(tmp_path: Path) -> None:
     env = {"PATH": "/usr/bin"}
     entry = plan(tmp_path / "d", platform="linux", env=env, home=tmp_path, python=PY)
@@ -373,6 +386,7 @@ def invoke(*args: str) -> Any:
     return runner.invoke(app, list(args))
 
 
+@POSIX_ONLY
 def test_the_commands_print_what_they_write(fake_home: Path, tmp_path: Path) -> None:
     folder = tmp_path / "data"
     unit = fake_home / ".config" / "systemd" / "user" / UNIT_NAME
@@ -404,6 +418,37 @@ def test_the_commands_print_what_they_write(fake_home: Path, tmp_path: Path) -> 
     assert off.exit_code == 0 and "Removed" in off.output and "systemctl --user stop" in off.output
     assert not unit.exists()
     assert "there is no" in invoke("autostart", "disable").output
+    assert "Starts at login: no" in invoke("autostart", "status", "--data-dir", str(folder)).output
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the commands as they run on Windows")
+def test_the_commands_print_what_they_write_on_windows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    roaming = tmp_path / "AppData" / "Roaming"
+    monkeypatch.setenv("APPDATA", str(roaming))
+    folder = tmp_path / "data"
+    cmd = roaming / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / STARTUP_NAME
+
+    dry = invoke("autostart", "enable", "--data-dir", str(folder), "--dry-run")
+    assert dry.exit_code == 0, dry.output
+    assert str(cmd) in dry.output and 'start "Ordnung" /min' in dry.output
+    assert "Nothing was written" in dry.output and not cmd.exists()
+
+    done = invoke("autostart", "enable", "--data-dir", str(folder))
+    assert done.exit_code == 0, done.output
+    assert cmd.is_file() and "Written." in done.output
+
+    again = invoke("autostart", "enable", "--data-dir", str(folder))
+    assert "Already set up like this." in again.output
+
+    status = invoke("autostart", "status", "--data-dir", str(folder))
+    assert status.exit_code == 0
+    assert "Starts at login: yes (Startup folder)" in status.output and str(folder) in status.output
+    assert "doesn't start this Ordnung" not in status.output
+
+    off = invoke("autostart", "disable")
+    assert off.exit_code == 0 and f"Removed {cmd}" in off.output and not cmd.exists()
     assert "Starts at login: no" in invoke("autostart", "status", "--data-dir", str(folder)).output
 
 
