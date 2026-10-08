@@ -42,9 +42,9 @@ import shutil
 import signal
 import tempfile
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, TypeVar
 
 from ordnung.llm.base import (
     INTERACTIVE_PURPOSES,
@@ -72,6 +72,7 @@ _RESET_RE = re.compile(r"reset[s]? (?:at|in)\s+([^.\n|]+)", re.I)
 _STREAM_LIMIT = 32 * 1024 * 1024
 _STDERR_KEEP = 64 * 1024  # only the end of stderr is ever shown
 _EXIT_WAIT_S = 30.0  # how long an answered call may take to exit
+_T = TypeVar("_T")
 #: The oldest Claude Code Ordnung works with (``ordnung doctor`` and the app's status check hold it to the same).
 MIN_CLAUDE_VERSION: tuple[int, int, int] = (2, 1, 0)
 _VERSION_RE = re.compile(r"(\d+)\.(\d+)\.(\d+)")
@@ -435,7 +436,7 @@ class ClaudeCLIBackend:
             try:
                 proc.stdin.write(line.encode("utf-8"))
                 try:
-                    await asyncio.wait_for(proc.stdin.drain(), timeout=req.timeout_s)
+                    await _within(req.timeout_s, proc.stdin.drain())
                 except TimeoutError as exc:
                     raise ClaudeTimeout(
                         f"Claude did not read the request within {int(req.timeout_s)} s"
@@ -446,7 +447,7 @@ class ClaudeCLIBackend:
                     if remaining <= 0:
                         raise ClaudeTimeout(f"Claude did not answer within {int(req.timeout_s)} s")
                     try:
-                        raw = await asyncio.wait_for(proc.stdout.readline(), timeout=remaining)
+                        raw = await _within(remaining, proc.stdout.readline())
                     except TimeoutError as exc:
                         raise ClaudeTimeout(f"Claude did not answer within {int(req.timeout_s)} s") from exc
                     except ValueError:  # a line over _STREAM_LIMIT (dropped by the reader): skip it
@@ -465,7 +466,7 @@ class ClaudeCLIBackend:
                     for ev in translate(msg):
                         yield ev
                 try:
-                    await asyncio.wait_for(proc.wait(), timeout=_EXIT_WAIT_S)
+                    await _within(_EXIT_WAIT_S, proc.wait())
                 except TimeoutError as exc:
                     raise ClaudeTimeout("Claude did not exit after answering") from exc
                 _kill_group(proc)  # MCP servers it started must not outlive it
@@ -501,6 +502,13 @@ class ClaudeCLIBackend:
                 backend=self.name,
             ),
         )
+
+
+async def _within(seconds: float, awaitable: Awaitable[_T]) -> _T:
+    """``asyncio.wait_for``, but a cancel is never lost: on Python 3.11 ``wait_for`` drops one that
+    lands just as the awaited read completes (CPython gh-86296), and a stopped call would run on."""
+    async with asyncio.timeout(seconds):
+        return await awaitable
 
 
 async def _read_tail(stream: asyncio.StreamReader, keep: int) -> bytes:

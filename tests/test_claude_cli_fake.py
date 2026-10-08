@@ -486,6 +486,26 @@ async def test_cancelling_a_call_kills_the_whole_process_group(fake: FakeClaude,
     assert await _gone(call["pid"], call["child_pid"])
 
 
+async def test_a_cancel_that_lands_as_a_line_arrives_is_not_lost() -> None:
+    """On Python 3.11 ``asyncio.wait_for`` drops a cancel that lands just as the read it waits for
+    completes (CPython gh-86296), and a stopped call would read on until claude exits by itself."""
+    reader = asyncio.StreamReader()
+    lines: list[bytes] = []
+
+    async def read_lines() -> None:
+        while raw := await claude_cli._within(600, reader.readline()):
+            lines.append(raw)
+
+    task = asyncio.create_task(read_lines())
+    await asyncio.sleep(0.01)  # waiting for a line
+    reader.feed_data(b'{"type": "system", "subtype": "init"}\n')
+    await asyncio.sleep(0)  # the read completes ...
+    task.cancel()  # ... and the cancel lands before the loop resumes
+    reader.feed_eof()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
 async def test_stopping_a_stream_early_kills_the_process_group(fake: FakeClaude) -> None:
     """Ask's reader goes away (the browser closed the page) after the first event."""
     fake.play({"child": True, "transcript": "ask_stream.jsonl", "hang": True})

@@ -15,6 +15,7 @@ from ordnung.config import Paths
 from ordnung.models import AppSettings
 from ordnung.sync import KEY_FILE_RE, SyncError
 from ordnung.sync.folder import (
+    MAX_STUCK,
     FileInfo,
     FolderUnreachable,
     SyncFolder,
@@ -322,9 +323,9 @@ def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
     threading.Event().wait(0.05)
 
 
-def test_a_hung_folder_leaves_one_thread_behind_however_often_it_is_read(anna: Computer) -> None:
-    """Audit: every look at a hung folder used to leave one more thread stuck in it. While the stuck
-    call hangs, the folder is unreachable at once; once it returns, the same thread goes on."""
+def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: Computer) -> None:
+    """Audit: every look at a hung folder used to leave one more thread stuck in it. A path whose call
+    hangs is unreachable at once, at most MAX_STUCK calls hang, and once they return their threads go."""
     anna.connect()
     hanging = HangingFs(hang=("listdir", "stat"))
     anna.s.folder.fs = TimedFs(hanging, timeout=0.2)
@@ -336,11 +337,52 @@ def test_a_hung_folder_leaves_one_thread_behind_however_often_it_is_read(anna: C
             outcome = anna.round()
             assert outcome.decision.problem.code == "folder_unreachable"  # type: ignore[attr-defined]
         assert time.monotonic() - started < 0.2, "unreachable at once, without waiting for a timeout"
-        assert _folder_threads() <= before + 1
+        assert _folder_threads() <= before + MAX_STUCK
     finally:
         hanging.release()
     assert _problem_once_answered(anna) is None
-    assert _folder_threads() <= before + 1
+    deadline = time.monotonic() + 2
+    while _folder_threads() > before + 1:  # a released thread takes the next call, or ends
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+
+
+def test_one_hung_file_holds_up_only_calls_on_that_file(tmp_path: Path) -> None:
+    """Review: one read that hangs (an online-only file the provider doesn't bring) stopped every later
+    call, this computer's own saves included. Calls on that file give up at once; others go on."""
+    stalled = tmp_path / "stalled"
+    stalled.write_bytes(b"x")
+    hanging = HangingFs(hang=("open_read",), paths=[stalled])
+    timed = TimedFs(hanging, timeout=0.2)
+    before = _folder_threads()
+    try:
+        with pytest.raises(FolderUnreachable):
+            timed.open_read(stalled)
+        for _ in range(5):
+            started = time.monotonic()
+            with pytest.raises(FolderUnreachable):
+                timed.open_read(stalled)
+            assert time.monotonic() - started < 0.2, "the same file gives up at once"
+        with timed.open_new(tmp_path / "saved") as handle:
+            handle.write(b"saved")
+            timed.fsync(handle)
+        assert (tmp_path / "saved").read_bytes() == b"saved"
+        assert _folder_threads() <= before + 2  # the hung call's, and the one that goes on
+    finally:
+        hanging.release()
+
+
+def test_calls_hung_on_many_files_hold_a_bounded_number_of_threads(tmp_path: Path) -> None:
+    hanging = HangingFs(hang=("stat",))
+    timed = TimedFs(hanging, timeout=0.05)
+    before = _folder_threads()
+    try:
+        for n in range(MAX_STUCK + 5):
+            with pytest.raises(FolderUnreachable):
+                timed.stat(tmp_path / f"file-{n}")
+        assert _folder_threads() <= before + MAX_STUCK
+    finally:
+        hanging.release()
 
 
 def test_sync_error_kinds_have_statuses() -> None:

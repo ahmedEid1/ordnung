@@ -7,8 +7,8 @@
 same seam for placing a pull's files into the data folder. :class:`TimedFs` puts a deadline on every
 operation (:data:`~ordnung.sync.FOLDER_OP_TIMEOUT_S`): a hung network share or a File Provider read
 raises :class:`FolderUnreachable` instead of holding everything behind it. The hung call keeps its
-thread; until it returns, every operation is unreachable at once (no second thread is started), and
-then the same thread goes on.
+thread until it returns; meanwhile that path is unreachable at once, other paths go on, and at most
+:data:`MAX_STUCK` calls hang at a time.
 
 **Writing** (:meth:`SyncFolder.write_object`, :meth:`SyncFolder.write_head`): a new temp file of this
 computer's own pattern ``.<tag><random>.tmp`` (``O_EXCL``, ``0600``), written, ``fsync``-ed (``F_FULLFSYNC``
@@ -72,6 +72,8 @@ PRIVATE_FILE_MODE = 0o600
 PRIVATE_DIR_MODE = 0o700
 REPLACE_TRIES = 5
 REPLACE_MAX_WAIT_S = 2.0
+#: How many hung folder calls may hold a thread at once (each until it returns); then every call gives up.
+MAX_STUCK = 4
 #: macOS ``SF_DATALESS``: an evicted iCloud Drive / File Provider file (real name and size, no data)
 SF_DATALESS = 0x40000000
 #: Windows: a cloud placeholder whose data comes on access, or an offline file
@@ -200,23 +202,27 @@ class RealFs:
         return os.lstat(path)
 
 
+_Work = queue.Queue[tuple[Callable[[], Any], "_Result"] | None]
+
+
 class _Deadline:
     """Runs one call at a time on a worker thread and waits at most ``timeout`` for it. A call that
-    hangs keeps the thread: until it returns, every call gives up at once, then the thread goes on."""
+    hangs keeps its thread until it returns; meanwhile a call on the same path gives up at once, and
+    other paths go on with a new thread, until :data:`MAX_STUCK` calls hang (then every call gives up)."""
 
     def __init__(self, timeout: float) -> None:
         self.timeout = timeout
         self._lock = threading.Lock()
-        self._work: queue.Queue[tuple[Callable[[], Any], _Result]] | None = None
-        self._stuck: _Result | None = None  # the call that timed out, until it returns
+        self._work: _Work | None = None
+        self._stuck: dict[object, tuple[_Result, _Work]] = {}  # calls that timed out, by path
 
-    def _worker(self) -> queue.Queue[tuple[Callable[[], Any], _Result]]:
+    def _worker(self) -> _Work:
         if self._work is None:
-            work: queue.Queue[tuple[Callable[[], Any], _Result]] = queue.Queue()
+            work: _Work = queue.Queue()
 
             def loop() -> None:
-                while True:
-                    call, result = work.get()
+                while (item := work.get()) is not None:
+                    call, result = item
                     try:
                         result.value = call()
                     except BaseException as exc:  # handed to the caller
@@ -227,16 +233,27 @@ class _Deadline:
             self._work = work
         return self._work
 
-    def run(self, call: Callable[[], T]) -> T:
+    def _settle(self) -> None:
+        """Forget hung calls that returned: their thread takes the next call, or ends."""
+        for key, (stuck, work) in list(self._stuck.items()):
+            if stuck.done.is_set():
+                del self._stuck[key]
+                if self._work is None:
+                    self._work = work
+                else:
+                    work.put(None)
+
+    def run(self, call: Callable[[], T], key: object = None) -> T:
         with self._lock:
-            if self._stuck is not None:
-                if not self._stuck.done.is_set():
-                    raise FolderUnreachable()  # still hangs: nothing waits behind it, no second thread
-                self._stuck = None
+            self._settle()
+            if key in self._stuck or len(self._stuck) >= MAX_STUCK:
+                raise FolderUnreachable()  # still hangs: nothing waits behind it, no more threads
             result = _Result()
-            self._worker().put((call, result))
+            work = self._worker()
+            work.put((call, result))
             if not result.done.wait(self.timeout):
-                self._stuck = result
+                self._stuck[key] = (result, work)
+                self._work = None  # that thread hangs: the next call gets another
                 raise FolderUnreachable()
         if result.error is not None:
             raise result.error
@@ -253,24 +270,25 @@ class _Result:
 class _TimedHandle:
     """A file handle whose reads and writes go through a :class:`_Deadline`."""
 
-    def __init__(self, handle: BinaryIO, deadline: _Deadline) -> None:
+    def __init__(self, handle: BinaryIO, deadline: _Deadline, path: Path) -> None:
         self._handle = handle
         self._deadline = deadline
+        self.path = path
 
     def read(self, size: int = -1) -> bytes:
-        return self._deadline.run(lambda: self._handle.read(size))
+        return self._deadline.run(lambda: self._handle.read(size), self.path)
 
     def write(self, data: bytes) -> int:
-        return self._deadline.run(lambda: self._handle.write(data))
+        return self._deadline.run(lambda: self._handle.write(data), self.path)
 
     def flush(self) -> None:
-        self._deadline.run(self._handle.flush)
+        self._deadline.run(self._handle.flush, self.path)
 
     def fileno(self) -> int:
         return self._handle.fileno()
 
     def close(self) -> None:
-        self._deadline.run(self._handle.close)
+        self._deadline.run(self._handle.close, self.path)
 
     def __enter__(self) -> _TimedHandle:
         return self
@@ -291,37 +309,40 @@ class TimedFs:
         self._deadline = _Deadline(timeout)
 
     def open_new(self, path: Path) -> BinaryIO:
-        handle = self._deadline.run(lambda: self.inner.open_new(path))
-        return _TimedHandle(handle, self._deadline)  # type: ignore[return-value]
+        handle = self._deadline.run(lambda: self.inner.open_new(path), path)
+        return _TimedHandle(handle, self._deadline, path)  # type: ignore[return-value]
 
     def open_read(self, path: Path) -> BinaryIO:
-        handle = self._deadline.run(lambda: self.inner.open_read(path))
-        return _TimedHandle(handle, self._deadline)  # type: ignore[return-value]
+        handle = self._deadline.run(lambda: self.inner.open_read(path), path)
+        return _TimedHandle(handle, self._deadline, path)  # type: ignore[return-value]
 
     def fsync(self, handle: BinaryIO) -> None:
-        inner = handle.raw if isinstance(handle, _TimedHandle) else handle
-        self._deadline.run(lambda: self.inner.fsync(inner))
+        if isinstance(handle, _TimedHandle):
+            inner, key = handle.raw, handle.path
+        else:
+            inner, key = handle, None
+        self._deadline.run(lambda: self.inner.fsync(inner), key)
 
     def replace(self, src: Path, dst: Path) -> None:
-        self._deadline.run(lambda: self.inner.replace(src, dst))
+        self._deadline.run(lambda: self.inner.replace(src, dst), dst)
 
     def unlink(self, path: Path) -> None:
-        self._deadline.run(lambda: self.inner.unlink(path))
+        self._deadline.run(lambda: self.inner.unlink(path), path)
 
     def fsync_dir(self, path: Path) -> None:
-        self._deadline.run(lambda: self.inner.fsync_dir(path))
+        self._deadline.run(lambda: self.inner.fsync_dir(path), path)
 
     def mkdir(self, path: Path) -> None:
-        self._deadline.run(lambda: self.inner.mkdir(path))
+        self._deadline.run(lambda: self.inner.mkdir(path), path)
 
     def rmdir(self, path: Path) -> None:
-        self._deadline.run(lambda: self.inner.rmdir(path))
+        self._deadline.run(lambda: self.inner.rmdir(path), path)
 
     def listdir(self, path: Path) -> list[str]:
-        return self._deadline.run(lambda: self.inner.listdir(path))
+        return self._deadline.run(lambda: self.inner.listdir(path), path)
 
     def stat(self, path: Path) -> os.stat_result:
-        return self._deadline.run(lambda: self.inner.stat(path))
+        return self._deadline.run(lambda: self.inner.stat(path), path)
 
 
 FULL_MESSAGE = "The sync folder (or the drive or account it is on) is full. Ordnung tries again later."

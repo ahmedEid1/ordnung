@@ -42,8 +42,10 @@ The first numbered release. Every install before it reports 0.1.0, the version o
   its network; it recommends the address on the router's network, and learns the router later when it
   couldn't read it at turn-on.
 - A phone is no longer signed out when two page loads cross the hourly sign-in change.
-- A sync folder that stops answering no longer leaves a thread behind on each look; until it answers,
-  Ordnung looks at it every 3 minutes instead of every 15 seconds.
+- A sync folder that stops answering no longer leaves a thread behind on each look: a file that hangs
+  is skipped at once until it answers, other files (this computer's own saves too) go on, and at most 4
+  calls wait at a time. Until the folder answers, Ordnung looks at it every 3 minutes instead of every
+  15 seconds.
 - Kept sync copies: forgetting a computer on a full disk is refused for lack of space instead of failing
   with an internal error, and the record of kept copies reaches the disk before it counts. Both now have
   direct tests.
