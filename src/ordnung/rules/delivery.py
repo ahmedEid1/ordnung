@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Literal
+from typing import Final, Literal
 
 from ordnung.models import ComputationStep
 from ordnung.rules import calendar_de, catalog
@@ -81,6 +81,14 @@ VWVFG_FOUR_DAY_FROM: dict[str, date] = {
     "SH": date(2025, 6, 10),
 }
 
+
+#: Why a general authority's letter counts as delivered on the 3rd day: its Land's own rule isn't confirmed,
+#: or the Land isn't known. Receipts carry it as a warning, and
+#: :func:`ordnung.rules.deadlines.waits_for_sender_land` reads it back.
+LAND_DAYS_UNCONFIRMED: Final = (
+    "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, "
+    "so we counted 3 days (the earlier date)."
+)
 
 #: Party kinds a reader may give a social-benefits agency: its name and remedy notice decide.
 _REFINABLE_KINDS = frozenset({"authority", "university", "insurer", "company", "other"})
@@ -278,11 +286,7 @@ def resolve_delivery(
         rule_id = _RULE_BY_SCOPE_CHANNEL[(scope, channel)] if scope else "delivery_scope_unknown"
         land_from = VWVFG_FOUR_DAY_FROM.get(calendar_de.normalize_region(region) or "")
         if days == 4 and scope in (None, "vwvfg") and (land_from is None or posted < land_from):
-            days, rule_id = 3, "vwvfg_land_days"
-            uncertainty = (
-                "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this "
-                "sender's, so we counted 3 days (the earlier date)."
-            )
+            days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"

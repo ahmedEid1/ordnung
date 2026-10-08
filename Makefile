@@ -1,8 +1,9 @@
 PY ?= .venv/bin/python
 UV ?= uv
 SAMPLES_MANIFEST = src/ordnung/demo/samples/manifest.json
+DE_ZIP ?= DE.zip
 
-.PHONY: install dev web-dev serve test lint typecheck check build-web openapi demo eval browser e2e ui-audit capture samples constraints clean
+.PHONY: install dev web-dev serve test lint typecheck check build-web openapi demo eval browser e2e ui-audit capture samples postcodes constraints clean
 
 install:            ## install backend (editable, dev extras, the versions CI pins) and frontend deps
 	$(UV) venv -q .venv || true
@@ -40,6 +41,9 @@ openapi:            ## regenerate web/openapi.json and TS types from the FastAPI
 
 samples:            ## regenerate the fictional sample life + eval dataset
 	$(PY) scripts/make_sample_life.py
+
+postcodes:          ## rebuild the postcode table from GeoNames' DE.zip (download it first; DE_ZIP=path, --check: CHECK=1)
+	$(PY) -I scripts/make_postcode_table.py $(DE_ZIP) $(if $(CHECK),--check)
 
 constraints:        ## re-pin what CI and `make install` install (CONSTRAINTS_ARGS=--upgrade for the newest); the samples' libraries keep their manifest's versions
 	$(PY) -c 'import json; env = json.load(open("$(SAMPLES_MANIFEST)"))["generator"]["environment"]; print(*(f"{name}=={env[name]}" for name in ("fpdf2", "fonttools", "pillow", "pypdfium2")), sep="\n")' > .sample-pins.txt
