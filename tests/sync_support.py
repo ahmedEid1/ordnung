@@ -5,6 +5,7 @@ and an in-memory password store, its lifespan running, and waiting for the agent
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -79,7 +80,8 @@ async def computer(
     **kwargs: Any,
 ) -> AsyncIterator[Api]:
     """An app on ``data_dir`` with the fake engine (or ``engine``) and an in-memory password store (its
-    lifespan runs when ``start``)."""
+    lifespan runs when ``start``). When the block ends, no engine call still uses the data folder — but
+    one the test made hang and never released."""
     async with api_for(data_dir, **kwargs) as api:
         agent = agent_of(api)
         engine = engine or FakeEngine()
@@ -88,10 +90,18 @@ async def computer(
         agent.secrets = store
         api.app.dependency_overrides[sync_routes.get_secrets] = lambda: store
         if not start:
-            yield api
+            try:
+                yield api
+            finally:
+                await agent.dispose()  # no lifespan stops the agent
             return
         async with lifespan(api.app):
             yield api
+        hang = getattr(engine, "hang", None)
+        if not (isinstance(hang, threading.Event) and not hang.is_set()):
+            # the app's stop waits for a running engine call only so long; on a slow runner (Windows)
+            # the next step, copying a data folder over this one, must not race the call
+            await eventually(lambda: not agent._thread.busy, within=30)
 
 
 async def eventually(check: Callable[[], Any], *, within: float = 15.0, step: float = 0.02) -> Any:
