@@ -4,6 +4,7 @@ confirmed; its published numbers are checked in test_docs_claims.py."""
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import dataclasses
 import json
@@ -21,15 +22,19 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from evals import conditions, report  # noqa: E402
-from evals.records import load_manifest  # noqa: E402
-from evals.run import MANIFEST_PATH  # noqa: E402
+from evals.records import load_manifest, select_entries  # noqa: E402
+from evals.run import DEFAULT_MODEL, MANIFEST_PATH  # noqa: E402
 from scripts.eval_without_land import (  # noqa: E402
     changed_dates,
     changed_with_suggestion,
     sender_land_suggested,
     sender_land_unknown,
+    split_numbers,
     suggestion_counts,
 )
+
+#: The published replay (``python -m scripts.eval_without_land --date 2026-10-08``).
+PUBLISHED = "2026-10-08-claude-sonnet-5-without-land.json"
 
 #: Every reason a letter gets no suggestion, each counted (zero included).
 NO_SUGGESTION = dict.fromkeys((reason for reason in get_args(Reason) if reason != "suggested"), 0)
@@ -235,6 +240,37 @@ def _section(page: str) -> str:
     return page.split("## Without the sender's Land", 1)[1].split("\n## ", 1)[0]
 
 
+def test_the_benchmark_page_shows_three_numbers_per_split() -> None:
+    """docs/evals.md gets a section of its own from the results file (``evals.report --without-land``): with the
+    letterhead's Land, without the sender's Land, and with the suggested state confirmed."""
+    published = _results("2026-09-30-claude-sonnet-5-test.json")
+    without_land = _results(PUBLISHED)
+    assert "## Without the sender's Land" not in report.render_markdown([published])
+    page = report.render_markdown([published], without_land=without_land)
+    section = _section(page)
+    for split, numbers in without_land["splits"].items():
+        assert (
+            f"| `{split}` | {report.rate(numbers['with_land']['due_date_accuracy'], counts=True)} "
+            f"| {report.rate(numbers['without_land']['due_date_accuracy'], counts=True)} "
+            f"| {report.rate(numbers['with_suggestion']['due_date_accuracy'], counts=True)} "
+            f"| {report.rate(numbers['without_land']['dangerous_late_rate'], ci=False)} / "
+            f"{report.rate(numbers['with_suggestion']['dangerous_late_rate'], ci=False)} "
+            f"| {numbers['letterhead_land']} of {numbers['entries']} |"
+        ) in section, split
+    counts = [numbers["suggestion"] for numbers in without_land["splits"].values()]
+    letterhead = sum(c["letterhead_land"] for c in counts)
+    right, wrong = sum(c["right"] for c in counts), sum(c["wrong"] for c in counts)
+    none = sum(sum(c["none"].values()) for c in counts)
+    assert (
+        f"The postcode on the sender's letter suggested the letterhead's state for {right} of the {letterhead} "
+        f"letters that name one, another state for {wrong}, and none for {none}; with every suggestion "
+        "confirmed, 0 required dates differ from the letterhead replay."
+    ) in " ".join(section.split())
+    assert "no date is late" in section and "`test-municipal_decision-D2` (NW)" in section
+    assert "the rows “Without the sender's Land”" in page  # the method section points to them
+    assert "python -m scripts.eval_without_land" in page.split("## Reproduce", 1)[1]
+
+
 def _every_suggestion_right(first: dict[str, Any]) -> dict[str, Any]:
     """The first version's results as the second would read had the postcode suggested every letterhead's
     Land, and a state for every other letter, moving no date."""
@@ -289,11 +325,52 @@ def test_the_page_names_a_wrong_suggestion_s_moved_date_and_why_letters_got_none
         "letterhead replay."
     ) in section
     assert (
+        "The dates the suggestion moves (with the letterhead's Land and the suggested one): "
         "- `test-municipal_decision-D2` (NW, suggested NI): Wed 28 Jan 2026 instead of Tue 27 Jan 2026"
-        in section
-    )
-    assert "on a letter whose letterhead names a state, 1 a postcode GeoNames doesn't list." in section
-    assert (
-        f"Of the {others} letters whose letterhead names none, it suggested a state for {others - 3}; on the "
-        "others, 2 an address abroad, 1 no postcode."
     ) in section
+    assert (
+        "No suggestion for 1 (1 with a postcode GeoNames doesn't list) of the letters whose letterhead names a "
+        f"state, and for 3 (2 with an address abroad, 1 without a postcode) of the {others} whose letterhead "
+        f"names none; the other {others - 3} got one."
+    ) in section
+
+
+def test_the_published_replay_has_no_wrong_suggestion_and_moves_no_date() -> None:
+    """The shipped file: no suggestion names another Land than the letterhead, no required date differs from
+    the letterhead replay, none is late, and every letter is counted once."""
+    results = _results(PUBLISHED)
+    assert results["schema"] == report.WITHOUT_LAND_SCHEMA == "ordnung-eval-without-land/2"
+    assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
+    assert set(results["splits"]) == {"test", "holdout", "holdout2", "holdout3", "dev"}
+    for split, numbers in results["splits"].items():
+        suggestion = numbers["suggestion"]
+        assert suggestion["wrong"] == 0 and numbers["changed_with_suggestion"] == [], split
+        assert numbers["with_suggestion"]["dangerous_late_rate"]["k"] == 0, split
+        assert numbers["with_suggestion"] == numbers["with_land"], split
+        assert suggestion["letterhead_land"] == numbers["letterhead_land"], split
+        assert suggestion["right"] + sum(suggestion["none"].values()) == numbers["letterhead_land"], split
+        assert (
+            suggestion["suggested_without_letterhead_land"]
+            + sum(suggestion["not_suggested_without_letterhead_land"].values())
+            == numbers["entries"] - numbers["letterhead_land"]
+        ), split
+        assert set(suggestion["none"]) == set(NO_SUGGESTION), split
+
+
+def test_the_published_replay_keeps_the_first_version_s_two_replays() -> None:
+    """The letterhead and without-Land replays are the 2026-10-06 file's, number for number and date for date:
+    only the third replay is new."""
+    first = _results("2026-10-06-claude-sonnet-5-without-land.json")["splits"]
+    second = _results(PUBLISHED)["splits"]
+    assert set(first) == set(second)
+    for split, numbers in first.items():
+        for key in ("entries", "letterhead_land", "with_land", "without_land", "changed"):
+            assert second[split][key] == numbers[key], (split, key)
+
+
+@pytest.mark.slow
+def test_replaying_the_dev_split_gives_the_published_numbers() -> None:
+    """The shipped file is what the script writes: the dev split replayed three ways, from the recordings."""
+    entries = select_entries(load_manifest(MANIFEST_PATH), split="dev")
+    numbers = asyncio.run(split_numbers("dev", DEFAULT_MODEL, entries))
+    assert numbers == _results(PUBLISHED)["splits"]["dev"]

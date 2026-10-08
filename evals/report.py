@@ -1206,22 +1206,23 @@ def check_without_land(results: Mapping[str, Any]) -> None:
 
 #: Why the postcode on a letter suggested no state, as the page says it (``ordnung.rules.postcodes.Reason``).
 NO_SUGGESTION_LABELS = {
-    "no_address": "no sender address",
-    "foreign": "an address abroad",
-    "no_postcode": "no postcode",
-    "not_listed": "a postcode GeoNames doesn't list",
-    "several_lands": "a postcode in several states",
-    "no_land": "a postcode listed without a state",
-    "postcodes_disagree": "postcodes in different states",
-    "not_visible": "a postcode not in the letter's visible text",
-    "home_veto": "the person's own state disagreeing",
+    "no_address": "without a sender address",
+    "foreign": "with an address abroad",
+    "no_postcode": "without a postcode",
+    "not_listed": "with a postcode GeoNames doesn't list",
+    "several_lands": "with a postcode in several states",
+    "no_land": "with a postcode listed without a state",
+    "postcodes_disagree": "with postcodes in different states",
+    "not_visible": "with a postcode not in the letter's visible text",
+    "home_veto": "in the person's own town but another state",
 }
 
 
-def _reasons(counts: Mapping[str, int]) -> str:
-    """``16 a postcode GeoNames doesn't list, 7 an address abroad``: largest first, ``none`` when empty."""
+def _without_suggestion(counts: Mapping[str, int]) -> str:
+    """``25 (16 with a postcode GeoNames doesn't list, 7 with an address abroad, …)``: largest first."""
     named = sorted(((n, reason) for reason, n in counts.items() if n), key=lambda item: -item[0])
-    return ", ".join(f"{n} {NO_SUGGESTION_LABELS.get(reason, reason)}" for n, reason in named) or "none"
+    reasons = ", ".join(f"{n} {NO_SUGGESTION_LABELS.get(reason, reason)}" for n, reason in named)
+    return f"{sum(counts.values())} ({reasons})" if reasons else "0"
 
 
 def _summed(counts: Sequence[Mapping[str, int]]) -> dict[str, int]:
@@ -1283,8 +1284,11 @@ def _without_land_section(without_land: Mapping[str, Any]) -> str:
         for change in changed
     )
     counts = [numbers["suggestion"] for numbers in splits.values()]
+    letterhead = sum(c["letterhead_land"] for c in counts)
+    right, wrong = sum(c["right"] for c in counts), sum(c["wrong"] for c in counts)
     none = _summed([c["none"] for c in counts])
     others = _summed([c["not_suggested_without_letterhead_land"] for c in counts])
+    suggested_others = sum(c["suggested_without_letterhead_land"] for c in counts)
     moved = [change for numbers in splits.values() for change in numbers["changed_with_suggestion"]]
     differ = (
         f"{len(moved)} required date differs" if len(moved) == 1 else f"{len(moved)} required dates differ"
@@ -1294,6 +1298,11 @@ def _without_land_section(without_land: Mapping[str, Any]) -> str:
         f"{change['suggested_land'] or 'none'}): {human_date(change['with_suggestion'])} instead of "
         f"{human_date(change['with_land'])}{labelled(change)}"
         for change in moved
+    )
+    moved_block = (
+        f"\n\nThe dates the suggestion moves (with the letterhead's Land and the suggested one):\n{moved_letters}"
+        if moved
+        else ""
     )
     path = f"evals/results/{results_filename(str(meta.get('date')), str(meta.get('model')), 'without-land')}"
     return f"""## Without the sender's Land
@@ -1305,10 +1314,10 @@ this date?*) or says Yes when Ordnung asks *Is X in Bavaria?* from the postcode 
 ([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Until then the rules engine uses
 nationwide holidays and, for a Land authority, the 3-day delivery rule, at lower confidence. These rows replay
 Ordnung's recorded outputs three ways with the code of commit `{meta.get("commit") or "?"}`
-({meta.get("date")}; `python -m scripts.eval_without_land`, results in `{path}`); no model was called. **The
-“without” column is the app's own result for a sender whose Land the person has not set.** The “suggested”
-column gives the engine the state that the app's own lookup (`ordnung.rules.postcodes`) suggests from the
-reading's sender address and the letter's visible text, as if the person said Yes to every suggestion: a
+({meta.get("date")}; `python -m scripts.eval_without_land`, results in `{path}`); no model was called.
+**The “without” column is the app's own result for a sender whose Land the person has not set.** The
+“suggested” column gives the engine the state the app's own lookup (`ordnung.rules.postcodes`) suggests from
+the reading's sender address and the letter's visible text, as if the person said Yes to every suggestion: a
 ceiling. Each letter here is its own sender and the benchmark has no address for the person, so the app's
 other checks (letters with signs of a scam, a sender's letters that disagree, the person's own state) are not
 exercised. The letters are synthetic, with mostly real postcodes and made-up towns.
@@ -1316,15 +1325,13 @@ exercised. The letters are synthetic, with mostly real postcodes and made-up tow
 {table}
 
 Without the Land, {len(changed)} dates change; {len(early)} of them come out {spread} days early, and
-{late_text}. The postcode on the sender's letter suggested the letterhead's state for {sum(c["right"] for c in counts)}
-of the {sum(c["letterhead_land"] for c in counts)} letters that name one, another state for
-{sum(c["wrong"] for c in counts)}, and none for {sum(none.values())}; with every suggestion confirmed, {differ} from
-the letterhead replay.{moved_letters}
+{late_text}. The postcode on the sender's letter suggested the letterhead's state for {right} of the
+{letterhead} letters that name one, another state for {wrong}, and none for {sum(none.values())}; with every
+suggestion confirmed, {differ} from the letterhead replay.{moved_block}
 
-Why a letter got no suggestion: on a letter whose letterhead names a state, {_reasons(none)}. Of the
-{sum(others.values()) + sum(c["suggested_without_letterhead_land"] for c in counts)} letters whose letterhead
-names none, it suggested a state for {sum(c["suggested_without_letterhead_land"] for c in counts)}; on the
-others, {_reasons(others)}.
+No suggestion for {_without_suggestion(none)} of the letters whose letterhead names a state, and for
+{_without_suggestion(others)} of the {suggested_others + sum(others.values())} whose letterhead names none;
+the other {suggested_others} got one.
 
 The letters whose date changes without the Land (with the Land their letterhead names):
 
