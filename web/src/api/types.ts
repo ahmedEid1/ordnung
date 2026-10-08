@@ -592,6 +592,8 @@ export type HelpLink = Schemas["HelpLink"];
 export type PartyDetail = Schemas["PartyDetail"];
 /** An open to-do of a party that is not one to act on (replaced by a reminder, history, scam signs). */
 export type ItemAside = Schemas["ItemAside"];
+/** The Land the postcode on a sender's letter suggests: a question for the person, never set by itself. */
+export type RegionSuggestion = Schemas["RegionSuggestion"];
 export type CaseDetail = Schemas["CaseDetail"];
 /** Model use for one purpose (calls, cache hits, errors, tokens, cost). */
 export type PurposeUsage = Schemas["PurposeUsage"];

@@ -1,1 +1,0 @@
-import{or as e}from"./scale-Ba3v2hki.js";function t(){return e().data?.client===`phone`}export{t};

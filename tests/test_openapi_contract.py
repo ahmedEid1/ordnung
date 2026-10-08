@@ -189,6 +189,28 @@ def test_health_documents_probe_and_rules_date(schema: dict[str, Any]) -> None:
     assert {"rules_last_checked", "checks"} <= set(schema["components"]["schemas"]["Health"]["properties"])
 
 
+def test_party_and_letter_details_carry_a_region_suggestion(schema: dict[str, Any]) -> None:
+    """The Land the postcode on a sender's letter suggests: on both details, ``null`` when there is none."""
+    components = schema["components"]["schemas"]
+    suggestion = components["RegionSuggestion"]
+    assert set(suggestion["properties"]) == {
+        "region",
+        "postcode",
+        "doc_id",
+        "waiting",
+        "may_be_late",
+        "idea_id",
+        "declined",
+    }
+    assert set(suggestion["required"]) == set(suggestion["properties"])
+    for name in ("PartyDetail", "DocumentDetail"):
+        field = components[name]["properties"]["region_suggestion"]
+        assert field["anyOf"] == [{"$ref": "#/components/schemas/RegionSuggestion"}, {"type": "null"}], name
+        assert "region_suggestion" in components[name]["required"], name
+        assert getattr(models, name).model_fields["region_suggestion"].default is None, name
+    assert "region_suggestion" not in models.Party.model_fields
+
+
 def test_job_stages_match_the_pipeline() -> None:
     assert get_args(models.JobStage) == get_args(pipeline.Stage)
 
