@@ -8,7 +8,8 @@
  *   back to unknown.
  * - **Other state…** goes to the State picker (`onOther`).
  * - **Don't know**, while the sender's Idea stands, dismisses that Idea (`PATCH /api/suggestions/{id}`) with the
- *   Idea's own Undo: the letter and Today stop asking, their details keep the question.
+ *   Idea's own Undo: the letter and Today stop asking, their details keep the question. Its toast says the dates
+ *   stay the earlier ones, unless one was counted backwards (`may_be_late`): then to act a working day before it.
  *
  * While an answer is saved its button is `aria-disabled` (`AnswerButton`): after a failed save the keyboard is
  * still on it, and the hook's own toast says what went wrong.
@@ -102,7 +103,9 @@ export function SenderLandQuestion({
         setBusy(null);
         toast({
           title: `Okay — nationwide holidays for ${party.name}`,
-          description: "Their dates stay the earlier ones. You can choose their state any time in their details.",
+          description: `${
+            suggestion.may_be_late ? "A holiday in their state could make a date earlier: act a working day before it." : "Their dates stay the earlier ones."
+          } You can choose their state any time in their details.`,
           undo: () => idea.mutateAsync({ id: ideaId, patch: { status: "new" } }).then(
             () => undefined,
             () => undefined,

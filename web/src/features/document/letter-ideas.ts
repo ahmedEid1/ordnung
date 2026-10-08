@@ -12,8 +12,9 @@ const LIVE: ReadonlySet<Suggestion["status"]> = new Set(["new", "accepted", "sno
  * The live Ideas about this letter:
  * - about this letter — it names the letter, or every to-do it names is one of the letter's
  *   (a sweep over all your dates, like "Add your 26 dates to your calendar", is not);
- * - not the scam warning (the verdict carries it) nor "Please check" for this letter (the page
- *   says that above, next to the to-do);
+ * - not the scam warning (the verdict carries it), "Please check" for this letter (the page
+ *   says that above, next to the to-do) nor the question about the sender's state (the letter's
+ *   own card asks it, and their details);
  * - not the verdict again: a rule's reminder about the verdict's to-do alone ("Pay … by Thu 1 Oct").
  */
 export function ideasForLetter(
@@ -27,7 +28,7 @@ export function ideasForLetter(
     const todos = s.refs.filter((r) => r.type === "item").map((r) => r.id);
     const aboutLetter = docs.includes(docId) || (todos.length > 0 && todos.every((id) => own.has(id)));
     if (!aboutLetter) return false;
-    if (s.rule_id === "please_check") return false;
+    if (s.rule_id === "please_check" || s.rule_id === "sender_land") return false;
     // a rule's reminder about the verdict's to-do alone restates it; a Weekly Ideas insight about it
     // ("you now have the certificate — send it") is new
     if (primaryId && s.source === "rule" && todos.length === 1 && todos[0] === primaryId) return false;

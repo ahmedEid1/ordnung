@@ -35,7 +35,7 @@ export function ReceiptView({ receipt, title, close }: { receipt: ReceiptModel; 
       steps={steps}
       holidayCalendar={receipt.holidayCalendar}
     >
-      {landless ? <SenderLandNote party={landless} close={close} /> : null}
+      {landless ? <SenderLandNote party={landless} warnings={receipt.warnings} close={close} /> : null}
     </Receipt>
   );
 }

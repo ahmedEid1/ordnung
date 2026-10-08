@@ -23,7 +23,8 @@ import { needsArrivalDate } from "@/features/document/verdict";
 import { TRAY_DOCUMENTS } from "./data/documents";
 import { BRIEF_TEXT, PROFILE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { CHECK_LABELS } from "./data/drafts";
+import { CHECK_LABELS, DRAFTS } from "./data/drafts";
+import { PARTIES } from "./data/parties";
 import { CONTRACTS } from "./data/contracts";
 import { ITEMS } from "./data/items";
 
@@ -367,6 +368,12 @@ describe("mock dataset", () => {
 
   it("uses the demo persona's two-line address", () => {
     expect(PROFILE.address).toBe("Beispielweg 5\n12345 Musterstadt");
+  });
+
+  it("addresses FunkNetz's cancellation to the address its letter and details show, as the demo does", () => {
+    const funknetz = PARTIES.find((p) => p.id === "pty_funknetz")!;
+    const draft = DRAFTS.find((d) => d.id === "drf_phone")!;
+    expect(draft.recipient_block).toBe(`${funknetz.name}\n${funknetz.address!.replace(", ", "\n")}`);
   });
 
   it("answers a question without a recording with the demo miss in the online demo too (its Ask page says why)", async () => {

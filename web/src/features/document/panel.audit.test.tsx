@@ -313,6 +313,8 @@ describe("Ideas on the letter page", () => {
       makeSuggestion({ id: "sug_verdict", kind: "deadline", title: "Pay the fine by Thu 1 Oct", refs: [{ type: "item", id: "itm_pay" }, { type: "document", id: "doc_1" }] }),
       makeSuggestion({ id: "sug_calendar", kind: "hygiene", rule_id: "calendar_outdated", title: "Add your 26 dates to your calendar", refs: [{ type: "item", id: "itm_pay" }, { type: "item", id: "itm_other" }] }),
       makeSuggestion({ id: "sug_check", kind: "info", rule_id: "please_check", title: "Please check: the fine", refs: [{ type: "document", id: "doc_1" }, { type: "item", id: "itm_form" }] }),
+      // the sender's state: the letter's own card asks it (and their details), never a second time under Ideas
+      makeSuggestion({ id: "sug_land", kind: "deadline", rule_id: "sender_land", title: "Is Stadt Musterstadt in Berlin?", refs: [{ type: "party", id: "pty_city" }, { type: "document", id: "doc_1" }, { type: "item", id: "itm_form" }, { type: "item", id: "itm_pay" }] }),
       makeSuggestion({ id: "sug_scam", kind: "scam", title: "Looks like a scam", refs: [{ type: "document", id: "doc_1" }] }),
       makeSuggestion({ id: "sug_keep", kind: "saving", title: "Compare accounts", refs: [{ type: "document", id: "doc_1" }] }),
       makeSuggestion({ id: "sug_items", kind: "hygiene", title: "Send your certificate", refs: [{ type: "item", id: "itm_form" }, { type: "document", id: "doc_other" }] }),

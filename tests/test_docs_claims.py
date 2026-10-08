@@ -634,7 +634,11 @@ def test_the_numbers_with_the_suggested_state_match_their_results_file() -> None
     ) in footnote
     bullet = flat.split("**Without the sender's Land:", 1)[1].split(" - **", 1)[0]
     assert f"Say Yes to the state Ordnung suggests from the postcode on their letter, and {gives}" in bullet
-    assert "no suggestion was wrong on these letters" in bullet
+    # only the letters whose letterhead names a state can show a suggestion wrong
+    assert (
+        f"no suggestion was wrong on the {published['letterhead']} letters whose letterhead names a state"
+        in bullet
+    )
     rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
     (again,) = {
         _pct(splits[name]["with_suggestion"]["due_date_accuracy"]["value"]) for name in PUBLISHED_SPLITS[:3]
@@ -674,6 +678,8 @@ def test_adr_0019_states_the_measured_numbers_and_their_bound() -> None:
         encoding="utf-8"
     )
     measured = _flat(adr.split("## Measured", 1)[1].split("\n## ", 1)[0])
+    # counts from a prototype no script in the repository reproduces stay out
+    assert "of the 75 right suggestions" not in _flat(adr) and "245 runs" not in _flat(adr)
     assert every["wrong"] == 0
     assert (
         f"On the {every['letterhead']} of the benchmark's {entries} letters whose letterhead names a Land, the "
@@ -1370,6 +1376,10 @@ _SYNC_NUMBERS: dict[str, Callable[[], object]] = {
 #: in the document (line breaks and indents read as one space).
 _SYNC_CLAIMS: list[tuple[str, str]] = [
     ("README.md", "take the suggested {words_word}-word passphrase"),
+    (
+        "CHANGELOG.md",
+        "now wait up to {shutdown_s} seconds for a running sync operation before closing the database",
+    ),
     (
         "docs/privacy.md",
         "saves an encrypted copy into the folder about {person_quiet_s} seconds after a change of yours, "

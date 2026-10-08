@@ -391,7 +391,7 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     expect(within(drawer).getByRole("group", { name: FUNKNETZ })).toBeInTheDocument();
   });
 
-  it("Yes saves their state, says so with an Undo that takes it back, and gives the keyboard to the State picker", async () => {
+  it("Yes saves their state, says so with an Undo that takes it back, and gives the keyboard to the State heading", async () => {
     const { srv, calls } = useMockApi();
     const region = () => srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region;
     const { user, drawer, picker } = await openDrawer();
@@ -402,7 +402,8 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     expect(screen.getByText("Their dates now skip the public holidays of Berlin.")).toBeInTheDocument();
     await waitFor(() => expect(within(drawer).queryByRole("group", { name: FUNKNETZ })).toBeNull());
     expect(picker).toHaveValue("BE");
-    await waitFor(() => expect(picker).toHaveFocus());
+    // not the picker: it saves on change, so a stray arrow key there would save a state nobody chose
+    await waitFor(() => expect(within(drawer).getByRole("heading", { name: "State" })).toHaveFocus());
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(region()).toBeNull());
@@ -452,6 +453,35 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(idea().status).toBe("new"));
     expect(await within(question).findByRole("button", { name: "Don't know" })).toBeInTheDocument();
+  });
+
+  it("“Don't know” never calls a date that may be late the earlier one: it says to act a working day before it", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.suggestions.push({
+      ...srv.db.state.suggestions[0]!,
+      id: "sug_land_funknetz",
+      kind: "deadline",
+      title: "Is FunkNetz Mobil GmbH in Berlin?",
+      status: "new",
+      rule_id: "sender_land",
+      refs: [{ type: "party", id: "pty_funknetz" }],
+      action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_funknetz", label: "Answer" },
+    });
+    const answer = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await answer(input, init);
+      if ((init?.method ?? "GET") !== "GET" || !String(input).endsWith("/api/parties/pty_funknetz")) return response;
+      const detail = (await response.json()) as PartyDetail;
+      const late = detail.region_suggestion && { ...detail.region_suggestion, waiting: 1, may_be_late: true, idea_id: "sug_land_funknetz" };
+      return new Response(JSON.stringify({ ...detail, region_suggestion: late }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const { user, drawer } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Don't know" }));
+    expect(await screen.findByText("Okay — nationwide holidays for FunkNetz Mobil GmbH")).toBeInTheDocument();
+    expect(
+      screen.getByText("A holiday in their state could make a date earlier: act a working day before it. You can choose their state any time in their details."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/stay the earlier ones/)).toBeNull();
   });
 
   it("another sender's drawer is another visit: asked again after “Other state…”, in one State section", async () => {

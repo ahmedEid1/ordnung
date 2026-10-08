@@ -71,6 +71,14 @@ describe("a date that waits for the sender's state", () => {
     expect(router.state.location.search).toBe("?party=pty_city");
   });
 
+  it("says a date counted backwards may be a day late, and to act a working day before it", () => {
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.documents.detail("doc_1"), makeDetail({ document: makeDoc({ party_id: "pty_city" }), party: party() }));
+    renderWithProviders(<ReceiptView receipt={earlier} item={makeItem({ computation: earlier })} />, { client });
+    expect(screen.getByText(/Ordnung doesn't know which state Stadt Musterstadt is in, so this date may be a day late: act a working day before it\./)).toBeInTheDocument();
+    expect(screen.queryByText(/a few days early/)).toBeNull();
+  });
+
   it("closes “Why this date?” before the drawer opens: on a phone its sheet kept the keyboard from the State picker", async () => {
     const user = userEvent.setup();
     const client = makeTestQueryClient();

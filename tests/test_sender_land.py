@@ -199,6 +199,23 @@ def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day(store: 
     assert in_bavaria is not None and (in_bavaria.region, in_bavaria.waiting) == ("BY", 1)
 
 
+def test_a_payment_to_a_company_waits_for_the_person_s_land_not_the_sender_s(store: Store) -> None:
+    """Money is owed where the payer lives (§ 270 Abs. 4 BGB): before onboarding a payment to a company is counted
+    without the person's Land, and confirming the sender's changes nothing about it. An authority's isn't."""
+    pay = HOLIDAY.model_copy(update={"nature": "payment"})
+    receipt = compute_due(pay, without_land(pay))
+    assert any(warning.startswith(REGION_UNKNOWN) for warning in receipt.warnings)
+    shop, city = _sender(store, name="Shop GmbH", kind="company"), _sender(store, name="Stadt München")
+    to_do(store, shop, letter_from(store, shop, MUNICH), pay)
+    to_do(store, city, letter_from(store, city, MUNICH), pay)
+
+    for_shop, for_city = _suggest(store, shop), _suggest(store, city)
+
+    assert for_shop is not None and for_shop.waiting == 0
+    assert for_city is not None and for_city.waiting == 1
+    assert [idea.title for idea in _ideas(store)] == ["Is Stadt München in Bavaria?"]
+
+
 def test_a_letter_counts_only_its_own_dates(store: Store) -> None:
     party = _sender(store)
     first = letter_from(store, party, MUNICH, day="2026-08-01")
@@ -353,9 +370,14 @@ def test_don_t_know_is_remembered_for_that_land_and_another_land_asks_again(stor
     asked = store.get_suggestion(idea_id(party.id, "BY"))
     assert asked is not None and asked.status == "dismissed"
 
-    for letter in store.list_documents(party_id=party.id):  # the sender moved: their letters now say Saxony
-        store.trash_document(letter.id)
+    # the sender moved: while their older letters still say Bavaria, the letters disagree and nothing is asked
+    older = store.list_documents(party_id=party.id)
     to_do(store, party, letter_from(store, party, DRESDEN, day="2026-09-27"), HOLIDAY)
+    run_and_reconcile(store, TODAY)
+    assert _suggest(store, party) is None and store.get_suggestion(idea_id(party.id, "SN")) is None
+
+    for letter in older:  # once only letters that say Saxony are looked at, it asks about Saxony
+        store.trash_document(letter.id)
     run_and_reconcile(store, TODAY)
     again = store.get_suggestion(idea_id(party.id, "SN"))
     asked = store.get_suggestion(idea_id(party.id, "BY"))

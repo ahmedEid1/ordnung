@@ -337,7 +337,8 @@ What the numbers say:
   that way, the same readings give 48 of 56 on the test split, 50 on the holdout split, 47 on the holdout2
   split and 51 on the holdout3 split; every extra miss is 1–3 days early (row ⁹). Say Yes to the state
   Ordnung suggests from the postcode on their letter, and the same readings give 55, 55, 55 and 56 of 56, the
-  numbers with the letterhead's state; no suggestion was wrong on these letters.
+  numbers with the letterhead's state; no suggestion was wrong on the 69 letters whose letterhead names a
+  state.
 - **Held out a third time, after the code freeze: 100 %, no late date.** On a third split of 63 new
   letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
   rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five

@@ -479,8 +479,9 @@ const STATE_HEADING = "pty-region";
  * and, for a Land authority, how many days its post takes to count as delivered. Nothing Ordnung reads tells
  * it for sure: the postcode on their letter may suggest it, asked above the picker (ADR 0019), but it is
  * never set by itself and the picker is never preselected. Until the person sets it, nationwide holidays and
- * the 3-day rule count, at lower confidence: an earlier date, never a later one. Saved on change (or with
- * Yes): the server recomputes its letters' dates.
+ * the 3-day rule count, at lower confidence: usually an earlier date, but one counted backwards may be a day
+ * late. Saved on change (or with Yes): the server recomputes its letters' dates. Yes hands the keyboard to the
+ * heading, never to the picker, where a stray arrow key would save a state nobody chose.
  *
  * Opened at their state (`?state=`): `ask` focuses the heading — the question comes next, and a stray Enter
  * there confirms nothing — and `choose` the picker, without the question ("Other state…" on a letter).
@@ -527,8 +528,8 @@ function SenderLand({ party, suggestion }: { party: Party; suggestion: RegionSug
           suggestion={suggestion}
           update={update}
           onOther={chooseOther}
-          // the question leaves with the saved state: the picker, now showing it, takes the keyboard
-          focusAfterYes={() => picker.current}
+          // the question leaves with the saved state: the heading takes the keyboard (the picker saves on change)
+          focusAfterYes={() => document.getElementById(STATE_HEADING)}
           // the question stays, without "Don't know": the heading takes the keyboard (never Yes)
           focusAfterDontKnow={() => document.getElementById(STATE_HEADING)}
           className="mb-3 rounded-xl border border-line bg-surface px-3.5 py-3"
@@ -538,7 +539,7 @@ function SenderLand({ party, suggestion }: { party: Party; suggestion: RegionSug
       ) : null}
       <Field
         label="Which state is this sender in?"
-        hint="Their deadlines skip that state's public holidays. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule: an earlier date, never a later one."
+        hint="Their deadlines skip that state's public holidays. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule: usually an earlier date, but one counted backwards may be a day late."
       >
         {/* German names, as letterheads print them */}
         <Select ref={picker} value={shown} onChange={(e) => choose(e.target.value)} className="sm:max-w-xs">

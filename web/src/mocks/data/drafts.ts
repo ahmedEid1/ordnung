@@ -137,7 +137,7 @@ export const DRAFTS: Draft[] = [
     doc_id: "doc_phone",
     contract_id: "ctr_phone",
     sender_block: SENDER,
-    recipient_block: "FunkNetz Mobil GmbH\nPostfach 10 20 30\n12340 Musterstadt",
+    recipient_block: "FunkNetz Mobil GmbH\nWellenweg 7\n12351 Beispielhausen",
     place_date: "Musterstadt, 28.09.2026",
     subject: "Kündigung meines Mobilfunkvertrags – Kundennummer 7700 4412 09",
     body:

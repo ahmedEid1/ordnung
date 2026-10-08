@@ -13,7 +13,8 @@ letter's. Nothing here writes ``Party.region``.
 
 :func:`sender_land_ideas` is the ``sender_land`` Idea rule: one Idea for each sender with a suggestion and a date
 that may change with it. Its fingerprint holds the Land, so "Don't know" (dismissing it) is remembered for that
-Land, a letter naming another Land asks again, and setting the Land expires it.
+Land, and setting the Land expires it. A sender who moved is asked about the new Land only once the letters
+looked at agree on it: while an older one among them still names the old Land, nothing is asked.
 """
 
 from __future__ import annotations
@@ -21,11 +22,12 @@ from __future__ import annotations
 import threading
 import weakref
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Final
 
 from ordnung.ids import content_id
+from ordnung.ingest.plan import item_context
 from ordnung.models import (
     Document,
     Item,
@@ -36,7 +38,7 @@ from ordnung.models import (
     SuggestionRef,
 )
 from ordnung.rules.calendar_de import REGION_NAMES
-from ordnung.rules.deadlines import waits_for_sender_land
+from ordnung.rules.deadlines import place_region, waits_for_sender_land
 from ordnung.rules.postcodes import Home, PostcodeLand, suggest_land
 from ordnung.secretary.triggers import (
     IdeaText,
@@ -51,7 +53,8 @@ from ordnung.secretary.triggers import (
 )
 
 RULE_ID: Final = "sender_land"
-#: The newest letters of a sender that are read for a postcode: one who moved shows it in recent ones.
+#: The newest letters of a sender that are read for a postcode: once a sender who moved has sent this many,
+#: their older letters no longer keep the question about the new Land back.
 LETTERS_LOOKED_AT: Final = 12
 #: Days before its first waiting date within which the Idea is "high" (as ``please_check``'s).
 SOON_DAYS: Final = 14
@@ -97,6 +100,7 @@ class _Dated:
     ref: SuggestionRef
     day: date | None
     warnings: tuple[str, ...]
+    item: Item | None = None
 
 
 _SOURCES: weakref.WeakKeyDictionary[Ledger, dict[str, _Source | None]] = weakref.WeakKeyDictionary()
@@ -155,11 +159,23 @@ def _recomputed_by_land(item: Item) -> bool:
     )
 
 
+def _met_in(ledger: Ledger, item: Item | None, region: str) -> bool:
+    """Whether confirming ``region`` as the sender's Land tells the engine whose holidays move ``item``'s date
+    (:func:`~ordnung.rules.deadlines.place_region`): not for a payment to a company or a person, owed where the
+    payer lives, nor for one counted with both Länder while the person's own Land is unknown."""
+    if item is None or item.date_spec is None:
+        return True
+    ctx = item_context(ledger.store, item, ledger.today)
+    return place_region(item.date_spec, replace(ctx, region=region)) is not None
+
+
 def _open_dates(ledger: Ledger, party: Party, doc_id: str | None) -> list[_Dated]:
     """The open dates a Land may change: the sender's to-dos (``doc_id``: that letter's) that are open and not
     set aside (as the drawer lists them apart), and, for the sender, their open contract decisions."""
     found = [
-        _Dated(SuggestionRef(type="item", id=item.id), action_day(item), tuple(item.computation.warnings))
+        _Dated(
+            SuggestionRef(type="item", id=item.id), action_day(item), tuple(item.computation.warnings), item
+        )
         for item in ledger.items
         if (item.doc_id == doc_id if doc_id is not None else item.party_id == party.id)
         and item.computation is not None
@@ -191,10 +207,13 @@ def _open_dates(ledger: Ledger, party: Party, doc_id: str | None) -> list[_Dated
     return found
 
 
-def _waiting(dates: list[_Dated], region: str) -> tuple[list[_Dated], bool]:
+def _waiting(ledger: Ledger, dates: list[_Dated], region: str) -> tuple[list[_Dated], bool]:
     """The dates confirming ``region`` may change, and whether one of them may be late until it is confirmed."""
     waiting = [
-        (dated, wait) for dated in dates if (wait := waits_for_sender_land(dated.warnings, region)).waits
+        (dated, wait)
+        for dated in dates
+        if (wait := waits_for_sender_land(dated.warnings, region)).waits
+        and _met_in(ledger, dated.item, region)
     ]
     return [dated for dated, _ in waiting], any(wait.may_be_late for _, wait in waiting)
 
@@ -213,7 +232,7 @@ def region_suggestion(ledger: Ledger, party: Party, *, doc_id: str | None = None
     if source is None:
         return None
     region = source.land.region
-    waiting, late = _waiting(_open_dates(ledger, party, doc_id), region)
+    waiting, late = _waiting(ledger, _open_dates(ledger, party, doc_id), region)
     idea = ledger.store.get_suggestion(idea_id(party.id, region))
     if idea is not None and idea.status not in _IDEA_STANDS:
         idea = None
@@ -272,7 +291,7 @@ def sender_land_ideas(ledger: Ledger) -> list[Suggestion]:
         source = _source(ledger, party) if dates else None
         if source is None:
             continue
-        waiting, late = _waiting(dates, source.land.region)
+        waiting, late = _waiting(ledger, dates, source.land.region)
         if waiting:
             ideas.append(_idea(ledger, party, source, waiting, late))
     return ideas

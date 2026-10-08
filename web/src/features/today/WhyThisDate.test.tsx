@@ -32,6 +32,10 @@ const CITY: Party = {
 /** The engine without the sender's Land, for a Land authority's letter (`rules.delivery`). */
 const THREE_DAYS = "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, so we counted 3 days (the earlier date).";
 
+/** Counted backwards past a holiday of some Länder (`rules.deadlines.REGION_EARLIER`): the date may be a day late. */
+const BACKWARDS =
+  "Holiday region unknown — Wed 18 Nov 2026 is a public holiday in some Länder (e.g. Sachsen), where the deadline would be earlier — act a working day before it to be safe. We used nationwide holidays only.";
+
 /** Today's receipt for a to-do of `party`'s, with Today's list of parties loaded. */
 function renderReceipt(party: Party, warnings: string[] = [THREE_DAYS]) {
   const client = makeTestQueryClient();
@@ -55,6 +59,14 @@ describe("Today's “Why this date?” for a date that waits for the sender's st
     expect(within(sheet).getByText(/Ordnung doesn't know which state Stadt Musterstadt is in, so this date may be a few days early\./)).toBeInTheDocument();
     await user.click(within(sheet).getByRole("button", { name: "Choose their state" }));
     expect(router.state.location.search).toBe("?party=pty_city");
+  });
+
+  it("says a date counted backwards may be a day late, and to act a working day before it", async () => {
+    const { user } = renderReceipt(CITY, [BACKWARDS]);
+    await user.click(screen.getByRole("button", { name: "Why this date? (Pay the fee)" }));
+    const sheet = await screen.findByRole("dialog", { name: "Why this date? Pay the fee" });
+    expect(within(sheet).getByText(/Ordnung doesn't know which state Stadt Musterstadt is in, so this date may be a day late: act a working day before it\./)).toBeInTheDocument();
+    expect(within(sheet).queryByText(/a few days early/)).toBeNull();
   });
 
   it("says nothing once their state is set, for a sender abroad, or for a date that doesn't wait for it", async () => {

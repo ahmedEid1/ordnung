@@ -6,15 +6,17 @@
 A sender's Land decides which regional public holidays move the dates of their letters and, for a Land
 authority, whether its letter counts as delivered after 3 or 4 days. Only the person sets it, in the
 sender's details (*Which state is this sender in?*); until then the engine counts nationwide holidays and
-3 days, so a date comes out early, never late (SPEC § 21). The benchmark shows what that costs: replayed
+3 days, so a date comes out early, or, counted backwards from an event, may come out a day late, which its
+receipt says (SPEC § 21). The benchmark shows what that costs: replayed
 without the sender's Land, Ordnung scores 84–91 % on the published splits instead of 98–100 %
 ([evals.md](../evals.md#without-the-senders-land)). Most people never open a sender's details, so the
 select alone is rarely answered.
 
 Almost every German letter prints its sender's postcode, and almost every postcode lies in one Land. But
-the two kinds of error are not alike: an unknown Land makes a date early, while a wrong Land the person
-confirmed can make it late (the wrong Land's holiday moves the date out). So a suggestion has to be
-precise more than it has to reach far, and it has to stay a question.
+the two kinds of error are not alike: an unknown Land makes a date early, or warns when it may be late,
+while a wrong Land the person confirmed can make it late without a warning (the wrong Land's holiday moves
+the date out). So a suggestion has to be precise more than it has to reach far, and it has to stay a
+question.
 
 ## Principle
 The postcode suggests, the person decides ([ADR 0006](0006-read-only-agent-and-humble-automation.md)).
@@ -40,8 +42,9 @@ than the one the person chose for themselves, the table and the person disagree,
 Before onboarding the person's Land is unknown and never vetoes.
 
 **The source.** The sender's live incoming letters, newest first (at most 12), never one with signs of a
-scam; when they suggest different Länder there is no question. The sender's stored address (the first
-letter's, never refreshed) is never a source.
+scam; when they suggest different Länder there is no question, so a sender who moved is asked about the new
+Land only once the letters looked at agree on it. The sender's stored address (the first letter's, never
+refreshed) is never a source.
 
 **Where it is asked.** In the sender's details, whenever there is a suggestion and no Land. On a letter's
 page, as a card after the arrival question, when one of that letter's open dates may change once the Land
@@ -54,8 +57,9 @@ evidence: *Is X in Bavaria?* with the postcode on their letter.
 
 **The answers.** *Yes* sends the same `PATCH /api/parties/{id}` as the select, which recomputes every letter
 of that sender, with Undo. *Other state…* opens the select. *Don't know* dismisses the sender's Idea through
-`PATCH /api/suggestions/{id}`, with that Idea's Undo: the dates stay the earlier ones, the card and the Idea
-go away, and the details keep asking. Nothing new is stored (the suggestion is computed on read), there is
+`PATCH /api/suggestions/{id}`, with that Idea's Undo: the dates stay as counted without the Land (the
+answer says to act a working day before a date counted backwards), the card and the Idea go away, and the
+details keep asking. Nothing new is stored (the suggestion is computed on read), there is
 no new route and no migration, and *Ask* does not see it.
 
 ## Measured
@@ -86,16 +90,16 @@ only ever removes a question.
 - **Setting the Land by itself, with an Undo.** Silent, and a date counted backwards with a wrong Land can
   come out late.
 - **Asking Claude for the Land.** A model call per sender, open to injection, and not grounded in data.
-- **A town cross-check** (the town after the postcode must be a GeoNames place of it). It would keep only 12
-  of the 75 right suggestions on the benchmark, whose towns are made up, so the feature could not be
-  measured; and the table would need place names.
+- **A town cross-check** (the town after the postcode must be a GeoNames place of it). The benchmark's towns
+  are made up, so it would turn away right suggestions there and the feature could not be measured; and the
+  table would need place names.
 - **A postal-area fallback** for postcodes GeoNames doesn't list (many P.O. box and large-customer
   postcodes). Measured on GeoNames itself, the first three digits are right for 99.72 % of all postcodes
   left out one at a time, but for 98.94 % (1,969 right, 21 wrong) of the organisation and large-customer
   postcodes it is meant for; the first two digits, each 3-digit block left out, for 98.59 % (4,531 right,
   65 wrong). On the benchmark it gains one letter and no date. Deferred until real use shows the need;
   `python -I scripts/make_postcode_table.py DE.zip --measure-fallback` reproduces the numbers.
-- **A range table** (245 runs between listed neighbours, 3.7 KB). It answers postcodes GeoNames doesn't
+- **A range table** (runs of postcodes between listed neighbours). It answers postcodes GeoNames doesn't
   list, which is inference, and loses "listed in several" and "listed without a Land".
 - **Asking about every new sender.** It nags about senders none of whose dates depends on the Land.
 - **A new route.** The existing PATCHes already sync, have an Undo and are allowed from a paired phone.

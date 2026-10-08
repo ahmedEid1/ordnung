@@ -138,7 +138,7 @@ test("opened to answer, the State heading has the keyboard; Tab goes to Yes, Oth
   await expect(picker).toHaveValue("");
 });
 
-test("Yes saves Berlin on the demo and the picker takes the keyboard; the toast's Undo, once the drawer is closed, sets it back", async ({ page }) => {
+test("Yes saves Berlin on the demo and the State heading takes the keyboard; the toast's Undo, once the drawer is closed, sets it back", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");
   const { party, suggestion } = await asked(page, "FunkNetz Mobil GmbH");
@@ -151,7 +151,10 @@ test("Yes saves Berlin on the demo and the picker takes the keyboard; the toast'
     await group.getByRole("button", { name: "Yes" }).click();
     await expect(group).toHaveCount(0);
     await expect(picker).toHaveValue("BE");
-    await expect(picker).toBeFocused();
+    // not the picker, which saves on change: an arrow key there would save a state nobody chose
+    await expect(drawer.getByRole("heading", { name: "State" })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(picker).toHaveValue("BE");
     await expect.poll(region).toBe("BE");
     // a toast waits behind a drawer (it never covers its buttons): closed, its Undo is there
     await page.keyboard.press("Escape");
