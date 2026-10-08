@@ -408,7 +408,7 @@ async def test_a_write_that_never_finishes_lifts_the_fence_and_nothing_is_replac
         agent = agent_of(a)
         with agent.admitted():
             await agent.use_here()
-        assert "apply" not in engine.calls
+        assert "apply" not in engine.calls_of(desk)  # laptop's join may apply: one engine for both
         assert not agent._fenced
         assert agent.mode == "standing_by" and (await status(a))["take_over_waiting"] is True
 
@@ -458,7 +458,8 @@ async def test_a_change_made_while_staging_stops_a_quiet_pull(tmp_path: Path, fo
             await agent_of(a).use_here()
         finally:
             FakeSession.stage = original_stage  # type: ignore[method-assign]
-        assert "apply" not in engine.calls and "discard" in engine.calls
+        calls = engine.calls_of(desk)  # laptop applies too when its join brings the data over
+        assert "apply" not in calls and "discard" in calls
         assert a.ctx.store.get_meta("weekly_session_at") == "2026-10-07"
 
 
