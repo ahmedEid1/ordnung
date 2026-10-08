@@ -24,7 +24,9 @@ pytestmark = pytest.mark.usefixtures("fast")
 
 @pytest.fixture
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
-    fast_sync(monkeypatch)
+    # the real engine's calls (sealing, a copy of the database) can take seconds on a busy CI runner
+    # measuring coverage: one over the fake engine's 1 s limit left its thread busy, and a save was refused
+    fast_sync(monkeypatch, FOLDER_OP_TIMEOUT_S=10.0)
     use_fast_keys(monkeypatch)
 
 
