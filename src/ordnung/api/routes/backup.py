@@ -9,9 +9,10 @@ goes away stops it — what it received then has no sealed end and is refused on
 
 The passphrase travels only over the loopback connection, in the request body (a paired phone can't
 ask for a backup: 403, also behind the phone listener's allow-list). It is used to derive
-the key and is never stored, logged or echoed: a passphrase against the policy (at least 12
-characters, at most 1024) is refused with the rule, not the value, and request-validation errors
-never reach this field because it accepts any string. The same backup as ``ordnung backup``.
+the key and is never stored, logged or echoed: a passphrase against the policy (12–1024 characters
+and about 70 bits by Ordnung's estimate, as a new sync folder's: :func:`ordnung.backup.passphrase_problem`)
+is refused with the rule, not the value, and request-validation errors never reach this field because it
+accepts any string. The same backup as ``ordnung backup``.
 """
 
 from __future__ import annotations
@@ -95,7 +96,9 @@ def _stream(ctx: AppContext, backup: BackupStream) -> Iterator[bytes]:
     response_class=StreamingResponse,
     responses={
         200: {"content": {BACKUP_TYPE: {}}, "description": "The encrypted backup file"},
-        422: {"description": "The passphrase is too short or too long (the rule, never the value)"},
+        422: {
+            "description": "The passphrase is too short, too long or too easy to guess (the rule, never the value)"
+        },
     },
     dependencies=[Depends(require_computer)],
 )

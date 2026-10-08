@@ -2,42 +2,37 @@
 import type { BackupInfo } from "@/api/types";
 import { formatFileSize } from "@/lib/format";
 import { NB_HYPHEN } from "@/lib/glue";
+import { passphraseStrength, strongEnough } from "./passphrase";
 
 /** The API's minimum (`BackupInfo.min_passphrase`), used before the info has loaded. */
 export const MIN_PASSPHRASE = 12;
 export const MAX_PASSPHRASE = 1024;
+
+/** The server's refusal of a new backup's passphrase that is too easy to guess (`WEAK_PASSPHRASE_MESSAGE`), said before asking it. */
+export const WEAK_PASSPHRASE_MESSAGE =
+  "This passphrase would be too easy to guess for a backup kept on another drive or in the cloud. Use five or more words that don't belong together, each of three letters or more — or take the suggested one.";
 
 export interface PassphraseProblem {
   field: "passphrase" | "repeat";
   message: string;
 }
 
-/** Why the two typed passphrases can't protect a backup (null: they can). */
-export function passphraseProblem(passphrase: string, repeat: string, min = MIN_PASSPHRASE): PassphraseProblem | null {
-  if (passphrase.length < min) return { field: "passphrase", message: `Use at least ${min} characters — a short sentence works well.` };
-  if (passphrase.length > MAX_PASSPHRASE) return { field: "passphrase", message: `Use at most ${MAX_PASSPHRASE} characters.` };
-  if (repeat !== passphrase) return { field: "repeat", message: "The two passphrases differ." };
+/**
+ * Why the passphrase can't protect a new backup (`ordnung.backup.passphrase_problem`): `min`-1024 characters, then
+ * the strength a new sync folder's needs — and, with `repeat`, that the two typed agree (null: it can).
+ */
+export function passphraseProblem(passphrase: string, repeat?: string, min = MIN_PASSPHRASE): PassphraseProblem | null {
+  const length = [...passphrase].length;
+  if (length < min) return { field: "passphrase", message: `Use a passphrase of at least ${min} characters — five or more words that don't belong together work well.` };
+  if (length > MAX_PASSPHRASE) return { field: "passphrase", message: `Use a passphrase of at most ${MAX_PASSPHRASE} characters.` };
+  if (!strongEnough(passphrase)) return { field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE };
+  if (repeat !== undefined && repeat !== passphrase) return { field: "repeat", message: "The two passphrases differ." };
   return null;
 }
 
-/** Letters and digits that can't be mistaken for each other when copied by hand (no 0/o, 1/l/i). */
-const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
-const GROUPS = 4;
-const GROUP_CHARS = 5;
-
-/**
- * A random passphrase like `k7qmx-3vxdp-9tawr-2emnb` (20 characters from 31: about 99 bits), made
- * in the browser with the system's random numbers; each character is drawn without modulo bias.
- */
-export function suggestPassphrase(random: (bytes: Uint8Array) => Uint8Array = (b) => crypto.getRandomValues(b)): string {
-  const chars: string[] = [];
-  const limit = 256 - (256 % ALPHABET.length);
-  while (chars.length < GROUPS * GROUP_CHARS) {
-    for (const byte of random(new Uint8Array(32))) {
-      if (byte < limit && chars.length < GROUPS * GROUP_CHARS) chars.push(ALPHABET[byte % ALPHABET.length]!);
-    }
-  }
-  return Array.from({ length: GROUPS }, (_, g) => chars.slice(g * GROUP_CHARS, (g + 1) * GROUP_CHARS).join("")).join("-");
+/** The strength said under a new backup's passphrase while it is typed (null: nothing typed yet). */
+export function backupStrengthLine(passphrase: string, min = MIN_PASSPHRASE): { tone: "ok" | "warn"; text: string } | null {
+  return passphraseStrength(passphrase, "Strong enough for a backup kept on another drive or in the cloud.", min);
 }
 
 const count = (n: number, one: string, many: string) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;

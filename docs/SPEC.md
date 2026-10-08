@@ -1730,9 +1730,9 @@ Pages:
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
-   encrypted backup (passphrase twice or a suggested one to copy, then the download; how to
-   restore; also offered by "Delete everything"), disclaimer — the static demo explains that it can
-   neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
+   encrypted backup (passphrase twice with a suggested five-word one to copy and its strength, then the
+   download; how to restore; also offered by "Delete everything"), disclaimer — the static demo explains
+   that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
    **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
@@ -1809,13 +1809,15 @@ or `drafts/` (or one of them being a link) is never followed and is named by `ba
 `GET /api/backup` (`left_out`) before the backup is made.
 
 **Backup format** (`backup/`, ADR 0013): one file = header (`ORDNUNG-BACKUP\n`, format version,
-scrypt parameters N = 2¹⁷ r = 8 p = 1 — a reader accepts at most 256 MiB of scrypt memory and p ≤ 2 —
-salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
+scrypt parameters N = 2¹⁸ r = 8 p = 1 when written (2¹⁷ before; the header says which) — a reader accepts
+at most 256 MiB of scrypt memory and p ≤ 2 — salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
 AES-256-GCM STREAM chunks of 1 MiB (nonce = prefix ‖ counter ‖ last flag, the header as associated
 data) holding a tar of `ordnung.db` (online-backup snapshot, in memory), `files/`, `derived/`,
 `drafts/` and a `manifest.json` (versions, row count per table, size and SHA-256 per file).
-Passphrase ≥ 12 characters (NFC). Restore: newer format → refused before any key is derived;
-wrong passphrase → refused at the header MAC; any other change → refused; the archive is extracted
+A new backup's passphrase: 12–1024 characters and at least 70 bits by `passphrase_bits`, as a new sync
+folder's (§12c; `ordnung/passphrase.py`), checked by `ordnung backup` and `POST /api/backup` (the CLI and
+the web app suggest five made-up words); read in NFC. Restore: newer format → refused before any key is
+derived; wrong passphrase → refused at the header MAC; any other change → refused; the archive is extracted
 under a strict name policy into a staging folder next to the target, read to its authenticated
 end, checked against the manifest (`integrity_check`, schema not newer, row counts), then swapped
 in; a folder with data needs `--force` and is moved to `<folder>.before-restore-<time>`. Each

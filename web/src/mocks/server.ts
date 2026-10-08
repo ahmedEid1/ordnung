@@ -66,6 +66,7 @@ import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
 import { mayBeCourt, needsTypedCourt } from "@/features/letters/logic";
 import { ordinal } from "@/features/contracts/model";
+import { passphraseProblem as backupPassphraseProblem } from "@/features/settings/backup";
 import { BUNDESLAENDER } from "@/features/onboarding/options";
 
 /** Mirrors compose.COURT_OBJECTION_RECIPIENT. */
@@ -1929,7 +1930,9 @@ const routes: [string, string, Handler][] = [
     ({ body, opts }) => {
       if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
       const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
-      if (typeof passphrase !== "string" || passphrase.length < 12) throw new HttpError(422, "Use a passphrase of at least 12 characters — a short sentence works well.");
+      // the server's policy (`ordnung.backup.passphrase_problem`), in its words
+      const problem = backupPassphraseProblem(typeof passphrase === "string" ? passphrase : "");
+      if (problem) throw new HttpError(422, problem.message);
       return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],

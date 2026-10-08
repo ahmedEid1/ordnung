@@ -12,7 +12,7 @@ Layout (integers big-endian)::
     magic          15  b"ORDNUNG-BACKUP\\n"
     version         1  1
     kdf             1  1 = scrypt
-    log2_n          1  scrypt cost N = 2**log2_n (17 when written; 10..20 read)
+    log2_n          1  scrypt cost N = 2**log2_n (18 when written, 17 before; 10..20 read)
     r               1  scrypt block size (8 when written; 1..16 read)
     p               1  scrypt parallelism (1 when written; 1..2 read)
     salt           16  random
@@ -22,8 +22,8 @@ Layout (integers big-endian)::
     chunks          …  AES-256-GCM(data key, nonce = prefix ‖ counter (4) ‖ last (1), aad = the 79 header bytes)
 
 Every chunk but the last holds exactly ``chunk_size`` bytes; the last holds 0..``chunk_size``. The
-reader also caps scrypt's memory, ``128 · r · N`` bytes, at :data:`MAX_SCRYPT_BYTES` (256 MiB; a
-written backup uses 128 MiB), since the key is derived before the header MAC can be checked.
+reader also caps scrypt's memory, ``128 · r · N`` bytes, at :data:`MAX_SCRYPT_BYTES` (256 MiB, what a
+written backup uses), since the key is derived before the header MAC can be checked.
 
 Keys: ``master = scrypt(passphrase)`` over the passphrase's UTF-8 bytes in Unicode NFC (so the same
 passphrase typed on another system opens it), then the data key and the header key are derived
@@ -33,7 +33,7 @@ passphrase is wrong (or the header was changed) — the reader says so before de
 What the reader refuses, and in which order: a file that doesn't start with the magic
 (:class:`NotABackup`), a newer format version (:class:`NewerBackupFormat` — before asking for any
 key), header parameters outside the ranges above (:class:`DamagedBackup`, so a crafted header can't
-make scrypt use more than 256 MiB of memory, or more than four times the work of a written backup), a
+make scrypt use more than 256 MiB of memory, or more than twice the work of a written backup), a
 wrong passphrase (:class:`WrongPassphrase`), and any chunk that fails authentication or a missing
 last chunk (:class:`DamagedBackup`).
 
@@ -116,9 +116,10 @@ class DamagedBackup(BackupError):
 
 @dataclass(frozen=True)
 class KdfParams:
-    """scrypt's cost parameters (``N = 2**log2_n``). The default costs about 128 MiB and ~0.4 s."""
+    """scrypt's cost parameters (``N = 2**log2_n``). The default — a sync folder's key file's too — costs
+    256 MiB and about a second."""
 
-    log2_n: int = 17
+    log2_n: int = 18
     r: int = 8
     p: int = 1
 

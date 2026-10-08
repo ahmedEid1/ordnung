@@ -12,8 +12,10 @@ from typing import Any
 import httpx
 import pytest
 
+from fakes import use_fast_keys
 from helpers_secretary import TODAY, seed_ledger
 from ordnung import autostart, clock
+from ordnung import backup as backups
 from ordnung.api.routes import backup as backup_route
 from ordnung.api.routes import reminders
 from ordnung.backup.archive import BackupStream, check_backup
@@ -22,7 +24,7 @@ from ordnung.notify import desktop
 from ordnung.notify.desktop import Notification, SendResult
 from test_api_support import api_for, client_for
 
-PASS = "a long enough passphrase"
+PASS = "orbit velvet canyon maple thunder"
 
 
 @pytest.fixture(autouse=True)
@@ -30,6 +32,12 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(TODAY)
     yield
     clock.set_today(None)
+
+
+@pytest.fixture
+def fast_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Cheap scrypt for the backups made here (the real costs: ``tests/test_backup_container.py``)."""
+    use_fast_keys(monkeypatch)
 
 
 @pytest.fixture
@@ -249,7 +257,7 @@ async def test_backup_info(data_dir: Path) -> None:
         assert (await api.client.get("/api/backup")).json()["left_out"] == ["drafts/elsewhere"]
 
 
-async def test_the_backup_download_restores(data_dir: Path, tmp_path: Path) -> None:
+async def test_the_backup_download_restores(data_dir: Path, tmp_path: Path, fast_keys: None) -> None:
     async with api_for(data_dir) as api:
         seed_ledger(api.ctx.store)
         (api.ctx.paths.files / "ab").mkdir()
@@ -288,7 +296,24 @@ async def test_a_weak_passphrase_is_refused_without_echoing_it(
     assert "hunter2" not in caplog.text
 
 
-async def test_a_client_that_goes_away_stops_the_backup(data_dir: Path, tmp_path: Path) -> None:
+async def test_a_guessable_passphrase_is_refused_with_the_rule(
+    data_dir: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A new backup's passphrase meets the rule of a new sync folder: long enough isn't enough."""
+    caplog.set_level(logging.DEBUG)
+    async with api_for(data_dir) as api:
+        for secret in ("a long enough passphrase", "correct horse battery staple"):
+            response = await api.client.post("/api/backup", json={"passphrase": secret})
+            assert response.status_code == 422
+            assert response.json()["detail"] == backups.WEAK_PASSPHRASE_MESSAGE
+            assert secret not in response.text
+        assert not [a for a in api.ctx.store.list_activity(limit=10) if a.kind == "backup.created"]
+    assert "a long enough passphrase" not in caplog.text
+
+
+async def test_a_client_that_goes_away_stops_the_backup(
+    data_dir: Path, tmp_path: Path, fast_keys: None
+) -> None:
     """The response body is a generator: closed early (the browser went away), nothing is sealed and
     nothing is logged as made; what was sent is refused on restore."""
     async with api_for(data_dir) as api:

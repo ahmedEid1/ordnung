@@ -278,7 +278,7 @@ const CASES = {
   desktopReminders: { run: () => api.desktopReminders() },
   testDesktopNotification: { run: () => api.testDesktopNotification("full") },
   backupInfo: { run: () => api.backupInfo() },
-  downloadBackup: { run: () => api.downloadBackup("correct horse battery staple") },
+  downloadBackup: { run: () => api.downloadBackup("orbit velvet canyon maple thunder") },
 
   // phone access, in this order: on, a code, closed, a phone paired earlier removed, start over
   phone: { run: () => api.phone() },
@@ -492,7 +492,7 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     expect(await refused(() => api.updateProfile({ name: "Sam" }))).toEqual({ status: 409, code: "standby" });
     expect(await refused(() => api.uploadDocuments([pdf()]))).toEqual({ status: 409, code: "standby" });
     expect(await refused(() => api.profile())).toBeNull(); // looking is fine
-    expect(await refused(() => api.downloadBackup("correct horse battery staple"))).toBeNull();
+    expect(await refused(() => api.downloadBackup("orbit velvet canyon maple thunder"))).toBeNull();
     expect(await refused(() => api.updatePhone({ enabled: true }))).toBeNull();
     expect(await refused(() => api.saveSync())).toEqual({ status: 409, code: "standby" }); // the route's own refusal
     expect(await refused(() => api.takeOver())).toBeNull();

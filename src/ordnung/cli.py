@@ -2297,8 +2297,10 @@ PASSPHRASE_TRIES = 3
 
 def _passphrase(*, new: bool) -> str:
     """The backup passphrase: ``ORDNUNG_BACKUP_PASSPHRASE`` (scripts) or a hidden prompt — twice for
-    a new backup, which must meet :func:`ordnung.backup.passphrase_problem`'s policy."""
+    a new backup, which must meet :func:`ordnung.backup.passphrase_problem`'s policy (a strong one is
+    suggested first, as the web app's dialog does)."""
     from ordnung.backup import passphrase_problem
+    from ordnung.passphrase import suggested_passphrase
 
     def problem(value: str) -> str | None:
         if not value:
@@ -2311,6 +2313,12 @@ def _passphrase(*, new: bool) -> str:
         if wrong:
             raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
         return given
+    if new:
+        err_console.print(
+            "A strong passphrase, made up just now — type it below (or one of your own: five or more words "
+            "that don't belong together), and save it in your password manager:"
+        )
+        err_console.print(f"  [bold]{suggested_passphrase()}[/]", soft_wrap=True)
     for _ in range(PASSPHRASE_TRIES):
         value = str(typer.prompt("Passphrase for the backup" if new else "Passphrase", hide_input=True))
         wrong = problem(value)
