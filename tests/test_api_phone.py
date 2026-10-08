@@ -449,6 +449,46 @@ async def test_the_same_address_behind_another_router_pauses_until_confirmed(dat
         assert load_record(api.ctx.store).gateway == "192.168.1.1 11:22:33:44:55:66"
 
 
+HOME_ROUTER = "192.168.1.1 aa:bb:cc:dd:ee:ff"
+CAFE_ROUTER = "192.168.1.1 11:22:33:44:55:66"
+
+
+async def test_a_router_unreadable_when_turned_on_is_remembered_once_it_can_be_read(data_dir: Path) -> None:
+    """Risk review: the router was saved only when phone access was turned on, so one that couldn't be
+    read then (no ARP entry yet) was never learned and the pause on another network stayed off. The
+    first reading is kept, and a different router never replaces it."""
+    async with phone_app(data_dir, network=FakeNetwork(router=None)) as (api, net, _servers):
+        access = phone_of(api)
+        assert load_record(api.ctx.store).gateway is None
+        await access.check()
+        assert access.listening and load_record(api.ctx.store).gateway is None
+        net.router = HOME_ROUTER
+        await access.check()
+        assert access.listening and load_record(api.ctx.store).gateway == HOME_ROUTER
+        net.router = CAFE_ROUTER
+        await access.check()
+        status = (await api.client.get("/api/phone")).json()
+        assert status["listening"] is False and status["problem"]["code"] == "other_network"
+        assert load_record(api.ctx.store).gateway == HOME_ROUTER
+        net.router = HOME_ROUTER
+        await access.check()
+        assert access.listening
+
+
+async def test_starting_phone_access_remembers_a_router_it_couldn_t_read_before(data_dir: Path) -> None:
+    async with phone_app(data_dir, network=FakeNetwork(router=None)) as (api, net, _servers):
+        access = phone_of(api)
+        await access.stop()
+        net.router = HOME_ROUTER
+        await access.start_if_enabled()  # as at the next start
+        assert access.listening and load_record(api.ctx.store).gateway == HOME_ROUTER
+        await access.stop()
+        net.router = CAFE_ROUTER
+        await access.start_if_enabled()
+        assert not access.listening and access.problem == "other_network"
+        assert load_record(api.ctx.store).gateway == HOME_ROUTER
+
+
 async def test_phones_unused_for_thirty_days_are_forgotten(data_dir: Path) -> None:
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
         await pair(api, phone)

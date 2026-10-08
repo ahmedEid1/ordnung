@@ -1274,9 +1274,14 @@ detached.
 
 - **On and off** (`phone/access.py`). Settings → Phone (`PUT /api/phone {enabled, address?, port?,
   home_network}`) turns it on: an address from `phone/net.py` (the network interfaces with their netmasks,
-  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never an interface whose name
-  starts with `utun`, `tun`, `tap`, `wg`, `ppp`, `ipsec`, `tailscale`, `zt`, `docker`, `br-`, `veth`,
-  `virbr`, `vboxnet`, `vmnet`, `vEthernet`, `awdl` or `llw`; the default route's address recommended),
+  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never a tunnel or VPN — a name,
+  or on Windows the adapter's description, matching `TUNNEL_INTERFACES` (`utun`, `tun`, `tap`, `wg`,
+  `ppp`, `ipsec`, `tailscale`, `zt`, `cscotun`, `gpd`, `nordlynx`, `proton`, "WireGuard", "Wintun",
+  "TAP-", "VPN", "AnyConnect", "PANGP", "Fortinet", "ZeroTier" …); a container's or virtual machine's
+  network — `VIRTUAL_INTERFACES` (`docker`, `br-`, `veth`, `virbr`, `vboxnet`, `vmnet`, `vEthernet`,
+  `lxdbr`, `cni`, `podman`, `bridge`, "Hyper-V", "VirtualBox", "VMware" …) — only when the default
+  gateway is in its subnet; recommended: the address whose subnet holds the default gateway, else the
+  default route's address),
   a port (8767, or the first free one up to 8775; `PUT {port}` takes 1024–65535), the certificates, then
   the listener. Refusals: 409 `unavailable` in the demo (`ordnung demo`, `serve --demo`, a demo folder)
   and without a session token (`--no-token`; the tests' hook may still enable it), `not_set_up` before
@@ -1292,7 +1297,9 @@ detached.
   gone (`problem.code = "address_gone"`, or `no_network`) or when the router's fingerprint — the default
   gateway's address and hardware address, read best effort — differs from the saved one
   (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
-  resumes when both are back; it never moves to another address by itself. Once a day it renews the
+  resumes when both are back; it never moves to another address by itself. With no fingerprint saved
+  (unreadable when turned on), the first one read while the computer has the address — by the watcher,
+  at start or on resuming — is saved; a saved one is never replaced by itself. Once a day it renews the
   server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
   on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
   /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.

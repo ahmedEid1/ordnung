@@ -34,12 +34,19 @@ never available in the demo, nor when Ordnung runs without a session token (`--n
 `ordnung/phone/__init__.py` and `ordnung/phone/access.py`.
 
 **Home network only, and only this one.** The addresses offered come from the network interfaces with
-their netmasks; tunnels, VPNs, containers and virtual machines are never offered. The listener answers
-only devices in the bound address's subnet, so a Docker container or a peer behind a VPN is refused. It
-remembers the router (the default gateway's address and hardware address, where the system lets Ordnung
-read them): when the computer wakes up on another network that hands it the same address — every
-FRITZ!Box hands out 192.168.178.x unless told otherwise — phone access pauses until the person says *This
-is my home network*. It never moves to a new address by itself. Policy: `ordnung/phone/net.py`.
+their netmasks; tunnels and VPNs are never offered, nor are containers and virtual machines unless the
+router is on their network (an external Hyper-V switch carries the computer's own Wi-Fi or Ethernet).
+An interface is judged by its name and, on Windows, by its adapter's description too ("Hyper-V Virtual
+Ethernet Adapter", "WireGuard Tunnel"): Windows' names alone ("Ethernet 3") don't say what an adapter
+is. The address recommended is the one on the router's network, so a VPN that took the default route
+isn't; when the router can't be read or no address is on its network, it is the one the computer
+reaches the internet from. The listener answers only devices in the bound address's subnet, so a Docker
+container or a peer behind a VPN is refused. It remembers the router (the default gateway's address and
+hardware address, where the system lets Ordnung read them; one that can't be read when phone access is
+turned on is remembered the first time it can be, and a saved one is never replaced by itself): when
+the computer wakes up on another network that hands it the same address — every FRITZ!Box hands out
+192.168.178.x unless told otherwise — phone access pauses until the person says *This is my home
+network*. It never moves to a new address by itself. Policy: `ordnung/phone/net.py`.
 
 **HTTPS with a certificate authority for that one address.** Ordnung makes a small certificate authority
 whose name constraints allow exactly the listener's address and no DNS name, and issues a 397-day server
@@ -122,7 +129,11 @@ network; unreliable on Android); a separate process (two writers on one data fol
   fingerprint isn't compared; browsers give pages no access to the certificate, so this can't be checked
   automatically.
 - When the router can't be read, a network that hands the computer the same address isn't told apart from
-  home; a stranger there reaches only the pairing page and refusals.
+  home; a stranger there reaches only the pairing page and refusals. A router first read later is
+  trusted as home's, also when the computer has moved to another network with the same address by then.
+- A VPN or tunnel is known by its name or its adapter's description; one whose names say nothing (a
+  Windows VPN connection someone named "Work") is offered, and recommended when it holds the default
+  route and no other address is on the router's network.
 - A new address means pairing again and, for a phone that trusted the old authority, installing the new
   one; the docs suggest reserving the address in the router.
 - Other HTTPS software on the computer's address receives the phone's cookie if the phone visits it

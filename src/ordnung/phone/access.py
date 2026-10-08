@@ -31,11 +31,12 @@ listener's own stop either (the gate shields it), it just can't answer any more.
 **The watcher** runs while phone access is on. Every :data:`WATCH_INTERVAL_S` seconds it checks that
 this computer still has the address and is still behind the same router: if not, phone access pauses
 (``address_gone``, ``other_network``) and resumes when both are back — it never moves to another address
-by itself, it can't tell a café's network from home. Once a day it renews the certificate when due and
-forgets phones unused for :data:`DEVICE_IDLE_DAYS` days; every :data:`SEEN_WRITE_EVERY_S` seconds it
-saves when phones were last used. A phone unused for that long is also refused (and forgotten) when it
-comes back — after a restart, or with phone access turned on again, before the watcher's first round —
-and the paired phones are swept when phone access starts.
+by itself, it can't tell a café's network from home. A router that couldn't be read when phone access
+was turned on is saved the first time it can be (never over a saved one). Once a day it renews the
+certificate when due and forgets phones unused for :data:`DEVICE_IDLE_DAYS` days; every
+:data:`SEEN_WRITE_EVERY_S` seconds it saves when phones were last used. A phone unused for that long is
+also refused (and forgotten) when it comes back — after a restart, or with phone access turned on
+again, before the watcher's first round — and the paired phones are swept when phone access starts.
 
 **A phone's sign-in** (a 256-bit token in its cookie; only its SHA-256 is saved) changes at most once an
 hour, on a page load. The previous one stays valid for :data:`PREVIOUS_GRACE_S` seconds after the phone
@@ -811,10 +812,15 @@ class PhoneAccess:
             log.exception("phone access: the listener didn't stop cleanly")
 
     async def _other_network(self) -> bool:
+        """Whether this computer is behind another router than the saved one (only ever asked while it
+        has the address). With none saved, the first one read is saved (trust on first read)."""
         saved = self.record.gateway
-        if not saved:
-            return False
         current = await asyncio.to_thread(self.network.gateway)
+        if not saved:
+            if current is not None:
+                self.record.gateway = current
+                await self._save()
+            return False
         return current is not None and current != saved
 
     async def _paused_now(self) -> None:
