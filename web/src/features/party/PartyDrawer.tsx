@@ -713,7 +713,7 @@ export function PartyDrawer() {
           {party.aliases.length ? <p className="-mt-3 mb-6 break-words text-[13px] leading-5 text-muted">Also known as {party.aliases.join(", ")}</p> : null}
 
           {/* a sender whose stored address (their first letter's) has no postcode keeps it when a later letter suggests one */}
-          {looksAbroad(party) && !data.region_suggestion ? null : <SenderLand key={party.id} party={party} suggestion={data.region_suggestion} />}
+          {looksAbroad(party) && !data.region_suggestion ? null : <SenderLand key={`state-${party.id}`} party={party} suggestion={data.region_suggestion} />}
 
           <PartyNumbers party={party} copier={{ copy, copied }} />
 

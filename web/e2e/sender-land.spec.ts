@@ -138,27 +138,32 @@ test("opened to answer, the State heading has the keyboard; Tab goes to Yes, Oth
   await expect(picker).toHaveValue("");
 });
 
-test("Yes saves Berlin on the demo, says so with an Undo, and the picker takes the keyboard; Undo sets it back", async ({ page }) => {
+test("Yes saves Berlin on the demo and the picker takes the keyboard; the toast's Undo, once the drawer is closed, sets it back", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");
   const { party, suggestion } = await asked(page, "FunkNetz Mobil GmbH");
+  const region = async () => (await apiGet<PartyDetail>(page, `/api/parties/${party.id}`)).party.region;
   try {
     await page.goto(`/?party=${party.id}`);
     const drawer = page.getByRole("dialog", { name: party.name });
     const group = drawer.getByRole("group", { name: question("FunkNetz Mobil GmbH", suggestion.postcode) });
     const picker = drawer.getByLabel("Which state is this sender in?");
     await group.getByRole("button", { name: "Yes" }).click();
-    await expect(page.getByText(`Saved: ${party.name} is in Berlin`)).toBeVisible();
-    await expect(page.getByText("Their dates now skip the public holidays of Berlin.")).toBeVisible();
     await expect(group).toHaveCount(0);
     await expect(picker).toHaveValue("BE");
     await expect(picker).toBeFocused();
-    expect((await apiGet<PartyDetail>(page, `/api/parties/${party.id}`)).party.region).toBe("BE");
-
-    await page.getByRole("button", { name: "Undo" }).click();
-    await expect(picker).toHaveValue("");
+    await expect.poll(region).toBe("BE");
+    // a toast waits behind a drawer (it never covers its buttons): closed, its Undo is there
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    const saved = page.locator("li[data-toast]").filter({ hasText: `Saved: ${party.name} is in Berlin` });
+    await expect(saved).toContainText("Their dates now skip the public holidays of Berlin.");
+    await saved.getByRole("button", { name: "Undo" }).click();
+    await expect.poll(region).toBeNull();
+    // not known again: asked again
+    await page.goto(`/?party=${party.id}`);
     await expect(group).toBeVisible();
-    expect((await apiGet<PartyDetail>(page, `/api/parties/${party.id}`)).party.region).toBeNull();
+    await expect(picker).toHaveValue("");
   } finally {
     await apiPatch(page, `/api/parties/${party.id}`, { region: null });
   }
@@ -255,9 +260,14 @@ test("“Answer” on the Idea opens their details at the State heading, never o
   await open(page, "/");
   const ideas = page.getByRole("region", { name: "Ideas from your secretary" });
   const heading = ideas.getByRole("heading", { level: 3, name: title });
+  await expect(ideas.getByRole("article").first()).toBeVisible();
   const more = ideas.getByRole("button", { name: /^Show \d+ more Ideas?$/ });
   if (!(await heading.isVisible()) && (await more.isVisible())) await more.click();
-  await ideas.getByRole("article").filter({ has: heading }).getByRole("button", { name: "Answer" }).click();
+  await ideas
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { level: 3, name: title }) })
+    .getByRole("button", { name: "Answer" })
+    .click();
   const drawer = page.getByRole("dialog", { name: party.name });
   await expect(drawer.getByRole("heading", { name: "State" })).toBeFocused();
   await expect(drawer.getByRole("group", { name: question("TechMarkt Online GmbH", suggestion.postcode) })).toBeVisible();

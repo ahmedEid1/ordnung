@@ -454,6 +454,16 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     expect(await within(question).findByRole("button", { name: "Don't know" })).toBeInTheDocument();
   });
 
+  it("another sender's drawer is another visit: asked again after “Other state…”, in one State section", async () => {
+    useMockApi();
+    const { user, drawer, router } = await openDrawer();
+    await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Other state…" }));
+    await act(() => router.navigate("/?party=pty_techmarkt"));
+    const other = await screen.findByRole("dialog", { name: "TechMarkt Online GmbH" });
+    expect(await within(other).findByRole("group", { name: "Is TechMarkt Online GmbH in Berlin? (12353 on their letter)" })).toBeInTheDocument();
+    expect(within(other).getAllByRole("heading", { name: "State" })).toHaveLength(1);
+  });
+
   it("opened to answer (`state=ask`) focuses the State heading, never Yes; to choose (`state=choose`) the picker", async () => {
     useMockApi();
     const ask = await openDrawer("/?party=pty_funknetz&state=ask");
