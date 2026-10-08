@@ -276,6 +276,20 @@ def test_an_icloud_placeholder_sibling_is_online_only(tmp_path: Path) -> None:
     assert folder.shard("ab")[name].online_only
 
 
+def _folder_threads() -> int:
+    return sum(thread.name == "ordnung-sync-folder" for thread in threading.enumerate())
+
+
+def _problem_once_answered(computer: Computer) -> object:
+    """A round's problem once the hung call returned (it ends on its own thread a moment after release)."""
+    deadline = time.monotonic() + 2
+    while True:
+        found = getattr(computer.round().decision, "problem", None)
+        if found is None or time.monotonic() > deadline:
+            return found
+        time.sleep(0.01)
+
+
 def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:  # finding 22
     hanging = HangingFs(hang=("stat",))
     timed = TimedFs(hanging, timeout=0.2)
@@ -285,7 +299,14 @@ def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:  # finding 22
         folder.is_dir()
     assert time.monotonic() - started < 2
     hanging.release()
-    assert folder.is_dir()  # a fresh thread answers again
+    deadline = time.monotonic() + 2
+    while True:  # once the hung call returns, its thread answers again
+        try:
+            assert folder.is_dir()
+            break
+        except FolderUnreachable:
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
 
 
 def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
@@ -299,6 +320,27 @@ def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
     finally:
         hanging.release()
     threading.Event().wait(0.05)
+
+
+def test_a_hung_folder_leaves_one_thread_behind_however_often_it_is_read(anna: Computer) -> None:
+    """Audit: every look at a hung folder used to leave one more thread stuck in it. While the stuck
+    call hangs, the folder is unreachable at once; once it returns, the same thread goes on."""
+    anna.connect()
+    hanging = HangingFs(hang=("listdir", "stat"))
+    anna.s.folder.fs = TimedFs(hanging, timeout=0.2)
+    anna.s.scanner.folder = anna.s.folder
+    before = _folder_threads()
+    try:
+        for _ in range(10):
+            started = time.monotonic()
+            outcome = anna.round()
+            assert outcome.decision.problem.code == "folder_unreachable"  # type: ignore[attr-defined]
+        assert time.monotonic() - started < 0.2, "unreachable at once, without waiting for a timeout"
+        assert _folder_threads() <= before + 1
+    finally:
+        hanging.release()
+    assert _problem_once_answered(anna) is None
+    assert _folder_threads() <= before + 1
 
 
 def test_sync_error_kinds_have_statuses() -> None:

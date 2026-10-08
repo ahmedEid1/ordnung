@@ -194,6 +194,8 @@ SHUTDOWN_PUSH_S = 20.0
 FENCE_WAIT_S = 30.0
 #: Every folder operation (stat, list, read, write) gives up after this long: ``folder_unreachable``.
 FOLDER_OP_TIMEOUT_S = 30.0
+#: While the folder doesn't answer (``folder_unreachable``), its heads are read this often instead.
+UNREACHABLE_SCAN_S = 180.0
 #: Without progress for this long, waiting for the sync tool becomes a problem (``arrival_stalled``),
 #: and a standing-by computer still without the latest gives the one in use ``not_received``.
 ARRIVAL_PATIENCE_S = 1800.0

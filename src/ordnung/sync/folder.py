@@ -6,8 +6,9 @@
 :class:`RealFs` by default, a crashing or power-cut file system in tests (``tests/sync_faults.py``), the
 same seam for placing a pull's files into the data folder. :class:`TimedFs` puts a deadline on every
 operation (:data:`~ordnung.sync.FOLDER_OP_TIMEOUT_S`): a hung network share or a File Provider read
-raises :class:`FolderUnreachable` instead of holding everything behind it (the hung thread is left
-behind; the next operation gets a fresh one).
+raises :class:`FolderUnreachable` instead of holding everything behind it. The hung call keeps its
+thread; until it returns, every operation is unreachable at once (no second thread is started), and
+then the same thread goes on.
 
 **Writing** (:meth:`SyncFolder.write_object`, :meth:`SyncFolder.write_head`): a new temp file of this
 computer's own pattern ``.<tag><random>.tmp`` (``O_EXCL``, ``0600``), written, ``fsync``-ed (``F_FULLFSYNC``
@@ -200,13 +201,14 @@ class RealFs:
 
 
 class _Deadline:
-    """Runs one call at a time on a worker thread and waits at most ``timeout`` for it; a call that
-    hangs leaves its thread behind, and the next call gets a new one."""
+    """Runs one call at a time on a worker thread and waits at most ``timeout`` for it. A call that
+    hangs keeps the thread: until it returns, every call gives up at once, then the thread goes on."""
 
     def __init__(self, timeout: float) -> None:
         self.timeout = timeout
         self._lock = threading.Lock()
         self._work: queue.Queue[tuple[Callable[[], Any], _Result]] | None = None
+        self._stuck: _Result | None = None  # the call that timed out, until it returns
 
     def _worker(self) -> queue.Queue[tuple[Callable[[], Any], _Result]]:
         if self._work is None:
@@ -227,10 +229,14 @@ class _Deadline:
 
     def run(self, call: Callable[[], T]) -> T:
         with self._lock:
+            if self._stuck is not None:
+                if not self._stuck.done.is_set():
+                    raise FolderUnreachable()  # still hangs: nothing waits behind it, no second thread
+                self._stuck = None
             result = _Result()
             self._worker().put((call, result))
             if not result.done.wait(self.timeout):
-                self._work = None  # that thread hangs: leave it
+                self._stuck = result
                 raise FolderUnreachable()
         if result.error is not None:
             raise result.error

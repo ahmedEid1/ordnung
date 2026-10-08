@@ -1440,7 +1440,8 @@ outside the database, Delete everything leaves first, a restored backup starts w
   recall attributes), a read error or a timeout is "not arrived", never damage. An object that keeps
   failing for 10 minutes is damaged: the reader lists it in its head's `wants` (at most 64), and a computer
   that holds the content writes it again. Every folder operation gives up after 30 s
-  (`folder_unreachable`).
+  (`folder_unreachable`); until the call that hangs returns, the next ones give up at once (no second
+  thread), and while the folder doesn't answer its heads are read every 3 minutes.
 - **Take-over and pull** (`sync/pull.py`, `sync/agent.py`). *Use Ordnung here* waits until the target has
   arrived (a waiting take-over ends after 30 minutes, or when the target saves a new change of the
   person's), stages and verifies everything in `sync/incoming/` with writes still allowed, then fences: the
